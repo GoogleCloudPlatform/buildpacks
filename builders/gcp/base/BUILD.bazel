@@ -1,0 +1,37 @@
+load("//tools:defs.bzl", "builder")
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/config/entrypoint:entrypoint.tgz",
+    ],
+    groups = {
+        "dotnet": [
+            "//cmd/dotnet/publish:publish.tgz",
+            "//cmd/dotnet/runtime:runtime.tgz",
+        ],
+        "go": [
+            "//cmd/go/build:build.tgz",
+            "//cmd/go/functions_framework:functions_framework.tgz",
+            "//cmd/go/runtime:runtime.tgz",
+        ],
+        "nodejs": [
+            "//cmd/nodejs/functions_framework:functions_framework.tgz",
+            "//cmd/nodejs/npm:npm.tgz",
+            "//cmd/nodejs/runtime:runtime.tgz",
+            "//cmd/nodejs/yarn:yarn.tgz",
+        ],
+        "python": [
+            "//cmd/python/functions_framework:functions_framework.tgz",
+            "//cmd/python/pip:pip.tgz",
+            "//cmd/python/runtime:runtime.tgz",
+        ],
+    },
+    image = "gcp/base",
+    visibility = [
+        #"//apphosting/runtime/titanium/gcp/gcpbase:__pkg__",
+        "//builders/gcp/base/acceptance:__pkg__",
+    ],
+)

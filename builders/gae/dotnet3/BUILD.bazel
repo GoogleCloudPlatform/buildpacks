@@ -1,0 +1,17 @@
+load("//tools:defs.bzl", "builder")
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/dotnet/appengine:appengine.tgz",
+        "//cmd/dotnet/appengine_main:appengine_main.tgz",
+        "//cmd/dotnet/publish:publish.tgz",
+    ],
+    image = "gae/dotnet3",
+    visibility = [
+        "//apphosting/runtime/titanium/gae/gaedotnet3:__pkg__",
+        "//builders/gae/dotnet3/acceptance:__pkg__",
+    ],
+)

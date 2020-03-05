@@ -1,0 +1,170 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+go_library(
+    name = "acceptance",
+    srcs = ["acceptance.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+)
+
+go_test(
+    name = "dotnet_test",
+    size = "enormous",
+    srcs = ["dotnet_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata:generic)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-prefix=gcpbase-acceptance-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gcp/base:builder.tar",
+        "//builders/testdata:generic",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//pkg/acceptance"],
+)
+
+go_test(
+    name = "go_test",
+    size = "enormous",
+    srcs = ["go_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata:generic)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-prefix=gcpbase-acceptance-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gcp/base:builder.tar",
+        "//builders/testdata:generic",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//pkg/acceptance"],
+)
+
+go_test(
+    name = "nodejs_test",
+    size = "enormous",
+    srcs = ["nodejs_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata:generic)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-prefix=gcpbase-acceptance-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gcp/base:builder.tar",
+        "//builders/testdata:generic",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//pkg/acceptance"],
+)
+
+go_test(
+    name = "python_test",
+    size = "enormous",
+    srcs = ["python_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata:generic)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-prefix=gcpbase-acceptance-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gcp/base:builder.tar",
+        "//builders/testdata:generic",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//pkg/acceptance"],
+)
+
+go_test(
+    name = "nodejs_fn_test",
+    size = "enormous",
+    srcs = ["nodejs_fn_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata/nodejs:functions)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-prefix=gcpbase-nodejs-fn-acceptance-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gcp/base:builder.tar",
+        "//builders/testdata/nodejs:functions",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//pkg/acceptance"],
+)
+
+go_test(
+    name = "go_fn_test",
+    size = "enormous",
+    srcs = ["go_fn_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata/go:functions)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-prefix=gcpbase-go-fn-acceptance-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gcp/base:builder.tar",
+        "//builders/testdata/go:functions",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//pkg/acceptance"],
+)
+
+go_test(
+    name = "python_fn_test",
+    size = "enormous",
+    srcs = ["python_fn_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata/python:functions)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-prefix=gcpbase-python-fn-acceptance-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gcp/base:builder.tar",
+        "//builders/testdata/python:functions",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//pkg/acceptance"],
+)

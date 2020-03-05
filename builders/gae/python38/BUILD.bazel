@@ -1,0 +1,17 @@
+load("//tools:defs.bzl", "builder")
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/python/appengine:appengine.tgz",
+        "//cmd/python/pip:pip.tgz",
+        "//cmd/python/webserver:webserver.tgz",
+    ],
+    image = "gae/python38",
+    visibility = [
+        "//apphosting/runtime/titanium/gae/gaepython38:__pkg__",
+        "//builders/gae/python38/acceptance:__pkg__",
+    ],
+)

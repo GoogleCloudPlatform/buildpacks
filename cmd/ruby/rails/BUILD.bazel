@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+# Buildpack for the Node.js runtime.
+load("//tools:defs.bzl", "buildpack")
+
+licenses(["notice"])
+
+buildpack(
+    name = "rails",
+    executables = [
+        ":main",
+    ],
+    visibility = [
+        "//builders:ruby_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    visibility = [
+        "//cmd/config/entrypoint:__pkg__",
+    ],
+    deps = ["//pkg/gcpbuildpack"],
+)

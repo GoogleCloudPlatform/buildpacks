@@ -1,0 +1,47 @@
+description = "Builder for the GAE Go 1.14 runtime"
+
+[[buildpacks]]
+  id = "google.go.appengine"
+  uri = "appengine.tgz"
+
+[[buildpacks]]
+  id = "google.go.build"
+  uri = "build.tgz"
+
+[[buildpacks]]
+  id = "google.go.appengine_gopath"
+  uri = "appengine_gopath.tgz"
+
+[[buildpacks]]
+  id = "google.go.appengine_gomod"
+  uri = "appengine_gomod.tgz"
+
+[[order]]
+  [[order.group]]
+    id = "google.go.appengine_gopath"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.go.appengine"
+
+[[order]]
+  [[order.group]]
+    id = "google.go.appengine_gomod"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.go.appengine"
+
+
+[stack]
+  id = "com.google.cloud.appengine.go114"
+  build-image = "gcr.io/gae-runtimes/buildpacks/go114/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/go114/run"
+
+[lifecycle]
+  version = "0.6.1"

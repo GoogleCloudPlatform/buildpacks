@@ -1,0 +1,68 @@
+# Defines a set of groups for builders that support particular language runtimes
+licenses(["notice"])
+
+package_group(
+    name = "dotnet_builders",
+    packages = [
+        "//builders/gae/base",
+        "//builders/gae/dotnet3",
+        "//builders/gcf/dotnet3",
+        "//builders/gcp/base",
+    ],
+)
+
+package_group(
+    name = "go_builders",
+    packages = [
+        "//builders/gae/go113",
+        "//builders/gae/go114",
+        "//builders/gcf/go113",
+        "//builders/gcp/base",
+    ],
+)
+
+package_group(
+    name = "java_builders",
+    packages = [
+        "//builders/gae/java11",
+        "//builders/gcp/base",
+    ],
+)
+
+package_group(
+    name = "nodejs_builders",
+    packages = [
+        "//builders/gae/nodejs10",
+        "//builders/gae/nodejs12",
+        "//builders/gcf/nodejs10",
+        "//builders/gcf/nodejs12",
+        "//builders/gcp/base",
+    ],
+)
+
+package_group(
+    name = "php_builders",
+    packages = [
+        "//builders/gae/php73",
+        "//builders/gae/php74",
+        "//builders/gcp/base",
+    ],
+)
+
+package_group(
+    name = "python_builders",
+    packages = [
+        "//builders/gae/python37",
+        "//builders/gae/python38",
+        "//builders/gcf/python38",
+        "//builders/gcp/base",
+    ],
+)
+
+package_group(
+    name = "ruby_builders",
+    packages = [
+        "//builders/gae/ruby25",
+        "//builders/gcp/base",
+    ],
+)

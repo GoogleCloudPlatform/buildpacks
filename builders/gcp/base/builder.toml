@@ -1,0 +1,191 @@
+description = "GCP Builder for all runtimes"
+
+[[buildpacks]]
+  id = "google.config.entrypoint"
+  uri = "entrypoint.tgz"
+  
+[[buildpacks]]
+  id = "google.dotnet.runtime"
+  uri = "dotnet/runtime.tgz"
+  
+[[buildpacks]]
+  id = "google.dotnet.publish"
+  uri = "dotnet/publish.tgz"
+
+[[buildpacks]]
+  id = "google.go.runtime"
+  uri = "go/runtime.tgz"
+
+[[buildpacks]]
+  id = "google.go.build"
+  uri = "go/build.tgz"
+
+[[buildpacks]]
+  id = "google.go.functions-framework"
+  uri = "go/functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.runtime"
+  uri = "nodejs/runtime.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.npm"
+  uri = "nodejs/npm.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.yarn"
+  uri = "nodejs/yarn.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.functions-framework"
+  uri = "nodejs/functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.python.runtime"
+  uri = "python/runtime.tgz"
+
+[[buildpacks]]
+  id = "google.python.pip"
+  uri = "python/pip.tgz"
+
+[[buildpacks]]
+  id = "google.python.functions-framework"
+  uri = "python/functions_framework.tgz"
+
+########
+# .NET #
+########
+
+[[order]]
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
+
+  [[order.group]]
+    id = "google.dotnet.publish"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+######
+# Go #
+######
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+###########
+# Node.js #
+###########
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.yarn"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.npm"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+# Separate groups for Node.js projects without dependencies.
+# Making both yarn and npm optional in the previous groups leads
+# the yarn group to opt in every time.
+
+# Node.js functions without a package.json.
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+# Node.js applications without a package.json.
+# Entrypoint is required because it cannot be read from package.json.
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+##########
+# Python #
+##########
+
+# Python functions.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+# Python applications.
+# Entrypoint buildpack is required because it cannot be easily inferred.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+# Currently built with stack/build.sh
+[stack]
+  id = "google"
+  build-image = "gcr.io/buildpacks/gcp/build"
+  run-image = "gcr.io/buildpacks/gcp/run"
+
+[lifecycle]
+  version = "0.6.1"

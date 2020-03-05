@@ -1,0 +1,32 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+go_library(
+    name = "acceptance",
+    srcs = ["acceptance.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+)
+
+go_test(
+    name = "acceptance_test",
+    size = "enormous",
+    srcs = ["acceptance_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata:python)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gae/python38:builder.tar)",
+        "-builder-prefix=gaepython38-acceptance-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gae/python38:builder.tar",
+        "//builders/testdata:python",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//pkg/acceptance"],
+)

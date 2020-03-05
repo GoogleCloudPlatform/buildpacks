@@ -1,0 +1,19 @@
+load("//tools:defs.bzl", "builder")
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/ruby/appengine:appengine.tgz",
+        "//cmd/ruby/appengine_validation:appengine_validation.tgz",
+        "//cmd/ruby/bundle:bundle.tgz",
+        "//cmd/ruby/rails:rails.tgz",
+        # "runtime.tgz",
+    ],
+    image = "gae/ruby25",
+    visibility = [
+        "//apphosting/runtime/titanium/gae/gaeruby25:__pkg__",
+        "//builders/gae/ruby25/acceptance:__pkg__",
+    ],
+)

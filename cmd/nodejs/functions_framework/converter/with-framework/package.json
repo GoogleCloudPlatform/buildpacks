@@ -1,0 +1,6 @@
+{
+  "name": "functions-framework",
+  "scripts": {
+    "start": "functions-framework"
+  }
+}

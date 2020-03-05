@@ -1,0 +1,25 @@
+api = "0.2"
+
+[buildpack]
+id = "google.go.functions-framework"
+version = "0.0.1"
+name = "Google - Go - Functions Framework"
+
+[[stacks]]
+id = "google"
+
+[[stacks]]
+id = "google.go113"
+
+[[stacks]]
+id = "google.go114"
+
+# TODO: Remove these when the next nightly candidates build.
+[[stacks]]
+id = "com.google.cloud.appengine.base"
+
+[[stacks]]
+id = "com.google.cloud.appengine.go113"
+
+[[stacks]]
+id = "com.google.cloud.appengine.go114"

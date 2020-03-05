@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "gcp-build": "touch generated.txt"
+  }
+}

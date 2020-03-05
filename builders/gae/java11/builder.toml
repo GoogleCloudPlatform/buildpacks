@@ -1,0 +1,25 @@
+description = "Builder for the GAE Java 11 runtime"
+
+[[buildpacks]]
+  id = "google.java.appengine"
+  uri = "appengine.tgz"
+
+[[buildpacks]]
+  id = "google.java.maven"
+  uri = "maven.tgz"
+
+[[order]]
+  [[order.group]]
+    id = "google.java.maven"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.appengine"
+
+[stack]
+  id = "com.google.cloud.appengine.java11"
+  build-image = "gcr.io/gae-runtimes/buildpacks/java11/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/java11/run"
+
+[lifecycle]
+  version = "0.6.1"

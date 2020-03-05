@@ -1,0 +1,11 @@
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+# Google Cloud Platform Buildpacks
+package(default_visibility = ["//visibility:public"])
+
+licenses(["notice"])
+
+exports_files(["LICENSE"])
+
+# gazelle:prefix https://github.com/GoogleCloudPlatform/buildpacks
+gazelle(name = "gazelle")

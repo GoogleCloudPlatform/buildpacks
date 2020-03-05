@@ -1,0 +1,11 @@
+licenses(["notice"])
+
+exports_files(
+    [
+        "defs.bzl",
+        "create-builder.sh",
+    ],
+    visibility = [
+        "//:__subpackages__",
+    ],
+)

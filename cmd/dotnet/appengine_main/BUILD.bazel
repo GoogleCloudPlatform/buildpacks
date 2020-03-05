@@ -1,0 +1,38 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+
+# Buildpack for the Java runtime.
+load("//tools:defs.bzl", "buildpack")
+
+licenses(["notice"])
+
+buildpack(
+    name = "appengine_main",
+    executables = [
+        ":main",
+    ],
+    visibility = [
+        "//builders:dotnet_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    visibility = [
+        "//cmd/config/entrypoint:__pkg__",
+    ],
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+        "@com_github_buildpack_libbuildpack//layers:go_default_library",
+    ],
+)
+
+go_test(
+    name = "main_test",
+    size = "small",
+    srcs = ["main_test.go"],
+    embed = [":main"],
+    rundir = ".",
+    deps = ["//pkg/gcpbuildpack"],
+)

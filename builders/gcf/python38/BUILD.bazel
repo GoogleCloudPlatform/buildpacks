@@ -1,0 +1,17 @@
+load("//tools:defs.bzl", "builder")
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/python/functions_framework:functions_framework.tgz",
+        "//cmd/python/pip:pip.tgz",
+        "//cmd/python/webserver:webserver.tgz",
+    ],
+    image = "gcf/python38",
+    visibility = [
+        "//apphosting/runtime/titanium/gcf/gcfpython38:__pkg__",
+        "//builders/gcf/python38/acceptance:__pkg__",
+    ],
+)

@@ -1,0 +1,9 @@
+{
+  "name": "functions-framework",
+  "dependencies": {
+    "@google-cloud/functions-framework": "^1.4.0"
+  },
+  "scripts": {
+    "start": "functions-framework"
+  }
+}

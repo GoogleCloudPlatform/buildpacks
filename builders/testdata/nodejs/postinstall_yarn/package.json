@@ -1,0 +1,12 @@
+{
+  "name": "typescript-yarn",
+  "scripts": {
+    "postinstall": "tsc -p .",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@types/node": "*",
+    "typescript": "^3.0.1",
+    "polka": "^0.5.2"
+  }
+}

@@ -1,0 +1,21 @@
+api = "0.2"
+
+[buildpack]
+id = "google.php.composer"
+version = "0.0.1"
+name = "Google - PHP - Composer"
+
+[[stacks]]
+id = "com.google.cloud"
+
+[[stacks]]
+id = "com.google.cloud.appengine.base"
+
+[[stacks]]
+id = "com.google.cloud.appengine.php73"
+
+[[stacks]]
+id = "com.google.cloud.appengine.php74"
+
+[[stacks]]
+id = "google"

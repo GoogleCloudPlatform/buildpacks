@@ -1,0 +1,11 @@
+{
+  "name": "typescript-npm",
+  "scripts": {
+    "postinstall": "tsc -p ."
+  },
+  "dependencies": {
+    "@types/node": "*",
+    "polka": "^0.5.2",
+    "typescript": "^3.0.1"
+  }
+}

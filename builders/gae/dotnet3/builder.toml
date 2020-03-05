@@ -1,0 +1,33 @@
+description = "Builder for the GAE .NET 3 runtime"
+
+[[buildpacks]]
+  id = "google.dotnet.appengine"
+  uri = "appengine.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.appengine_main"
+  uri = "appengine_main.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.publish"
+  uri = "publish.tgz"
+
+[[order]]
+  [[order.group]]
+    id = "google.dotnet.appengine_main"
+    optional = true
+
+  [[order.group]]
+    id = "google.dotnet.publish"
+    optional = true
+
+  [[order.group]]
+    id = "google.dotnet.appengine"
+
+[stack]
+  id = "com.google.cloud.appengine.dotnet3"
+  build-image = "gcr.io/gae-runtimes/buildpacks/dotnet3/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/dotnet3/run"
+
+[lifecycle]
+  version = "0.6.1"

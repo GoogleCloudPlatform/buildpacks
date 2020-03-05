@@ -1,0 +1,9 @@
+api = "0.2"
+
+[buildpack]
+id = "google.config.entrypoint"
+version = "0.0.1"
+name = "Google - Config - Entrypoint"
+
+[[stacks]]
+id = "google"

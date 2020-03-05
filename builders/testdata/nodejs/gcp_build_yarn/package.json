@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "gcp-build": "tsc -p ."
+  },
+  "dependencies": {
+    "polka": "^0.5.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.16.0",
+    "typescript": "^3.0.1"
+  }
+}

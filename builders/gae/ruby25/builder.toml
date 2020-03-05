@@ -1,0 +1,40 @@
+description = "Builder for the GAE Ruby 2.5 runtime"
+
+[[buildpacks]]
+  id = "google.ruby.appengine_validation"
+  uri = "appengine_validation.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.appengine"
+  uri = "appengine.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.bundle"
+  uri = "bundle.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.rails"
+  uri = "rails.tgz"
+
+[[order]]
+  [[order.group]]
+    id = "google.ruby.appengine_validation"
+    optional = true
+
+[[order.group]]
+    id = "google.ruby.bundle"
+
+  [[order.group]]
+    id = "google.ruby.rails"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.appengine"
+
+[stack]
+  id = "com.google.cloud.appengine.ruby25"
+  build-image = "gcr.io/gae-runtimes/buildpacks/ruby25/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/ruby25/run"
+
+[lifecycle]
+  version = "0.6.1"

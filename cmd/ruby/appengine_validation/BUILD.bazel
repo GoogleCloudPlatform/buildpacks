@@ -1,0 +1,28 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+# Buildpack to validate Ruby app for App Engine.
+load("//tools:defs.bzl", "buildpack")
+
+licenses(["notice"])
+
+buildpack(
+    name = "appengine_validation",
+    srcs = [
+        "scripts/check_gemfile_version.rb",
+    ],
+    executables = [
+        ":main",
+    ],
+    visibility = [
+        "//builders:ruby_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    visibility = [
+        "//cmd/config/entrypoint:__pkg__",
+    ],
+    deps = ["//pkg/gcpbuildpack"],
+)

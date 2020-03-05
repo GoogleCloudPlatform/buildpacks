@@ -1,0 +1,25 @@
+description = "Builder for the GCF Go 1.13 runtime"
+
+[[buildpacks]]
+  id = "google.go.build"
+  uri = "build.tgz"
+
+[[buildpacks]]
+  id = "google.go.functions-framework"
+  uri = "functions_framework.tgz"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.functions-framework"
+
+  [[order.group]]
+    id = "google.go.build"
+
+[stack]
+  id = "com.google.cloud.appengine.go113"
+  build-image = "gcr.io/gae-runtimes/buildpacks/go113/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/go113/run"
+
+[lifecycle]
+  version = "0.6.1"

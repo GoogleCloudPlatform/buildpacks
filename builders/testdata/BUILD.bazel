@@ -1,0 +1,36 @@
+# Test data for builder acceptance tests.
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+
+licenses(["notice"])
+
+package(default_visibility = ["//builders:__subpackages__"])
+
+exports_files(
+    [
+        "dotnet",
+        "generic",
+        "go",
+        "java",
+        "nodejs",
+        "php",
+        "python",
+        "ruby",
+    ],
+)
+
+# The java builder acceptance tests expect the following structure:
+#   ./custom_entrypoint/Main.java
+#   ./single_jar/fatjar.jar
+#   ./<other test cases>
+# Note that java/custom_entrypoint is considered a package due to the BUILD file
+# and so must be fully-resolved
+pkg_tar(
+    name = "javatestdata",
+    srcs = glob(["java/**"]),
+    extension = "tgz",
+    files = {
+        "//builders/testdata/java/custom_entrypoint:Main.java": "custom_entrypoint/Main.java",
+        "//builders/testdata/java/custom_entrypoint:runnablejar": "single_jar/fatjar.jar",
+    },
+    strip_prefix = "java",
+)

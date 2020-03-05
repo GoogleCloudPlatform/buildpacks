@@ -1,0 +1,16 @@
+load("//tools:defs.bzl", "builder")
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/go/build:build.tgz",
+        "//cmd/go/functions_framework:functions_framework.tgz",
+    ],
+    image = "gcf/go113",
+    visibility = [
+        "//apphosting/runtime/titanium/gcf/gcfgo113:__pkg__",
+        "//builders/gcf/go113/acceptance:__pkg__",
+    ],
+)

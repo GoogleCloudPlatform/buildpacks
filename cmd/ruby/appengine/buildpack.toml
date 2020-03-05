@@ -1,0 +1,16 @@
+api = "0.2"
+
+[buildpack]
+id = "google.ruby.appengine"
+version = "0.0.1"
+name = "Google - Ruby - App Engine"
+
+[[stacks]]
+id = "google.ruby25"
+
+# TODO: Remove these when the next nightly candidates build.
+[[stacks]]
+id = "com.google.cloud.appengine.base"
+
+[[stacks]]
+id = "com.google.cloud.appengine.ruby25"

@@ -1,0 +1,52 @@
+description = "Builder for the GCF Node.js 12 runtime"
+
+[[buildpacks]]
+  id = "google.nodejs.functions-framework"
+  uri = "functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.npm"
+  uri = "npm.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.yarn"
+  uri = "yarn.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.npm-gcp-build"
+  uri = "npm_gcp_build.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.yarn-gcp-build"
+  uri = "yarn_gcp_build.tgz"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.yarn-gcp-build"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.yarn"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.npm-gcp-build"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.npm"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+
+[stack]
+  id = "com.google.cloud.appengine.nodejs12"
+  build-image = "gcr.io/gae-runtimes/buildpacks/nodejs12/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/nodejs12/run"
+
+[lifecycle]
+  version = "0.6.1"

@@ -1,0 +1,36 @@
+# Buildpack for the Go functions framework
+
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("//tools:defs.bzl", "buildpack")
+
+licenses(["notice"])
+
+buildpack(
+    name = "functions_framework",
+    srcs = [
+        "converter/get_package/src/main/main.go",
+    ],
+    executables = [
+        ":main",
+    ],
+    visibility = [
+        "//builders:go_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = [
+        "main.go",
+        "template.go",
+    ],
+    visibility = [
+        "//cmd/config/entrypoint:__pkg__",
+    ],
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+        "//pkg/golang",
+        "@com_github_buildpack_libbuildpack//layers:go_default_library",
+    ],
+)

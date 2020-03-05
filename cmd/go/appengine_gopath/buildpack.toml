@@ -1,0 +1,22 @@
+api = "0.2"
+
+[buildpack]
+id = "google.go.appengine_gopath"
+version = "0.0.1"
+name = "Google - Go - App Engine GOPATH"
+
+[[stacks]]
+id = "google.go113"
+
+[[stacks]]
+id = "google.go114"
+
+# TODO: Remove these when the next nightly candidates build.
+[[stacks]]
+id = "com.google.cloud.appengine.base"
+
+[[stacks]]
+id = "com.google.cloud.appengine.go113"
+
+[[stacks]]
+id = "com.google.cloud.appengine.go114"

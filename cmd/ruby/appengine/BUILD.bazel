@@ -1,0 +1,41 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+
+# Buildpack for Ruby on App Engine.
+load("//tools:defs.bzl", "buildpack")
+
+licenses(["notice"])
+
+buildpack(
+    name = "appengine",
+    executables = [
+        ":main",
+    ],
+    visibility = [
+        "//builders:ruby_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    visibility = [
+        "//cmd/config/entrypoint:__pkg__",
+    ],
+    deps = [
+        "//pkg/appengine",
+        "//pkg/gcpbuildpack",
+    ],
+)
+
+go_test(
+    name = "main_test",
+    size = "small",
+    srcs = ["main_test.go"],
+    embed = [":main"],
+    rundir = ".",
+    deps = [
+        "//pkg/appengine",
+        "//pkg/gcpbuildpack",
+        "@com_github_buildpack_libbuildpack//buildpack:go_default_library",
+    ],
+)

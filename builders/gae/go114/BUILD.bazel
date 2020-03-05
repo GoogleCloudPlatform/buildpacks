@@ -1,0 +1,18 @@
+load("//tools:defs.bzl", "builder")
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/go/appengine:appengine.tgz",
+        "//cmd/go/appengine_gomod:appengine_gomod.tgz",
+        "//cmd/go/appengine_gopath:appengine_gopath.tgz",
+        "//cmd/go/build:build.tgz",
+    ],
+    image = "gae/go114",
+    visibility = [
+        "//apphosting/runtime/titanium/gae/gaego114:__pkg__",
+        "//builders/gae/go114/acceptance:__pkg__",
+    ],
+)

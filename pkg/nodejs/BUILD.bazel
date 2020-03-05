@@ -1,0 +1,30 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+go_library(
+    name = "nodejs",
+    srcs = [
+        "nodejs.go",
+        "npm.go",
+        "yarn.go",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//cmd/nodejs:__subpackages__",
+    ],
+    deps = [
+        "//pkg/gcpbuildpack",
+        "@com_github_blang_semver//:go_default_library",
+        "@com_github_buildpack_libbuildpack//layers:go_default_library",
+    ],
+)
+
+go_test(
+    name = "nodejs_test",
+    srcs = [
+        "nodejs_test.go",
+    ],
+    embed = [":nodejs"],
+    rundir = ".",
+)

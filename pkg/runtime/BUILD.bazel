@@ -1,0 +1,16 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+licenses(["notice"])
+
+go_library(
+    name = "runtime",
+    srcs = ["runtime.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//cmd:__subpackages__",
+    ],
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+    ],
+)

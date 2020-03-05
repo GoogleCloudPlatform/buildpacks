@@ -1,0 +1,49 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+package(default_visibility = ["//:__subpackages__"])
+
+go_library(
+    name = "gcpbuildpack",
+    srcs = [
+        "builderoutput.go",
+        "env.go",
+        "exec.go",
+        "filepath.go",
+        "gcpbuildpack.go",
+        "hash.go",
+        "ioutil.go",
+        "layer.go",
+        "os.go",
+        "span.go",
+        "testing.go",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    deps = [
+        "@com_github_buildpack_libbuildpack//build:go_default_library",
+        "@com_github_buildpack_libbuildpack//buildpack:go_default_library",
+        "@com_github_buildpack_libbuildpack//buildpackplan:go_default_library",
+        "@com_github_buildpack_libbuildpack//buildplan:go_default_library",
+        "@com_github_buildpack_libbuildpack//detect:go_default_library",
+        "@com_github_buildpack_libbuildpack//layers:go_default_library",
+    ],
+)
+
+go_test(
+    name = "gcpbuildpack_test",
+    size = "small",
+    srcs = [
+        "builderoutput_test.go",
+        "exec_test.go",
+        "gcpbuildpack_test.go",
+        "hash_test.go",
+        "span_test.go",
+    ],
+    embed = [":gcpbuildpack"],
+    rundir = ".",
+    deps = [
+        "@com_github_buildpack_libbuildpack//buildpack:go_default_library",
+        "@com_github_buildpack_libbuildpack//layers:go_default_library",
+    ],
+)

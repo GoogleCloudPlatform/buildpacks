@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@google-cloud/functions-framework": "^1.0.0"
+  }
+}

@@ -1,0 +1,16 @@
+load("//tools:defs.bzl", "builder")
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/java/appengine:appengine.tgz",
+        "//cmd/java/maven:maven.tgz",
+    ],
+    image = "gae/java11",
+    visibility = [
+        "//apphosting/runtime/titanium/gae/gaejava11:__pkg__",
+        "//builders/gae/java11/acceptance:__pkg__",
+    ],
+)
