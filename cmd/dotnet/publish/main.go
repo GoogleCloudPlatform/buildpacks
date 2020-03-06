@@ -111,11 +111,10 @@ func buildFn(ctx *gcp.Context) error {
 		return nil
 	}
 
-	// Configure the entrypoint for dev mode.
-	devmode.AddFileWatcherProcess(ctx, devmode.Config{
-		Watcher: []string{"dotnet", "watch", "--project", proj, "run"},
-		Sync:    devmode.DotNetSyncRules(ctx.ApplicationRoot()),
-	})
+	// Configure the entrypoint and metadata for dev mode.
+	ctx.AddWebProcess([]string{"dotnet", "watch", "--project", proj, "run"})
+	devmode.AddSyncMetadata(ctx, devmode.DotNetSyncRules)
+
 	return nil
 }
 

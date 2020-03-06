@@ -67,32 +67,25 @@ type metadata struct {
 
 // Config describes the dev mode for a given language.
 type Config struct {
-	// Watcher is the command to start a file watcher. If not provided, use watchexec.
-	Watcher []string
 	// Cmd is the command and args the file watcher should run.
 	Cmd []string
 	// Ext lists the file extensions that trigger a restart.
 	Ext []string
-	// Sync lists the file patterns that need to be synced to the running container.
-	Sync []SyncRule
 }
 
 // AddFileWatcherProcess installs and configures a file watcher as the entrypoint.
 func AddFileWatcherProcess(ctx *gcp.Context, cfg Config) {
-	if cfg.Watcher != nil {
-		// Override the web process.
-		ctx.AddWebProcess(cfg.Watcher)
-	} else {
-		installFileWatcher(ctx)
+	installFileWatcher(ctx)
 
-		// Override the web process.
-		ctx.AddWebProcess([]string{"watchexec", "-r", "-e", strings.Join(cfg.Ext, ","), strings.Join(cfg.Cmd, " ")})
-	}
+	// Override the web process.
+	ctx.AddWebProcess([]string{"watchexec", "-r", "-e", strings.Join(cfg.Ext, ","), strings.Join(cfg.Cmd, " ")})
+}
 
-	// Write sync information.
+// AddSyncMetadata adds sync metadata to the final image.
+func AddSyncMetadata(ctx *gcp.Context, syncRulesFn func(string) []SyncRule) {
 	ctx.AddBuildpackPlan(buildpackplan.Plan{
 		Metadata: buildpackplan.Metadata{
-			"devmode.sync": cfg.Sync,
+			"devmode.sync": syncRulesFn(ctx.ApplicationRoot()),
 		},
 	})
 }

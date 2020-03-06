@@ -8,6 +8,7 @@ go_library(
     srcs = [
         "devmode.go",
         "dotnet.go",
+        "go.go",
         "nodejs.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),

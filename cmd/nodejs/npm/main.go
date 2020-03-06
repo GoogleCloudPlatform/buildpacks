@@ -79,12 +79,12 @@ func buildFn(ctx *gcp.Context) error {
 		return nil
 	}
 
-	// Configure the entrypoint for dev mode.
+	// Configure the entrypoint and metadata for dev mode.
 	devmode.AddFileWatcherProcess(ctx, devmode.Config{
-		Cmd:  cmd,
-		Ext:  devmode.NodeWatchedExtensions,
-		Sync: devmode.NodeSyncRules(ctx.ApplicationRoot()),
+		Cmd: cmd,
+		Ext: devmode.NodeWatchedExtensions,
 	})
+	devmode.AddSyncMetadata(ctx, devmode.NodeSyncRules)
 
 	return nil
 }
