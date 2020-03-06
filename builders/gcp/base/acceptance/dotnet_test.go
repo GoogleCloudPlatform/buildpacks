@@ -36,13 +36,13 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:              "simple .NET app",
+			Name:              "simple dotnet app",
 			App:               "dotnet/simple",
 			MustUse:           []string{dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 		},
 		{
-			Name:              "simple .NET app with runtime version",
+			Name:              "simple dotnet app with runtime version",
 			App:               "dotnet/simple",
 			Path:              "/version?want=3.1.1",
 			Env:               []string{"GOOGLE_RUNTIME_VERSION=3.1.101"},
@@ -50,14 +50,14 @@ func TestAcceptance(t *testing.T) {
 			FilesMustNotExist: []string{sdk},
 		},
 		{
-			Name:              "simple .NET app with global.json",
+			Name:              "simple dotnet app with global.json",
 			App:               "dotnet/simple_with_global",
 			Path:              "/version?want=3.1.0",
 			MustUse:           []string{dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 		},
 		{
-			Name:              "simple prebuilt .NET app",
+			Name:              "simple prebuilt dotnet app",
 			App:               "dotnet/simple_prebuilt",
 			Env:               []string{"GOOGLE_ENTRYPOINT=./simple"},
 			MustUse:           []string{dotnetRuntime},
@@ -65,10 +65,17 @@ func TestAcceptance(t *testing.T) {
 			FilesMustNotExist: []string{sdk},
 		},
 		{
-			Name:    "simple .NET app (Dev Mode)",
+			Name:    "simple dotnet app (Dev Mode)",
 			App:     "dotnet/simple",
 			Env:     []string{"GOOGLE_DEVMODE=1"},
 			MustUse: []string{dotnetRuntime, dotnetPublish},
+		},
+		{
+			Name:       "dotnet selected via GOOGLE_RUNTIME",
+			App:        "override",
+			Env:        []string{"GOOGLE_RUNTIME=dotnet"},
+			MustUse:    []string{dotnetRuntime},
+			MustNotUse: []string{nodeRuntime, pythonRuntime, goRuntime},
 		},
 	}
 	for _, tc := range testCases {
