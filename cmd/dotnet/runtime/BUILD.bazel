@@ -22,6 +22,7 @@ go_binary(
         "//cmd/config/entrypoint:__pkg__",
     ],
     deps = [
+        "//pkg/devmode",
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/runtime",

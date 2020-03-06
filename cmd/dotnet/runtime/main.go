@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
@@ -32,10 +33,10 @@ import (
 )
 
 const (
-	sdkLayer    = "sdk"
-	dotnetLayer = "dotnet"
-	sdkURL      = "https://dotnetcli.azureedge.net/dotnet/Sdk/%[1]s/dotnet-sdk-%[1]s-linux-x64.tar.gz"
-	versionURL  = "https://dotnetcli.azureedge.net/dotnet/Sdk/LTS/latest.version"
+	sdkLayer     = "sdk"
+	runtimeLayer = "runtime"
+	sdkURL       = "https://dotnetcli.azureedge.net/dotnet/Sdk/%[1]s/dotnet-sdk-%[1]s-linux-x64.tar.gz"
+	versionURL   = "https://dotnetcli.azureedge.net/dotnet/Sdk/LTS/latest.version"
 )
 
 // metadata represents metadata stored for a runtime layer.
@@ -62,18 +63,30 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
+
 	// Check the metadata in the cache layer to determine if we need to proceed.
-	var meta metadata
+	var sdkMeta metadata
 	sdkl := ctx.Layer(sdkLayer)
-	ctx.ReadMetadata(sdkl, &meta)
-	if version == meta.Version {
+	ctx.ReadMetadata(sdkl, &sdkMeta)
+
+	var rtMeta metadata
+	rtl := ctx.Layer(runtimeLayer)
+	ctx.ReadMetadata(rtl, &rtMeta)
+
+	// Each SDK is associated with one Core version, but the reverse is not true.
+	// We use the SDK version as the "runtime" version.
+	if version == sdkMeta.Version && version == rtMeta.Version {
 		ctx.CacheHit(sdkLayer)
-		ctx.Logf(".NET SDK cache hit, skipping installation.")
+		ctx.CacheHit(runtimeLayer)
+		ctx.Logf(".NET cache hit, skipping installation.")
 		return nil
 	}
 
 	ctx.CacheMiss(sdkLayer)
 	ctx.ClearLayer(sdkl)
+
+	ctx.CacheMiss(runtimeLayer)
+	ctx.ClearLayer(rtl)
 
 	archiveURL := fmt.Sprintf(sdkURL, version)
 	if code := ctx.HTTPStatus(archiveURL); code != http.StatusOK {
@@ -81,20 +94,34 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	ctx.Logf("Installing .NET SDK v%s", version)
-	command := fmt.Sprintf("curl --fail --show-error --silent --location %s | tar xz --directory=%s --strip-components=1", archiveURL, sdkl.Root)
+	// Ensure there's a symlink from runtime/sdk dir to the sdk layer.
+	// TODO: remove the symlink in the final image.
+	ctx.Exec([]string{"ln", "--symbolic", "--force", sdkl.Root, filepath.Join(rtl.Root, "sdk")})
+
+	// With --keep-directory-symlink, the SDK will be unpacked into /runtime/sdk,
+	// which is symlinked to the SDK layer. This is needed because the dotnet CLI
+	// needs an sdk directory in the same directory as the dotnet executable.
+	command := fmt.Sprintf("curl --fail --show-error --silent --location %s | tar xz --directory=%s --keep-directory-symlink --strip-components=1", archiveURL, rtl.Root)
 	ctx.Exec([]string{"bash", "-c", command})
 
-	meta.Version = version
-	ctx.OverrideSharedEnv(sdkl, "DOTNET_ROOT", sdkl.Root)
-	ctx.PrependPathSharedEnv(sdkl, "PATH", sdkl.Root)
-	ctx.WriteMetadata(sdkl, meta, layers.Launch, layers.Build, layers.Cache)
+	// Keep the SDK layer for launch in devmode because we use `dotnet watch`.
+	sdkMeta.Version = version
+	if devmode.Enabled(ctx) {
+		ctx.WriteMetadata(sdkl, sdkMeta, layers.Launch, layers.Build, layers.Cache)
+	} else {
+		ctx.WriteMetadata(sdkl, sdkMeta, layers.Build, layers.Cache)
+	}
+
+	rtMeta.Version = version
+	ctx.DefaultSharedEnv(rtl, "DOTNET_ROOT", rtl.Root)
+	ctx.PrependPathSharedEnv(rtl, "PATH", rtl.Root)
+	ctx.WriteMetadata(rtl, rtMeta, layers.Launch, layers.Build, layers.Cache)
 
 	ctx.AddBuildpackPlan(buildpackplan.Plan{
-		Name:    sdkLayer,
+		Name:    runtimeLayer,
 		Version: version,
 	})
 
-	// TODO: create a dotnet runtime (no sdk) layer for launch.
 	return nil
 }
 

@@ -18,6 +18,7 @@
 package acceptance
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/acceptance"
@@ -31,31 +32,37 @@ func TestAcceptance(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	defer cleanup()
 
+	sdk := filepath.Join("/layers", dotnetRuntime, "sdk")
+
 	testCases := []acceptance.Test{
 		{
-			Name:    "simple .NET app",
-			App:     "dotnet/simple",
-			MustUse: []string{dotnetRuntime, dotnetPublish},
+			Name:              "simple .NET app",
+			App:               "dotnet/simple",
+			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			FilesMustNotExist: []string{sdk},
 		},
 		{
-			Name:    "simple .NET app with runtime version",
-			App:     "dotnet/simple",
-			Path:    "/version?want=3.1.1",
-			Env:     []string{"GOOGLE_RUNTIME_VERSION=3.1.101"},
-			MustUse: []string{dotnetRuntime, dotnetPublish},
+			Name:              "simple .NET app with runtime version",
+			App:               "dotnet/simple",
+			Path:              "/version?want=3.1.1",
+			Env:               []string{"GOOGLE_RUNTIME_VERSION=3.1.101"},
+			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			FilesMustNotExist: []string{sdk},
 		},
 		{
-			Name:    "simple .NET app with global.json",
-			App:     "dotnet/simple_with_global",
-			Path:    "/version?want=3.1.0",
-			MustUse: []string{dotnetRuntime, dotnetPublish},
+			Name:              "simple .NET app with global.json",
+			App:               "dotnet/simple_with_global",
+			Path:              "/version?want=3.1.0",
+			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			FilesMustNotExist: []string{sdk},
 		},
 		{
-			Name:       "simple prebuilt .NET app",
-			App:        "dotnet/simple_prebuilt",
-			Env:        []string{"GOOGLE_ENTRYPOINT=./simple"},
-			MustUse:    []string{dotnetRuntime},
-			MustNotUse: []string{dotnetPublish},
+			Name:              "simple prebuilt .NET app",
+			App:               "dotnet/simple_prebuilt",
+			Env:               []string{"GOOGLE_ENTRYPOINT=./simple"},
+			MustUse:           []string{dotnetRuntime},
+			MustNotUse:        []string{dotnetPublish},
+			FilesMustNotExist: []string{sdk},
 		},
 		{
 			Name:    "simple .NET app (Dev Mode)",
