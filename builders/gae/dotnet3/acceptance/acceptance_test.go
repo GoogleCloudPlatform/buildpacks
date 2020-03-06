@@ -57,6 +57,11 @@ func TestAcceptance(t *testing.T) {
 			Env:  []string{"GAE_YAML_MAIN=nonexistent/app.csproj", "GOOGLE_BUILDABLE=app/app.csproj"},
 		},
 		{
+			Name: "cs custom entrypoint",
+			App:  "cs_custom_entrypoint",
+			Env:  []string{"GOOGLE_ENTRYPOINT=bin/app --flag=myflag"},
+		},
+		{
 			Name: "prebuilt app",
 			App:  "prebuilt",
 			Env:  []string{"GOOGLE_ENTRYPOINT=./cs_no_deps"},

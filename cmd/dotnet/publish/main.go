@@ -98,16 +98,21 @@ func buildFn(ctx *gcp.Context) error {
 
 	ctx.ExecUserWithParams(gcp.ExecParams{Cmd: cmd, Env: []string{"DOTNET_CLI_TELEMETRY_OPTOUT=true"}}, gcp.UserErrorKeepStderrTail)
 
-	entrypoint, err := getEntrypoint(ctx, "bin", proj)
-	if err != nil {
-		return fmt.Errorf("getting entrypoint: %w", err)
+	// Only calculate the entrypoint from this build if GOOGLE_ENTRYPOINT is not set, as we don't want to override that.
+	entrypoint := os.Getenv(env.Entrypoint)
+	if entrypoint == "" {
+		ep, err := getEntrypoint(ctx, "bin", proj)
+		if err != nil {
+			return fmt.Errorf("getting entrypoint: %w", err)
+		}
+		entrypoint = strings.Join(ep, " ")
+		ctx.OverrideBuildEnv(binLayer, env.Entrypoint, entrypoint)
 	}
-	ctx.OverrideBuildEnv(binLayer, env.Entrypoint, strings.Join(entrypoint, " "))
 	ctx.WriteMetadata(binLayer, nil, layers.Build, layers.Launch)
 
 	// Configure the entrypoint for production.
 	if !devmode.Enabled(ctx) {
-		ctx.AddWebProcess(entrypoint)
+		ctx.AddWebProcess([]string{"/bin/bash", "-c", "exec " + entrypoint})
 		return nil
 	}
 
