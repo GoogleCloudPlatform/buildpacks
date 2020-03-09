@@ -3,11 +3,11 @@ description = "GCP Builder for all runtimes"
 [[buildpacks]]
   id = "google.config.entrypoint"
   uri = "entrypoint.tgz"
-  
+
 [[buildpacks]]
   id = "google.dotnet.runtime"
   uri = "dotnet/runtime.tgz"
-  
+
 [[buildpacks]]
   id = "google.dotnet.publish"
   uri = "dotnet/publish.tgz"

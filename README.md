@@ -3,24 +3,20 @@
 Google Cloud Platform Buildpacks is a set of buildpacks and builder definitions
 based on the Buildpack v3 [specification](https://github.com/buildpacks/spec).
 
-Supported languages:
+Builders are available for the following languages and products:
 
-* Go (1.12+)
-* Java (11)
-* Node.js (10+)
-* PHP (7.3+)
-* Python (3.7+)
-* Ruby (2.5+)
-* .NET (3+)
+|Runtime|GCP |GAE       |GCF   |
+|-------|----|----------|------|
+|Go     |1.1x|1.13, 1.14|1.13  |
+|Java   |11  |11        |      |
+|Node.js|1x  |10, 12    |10, 12|
+|PHP    |    |7.3, 7.4  |      |
+|Python |3.7+|3.7, 3.8  |3.8   |
+|Ruby   |    |2.5       |      |
+|.NET   |3+  |3         |      |
 
-TODO: Add a grid of buildpacks per language and product.
 
-Features:
-
-* Builders are compatible with [pack](https://github.com/buildpacks/pack).
-* Builders are used in App Engine and Cloud Functions.
-
-For more details on Cloud Native Buildpacks, please visit https://buildpacks.io
+For more details on Cloud Native Buildpacks, please visit https://buildpacks.io.
 
 ----
 
@@ -43,7 +39,13 @@ please set the following in your /etc/docker/daemon.json:
 ## Usage
 
 The GCP Buildpacks project provides builder images suitable for use
-with [`pack`](https://github.com/buildpacks/pack). Most users will be
+with
+[pack](https://github.com/buildpacks/pack),
+[tekton](https://github.com/tektoncd/catalog/tree/master/buildpacks),
+[skaffold](https://github.com/GoogleContainerTools/skaffold/tree/master/examples/buildpacks),
+and other platforms that support the Buildpacks v3 specification.
+
+Most users will be
 interested in the `gcr.io/buildpacks/builder` builder.
 
 ### Building an application
