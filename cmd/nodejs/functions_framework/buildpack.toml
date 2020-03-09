@@ -2,7 +2,7 @@ api = "0.2"
 
 [buildpack]
 id = "google.nodejs.functions-framework"
-version = "0.0.1"
+version = "0.9.0"
 name = "Google - Node.js - Functions Framework"
 
 [[stacks]]
