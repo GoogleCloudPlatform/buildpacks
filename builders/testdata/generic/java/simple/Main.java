@@ -22,7 +22,7 @@ import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.HashMap;
 
-/** Simple Java Web Server */
+/** Toy server for acceptance testing purposes */
 public class Main {
   public static void main(String[] args) throws IOException {
     // Create an instance of HttpServer bound to port defined by the

@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 
-/** Simple Java Web Server */
+/** Toy server for acceptance testing purposes */
 public class Main {
   public static void main(String[] args) throws IOException {
     // Create an instance of HttpServer bound to port defined by the
