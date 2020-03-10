@@ -1,0 +1,15 @@
+api = "0.2"
+
+[buildpack]
+id = "google.java.runtime"
+version = "0.9.0"
+name = "Google - Java - Runtime"
+
+[[stacks]]
+id = "google"
+
+[[stacks]]
+id = "com.google.cloud"
+
+[[stacks]]
+id = "com.google.cloud.appengine.base"

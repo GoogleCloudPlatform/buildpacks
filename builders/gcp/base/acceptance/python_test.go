@@ -53,7 +53,7 @@ func TestAcceptance(t *testing.T) {
 			App:        "override",
 			Env:        []string{"GOOGLE_RUNTIME=python", "GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustUse:    []string{pythonRuntime},
-			MustNotUse: []string{goRuntime, nodeRuntime},
+			MustNotUse: []string{goRuntime, javaRuntime, nodeRuntime},
 		},
 	}
 	for _, tc := range testCases {

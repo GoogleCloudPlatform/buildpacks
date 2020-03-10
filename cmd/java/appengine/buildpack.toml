@@ -6,6 +6,9 @@ version = "0.9.0"
 name = "Google - Java - App Engine"
 
 [[stacks]]
+id = "google"
+
+[[stacks]]
 id = "google.java11"
 
 # TODO: Remove these when the next nightly candidates build.

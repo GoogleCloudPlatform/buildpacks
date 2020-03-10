@@ -10,6 +10,7 @@ buildpack(
     ],
     visibility = [
         "//builders:go_builders",
+        "//builders:java_builders",
         "//builders:nodejs_builders",
         "//builders:python_builders",
     ],

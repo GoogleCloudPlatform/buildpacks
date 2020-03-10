@@ -1,0 +1,22 @@
+licenses(["notice"])
+
+package(
+    default_visibility = ["//builders:__subpackages__"],
+)
+
+exports_files(["Main.java"])
+
+# java_binary runnable jars are in the xxx_deploy.jar target
+alias(
+    name = "runnablejar",
+    actual = "fatjar_deploy.jar",
+)
+
+# TODO: Figure out building Main.java with blaze since the Runtime.version() function is Java11
+java_binary(
+    name = "fatjar",
+    srcs = [
+        # "Main.java",
+    ],
+    main_class = "Main",
+)

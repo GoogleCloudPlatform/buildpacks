@@ -88,7 +88,7 @@ func TestAcceptance(t *testing.T) {
 			App:        "override",
 			Env:        []string{"GOOGLE_RUNTIME=nodejs"},
 			MustUse:    []string{nodeRuntime},
-			MustNotUse: []string{goRuntime, pythonRuntime},
+			MustNotUse: []string{goRuntime, javaRuntime, pythonRuntime},
 		},
 	}
 	for _, tc := range testCases {

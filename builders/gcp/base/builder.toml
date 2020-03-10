@@ -52,6 +52,10 @@ description = "GCP Builder for all runtimes"
   id = "google.python.functions-framework"
   uri = "python/functions_framework.tgz"
 
+[[buildpacks]]
+  id = "google.java.runtime"
+  uri = "java/runtime.tgz"
+
 ########
 # .NET #
 ########
@@ -84,6 +88,18 @@ description = "GCP Builder for all runtimes"
 
   [[order.group]]
     id = "google.go.build"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+########
+# Java #
+########
+
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
 
   [[order.group]]
     id = "google.config.entrypoint"

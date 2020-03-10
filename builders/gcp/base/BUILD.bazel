@@ -17,6 +17,9 @@ builder(
             "//cmd/go/functions_framework:functions_framework.tgz",
             "//cmd/go/runtime:runtime.tgz",
         ],
+        "java": [
+            "//cmd/java/runtime:runtime.tgz",
+        ],
         "nodejs": [
             "//cmd/nodejs/functions_framework:functions_framework.tgz",
             "//cmd/nodejs/npm:npm.tgz",
