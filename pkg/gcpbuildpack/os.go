@@ -70,7 +70,7 @@ func (ctx *Context) FileExists(elem ...string) bool {
 
 // Setenv immediately sets an environment variable, exiting on any error.
 // Note: this only sets an env var for the current script invocation. If you need an env var that
-// persists through the build environment or the launch environment, use Layer.AppendBuildEnv(),...
+// persists through the build environment or the launch environment, use ctx.PrependBuildEnv,...
 func (ctx *Context) Setenv(key, value string) {
 	if err := os.Setenv(key, value); err != nil {
 		ctx.Exit(1, Errorf(StatusInternal, "setting env var %s: %v", key, err))
