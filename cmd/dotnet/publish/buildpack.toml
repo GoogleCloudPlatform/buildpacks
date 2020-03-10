@@ -9,7 +9,7 @@ name = "Google - .NET - Publish"
 id = "google"
 
 [[stacks]]
-id = "google.base"
+id = "google.dotnet3"
 
 # TODO: Remove these when the next nightly candidates build.
 [[stacks]]

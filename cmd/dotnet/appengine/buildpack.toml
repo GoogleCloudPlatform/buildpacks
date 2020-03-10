@@ -6,9 +6,6 @@ version = "0.9.0"
 name = "Google - .NET - App Engine"
 
 [[stacks]]
-id = "google.base"
-
-[[stacks]]
 id = "google.dotnet3"
 
 # TODO: Remove these when the next nightly candidates build.
