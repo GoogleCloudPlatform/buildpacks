@@ -87,6 +87,56 @@ Only applicable to the `runtime` buildpacks:
   * If specified, overrides the runtime version to install.
   * **Example**: `13.7.0` for Node.js, `1.14.1` for Go.
 
+### Adding custom packages
+
+The provided run images and builders can be extended by installing additional
+system-level packages. The two approaches below can be combined.
+
+#### Extending the run image
+
+```bash
+cat > run.Dockerfile << EOF
+FROM gcr.io/buildpacks/gcp/run
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  imagemagick && \
+  apt-get clean && \
+  rm -rf /var/lib/apt/lists/*
+USER cnb
+EOF
+
+docker build -t my-run-image -f run.Dockerfile .
+```
+
+To use the custom run image with pack:
+
+```bash
+pack build my-app --builder gcr.io/buildpacks/builder --run-image my-run-image
+```
+
+#### Extending the builder image
+
+```bash
+cat > builder.Dockerfile << EOF
+FROM gcr.io/buildpacks/builder
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  subversion && \
+  apt-get clean && \
+  rm -rf /var/lib/apt/lists/*
+USER cnb
+EOF
+
+docker build -t my-builder-image -f builder.Dockerfile .
+```
+
+To use the custom builder with pack:
+
+```bash
+pack build my-app --builder my-builder-image
+```
+
+
 ## Get involved with the community
 
 We welcome contributions! Here's how you can contribute:
