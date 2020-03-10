@@ -69,13 +69,13 @@ func TestAcceptance(t *testing.T) {
 
 	for _, tc := range testCases {
 		tc := tc
+		if tc.Name == "" {
+			tc.Name = tc.App
+		}
+		tc.Env = append(tc.Env, "GOOGLE_RUNTIME=php73")
+
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-
-			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=php73")
-			if tc.Name == "" {
-				tc.Name = tc.App
-			}
 
 			acceptance.TestApp(t, builder, tc)
 		})
