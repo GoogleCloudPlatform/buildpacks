@@ -17,7 +17,7 @@ description = "Builder for the GCF Go 1.13 runtime"
     id = "google.go.build"
 
 [stack]
-  id = "com.google.cloud.appengine.go113"
+  id = "google.go113"
   build-image = "gcr.io/gae-runtimes/buildpacks/go113/build"
   run-image = "gcr.io/gae-runtimes/buildpacks/go113/run"
 

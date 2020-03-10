@@ -44,7 +44,7 @@ description = "Builder for the GAE Node.js 10 runtime"
     id = "google.nodejs.appengine"
 
 [stack]
-  id = "com.google.cloud.appengine.nodejs10"
+  id = "google.nodejs10"
   build-image = "gcr.io/gae-runtimes/buildpacks/nodejs10/build"
   run-image = "gcr.io/gae-runtimes/buildpacks/nodejs10/run"
 

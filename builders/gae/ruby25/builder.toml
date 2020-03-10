@@ -32,7 +32,7 @@ description = "Builder for the GAE Ruby 2.5 runtime"
     id = "google.ruby.appengine"
 
 [stack]
-  id = "com.google.cloud.appengine.ruby25"
+  id = "google.ruby25"
   build-image = "gcr.io/gae-runtimes/buildpacks/ruby25/build"
   run-image = "gcr.io/gae-runtimes/buildpacks/ruby25/run"
 

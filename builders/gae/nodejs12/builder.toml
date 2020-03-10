@@ -44,7 +44,7 @@ description = "Builder for the GAE Node.js 12 runtime"
     id = "google.nodejs.appengine"
 
 [stack]
-  id = "com.google.cloud.appengine.nodejs12"
+  id = "google.nodejs12"
   build-image = "gcr.io/gae-runtimes/buildpacks/nodejs12/build"
   run-image = "gcr.io/gae-runtimes/buildpacks/nodejs12/run"
 

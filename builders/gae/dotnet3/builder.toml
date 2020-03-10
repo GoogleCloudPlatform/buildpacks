@@ -25,7 +25,7 @@ description = "Builder for the GAE .NET 3 runtime"
     id = "google.dotnet.appengine"
 
 [stack]
-  id = "com.google.cloud.appengine.dotnet3"
+  id = "google.dotnet3"
   build-image = "gcr.io/gae-runtimes/buildpacks/dotnet3/build"
   run-image = "gcr.io/gae-runtimes/buildpacks/dotnet3/run"
 

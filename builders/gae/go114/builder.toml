@@ -39,7 +39,7 @@ description = "Builder for the GAE Go 1.14 runtime"
 
 
 [stack]
-  id = "com.google.cloud.appengine.go114"
+  id = "google.go114"
   build-image = "gcr.io/gae-runtimes/buildpacks/go114/build"
   run-image = "gcr.io/gae-runtimes/buildpacks/go114/run"
 

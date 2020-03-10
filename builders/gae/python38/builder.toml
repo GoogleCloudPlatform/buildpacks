@@ -25,7 +25,7 @@ description = "Builder for the GAE Python 3.8 runtime"
     id = "google.python.appengine"
 
 [stack]
-  id = "com.google.cloud.appengine.python38"
+  id = "google.python38"
   build-image = "gcr.io/gae-runtimes/buildpacks/python38/build"
   run-image = "gcr.io/gae-runtimes/buildpacks/python38/run"
 
