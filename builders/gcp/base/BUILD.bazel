@@ -19,6 +19,7 @@ builder(
         ],
         "java": [
             "//cmd/java/runtime:runtime.tgz",
+            "//cmd/java/maven:maven.tgz",
         ],
         "nodejs": [
             "//cmd/nodejs/functions_framework:functions_framework.tgz",

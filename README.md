@@ -68,7 +68,7 @@ variables that are supported accross runtimes.
   * **Example**: `true`, `True`, `1` will enable development mode.
 * `GOOGLE_ENTRYPOINT`:
   * Specifies entrypoint to set on the final image.
-  * **Example**: `gunicorn -p :8080 main:app` for Python.
+  * **Example**: `gunicorn -p :8080 main:app` for Python. `java -jar target/myjar.jar` for Java.
 
 Only applicable to compiled languages:
 

@@ -23,6 +23,7 @@ const (
 	goBuild       = "google.go.build"
 	goFF          = "google.go.functions-framework"
 	goRuntime     = "google.go.runtime"
+	javaMaven     = "google.java.maven"
 	javaRuntime   = "google.java.runtime"
 	nodeFF        = "google.nodejs.functions-framework"
 	nodeNPM       = "google.nodejs.npm"

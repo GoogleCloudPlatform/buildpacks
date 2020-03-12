@@ -25,6 +25,14 @@ description = "GCP Builder for all runtimes"
   uri = "go/functions_framework.tgz"
 
 [[buildpacks]]
+  id = "google.java.maven"
+  uri = "java/maven.tgz"
+
+[[buildpacks]]
+  id = "google.java.runtime"
+  uri = "java/runtime.tgz"
+
+[[buildpacks]]
   id = "google.nodejs.runtime"
   uri = "nodejs/runtime.tgz"
 
@@ -51,10 +59,6 @@ description = "GCP Builder for all runtimes"
 [[buildpacks]]
   id = "google.python.functions-framework"
   uri = "python/functions_framework.tgz"
-
-[[buildpacks]]
-  id = "google.java.runtime"
-  uri = "java/runtime.tgz"
 
 ########
 # .NET #
@@ -102,8 +106,11 @@ description = "GCP Builder for all runtimes"
     id = "google.java.runtime"
 
   [[order.group]]
-    id = "google.config.entrypoint"
+    id = "google.java.maven"
     optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
 
 ###########
 # Node.js #

@@ -56,6 +56,12 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{javaRuntime},
 			MustNotUse: []string{goRuntime, nodeRuntime, pythonRuntime},
 		},
+		{
+			Name:    "Java maven",
+			App:     "java/hello_quarkus_maven",
+			Env:     []string{"GOOGLE_ENTRYPOINT=java -jar target/hello-1-runner.jar"},
+			MustUse: []string{javaMaven, javaRuntime, entrypoint},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc
