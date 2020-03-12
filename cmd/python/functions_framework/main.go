@@ -92,9 +92,7 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	}
 
-	if err := env.SetFunctionsEnvVars(ctx, l); err != nil {
-		return fmt.Errorf("setting functions env vars: %w", err)
-	}
+	env.SetFunctionsEnvVars(ctx, l)
 
 	params := gcp.ExecParams{
 		Cmd: []string{"python3", "-m", "compileall", "."},

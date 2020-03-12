@@ -1,0 +1,14 @@
+# Test container structure using a centigrate image with a custom entrypoint.
+
+# See https://github.com/GoogleContainerTools/container-structure-test for the configuration format.
+
+schemaVersion: '2.0.0'
+
+metadataTest:
+  env:
+    - key: PORT
+      value: 8080
+  exposedPorts: ['8080']
+  entrypoint: ['/cnb/lifecycle/launcher']
+  cmd: []
+  workdir: '/srv'

@@ -1,0 +1,19 @@
+api = "0.2"
+
+[buildpack]
+id = "google.dotnet.functions-framework"
+version = "0.0.1"
+name = "Google - .NET - Functions Framework"
+
+[[stacks]]
+id = "google"
+
+[[stacks]]
+id = "google.dotnet3"
+
+# TODO: Remove these when the next nightly candidates build.
+[[stacks]]
+id = "com.google.cloud.appengine.base"
+
+[[stacks]]
+id = "com.google.cloud.appengine.dotnet3"

@@ -112,9 +112,7 @@ func buildFn(ctx *gcp.Context) error {
 		ff = filepath.Join(nm, ff)
 	}
 
-	if err := env.SetFunctionsEnvVars(ctx, l); err != nil {
-		return fmt.Errorf("setting functions env vars: %w", err)
-	}
+	env.SetFunctionsEnvVars(ctx, l)
 
 	ctx.AddWebProcess([]string{ff})
 	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)

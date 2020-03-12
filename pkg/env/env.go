@@ -69,11 +69,11 @@ const (
 )
 
 // SetFunctionsEnvVars overrides functions environment variables.
-func SetFunctionsEnvVars(ctx *gcp.Context, l *layers.Layer) error {
-	if target, ok := os.LookupEnv(FunctionTarget); ok {
+func SetFunctionsEnvVars(ctx *gcp.Context, l *layers.Layer) {
+	if target := os.Getenv(FunctionTarget); target != "" {
 		ctx.DefaultLaunchEnv(l, FunctionTarget, target)
 	} else {
-		return gcp.UserErrorf("required env var %s not found", FunctionTarget)
+		ctx.Exit(1, gcp.UserErrorf("required env var %s not found", FunctionTarget))
 	}
 
 	if signature, ok := os.LookupEnv(FunctionSignatureType); ok {
@@ -83,5 +83,4 @@ func SetFunctionsEnvVars(ctx *gcp.Context, l *layers.Layer) error {
 	if source, ok := os.LookupEnv(FunctionSource); ok {
 		ctx.DefaultLaunchEnv(l, FunctionSource, source)
 	}
-	return nil
 }

@@ -1,0 +1,25 @@
+description = "Builder for the GCF .NET 3 runtime"
+
+[[buildpacks]]
+  id = "google.dotnet.publish"
+  uri = "publish.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.functions-framework"
+  uri = "functions_framework.tgz"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.dotnet.functions-framework"
+
+  [[order.group]]
+    id = "google.dotnet.publish"
+
+[stack]
+  id = "google.dotnet3"
+  build-image = "gcr.io/gae-runtimes/buildpacks/dotnet3/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/dotnet3/run"
+
+[lifecycle]
+  version = "0.6.1"
