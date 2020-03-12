@@ -11,13 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-// Run these tests using:
-// 	blaze test //third_party/gcp_buildpacks/builders/gcp/base/acceptance:nodejs_fn_test
-//
-// Note, you may need to update your stack images:
-// 	third_party/gcp_buildpacks/tools/pull-images.sh gcp base
-//
 package acceptance
 
 import (
