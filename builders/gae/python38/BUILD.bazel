@@ -10,8 +10,5 @@ builder(
         "//cmd/python/webserver:webserver.tgz",
     ],
     image = "gae/python38",
-    visibility = [
-        "//apphosting/runtime/titanium/gae/gaepython38:__pkg__",
-        "//builders/gae/python38/acceptance:__pkg__",
-    ],
+    visibility = ["//builders/gae/python38/acceptance:__pkg__"],
 )

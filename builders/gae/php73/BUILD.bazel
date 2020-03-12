@@ -10,8 +10,5 @@ builder(
         "//cmd/php/composer_gcp_build:composer_gcp_build.tgz",
     ],
     image = "gae/php73",
-    visibility = [
-        "//apphosting/runtime/titanium/gae/gaephp73:__pkg__",
-        "//builders/gae/php73/acceptance:__pkg__",
-    ],
+    visibility = ["//builders/gae/php73/acceptance:__pkg__"],
 )

@@ -10,8 +10,5 @@ builder(
         "//cmd/python/webserver:webserver.tgz",
     ],
     image = "gcf/python38",
-    visibility = [
-        "//apphosting/runtime/titanium/gcf/gcfpython38:__pkg__",
-        "//builders/gcf/python38/acceptance:__pkg__",
-    ],
+    visibility = ["//builders/gcf/python38/acceptance:__pkg__"],
 )

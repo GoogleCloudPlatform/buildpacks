@@ -10,8 +10,5 @@ builder(
         "//cmd/dotnet/publish:publish.tgz",
     ],
     image = "gae/dotnet3",
-    visibility = [
-        "//apphosting/runtime/titanium/gae/gaedotnet3:__pkg__",
-        "//builders/gae/dotnet3/acceptance:__pkg__",
-    ],
+    visibility = ["//builders/gae/dotnet3/acceptance:__pkg__"],
 )

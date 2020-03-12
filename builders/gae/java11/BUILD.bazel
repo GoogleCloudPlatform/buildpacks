@@ -9,8 +9,5 @@ builder(
         "//cmd/java/maven:maven.tgz",
     ],
     image = "gae/java11",
-    visibility = [
-        "//apphosting/runtime/titanium/gae/gaejava11:__pkg__",
-        "//builders/gae/java11/acceptance:__pkg__",
-    ],
+    visibility = ["//builders/gae/java11/acceptance:__pkg__"],
 )

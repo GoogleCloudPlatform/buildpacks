@@ -12,8 +12,5 @@ builder(
         # "runtime.tgz",
     ],
     image = "gae/ruby25",
-    visibility = [
-        "//apphosting/runtime/titanium/gae/gaeruby25:__pkg__",
-        "//builders/gae/ruby25/acceptance:__pkg__",
-    ],
+    visibility = ["//builders/gae/ruby25/acceptance:__pkg__"],
 )

@@ -11,8 +11,5 @@ builder(
         "//cmd/go/build:build.tgz",
     ],
     image = "gae/go114",
-    visibility = [
-        "//apphosting/runtime/titanium/gae/gaego114:__pkg__",
-        "//builders/gae/go114/acceptance:__pkg__",
-    ],
+    visibility = ["//builders/gae/go114/acceptance:__pkg__"],
 )

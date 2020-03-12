@@ -13,8 +13,5 @@ builder(
         "//cmd/nodejs/yarn_gcp_build:yarn_gcp_build.tgz",
     ],
     image = "gae/nodejs10",
-    visibility = [
-        "//apphosting/runtime/titanium/gae/gaenodejs10:__pkg__",
-        "//builders/gae/nodejs10/acceptance:__pkg__",
-    ],
+    visibility = ["//builders/gae/nodejs10/acceptance:__pkg__"],
 )
