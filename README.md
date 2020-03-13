@@ -5,15 +5,15 @@ based on the Buildpack v3 [specification](https://github.com/buildpacks/spec).
 
 Builders are available for the following languages and products:
 
-|Runtime|GCP |GAE       |GCF   |
-|-------|----|----------|------|
-|Go     |1.1x|1.13, 1.14|1.13  |
-|Java   |11  |11        |      |
-|Node.js|1x  |10, 12    |10, 12|
-|PHP    |    |7.3, 7.4  |      |
-|Python |3.7+|3.7, 3.8  |3.8   |
-|Ruby   |    |2.5       |      |
-|.NET   |3+  |3         |      |
+|Runtime|GCP           |GAE       |GCF   |
+|-------|--------------|----------|------|
+|Go     |1.1x          |1.13, 1.14|1.13  |
+|Java   |11 (apps only)|11        |      |
+|Node.js|1x            |10, 12    |10, 12|
+|PHP    |              |7.3, 7.4  |      |
+|Python |3.7+          |3.7, 3.8  |3.8   |
+|Ruby   |              |2.5       |      |
+|.NET   |3+ (apps only)|3         |      |
 
 
 For more details on Cloud Native Buildpacks, please visit https://buildpacks.io.

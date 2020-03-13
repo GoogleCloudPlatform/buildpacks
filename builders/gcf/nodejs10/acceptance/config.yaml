@@ -26,19 +26,3 @@ metadataTest:
   entrypoint: ['/cnb/lifecycle/launcher']
   cmd: []
   workdir: '/srv'
-
-# TODO: Enable when uid/gid is fixed.
-# fileExistenceTests:
-# - name: 'package.json'
-#   path: '/srv/package.json'
-#   shouldExist: true
-#   permissions: '-rw-rw-r--'
-#   uid: 33
-#   gid: 33
-#
-# - name: 'package-lock.json'
-#   path: '/srv/package-lock.json'
-#   shouldExist: true
-#   permissions: '-rw-rw-r--'
-#   uid: 33
-#   gid: 33

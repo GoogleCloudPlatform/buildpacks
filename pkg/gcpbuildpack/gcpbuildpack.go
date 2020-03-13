@@ -176,11 +176,7 @@ func detect(f DetectFn) {
 		ctx.Exit(ctx.d.Error(1), Errorf(StatusInternal, err.Error()))
 	}
 
-	ctx.finalize()
 	status = StatusOk
-
-	// TODO: Exit here or in buildpack's main.go? This breaks tests.
-	// ctx.Exit(code, "Successfully ran /bin/detect")
 }
 
 func build(b BuildFn) {
@@ -216,12 +212,8 @@ func build(b BuildFn) {
 		ctx.Exit(ctx.b.Failure(1), Errorf(StatusInternal, err.Error()))
 	}
 
-	ctx.finalize()
 	status = StatusOk
 	ctx.saveSuccessOutput(time.Since(start))
-
-	// TODO: Exit here or in buildpack's main.go? This breaks tests.
-	// ctx.Exit(code, "Successfully ran /bin/build")
 }
 
 // Exit causes the buildpack to exit with the given exit code and message.
@@ -336,19 +328,4 @@ func (ctx *Context) HTTPStatus(url string) int {
 		ctx.Exit(1, UserErrorf("Unexpected response code %q from %s.", cs, url))
 	}
 	return c
-}
-
-func (ctx *Context) finalize() {
-	// TODO: emit spans.
-	// emitSpans(ctx.spans)
-
-	if ctx.exitCode != 0 {
-		return
-	}
-
-	// for _, l := range ctx.layers {
-	// 	l.finalize()
-	// }
-	// TODO: write to plan file
-	// TODO: write to launch file
 }

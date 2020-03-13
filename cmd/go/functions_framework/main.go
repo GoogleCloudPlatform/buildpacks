@@ -95,7 +95,6 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	}
 
-	// TODO: handle caching.
 	ctx.AddWebProcess([]string{golang.OutBin})
 	return nil
 }
