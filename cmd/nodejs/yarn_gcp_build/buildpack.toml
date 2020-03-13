@@ -10,13 +10,3 @@ id = "google.nodejs10"
 
 [[stacks]]
 id = "google.nodejs12"
-
-# TODO: Remove these when the next nightly candidates build.
-[[stacks]]
-id = "com.google.cloud.appengine.base"
-
-[[stacks]]
-id = "com.google.cloud.appengine.nodejs10"
-
-[[stacks]]
-id = "com.google.cloud.appengine.nodejs12"

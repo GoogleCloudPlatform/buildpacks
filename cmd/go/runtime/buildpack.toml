@@ -7,7 +7,3 @@ name = "Google - Go - Runtime"
 
 [[stacks]]
 id = "google"
-
-# TODO: Remove these when the next nightly candidates build.
-[[stacks]]
-id = "com.google.cloud.appengine.base"

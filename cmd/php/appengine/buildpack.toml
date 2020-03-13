@@ -10,12 +10,3 @@ id = "google.php73"
 
 [[stacks]]
 id = "google.php74"
-
-[[stacks]]
-id = "com.google.cloud.appengine.base"
-
-[[stacks]]
-id = "com.google.cloud.appengine.php73"
-
-[[stacks]]
-id = "com.google.cloud.appengine.php74"

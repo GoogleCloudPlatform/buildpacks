@@ -7,9 +7,3 @@ name = "Google - Python - Runtime"
 
 [[stacks]]
 id = "google"
-
-[[stacks]]
-id = "com.google.cloud"
-
-[[stacks]]
-id = "com.google.cloud.appengine.base"

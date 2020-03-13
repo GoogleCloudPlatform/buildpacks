@@ -6,14 +6,4 @@ version = "0.9.0"
 name = "Google - Ruby - App Engine Validation"
 
 [[stacks]]
-id = "com.google.cloud"
-
-[[stacks]]
 id = "google.ruby25"
-
-# TODO: Remove these when the next nightly candidates build.
-[[stacks]]
-id = "com.google.cloud.appengine.base"
-
-[[stacks]]
-id = "com.google.cloud.appengine.ruby25"

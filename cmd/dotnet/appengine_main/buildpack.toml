@@ -7,10 +7,3 @@ name = "Google - .NET - App Engine Main"
 
 [[stacks]]
 id = "google.dotnet3"
-
-# TODO: Remove these when the next nightly candidates build.
-[[stacks]]
-id = "com.google.cloud.appengine.base"
-
-[[stacks]]
-id = "com.google.cloud.appengine.dotnet3"
