@@ -1,0 +1,22 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+# Java buildpack library code
+licenses(["notice"])
+
+go_library(
+    name = "java",
+    srcs = ["java.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//cmd/java:__subpackages__",
+    ],
+    deps = ["//pkg/gcpbuildpack"],
+)
+
+go_test(
+    name = "java_test",
+    size = "small",
+    srcs = ["java_test.go"],
+    embed = [":java"],
+    rundir = ".",
+)

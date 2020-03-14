@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for java/appengine buildpack.
+// Implements the java/entrypoint buildpack.
 package main
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 )
@@ -28,26 +29,21 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) error {
-	// Always opt-in.
+	// Always opt in.
 	return nil
 }
 
-func generateEntrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
-	if ctx.FileExists("WEB-INF", "appengine-web.xml") {
-		return nil, gcp.UserErrorf("appengine-web.xml found, GAE Java compat apps are not supported on Java 11")
+func buildFn(ctx *gcp.Context) error {
+	if ep := os.Getenv(env.Entrypoint); ep != "" {
+		// Use exec because lifecycle/launcher will assume the whole command is a single executable.
+		ctx.AddWebProcess([]string{"/bin/bash", "-c", "exec " + ep})
+		return nil
 	}
-
 	executable, err := java.ExecutableJar(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("finding executable jar: %w", err)
+		return fmt.Errorf("finding executable jar: %w", err)
 	}
 
-	return &appengine.Entrypoint{
-		Type:    appengine.EntrypointGenerated.String(),
-		Command: "/serve " + executable,
-	}, nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	return appengine.Build(ctx, "java", generateEntrypoint)
+	ctx.AddWebProcess([]string{"java", "-jar", executable})
+	return nil
 }

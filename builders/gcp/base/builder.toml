@@ -25,6 +25,10 @@ description = "GCP Builder for all runtimes"
   uri = "go/functions_framework.tgz"
 
 [[buildpacks]]
+  id = "google.java.entrypoint"
+  uri = "java/entrypoint.tgz"
+
+[[buildpacks]]
   id = "google.java.maven"
   uri = "java/maven.tgz"
 
@@ -110,7 +114,7 @@ description = "GCP Builder for all runtimes"
     optional = true
 
   [[order.group]]
-    id = "google.config.entrypoint"
+    id = "google.java.entrypoint"
 
 ###########
 # Node.js #

@@ -18,6 +18,7 @@ builder(
             "//cmd/go/runtime:runtime.tgz",
         ],
         "java": [
+            "//cmd/java/entrypoint:entrypoint.tgz",
             "//cmd/java/runtime:runtime.tgz",
             "//cmd/java/maven:maven.tgz",
         ],
