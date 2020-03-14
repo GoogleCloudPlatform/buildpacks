@@ -21,6 +21,10 @@ description = "GCP Builder for all runtimes"
   uri = "go/build.tgz"
 
 [[buildpacks]]
+  id = "google.go.gomod"
+  uri = "go/gomod.tgz"
+
+[[buildpacks]]
   id = "google.go.functions-framework"
   uri = "go/functions_framework.tgz"
 
@@ -92,6 +96,10 @@ description = "GCP Builder for all runtimes"
 
   [[order.group]]
     id = "google.go.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.gomod"
     optional = true
 
   [[order.group]]

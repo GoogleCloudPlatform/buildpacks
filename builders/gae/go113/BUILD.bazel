@@ -9,6 +9,7 @@ builder(
         "//cmd/go/appengine_gomod:appengine_gomod.tgz",
         "//cmd/go/appengine_gopath:appengine_gopath.tgz",
         "//cmd/go/build:build.tgz",
+        "//cmd/go/gomod:gomod.tgz",
     ],
     image = "gae/go113",
     visibility = ["//builders/gae/go113/acceptance:__pkg__"],

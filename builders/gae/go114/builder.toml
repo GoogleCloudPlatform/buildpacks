@@ -13,12 +13,21 @@ description = "Builder for the GAE Go 1.14 runtime"
   uri = "appengine_gopath.tgz"
 
 [[buildpacks]]
+  id = "google.go.gomod"
+  uri = "gomod.tgz"
+
+[[buildpacks]]
   id = "google.go.appengine_gomod"
   uri = "appengine_gomod.tgz"
 
 [[order]]
+
   [[order.group]]
-    id = "google.go.appengine_gopath"
+    id = "google.go.appengine_gomod"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.gomod"
 
   [[order.group]]
     id = "google.go.build"
@@ -27,9 +36,9 @@ description = "Builder for the GAE Go 1.14 runtime"
     id = "google.go.appengine"
 
 [[order]]
+
   [[order.group]]
-    id = "google.go.appengine_gomod"
-    optional = true
+    id = "google.go.appengine_gopath"
 
   [[order.group]]
     id = "google.go.build"

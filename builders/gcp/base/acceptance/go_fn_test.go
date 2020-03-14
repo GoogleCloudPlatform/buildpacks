@@ -35,14 +35,14 @@ func TestAcceptance(t *testing.T) {
 			// Use Go 1.13 because Go 1.14 requires a go.mod file.
 			Env:        []string{"FUNCTION_TARGET=Func", "GOOGLE_RUNTIME_VERSION=1.13.8"},
 			MustUse:    []string{goRuntime, goFF, goBuild},
-			MustNotUse: []string{entrypoint},
+			MustNotUse: []string{goMod, entrypoint},
 		},
 		{
 			Name:       "function without framework",
 			App:        "no_framework",
 			Path:       "/Func",
 			Env:        []string{"FUNCTION_TARGET=Func"},
-			MustUse:    []string{goRuntime, goFF, goBuild},
+			MustUse:    []string{goRuntime, goFF, goMod, goBuild},
 			MustNotUse: []string{entrypoint},
 		},
 		{
@@ -52,14 +52,14 @@ func TestAcceptance(t *testing.T) {
 			// Use Go 1.13 because Go 1.14 requires a go.mod file.
 			Env:        []string{"FUNCTION_TARGET=Func", "GOOGLE_RUNTIME_VERSION=1.13.8"},
 			MustUse:    []string{goRuntime, goFF, goBuild},
-			MustNotUse: []string{entrypoint},
+			MustNotUse: []string{goMod, entrypoint},
 		},
 		{
 			Name:       "function with framework",
 			App:        "with_framework",
 			Path:       "/Func",
 			Env:        []string{"FUNCTION_TARGET=Func"},
-			MustUse:    []string{goRuntime, goFF, goBuild},
+			MustUse:    []string{goRuntime, goFF, goMod, goBuild},
 			MustNotUse: []string{entrypoint},
 		},
 	}

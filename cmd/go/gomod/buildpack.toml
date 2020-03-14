@@ -1,0 +1,15 @@
+api = "0.2"
+
+[buildpack]
+id = "google.go.gomod"
+version = "0.9.0"
+name = "Google - Go - Gomod"
+
+[[stacks]]
+id = "google"
+
+[[stacks]]
+id = "google.go113"
+
+[[stacks]]
+id = "google.go114"

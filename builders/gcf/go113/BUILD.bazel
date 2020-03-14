@@ -7,6 +7,7 @@ builder(
     buildpacks = [
         "//cmd/go/build:build.tgz",
         "//cmd/go/functions_framework:functions_framework.tgz",
+        "//cmd/go/gomod:gomod.tgz",
     ],
     image = "gcf/go113",
     visibility = ["//builders/gcf/go113/acceptance:__pkg__"],

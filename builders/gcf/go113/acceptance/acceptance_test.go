@@ -23,6 +23,10 @@ func init() {
 	acceptance.DefineFlags()
 }
 
+const (
+	gomod = "google.go.gomod"
+)
+
 func TestAcceptance(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
@@ -34,19 +38,22 @@ func TestAcceptance(t *testing.T) {
 			Path: "/Func",
 		},
 		{
-			Name: "function without framework",
-			App:  "no_framework",
-			Path: "/Func",
+			Name:    "function without framework",
+			App:     "no_framework",
+			MustUse: []string{gomod},
+			Path:    "/Func",
 		},
 		{
-			Name: "vendored function without framwork",
-			App:  "no_framework_vendored",
-			Path: "/Func",
+			Name:       "vendored function without framwork",
+			App:        "no_framework_vendored",
+			MustNotUse: []string{gomod},
+			Path:       "/Func",
 		},
 		{
-			Name: "function with framework",
-			App:  "with_framework",
-			Path: "/Func",
+			Name:    "function with framework",
+			App:     "with_framework",
+			MustUse: []string{gomod},
+			Path:    "/Func",
 		},
 		{
 			Name: "function at /*",

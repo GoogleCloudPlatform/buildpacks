@@ -15,6 +15,7 @@ builder(
         "go": [
             "//cmd/go/build:build.tgz",
             "//cmd/go/functions_framework:functions_framework.tgz",
+            "//cmd/go/gomod:gomod.tgz",
             "//cmd/go/runtime:runtime.tgz",
         ],
         "java": [
