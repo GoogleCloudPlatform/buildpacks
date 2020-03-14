@@ -102,9 +102,6 @@ func buildFn(ctx *gcp.Context) error {
 	// If the function has dependency on functions-framework, it should already
 	// be installed in node_modules.
 	// Else, it is installed in functions-framework layer's node_modules.
-	// Note that we DON'T add functions-framework layer's node_modules
-	// to NODE_PATH because we don't want the function to load packages in
-	// functions-framework layer's node_modules.
 	ff := filepath.Join(".bin", "functions-framework")
 	if hasFrameworkDependency {
 		ff = filepath.Join("node_modules", ff)
