@@ -51,7 +51,7 @@ func detectFn(ctx *gcp.Context) error {
 func buildFn(ctx *gcp.Context) error {
 	buildMainPath, err := cleanMainPath(mainPath(ctx, ctx.ApplicationRoot()))
 	if err != nil {
-		return gcp.UserErrorf("cleaning main package path: %v", err)
+		return fmt.Errorf("cleaning main package path: %w", err)
 	}
 
 	if buildMainPath != "." {
@@ -91,10 +91,10 @@ func cleanMainPath(mp string) (string, error) {
 		return ".", nil
 	}
 	if filepath.IsAbs(mp) {
-		return "", fmt.Errorf("main package path %q must not be absolute path", mp)
+		return "", gcp.UserErrorf("main package path %q must not be absolute path", mp)
 	}
 	if strings.HasPrefix(mp, "..") {
-		return "", fmt.Errorf("main package path %q cannot reference parent", mp)
+		return "", gcp.UserErrorf("main package path %q cannot reference parent", mp)
 	}
 	return mp, nil
 }

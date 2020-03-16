@@ -139,32 +139,32 @@ type ErrorSummaryProducer func(result *ExecResult) *Error
 
 // UserErrorKeepStdoutTail returns a user error that keeps stdout tail.
 func UserErrorKeepStdoutTail(result *ExecResult) *Error {
-	return Errorf(StatusUnknown, keepTail(result.Stdout))
+	return UserErrorf(keepTail(result.Stdout))
 }
 
 // UserErrorKeepStderrTail returns a user error that keeps stderr tail.
 func UserErrorKeepStderrTail(result *ExecResult) *Error {
-	return Errorf(StatusUnknown, keepTail(result.Stderr))
+	return UserErrorf(keepTail(result.Stderr))
 }
 
 // UserErrorKeepCombinedTail returns a user error that keeps combined stdout/stderr tail.
 func UserErrorKeepCombinedTail(result *ExecResult) *Error {
-	return Errorf(StatusUnknown, keepTail(result.Combined))
+	return UserErrorf(keepTail(result.Combined))
 }
 
 // UserErrorKeepStdoutHead returns a user error that keeps stdout head.
 func UserErrorKeepStdoutHead(result *ExecResult) *Error {
-	return Errorf(StatusUnknown, keepHead(result.Stdout))
+	return UserErrorf(keepHead(result.Stdout))
 }
 
 // UserErrorKeepStderrHead returns a user error that keeps stderr head.
 func UserErrorKeepStderrHead(result *ExecResult) *Error {
-	return Errorf(StatusUnknown, keepHead(result.Stderr))
+	return UserErrorf(keepHead(result.Stderr))
 }
 
 // UserErrorKeepCombinedHead returns a user error that keeps combined stdout/stderr head.
 func UserErrorKeepCombinedHead(result *ExecResult) *Error {
-	return Errorf(StatusUnknown, keepHead(result.Combined))
+	return UserErrorf(keepHead(result.Combined))
 }
 
 func keepTail(message string) string {

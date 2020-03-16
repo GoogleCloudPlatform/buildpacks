@@ -40,8 +40,7 @@ func detectFn(ctx *gcp.Context) error {
 
 func buildFn(ctx *gcp.Context) error {
 	l := ctx.Layer("main_env")
-	gae := os.Getenv(env.GAEMain)
-	ctx.OverrideBuildEnv(l, env.Buildable, gae)
+	ctx.OverrideBuildEnv(l, env.Buildable, os.Getenv(env.GAEMain))
 	ctx.WriteMetadata(l, nil, layers.Build)
 	return nil
 }

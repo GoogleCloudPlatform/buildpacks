@@ -48,11 +48,13 @@ type ExecParams struct {
 }
 
 // Exec runs the given command under the default configuration, handling error if present.
+// Exec failures attribute the failure to the platform, not the user, when recording the error (see builderoutput.go).
 func (ctx *Context) Exec(cmd []string) *ExecResult {
 	return ctx.ExecWithParams(ExecParams{Cmd: cmd})
 }
 
 // ExecWithParams runs the given command under the specified configuration, handling the error if present.
+// ExecWithParams failures attribute the failure to the platform, not the user, when recording the error (see builderoutput.go).
 func (ctx *Context) ExecWithParams(params ExecParams) *ExecResult {
 	result, err := ctx.configuredExec(params)
 	if err != nil {
@@ -71,11 +73,13 @@ func (ctx *Context) ExecWithParams(params ExecParams) *ExecResult {
 }
 
 // ExecUser runs the given command under the default configuration, saving the tail of stderr.
+// ExecUser failures attribute the failure to the user, not the platform, when recording the error (see builderoutput.go).
 func (ctx *Context) ExecUser(cmd []string) *ExecResult {
 	return ctx.ExecUserWithParams(ExecParams{Cmd: cmd}, UserErrorKeepStderrTail)
 }
 
 // ExecUserWithParams runs the given command under the specified configuration, saving an error summary from producer on error.
+// ExecUserWithParams failures attribute the failure to the user, not the platform, when recording the error (see builderoutput.go).
 func (ctx *Context) ExecUserWithParams(params ExecParams, esp ErrorSummaryProducer) *ExecResult {
 	start := time.Now()
 	result, err := ctx.configuredExec(params)
