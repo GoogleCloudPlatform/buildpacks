@@ -22,4 +22,4 @@ description = "Builder for the GCF Python 3.8 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/python38/run"
 
 [lifecycle]
-  version = "0.7.1"
+  version = "0.7.2"
