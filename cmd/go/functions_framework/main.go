@@ -32,7 +32,7 @@ const (
 	layerName                 = "functions-framework"
 	functionsFrameworkModule  = "github.com/GoogleCloudPlatform/functions-framework-go"
 	functionsFrameworkPackage = functionsFrameworkModule + "/funcframework"
-	functionsFrameworkVersion = "v1.0.0"
+	functionsFrameworkVersion = "v1.0.1"
 	appName                   = "serverless_function_app"
 )
 
