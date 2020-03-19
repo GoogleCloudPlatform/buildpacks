@@ -20,13 +20,21 @@ description = "Builder for the GCF Node.js 10 runtime"
   id = "google.nodejs.yarn-gcp-build"
   uri = "yarn_gcp_build.tgz"
 
-[[order]]
+[[buildpacks]]
+  id = "google.nodejs.firebase-functions"
+  uri = "firebase_functions.tgz"
+
+[[order]]    
   [[order.group]]
     id = "google.nodejs.yarn-gcp-build"
     optional = true
 
   [[order.group]]
     id = "google.nodejs.yarn"
+    
+  [[order.group]]
+    id = "google.nodejs.firebase-functions"
+    optional = true
 
   [[order.group]]
     id = "google.nodejs.functions-framework"
@@ -38,6 +46,10 @@ description = "Builder for the GCF Node.js 10 runtime"
 
   [[order.group]]
     id = "google.nodejs.npm"
+    optional = true
+    
+  [[order.group]]
+    id = "google.nodejs.firebase-functions"
     optional = true
 
   [[order.group]]
