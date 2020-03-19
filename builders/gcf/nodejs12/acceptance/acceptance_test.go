@@ -80,6 +80,18 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{npm},
 		},
 		{
+			Name:       "function with local dependency",
+			App:        "local_dependency",
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
+		},
+		{
+			Name:       "function with local dependency and with yarn",
+			App:        "local_dependency_yarn",
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
+		},
+		{
 			Name:       "function with gcp-build",
 			App:        "with_gcp_build",
 			MustUse:    []string{npmGCPBuild},
