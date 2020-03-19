@@ -54,22 +54,23 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.CacheHit(cacheTag)
 		ctx.Logf("Due to cache hit, package.json scripts will not be run. To run the scripts, disable caching.")
 		// Restore cached node_modules.
-		ctx.Symlink(nm, "node_modules")
+		ctx.Exec([]string{"cp", "--archive", nm, "node_modules"})
 	} else {
 		ctx.CacheMiss(cacheTag)
-		ctx.MkdirAll(nm, 0755)
-		ctx.Symlink(nm, "node_modules")
-		// Install dependencies in symlinked node_modules.
+		ctx.ClearLayer(l)
 		cmd, err := nodejs.NPMInstallCommand(ctx)
 		if err != nil {
 			return fmt.Errorf("generating npm command: %w", err)
 		}
 		ctx.ExecUser([]string{"npm", cmd, "--quiet", "--production"})
+		// Ensure node_modules exists even if no dependencies were installed.
+		ctx.MkdirAll("node_modules", 0755)
+		ctx.Exec([]string{"cp", "--archive", "node_modules", nm})
 	}
 
-	ctx.PrependPathSharedEnv(l, "PATH", path.Join(nm, ".bin"))
+	ctx.PrependPathSharedEnv(l, "PATH", "node_modules/.bin")
 	ctx.DefaultLaunchEnv(l, "NODE_ENV", "production")
-	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)
+	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache)
 
 	// Configure the entrypoint for production.
 	cmd := []string{"npm", "start"}

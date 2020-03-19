@@ -99,6 +99,16 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{npmGCPBuild},
 		},
 		{
+			App:        "local_dependency_npm",
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
+		},
+		{
+			App:        "local_dependency_yarn",
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
+		},
+		{
 			Name:       "npm adds node_modules bin to path",
 			App:        "node_modules_bin_npm",
 			Path:       "/index.txt",

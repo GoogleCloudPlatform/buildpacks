@@ -61,17 +61,19 @@ func buildFn(ctx *gcp.Context) error {
 	if cached {
 		ctx.CacheHit(cacheTag)
 		// Restore cached node_modules.
-		ctx.Symlink(nm, "node_modules")
+		ctx.Exec([]string{"cp", "--archive", nm, "node_modules"})
 	} else {
 		ctx.CacheMiss(cacheTag)
-		ctx.MkdirAll(nm, 0755)
-		ctx.Symlink(nm, "node_modules")
+		ctx.ClearLayer(l)
 		// Install dependencies in symlinked node_modules.
 		cmd, err := nodejs.NPMInstallCommand(ctx)
 		if err != nil {
 			return fmt.Errorf("generating npm command: %w", err)
 		}
 		ctx.ExecUser([]string{"npm", cmd, "--quiet"})
+		// Ensure node_modules exists even if no dependencies were installed.
+		ctx.MkdirAll("node_modules", 0755)
+		ctx.Exec([]string{"cp", "--archive", "node_modules", nm})
 	}
 
 	ctx.ExecUser([]string{"npm", "run", "gcp-build"})
