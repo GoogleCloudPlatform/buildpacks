@@ -5,7 +5,6 @@ licenses(["notice"])
 builder(
     name = "builder",
     buildpacks = [
-        "//cmd/nodejs/firebase_functions:firebase_functions.tgz",
         "//cmd/nodejs/functions_framework:functions_framework.tgz",
         "//cmd/nodejs/npm:npm.tgz",
         "//cmd/nodejs/npm_gcp_build:npm_gcp_build.tgz",

@@ -155,11 +155,6 @@ func TestFailures(t *testing.T) {
 			Env:       []string{"FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=nodejs10"},
 			MustMatch: "Error: Cannot find module",
 		},
-		{
-			App:       "fail_firebase",
-			Env:       []string{"FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=nodejs10"},
-			MustMatch: "Please update to firebase-functions v3.4.0 or above.",
-		},
 	}
 
 	for _, tc := range testCases {
