@@ -69,13 +69,14 @@ func buildFn(ctx *gcp.Context) error {
 	if cached {
 		ctx.CacheHit(cacheTag)
 		// Restore cached node_modules.
-		ctx.Symlink(nm, "node_modules")
+		ctx.Exec([]string{"cp", "--archive", nm, "node_modules"})
 	} else {
 		ctx.CacheMiss(cacheTag)
-		ctx.MkdirAll(nm, 0755)
-		ctx.Symlink(nm, "node_modules")
-		// Install dependencies in symlinked node_modules.
-		ctx.ExecUser([]string{"yarn", "install", "--frozen-lockfile", "--production"})
+		ctx.ClearLayer(l)
+		ctx.ExecUser([]string{"yarn", "install", "--frozen-lockfile", "--production", "--non-interactive"})
+		// Ensure node_modules exists even if no dependencies were installed.
+		ctx.MkdirAll("node_modules", 0755)
+		ctx.Exec([]string{"cp", "--archive", "node_modules", nm})
 	}
 
 	ctx.PrependPathSharedEnv(l, "PATH", path.Join(nm, ".bin"))
