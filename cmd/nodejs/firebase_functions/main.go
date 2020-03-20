@@ -75,7 +75,7 @@ func buildFn(ctx *gcp.Context) error {
 	if v, err := semver.Parse(fbVer); err != nil {
 		return gcp.UserErrorf("could not parse firebase-functions version string %q: %v", fbVer, err)
 	} else if v.LT(minVer) {
-		return gcp.UserErrorf("firebase-functions v%s is not supported. Please update to firebase-functions v3.4.0 or above.", fbVer)
+		return gcp.Errorf(gcp.StatusInvalidArgument, "firebase-functions v%s is not supported. Please update to firebase-functions v3.4.0 or above.", fbVer)
 	}
 
 	return nil
