@@ -28,6 +28,11 @@ const (
 	yarn         = "google.nodejs.yarn"
 	npmGCPBuild  = "google.nodejs.npm-gcp-build"
 	yarnGCPBuild = "google.nodejs.yarn-gcp-build"
+
+	// Firebase functions expect FIREBASE_CONFIG & GCLOUD_PROJECT env vars at run time.
+	// Otherwise, initializing the Firebase Admin SDK would fail.
+	gcloudProject  = "GCLOUD_PROJECT=foo"
+	firebaseConfig = `FIREBASE_CONFIG={"projectId":"foo", "locationId":"us-central1"}`
 )
 
 func TestAcceptance(t *testing.T) {
@@ -110,7 +115,15 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{npm},
 			MustNotUse: []string{yarn},
 		},
+		{
+			Name:       "firebase function",
+			App:        "firebase",
+			RunEnv:     []string{gcloudProject, firebaseConfig},
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
+		},
 	}
+
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {

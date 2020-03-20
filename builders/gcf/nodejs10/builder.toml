@@ -47,10 +47,6 @@ description = "Builder for the GCF Node.js 10 runtime"
   [[order.group]]
     id = "google.nodejs.npm"
     optional = true
-    
-  [[order.group]]
-    id = "google.nodejs.firebase-functions"
-    optional = true
 
   [[order.group]]
     id = "google.nodejs.functions-framework"
