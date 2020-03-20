@@ -116,11 +116,32 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{yarn},
 		},
 		{
-			Name:       "firebase function",
-			App:        "firebase",
+			Name:       "firebase function pre v3.4.0",
+			App:        "firebase_pre_3.4.0",
 			RunEnv:     []string{gcloudProject, firebaseConfig},
 			MustUse:    []string{npm},
 			MustNotUse: []string{yarn},
+		},
+		{
+			Name:       "firebase function pre v3.4.0 with yarn",
+			App:        "firebase_pre_3.4.0_yarn",
+			RunEnv:     []string{gcloudProject, firebaseConfig},
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
+		},
+		{
+			Name:       "firebase function post v3.4.0",
+			App:        "firebase_post_3.4.0",
+			RunEnv:     []string{gcloudProject, firebaseConfig},
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
+		},
+		{
+			Name:       "firebase function post v3.4.0 with yarn",
+			App:        "firebase_post_3.4.0_yarn",
+			RunEnv:     []string{gcloudProject, firebaseConfig},
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
 		},
 	}
 
