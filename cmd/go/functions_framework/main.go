@@ -34,6 +34,7 @@ const (
 	functionsFrameworkPackage = functionsFrameworkModule + "/funcframework"
 	functionsFrameworkVersion = "v1.0.1"
 	appName                   = "serverless_function_app"
+	fnSourceDir               = "serverless_function_source_code"
 )
 
 var (
@@ -68,7 +69,7 @@ func buildFn(ctx *gcp.Context) error {
 	// Move the function source code into a subdirectory in order to construct the app in the main application root.
 	// Since we're moving it to a subdir, we need to move the items one at a time.
 	srcs := ctx.Glob(ctx.ApplicationRoot() + string(filepath.Separator) + "*")
-	fnSource := filepath.Join(ctx.ApplicationRoot(), "functions")
+	fnSource := filepath.Join(ctx.ApplicationRoot(), fnSourceDir)
 	ctx.RemoveAll(fnSource)
 	ctx.MkdirAll(fnSource, 0755)
 	for _, src := range srcs {
