@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package function contains a test function.
-package function
+package myfunc
 
 import (
 	"fmt"

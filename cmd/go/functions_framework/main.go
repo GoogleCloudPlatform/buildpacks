@@ -108,11 +108,16 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 		Dir: fn.Source,
 	}).Stdout
 
-	// Add the module name to the the package name, such that go build will be able to find it.
-	fn.Package = fmt.Sprintf("%s/%s", fnMod, fn.Package)
+	// Add the module name to the the package name, such that go build will be able to find it,
+	// if a directory with the package name is not at the app root. Otherwise, assume the package is at the module root.
+	if ctx.FileExists(ctx.ApplicationRoot(), fn.Package) {
+		fn.Package = fmt.Sprintf("%s/%s", fnMod, fn.Package)
+	} else {
+		fn.Package = fnMod
+	}
 
-	ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@v0.0.0", fn.Package)})
-	ctx.Exec([]string{"go", "mod", "edit", "-replace", fmt.Sprintf("%s@v0.0.0=%s", fn.Package, fn.Source)})
+	ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@v0.0.0", fnMod)})
+	ctx.Exec([]string{"go", "mod", "edit", "-replace", fmt.Sprintf("%s@v0.0.0=%s", fnMod, fn.Source)})
 
 	// If the framework is not present in the function's go.mod, we require the current version.
 	if !frameworkSpecified(ctx, fn.Source) {

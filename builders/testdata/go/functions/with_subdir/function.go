@@ -19,11 +19,10 @@ import (
 	"fmt"
 	"net/http"
 
-	// Blank-import the framework so that it doesn't get removed by go mod.
-	_ "github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
+	"example.com/myfunc/subdir"
 )
 
 // Func is a test function.
 func Func(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "PASS")
+	fmt.Fprintf(w, subdir.Pass)
 }

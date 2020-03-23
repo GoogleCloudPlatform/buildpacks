@@ -60,6 +60,10 @@ func TestAcceptance(t *testing.T) {
 			App:  "no_deps",
 			Path: "/",
 		},
+		{
+			Name: "function with subdirectories",
+			App:  "with_subdir",
+		},
 	}
 
 	for _, tc := range testCases {
