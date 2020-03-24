@@ -25,6 +25,32 @@ import (
 	"github.com/buildpack/libbuildpack/layers"
 )
 
+func TestDetect(t *testing.T) {
+	testCases := []struct {
+		name  string
+		files map[string]string
+		want  int
+	}{
+		{
+			name: "pom.xml",
+			files: map[string]string{
+				"pom.xml": "",
+			},
+			want: 0,
+		},
+		{
+			name:  "no pom.xml",
+			files: map[string]string{},
+			want:  100,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			gcp.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+		})
+	}
+}
+
 func TestCheckCacheNewDateMiss(t *testing.T) {
 	testCases := []struct {
 		name            string
