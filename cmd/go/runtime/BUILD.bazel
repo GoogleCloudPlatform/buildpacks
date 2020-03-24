@@ -37,6 +37,7 @@ go_test(
     embed = [":main"],
     rundir = ".",
     deps = [
+        "//pkg/env",
         "//pkg/gcpbuildpack",
         "@com_github_buildpack_libbuildpack//buildpack:go_default_library",
     ],

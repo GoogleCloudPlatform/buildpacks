@@ -21,9 +21,75 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpack/libbuildpack/buildpack"
 )
+
+func TestDetect(t *testing.T) {
+	testCases := []struct {
+		name  string
+		files map[string]string
+		env   []string
+		want  int
+	}{
+		{
+			name: ".go files and runtime not set",
+			files: map[string]string{
+				"main.go": "",
+			},
+			env:  []string{},
+			want: 0,
+		},
+		{
+			name:  "no files and runtime not set",
+			files: map[string]string{},
+			env:   []string{},
+			want:  100,
+		},
+		{
+			name: ".go files and runtime set to go",
+			files: map[string]string{
+				"main.go": "",
+			},
+			env: []string{
+				env.Runtime + "=go",
+			},
+			want: 0,
+		},
+		{
+			name:  "no .go files and runtime set to go",
+			files: map[string]string{},
+			env: []string{
+				env.Runtime + "=go",
+			},
+			want: 0,
+		},
+		{
+			name: ".go files and runtime set to non-go",
+			files: map[string]string{
+				"main.go": "",
+			},
+			env: []string{
+				env.Runtime + "=python",
+			},
+			want: 100,
+		},
+		{
+			name:  "no .go files and runtime set to non-go",
+			files: map[string]string{},
+			env: []string{
+				env.Runtime + "=python",
+			},
+			want: 100,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			gcp.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
+		})
+	}
+}
 
 func TestReadingVersion(t *testing.T) {
 	testCases := []struct {

@@ -20,9 +20,49 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpack/libbuildpack/buildpack"
 )
+
+func TestDetect(t *testing.T) {
+	testCases := []struct {
+		name  string
+		files map[string]string
+		env   []string
+		want  int
+	}{
+		{
+			name: "go.mod and buildable undefined",
+			files: map[string]string{
+				"go.mod": "",
+			},
+			env:  []string{},
+			want: 0,
+		},
+		{
+			name:  "no go.mod",
+			files: map[string]string{},
+			env:   []string{},
+			want:  100,
+		},
+		{
+			name: "buildable defined",
+			files: map[string]string{
+				"go.mod": "",
+			},
+			env: []string{
+				env.Buildable + "=./main",
+			},
+			want: 100,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			gcp.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
+		})
+	}
+}
 
 func TestMainPath(t *testing.T) {
 	testCases := []struct {
