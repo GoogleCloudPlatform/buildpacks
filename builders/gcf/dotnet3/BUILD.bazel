@@ -9,7 +9,5 @@ builder(
         "//cmd/dotnet/functions_framework:functions_framework.tgz",
     ],
     image = "gcf/dotnet3",
-    visibility = [
-        "//builders/gcf/dotnet3/acceptance:__pkg__",
-    ],
+    visibility = ["//builders/gcf/dotnet3/acceptance:__pkg__"],
 )
