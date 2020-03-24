@@ -27,6 +27,26 @@ import (
 	"github.com/buildpack/libbuildpack/buildpack"
 )
 
+func TestDetect(t *testing.T) {
+	testCases := []struct {
+		name  string
+		files map[string]string
+		want  int
+	}{
+		{
+			// The buildpack always opts in.
+			name:  "no files",
+			files: map[string]string{},
+			want:  0,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			gcp.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+		})
+	}
+}
+
 func TestEntrypoint(t *testing.T) {
 	testCases := []struct {
 		name    string

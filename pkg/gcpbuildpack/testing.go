@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -48,6 +49,13 @@ func TestDetect(t *testing.T, detectFn DetectFn, testName string, files map[stri
 
 	for f, c := range files {
 		fn := filepath.Join(temps.codeDir, f)
+
+		if dir := path.Dir(fn); dir != "" {
+			if err := os.MkdirAll(dir, 0744); err != nil {
+				t.Fatalf("creating directory tree %s: %v", dir, err)
+			}
+		}
+
 		if err := ioutil.WriteFile(fn, []byte(c), 0644); err != nil {
 			t.Fatalf("writing file %s: %v", fn, err)
 		}
