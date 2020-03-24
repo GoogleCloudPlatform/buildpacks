@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpack/libbuildpack/buildpack"
 )
@@ -52,7 +51,7 @@ func TestDetect(t *testing.T) {
 				"go.mod": "",
 			},
 			env: []string{
-				env.Buildable + "=./main",
+				"GOOGLE_BUILDABLE=./main",
 			},
 			want: 100,
 		},

@@ -21,7 +21,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpack/libbuildpack/buildpack"
 )
@@ -53,7 +52,7 @@ func TestDetect(t *testing.T) {
 				"main.go": "",
 			},
 			env: []string{
-				env.Runtime + "=go",
+				"GOOGLE_RUNTIME=go",
 			},
 			want: 0,
 		},
@@ -61,7 +60,7 @@ func TestDetect(t *testing.T) {
 			name:  "no .go files and runtime set to go",
 			files: map[string]string{},
 			env: []string{
-				env.Runtime + "=go",
+				"GOOGLE_RUNTIME=go",
 			},
 			want: 0,
 		},
@@ -71,7 +70,7 @@ func TestDetect(t *testing.T) {
 				"main.go": "",
 			},
 			env: []string{
-				env.Runtime + "=python",
+				"GOOGLE_RUNTIME=python",
 			},
 			want: 100,
 		},
@@ -79,7 +78,7 @@ func TestDetect(t *testing.T) {
 			name:  "no .go files and runtime set to non-go",
 			files: map[string]string{},
 			env: []string{
-				env.Runtime + "=python",
+				"GOOGLE_RUNTIME=python",
 			},
 			want: 100,
 		},

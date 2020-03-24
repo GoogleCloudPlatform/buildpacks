@@ -17,7 +17,6 @@ package main
 import (
 	"testing"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -30,7 +29,7 @@ func TestDetect(t *testing.T) {
 		{
 			name: "function target defined",
 			env: []string{
-				env.FunctionTarget + "=HelloWorld",
+				"FUNCTION_TARGET=HelloWorld",
 			},
 			want: 0,
 		},

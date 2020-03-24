@@ -41,8 +41,5 @@ go_test(
     srcs = ["main_test.go"],
     embed = [":main"],
     rundir = ".",
-    deps = [
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-    ],
+    deps = ["//pkg/gcpbuildpack"],
 )
