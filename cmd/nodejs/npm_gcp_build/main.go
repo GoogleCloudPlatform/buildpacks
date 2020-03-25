@@ -65,7 +65,6 @@ func buildFn(ctx *gcp.Context) error {
 	} else {
 		ctx.CacheMiss(cacheTag)
 		ctx.ClearLayer(l)
-		// Install dependencies in symlinked node_modules.
 		cmd, err := nodejs.NPMInstallCommand(ctx)
 		if err != nil {
 			return fmt.Errorf("generating npm command: %w", err)

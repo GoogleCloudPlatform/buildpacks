@@ -68,7 +68,6 @@ func buildFn(ctx *gcp.Context) error {
 	} else {
 		ctx.CacheMiss(cacheTag)
 		ctx.ClearLayer(l)
-		// Install dependencies in symlinked node_modules.
 		ctx.ExecUser([]string{"yarn", "install", "--frozen-lockfile", "--non-interactive"})
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)
