@@ -26,12 +26,12 @@ func TestExtractVersion(t *testing.T) {
 	}{
 		{
 			name: "gunicorn_correct_version",
-			str:  "gunicorn (version 19.9.0)\n",
+			str:  "Version: 19.9.0\n",
 			want: "19.9.0",
 		},
 		{
 			name: "gunicorn_misformatted_version",
-			str:  "gunicorn (v0.1.0)\n",
+			str:  "version 18\n",
 			want: "",
 		},
 	}

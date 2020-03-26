@@ -29,7 +29,7 @@ const (
 )
 
 var (
-	versionRegexp = regexp.MustCompile(`version\ (.*?)\)`)
+	versionRegexp = regexp.MustCompile(`(?m)^Version:\s+(.*)$`)
 	minVersion    = semver.MustParse("19.0.0")
 )
 
@@ -44,7 +44,16 @@ func detectFn(ctx *gcp.Context) error {
 
 func generateEndpoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
 	// Check installed gunicorn version and warn if version is lower than supported
-	raw := ctx.Exec([]string{"gunicorn", "--version"}).Stdout
+	result, err := ctx.ExecWithErr([]string{"python3", "-m", "pip", "show", "gunicorn"})
+	if err != nil {
+		if result != nil && result.ExitCode == 1 {
+			ctx.Debugf("Pip stdout: %q", result.Stdout)
+			ctx.Debugf("Pip stderr: %q", result.Stderr)
+			return nil, fmt.Errorf("gunicorn not installed")
+		}
+		return nil, err
+	}
+	raw := result.Stdout
 	match := versionRegexp.FindStringSubmatch(raw)
 	if len(match) < 2 || match[1] == "" {
 		return nil, fmt.Errorf("unable to find gunicorn version in %q", raw)
