@@ -17,9 +17,14 @@ package main
 
 import (
 	"os"
+	"regexp"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+)
+
+var (
+	webRegexp = regexp.MustCompile(`(?m)^web:\s*(.+)$`)
 )
 
 func main() {
@@ -27,14 +32,34 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) error {
-	if os.Getenv(env.Entrypoint) == "" {
-		ctx.OptOut("%s not set", env.Entrypoint)
+	if os.Getenv(env.Entrypoint) == "" && !ctx.FileExists("Procfile") {
+		ctx.OptOut("%s not set and Procfile not found", env.Entrypoint)
 	}
 	return nil
 }
 
 func buildFn(ctx *gcp.Context) error {
-	// Use exec because lifecycle/launcher will assume the whole command is a single executable.
-	ctx.AddWebProcess([]string{"/bin/bash", "-c", "exec " + os.Getenv(env.Entrypoint)})
+	entrypoint := os.Getenv(env.Entrypoint)
+	if entrypoint != "" {
+		ctx.Logf("Using entrypoint from %s: %s", env.Entrypoint, entrypoint)
+	} else {
+		b := ctx.ReadFile("Procfile")
+		var err error
+		entrypoint, err = procfileWebProcess(string(b))
+		if err != nil {
+			return err
+		}
+		ctx.Logf("Using entrypoint from Procfile: %s", entrypoint)
+	}
+	// Use /bin/bash because lifecycle/launcher will assume the whole command is a single executable.
+	ctx.AddWebProcess([]string{"/bin/bash", "-c", entrypoint})
 	return nil
+}
+
+func procfileWebProcess(content string) (string, error) {
+	matches := webRegexp.FindStringSubmatch(content)
+	if len(matches) != 2 {
+		return "", gcp.UserErrorf("could not find web process in Procfile: %v", matches)
+	}
+	return matches[1], nil
 }

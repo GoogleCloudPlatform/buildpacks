@@ -29,23 +29,33 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:    "simple Python application",
+			Name:    "entrypoint from procfile",
 			App:     "python/simple",
-			Env:     []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		{
-			Name: "Python runtime version respected",
-			App:  "python/simple",
-			Path: "/version?want=3.8.0",
-			Env: []string{
-				"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app",
-				"GOOGLE_RUNTIME_VERSION=3.8.0",
-			},
+			Name:    "entrypoint from env",
+			App:     "python/simple",
+			Path:    "/custom",
+			Env:     []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 custom:app"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		{
-			Name:       "Python selected via GOOGLE_RUNTIME",
+			Name:    "entrypoint with env var",
+			App:     "python/simple",
+			Path:    "/env?want=bar",
+			Env:     []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app"},
+			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+		},
+		{
+			Name:    "runtime version respected",
+			App:     "python/simple",
+			Path:    "/version?want=3.8.0",
+			Env:     []string{"GOOGLE_RUNTIME_VERSION=3.8.0"},
+			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+		},
+		{
+			Name:       "selected via GOOGLE_RUNTIME",
 			App:        "override",
 			Env:        []string{"GOOGLE_RUNTIME=python", "GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustUse:    []string{pythonRuntime},

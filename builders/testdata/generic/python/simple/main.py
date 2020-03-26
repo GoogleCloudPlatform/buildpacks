@@ -45,5 +45,24 @@ def version():
 
   return "PASS"
 
+
+@app.route("/env")
+def env():
+  """Verify that the script is run using the correct version of the interpreter.
+
+  Returns:
+    String representing the response body.
+  """
+  want = request.args.get("want")
+  if not want:
+    return "FAIL: ?want must not be empty"
+
+  got = os.environ.get("FOO")
+  if not got.startswith(want):
+    return "FAIL: $FOO={}, want {}".format(got, want)
+
+  return "PASS"
+
+
 if __name__ == "__main__":
   app.run(port=os.environ["PORT"], debug=True)
