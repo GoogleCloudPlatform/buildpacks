@@ -45,6 +45,26 @@ func TestAcceptance(t *testing.T) {
 			App:  "hello_quarkus_maven",
 		},
 		{
+			Name: "hello springboot maven",
+			App:  "springboot-helloworld",
+		},
+		{
+			Name: "hello sparkjava maven",
+			App:  "sparkjava-helloworld",
+		},
+		{
+			Name: "hello micronaut maven",
+			App:  "micronaut-helloworld",
+		},
+		{
+			Name: "hello vertx maven",
+			App:  "vertx-helloworld",
+		},
+		{
+			Name: "http server",
+			App:  "http-server",
+		},
+		{
 			Name: "Ktor Kotlin maven mwnw",
 			App:  "ktordemo",
 			Env:  []string{"GOOGLE_ENTRYPOINT=java -jar target/ktor-0.0.1-jar-with-dependencies.jar"},
