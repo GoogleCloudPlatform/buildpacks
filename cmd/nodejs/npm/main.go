@@ -58,11 +58,7 @@ func buildFn(ctx *gcp.Context) error {
 	} else {
 		ctx.CacheMiss(cacheTag)
 		ctx.ClearLayer(l)
-		cmd, err := nodejs.NPMInstallCommand(ctx)
-		if err != nil {
-			return fmt.Errorf("generating npm command: %w", err)
-		}
-		ctx.ExecUser([]string{"npm", cmd, "--quiet", "--production"})
+		ctx.ExecUser([]string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet", "--production"})
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)
 		ctx.Exec([]string{"cp", "--archive", "node_modules", nm})

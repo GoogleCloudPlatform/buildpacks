@@ -91,11 +91,7 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.ClearLayer(l)
 		// NPM expects package.json and the lock file in the prefix directory.
 		ctx.Exec([]string{"cp", "-t", l.Root, pjs, pljs})
-		cmd, err := nodejs.NPMInstallCommand(ctx)
-		if err != nil {
-			return fmt.Errorf("generating npm command: %w", err)
-		}
-		ctx.ExecUser([]string{"npm", cmd, "--quiet", "--production", "--prefix", l.Root})
+		ctx.ExecUser([]string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet", "--production", "--prefix", l.Root})
 	}
 
 	// Determine the path to the executable file to start functions-framework.

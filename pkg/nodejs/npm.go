@@ -15,7 +15,7 @@
 package nodejs
 
 import (
-	"fmt"
+	"strings"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/blang/semver"
@@ -41,15 +41,11 @@ func EnsurePackageLock(ctx *gcp.Context) {
 }
 
 // NPMInstallCommand returns the correct install commmand based on the version of Node.js.
-func NPMInstallCommand(ctx *gcp.Context) (string, error) {
-	// Use npm install instead of npm ci for Node.js 10 as it did not launch with npm v6.
-	raw := ctx.Exec([]string{"npm", "--version"}).Stdout
-	version, err := semver.Parse(raw)
-	if err != nil {
-		return "", fmt.Errorf("parsing npm version %q: %v", raw, err)
+func NPMInstallCommand(ctx *gcp.Context) string {
+	// HACK: For backwards compatibility on App Engine Node.js 10, always use `npm install`.
+	if strings.HasPrefix(strings.TrimSpace(NodeVersion(ctx)), "v10.") {
+		return "install"
 	}
-	if version.GTE(minCIVersion) {
-		return "ci", nil
-	}
-	return "install", nil
+
+	return "ci"
 }
