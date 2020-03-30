@@ -15,6 +15,9 @@
 ARG from_image
 FROM ${from_image}
 
+# Add licenses for third-party go libraries; use tar to retain timestamps
+ADD licenses.tar /usr/share/doc
+
 # required to install nodejs/runtime.
 RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils \
