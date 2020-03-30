@@ -68,7 +68,13 @@ func buildFn(ctx *gcp.Context) error {
 	} else {
 		ctx.CacheMiss(cacheTag)
 		ctx.ClearLayer(l)
-		ctx.ExecUser([]string{"yarn", "install", "--frozen-lockfile", "--non-interactive"})
+
+		cmd := []string{"yarn", "install", "--non-interactive"}
+		if lf := nodejs.LockfileFlag(ctx); lf != "" {
+			cmd = append(cmd, lf)
+		}
+		ctx.ExecUser(cmd)
+
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)
 		ctx.Exec([]string{"cp", "--archive", "node_modules", nm})

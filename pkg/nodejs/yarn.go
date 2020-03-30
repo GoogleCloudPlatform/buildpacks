@@ -14,7 +14,23 @@
 
 package nodejs
 
+import (
+	"strings"
+
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+)
+
 const (
 	// YarnLock is the name of the yarn lock file.
 	YarnLock = "yarn.lock"
 )
+
+// LockfileFlag returns an appropriate lockfile handling flag, including empty string.
+func LockfileFlag(ctx *gcp.Context) string {
+	// HACK: For backwards compatibility on App Engine Node.js 10, skip using `--frozen-lockfile`.
+	if strings.HasPrefix(strings.TrimSpace(NodeVersion(ctx)), "v10.") {
+		return ""
+	}
+
+	return "--frozen-lockfile"
+}

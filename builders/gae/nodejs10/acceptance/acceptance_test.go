@@ -135,6 +135,12 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{npm},
 			MustNotUse: []string{yarn},
 		},
+		{
+			Name:       "outdated yarn.lock works for Node.js 10",
+			App:        "yarn_lock_outdated",
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc
