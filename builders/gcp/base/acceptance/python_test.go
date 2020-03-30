@@ -61,6 +61,12 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{pythonRuntime},
 			MustNotUse: []string{goRuntime, javaRuntime, nodeRuntime},
 		},
+		{
+			Name:    "python with client-side scripts correctly builds as a python app",
+			App:     "python/scripts",
+			Env:     []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
+			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

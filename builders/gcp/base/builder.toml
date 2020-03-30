@@ -124,9 +124,45 @@ description = "GCP Builder for all runtimes"
   [[order.group]]
     id = "google.java.entrypoint"
 
+##########
+# Python #
+##########
+
+# Python functions.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+# Python applications.
+# Entrypoint buildpack is required because it cannot be easily inferred.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
 ###########
 # Node.js #
 ###########
+# Note: We detect Node.js last because client-side .js files exist in many
+# web projects and detecting Node.js last will decrease the chance of
+# detection confusion.
 
 [[order]]
   [[order.group]]
@@ -179,39 +215,6 @@ description = "GCP Builder for all runtimes"
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"
-
-  [[order.group]]
-    id = "google.config.entrypoint"
-
-##########
-# Python #
-##########
-
-# Python functions.
-[[order]]
-  [[order.group]]
-    id = "google.python.runtime"
-
-  [[order.group]]
-    id = "google.python.pip"
-    optional = true
-
-  [[order.group]]
-    id = "google.python.functions-framework"
-
-  [[order.group]]
-    id = "google.config.entrypoint"
-    optional = true
-
-# Python applications.
-# Entrypoint buildpack is required because it cannot be easily inferred.
-[[order]]
-  [[order.group]]
-    id = "google.python.runtime"
-
-  [[order.group]]
-    id = "google.python.pip"
-    optional = true
 
   [[order.group]]
     id = "google.config.entrypoint"

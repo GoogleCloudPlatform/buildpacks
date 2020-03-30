@@ -45,10 +45,15 @@ func main() {
 func detectFn(ctx *gcp.Context) error {
 	runtime.CheckOverride(ctx, "nodejs")
 
-	if !ctx.FileExists("package.json") && !ctx.HasAtLeastOne(".", "*.js") {
-		ctx.OptOut("package.json not found and no *.js files found")
+	if ctx.FileExists("package.json") {
+		return nil
 	}
-	return nil
+	if len(ctx.Glob("*.js")) > 0 {
+		return nil
+	}
+
+	ctx.OptOut("package.json not found and no *.js files found")
+	return nil // OptOut() above exits early.
 }
 
 func buildFn(ctx *gcp.Context) error {
