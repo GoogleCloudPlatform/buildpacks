@@ -34,4 +34,4 @@ echo "> Building gcr.io/buildpacks/gcp/build"
 docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/build" -f "${DIR}/Dockerfile.build" "${DIR}"
 
 echo "> Validating gcr.io/buildpacks/gcp/build"
-container-structure-test test -c build-test.yaml -i gcr.io/buildpacks/gcp/build:latest
+container-structure-test test -c "${DIR}/build-test.yaml" -i gcr.io/buildpacks/gcp/build:latest
