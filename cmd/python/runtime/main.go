@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -32,7 +33,8 @@ const (
 	pythonLayer = "python"
 	pythonURL   = "https://storage.googleapis.com/artifacts.gae-runtimes-dev.appspot.com/buildpacks/python/python-%s.tar.gz"
 	// TODO: Should we maintain a mapping of supported/unsupported versions?
-	versionURL = "https://storage.googleapis.com/artifacts.gae-runtimes-dev.appspot.com/buildpacks/python/latest.txt"
+	versionURL  = "https://storage.googleapis.com/artifacts.gae-runtimes-dev.appspot.com/buildpacks/python/latest.txt"
+	versionFile = ".python-version"
 )
 
 // metadata represents metadata stored for a runtime layer.
@@ -54,14 +56,7 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	var version string
-	if v := os.Getenv(env.RuntimeVersion); v != "" {
-		version = v
-		ctx.Logf("Using requested runtime version: %s", version)
-	} else {
-		version = ctx.Exec([]string{"curl", "--silent", versionURL}).Stdout
-		ctx.Logf("Using latest runtime version: %s", version)
-	}
+	version := runtimeVersion(ctx)
 	// Check the metadata in the cache layer to determine if we need to proceed.
 	var meta metadata
 	l := ctx.Layer(pythonLayer)
@@ -91,4 +86,20 @@ func buildFn(ctx *gcp.Context) error {
 		Version: version,
 	})
 	return nil
+}
+
+func runtimeVersion(ctx *gcp.Context) string {
+	if v := os.Getenv(env.RuntimeVersion); v != "" {
+		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, v)
+		return v
+	}
+	if ctx.FileExists(versionFile) {
+		raw := ctx.ReadFile(versionFile)
+		v := strings.TrimSpace(string(raw))
+		ctx.Logf("Using runtime version from %s: %s", versionFile, v)
+		return v
+	}
+	v := ctx.Exec([]string{"curl", "--silent", versionURL}).Stdout
+	ctx.Logf("Using latest runtime version: %s", v)
+	return v
 }

@@ -99,7 +99,7 @@ func buildFn(ctx *gcp.Context) error {
 // The version is read from env var if set or determined based on the `engines` field in package.json.
 func runtimeVersion(ctx *gcp.Context) (string, error) {
 	if version := os.Getenv(env.RuntimeVersion); version != "" {
-		ctx.Logf("Using runtime version from env: %s", version)
+		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, version)
 		return version, nil
 	}
 	// The default empty range returns the latest version.

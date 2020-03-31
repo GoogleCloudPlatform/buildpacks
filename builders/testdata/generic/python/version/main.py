@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Simple flask web server used in acceptance tests.
+"""Simple web server used to validate the correct runtime version is installed.
+
+If an env override is not provided, expect version from .python-version.
+If an env override is provided, expect version from env.
 """
 import os
+import sys
 
 from flask import Flask
 from flask import request
@@ -22,12 +26,8 @@ from flask import request
 app = Flask(__name__)
 
 
-@app.route("/")
-def hello():
-  return "PASS"
-
-@app.route("/env")
-def env():
+@app.route("/version")
+def version():
   """Verify that the script is run using the correct version of the interpreter.
 
   Returns:
@@ -35,14 +35,13 @@ def env():
   """
   want = request.args.get("want")
   if not want:
-    return "FAIL: ?want must not be empty"
+    return "FAIL: ?want must be set to a version"
 
-  got = os.environ.get("FOO")
+  got = sys.version
   if not got.startswith(want):
-    return "FAIL: $FOO={}, want {}".format(got, want)
+    return 'FAIL: "{}" does not start with "{}"'.format(got, want)
 
   return "PASS"
-
 
 if __name__ == "__main__":
   app.run(port=os.environ["PORT"], debug=True)

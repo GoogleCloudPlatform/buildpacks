@@ -102,7 +102,7 @@ func buildFn(ctx *gcp.Context) error {
 
 func runtimeVersion(ctx *gcp.Context) (string, error) {
 	if version := os.Getenv(env.RuntimeVersion); version != "" {
-		ctx.Logf("Using runtime version from env: %s", version)
+		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, version)
 		return version, nil
 	}
 	if version := goModVersion(ctx, ctx.ApplicationRoot()); version != "" {
