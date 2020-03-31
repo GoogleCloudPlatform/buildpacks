@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for go/functions-framework buildpack.
+// Implements go/functions_framework buildpack.
+// The functions_framework buildpack converts a functionn into an application and sets up the execution environment.
 package main
 
 import (
@@ -64,18 +65,16 @@ func buildFn(ctx *gcp.Context) error {
 
 	env.SetFunctionsEnvVars(ctx, l)
 
-	fnTarget, _ := os.LookupEnv(env.FunctionTarget)
+	fnTarget := os.Getenv(env.FunctionTarget)
 
 	// Move the function source code into a subdirectory in order to construct the app in the main application root.
-	// Since we're moving it to a subdir, we need to move the items one at a time.
-	srcs := ctx.Glob(ctx.ApplicationRoot() + string(filepath.Separator) + "*")
-	fnSource := filepath.Join(ctx.ApplicationRoot(), fnSourceDir)
-	ctx.RemoveAll(fnSource)
-	ctx.MkdirAll(fnSource, 0755)
-	for _, src := range srcs {
-		ctx.Exec([]string{"mv", src, fnSource})
-	}
+	ctx.RemoveAll(fnSourceDir)
+	ctx.MkdirAll(fnSourceDir, 0755)
+	// mindepth=1 excludes '.', '+' collects all file names before running the command.
+	command := fmt.Sprintf("find . -mindepth 1 -not -name %[1]s -prune -exec mv -t %[1]s {} +", fnSourceDir)
+	ctx.Exec([]string{"bash", "-c", command})
 
+	fnSource := filepath.Join(ctx.ApplicationRoot(), fnSourceDir)
 	fn := fnInfo{
 		Source:  fnSource,
 		Target:  fnTarget,
@@ -120,7 +119,9 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	ctx.Exec([]string{"go", "mod", "edit", "-replace", fmt.Sprintf("%s@v0.0.0=%s", fnMod, fn.Source)})
 
 	// If the framework is not present in the function's go.mod, we require the current version.
-	if !frameworkSpecified(ctx, fn.Source) {
+	if specified, err := frameworkSpecified(ctx, fn.Source); err != nil {
+		return fmt.Errorf("checking for functions framework dependency in go.mod: %w", err)
+	} else if !specified {
 		ctx.ExecUser([]string{"go", "get", fmt.Sprintf("%s@%s", functionsFrameworkModule, functionsFrameworkVersion)})
 	}
 
@@ -178,12 +179,18 @@ func createMainGoFile(ctx *gcp.Context, fn fnInfo, main string) error {
 	return nil
 }
 
-func frameworkSpecified(ctx *gcp.Context, fnSource string) bool {
-	res := ctx.ExecWithParams(gcp.ExecParams{
-		Cmd: []string{"go", "list", "-m", "all"},
+func frameworkSpecified(ctx *gcp.Context, fnSource string) (bool, error) {
+	res, err := ctx.ExecWithErrWithParams(gcp.ExecParams{
+		Cmd: []string{"go", "list", "-m", functionsFrameworkModule},
 		Dir: fnSource,
 	})
-	return strings.Contains(res.Stdout, functionsFrameworkModule)
+	if err == nil {
+		return true, nil
+	}
+	if res != nil && strings.Contains(res.Stderr, "not a known dependency") {
+		return false, nil
+	}
+	return false, err
 }
 
 // versionSupportsNoGoModFile only returns true for Go version 1.11 and 1.13

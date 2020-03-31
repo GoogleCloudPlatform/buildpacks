@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for go/appengine_gopath buildpack.
-// Package main sets $GOPATH then moves all gopath dependencies from _gopath/src/* to $GOPATH/src/*. The _gopath directory comes from go-app-stager.
-// It then checks for _gopath/main-package-path which can only exist if the user's main package was originally on $GOPATH/src locally.
-// If this file exists it moves the main package to $GOPATH/src and sets the path to build $GOPATH/src/<path-to-main-package> where <path-to-main-package> is read from _gopath/main-package-path.
-// If this file doesn't exist it sets the path to build to "./...". Then it removes the _gopath directory because the build will fail if there's more than one go package in application root.
+// Implements go/appengine_gopath buildpack.
+// The appengine_gopath buildpack sets $GOPATH and moves all gopath dependencies from _gopath/src/* to $GOPATH/src/*. The _gopath directory is created by go-app-stager during deployment.
+// It then checks for _gopath/main-package-path which exists if the user's main package was originally on $GOPATH/src locally.
+// If this file exists, the buiuldpack moves the main package to $GOPATH/src and sets the path to build $GOPATH/src/<path-to-main-package> where <path-to-main-package> is read from _gopath/main-package-path.
+// If this file doesn't exist, the buildpack sets the path to build to "./..." and removes the _gopath directory because the build will fail if there's more than one go package in application root.
 package main
 
 import (
@@ -86,8 +86,7 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.OverrideBuildEnv(l, env.Buildable, buildMainPath)
 	}
 
-	// TODO: cache the GOCACHE layer once you prove that the latency of re-dding a large layer is less than the latency of building without GOCACHE.
-
+	// TODO: Investigate creating and caching a GOCACHE layer.
 	return nil
 }
 

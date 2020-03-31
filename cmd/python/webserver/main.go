@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for python/webserver buildpack.
+// Implements python/webserver buildpack.
+// The webserver buildpack installs gunicorn if a custom entrypoint is not specified.
 package main
 
 import (
@@ -42,15 +43,6 @@ type metadata struct {
 
 func main() {
 	gcp.Main(detectFn, buildFn)
-}
-
-func containsGunicorn(s string) bool {
-	return gunicornRegexp.MatchString(s) || eggRegexp.MatchString(s)
-}
-
-func gunicornPresentInRequirements(ctx *gcp.Context, path string) bool {
-	content := ctx.ReadFile(path)
-	return containsGunicorn(string(content))
 }
 
 func detectFn(ctx *gcp.Context) error {
@@ -97,4 +89,13 @@ func buildFn(ctx *gcp.Context) error {
 	meta.GunicornVersion = version
 	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)
 	return nil
+}
+
+func gunicornPresentInRequirements(ctx *gcp.Context, path string) bool {
+	content := ctx.ReadFile(path)
+	return containsGunicorn(string(content))
+}
+
+func containsGunicorn(s string) bool {
+	return gunicornRegexp.MatchString(s) || eggRegexp.MatchString(s)
 }

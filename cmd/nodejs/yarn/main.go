@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for nodejs/dependencies buildpack.
+// Implements nodejs/yarn buildpack.
+// The npm buildpack installs dependencies using yarn and installs yarn itself if not present.
 package main
 
 import (
@@ -85,7 +86,7 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Exec([]string{"cp", "--archive", "node_modules", nm})
 	}
 
-	ctx.PrependPathSharedEnv(l, "PATH", path.Join(nm, ".bin"))
+	ctx.PrependPathSharedEnv(l, "PATH", "node_modules/.bin")
 	ctx.DefaultLaunchEnv(l, "NODE_ENV", "production")
 	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)
 

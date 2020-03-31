@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for java/maven buildpack.
+// Implements java/maven buildpack.
+// The maven buildpack builds Maven applications.
 package main
 
 import (
@@ -77,36 +78,27 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	ctx.ExecUser([]string{command, "clean", "package", "--batch-mode", "-DskipTests", "-Dmaven.repo.local=" + m2CachedRepo.Root})
-
 	ctx.WriteMetadata(m2CachedRepo, &repoMeta, layers.Cache)
 
 	return nil
 }
 
-// checkCacheExpiration clears the m2 layer and sets a new expiry timestamp when the cache is past expiration.
 func checkCacheExpiration(ctx *gcp.Context, repoMeta *repoMetadata, m2CachedRepo *layers.Layer) {
-	future := time.Now().Add(repoExpiration).Format(dateFormat)
-
-	if repoMeta.ExpiryTimestamp == "" {
-		ctx.ClearLayer(m2CachedRepo)
-		repoMeta.ExpiryTimestamp = future
+	t := time.Now()
+	if repoMeta.ExpiryTimestamp != "" {
+		var err error
+		t, err = time.Parse(dateFormat, repoMeta.ExpiryTimestamp)
+		if err != nil {
+			ctx.Debugf("Could not parse expiration date %q, assuming now: %v", repoMeta.ExpiryTimestamp, err)
+		}
+	}
+	if t.After(time.Now()) {
 		return
 	}
 
-	t, err := time.Parse(dateFormat, repoMeta.ExpiryTimestamp)
-	if err != nil {
-		ctx.Debugf("Could not parse date %q, resetting expiration: %v", repoMeta.ExpiryTimestamp, err)
-		ctx.ClearLayer(m2CachedRepo)
-		repoMeta.ExpiryTimestamp = future
-		return
-	}
-
-	if t.Before(time.Now()) {
-		// Clear the local maven repo after some fixed amount of time so that it doesn't continually grow.
-		ctx.ClearLayer(m2CachedRepo)
-		repoMeta.ExpiryTimestamp = future
-		return
-	}
+	ctx.Debugf("Cache expired on %v, clearing", t)
+	ctx.ClearLayer(m2CachedRepo)
+	repoMeta.ExpiryTimestamp = time.Now().Add(repoExpiration).Format(dateFormat)
 	return
 }
 

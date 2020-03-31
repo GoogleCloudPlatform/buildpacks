@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for go/runtime buildpack.
+// Implements go/runtime buildpack.
+// The runtime buildpack installs the Go toolchain.
 package main
 
 import (
@@ -34,8 +35,8 @@ import (
 const (
 	// goVersionURL is a URL to a JSON file that contains the latest Go version names.
 	goVersionURL = "https://golang.org/dl/?mode=json"
-	goLayer      = "go"
 	goURL        = "https://dl.google.com/go/go%s.linux-amd64.tar.gz"
+	goLayer      = "go"
 )
 
 var (

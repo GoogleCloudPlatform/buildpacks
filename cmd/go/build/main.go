@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for go/build buildpack.
+// Implements go/build buildpack.
+// The build buildpack runs go build.
 package main
 
 import (
@@ -42,9 +43,7 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.PrependPathLaunchEnv(bl, "PATH", bl.Root)
 	ctx.WriteMetadata(bl, nil, layers.Launch)
 
-	// Collect the build flags.
 	var flags []string
-
 	if ctx.FileExists("go.mod") {
 		flags = append(flags, "-mod=readonly")
 	}

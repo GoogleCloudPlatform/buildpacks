@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for nodejs/npm buildpack.
+// Implements nodejs/npm buildpack.
+// The npm buildpack installs dependencies using npm.
 package main
 
 import (

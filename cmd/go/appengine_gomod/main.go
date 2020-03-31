@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for go/appengine_gomod buildpack.
+// Implements go/appengine_gomod buildpack.
+// The appengine_gomod buildpack sets up the path of the package to build for gomod applications.
 package main
 
 import (

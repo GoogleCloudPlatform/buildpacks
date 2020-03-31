@@ -55,11 +55,11 @@ func ReadPackageJSON(dir string) (*PackageJSON, error) {
 	f := filepath.Join(dir, "package.json")
 	rawpjs, err := ioutil.ReadFile(f)
 	if err != nil {
-		return nil, fmt.Errorf("reading package.json: %v", err)
+		return nil, gcp.InternalErrorf("reading package.json: %v", err)
 	}
 	var pjs PackageJSON
 	if err := json.Unmarshal(rawpjs, &pjs); err != nil {
-		return nil, fmt.Errorf("unmarshalling package.json: %v", err)
+		return nil, gcp.UserErrorf("unmarshalling package.json: %v", err)
 	}
 	return &pjs, nil
 }

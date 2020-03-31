@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for nodejs/runtime buildpack.
+// Implements nodejs/runtime buildpack.
+// The runtime buildpack installs the Node.js runtime.
 package main
 
 import (
@@ -106,7 +107,7 @@ func runtimeVersion(ctx *gcp.Context) (string, error) {
 	if ctx.FileExists("package.json") {
 		pjs, err := nodejs.ReadPackageJSON(ctx.ApplicationRoot())
 		if err != nil {
-			return "", gcp.Errorf(gcp.StatusInvalidArgument, "reading package.json: %v", err)
+			return "", fmt.Errorf("reading package.json: %w", err)
 		}
 		versionRange = pjs.Engines.Node
 	}

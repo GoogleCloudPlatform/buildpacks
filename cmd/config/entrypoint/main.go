@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for config/entrypoint buildpack.
+// Implements config/entrypoint buildpack.
+// The entrypoint buildpack sets the image entrypoint based on an environment variable or Procfile.
 package main
 
 import (

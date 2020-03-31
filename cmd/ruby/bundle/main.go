@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for ruby/bundle buildpack.
+// Implements ruby/bundle buildpack.
+// The bundle buildpack installs dependencies using bundle.
 package main
 
 import (

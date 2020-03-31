@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for java/runtime buildpack.
+// Implements java/runtime buildpack.
+// The runtime buildpack installs the JDK.
 package main
 
 import (
@@ -49,8 +50,8 @@ func main() {
 func detectFn(ctx *gcp.Context) error {
 	runtime.CheckOverride(ctx, "java")
 
-	if !ctx.HasAtLeastOne(ctx.ApplicationRoot(), "*.java") {
-		ctx.OptOut("No *.java files found.")
+	if !ctx.HasAtLeastOne(ctx.ApplicationRoot(), "*.java") && !ctx.HasAtLeastOne(ctx.ApplicationRoot(), "**/*.jar") {
+		ctx.OptOut("No *.java or *.jar files found.")
 	}
 	return nil
 }

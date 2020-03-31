@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for ruby/appengine_validation buildpack.
+// Implements ruby/appengine_validation buildpack.
+// The appengine_validation buildpack ensures that Ruby version required by dependencies is not overly restrictive for runtime updates in App Engine.
 package main
 
 import (

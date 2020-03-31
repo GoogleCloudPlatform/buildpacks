@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for php/composer-gcp-build buildpack.
+// Implements php/composer_gcp_build buildpack.
+// The composer_gcp_build buildpack runs the 'gcp-build' script in composer.json.
 package main
 
 import (
@@ -22,7 +23,9 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
 )
 
-const cacheTag = "gcp-build dependencies"
+const (
+	cacheTag = "gcp-build dependencies"
+)
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -35,7 +38,7 @@ func detectFn(ctx *gcp.Context) error {
 
 	p, err := php.ReadComposerJSON(ctx.ApplicationRoot())
 	if err != nil {
-		return gcp.Errorf(gcp.StatusInvalidArgument, "reading composer.json in %q: %v", ctx.ApplicationRoot(), err)
+		return fmt.Errorf("reading composer.json: %w", err)
 	}
 	if p.Scripts.GCPBuild == "" {
 		ctx.OptOut("gcp-build script not found in composer.json.")

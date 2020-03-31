@@ -55,12 +55,12 @@ func ReadComposerJSON(dir string) (*ComposerJSON, error) {
 	f := filepath.Join(dir, composerJSON)
 	rawcjs, err := ioutil.ReadFile(f)
 	if err != nil {
-		return nil, fmt.Errorf("reading %s: %v", composerJSON, err)
+		return nil, gcp.InternalErrorf("reading %s: %v", composerJSON, err)
 	}
 
 	var cjs ComposerJSON
 	if err := json.Unmarshal(rawcjs, &cjs); err != nil {
-		return nil, fmt.Errorf("unmarshalling %s: %v", composerJSON, err)
+		return nil, gcp.UserErrorf("unmarshalling %s: %v", composerJSON, err)
 	}
 	return &cjs, nil
 }

@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for dotnet/publish buildpack.
+// Implements dotnet/functions_framework buildpack.
+// The functions_framework buildpack sets up the execution environment for functions.
 package main
 
 import (
@@ -33,7 +34,7 @@ func main() {
 
 func detectFn(ctx *gcp.Context) error {
 	if _, ok := os.LookupEnv(env.FunctionTarget); !ok {
-		ctx.OptOut("%s not set.", env.FunctionTarget)
+		ctx.OptOut("%s not set", env.FunctionTarget)
 	}
 	return nil
 }

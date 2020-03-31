@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for php/composer buildpack.
+// Implements php/composer buildpack.
+// The composer buildpack installs dependencies using composer.
 package main
 
 import (
@@ -22,7 +23,9 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
 )
 
-const cacheTag = "prod dependencies"
+const (
+	cacheTag = "prod dependencies"
+)
 
 func main() {
 	gcp.Main(detectFn, buildFn)

@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for go/appengine buildpack.
+// Implements go/appengine buildpack.
+// The appengine buildpack sets the image entrypoint.
 package main
 
 import (

@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for nodejs/appengine buildpack.
+// Implements nodejs/appengine buildpack.
+// The appengine buildpack sets the image entrypoint.
 package main
 
 import (

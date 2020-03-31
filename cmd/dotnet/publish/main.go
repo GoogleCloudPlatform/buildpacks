@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for dotnet/publish buildpack.
+// Implements dotnet/publish buildpack.
+// The publish buildpack runs dotnet publish.
 package main
 
 import (
@@ -44,18 +45,22 @@ func main() {
 
 func detectFn(ctx *gcp.Context) error {
 	if _, exists := os.LookupEnv(env.Buildable); !exists && !ctx.HasAtLeastOne(ctx.ApplicationRoot(), "*.*proj") {
-		ctx.OptOut("No project file found and %s not set.", env.Buildable)
+		ctx.OptOut("no project file found and %s not set.", env.Buildable)
 	}
 	return nil
 }
 
 func buildFn(ctx *gcp.Context) error {
-	// Set the project file, getting it from the specified directory if relevant.
 	proj := os.Getenv(env.Buildable)
 	if proj == "" {
 		proj = "."
 	}
-	if !strings.HasSuffix(proj, "proj") || filepath.Ext(proj) == "" {
+	// Find the project file if proj is a directory.
+	if fi, err := os.Stat(proj); os.IsNotExist(err) {
+		return gcp.UserErrorf("%s does not exist", proj)
+	} else if err != nil {
+		return fmt.Errorf("stating %s: %v", proj, err)
+	} else if fi.IsDir() {
 		projFiles := ctx.Glob(filepath.Join(proj, "*.*proj"))
 		if len(projFiles) != 1 {
 			return gcp.UserErrorf("expected to find exactly one project file in directory %s, found %v", proj, projFiles)
@@ -98,7 +103,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	ctx.ExecUserWithParams(gcp.ExecParams{Cmd: cmd, Env: []string{"DOTNET_CLI_TELEMETRY_OPTOUT=true"}}, gcp.UserErrorKeepStderrTail)
 
-	// Only calculate the entrypoint from this build if GOOGLE_ENTRYPOINT is not set, as we don't want to override that.
+	// Infer the entrypoint in case an explicit override was not provided.
 	entrypoint := os.Getenv(env.Entrypoint)
 	if entrypoint == "" {
 		ep, err := getEntrypoint(ctx, "bin", proj)
@@ -106,7 +111,7 @@ func buildFn(ctx *gcp.Context) error {
 			return fmt.Errorf("getting entrypoint: %w", err)
 		}
 		entrypoint = strings.Join(ep, " ")
-		ctx.OverrideBuildEnv(binLayer, env.Entrypoint, entrypoint)
+		ctx.DefaultBuildEnv(binLayer, env.Entrypoint, entrypoint)
 	}
 	ctx.WriteMetadata(binLayer, nil, layers.Build, layers.Launch)
 
@@ -124,16 +129,10 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 // getEntrypoint retrieves the appropriate entrypoint for this build.
-// To get the project filename, we check GOOGLE_BUILDABLE for a specified project file. If empty,
-// we expect there to be a project file in the application root.
-// With the project filename, we check the root output directory for a binary with the name of the
-// project (e.g. app.csproj --> app).
-// If not present, we check for a compiled library with the app name (e.g. app.csproj --> app.dll)
-//and if present, we prepend the "dotnet run" command.
-// If neither an executable binary or dll is present in the root output directory, we parse the
-// project file for an AssemblyName field to see if the user changed the output name. If there is
-// one, we check for the associated executable or dll file in the root output directory.
-// If none of those files are present in the output directory, we return a user error.
+// * Get project filename from GOOGLE_BUILDABLE or, if empty, the application root.
+// * Check the output directory for a binary or a libary with the same name as the project file (e.g. app.csproj --> app or app.dll).
+// * If not found, parse the project file for an AssemblyName field and check for the associated binary or library file in the output directory.
+// * If not found, return user error.
 func getEntrypoint(ctx *gcp.Context, root, proj string) ([]string, error) {
 	ep := getEntrypointCmd(ctx, filepath.Join(root, strings.Split(filepath.Base(proj), ".")[0]))
 	if ep != nil {

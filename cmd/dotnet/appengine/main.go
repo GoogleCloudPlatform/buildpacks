@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for dotnet/appengine buildpack.
+// Implements dotnet/appengine buildpack.
+// The appengine buildpack sets the image entrypoint.
 package main
 
 import (
@@ -28,6 +29,7 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) error {
+	// Always opt in.
 	return nil
 }
 

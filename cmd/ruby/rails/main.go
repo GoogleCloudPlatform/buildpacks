@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for ruby/rails buildpack.
+// Implements ruby/rails buildpack.
+// The rails buildpack precompiles assets using Rails.
 package main
 
 import (
-	"path/filepath"
-
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -44,12 +43,12 @@ func needsRailsAssetPrecompile(ctx *gcp.Context) bool {
 		return false
 	}
 
-	matches := ctx.Glob(filepath.Join(ctx.ApplicationRoot(), "public/assets/manifest-*.json"))
+	matches := ctx.Glob("public/assets/manifest-*.json")
 	if matches != nil {
 		return false
 	}
 
-	matches = ctx.Glob(filepath.Join(ctx.ApplicationRoot(), "public/assets/.sprockets-manifest-*.json"))
+	matches = ctx.Glob("public/assets/.sprockets-manifest-*.json")
 	if matches != nil {
 		return false
 	}
@@ -68,10 +67,13 @@ func buildFn(ctx *gcp.Context) error {
 	result, err := ctx.ExecWithErrWithParams(params)
 	if err != nil && result != nil && result.ExitCode != 0 {
 		ctx.Logf("WARNING: Asset precompilation returned non-zero exit code %d. Ignoring.", result.ExitCode)
-	} else if err != nil && result != nil {
-		ctx.Exit(1, gcp.UserErrorf(result.Combined))
-	} else if err != nil {
-		ctx.Exit(1, gcp.InternalErrorf("asset precompilation failed: %v", err))
+		return nil
+	}
+	if err != nil && result != nil {
+		return gcp.UserErrorf(result.Combined)
+	}
+	if err != nil {
+		return gcp.InternalErrorf("asset precompilation failed: %v", err)
 	}
 
 	return nil

@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for go/gomod buildpack.
+// Implements go/gomod buildpack.
+// The gomod buildpack downloads modules specified in go.mod.
 package main
 
 import (
@@ -37,8 +38,8 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.OverrideBuildEnv(l, "GO111MODULE", "on")
 	ctx.WriteMetadata(l, nil, layers.Build)
 
-	// TODO: cache the modules layer once you prove that the latency of re-dding a large layer is less than the latency of downloading from the internet
-	// TODO: cache the GOCACHE layer once you prove that the latency of re-dding a large layer is less than the latency of building without GOCACHE
+	// TODO: Investigate caching the modules layer.
+	// TODO: Investigate creating and caching a GOCACHE layer.
 
 	env := []string{"GOPATH=" + l.Root, "GO111MODULE=on"}
 	ctx.ExecUserWithParams(gcp.ExecParams{Cmd: []string{"go", "mod", "download"}, Env: env}, gcp.UserErrorKeepStderrTail)

@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for java/appengine buildpack.
+// Implements java/appengine buildpack.
+// The appengine buildpack sets the image entrypoint.
 package main
 
 import (
@@ -32,7 +33,11 @@ func detectFn(ctx *gcp.Context) error {
 	return nil
 }
 
-func generateEntrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
+func buildFn(ctx *gcp.Context) error {
+	return appengine.Build(ctx, "java", entrypoint)
+}
+
+func entrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
 	if ctx.FileExists("WEB-INF", "appengine-web.xml") {
 		return nil, gcp.UserErrorf("appengine-web.xml found, GAE Java compat apps are not supported on Java 11")
 	}
@@ -46,8 +51,4 @@ func generateEntrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
 		Type:    appengine.EntrypointGenerated.String(),
 		Command: "/serve " + executable,
 	}, nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	return appengine.Build(ctx, "java", generateEntrypoint)
 }

@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for python/pip buildpack.
+// Implements python/pip buildpack.
+// The pip buildpack installs dependencies using pip.
 package main
 
 import (
@@ -50,7 +51,6 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
-
 	if cached {
 		ctx.CacheHit(layerName)
 		return nil
@@ -62,7 +62,6 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.ExecUser([]string{"python3", "-m", "pip", "install", "--upgrade", "-r", "requirements.txt", "-t", l.Root})
 
 	ctx.PrependPathSharedEnv(l, "PYTHONPATH", l.Root)
-
 	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)
 	return nil
 }

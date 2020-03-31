@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for dotnet/appengine buildpack.
+// Implements dotnet/appengine_main buildpack.
+// The appengine_main buildpack handles the app.yaml `main` field when specified.
 package main
 
 import (
@@ -33,7 +34,7 @@ func detectFn(ctx *gcp.Context) error {
 	}
 
 	if _, exists := os.LookupEnv(env.Buildable); exists {
-		ctx.OptOut("ignoring app.yaml main field as %s is set", env.Buildable)
+		ctx.OptOut("%s is set, ignoring app.yaml main field", env.Buildable)
 	}
 	return nil
 }

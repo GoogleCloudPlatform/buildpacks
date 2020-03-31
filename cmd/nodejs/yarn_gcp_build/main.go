@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for nodejs/yarn-gcp-build buildpack.
+// Implements nodejs/yarn_gcp_build buildpack.
+// The npm_gcp_build buildpack runs the 'gcp-build' script in package.json using yarn.
 package main
 
 import (
@@ -42,7 +43,7 @@ func detectFn(ctx *gcp.Context) error {
 
 	p, err := nodejs.ReadPackageJSON(ctx.ApplicationRoot())
 	if err != nil {
-		return gcp.Errorf(gcp.StatusInvalidArgument, "reading package.json in %q: %v", ctx.ApplicationRoot(), err)
+		return fmt.Errorf("reading package.json: %w", err)
 	}
 	if p.Scripts.GCPBuild == "" {
 		ctx.OptOut("gcp-build script not found in package.json.")

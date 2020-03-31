@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements /bin/build for python/functions-framework buildpack.
+// Implements python/functions_framework buildpack.
+// The functions_framework buildpack converts a functionn into an application and sets up the execution environment.
 package main
 
 import (
@@ -47,28 +48,6 @@ func detectFn(ctx *gcp.Context) error {
 	return nil
 }
 
-func containsFF(s string) bool {
-	return ffRegexp.MatchString(s) || eggRegexp.MatchString(s)
-}
-
-func installFramework(ctx *gcp.Context, l *layers.Layer) error {
-	cvt := filepath.Join(ctx.BuildpackRoot(), "converter")
-	req := filepath.Join(cvt, "requirements.txt")
-	cached, meta, err := python.CheckCache(ctx, l, req)
-	if err != nil {
-		return fmt.Errorf("checking cache: %w", err)
-	}
-	if cached {
-		ctx.CacheHit(layerName)
-	} else {
-		ctx.CacheMiss(layerName)
-		ctx.ExecUser([]string{"python3", "-m", "pip", "install", "--upgrade", "-t", l.Root, "-r", req})
-	}
-	ctx.PrependPathSharedEnv(l, "PYTHONPATH", l.Root)
-	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)
-	return nil
-}
-
 func buildFn(ctx *gcp.Context) error {
 	// Determine if the function has dependency on functions-framework.
 	hasFrameworkDependency := false
@@ -94,11 +73,29 @@ func buildFn(ctx *gcp.Context) error {
 
 	env.SetFunctionsEnvVars(ctx, l)
 
-	params := gcp.ExecParams{
-		Cmd: []string{"python3", "-m", "compileall", "."},
-	}
-	ctx.ExecUserWithParams(params, gcp.UserErrorKeepStderrTail)
-
+	ctx.ExecUser([]string{"python3", "-m", "compileall", "."})
 	ctx.AddWebProcess([]string{"functions-framework"})
+	return nil
+}
+
+func containsFF(s string) bool {
+	return ffRegexp.MatchString(s) || eggRegexp.MatchString(s)
+}
+
+func installFramework(ctx *gcp.Context, l *layers.Layer) error {
+	cvt := filepath.Join(ctx.BuildpackRoot(), "converter")
+	req := filepath.Join(cvt, "requirements.txt")
+	cached, meta, err := python.CheckCache(ctx, l, req)
+	if err != nil {
+		return fmt.Errorf("checking cache: %w", err)
+	}
+	if cached {
+		ctx.CacheHit(layerName)
+	} else {
+		ctx.CacheMiss(layerName)
+		ctx.ExecUser([]string{"python3", "-m", "pip", "install", "--upgrade", "-t", l.Root, "-r", req})
+	}
+	ctx.PrependPathSharedEnv(l, "PYTHONPATH", l.Root)
+	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)
 	return nil
 }
