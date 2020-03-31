@@ -197,7 +197,7 @@ func checkCache(ctx *gcp.Context, l *layers.Layer) (bool, *metadata, error) {
 	}
 
 	if meta.DependencyHash == "" {
-		ctx.Logf("No metadata found or no dependency_hash found on metadata. Unable to use cache layer.")
+		ctx.Debugf("No metadata found from a previous build, skipping cache.")
 	}
 	// Update the layer metadata.
 	meta.DependencyHash = hash

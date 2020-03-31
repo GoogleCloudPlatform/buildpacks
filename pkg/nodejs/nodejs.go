@@ -90,7 +90,7 @@ func CheckCache(ctx *gcp.Context, l *layers.Layer, files ...string) (bool, *Meta
 	}
 
 	if meta.DependencyHash == "" {
-		ctx.Logf("No metadata found or no dependency_hash found on metadata. Unable to use cache layer.")
+		ctx.Debugf("No metadata found from a previous build, skipping cache.")
 	}
 	ctx.Logf("Installing application dependencies.")
 	// Update the layer metadata.
