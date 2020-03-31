@@ -41,24 +41,21 @@ func ExecutableJar(ctx *gcp.Context) (string, error) {
 
 	// There may be multiple jars due to some frameworks like Quarkus creating multiple jars,
 	// so we look for the jar that contains a Main-Class entry in its manifest.
-	executable := ""
+	var executables []string
 	for _, jar := range jars {
-		var hasMain bool
-		var err error
-		if hasMain, err = hasMainManifestEntry(jar); err != nil {
+		if hasMain, err := hasMainManifestEntry(jar); err != nil {
 			return "", fmt.Errorf("finding Main-Class manifest: %w", err)
-		}
-		if hasMain {
-			if executable != "" {
-				return "", gcp.UserErrorf("found more than 1 jar with a Main-Class manifest entry")
-			}
-			executable = jar
+		} else if hasMain {
+			executables = append(executables, jar)
 		}
 	}
-	if executable == "" {
-		return "", gcp.UserErrorf("could not find a jar with a Main-Class manifest entry")
+	if len(executables) == 0 {
+		return "", gcp.UserErrorf("did not find any jar files with a Main-Class manifest entry")
 	}
-	return executable, nil
+	if len(executables) > 1 {
+		return "", gcp.UserErrorf("found more than one jar with a Main-Class manifest entry: %v, please specify an entrypoint", executables)
+	}
+	return executables[0], nil
 }
 
 func hasMainManifestEntry(jar string) (bool, error) {
