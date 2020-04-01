@@ -26,9 +26,10 @@ import (
 )
 
 const (
-	configDir         = ".googleconfig"
-	configFile        = configDir + "/app_start.json"
-	defaultEntrypoint = "/serve"
+	// DefaultCommand is the command used in app_start.json if no entrypoint is specified.
+	DefaultCommand = "/serve"
+	configDir      = ".googleconfig"
+	configFile     = configDir + "/app_start.json"
 )
 
 // Config holds the parameters to pass into app_start.json
@@ -74,7 +75,7 @@ func getEntrypoint(ctx *gcp.Context, eg entrypointGenerator) (*Entrypoint, error
 	}
 	return &Entrypoint{
 		Type:    EntrypointDefault.String(),
-		Command: defaultEntrypoint,
+		Command: DefaultCommand,
 	}, nil
 }
 

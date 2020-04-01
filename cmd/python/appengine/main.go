@@ -25,10 +25,6 @@ import (
 	"github.com/blang/semver"
 )
 
-const (
-	command = "gunicorn -b :$PORT main:app"
-)
-
 var (
 	versionRegexp = regexp.MustCompile(`(?m)^Version:\s+(.*)$`)
 	minVersion    = semver.MustParse("19.0.0")
@@ -73,7 +69,7 @@ func entrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
 	}
 
 	return &appengine.Entrypoint{
-		Type:    appengine.EntrypointGenerated.String(),
-		Command: command,
+		Type:    appengine.EntrypointDefault.String(),
+		Command: appengine.DefaultCommand,
 	}, nil
 }
