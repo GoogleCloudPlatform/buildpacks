@@ -78,7 +78,7 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.CacheMiss(layerName)
 
 	if meta.GunicornVersion == "" {
-		ctx.Logf("No metadata found or no gunicorn version found on metadata. Unable to use cache layer.")
+		ctx.Debugf("No metadata found from a previous build, skipping cache.")
 	}
 
 	ctx.Logf("Installing gunicorn.")
