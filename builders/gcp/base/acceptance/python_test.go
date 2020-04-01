@@ -57,7 +57,7 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:    "runtime version from .python-version",
 			App:     "python/version",
-			Path:    "/version?want=3.8.0",
+			Path:    "/version?want=3.8.1",
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		{
