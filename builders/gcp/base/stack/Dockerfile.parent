@@ -18,16 +18,21 @@ ARG cnb_uid=1000
 ARG cnb_gid=1000
 ARG stack_id="google"
 
-# required by python/runtime.
+# Required by python/runtime.
 RUN apt-get update && apt-get install -y --no-install-recommends \
   libexpat1 \
   libffi6 \
   libmpdec2 \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# required by dotnet/runtime.
+# Required by dotnet/runtime.
 RUN apt-get update && apt-get install -y --no-install-recommends \
   libicu60 \
+  && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Required by many use-cases.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  build-essential \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 LABEL io.buildpacks.stack.id=${stack_id}
