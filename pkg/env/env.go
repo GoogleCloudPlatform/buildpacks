@@ -16,10 +16,9 @@
 package env
 
 import (
+	"fmt"
 	"os"
-
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
+	"strconv"
 )
 
 const (
@@ -32,6 +31,9 @@ const (
 	// RuntimeVersion must be respected by each runtime buildpack.
 	// Example: `13.7.0` for Node.js, `1.14.1` for Go.
 	RuntimeVersion = "GOOGLE_RUNTIME_VERSION"
+
+	// DebugMode enables more verbose logging. The value is unused; only the presense of the env var is required to enable.
+	DebugMode = "GOOGLE_DEBUG"
 
 	// DevMode is an env var used to enable development mode in buildpacks.
 	// DevMode should be respected by all buildpacks that are not product-specific.
@@ -68,19 +70,15 @@ const (
 	FunctionSignatureType = "FUNCTION_SIGNATURE_TYPE"
 )
 
-// SetFunctionsEnvVars overrides functions environment variables.
-func SetFunctionsEnvVars(ctx *gcp.Context, l *layers.Layer) {
-	if target := os.Getenv(FunctionTarget); target != "" {
-		ctx.DefaultLaunchEnv(l, FunctionTarget, target)
-	} else {
-		ctx.Exit(1, gcp.UserErrorf("required env var %s not found", FunctionTarget))
+// IsDebugMode returns true if the buildpack debug mode is enabled.
+func IsDebugMode() (bool, error) {
+	val, found := os.LookupEnv(DebugMode)
+	if !found {
+		return false, nil
 	}
-
-	if signature, ok := os.LookupEnv(FunctionSignatureType); ok {
-		ctx.DefaultLaunchEnv(l, FunctionSignatureType, signature)
+	parsed, err := strconv.ParseBool(val)
+	if err != nil {
+		return false, fmt.Errorf("parsing %s: %v", DebugMode, err)
 	}
-
-	if source, ok := os.LookupEnv(FunctionSource); ok {
-		ctx.DefaultLaunchEnv(l, FunctionSource, source)
-	}
+	return parsed, nil
 }

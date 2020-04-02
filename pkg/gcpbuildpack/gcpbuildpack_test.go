@@ -24,69 +24,47 @@ import (
 	"testing"
 	"time"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/buildpack/libbuildpack/buildpack"
 	"github.com/buildpack/libbuildpack/layers"
 )
 
 func TestDebugModeInitialized(t *testing.T) {
 	testCases := []struct {
-		name   string
-		notSet bool
-		value  string
-		want   bool
+		name  string
+		value string
+		want  bool
 	}{
 		{
-			name:   "no env var",
-			notSet: true,
-			want:   false,
+			name: "no env var",
 		},
 		{
-			name:  "empty value",
-			value: "",
-			want:  false,
-		},
-		{
-			name:  "parse false",
-			value: "false",
-			want:  false,
-		},
-		{
-			name:  "parse 0",
-			value: "0",
-			want:  false,
-		},
-		{
-			name:  "parse true",
+			name:  "true env var",
 			value: "true",
 			want:  true,
 		},
 		{
-			name:  "parse 1",
-			value: "1",
-			want:  true,
-		},
-		{
-			name:  "bad value",
-			value: "not a bool",
+			name:  "false env var",
+			value: "false",
 			want:  false,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.notSet {
-				if err := os.Unsetenv(debugEnv); err != nil {
-					t.Fatalf("Failed to unset env: %v", err)
-				}
-			} else {
-				if err := os.Setenv(debugEnv, tc.value); err != nil {
+			if tc.value != "" {
+				if err := os.Setenv(env.DebugMode, tc.value); err != nil {
 					t.Fatalf("Failed to set env: %v", err)
 				}
 				defer func() {
-					if err := os.Unsetenv(debugEnv); err != nil {
+					if err := os.Unsetenv(env.DebugMode); err != nil {
 						t.Fatalf("Failed to unset env: %v", err)
 					}
 				}()
+			} else {
+				if err := os.Unsetenv(env.DebugMode); err != nil {
+					t.Fatalf("Failed to unset env: %v", err)
+				}
 			}
 
 			c := NewContext(buildpack.Info{ID: "id", Version: "version", Name: "name"})

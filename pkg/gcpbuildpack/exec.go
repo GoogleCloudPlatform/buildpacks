@@ -23,6 +23,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 )
 
 var (
@@ -45,6 +47,9 @@ type ExecParams struct {
 	Dir string
 	// Env specifies additional environment variables for the command invocation. Must be in key=value format.
 	Env []string
+
+	// logOnDebug indicates that the logs will be emitted only if GOOGLE_DEBUG is set (otherwise logs are always emitted).
+	logOnDebug bool
 }
 
 // Exec runs the given command under the default configuration, handling error if present.
@@ -56,7 +61,7 @@ func (ctx *Context) Exec(cmd []string) *ExecResult {
 // ExecWithParams runs the given command under the specified configuration, handling the error if present.
 // ExecWithParams failures attribute the failure to the platform, not the user, when recording the error (see builderoutput.go).
 func (ctx *Context) ExecWithParams(params ExecParams) *ExecResult {
-	result, err := ctx.configuredExec(params)
+	result, err := ctx.ExecWithErrWithParams(params)
 	if err != nil {
 		var be *Error
 		exitCode := 1
@@ -70,6 +75,17 @@ func (ctx *Context) ExecWithParams(params ExecParams) *ExecResult {
 		ctx.Exit(exitCode, be)
 	}
 	return result
+}
+
+// ExecWithErr runs the given command (with args) under the default configuration, allowing the caller to handle the error.
+func (ctx *Context) ExecWithErr(cmd []string) (*ExecResult, error) {
+	return ctx.ExecWithErrWithParams(ExecParams{Cmd: cmd})
+}
+
+// ExecWithErrWithParams runs the given command (with args) under the specified configuration, allowing the caller to handle the error.
+func (ctx *Context) ExecWithErrWithParams(params ExecParams) (*ExecResult, error) {
+	params.logOnDebug = true
+	return ctx.configuredExec(params)
 }
 
 // ExecUser runs the given command under the default configuration, saving the tail of stderr.
@@ -97,16 +113,6 @@ func (ctx *Context) ExecUserWithParams(params ExecParams, esp ErrorSummaryProduc
 	return result
 }
 
-// ExecWithErr runs the given command (with args) under the default configuration, allowing the caller to handle the error.
-func (ctx *Context) ExecWithErr(cmd []string) (*ExecResult, error) {
-	return ctx.configuredExec(ExecParams{Cmd: cmd})
-}
-
-// ExecWithErrWithParams runs the given command (with args) under the specified configuration, allowing the caller to handle the error.
-func (ctx *Context) ExecWithErrWithParams(params ExecParams) (*ExecResult, error) {
-	return ctx.configuredExec(params)
-}
-
 func (ctx *Context) configuredExec(params ExecParams) (*ExecResult, error) {
 	if len(params.Cmd) < 1 {
 		return nil, fmt.Errorf("no command provided")
@@ -115,17 +121,34 @@ func (ctx *Context) configuredExec(params ExecParams) (*ExecResult, error) {
 		return nil, fmt.Errorf("empty command provided")
 	}
 
+	log := true
+	debug, err := env.IsDebugMode()
+	if err != nil {
+		return nil, err
+	}
+	if params.logOnDebug && !debug {
+		log = false
+	}
+
+	optionalLogf := func(format string, args ...interface{}) {
+		if !log {
+			return
+		}
+		ctx.Logf(format, args...)
+	}
+
 	readableCmd := strings.Join(params.Cmd, " ")
-	ctx.Logf("\n" + divider)
-	defer func() {
-		ctx.Logf(divider)
-	}()
-	ctx.Logf("Executing command %q", readableCmd)
+	optionalLogf(divider)
+	optionalLogf("Running %q", readableCmd)
 
 	status := StatusInternal
-	defer func(now time.Time) {
-		ctx.Logf("")
-		ctx.Span(ctx.createSpanName(params.Cmd), now, status)
+	defer func(start time.Time) {
+		truncated := readableCmd
+		if len(truncated) > 60 {
+			truncated = truncated[:60] + "..."
+		}
+		optionalLogf("Done %q (%v)", truncated, time.Since(start))
+		ctx.Span(ctx.createSpanName(params.Cmd), start, status)
 	}(time.Now())
 
 	exitCode := 0
@@ -140,7 +163,7 @@ func (ctx *Context) configuredExec(params ExecParams) (*ExecResult, error) {
 	}
 
 	var outb, errb bytes.Buffer
-	var combinedb lockingBuffer
+	combinedb := lockingBuffer{log: log}
 	ecmd.Stdout = io.MultiWriter(&outb, &combinedb)
 	ecmd.Stderr = io.MultiWriter(&errb, &combinedb)
 
@@ -171,12 +194,17 @@ func (ctx *Context) configuredExec(params ExecParams) (*ExecResult, error) {
 type lockingBuffer struct {
 	buf bytes.Buffer
 	sync.Mutex
+
+	// log tells the buffer to also log the output to stderr.
+	log bool
 }
 
 func (lb *lockingBuffer) Write(p []byte) (int, error) {
 	lb.Lock()
 	defer lb.Unlock()
-	os.Stderr.Write(p)
+	if lb.log {
+		os.Stderr.Write(p)
+	}
 	return lb.buf.Write(p)
 }
 

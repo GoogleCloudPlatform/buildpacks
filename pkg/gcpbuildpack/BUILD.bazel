@@ -21,6 +21,7 @@ go_library(
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     deps = [
+        "//pkg/env",
         "@com_github_buildpack_libbuildpack//build:go_default_library",
         "@com_github_buildpack_libbuildpack//buildpack:go_default_library",
         "@com_github_buildpack_libbuildpack//buildpackplan:go_default_library",
@@ -43,6 +44,7 @@ go_test(
     embed = [":gcpbuildpack"],
     rundir = ".",
     deps = [
+        "//pkg/env",
         "@com_github_buildpack_libbuildpack//buildpack:go_default_library",
         "@com_github_buildpack_libbuildpack//layers:go_default_library",
     ],

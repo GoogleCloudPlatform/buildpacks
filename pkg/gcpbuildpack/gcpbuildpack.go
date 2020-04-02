@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	libbuild "github.com/buildpack/libbuildpack/build"
 	"github.com/buildpack/libbuildpack/buildpack"
 	"github.com/buildpack/libbuildpack/buildpackplan"
@@ -34,8 +35,6 @@ import (
 )
 
 const (
-	debugEnv = "BP_DEBUG"
-
 	// cacheHitMessage is emitted by ctx.CacheHit(). Must match acceptance test value.
 	cacheHitMessage = "***** CACHE HIT:"
 
@@ -75,14 +74,11 @@ type Context struct {
 
 // NewContext creates a context.
 func NewContext(info buildpack.Info) *Context {
-	var err error
-	debug := false
-	if v := os.Getenv(debugEnv); v != "" {
-		if debug, err = strconv.ParseBool(v); err != nil {
-			logger.Printf("Warning: failed to parse env var %s: %v", debugEnv, err)
-		}
+	debug, err := env.IsDebugMode()
+	if err != nil {
+		logger.Printf("Failed to parse debug mode: %v", err)
+		os.Exit(1)
 	}
-
 	return &Context{
 		debug: debug,
 		info:  info,
@@ -182,8 +178,7 @@ func detect(f DetectFn) {
 func build(b BuildFn) {
 	start := time.Now()
 	ctx := newBuildContext()
-	ctx.Logf("======== %s@%s ========", ctx.BuildpackID(), ctx.BuildpackVersion())
-	ctx.Logf(ctx.BuildpackName())
+	ctx.Logf("=== %s (%s@%s) ===", ctx.BuildpackName(), ctx.BuildpackID(), ctx.BuildpackVersion())
 
 	status := StatusInternal
 	defer func(now time.Time) {
@@ -269,7 +264,6 @@ func (ctx *Context) CacheMiss(tag string) {
 // Span emits a structured Stackdriver span.
 func (ctx *Context) Span(label string, start time.Time, status Status) {
 	now := time.Now()
-	ctx.Logf("Timing %v %s `%s`", time.Since(start), status, label)
 	attributes := map[string]interface{}{
 		"/buildpack_id":      ctx.BuildpackID(),
 		"/buildpack_name":    ctx.BuildpackName(),

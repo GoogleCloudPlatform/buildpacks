@@ -71,7 +71,7 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	}
 
-	env.SetFunctionsEnvVars(ctx, l)
+	ctx.SetFunctionsEnvVars(l)
 
 	ctx.ExecUser([]string{"python3", "-m", "compileall", "."})
 	ctx.AddWebProcess([]string{"functions-framework"})

@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 licenses(["notice"])
 
@@ -8,8 +8,12 @@ go_library(
     name = "env",
     srcs = ["env.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    deps = [
-        "//pkg/gcpbuildpack",
-        "@com_github_buildpack_libbuildpack//layers:go_default_library",
-    ],
+)
+
+go_test(
+    name = "env_test",
+    size = "small",
+    srcs = ["env_test.go"],
+    embed = [":env"],
+    rundir = ".",
 )

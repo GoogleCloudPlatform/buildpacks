@@ -107,7 +107,7 @@ func buildFn(ctx *gcp.Context) error {
 		ff = filepath.Join(nm, ff)
 	}
 
-	env.SetFunctionsEnvVars(ctx, l)
+	ctx.SetFunctionsEnvVars(l)
 
 	ctx.AddWebProcess([]string{"/bin/bash", "-c", ff})
 	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)

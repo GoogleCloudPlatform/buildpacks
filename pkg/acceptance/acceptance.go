@@ -138,7 +138,7 @@ func TestApp(t *testing.T, builder string, cfg Test) {
 	t.Helper()
 
 	env := envSliceAsMap(t, cfg.Env)
-	env["BP_DEBUG"] = "true"
+	env["GOOGLE_DEBUG"] = "true"
 
 	if cfg.Name == "" {
 		cfg.Name = cfg.App
@@ -187,7 +187,7 @@ func TestBuildFailure(t *testing.T, builder string, cfg FailureTest) {
 	t.Helper()
 
 	env := envSliceAsMap(t, cfg.Env)
-	env["BP_DEBUG"] = "true"
+	env["GOOGLE_DEBUG"] = "true"
 
 	if cfg.Name == "" {
 		cfg.Name = cfg.App

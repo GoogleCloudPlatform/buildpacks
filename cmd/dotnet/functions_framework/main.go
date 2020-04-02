@@ -41,7 +41,7 @@ func detectFn(ctx *gcp.Context) error {
 
 func buildFn(ctx *gcp.Context) error {
 	l := ctx.Layer(layerName)
-	env.SetFunctionsEnvVars(ctx, l)
+	ctx.SetFunctionsEnvVars(l)
 	ctx.WriteMetadata(l, nil, layers.Build, layers.Launch)
 	return nil
 }

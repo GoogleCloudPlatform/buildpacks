@@ -15,8 +15,28 @@
 package gcpbuildpack
 
 import (
+	"os"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/buildpack/libbuildpack/layers"
 )
+
+// SetFunctionsEnvVars overrides functions environment variables.
+func (ctx *Context) SetFunctionsEnvVars(l *layers.Layer) {
+	if target := os.Getenv(env.FunctionTarget); target != "" {
+		ctx.DefaultLaunchEnv(l, env.FunctionTarget, target)
+	} else {
+		ctx.Exit(1, UserErrorf("required env var %s not found", env.FunctionTarget))
+	}
+
+	if signature, ok := os.LookupEnv(env.FunctionSignatureType); ok {
+		ctx.DefaultLaunchEnv(l, env.FunctionSignatureType, signature)
+	}
+
+	if source, ok := os.LookupEnv(env.FunctionSource); ok {
+		ctx.DefaultLaunchEnv(l, env.FunctionSource, source)
+	}
+}
 
 // AppendBuildEnv appends the value of this environment variable to any previous declarations of the value without any
 // delimitation.  If delimitation is important during concatenation, callers are required to add it.

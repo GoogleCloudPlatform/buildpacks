@@ -63,7 +63,7 @@ func buildFn(ctx *gcp.Context) error {
 	l := ctx.Layer(layerName)
 	ctx.Setenv("GOPATH", l.Root)
 
-	env.SetFunctionsEnvVars(ctx, l)
+	ctx.SetFunctionsEnvVars(l)
 
 	fnTarget := os.Getenv(env.FunctionTarget)
 
