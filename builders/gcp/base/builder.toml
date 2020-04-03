@@ -122,6 +122,17 @@ description = "GCP Builder for all runtimes"
     optional = true
 
   [[order.group]]
+    id = "google.config.entrypoint"
+
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.maven"
+    optional = true
+
+  [[order.group]]
     id = "google.java.entrypoint"
 
 ##########

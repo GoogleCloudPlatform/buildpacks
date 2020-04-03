@@ -17,9 +17,7 @@ package main
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 )
@@ -34,11 +32,6 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	if ep := os.Getenv(env.Entrypoint); ep != "" {
-		// Use exec because lifecycle/launcher will assume the whole command is a single executable.
-		ctx.AddWebProcess([]string{"/bin/bash", "-c", "exec " + ep})
-		return nil
-	}
 	executable, err := java.ExecutableJar(ctx)
 	if err != nil {
 		return fmt.Errorf("finding executable jar: %w", err)

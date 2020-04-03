@@ -29,10 +29,11 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:    "simple Java application",
-			App:     "java/simple",
-			Env:     []string{"GOOGLE_ENTRYPOINT=java Main.java"},
-			MustUse: []string{javaRuntime, javaEntrypoint},
+			Name:       "simple Java application",
+			App:        "java/simple",
+			Env:        []string{"GOOGLE_ENTRYPOINT=java Main.java"},
+			MustUse:    []string{javaRuntime, entrypoint},
+			MustNotUse: []string{javaEntrypoint},
 		},
 		{
 			Name: "Java runtime version respected",
@@ -43,19 +44,21 @@ func TestAcceptance(t *testing.T) {
 				"GOOGLE_ENTRYPOINT=java Main.java",
 				"GOOGLE_RUNTIME_VERSION=11.0.5+10",
 			},
-			MustUse: []string{javaRuntime, javaEntrypoint},
+			MustUse:    []string{javaRuntime, entrypoint},
+			MustNotUse: []string{javaEntrypoint},
 		},
 		{
 			Name:       "Java selected via GOOGLE_RUNTIME",
 			App:        "override",
 			Env:        []string{"GOOGLE_RUNTIME=java", "GOOGLE_ENTRYPOINT=java Main.java"},
-			MustUse:    []string{javaRuntime, javaEntrypoint},
+			MustUse:    []string{javaRuntime, entrypoint},
 			MustNotUse: []string{goRuntime, nodeRuntime, pythonRuntime},
 		},
 		{
-			Name:    "Java maven",
-			App:     "java/hello_quarkus_maven",
-			MustUse: []string{javaMaven, javaRuntime, javaEntrypoint},
+			Name:       "Java maven",
+			App:        "java/hello_quarkus_maven",
+			MustUse:    []string{javaMaven, javaRuntime, javaEntrypoint},
+			MustNotUse: []string{entrypoint},
 		},
 	}
 	for _, tc := range testCases {
