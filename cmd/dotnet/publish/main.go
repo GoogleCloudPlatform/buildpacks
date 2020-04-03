@@ -152,16 +152,9 @@ func getEntrypoint(ctx *gcp.Context, bin, proj string) ([]string, error) {
 }
 
 func getEntrypointCmd(ctx *gcp.Context, ep string) []string {
-	// Check the default output, which is a binary named the same thing as the project file (minus the .*proj extension).
-	if ctx.FileExists(ep) {
-		return []string{ep}
-	}
-
-	// If not, check for a *.dll with that name. In this case, prefix the entrypoint with `dotnet run`.
 	if ctx.FileExists(ep + ".dll") {
-		return []string{"dotnet", "run", fmt.Sprintf("%s.dll", ep)}
+		return []string{"dotnet", fmt.Sprintf("%s.dll", ep)}
 	}
-
 	return nil
 }
 

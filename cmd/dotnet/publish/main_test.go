@@ -117,22 +117,10 @@ func TestGetEntrypoint(t *testing.T) {
 		want string
 	}{
 		{
-			name: "exe from project file",
-			exe:  "myapp",
-			proj: "myapp.proj",
-			want: "{{.Tmp}}/myapp",
-		},
-		{
 			name: "dll from project file",
 			exe:  "myapp.dll",
 			proj: "myapp.proj",
 			want: "dotnet run {{.Tmp}}/myapp.dll",
-		},
-		{
-			name: "exe from project file with dots",
-			exe:  "my.app",
-			proj: "my.app.proj",
-			want: "{{.Tmp}}/my.app",
 		},
 		{
 			name: "dll from project file with dots",
@@ -164,7 +152,7 @@ func TestGetEntrypoint(t *testing.T) {
 		</PropertyGroup>
 
 	</Project>`,
-			want: "dotnet run {{.Tmp}}/customapp.dll",
+			want: "dotnet {{.Tmp}}/customapp.dll",
 		},
 	}
 
