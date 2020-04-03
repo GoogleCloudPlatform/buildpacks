@@ -423,7 +423,7 @@ func buildApp(t *testing.T, app, image, builder string, env map[string]string, c
 	start := time.Now()
 	t.Logf("Building application (logs %s)", filepath.Dir(outFile.Name()))
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("Error building application: %v", err)
+		t.Fatalf("Error building application: %v (%v)", err, errb.String())
 	}
 
 	// Scan for incorrect cache hits/misses.
