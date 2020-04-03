@@ -46,17 +46,50 @@ directory.
 * GCF
   * Builders used for runtimes in Cloud Functions.
 
-
 ### gcpbuildpack package
 
-TODO: How layers/caching works in our buildpacks.
+The `gcpbuildpack` package implements general functionality that is shared
+across buildpacks. In addition to the signature of the `build` and `detect`
+functions, the package includes the `Context` struct that implements functions
+to manipulate files and layers and to execute arbitrary commands.
+
+Each buildpack has a single `main.go` file that implements a `detectFn` and
+a `buildFn`:
+
+`detectFn` is invoked through `/bin/detect`.
+A buildpack signals that it can participate in the build unless it explicitly
+opts out using `ctx.OptOut` or returns an error.
+
+`buildFn` is invoked through `/bin/build`.
 
 ### Error attribution
 
 The `gcpbuildpack` package supports error attribution to differentiate between
-user and operator errors.
+user and platform errors. Generally, any error that was triggered while
+processing user code, such as installing dependencies or compiling a program,
+should be attributed to the user. Errors that occur while manipulating files or
+directories or when performing actions the user has no control over should be
+attributed to the platform. Some errors may be ambiguous, such as downloading
+dependencies from a remote repository, can be attributable to both the user
+(wrong dependency version) and the platform (network error). In these cases,
+errors should be attributed based on the **most likely** cause. It is much
+more likely that the dependencies file has an incorrect version, undeclared
+dependency, or an outdated lock file than it is for the network to be down.
 
-TODO: Exaplain which calls should be user- and operator-attributed.
+Some examples:
+* Reading package.json: PLATFORM (I/O error)
+* Unmarshalling package.json: USER (invalid package.json file)
+* Compiling a Go program: USER (syntax error, dependency not found, etc.)
+* Downloading Go modules: USER (module not found more likely than network issue)
+
+### Exec vs ExecUser
+
+The `Context` struct provides convenience functions to execute arbitrary
+commands. Use `Exec` and its derivatives for internal commands such as moving
+files and `ExecUser` its derivatives for commands that depend on user input,
+such as downloading dependencies or compiling a program. In all cases, prefer
+using specialized functions when available on `Context` instead of `Exec`, for
+example `ctx.Symlink` instead of `ln -s`.
 
 ### Compiling a buildpack
 

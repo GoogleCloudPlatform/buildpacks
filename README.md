@@ -61,7 +61,7 @@ pack build <app> --builder gcr.io/buildpacks/builder
 ### Runtime configuration
 
 GCP Buildpacks support configuration using a set of environment
-variables that are supported accross runtimes.
+variables that are supported across runtimes.
 
 * `GOOGLE_DEVMODE`
   * Enables the development mode buildpack.
