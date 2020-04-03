@@ -21,9 +21,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Newtonsoft.Json;
+using Dep;
 
-namespace cs_web
+namespace App
 {
     public class Startup
     {
@@ -33,10 +33,6 @@ namespace cs_web
         {
         }
 
-        public class Item
-        {
-            public int Id { get; set; }
-        }
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
@@ -47,14 +43,7 @@ namespace cs_web
             {
                 endpoints.MapGet("/", async context =>
                 {
-                    Item item = new Item
-                    {
-                        Id = 1,
-                    };
-
-                    // This value is intentionally ignored. It is only used to verify imports work.
-                    string json = JsonConvert.SerializeObject(item, Formatting.Indented);
-                    await context.Response.WriteAsync("PASS");
+                    await context.Response.WriteAsync(Common.Message());
                 });
             });
         }

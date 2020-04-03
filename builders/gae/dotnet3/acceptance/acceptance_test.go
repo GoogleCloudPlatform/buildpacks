@@ -42,6 +42,11 @@ func TestAcceptance(t *testing.T) {
 			App:  "cs_with_dep",
 		},
 		{
+			Name: "cs with local deps",
+			App:  "cs_local_deps",
+			Env:  []string{"GOOGLE_BUILDABLE=App"},
+		},
+		{
 			Name: "cs custom project file",
 			App:  "cs_nested_proj",
 			Env:  []string{"GOOGLE_BUILDABLE=app/app.csproj"},

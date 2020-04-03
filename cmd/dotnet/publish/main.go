@@ -68,28 +68,25 @@ func buildFn(ctx *gcp.Context) error {
 		proj = projFiles[0]
 	}
 
-	pkgLayer := ctx.Layer("packages")
-	// We run a restore regardless (it generates some files into the application root that publish expects to find),
-	// but we only need to do it on dependencies if we don't have a hot cache.
-	restoreCmd := []string{"dotnet", "restore", "--packages", pkgLayer.Root, proj}
-
 	ctx.Logf("Installing application dependencies.")
+	pkgLayer := ctx.Layer("packages")
 	cached, meta, err := checkCache(ctx, pkgLayer)
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
 	if cached {
 		ctx.CacheHit(cacheTag)
-		restoreCmd = append(restoreCmd, "--no-dependencies")
 	} else {
 		ctx.CacheMiss(cacheTag)
 	}
 
-	ctx.ExecUserWithParams(gcp.ExecParams{Cmd: restoreCmd, Env: []string{"DOTNET_CLI_TELEMETRY_OPTOUT=true"}}, gcp.UserErrorKeepStderrTail)
+	// Run restore regardless of cache status because it generates files expected by publish.
+	cmd := []string{"dotnet", "restore", "--packages", pkgLayer.Root, proj}
+	ctx.ExecUserWithParams(gcp.ExecParams{Cmd: cmd, Env: []string{"DOTNET_CLI_TELEMETRY_OPTOUT=true"}}, gcp.UserErrorKeepStderrTail)
 	ctx.WriteMetadata(pkgLayer, &meta, layers.Build, layers.Cache)
 
 	binLayer := ctx.Layer("bin")
-	cmd := []string{
+	cmd = []string{
 		"dotnet",
 		"publish",
 		"-nologo",
@@ -129,12 +126,13 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 // getEntrypoint retrieves the appropriate entrypoint for this build.
-// * Get project filename from GOOGLE_BUILDABLE or, if empty, the application root.
 // * Check the output directory for a binary or a libary with the same name as the project file (e.g. app.csproj --> app or app.dll).
 // * If not found, parse the project file for an AssemblyName field and check for the associated binary or library file in the output directory.
 // * If not found, return user error.
-func getEntrypoint(ctx *gcp.Context, root, proj string) ([]string, error) {
-	ep := getEntrypointCmd(ctx, filepath.Join(root, strings.Split(filepath.Base(proj), ".")[0]))
+func getEntrypoint(ctx *gcp.Context, bin, proj string) ([]string, error) {
+	ctx.Logf("Determining entrypoint from output directory %s and project file %s", bin, proj)
+	p := strings.TrimSuffix(filepath.Base(proj), filepath.Ext(proj))
+	ep := getEntrypointCmd(ctx, filepath.Join(bin, p))
 	if ep != nil {
 		return ep, nil
 	}
@@ -144,13 +142,13 @@ func getEntrypoint(ctx *gcp.Context, root, proj string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("getting assembly name: %w", err)
 	}
-	ep = getEntrypointCmd(ctx, filepath.Join(root, an))
+	ep = getEntrypointCmd(ctx, filepath.Join(bin, an))
 	if ep != nil {
 		return ep, nil
 	}
 
 	// If we didn't get anything from that, something went wrong.
-	return nil, gcp.UserErrorf("unable to find executable produced from %s, try using the default output name or the AssemblyName property", proj)
+	return nil, gcp.UserErrorf("unable to find executable produced from %s, try setting the AssemblyName property", proj)
 }
 
 func getEntrypointCmd(ctx *gcp.Context, ep string) []string {
@@ -223,16 +221,16 @@ func getAssemblyName(ctx *gcp.Context, proj string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("reading project file: %w", err)
 	}
-	an := ""
+	var assemblyNames []string
 	for _, pg := range p.PropertyGroups {
 		if pg.AssemblyName != "" {
-			if an != "" {
-				return "", gcp.UserErrorf("expected up to one AssemblyName defined, found multiple")
-			}
-			an = pg.AssemblyName
+			assemblyNames = append(assemblyNames, pg.AssemblyName)
 		}
 	}
-	return an, nil
+	if len(assemblyNames) != 1 {
+		return "", gcp.UserErrorf("expected exactly one AssemblyName, found %v", assemblyNames)
+	}
+	return assemblyNames[0], nil
 }
 
 func readProjectFile(ctx *gcp.Context, proj string) (Project, error) {

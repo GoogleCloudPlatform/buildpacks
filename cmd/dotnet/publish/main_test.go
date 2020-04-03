@@ -36,8 +36,7 @@ func TestGetAssemblyName(t *testing.T) {
 	}{
 		{
 			name: "no AssemblyName fields",
-			want: "",
-			err:  false,
+			err:  true,
 			data: `<Project Sdk="Microsoft.NET.Sdk.Web">
 
 	</Project>`,
@@ -128,6 +127,18 @@ func TestGetEntrypoint(t *testing.T) {
 			exe:  "myapp.dll",
 			proj: "myapp.proj",
 			want: "dotnet run {{.Tmp}}/myapp.dll",
+		},
+		{
+			name: "exe from project file with dots",
+			exe:  "my.app",
+			proj: "my.app.proj",
+			want: "{{.Tmp}}/my.app",
+		},
+		{
+			name: "dll from project file with dots",
+			exe:  "my.app.dll",
+			proj: "my.app.proj",
+			want: "dotnet run {{.Tmp}}/my.app.dll",
 		},
 		{
 			name: "exe from assembly name",
