@@ -120,17 +120,17 @@ func TestGetEntrypoint(t *testing.T) {
 			name: "dll from project file",
 			exe:  "myapp.dll",
 			proj: "myapp.proj",
-			want: "dotnet run {{.Tmp}}/myapp.dll",
+			want: "dotnet {{.Tmp}}/myapp.dll",
 		},
 		{
 			name: "dll from project file with dots",
 			exe:  "my.app.dll",
 			proj: "my.app.proj",
-			want: "dotnet run {{.Tmp}}/my.app.dll",
+			want: "dotnet {{.Tmp}}/my.app.dll",
 		},
 		{
 			name: "exe from assembly name",
-			exe:  "customapp",
+			exe:  "customapp.dll",
 			proj: "myapp.proj",
 			data: `<Project Sdk="Microsoft.NET.Sdk.Web">
 
@@ -139,7 +139,7 @@ func TestGetEntrypoint(t *testing.T) {
 		</PropertyGroup>
 
 	</Project>`,
-			want: "{{.Tmp}}/customapp",
+			want: "dotnet {{.Tmp}}/customapp.dll",
 		},
 		{
 			name: "dll from assembly name",
