@@ -17,13 +17,13 @@
 package main
 
 import (
-	"encoding/xml"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/dotnet"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpack/libbuildpack/layers"
@@ -196,21 +196,8 @@ func checkCache(ctx *gcp.Context, l *layers.Layer) (bool, *metadata, error) {
 	return false, &meta, nil
 }
 
-// Project represents a .NET project file.
-type Project struct {
-	XMLName        xml.Name        `xml:"Project"`
-	PropertyGroups []PropertyGroup `xml:"PropertyGroup"`
-}
-
-// PropertyGroup contains information about a project build.
-type PropertyGroup struct {
-	AssemblyName     string   `xml:"AssemblyName"`
-	TargetFramework  []string `xml:"TargetFramework"`
-	TargetFrameworks []string `xml:"TargetFrameworks"`
-}
-
 func getAssemblyName(ctx *gcp.Context, proj string) (string, error) {
-	p, err := readProjectFile(ctx, proj)
+	p, err := dotnet.ReadProjectFile(ctx, proj)
 	if err != nil {
 		return "", fmt.Errorf("reading project file: %w", err)
 	}
@@ -224,13 +211,4 @@ func getAssemblyName(ctx *gcp.Context, proj string) (string, error) {
 		return "", gcp.UserErrorf("expected exactly one AssemblyName, found %v", assemblyNames)
 	}
 	return assemblyNames[0], nil
-}
-
-func readProjectFile(ctx *gcp.Context, proj string) (Project, error) {
-	data := ctx.ReadFile(proj)
-	var p Project
-	if err := xml.Unmarshal(data, &p); err != nil {
-		return p, gcp.UserErrorf("unmarshalling %s: %v", proj, err)
-	}
-	return p, nil
 }
