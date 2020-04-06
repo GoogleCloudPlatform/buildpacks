@@ -31,9 +31,9 @@ import (
 
 const (
 	pythonLayer = "python"
-	pythonURL   = "https://storage.googleapis.com/artifacts.gae-runtimes-dev.appspot.com/buildpacks/python/python-%s.tar.gz"
-	// TODO: Should we maintain a mapping of supported/unsupported versions?
-	versionURL  = "https://storage.googleapis.com/artifacts.gae-runtimes-dev.appspot.com/buildpacks/python/latest.txt"
+	pythonURL   = "https://storage.googleapis.com/gcp-buildpacks/python/python-%s.tar.gz"
+	// TODO: Add mapping for stable/beta versions.
+	versionURL  = "https://storage.googleapis.com/gcp-buildpacks/python/latest.version"
 	versionFile = ".python-version"
 )
 
@@ -73,7 +73,6 @@ func buildFn(ctx *gcp.Context) error {
 		return gcp.UserErrorf("Runtime version %s does not exist at %s (status %d). You can specify the version with %s.", version, archiveURL, code, env.RuntimeVersion)
 	}
 
-	// Download and install Python in layer.
 	ctx.Logf("Installing Python v%s", version)
 	command := fmt.Sprintf("curl --fail --show-error --silent --location %s | tar xz --directory=%s", archiveURL, l.Root)
 	ctx.Exec([]string{"bash", "-c", command})
