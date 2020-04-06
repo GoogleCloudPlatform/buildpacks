@@ -3,7 +3,7 @@ api = "0.2"
 [buildpack]
 id = "google.php.appengine"
 version = "0.9.0"
-name = "Google - PHP - App Engine"
+name = "PHP - App Engine"
 
 [[stacks]]
 id = "google.php73"

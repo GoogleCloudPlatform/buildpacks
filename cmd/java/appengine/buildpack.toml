@@ -3,7 +3,7 @@ api = "0.2"
 [buildpack]
 id = "google.java.appengine"
 version = "0.9.0"
-name = "Google - Java - App Engine"
+name = "Java - App Engine"
 
 [[stacks]]
 id = "google"

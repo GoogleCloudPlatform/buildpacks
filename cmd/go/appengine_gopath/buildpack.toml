@@ -3,7 +3,7 @@ api = "0.2"
 [buildpack]
 id = "google.go.appengine_gopath"
 version = "0.9.0"
-name = "Google - Go - App Engine GOPATH"
+name = "Go - App Engine GOPATH"
 
 [[stacks]]
 id = "google.go113"

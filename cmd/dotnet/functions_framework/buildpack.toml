@@ -3,7 +3,7 @@ api = "0.2"
 [buildpack]
 id = "google.dotnet.functions-framework"
 version = "0.0.1"
-name = "Google - .NET - Functions Framework"
+name = ".NET - Functions Framework"
 
 [[stacks]]
 id = "google"

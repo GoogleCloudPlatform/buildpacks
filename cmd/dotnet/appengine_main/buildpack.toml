@@ -3,7 +3,7 @@ api = "0.2"
 [buildpack]
 id = "google.dotnet.appengine_main"
 version = "0.9.0"
-name = "Google - .NET - App Engine Main"
+name = ".NET - App Engine Main"
 
 [[stacks]]
 id = "google.dotnet3"

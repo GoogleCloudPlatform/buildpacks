@@ -3,7 +3,7 @@ api = "0.2"
 [buildpack]
 id = "google.dotnet.publish"
 version = "0.9.0"
-name = "Google - .NET - Publish"
+name = ".NET - Publish"
 
 [[stacks]]
 id = "google"

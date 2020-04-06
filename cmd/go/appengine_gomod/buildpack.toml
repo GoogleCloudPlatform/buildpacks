@@ -3,7 +3,7 @@ api = "0.2"
 [buildpack]
 id = "google.go.appengine_gomod"
 version = "0.9.0"
-name = "Google - Go - App Engine Gomod"
+name = "App Engine Gomod"
 
 [[stacks]]
 id = "google.go113"

@@ -3,7 +3,7 @@ api = "0.2"
 [buildpack]
 id = "google.python.functions-framework"
 version = "0.9.0"
-name = "Google - Python - Functions Framework"
+name = "Python - Functions Framework"
 
 [[stacks]]
 id = "google"

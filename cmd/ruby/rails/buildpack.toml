@@ -3,7 +3,7 @@ api = "0.2"
 [buildpack]
 id = "google.ruby.rails"
 version = "0.9.0"
-name = "Google - Ruby - Rails"
+name = "Ruby - Rails"
 
 [[stacks]]
 id = "google.ruby25"

@@ -3,7 +3,7 @@ api = "0.2"
 [buildpack]
 id = "google.dotnet.runtime"
 version = "0.9.0"
-name = "Google - .NET - Runtime"
+name = ".NET - Runtime"
 
 [[stacks]]
 id = "google"

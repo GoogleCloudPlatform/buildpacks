@@ -3,7 +3,7 @@ api = "0.2"
 [buildpack]
 id = "google.nodejs.yarn"
 version = "0.9.0"
-name = "Google - Node.js - Yarn"
+name = "Node.js - Yarn"
 
 [[stacks]]
 id = "google"

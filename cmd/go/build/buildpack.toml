@@ -3,7 +3,7 @@ api = "0.2"
 [buildpack]
 id = "google.go.build"
 version = "0.9.0"
-name = "Google - Go - Build"
+name = "Go - Build"
 
 [[stacks]]
 id = "google"
