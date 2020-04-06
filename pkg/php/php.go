@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"path"
 	"path/filepath"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -112,6 +111,7 @@ func composerInstall(ctx *gcp.Context, flags []string) {
 func ComposerInstall(ctx *gcp.Context, cacheTag string, flags []string) (*layers.Layer, error) {
 	ctx.RemoveAll(Vendor)
 	l := ctx.Layer("composer")
+	layerVendor := filepath.Join(l.Root, Vendor)
 
 	// If there's no composer.lock then don't attempt to cache. We'd have to cache using composer.json,
 	// which could result in outdated dependencies if the version constraints in composer.json resolve
@@ -130,19 +130,18 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string, flags []string) (*layers
 		ctx.CacheHit(cacheTag)
 
 		// PHP expects the vendor/ directory to be in the application directory.
-		ctx.Exec([]string{"cp", "-a", path.Join(l.Root, Vendor), Vendor})
+		ctx.Exec([]string{"cp", "--archive", layerVendor, Vendor})
 	} else {
 		ctx.CacheMiss(cacheTag)
+		// Clear layer so we don't end up with outdated dependencies (e.g. something was removed from composer.json).
+		ctx.ClearLayer(l)
 		composerInstall(ctx, flags)
 
-		// Copy the vendor/ dir to the layer dir so we can cache it. First remove whatever is already there
-		// so we don't end up with outdated dependencies (e.g. something was removed from composer.json).
-		layerVendorDir := path.Join(l.Root, Vendor)
-		ctx.RemoveAll(layerVendorDir)
-		ctx.Exec([]string{"cp", "-a", Vendor, layerVendorDir})
+		// Ensure vendor exists even if no dependencies were installed.
+		ctx.MkdirAll(Vendor, 0755)
+		ctx.Exec([]string{"cp", "--archive", Vendor, layerVendor})
 	}
 
 	ctx.WriteMetadata(l, &meta, layers.Cache)
-
 	return l, nil
 }

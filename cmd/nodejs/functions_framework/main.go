@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -78,7 +77,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Install functions-framework.
 	l := ctx.Layer(layerName)
-	nm := path.Join(l.Root, "node_modules")
+	nm := filepath.Join(l.Root, "node_modules")
 	pjs := filepath.Join(cvt, "package.json")
 	pljs := filepath.Join(cvt, nodejs.PackageLock)
 

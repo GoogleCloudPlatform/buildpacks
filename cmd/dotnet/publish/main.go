@@ -74,6 +74,7 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
+	// Print cache status for testing/debugging only, `dotnet restore` reuses any existing artifacts.
 	if cached {
 		ctx.CacheHit(cacheTag)
 	} else {

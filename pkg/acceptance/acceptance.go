@@ -32,7 +32,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -304,7 +303,7 @@ func CreateBuilder(t *testing.T) (string, func()) {
 	name := builderPrefix + randString(10)
 
 	builderLoc, cleanUpBuilder := extractBuilder(t, builderSource)
-	config := path.Join(builderLoc, "builder.toml")
+	config := filepath.Join(builderLoc, "builder.toml")
 
 	if lifecycle != "" {
 		t.Logf("Using lifecycle location: %s", lifecycle)
@@ -394,7 +393,7 @@ func updateLifecycle(config, uri string) (string, error) {
 }
 
 func buildCommand(app, image, builder string, env map[string]string, cache bool) []string {
-	src := path.Join(testData, app)
+	src := filepath.Join(testData, app)
 	// Pack command to build app.
 	args := strings.Fields(fmt.Sprintf("%s build %s --builder %s --path %s --no-pull --verbose --no-color", packBin, image, builder, src))
 	if !cache {

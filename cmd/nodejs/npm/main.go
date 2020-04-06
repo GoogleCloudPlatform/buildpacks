@@ -18,7 +18,7 @@ package main
 
 import (
 	"fmt"
-	"path"
+	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -43,7 +43,7 @@ func detectFn(ctx *gcp.Context) error {
 
 func buildFn(ctx *gcp.Context) error {
 	l := ctx.Layer("npm")
-	nm := path.Join(l.Root, "node_modules")
+	nm := filepath.Join(l.Root, "node_modules")
 	ctx.RemoveAll("node_modules")
 	nodejs.EnsurePackageLock(ctx)
 
@@ -58,6 +58,7 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Exec([]string{"cp", "--archive", nm, "node_modules"})
 	} else {
 		ctx.CacheMiss(cacheTag)
+		// Clear cached node_modules to ensure we don't end up with outdated dependencies.
 		ctx.ClearLayer(l)
 		ctx.ExecUser([]string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet", "--production"})
 		// Ensure node_modules exists even if no dependencies were installed.

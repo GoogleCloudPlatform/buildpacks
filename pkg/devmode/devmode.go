@@ -101,6 +101,7 @@ func installFileWatcher(ctx *gcp.Context) {
 		ctx.CacheHit(watchexecLayer)
 	} else {
 		ctx.CacheMiss(watchexecLayer)
+		// Clear layer data to avoid files from multiple versions of watchexec.
 		ctx.ClearLayer(wxl)
 
 		binDir := filepath.Join(wxl.Root, "bin")

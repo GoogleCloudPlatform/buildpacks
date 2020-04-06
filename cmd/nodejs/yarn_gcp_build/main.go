@@ -18,7 +18,7 @@ package main
 
 import (
 	"fmt"
-	"path"
+	"path/filepath"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
@@ -54,7 +54,7 @@ func detectFn(ctx *gcp.Context) error {
 
 func buildFn(ctx *gcp.Context) error {
 	l := ctx.Layer("yarn")
-	nm := path.Join(l.Root, "node_modules")
+	nm := filepath.Join(l.Root, "node_modules")
 	ctx.RemoveAll("node_modules")
 
 	cached, meta, err := nodejs.CheckCache(ctx, l, nodejs.YarnLock)
@@ -68,6 +68,7 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Exec([]string{"cp", "--archive", nm, "node_modules"})
 	} else {
 		ctx.CacheMiss(cacheTag)
+		// Clear cached node_modules to ensure we don't end up with outdated dependencies.
 		ctx.ClearLayer(l)
 
 		cmd := []string{"yarn", "install", "--non-interactive"}
