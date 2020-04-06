@@ -12,11 +12,10 @@ alias(
     actual = "fatjar_deploy.jar",
 )
 
-# TODO: Figure out building Main.java with blaze since the Runtime.version() function is Java11
 java_binary(
     name = "fatjar",
     srcs = [
-        # "Main.java",
+        "Main.java",
     ],
     main_class = "Main",
 )

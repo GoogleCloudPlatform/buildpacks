@@ -85,7 +85,7 @@ Only applicable to the `runtime` buildpacks:
   * **Example**: `nodejs` will cause the nodejs/runtime buildpack to opt-in.
 * `GOOGLE_RUNTIME_VERSION`:
   * If specified, overrides the runtime version to install.
-  * **Example**: `13.7.0` for Node.js, `1.14.1` for Go. `11.0.6+10` for Java.
+  * **Example**: `13.7.0` for Node.js, `1.14.1` for Go. `8` for Java.
 
 ### Adding custom packages
 

@@ -57,21 +57,21 @@ func TestParseVersionJSON(t *testing.T) {
 		{
 			name: "1 release",
 			json: `[{
-  "release_name": "jdk-11.0.6+10",
+  "version_data": {"semver": "11.0.6+10"},
   "binaries": [
     {
       "os": "linux",
       "architecture": "x64",
-      "binary_type": "jdk",
-      "binary_link": "https://example.com/want"
+      "image_type": "jdk",
+      "package": {"link": "https://example.com/want"}
     }
   ]
 }]`,
-			wantVersion: "jdk-11.0.6+10",
+			wantVersion: "11.0.6+10",
 			wantBinaries: []binary{
 				binary{
-					BinaryLink:   "https://example.com/want",
-					BinaryType:   "jdk",
+					BinaryPkg:    binaryPkg{Link: "https://example.com/want"},
+					ImageType:    "jdk",
 					OS:           "linux",
 					Architecture: "x64",
 				},
@@ -80,32 +80,32 @@ func TestParseVersionJSON(t *testing.T) {
 		{
 			name: "2 releases",
 			json: `[{
-  "release_name": "jdk-11.0.5+10",
+  "version_data": {"semver": "11.0.5+10"},
   "binaries": [
     {
       "os": "linux",
       "architecture": "x64",
-      "binary_type": "jdk",
-      "binary_link": "https://example.com/want"
+      "image_type": "jdk",
+      "package": {"link": "https://example.com/want"}
     }
   ]
 },
 {
-	"release_name": "jdk-11.0.6+10",
+	"version_data": {"semver": "11.0.6+10"},
 	"binaries": [
 		{
 			"os": "linux",
 			"architecture": "x64",
-			"binary_type": "jdk",
-			"binary_link": "https://example2.com/want"
+			"image_type": "jdk",
+      "package": {"link": "https://example2.com/want"}
 		}
 	]
 }]`,
-			wantVersion: "jdk-11.0.6+10",
+			wantVersion: "11.0.5+10",
 			wantBinaries: []binary{
 				binary{
-					BinaryLink:   "https://example2.com/want",
-					BinaryType:   "jdk",
+					BinaryPkg:    binaryPkg{Link: "https://example.com/want"},
+					ImageType:    "jdk",
 					OS:           "linux",
 					Architecture: "x64",
 				},
@@ -118,8 +118,8 @@ func TestParseVersionJSON(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parseUserVersionJSON() returned error: %v", err)
 			}
-			if release.Version != tc.wantVersion {
-				t.Errorf("release version from parseVersionJSON()=%s, want=%s", release.Version, tc.wantVersion)
+			if release.VersionData.Semver != tc.wantVersion {
+				t.Errorf("release version from parseVersionJSON()=%s, want=%s", release.VersionData.Semver, tc.wantVersion)
 			}
 			if !reflect.DeepEqual(release.Binaries, tc.wantBinaries) {
 				t.Errorf("binaries from parseVersionJSON()=%v, want=%v", release.Binaries, tc.wantBinaries)
@@ -162,11 +162,11 @@ func TestExtractRelease(t *testing.T) {
 		{
 			name: "1 binary",
 			javaRelease: javaRelease{
-				Version: "jdk-11.0.6+10",
+				VersionData: versionData{Semver: "11.0.6+10"},
 				Binaries: []binary{
 					binary{
-						BinaryLink:   "https://example.com/want",
-						BinaryType:   "jdk",
+						BinaryPkg:    binaryPkg{Link: "https://example.com/want"},
+						ImageType:    "jdk",
 						OS:           "linux",
 						Architecture: "x64",
 					},
@@ -178,17 +178,17 @@ func TestExtractRelease(t *testing.T) {
 		{
 			name: "2 binaries with wrong binary type",
 			javaRelease: javaRelease{
-				Version: "jdk-11.0.6+10",
+				VersionData: versionData{Semver: "11.0.6+10"},
 				Binaries: []binary{
 					binary{
-						BinaryLink:   "https://example.com/want",
-						BinaryType:   "jre",
+						BinaryPkg:    binaryPkg{Link: "https://example.com/want"},
+						ImageType:    "jre",
 						OS:           "linux",
 						Architecture: "x64",
 					},
 					binary{
-						BinaryLink:   "https://example2.com/want",
-						BinaryType:   "jdk",
+						BinaryPkg:    binaryPkg{Link: "https://example2.com/want"},
+						ImageType:    "jdk",
 						OS:           "linux",
 						Architecture: "x64",
 					},
@@ -200,17 +200,17 @@ func TestExtractRelease(t *testing.T) {
 		{
 			name: "2 binaries with wrong OS",
 			javaRelease: javaRelease{
-				Version: "jdk-11.0.6+10",
+				VersionData: versionData{Semver: "11.0.6+10"},
 				Binaries: []binary{
 					binary{
-						BinaryLink:   "https://example.com/want",
-						BinaryType:   "jdk",
+						BinaryPkg:    binaryPkg{Link: "https://example.com/want"},
+						ImageType:    "jdk",
 						OS:           "windows",
 						Architecture: "x64",
 					},
 					binary{
-						BinaryLink:   "https://example2.com/want",
-						BinaryType:   "jdk",
+						BinaryPkg:    binaryPkg{Link: "https://example2.com/want"},
+						ImageType:    "jdk",
 						OS:           "linux",
 						Architecture: "x64",
 					},
@@ -222,17 +222,17 @@ func TestExtractRelease(t *testing.T) {
 		{
 			name: "2 binaries with wrong architecture",
 			javaRelease: javaRelease{
-				Version: "jdk-11.0.6+10",
+				VersionData: versionData{Semver: "11.0.6+10"},
 				Binaries: []binary{
 					binary{
-						BinaryLink:   "https://example.com/want",
-						BinaryType:   "jdk",
+						BinaryPkg:    binaryPkg{Link: "https://example.com/want"},
+						ImageType:    "jdk",
 						OS:           "linux",
 						Architecture: "x86",
 					},
 					binary{
-						BinaryLink:   "https://example2.com/want",
-						BinaryType:   "jdk",
+						BinaryPkg:    binaryPkg{Link: "https://example2.com/want"},
+						ImageType:    "jdk",
 						OS:           "linux",
 						Architecture: "x64",
 					},
@@ -266,24 +266,24 @@ func TestExtractReleaseFail(t *testing.T) {
 		{
 			name: "0 binaries",
 			javaRelease: javaRelease{
-				Version:  "jdk-11.0.6+10",
-				Binaries: []binary{},
+				VersionData: versionData{Semver: "11.0.6+10"},
+				Binaries:    []binary{},
 			},
 		},
 		{
 			name: "binaries with wrong binary fields",
 			javaRelease: javaRelease{
-				Version: "jdk-11.0.6+10",
+				VersionData: versionData{Semver: "11.0.6+10"},
 				Binaries: []binary{
 					binary{
-						BinaryLink:   "https://example.com/want",
-						BinaryType:   "jre",
+						BinaryPkg:    binaryPkg{Link: "https://example.com/want"},
+						ImageType:    "jre",
 						OS:           "linux",
 						Architecture: "x64",
 					},
 					binary{
-						BinaryLink:   "https://example2.com/want",
-						BinaryType:   "jdk",
+						BinaryPkg:    binaryPkg{Link: "https://example2.com/want"},
+						ImageType:    "jdk",
 						OS:           "windows",
 						Architecture: "x64",
 					},

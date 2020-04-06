@@ -38,11 +38,11 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name: "Java runtime version respected",
 			App:  "java/simple",
-			// Checking runtime version 11.0.5+10 to ensure that it is not downloading latest version.
-			Path: "/version?want=11.0.5+10",
+			// Checking runtime version 8 to ensure that it is not downloading latest Java 11 version.
+			Path: "/version?want=8",
 			Env: []string{
-				"GOOGLE_ENTRYPOINT=java Main.java",
-				"GOOGLE_RUNTIME_VERSION=11.0.5+10",
+				"GOOGLE_ENTRYPOINT=javac Main.java; java Main",
+				"GOOGLE_RUNTIME_VERSION=8",
 			},
 			MustUse:    []string{javaRuntime, entrypoint},
 			MustNotUse: []string{javaEntrypoint},

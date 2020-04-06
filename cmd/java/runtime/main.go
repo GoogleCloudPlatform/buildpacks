@@ -20,9 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
-	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -32,10 +30,9 @@ import (
 )
 
 const (
-	javaLayer = "java"
-	// TODO: Allow other versions of Java outside of Java11
-	javaVersionURL = "https://api.adoptopenjdk.net/v2/info/releases/openjdk11?os=linux&arch=x64&heap_size=normal&openjdk_impl=hotspot&type=jdk"
-	versionPrefix  = "jdk-"
+	javaLayer             = "java"
+	javaVersionURL        = "https://api.adoptopenjdk.net/v3/assets/feature_releases/%s/ga?architecture=x64&heap_size=normal&image_type=jdk&jvm_impl=hotspot&os=linux&page=0&page_size=1&project=jdk&sort_order=DESC&vendor=adoptopenjdk"
+	defaultFeatureVersion = "11"
 )
 
 // metadata represents metadata stored for a runtime layer.
@@ -57,18 +54,17 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	var query, version, archiveURL, releaseURL string
+	featureVersion := defaultFeatureVersion
 	if v := os.Getenv(env.RuntimeVersion); v != "" {
-		query = "&release=" + versionPrefix + url.QueryEscape(v)
-		version = v
-		ctx.Logf("Using requested runtime version: %s", version)
+		featureVersion = v
+		ctx.Logf("Using requested runtime feature version: %s", featureVersion)
 	} else {
-		ctx.Logf("Using latest Java 11 runtime version.")
+		ctx.Logf("Using latest Java %s runtime version.", defaultFeatureVersion)
 	}
 
-	releaseURL = javaVersionURL + query
+	releaseURL := fmt.Sprintf(javaVersionURL, featureVersion)
 	if code := ctx.HTTPStatus(releaseURL); code != http.StatusOK {
-		return gcp.UserErrorf("Runtime version %s does not exist at %s (status %d). You can specify the version with %s.", version, releaseURL, code, env.RuntimeVersion)
+		return gcp.UserErrorf("Java feature version %s does not exist at %s (status %d). You can specify the feature version with %s. See available feature runtime versions at https://api.adoptopenjdk.net/v3/info/available_releases", featureVersion, releaseURL, code, env.RuntimeVersion)
 	}
 
 	result := ctx.Exec([]string{"curl", "--silent", releaseURL})
@@ -77,7 +73,7 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("parsing JSON returned by %s: %w", releaseURL, err)
 	}
 
-	version, archiveURL, err = extractRelease(release)
+	version, archiveURL, err := extractRelease(release)
 	if err != nil {
 		return fmt.Errorf("extracting release returned by %s: %w", releaseURL, err)
 	}
@@ -109,16 +105,24 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
+type binaryPkg struct {
+	Link string `json:"link"`
+}
+
 type binary struct {
-	BinaryLink   string `json:"binary_link"`
-	BinaryType   string `json:"binary_type"`
-	OS           string `json:"os"`
-	Architecture string `json:"architecture"`
+	BinaryPkg    binaryPkg `json:"package"`
+	ImageType    string    `json:"image_type"`
+	OS           string    `json:"os"`
+	Architecture string    `json:"architecture"`
+}
+
+type versionData struct {
+	Semver string `json:"semver"`
 }
 
 type javaRelease struct {
-	Version  string   `json:"release_name"`
-	Binaries []binary `json:"binaries"`
+	VersionData versionData `json:"version_data"`
+	Binaries    []binary    `json:"binaries"`
 }
 
 // parseVersionJSON parses a JSON array of version infomation
@@ -130,20 +134,20 @@ func parseVersionJSON(jsonStr string) (javaRelease, error) {
 	if len(releases) == 0 {
 		return javaRelease{}, fmt.Errorf("empty list of releases")
 	}
-	return releases[len(releases)-1], nil
+	return releases[0], nil
 }
 
 // extractRelease returns the version name and archiveURL from a javaRelease.
 func extractRelease(release javaRelease) (string, string, error) {
 	if len(release.Binaries) == 0 {
-		return "", "", fmt.Errorf("no binaries in given release %s", release.Version)
+		return "", "", fmt.Errorf("no binaries in given release %s", release.VersionData.Semver)
 	}
 
 	for _, binary := range release.Binaries {
-		if binary.BinaryType == "jdk" && binary.OS == "linux" && binary.Architecture == "x64" {
-			return strings.TrimPrefix(release.Version, versionPrefix), binary.BinaryLink, nil
+		if binary.ImageType == "jdk" && binary.OS == "linux" && binary.Architecture == "x64" {
+			return release.VersionData.Semver, binary.BinaryPkg.Link, nil
 		}
 	}
 
-	return "", "", fmt.Errorf("jdk/linux/x64 binary not found in release %s", release.Version)
+	return "", "", fmt.Errorf("jdk/linux/x64 binary not found in release %s", release.VersionData.Semver)
 }
