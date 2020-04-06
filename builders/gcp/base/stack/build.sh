@@ -13,6 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# The build.sh script builds stack images for the gcp/base builder.
+#
+# The script builds the following two images:
+#   gcr.io/buildpacks/gcp/run
+#   gcr.io/buildpacks/gcp/build
+#
+# It also validates that the build image includes all required licenses.
+#
+# Usage:
+#   ./build.sh
+
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
