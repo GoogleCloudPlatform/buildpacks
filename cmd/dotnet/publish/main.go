@@ -111,6 +111,7 @@ func buildFn(ctx *gcp.Context) error {
 		entrypoint = strings.Join(ep, " ")
 		ctx.DefaultBuildEnv(binLayer, env.Entrypoint, entrypoint)
 	}
+	ctx.DefaultLaunchEnv(binLayer, "DOTNET_RUNNING_IN_CONTAINER", "true")
 	ctx.WriteMetadata(binLayer, nil, layers.Build, layers.Launch)
 
 	// Configure the entrypoint for production.

@@ -115,6 +115,7 @@ func buildFn(ctx *gcp.Context) error {
 	rtMeta.Version = version
 	ctx.DefaultSharedEnv(rtl, "DOTNET_ROOT", rtl.Root)
 	ctx.PrependPathSharedEnv(rtl, "PATH", rtl.Root)
+	ctx.DefaultLaunchEnv(rtl, "DOTNET_RUNNING_IN_CONTAINER", "true")
 	ctx.WriteMetadata(rtl, rtMeta, layers.Launch, layers.Build, layers.Cache)
 
 	ctx.AddBuildpackPlan(buildpackplan.Plan{
