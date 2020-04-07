@@ -34,6 +34,7 @@ func TestAcceptance(t *testing.T) {
 			MustUse:           []string{goRuntime, goBuild, clearSource},
 			FilesMustExist:    []string{"/layers/google.go.build/bin/main"},
 			FilesMustNotExist: []string{"/layers/google.go.runtime", "/workspace/main.go"},
+			MustNotOutput:     []string{"go mod download"},
 		},
 		{
 			Name:           "simple Go application (Dev Mode)",

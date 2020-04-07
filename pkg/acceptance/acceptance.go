@@ -130,6 +130,10 @@ type Test struct {
 	FilesMustExist []string
 	// FilesMustNotExist specifies names of files that must not exist in the final image.
 	FilesMustNotExist []string
+	// MustOutput specifies strings to be found in the build logs.
+	MustOutput []string
+	// MustNotOutput specifies strings to not be found in the build logs.
+	MustNotOutput []string
 }
 
 // TestApp builds and a single application and verifies that it runs and handles requests.
@@ -161,7 +165,7 @@ func TestApp(t *testing.T, builder string, cfg Test) {
 	}
 	for _, cache := range cacheOptions {
 		t.Run(fmt.Sprintf("cache %t", cache), func(t *testing.T) {
-			buildApp(t, cfg.App, image, builder, env, cache)
+			buildApp(t, cfg.App, image, builder, env, cache, cfg.MustOutput, cfg.MustNotOutput)
 			verifyBuildMetadata(t, image, cfg.MustUse, cfg.MustNotUse)
 			verifyStructure(t, cfg.App, image, builder, cache, checks)
 			invokeApp(t, image, cfg.Path, cfg.RunEnv, cache)
@@ -407,7 +411,7 @@ func buildCommand(app, image, builder string, env map[string]string, cache bool)
 }
 
 // buildApp builds an application image from source.
-func buildApp(t *testing.T, app, image, builder string, env map[string]string, cache bool) {
+func buildApp(t *testing.T, app, image, builder string, env map[string]string, cache bool, mustOutput []string, mustNotOutput []string) {
 	t.Helper()
 
 	bcmd := buildCommand(app, image, builder, env, cache)
@@ -415,6 +419,7 @@ func buildApp(t *testing.T, app, image, builder string, env map[string]string, c
 
 	outFile, errFile, cleanup := outFiles(t, builder, "pack-build", fmt.Sprintf("%s-cache-%t", image, cache))
 	defer cleanup()
+
 	var errb bytes.Buffer
 	cmd.Stdout = outFile
 	cmd.Stderr = io.MultiWriter(errFile, &errb) // pack emits buildpack output to stderr.
@@ -423,6 +428,18 @@ func buildApp(t *testing.T, app, image, builder string, env map[string]string, c
 	t.Logf("Building application (logs %s)", filepath.Dir(outFile.Name()))
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("Error building application: %v (%v)", err, errb.String())
+	}
+
+	// Check that expected output is found in the logs.
+	for _, text := range mustOutput {
+		if !strings.Contains(errb.String(), text) {
+			t.Errorf("Build logs must contain %q", text)
+		}
+	}
+	for _, text := range mustNotOutput {
+		if strings.Contains(errb.String(), text) {
+			t.Errorf("Build logs must not contain %q", text)
+		}
 	}
 
 	// Scan for incorrect cache hits/misses.
