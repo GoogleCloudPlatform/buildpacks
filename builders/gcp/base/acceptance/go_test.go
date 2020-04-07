@@ -31,16 +31,16 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:              "simple Go application",
 			App:               "go/simple",
-			MustUse:           []string{goRuntime, goBuild},
+			MustUse:           []string{goRuntime, goBuild, clearSource},
 			FilesMustExist:    []string{"/layers/google.go.build/bin/main"},
-			FilesMustNotExist: []string{"/layers/google.go.runtime"},
+			FilesMustNotExist: []string{"/layers/google.go.runtime", "/workspace/main.go"},
 		},
 		{
 			Name:           "simple Go application (Dev Mode)",
 			App:            "go/simple",
 			Env:            []string{"GOOGLE_DEVMODE=1"},
 			MustUse:        []string{goRuntime, goBuild},
-			FilesMustExist: []string{"/layers/google.go.runtime/go/bin/go"},
+			FilesMustExist: []string{"/layers/google.go.runtime/go/bin/go", "/workspace/main.go"},
 		},
 		{
 			Name:    "Go runtime version respected",
@@ -55,6 +55,13 @@ func TestAcceptance(t *testing.T) {
 			Env:        []string{"GOOGLE_RUNTIME=go"},
 			MustUse:    []string{goRuntime},
 			MustNotUse: []string{javaRuntime, nodeRuntime, pythonRuntime},
+		},
+		{
+			Name:           "keep source",
+			App:            "go/simple",
+			Env:            []string{"GOOGLE_KEEP_SOURCE=true"},
+			MustNotUse:     []string{clearSource},
+			FilesMustExist: []string{"/workspace/main.go"},
 		},
 	}
 	for _, tc := range testCases {

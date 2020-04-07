@@ -18,6 +18,7 @@ package acceptance
 const (
 	// Buildpack identifiers used to verify that buildpacks were or were not used.
 	entrypoint     = "google.config.entrypoint"
+	clearSource    = "google.config.clear_source"
 	dotnetPublish  = "google.dotnet.publish"
 	dotnetRuntime  = "google.dotnet.runtime"
 	goBuild        = "google.go.build"

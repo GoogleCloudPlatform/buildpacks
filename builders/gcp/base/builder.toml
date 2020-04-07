@@ -5,6 +5,10 @@ description = "GCP Builder for all runtimes"
   uri = "entrypoint.tgz"
 
 [[buildpacks]]
+  id = "google.config.clear_source"
+  uri = "clear_source.tgz"
+
+[[buildpacks]]
   id = "google.dotnet.runtime"
   uri = "dotnet/runtime.tgz"
 
@@ -107,6 +111,10 @@ description = "GCP Builder for all runtimes"
 
   [[order.group]]
     id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.clear_source"
     optional = true
 
 ########

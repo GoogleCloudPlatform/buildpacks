@@ -75,6 +75,9 @@ Only applicable to compiled languages:
 * `GOOGLE_BUILDABLE`:
   * Specifies path to a buildable unit.
   * **Example**: `./maindir` for Go will build the package rooted at maindir.
+* `GOOGLE_KEEP_SOURCE`:
+  * Keep the source folder in the final image.
+  * **Example**: `true`, `True`, `1` will keep the source.
 
 Only applicable to the `runtime` buildpacks:
 
