@@ -83,11 +83,19 @@ description = "GCP Builder for all runtimes"
 
   [[order.group]]
     id = "google.dotnet.publish"
-    optional = true
 
   [[order.group]]
     id = "google.config.entrypoint"
     optional = true
+
+# Prebuilt .NET applications.
+[[order]]
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
 
 ######
 # Go #
