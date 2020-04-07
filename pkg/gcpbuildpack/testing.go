@@ -72,6 +72,7 @@ func TestDetect(t *testing.T, detectFn DetectFn, testName string, files map[stri
 	} else {
 		cmd := exec.Command(filepath.Join(testDir, testArgs[0]), fmt.Sprintf("-test.run=TestDetect/^%s$", strings.ReplaceAll(testName, " ", "_")))
 		cmd.Env = append(os.Environ(), "TEST_DETECT_EXITING=1")
+		cmd.Dir = ctx.applicationRoot
 
 		for _, e := range env {
 			cmd.Env = append(cmd.Env, e)

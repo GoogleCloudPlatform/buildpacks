@@ -17,9 +17,20 @@ package dotnet
 
 import (
 	"encoding/xml"
+	"strings"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
+
+// ProjectFiles finds all project files supported by dotnet.
+func ProjectFiles(ctx *gcp.Context, dir string) []string {
+	result := ctx.Exec([]string{"find", dir, "-regex", `.*\(cs\|fs\|vb\)proj`}).Stdout
+	result = strings.TrimSpace(result)
+	if result == "" {
+		return nil
+	}
+	return strings.Split(result, "\n")
+}
 
 // Project represents a .NET project file.
 type Project struct {

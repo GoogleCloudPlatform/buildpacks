@@ -23,6 +23,7 @@ go_binary(
     ],
     deps = [
         "//pkg/devmode",
+        "//pkg/dotnet",
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/runtime",

@@ -212,10 +212,25 @@ func TestDetect(t *testing.T) {
 		want  int
 	}{
 		{
-			name: "with project file",
+			name: "csproj",
 			files: map[string]string{
 				"Program.cs": "",
 				"app.csproj": "",
+			},
+			want: 0,
+		},
+		{
+			name: "fsproj",
+			files: map[string]string{
+				"Program.fs": "",
+				"app.fsproj": "",
+			},
+			want: 0,
+		}, {
+			name: "vbproj",
+			files: map[string]string{
+				"Program.vb": "",
+				"app.vbproj": "",
 			},
 			want: 0,
 		},
@@ -234,6 +249,13 @@ func TestDetect(t *testing.T) {
 				"app.csproj": "",
 			},
 			want: 0,
+		},
+		{
+			name: "unsupported .pyproj",
+			files: map[string]string{
+				".pyproj": "",
+			},
+			want: 100,
 		},
 		{
 			name: "without project file or build env",

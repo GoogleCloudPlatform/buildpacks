@@ -44,7 +44,7 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) error {
-	if _, exists := os.LookupEnv(env.Buildable); !exists && !ctx.HasAtLeastOne(ctx.ApplicationRoot(), "*.*proj") {
+	if _, exists := os.LookupEnv(env.Buildable); !exists && len(dotnet.ProjectFiles(ctx, ".")) == 0 {
 		ctx.OptOut("no project file found and %s not set.", env.Buildable)
 	}
 	return nil
@@ -61,7 +61,7 @@ func buildFn(ctx *gcp.Context) error {
 	} else if err != nil {
 		return fmt.Errorf("stating %s: %v", proj, err)
 	} else if fi.IsDir() {
-		projFiles := ctx.Glob(filepath.Join(proj, "*.*proj"))
+		projFiles := dotnet.ProjectFiles(ctx, proj)
 		if len(projFiles) != 1 {
 			return gcp.UserErrorf("expected to find exactly one project file in directory %s, found %v", proj, projFiles)
 		}
@@ -166,7 +166,7 @@ func checkCache(ctx *gcp.Context, l *layers.Layer) (bool, *metadata, error) {
 	// main app only depends on the local binaries, that root project file would change very
 	// infrequently while the associated library files would change significantly more often, as
 	// that's where the primary implementation is done.
-	projectFiles := strings.Split(ctx.Exec([]string{"find", ctx.ApplicationRoot(), "-name", "*.*proj"}).Stdout, "\n")
+	projectFiles := dotnet.ProjectFiles(ctx, ".")
 	globalJSON := filepath.Join(ctx.ApplicationRoot(), "global.json")
 	if ctx.FileExists(globalJSON) {
 		projectFiles = append(projectFiles, globalJSON)

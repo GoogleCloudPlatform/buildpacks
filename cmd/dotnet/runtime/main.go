@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/dotnet"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
@@ -51,7 +52,7 @@ func main() {
 func detectFn(ctx *gcp.Context) error {
 	runtime.CheckOverride(ctx, "dotnet")
 
-	if !ctx.HasAtLeastOne(ctx.ApplicationRoot(), "*.*proj") && !ctx.HasAtLeastOne(ctx.ApplicationRoot(), "*.dll") {
+	if len(dotnet.ProjectFiles(ctx, ".")) == 0 && !ctx.HasAtLeastOne(ctx.ApplicationRoot(), "*.dll") {
 		ctx.OptOut("No project files nor .dll files found.")
 	}
 

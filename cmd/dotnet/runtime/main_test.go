@@ -27,11 +27,32 @@ func TestDetect(t *testing.T) {
 		want  int
 	}{
 		{
-			name: "with project files",
+			name: "csproj",
 			files: map[string]string{
 				"app.csproj": "",
 			},
 			want: 0,
+		},
+		{
+			name: "fsproj",
+			files: map[string]string{
+				"app.fsproj": "",
+			},
+			want: 0,
+		},
+		{
+			name: "vbproj",
+			files: map[string]string{
+				"app.vbproj": "",
+			},
+			want: 0,
+		},
+		{
+			name: "unsupported pyproj",
+			files: map[string]string{
+				".pyproj": "",
+			},
+			want: 100,
 		},
 		{
 			name: "without project files",
