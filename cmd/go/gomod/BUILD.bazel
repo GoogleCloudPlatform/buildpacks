@@ -23,6 +23,7 @@ go_binary(
     ],
     deps = [
         "//pkg/gcpbuildpack",
+        "//pkg/golang",
         "@com_github_buildpack_libbuildpack//layers:go_default_library",
     ],
 )

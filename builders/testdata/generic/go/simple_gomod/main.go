@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package main tests building source that has no dependencies.
+// Package main tests building source that has an empty go.mod file.
 package main
 
 import (

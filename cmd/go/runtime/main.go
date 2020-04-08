@@ -21,13 +21,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/buildpack/libbuildpack/layers"
 )
@@ -37,11 +36,6 @@ const (
 	goVersionURL = "https://golang.org/dl/?mode=json"
 	goURL        = "https://dl.google.com/go/go%s.linux-amd64.tar.gz"
 	goLayer      = "go"
-)
-
-var (
-	// goModVersionRegexp is used to get correct declaration of Go version from go.mod file.
-	goModVersionRegexp = regexp.MustCompile(`(?m)^\s*go\s+(\d+(\.\d+){1,2})\s*$`)
 )
 
 // metadata represents metadata stored for a runtime layer.
@@ -105,7 +99,7 @@ func runtimeVersion(ctx *gcp.Context) (string, error) {
 		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, version)
 		return version, nil
 	}
-	if version := goModVersion(ctx, ctx.ApplicationRoot()); version != "" {
+	if version := golang.GoModVersion(ctx, ctx.ApplicationRoot()); version != "" {
 		ctx.Logf("Using runtime version from go.mod: %s", version)
 		return version, nil
 	}
@@ -143,19 +137,4 @@ func parseVersionJSON(jsonStr string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("parsing latest stable version from %q", goVersionURL)
-}
-
-// goModVersion reads the version of Go from a go.mod file if present.
-// If not present or if version isn't there returns an empty string.
-func goModVersion(ctx *gcp.Context, dir string) string {
-	if !ctx.FileExists(dir, "go.mod") {
-		return ""
-	}
-
-	data := string(ctx.ReadFile(filepath.Join(dir, "go.mod")))
-	if matches := goModVersionRegexp.FindStringSubmatch(data); len(matches) >= 2 {
-		return matches[1]
-	}
-
-	return ""
 }

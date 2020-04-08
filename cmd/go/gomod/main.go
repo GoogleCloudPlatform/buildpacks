@@ -18,6 +18,7 @@ package main
 
 import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 	"github.com/buildpack/libbuildpack/layers"
 )
 
@@ -40,6 +41,13 @@ func buildFn(ctx *gcp.Context) error {
 
 	// TODO: Investigate caching the modules layer.
 	// TODO: Investigate creating and caching a GOCACHE layer.
+
+	// When there's a vendor folder and go is 1.14+, we shouldn't download the modules
+	// and let go build use the vendored dependencies.
+	if ctx.FileExists("vendor") && golang.SupportsAutoVendor(ctx, ctx.ApplicationRoot()) {
+		ctx.Logf("Not downloading modules because there's a vendor directory")
+		return nil
+	}
 
 	env := []string{"GOPATH=" + l.Root, "GO111MODULE=on"}
 	ctx.ExecUserWithParams(gcp.ExecParams{Cmd: []string{"go", "mod", "download"}, Env: env}, gcp.UserErrorKeepStderrTail)

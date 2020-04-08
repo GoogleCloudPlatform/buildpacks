@@ -44,7 +44,7 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.WriteMetadata(bl, nil, layers.Launch)
 
 	var flags []string
-	if ctx.FileExists("go.mod") {
+	if ctx.FileExists("go.mod") && !useVendor(ctx) {
 		flags = append(flags, "-mod=readonly")
 	}
 
@@ -71,4 +71,8 @@ func buildFn(ctx *gcp.Context) error {
 	devmode.AddSyncMetadata(ctx, devmode.GoSyncRules)
 
 	return nil
+}
+
+func useVendor(ctx *gcp.Context) bool {
+	return ctx.FileExists("vendor") && golang.SupportsAutoVendor(ctx, ctx.ApplicationRoot())
 }

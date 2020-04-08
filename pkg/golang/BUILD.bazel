@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 # Go buildpack library code
 licenses(["notice"])
@@ -9,5 +9,21 @@ go_library(
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
         "//cmd/go:__subpackages__",
+    ],
+    deps = [
+        "//pkg/gcpbuildpack",
+        "@com_github_blang_semver//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "golang_test",
+    size = "small",
+    srcs = ["golang_test.go"],
+    embed = [":golang"],
+    rundir = ".",
+    deps = [
+        "//pkg/gcpbuildpack",
+        "@com_github_buildpack_libbuildpack//buildpack:go_default_library",
     ],
 )

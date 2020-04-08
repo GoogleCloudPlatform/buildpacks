@@ -83,7 +83,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	if !ctx.FileExists(fn.Source, "go.mod") {
 		// We require a go.mod file in all versions 1.14+.
-		if !versionSupportsNoGoModFile(ctx) {
+		if !golang.SupportsNoGoMod(ctx) {
 			return gcp.UserErrorf("function build requires go.mod file")
 		}
 		if err := createMainVendored(ctx, l, fn); err != nil {
@@ -191,13 +191,6 @@ func frameworkSpecified(ctx *gcp.Context, fnSource string) (bool, error) {
 		return false, nil
 	}
 	return false, err
-}
-
-// versionSupportsNoGoModFile only returns true for Go version 1.11 and 1.13
-// These are the two GCF-supported versions that don't require a go.mod file.
-func versionSupportsNoGoModFile(ctx *gcp.Context) bool {
-	v := ctx.Exec([]string{"go", "version"}).Stdout
-	return strings.Contains(v, "go1.11") || strings.Contains(v, "go1.13")
 }
 
 // extractPackageNameInDir builds the script that does the extraction, and then runs it with the

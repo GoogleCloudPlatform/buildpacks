@@ -12,36 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package main tests building source that has no dependencies.
+// Package main tests building source that has vendored dependencies.
 package main
 
 import (
-	"fmt"
 	"net/http"
-	"runtime"
+
+	"example.com/foo"
 )
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "PASS")
-}
-
-func version(w http.ResponseWriter, r *http.Request) {
-	wants, ok := r.URL.Query()["want"]
-	if !ok || len(wants) != 1 || wants[0] == "" {
-		fmt.Fprintf(w, "FAIL: ?want must be set to a version")
-		return
-	}
-	got := runtime.Version()
-	want := fmt.Sprintf("go%s", wants[0])
-	if got != want {
-		fmt.Fprintf(w, "FAIL: current version: %s; want %s", got, want)
-	} else {
-		fmt.Fprintf(w, "PASS")
-	}
-}
-
 func main() {
-	http.HandleFunc("/", handler)
-	http.HandleFunc("/version", version)
+	http.HandleFunc("/", foo.Pass)
 	http.ListenAndServe(":8080", nil)
 }
