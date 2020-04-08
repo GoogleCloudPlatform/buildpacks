@@ -55,11 +55,11 @@ func TestAcceptance(t *testing.T) {
 			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 		},
 		{
-			App: "version_specified_gemfile",
+			App: "version_specified_gemfile_26",
 			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 		},
 		{
-			App: "version_specified_gems",
+			App: "version_specified_gems_26",
 			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 		},
 	}
@@ -68,7 +68,7 @@ func TestAcceptance(t *testing.T) {
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
 
-			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=ruby25")
+			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=ruby26")
 
 			acceptance.TestApp(t, builder, tc)
 		})
@@ -101,7 +101,7 @@ func TestFailures(t *testing.T) {
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
 
-			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=ruby25")
+			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=ruby26")
 
 			acceptance.TestBuildFailure(t, builder, tc)
 		})

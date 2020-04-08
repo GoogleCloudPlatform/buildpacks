@@ -1,0 +1,16 @@
+load("//tools:defs.bzl", "builder")
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/go/appengine:appengine.tgz",
+        "//cmd/go/appengine_gomod:appengine_gomod.tgz",
+        "//cmd/go/appengine_gopath:appengine_gopath.tgz",
+        "//cmd/go/build:build.tgz",
+        "//cmd/go/gomod:gomod.tgz",
+    ],
+    image = "gae/go112",
+    visibility = ["//builders/gae/go112/acceptance:__pkg__"],
+)

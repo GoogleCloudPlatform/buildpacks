@@ -25,9 +25,9 @@ description = "Builder for the GAE PHP 7.3 runtime"
     id = "google.php.appengine"
 
 [stack]
-  id = "google.php73"
-  build-image = "gcr.io/gae-runtimes/buildpacks/php73/build"
-  run-image = "gcr.io/gae-runtimes/buildpacks/php73/run"
+  id = "google.php72"
+  build-image = "gcr.io/gae-runtimes/buildpacks/php72/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/php72/run"
 
 [lifecycle]
   version = "0.7.2"

@@ -7,3 +7,9 @@ name = "Ruby - Bundle"
 
 [[stacks]]
 id = "google.ruby25"
+
+[[stacks]]
+id = "google.ruby26"
+
+[[stacks]]
+id = "google.ruby27"

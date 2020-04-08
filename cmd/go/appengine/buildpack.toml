@@ -6,6 +6,9 @@ version = "0.9.0"
 name = "Go - App Engine"
 
 [[stacks]]
+id = "google.go112"
+
+[[stacks]]
 id = "google.go113"
 
 [[stacks]]

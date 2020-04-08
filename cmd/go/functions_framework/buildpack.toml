@@ -9,6 +9,9 @@ name = "Go - Functions Framework"
 id = "google"
 
 [[stacks]]
+id = "google.go112"
+
+[[stacks]]
 id = "google.go113"
 
 [[stacks]]

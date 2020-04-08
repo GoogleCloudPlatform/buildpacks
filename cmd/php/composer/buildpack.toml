@@ -9,6 +9,9 @@ name = "PHP - Composer"
 id = "google"
 
 [[stacks]]
+id = "google.php72"
+
+[[stacks]]
 id = "google.php73"
 
 [[stacks]]

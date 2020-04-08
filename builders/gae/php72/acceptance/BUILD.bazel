@@ -1,0 +1,32 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+go_library(
+    name = "acceptance",
+    srcs = ["acceptance.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+)
+
+go_test(
+    name = "acceptance_test",
+    size = "large",
+    srcs = ["acceptance_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata:php)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gae/php72:builder.tar)",
+        "-builder-prefix=gaephp72-acceptance-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gae/php72:builder.tar",
+        "//builders/testdata:php",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//pkg/acceptance"],
+)

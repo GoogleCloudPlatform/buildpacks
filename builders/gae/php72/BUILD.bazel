@@ -1,0 +1,14 @@
+load("//tools:defs.bzl", "builder")
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/php/appengine:appengine.tgz",
+        "//cmd/php/composer:composer.tgz",
+        "//cmd/php/composer_gcp_build:composer_gcp_build.tgz",
+    ],
+    image = "gae/php72",
+    visibility = ["//builders/gae/php72/acceptance:__pkg__"],
+)
