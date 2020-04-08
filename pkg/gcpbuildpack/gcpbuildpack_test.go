@@ -67,9 +67,12 @@ func TestDebugModeInitialized(t *testing.T) {
 				}
 			}
 
-			c := NewContext(buildpack.Info{ID: "id", Version: "version", Name: "name"})
-			if c.debug != tc.want {
-				t.Errorf("Debug incorrect got %t want %t", c.debug, tc.want)
+			ctx := NewContext(buildpack.Info{ID: "id", Version: "version", Name: "name"})
+			if ctx.debug != tc.want {
+				t.Errorf("ctx.debug=%t, want %t", ctx.debug, tc.want)
+			}
+			if ctx.Debug() != tc.want {
+				t.Errorf("ctx.Debug()=%t, want %t", ctx.debug, tc.want)
 			}
 		})
 	}

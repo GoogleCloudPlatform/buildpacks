@@ -64,20 +64,24 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.ReadMetadata(m2CachedRepo, &repoMeta)
 	checkCacheExpiration(ctx, &repoMeta, m2CachedRepo)
 
-	var command string
+	var mvn string
 	var err error
 	if ctx.FileExists("mvnw") {
-		command = "./mvnw"
+		mvn = "./mvnw"
 	} else if mvnInstalled(ctx) {
-		command = "mvn"
+		mvn = "mvn"
 	} else {
-		command, err = installMaven(ctx)
+		mvn, err = installMaven(ctx)
 		if err != nil {
 			return fmt.Errorf("installing Maven: %w", err)
 		}
 	}
 
-	ctx.ExecUser([]string{command, "clean", "package", "--batch-mode", "-DskipTests", "-Dmaven.repo.local=" + m2CachedRepo.Root})
+	command := []string{mvn, "clean", "package", "--batch-mode", "-DskipTests", "-Dmaven.repo.local=" + m2CachedRepo.Root}
+	if !ctx.Debug() {
+		command = append(command, "--quiet")
+	}
+	ctx.ExecUser(command)
 	ctx.WriteMetadata(m2CachedRepo, &repoMeta, layers.Cache)
 
 	return nil

@@ -136,6 +136,11 @@ func (ctx *Context) BuildpackRoot() string {
 	return ctx.buildpackRoot
 }
 
+// Debug returns whether debug mode is enabled.
+func (ctx *Context) Debug() bool {
+	return ctx.debug
+}
+
 // Main is the main entrypoint to a buildpack's detect and build functions.
 func Main(d DetectFn, b BuildFn) {
 	switch filepath.Base(os.Args[0]) {

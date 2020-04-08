@@ -23,8 +23,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 )
 
 var (
@@ -122,11 +120,7 @@ func (ctx *Context) configuredExec(params ExecParams) (*ExecResult, error) {
 	}
 
 	log := true
-	debug, err := env.IsDebugMode()
-	if err != nil {
-		return nil, err
-	}
-	if params.logOnDebug && !debug {
+	if params.logOnDebug && !ctx.debug {
 		log = false
 	}
 
