@@ -49,7 +49,12 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Build the application.
-	ctx.ExecUser(append([]string{"go", "build", "-o", filepath.Join(bl.Root, golang.OutBin)}, pkg))
+	// Set GOPROXY to ensure no additional dependency is downloaded.
+	// All of them must have been downloaded by a previous buildpack.
+	ctx.ExecUserWithParams(gcp.ExecParams{
+		Cmd: []string{"go", "build", "-o", filepath.Join(bl.Root, golang.OutBin), pkg},
+		Env: []string{"GOPROXY=off"},
+	}, gcp.UserErrorKeepStderrTail)
 
 	// Configure the entrypoint for production.
 	if !devmode.Enabled(ctx) {
@@ -59,7 +64,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Configure the entrypoint and metadata for dev mode.
 	devmode.AddFileWatcherProcess(ctx, devmode.Config{
-		Cmd: append([]string{"go", "run"}, pkg),
+		Cmd: []string{"go", "run", pkg},
 		Ext: devmode.GoWatchedExtensions,
 	})
 	devmode.AddSyncMetadata(ctx, devmode.GoSyncRules)
