@@ -43,19 +43,13 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.PrependPathLaunchEnv(bl, "PATH", bl.Root)
 	ctx.WriteMetadata(bl, nil, layers.Launch)
 
-	var flags []string
-	if ctx.FileExists("go.mod") && !useVendor(ctx) {
-		flags = append(flags, "-mod=readonly")
-	}
-
 	pkg, ok := os.LookupEnv(env.Buildable)
 	if !ok {
 		pkg = "."
 	}
-	flags = append(flags, pkg)
 
 	// Build the application.
-	ctx.ExecUser(append([]string{"go", "build", "-o", filepath.Join(bl.Root, golang.OutBin)}, flags...))
+	ctx.ExecUser(append([]string{"go", "build", "-o", filepath.Join(bl.Root, golang.OutBin)}, pkg))
 
 	// Configure the entrypoint for production.
 	if !devmode.Enabled(ctx) {
@@ -65,14 +59,10 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Configure the entrypoint and metadata for dev mode.
 	devmode.AddFileWatcherProcess(ctx, devmode.Config{
-		Cmd: append([]string{"go", "run"}, flags...),
+		Cmd: append([]string{"go", "run"}, pkg),
 		Ext: devmode.GoWatchedExtensions,
 	})
 	devmode.AddSyncMetadata(ctx, devmode.GoSyncRules)
 
 	return nil
-}
-
-func useVendor(ctx *gcp.Context) bool {
-	return ctx.FileExists("vendor") && golang.SupportsAutoVendor(ctx, ctx.ApplicationRoot())
 }
