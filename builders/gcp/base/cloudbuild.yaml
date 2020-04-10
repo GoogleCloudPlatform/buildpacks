@@ -15,6 +15,10 @@ steps:
     name: bazel-pack
     args: ['build', '//builders/gcp/base:builder.image']
 
+  - id: validate-licenses
+    name: gcr.io/gae-runtimes/license_validator:current
+    args: ['-pull_images=false', 'gcp/base']
+
   - id: tag-images
     name: bazel-pack
     entrypoint: /bin/bash

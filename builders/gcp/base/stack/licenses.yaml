@@ -11,120 +11,120 @@
 
 - package: github.com/apex/log
   license_name: MIT
-  license_path: /usr/share/doc/github.com/apex/log/LICENSE
+  license_path: /usr/local/share/licenses/github.com/apex/log/LICENSE
 
 - package: github.com/blang/semver
   license_name: MIT
-  license_path: /usr/share/doc/github.com/blang/semver/LICENSE
+  license_path: /usr/local/share/licenses/github.com/blang/semver/LICENSE
 
 - package: github.com/buildpack/libbuildpack
   license_name: Apache-2.0
-  license_path: /usr/share/doc/github.com/buildpack/libbuildpack/LICENSE
+  license_path: /usr/local/share/licenses/github.com/buildpack/libbuildpack/LICENSE
 
 - package: github.com/buildpacks/imgutil
   license_name: Apache-2.0
-  license_path: /usr/share/doc/github.com/buildpacks/imgutil/LICENSE
+  license_path: /usr/local/share/licenses/github.com/buildpacks/imgutil/LICENSE
 
 - package: github.com/buildpacks/lifecycle
   license_name: Apache-2.0
-  license_path: /usr/share/doc/github.com/buildpacks/lifecycle/LICENSE
+  license_path: /usr/local/share/licenses/github.com/buildpacks/lifecycle/LICENSE
 
 - package: github.com/BurntSushi/toml
   license_name: MIT
-  license_path: /usr/share/doc/github.com/BurntSushi/toml/COPYING
+  license_path: /usr/local/share/licenses/github.com/BurntSushi/toml/COPYING
 
 - package: github.com/containerd/containerd/errdefs
   license_name: Apache-2.0
-  license_path: /usr/share/doc/github.com/containerd/containerd/errdefs/LICENSE
+  license_path: /usr/local/share/licenses/github.com/containerd/containerd/errdefs/LICENSE
 
 - package: github.com/docker/cli/cli/config
   license_name: Apache-2.0
-  license_path: /usr/share/doc/github.com/docker/cli/cli/config/LICENSE
+  license_path: /usr/local/share/licenses/github.com/docker/cli/cli/config/LICENSE
 
 - package: github.com/docker/distribution
   license_name: Apache-2.0
-  license_path: /usr/share/doc/github.com/docker/distribution/LICENSE
+  license_path: /usr/local/share/licenses/github.com/docker/distribution/LICENSE
 
 - package: github.com/docker/docker-credential-helpers
   license_name: MIT
-  license_path: /usr/share/doc/github.com/docker/docker-credential-helpers/LICENSE
+  license_path: /usr/local/share/licenses/github.com/docker/docker-credential-helpers/LICENSE
 
 - package: github.com/docker/docker
   license_name: Apache-2.0
-  license_path: /usr/share/doc/github.com/docker/docker/LICENSE
+  license_path: /usr/local/share/licenses/github.com/docker/docker/LICENSE
 
 - package: github.com/docker/go-connections
   license_name: Apache-2.0
-  license_path: /usr/share/doc/github.com/docker/go-connections/LICENSE
+  license_path: /usr/local/share/licenses/github.com/docker/go-connections/LICENSE
 
 - package: github.com/docker/go-units
   license_name: Apache-2.0
-  license_path: /usr/share/doc/github.com/docker/go-units/LICENSE
+  license_path: /usr/local/share/licenses/github.com/docker/go-units/LICENSE
 
 - package: github.com/gogo/protobuf/proto
   license_name: BSD-3-Clause
-  license_path: /usr/share/doc/github.com/gogo/protobuf/proto/LICENSE
+  license_path: /usr/local/share/licenses/github.com/gogo/protobuf/proto/LICENSE
 
 - package: github.com/golang/protobuf
   license_name: BSD-3-Clause
-  license_path: /usr/share/doc/github.com/golang/protobuf/LICENSE
+  license_path: /usr/local/share/licenses/github.com/golang/protobuf/LICENSE
 
 - package: github.com/GoogleCloudPlatform/buildpacks
   license_name: Apache-2.0
-  license_path: /usr/share/doc/github.com/GoogleCloudPlatform/buildpacks/LICENSE
+  license_path: /usr/local/share/licenses/github.com/GoogleCloudPlatform/buildpacks/LICENSE
 
 - package: github.com/google/go-containerregistry/pkg
   license_name: Apache-2.0
-  license_path: /usr/share/doc/github.com/google/go-containerregistry/pkg/LICENSE
+  license_path: /usr/local/share/licenses/github.com/google/go-containerregistry/pkg/LICENSE
 
 - package: github.com/heroku/color
   license_name: MIT
-  license_path: /usr/share/doc/github.com/heroku/color/LICENSE
+  license_path: /usr/local/share/licenses/github.com/heroku/color/LICENSE
 
 - package: github.com/mattn/go-colorable
   license_name: MIT
-  license_path: /usr/share/doc/github.com/mattn/go-colorable/LICENSE
+  license_path: /usr/local/share/licenses/github.com/mattn/go-colorable/LICENSE
 
 - package: github.com/mattn/go-isatty
   license_name: MIT
-  license_path: /usr/share/doc/github.com/mattn/go-isatty/LICENSE
+  license_path: /usr/local/share/licenses/github.com/mattn/go-isatty/LICENSE
 
 - package: github.com/onsi/gomega/types
   license_name: MIT
-  license_path: /usr/share/doc/github.com/onsi/gomega/types/LICENSE
+  license_path: /usr/local/share/licenses/github.com/onsi/gomega/types/LICENSE
 
 - package: github.com/opencontainers/go-digest
   license_name: Apache-2.0
-  license_path: /usr/share/doc/github.com/opencontainers/go-digest/LICENSE.code
+  license_path: /usr/local/share/licenses/github.com/opencontainers/go-digest/LICENSE.code
 
 - package: github.com/opencontainers/image-spec/specs-go
   license_name: Apache-2.0
-  license_path: /usr/share/doc/github.com/opencontainers/image-spec/specs-go/LICENSE
+  license_path: /usr/local/share/licenses/github.com/opencontainers/image-spec/specs-go/LICENSE
 
 - package: github.com/pkg/errors
   license_name: BSD-2-Clause
-  license_path: /usr/share/doc/github.com/pkg/errors/LICENSE
+  license_path: /usr/local/share/licenses/github.com/pkg/errors/LICENSE
 
 - package: github.com/sirupsen/logrus
   license_name: MIT
-  license_path: /usr/share/doc/github.com/sirupsen/logrus/LICENSE
+  license_path: /usr/local/share/licenses/github.com/sirupsen/logrus/LICENSE
 
 - package: golang.org/x/net
   license_name: BSD-3-Clause
-  license_path: /usr/share/doc/golang.org/x/net/LICENSE
+  license_path: /usr/local/share/licenses/golang.org/x/net/LICENSE
 
 - package: golang.org/x/sync/errgroup
   license_name: BSD-3-Clause
-  license_path: /usr/share/doc/golang.org/x/sync/errgroup/LICENSE
+  license_path: /usr/local/share/licenses/golang.org/x/sync/errgroup/LICENSE
 
 - package: golang.org/x/sys/unix
   license_name: BSD-3-Clause
-  license_path: /usr/share/doc/golang.org/x/sys/unix/LICENSE
+  license_path: /usr/local/share/licenses/golang.org/x/sys/unix/LICENSE
 
 - package: google.golang.org/genproto/googleapis/rpc/status
   license_name: Apache-2.0
-  license_path: /usr/share/doc/google.golang.org/genproto/googleapis/rpc/status/LICENSE
+  license_path: /usr/local/share/licenses/google.golang.org/genproto/googleapis/rpc/status/LICENSE
 
 - package: google.golang.org/grpc
   license_name: Apache-2.0
-  license_path: /usr/share/doc/google.golang.org/grpc/LICENSE
+  license_path: /usr/local/share/licenses/google.golang.org/grpc/LICENSE

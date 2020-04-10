@@ -15,8 +15,8 @@
 ARG from_image
 FROM ${from_image}
 
-# Add licenses for third-party go libraries; use tar to retain timestamps
-ADD licenses.tar /usr/share/doc
+# Add licenses for third-party go libraries; use tar to retain timestamps.
+ADD licenses.tar /usr/local/share/licenses
 
 # Required to install nodejs/runtime.
 RUN apt-get update && apt-get install -y --no-install-recommends \
