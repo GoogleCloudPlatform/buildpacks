@@ -27,14 +27,14 @@ func TestDetect(t *testing.T) {
 		want  int
 	}{
 		{
-			name: "pom.xml",
+			name: "build.gradle",
 			files: map[string]string{
-				"pom.xml": "",
+				"build.gradle": "",
 			},
 			want: 0,
 		},
 		{
-			name:  "no pom.xml",
+			name:  "no build.gradle",
 			files: map[string]string{},
 			want:  100,
 		},

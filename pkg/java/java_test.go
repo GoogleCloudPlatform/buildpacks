@@ -15,8 +15,15 @@
 package java
 
 import (
+	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/buildpack/libbuildpack/buildpack"
+	"github.com/buildpack/libbuildpack/layers"
 )
 
 func TestHasMainTrue(t *testing.T) {
@@ -88,4 +95,90 @@ another: example`,
 			}
 		})
 	}
+}
+
+func TestCheckCacheNewDateMiss(t *testing.T) {
+	testCases := []struct {
+		name            string
+		expiryTimestamp string
+	}{
+		{
+			name:            "empty string",
+			expiryTimestamp: "",
+		},
+		{
+			name:            "invalid format",
+			expiryTimestamp: "invalid format",
+		},
+		{
+			name:            "old expiry date",
+			expiryTimestamp: time.Now().Truncate(repoExpiration).Format(dateFormat),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext(buildpack.Info{ID: "id", Version: "version", Name: "name"})
+			repoMeta := &RepoMetadata{
+				ExpiryTimestamp: tc.expiryTimestamp,
+			}
+
+			testFilePath, m2CachedRepo := setupTestLayer(t, ctx)
+
+			CheckCacheExpiration(ctx, repoMeta, m2CachedRepo)
+			if repoMeta.ExpiryTimestamp == tc.expiryTimestamp {
+				t.Errorf("checkCacheExpiration() did not set new date when expected to with ExpiryTimestamp: %q", repoMeta.ExpiryTimestamp)
+			}
+			if ctx.FileExists(testFilePath) {
+				ctx.RemoveAll(testFilePath)
+				t.Errorf("checkCacheExpiration() did not clear layer")
+			}
+		})
+	}
+}
+
+func TestCheckCacheNewDateHit(t *testing.T) {
+	testCases := []struct {
+		name            string
+		expiryTimestamp string
+	}{
+		{
+			name:            "expiry date in the future",
+			expiryTimestamp: time.Now().Add(repoExpiration).Format(dateFormat),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext(buildpack.Info{ID: "id", Version: "version", Name: "name"})
+			repoMeta := &RepoMetadata{
+				ExpiryTimestamp: tc.expiryTimestamp,
+			}
+
+			testFilePath, m2CachedRepo := setupTestLayer(t, ctx)
+
+			CheckCacheExpiration(ctx, repoMeta, m2CachedRepo)
+			if repoMeta.ExpiryTimestamp != tc.expiryTimestamp {
+				t.Errorf("checkCacheExpiration() set new date when expected not to with ExpiryTimestamp: %q", repoMeta.ExpiryTimestamp)
+			}
+			if !ctx.FileExists(testFilePath) {
+				t.Errorf("checkCacheExpiration() cleared layer")
+			}
+			// Clean up layer for next test case.
+			ctx.RemoveAll(testFilePath)
+		})
+	}
+}
+
+func setupTestLayer(t *testing.T, ctx *gcp.Context) (string, *layers.Layer) {
+	testLayerRoot, err := ioutil.TempDir("", "test-layer-")
+	if err != nil {
+		t.Fatalf("Creating temp directory: %v", err)
+	}
+	testFilePath := filepath.Join(testLayerRoot, "testfile")
+	ctx.CreateFile(testFilePath)
+	m2CachedRepo := &layers.Layer{
+		Root: testLayerRoot,
+	}
+	return testFilePath, m2CachedRepo
 }

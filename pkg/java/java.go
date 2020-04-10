@@ -22,8 +22,10 @@ import (
 	"io"
 	"path/filepath"
 	"regexp"
+	"time"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/buildpack/libbuildpack/layers"
 )
 
 var (
@@ -31,10 +33,25 @@ var (
 	re = regexp.MustCompile("^Main-Class: [^\n]+")
 )
 
+const (
+	dateFormat = time.RFC3339Nano
+	// repoExpiration is an arbitrary amount of time of 10 weeks to refresh the cache layer.
+	// TODO: Investigate proper cache-clearing strategy.
+	repoExpiration = time.Duration(time.Hour * 24 * 7 * 10)
+)
+
+// RepoMetadata contains the information for the m2 cache repo layer.
+type RepoMetadata struct {
+	ExpiryTimestamp string `toml:"expiry_timestamp"`
+}
+
 // ExecutableJar looks for the jar with a Main-Class manifest. If there is not exactly 1 of these jars, throw an error.
 func ExecutableJar(ctx *gcp.Context) (string, error) {
 	// Maven-built jar(s) in target directory take precedence over existing jars at app root.
 	jars := ctx.Glob(filepath.Join(ctx.ApplicationRoot(), "target/*.jar"))
+	if len(jars) == 0 {
+		jars = ctx.Glob(filepath.Join(ctx.ApplicationRoot(), "build/libs/*.jar"))
+	}
 	if len(jars) == 0 {
 		jars = ctx.Glob(filepath.Join(ctx.ApplicationRoot(), "*.jar"))
 	}
@@ -85,4 +102,24 @@ func hasMain(r io.Reader) bool {
 		}
 	}
 	return false
+}
+
+// CheckCacheExpiration clears the m2 layer and sets a new expiry timestamp when the cache is past expiration.
+func CheckCacheExpiration(ctx *gcp.Context, repoMeta *RepoMetadata, m2CachedRepo *layers.Layer) {
+	t := time.Now()
+	if repoMeta.ExpiryTimestamp != "" {
+		var err error
+		t, err = time.Parse(dateFormat, repoMeta.ExpiryTimestamp)
+		if err != nil {
+			ctx.Debugf("Could not parse expiration date %q, assuming now: %v", repoMeta.ExpiryTimestamp, err)
+		}
+	}
+	if t.After(time.Now()) {
+		return
+	}
+
+	ctx.Debugf("Cache expired on %v, clearing", t)
+	ctx.ClearLayer(m2CachedRepo)
+	repoMeta.ExpiryTimestamp = time.Now().Add(repoExpiration).Format(dateFormat)
+	return
 }

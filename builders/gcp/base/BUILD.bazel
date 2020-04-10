@@ -23,6 +23,7 @@ builder(
             "//cmd/java/entrypoint:entrypoint.tgz",
             "//cmd/java/runtime:runtime.tgz",
             "//cmd/java/maven:maven.tgz",
+            "//cmd/java/gradle:gradle.tgz",
         ],
         "nodejs": [
             "//cmd/nodejs/functions_framework:functions_framework.tgz",

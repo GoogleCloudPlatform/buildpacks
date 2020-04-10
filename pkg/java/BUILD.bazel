@@ -10,7 +10,10 @@ go_library(
     visibility = [
         "//cmd/java:__subpackages__",
     ],
-    deps = ["//pkg/gcpbuildpack"],
+    deps = [
+        "//pkg/gcpbuildpack",
+        "@com_github_buildpack_libbuildpack//layers:go_default_library",
+    ],
 )
 
 go_test(
@@ -19,4 +22,9 @@ go_test(
     srcs = ["java_test.go"],
     embed = [":java"],
     rundir = ".",
+    deps = [
+        "//pkg/gcpbuildpack",
+        "@com_github_buildpack_libbuildpack//buildpack:go_default_library",
+        "@com_github_buildpack_libbuildpack//layers:go_default_library",
+    ],
 )

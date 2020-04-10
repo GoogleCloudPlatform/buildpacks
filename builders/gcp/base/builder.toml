@@ -37,6 +37,10 @@ description = "GCP Builder for all runtimes"
   uri = "java/entrypoint.tgz"
 
 [[buildpacks]]
+  id = "google.java.gradle"
+  uri = "java/gradle.tgz"
+
+[[buildpacks]]
   id = "google.java.maven"
   uri = "java/maven.tgz"
 
@@ -129,13 +133,13 @@ description = "GCP Builder for all runtimes"
 # Java #
 ########
 
+# Maven applications.
 [[order]]
   [[order.group]]
     id = "google.java.runtime"
 
   [[order.group]]
     id = "google.java.maven"
-    optional = true
 
   [[order.group]]
     id = "google.config.entrypoint"
@@ -146,6 +150,28 @@ description = "GCP Builder for all runtimes"
 
   [[order.group]]
     id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.entrypoint"
+
+# Gradle & Jar-based applications.
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.gradle"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.gradle"
     optional = true
 
   [[order.group]]

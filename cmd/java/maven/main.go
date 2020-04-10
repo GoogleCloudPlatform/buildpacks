@@ -20,17 +20,13 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
-	"time"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 	"github.com/buildpack/libbuildpack/layers"
 )
 
 const (
-	dateFormat = time.RFC3339Nano
-	// repoExpiration is an arbitrary amount of time of 10 weeks to refresh the cache layer.
-	// TODO: Investigate proper cache-clearing strategy.
-	repoExpiration = time.Duration(time.Hour * 24 * 7 * 10)
 	// TODO: Automate Maven version updates.
 	mavenVersion = "3.6.3"
 	mavenURL     = "https://downloads.apache.org/maven/maven-3/%[1]s/binaries/apache-maven-%[1]s-bin.tar.gz"
@@ -41,10 +37,6 @@ const (
 // mavenMetadata represents metadata stored for a maven layer.
 type mavenMetadata struct {
 	Version string `toml:"version"`
-}
-
-type repoMetadata struct {
-	ExpiryTimestamp string `toml:"expiry_timestamp"`
 }
 
 func main() {
@@ -59,10 +51,10 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	var repoMeta repoMetadata
+	var repoMeta java.RepoMetadata
 	m2CachedRepo := ctx.Layer(m2Layer)
 	ctx.ReadMetadata(m2CachedRepo, &repoMeta)
-	checkCacheExpiration(ctx, &repoMeta, m2CachedRepo)
+	java.CheckCacheExpiration(ctx, &repoMeta, m2CachedRepo)
 
 	var mvn string
 	var err error
@@ -85,25 +77,6 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.WriteMetadata(m2CachedRepo, &repoMeta, layers.Cache)
 
 	return nil
-}
-
-func checkCacheExpiration(ctx *gcp.Context, repoMeta *repoMetadata, m2CachedRepo *layers.Layer) {
-	t := time.Now()
-	if repoMeta.ExpiryTimestamp != "" {
-		var err error
-		t, err = time.Parse(dateFormat, repoMeta.ExpiryTimestamp)
-		if err != nil {
-			ctx.Debugf("Could not parse expiration date %q, assuming now: %v", repoMeta.ExpiryTimestamp, err)
-		}
-	}
-	if t.After(time.Now()) {
-		return
-	}
-
-	ctx.Debugf("Cache expired on %v, clearing", t)
-	ctx.ClearLayer(m2CachedRepo)
-	repoMeta.ExpiryTimestamp = time.Now().Add(repoExpiration).Format(dateFormat)
-	return
 }
 
 func mvnInstalled(ctx *gcp.Context) bool {

@@ -1,12 +1,12 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
 
-# Buildpack for Maven.
+# Buildpack for Gradle.
 load("//tools:defs.bzl", "buildpack")
 
 licenses(["notice"])
 
 buildpack(
-    name = "maven",
+    name = "gradle",
     executables = [
         ":main",
     ],

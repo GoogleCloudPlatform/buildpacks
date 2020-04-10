@@ -7,6 +7,7 @@ builder(
     buildpacks = [
         "//cmd/java/appengine:appengine.tgz",
         "//cmd/java/maven:maven.tgz",
+        "//cmd/java/gradle:gradle.tgz",
     ],
     image = "gae/java11",
     visibility = ["//builders/gae/java11/acceptance:__pkg__"],
