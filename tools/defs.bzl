@@ -91,7 +91,6 @@ def builder(name, image, descriptor = "builder.toml", buildpacks = None, groups 
         outs = [name + ".sha"],
         local = 1,
         tools = ["//tools:create-builder.sh"],
-        # TODO: Build/pull images before creating the builder.
         cmd = """$(execpath {script}) {image} $(execpath {tar}) $@""".format(
             image = image,
             tar = name + ".tar",

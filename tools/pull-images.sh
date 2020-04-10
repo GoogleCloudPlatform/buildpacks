@@ -22,8 +22,8 @@
 
 readonly product="${1:?product name missing}"
 readonly runtime="${2:?runtime name missing}"
-readonly project="gae-runtimes-private"
-readonly candidate="nightly"
+readonly project="gae-runtimes"
+readonly candidate="latest"
 
 if [[ "${product}" == "gcp" ]]; then
   echo "Building stack images for ${product}/${runtime}"
@@ -32,6 +32,4 @@ else
   echo "Pulling stack images for ${product}/${runtime}"
   docker pull "gcr.io/${project}/buildpacks/${runtime}/run:${candidate}"
   docker pull "gcr.io/${project}/buildpacks/${runtime}/build:${candidate}"
-  docker tag "gcr.io/${project}/buildpacks/${runtime}/run:${candidate}" "gcr.io/gae-runtimes/buildpacks/${runtime}/run"
-  docker tag "gcr.io/${project}/buildpacks/${runtime}/build:${candidate}" "gcr.io/gae-runtimes/buildpacks/${runtime}/build"
 fi
