@@ -8,7 +8,7 @@ Builders are available for the following languages and products:
 |Runtime|GCP           |GAE       |GCF   |
 |-------|--------------|----------|------|
 |Go     |1.1x          |1.13, 1.14|1.13  |
-|Java   |11 (apps only)|11        |      |
+|Java   |8+ (apps only)|11        |      |
 |Node.js|1x            |10, 12    |10, 12|
 |PHP    |              |7.3, 7.4  |      |
 |Python |3.7+          |3.7, 3.8  |3.8   |
