@@ -17,6 +17,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -27,11 +28,9 @@ import (
 )
 
 const (
-	// TODO: Automate Gradle version updates.
-	gradleVersion = "6.3"
-	gradleURL     = "https://services.gradle.org/distributions/gradle-%s-bin.zip"
-	gradleLayer   = "gradle"
-	m2Layer       = "m2"
+	gradleVersionURL = "https://services.gradle.org/versions/current"
+	gradleLayer      = "gradle"
+	m2Layer          = "m2"
 )
 
 // gradleMetadata represents metadata stored for a gradle layer.
@@ -87,6 +86,11 @@ func gradleInstalled(ctx *gcp.Context) bool {
 	return result.Stdout != ""
 }
 
+type gradleVersion struct {
+	Version     string `json:"version"`
+	DownloadURL string `json:"downloadUrl"`
+}
+
 // installGradle installs Gradle and returns the path of the gradle binary
 func installGradle(ctx *gcp.Context) (string, error) {
 	gradlel := ctx.Layer(gradleLayer)
@@ -95,7 +99,12 @@ func installGradle(ctx *gcp.Context) (string, error) {
 	var meta gradleMetadata
 	ctx.ReadMetadata(gradlel, &meta)
 
-	if gradleVersion == meta.Version {
+	version, downloadURL, err := fetchGradleVersion(ctx)
+	if err != nil {
+		return "", fmt.Errorf("fetching latest Gradle version: %w", err)
+	}
+
+	if version == meta.Version {
 		ctx.CacheHit(gradleLayer)
 		ctx.Logf("Gradle cache hit, skipping installation.")
 		return filepath.Join(gradlel.Root, "bin", "gradle"), nil
@@ -104,28 +113,41 @@ func installGradle(ctx *gcp.Context) (string, error) {
 	ctx.ClearLayer(gradlel)
 
 	// Download and install gradle in layer.
-	ctx.Logf("Installing Gradle v%s", gradleVersion)
-	archiveURL := fmt.Sprintf(gradleURL, gradleVersion)
-	if code := ctx.HTTPStatus(archiveURL); code != http.StatusOK {
-		return "", gcp.UserErrorf("Gradle version %s does not exist at %s (status %d).", gradleVersion, archiveURL, code)
+	ctx.Logf("Installing Gradle v%s", version)
+	if code := ctx.HTTPStatus(downloadURL); code != http.StatusOK {
+		return "", fmt.Errorf("Gradle version %s does not exist at %s (status %d)", version, downloadURL, code)
 	}
 
 	tmpDir := "/tmp"
 	gradleZip := filepath.Join(tmpDir, "gradle.zip")
 	defer ctx.RemoveAll(gradleZip)
 
-	curl := fmt.Sprintf("curl --location %s --output %s", archiveURL, gradleZip)
+	curl := fmt.Sprintf("curl --location %s --output %s", downloadURL, gradleZip)
 	ctx.Exec([]string{"bash", "-c", curl})
 
 	unzip := fmt.Sprintf("unzip %s -d %s", gradleZip, tmpDir)
 	ctx.Exec([]string{"bash", "-c", unzip})
 
-	gradleExtracted := filepath.Join(tmpDir, fmt.Sprintf("gradle-%s", gradleVersion))
+	gradleExtracted := filepath.Join(tmpDir, fmt.Sprintf("gradle-%s", version))
 	defer ctx.RemoveAll(gradleExtracted)
 	install := fmt.Sprintf("mv %s/* %s", gradleExtracted, gradlel.Root)
 	ctx.Exec([]string{"bash", "-c", install})
 
-	meta.Version = gradleVersion
+	meta.Version = version
 	ctx.WriteMetadata(gradlel, meta, layers.Cache)
 	return filepath.Join(gradlel.Root, "bin", "gradle"), nil
+}
+
+// fetchGradleVersion returns the latest gradle version, its downloadURL, and an error in that order.
+func fetchGradleVersion(ctx *gcp.Context) (string, string, error) {
+	if code := ctx.HTTPStatus(gradleVersionURL); code != http.StatusOK {
+		return "", "", fmt.Errorf("Gradle latest version info does not exist at %s (status %d)", gradleVersionURL, code)
+	}
+
+	jsonStr := ctx.Exec([]string{"curl", "--silent", gradleVersionURL}).Stdout
+	var gv gradleVersion
+	if err := json.Unmarshal([]byte(jsonStr), &gv); err != nil {
+		return "", "", fmt.Errorf("parsing JSON response from URL %q: %v", gradleVersionURL, err)
+	}
+	return gv.Version, gv.DownloadURL, nil
 }
