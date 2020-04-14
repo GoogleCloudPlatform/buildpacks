@@ -31,16 +31,19 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:              "simple Go application",
 			App:               "go/simple",
-			MustUse:           []string{goRuntime, goBuild, clearSource},
+			MustUse:           []string{goRuntime, goBuild, clearSource, goPath},
 			MustNotUse:        []string{goMod},
 			FilesMustExist:    []string{"/layers/google.go.build/bin/main"},
 			FilesMustNotExist: []string{"/layers/google.go.runtime", "/workspace/main.go"},
+			MustOutput:        []string{"go get -d"},
 			MustNotOutput:     []string{"go mod download"},
 		},
 		{
-			Name:    "Go.mod",
-			App:     "go/simple_gomod",
-			MustUse: []string{goRuntime, goBuild, goMod},
+			Name:          "Go.mod",
+			App:           "go/simple_gomod",
+			MustUse:       []string{goRuntime, goBuild, goMod},
+			MustNotOutput: []string{"go get -d"},
+			MustOutput:    []string{"go mod download"},
 		},
 		{
 			Name:    "Go.mod and vendor",

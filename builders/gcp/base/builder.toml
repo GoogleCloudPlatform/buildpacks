@@ -29,6 +29,10 @@ description = "GCP Builder for all runtimes"
   uri = "go/gomod.tgz"
 
 [[buildpacks]]
+  id = "google.go.gopath"
+  uri = "go/gopath.tgz"
+
+[[buildpacks]]
   id = "google.go.functions-framework"
   uri = "go/functions_framework.tgz"
 
@@ -112,11 +116,66 @@ description = "GCP Builder for all runtimes"
 
   [[order.group]]
     id = "google.go.functions-framework"
-    optional = true
 
   [[order.group]]
     id = "google.go.gomod"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
     optional = true
+
+  [[order.group]]
+    id = "google.config.clear_source"
+    optional = true
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.functions-framework"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.clear_source"
+    optional = true
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.gomod"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.clear_source"
+    optional = true
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.gopath"
 
   [[order.group]]
     id = "google.go.build"
