@@ -6,9 +6,6 @@ version = "0.9.0"
 name = "Go - Gomod"
 
 [[stacks]]
-id = "google"
-
-[[stacks]]
 id = "google.go112"
 
 [[stacks]]

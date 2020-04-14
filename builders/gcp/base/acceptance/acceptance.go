@@ -23,7 +23,6 @@ const (
 	dotnetRuntime  = "google.dotnet.runtime"
 	goBuild        = "google.go.build"
 	goFF           = "google.go.functions-framework"
-	goMod          = "google.go.gomod"
 	goPath         = "google.go.gopath"
 	goRuntime      = "google.go.runtime"
 	javaEntrypoint = "google.java.entrypoint"

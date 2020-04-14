@@ -37,6 +37,9 @@ func buildFn(ctx *gcp.Context) error {
 	l := ctx.Layer("gopath")
 	ctx.OverrideBuildEnv(l, "GOPATH", l.Root)
 	ctx.OverrideBuildEnv(l, "GO111MODULE", "on")
+	// Set GOPROXY to ensure no additional dependency is downloaded at built time.
+	// All of them are downloaded here.
+	ctx.OverrideBuildEnv(l, "GOPROXY", "off")
 	ctx.WriteMetadata(l, nil, layers.Build)
 
 	// TODO: Investigate caching the modules layer.
