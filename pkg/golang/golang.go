@@ -34,37 +34,27 @@ var (
 
 	// goModVersionRegexp is used to get correct declaration of Go version from go.mod file.
 	goModVersionRegexp = regexp.MustCompile(`(?m)^\s*go\s+(\d+(\.\d+){1,2})\s*$`)
-
-	// 1.11 and 1.13 are the two GCF-supported versions that don't require a go.mod file.
-	supportsNoGoMod = semver.MustParseRange("<1.14.0")
-
-	// starting from Go 1.14, `go build` automatically detects and use a `vendor` folder
-	// if `go.mod` contains a `go version 1.14` line.
-	supportsAutoVendor = semver.MustParseRange(">=1.14.0")
 )
 
 // SupportsNoGoMod only returns true for Go version 1.11 and 1.13.
 // These are the two GCF-supported versions that don't require a go.mod file.
 func SupportsNoGoMod(ctx *gcp.Context) bool {
-	v := readGoVersion(ctx)
+	v := GoVersion(ctx)
 
-	match := goVersionRegexp.FindStringSubmatch(v)
-	if len(match) < 2 || match[1] == "" {
-		ctx.Exit(1, gcp.InternalErrorf("unable to find go version in %q", v))
-	}
-
-	versionString := match[1]
-	version, err := semver.ParseTolerant(versionString)
+	version, err := semver.ParseTolerant(v)
 	if err != nil {
-		ctx.Exit(1, gcp.InternalErrorf("unable to parse go version string %q: %s", versionString, err))
+		ctx.Exit(1, gcp.InternalErrorf("unable to parse go version string %q: %s", v, err))
 	}
 
-	return supportsNoGoMod(version)
+	go113OrLower := semver.MustParseRange("<1.14.0")
+	return go113OrLower(version)
 }
 
-// SupportsAutoVendor only returns true for Go version 1.14+.
+// SupportsAutoVendor returns true if both:
+// + Go 1.14+ is installed.
+// + go.mod contains a "go 1.14" or higher entry.
 // Starting from Go 1.14, `go build` automatically detects and use a `vendor` folder
-// if `go.mod` contains a `go version 1.14` line.
+// if `go.mod` contains a `go 1.14` line.
 func SupportsAutoVendor(ctx *gcp.Context, dir string) bool {
 	v := GoModVersion(ctx, dir)
 	if v == "" {
@@ -76,7 +66,31 @@ func SupportsAutoVendor(ctx *gcp.Context, dir string) bool {
 		ctx.Exit(1, gcp.InternalErrorf("unable to parse go version string %q: %s", v, err))
 	}
 
-	return supportsAutoVendor(version)
+	go114OrHigher := semver.MustParseRange(">=1.14.0")
+	if !go114OrHigher(version) {
+		return false
+	}
+
+	v = GoVersion(ctx)
+
+	version, err = semver.ParseTolerant(v)
+	if err != nil {
+		ctx.Exit(1, gcp.InternalErrorf("unable to parse go version string %q: %s", v, err))
+	}
+
+	return go114OrHigher(version)
+}
+
+// GoVersion reads the version of the installed Go runtime.
+func GoVersion(ctx *gcp.Context) string {
+	v := readGoVersion(ctx)
+
+	match := goVersionRegexp.FindStringSubmatch(v)
+	if len(match) < 2 || match[1] == "" {
+		ctx.Exit(1, gcp.InternalErrorf("unable to find go version in %q", v))
+	}
+
+	return match[1]
 }
 
 // GoModVersion reads the version of Go from a go.mod file if present.

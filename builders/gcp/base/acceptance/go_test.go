@@ -46,9 +46,10 @@ func TestAcceptance(t *testing.T) {
 			MustOutput:    []string{"go mod download"},
 		},
 		{
-			Name:    "Go.mod and vendor",
-			App:     "go/simple_gomod_vendor",
-			MustUse: []string{goRuntime, goBuild, goMod},
+			Name:          "Go.mod and vendor",
+			App:           "go/simple_gomod_vendor",
+			MustUse:       []string{goRuntime, goBuild, goMod},
+			MustNotOutput: []string{"go mod download"},
 		},
 		{
 			Name:           "simple Go application (Dev Mode)",

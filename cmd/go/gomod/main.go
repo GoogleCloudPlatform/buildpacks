@@ -44,9 +44,13 @@ func buildFn(ctx *gcp.Context) error {
 
 	// When there's a vendor folder and go is 1.14+, we shouldn't download the modules
 	// and let go build use the vendored dependencies.
-	if ctx.FileExists("vendor") && golang.SupportsAutoVendor(ctx, ctx.ApplicationRoot()) {
-		ctx.Logf("Not downloading modules because there's a vendor directory")
-		return nil
+	if ctx.FileExists("vendor") {
+		if golang.SupportsAutoVendor(ctx, ctx.ApplicationRoot()) {
+			ctx.Logf("Not downloading modules because there's a `vendor` directory")
+			return nil
+		}
+
+		ctx.Logf("Ignoring `vendor` directory: the Go runtime must be 1.14+ and go.mod should contain a `go 1.14`+ entry")
 	}
 
 	env := []string{"GOPATH=" + l.Root, "GO111MODULE=on"}

@@ -431,14 +431,16 @@ func buildApp(t *testing.T, app, image, builder string, env map[string]string, c
 	}
 
 	// Check that expected output is found in the logs.
-	for _, text := range mustOutput {
-		if !strings.Contains(errb.String(), text) {
-			t.Errorf("Build logs must contain %q", text)
+	if !cache {
+		for _, text := range mustOutput {
+			if !strings.Contains(errb.String(), text) {
+				t.Errorf("Build logs must contain %q", text)
+			}
 		}
-	}
-	for _, text := range mustNotOutput {
-		if strings.Contains(errb.String(), text) {
-			t.Errorf("Build logs must not contain %q", text)
+		for _, text := range mustNotOutput {
+			if strings.Contains(errb.String(), text) {
+				t.Errorf("Build logs must not contain %q", text)
+			}
 		}
 	}
 

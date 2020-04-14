@@ -274,39 +274,39 @@ module dir
 
 func TestSupportsNoGoMod(t *testing.T) {
 	testCases := []struct {
-		version string
-		want    bool
+		goVersion string
+		want      bool
 	}{
 		{
-			version: "go version go1.11 darwin/amd64",
-			want:    true,
+			goVersion: "go version go1.11 darwin/amd64",
+			want:      true,
 		},
 		{
-			version: "go version go1.11.1 darwin/amd64",
-			want:    true,
+			goVersion: "go version go1.11.1 darwin/amd64",
+			want:      true,
 		},
 		{
-			version: "go version go1.13 darwin/amd64",
-			want:    true,
+			goVersion: "go version go1.13 darwin/amd64",
+			want:      true,
 		},
 		{
-			version: "go version go1.13.3 darwin/amd64",
-			want:    true,
+			goVersion: "go version go1.13.3 darwin/amd64",
+			want:      true,
 		},
 		{
-			version: "go version go1.10 darwin/amd64",
-			want:    true,
+			goVersion: "go version go1.10 darwin/amd64",
+			want:      true,
 		},
 		{
-			version: "go version go1.14 darwin/amd64",
-			want:    false,
+			goVersion: "go version go1.14 darwin/amd64",
+			want:      false,
 		},
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.version, func(t *testing.T) {
+		t.Run(tc.goVersion, func(t *testing.T) {
 			defer func(fn func(*gcp.Context) string) { readGoVersion = fn }(readGoVersion)
-			readGoVersion = func(*gcp.Context) string { return tc.version }
+			readGoVersion = func(*gcp.Context) string { return tc.goVersion }
 
 			supported := SupportsNoGoMod(nil)
 
@@ -319,24 +319,39 @@ func TestSupportsNoGoMod(t *testing.T) {
 
 func TestSupportsAutoVendor(t *testing.T) {
 	testCases := []struct {
-		goMod string
-		want  bool
+		goVersion string
+		goMod     string
+		want      bool
 	}{
 		{
-			goMod: "module dir\ngo 1.13",
-			want:  false,
+			goVersion: "go version go1.13 darwin/amd64",
+			goMod:     "module dir\ngo 1.13",
+			want:      false,
 		},
 		{
-			goMod: "module dir\ngo 1.14",
-			want:  true,
+			goVersion: "go version go1.14 darwin/amd64",
+			goMod:     "module dir\ngo 1.13",
+			want:      false,
 		},
 		{
-			goMod: "module v\ngo 1.14.1",
-			want:  true,
+			goVersion: "go version go1.14 darwin/amd64",
+			goMod:     "module dir\ngo 1.14",
+			want:      true,
 		},
 		{
-			goMod: "module dir\ngo 1.15",
-			want:  true,
+			goVersion: "go version go1.14.2 darwin/amd64",
+			goMod:     "module v\ngo 1.14.1",
+			want:      true,
+		},
+		{
+			goVersion: "go version go1.15 darwin/amd64",
+			goMod:     "module dir\ngo 1.15",
+			want:      true,
+		},
+		{
+			goVersion: "go version go1.13 darwin/amd64",
+			goMod:     "module dir\ngo 1.14",
+			want:      false,
 		},
 		{
 			goMod: "",
@@ -346,6 +361,9 @@ func TestSupportsAutoVendor(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.goMod, func(t *testing.T) {
+			defer func(fn func(*gcp.Context) string) { readGoVersion = fn }(readGoVersion)
+			readGoVersion = func(*gcp.Context) string { return tc.goVersion }
+
 			defer func(fn func(*gcp.Context, string) string) { readGoMod = fn }(readGoMod)
 			readGoMod = func(*gcp.Context, string) string { return tc.goMod }
 
