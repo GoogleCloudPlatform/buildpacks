@@ -39,7 +39,6 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.WriteMetadata(l, nil, layers.Build)
 
 	// TODO: Investigate caching the modules layer.
-	// TODO: Investigate creating and caching a GOCACHE layer.
 
 	ctx.ExecUserWithParams(gcp.ExecParams{
 		Cmd: []string{"go", "get", "-d"},

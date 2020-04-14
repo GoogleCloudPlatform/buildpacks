@@ -39,6 +39,16 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	// Create a cached layer for the GOCACHE.
+	cl := ctx.Layer("gocache")
+	lf := []layers.Flag{layers.Cache, layers.Build}
+	if devmode.Enabled(ctx) {
+		lf = append(lf, layers.Launch)
+		ctx.OverrideLaunchEnv(cl, "GOCACHE", cl.Root)
+	}
+	ctx.WriteMetadata(cl, nil, lf...)
+
+	// Create a layer for the compiled binary.
 	bl := ctx.Layer("bin")
 	ctx.PrependPathLaunchEnv(bl, "PATH", bl.Root)
 	ctx.WriteMetadata(bl, nil, layers.Launch)
@@ -51,6 +61,7 @@ func buildFn(ctx *gcp.Context) error {
 	// Build the application.
 	ctx.ExecUserWithParams(gcp.ExecParams{
 		Cmd: []string{"go", "build", "-o", filepath.Join(bl.Root, golang.OutBin), pkg},
+		Env: []string{"GOCACHE=" + cl.Root},
 	}, gcp.UserErrorKeepStderrTail)
 
 	// Configure the entrypoint for production.
