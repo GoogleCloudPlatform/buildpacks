@@ -48,9 +48,9 @@ type RepoMetadata struct {
 // ExecutableJar looks for the jar with a Main-Class manifest. If there is not exactly 1 of these jars, throw an error.
 func ExecutableJar(ctx *gcp.Context) (string, error) {
 	// Maven-built jar(s) in target directory take precedence over existing jars at app root.
-	jars := ctx.Glob(filepath.Join(ctx.ApplicationRoot(), "target/*.jar"))
+	jars := ctx.Glob(filepath.Join(ctx.ApplicationRoot(), "target", "*.jar"))
 	if len(jars) == 0 {
-		jars = ctx.Glob(filepath.Join(ctx.ApplicationRoot(), "build/libs/*.jar"))
+		jars = ctx.Glob(filepath.Join(ctx.ApplicationRoot(), "build", "libs", "*.jar"))
 	}
 	if len(jars) == 0 {
 		jars = ctx.Glob(filepath.Join(ctx.ApplicationRoot(), "*.jar"))
