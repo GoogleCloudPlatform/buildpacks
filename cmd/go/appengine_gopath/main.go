@@ -37,7 +37,7 @@ func detectFn(ctx *gcp.Context) error {
 	if ctx.FileExists("go.mod") {
 		ctx.OptOut("go.mod file found")
 	}
-	if !ctx.HasAtLeastOne(ctx.ApplicationRoot(), "*.go") {
+	if !ctx.HasAtLeastOne("*.go") {
 		ctx.OptOut("No *.go files found")
 	}
 	return nil

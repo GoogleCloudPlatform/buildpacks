@@ -47,7 +47,7 @@ func main() {
 func detectFn(ctx *gcp.Context) error {
 	runtime.CheckOverride(ctx, "java")
 
-	if !ctx.HasAtLeastOne(ctx.ApplicationRoot(), "*.java") && !ctx.HasAtLeastOne(ctx.ApplicationRoot(), "**/*.jar") {
+	if !ctx.HasAtLeastOne("*.java") && !ctx.HasAtLeastOne("**/*.jar") {
 		ctx.OptOut("No *.java or *.jar files found.")
 	}
 	return nil

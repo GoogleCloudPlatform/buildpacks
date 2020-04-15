@@ -313,9 +313,10 @@ func TestHasAtLeastOne(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := NewContext(buildpack.Info{ID: "id", Version: "version", Name: "name"})
-			_, cleanup := tempWorkingDir(t)
+			dir, cleanup := tempWorkingDir(t)
 			defer cleanup()
+
+			ctx := NewContextForTests(buildpack.Info{ID: "id", Version: "version", Name: "name"}, dir)
 			for _, f := range tc.files {
 				ctx.MkdirAll(tc.prefix, 0777)
 				_, err := ioutil.TempFile(tc.prefix, f)
@@ -323,7 +324,8 @@ func TestHasAtLeastOne(t *testing.T) {
 					t.Fatalf("Creating temp file %s/%s: %v", tc.prefix, f, err)
 				}
 			}
-			got := ctx.HasAtLeastOne(".", "*.py")
+
+			got := ctx.HasAtLeastOne("*.py")
 			if got != tc.want {
 				t.Errorf("HasAtLeastOne()=%t, want=%t", got, tc.want)
 			}

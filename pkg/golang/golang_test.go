@@ -253,19 +253,19 @@ module dir
 
 	for tci, tc := range testCases {
 		t.Run(fmt.Sprintf("go.mod testcase %d", tci), func(t *testing.T) {
-			ctx := gcp.NewContext(buildpack.Info{})
-
 			dir, err := ioutil.TempDir("", tc.name)
 			if err != nil {
 				t.Fatalf("failing to create temp dir: %v", err)
 			}
 			defer os.RemoveAll(dir)
 
+			ctx := gcp.NewContextForTests(buildpack.Info{}, dir)
+
 			if err := ioutil.WriteFile(filepath.Join(dir, "go.mod"), []byte(tc.gomod), 0644); err != nil {
 				t.Fatalf("writing go.mod: %v", err)
 			}
 
-			if got := GoModVersion(ctx, dir); got != tc.want {
+			if got := GoModVersion(ctx); got != tc.want {
 				t.Errorf("GoModVersion(%q) = %q, want %q", dir, got, tc.want)
 			}
 		})
@@ -364,10 +364,10 @@ func TestSupportsAutoVendor(t *testing.T) {
 			defer func(fn func(*gcp.Context) string) { readGoVersion = fn }(readGoVersion)
 			readGoVersion = func(*gcp.Context) string { return tc.goVersion }
 
-			defer func(fn func(*gcp.Context, string) string) { readGoMod = fn }(readGoMod)
-			readGoMod = func(*gcp.Context, string) string { return tc.goMod }
+			defer func(fn func(*gcp.Context) string) { readGoMod = fn }(readGoMod)
+			readGoMod = func(*gcp.Context) string { return tc.goMod }
 
-			supported := SupportsAutoVendor(nil, "")
+			supported := SupportsAutoVendor(nil)
 
 			if supported != tc.want {
 				t.Errorf("VersionSupportsVendoredModules() returned %v, wanted %v", supported, tc.want)

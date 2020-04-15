@@ -85,6 +85,13 @@ func NewContext(info buildpack.Info) *Context {
 	}
 }
 
+// NewContextForTests creates a context to be used for tests.
+func NewContextForTests(info buildpack.Info, root string) *Context {
+	ctx := NewContext(info)
+	ctx.applicationRoot = root
+	return ctx
+}
+
 func newDetectContext() *Context {
 	d, err := libdetect.DefaultDetect()
 	if err != nil {

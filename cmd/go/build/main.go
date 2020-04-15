@@ -32,7 +32,7 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) error {
-	if !ctx.HasAtLeastOne(ctx.ApplicationRoot(), "*.go") {
+	if !ctx.HasAtLeastOne("*.go") {
 		ctx.OptOut("No *.go files found")
 	}
 	return nil

@@ -30,11 +30,14 @@ func (ctx *Context) Glob(pattern string) []string {
 }
 
 // HasAtLeastOne walks through file tree searching for at least one match.
-func (ctx *Context) HasAtLeastOne(dir string, pattern string) bool {
+func (ctx *Context) HasAtLeastOne(pattern string) bool {
+	dir := ctx.ApplicationRoot()
+
 	errFileMatch := errors.New("File matched")
 	if len(ctx.Glob(filepath.Join(dir, pattern))) > 0 {
 		return true
 	}
+
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			ctx.Exit(1, Errorf(StatusInternal, "walking through %s within %s: %v", path, dir, err))

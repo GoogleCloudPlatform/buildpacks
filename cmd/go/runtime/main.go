@@ -50,7 +50,7 @@ func main() {
 func detectFn(ctx *gcp.Context) error {
 	runtime.CheckOverride(ctx, "go")
 
-	if !ctx.HasAtLeastOne(ctx.ApplicationRoot(), "*.go") {
+	if !ctx.HasAtLeastOne("*.go") {
 		ctx.OptOut("No *.go files found.")
 	}
 	return nil
@@ -99,7 +99,7 @@ func runtimeVersion(ctx *gcp.Context) (string, error) {
 		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, version)
 		return version, nil
 	}
-	if version := golang.GoModVersion(ctx, ctx.ApplicationRoot()); version != "" {
+	if version := golang.GoModVersion(ctx); version != "" {
 		ctx.Logf("Using runtime version from go.mod: %s", version)
 		return version, nil
 	}

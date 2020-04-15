@@ -55,8 +55,8 @@ func SupportsNoGoMod(ctx *gcp.Context) bool {
 // + go.mod contains a "go 1.14" or higher entry.
 // Starting from Go 1.14, `go build` automatically detects and use a `vendor` folder
 // if `go.mod` contains a `go 1.14` line.
-func SupportsAutoVendor(ctx *gcp.Context, dir string) bool {
-	v := GoModVersion(ctx, dir)
+func SupportsAutoVendor(ctx *gcp.Context) bool {
+	v := GoModVersion(ctx)
 	if v == "" {
 		return false
 	}
@@ -95,8 +95,8 @@ func GoVersion(ctx *gcp.Context) string {
 
 // GoModVersion reads the version of Go from a go.mod file if present.
 // If not present or if version isn't there returns an empty string.
-func GoModVersion(ctx *gcp.Context, dir string) string {
-	v := readGoMod(ctx, dir)
+func GoModVersion(ctx *gcp.Context) string {
+	v := readGoMod(ctx)
 	if v == "" {
 		return v
 	}
@@ -117,8 +117,8 @@ var readGoVersion = func(ctx *gcp.Context) string {
 
 // readGoMod reads the go.mod file if present. If not present, returns an empty string.
 // It can be overriden for testing.
-var readGoMod = func(ctx *gcp.Context, dir string) string {
-	goModPath := filepath.Join(dir, "go.mod")
+var readGoMod = func(ctx *gcp.Context) string {
+	goModPath := filepath.Join(ctx.ApplicationRoot(), "go.mod")
 	if !ctx.FileExists(goModPath) {
 		return ""
 	}

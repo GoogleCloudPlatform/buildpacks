@@ -52,7 +52,7 @@ func main() {
 func detectFn(ctx *gcp.Context) error {
 	runtime.CheckOverride(ctx, "dotnet")
 
-	if len(dotnet.ProjectFiles(ctx, ".")) == 0 && !ctx.HasAtLeastOne(ctx.ApplicationRoot(), "*.dll") {
+	if len(dotnet.ProjectFiles(ctx, ".")) == 0 && !ctx.HasAtLeastOne("*.dll") {
 		ctx.OptOut("No project files nor .dll files found.")
 	}
 

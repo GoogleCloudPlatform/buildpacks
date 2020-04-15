@@ -96,9 +96,6 @@ func TestMainPath(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
-			ctx := gcp.NewContext(buildpack.Info{})
-
 			dir, err := ioutil.TempDir("", "TestMainPath-")
 			if err != nil {
 				t.Fatalf("Creating temporary directory: %v", err)
@@ -108,6 +105,8 @@ func TestMainPath(t *testing.T) {
 					t.Fatalf("Unable to remove test directory %q", dir)
 				}
 			}()
+
+			ctx := gcp.NewContextForTests(buildpack.Info{}, dir)
 
 			if tc.stagerFileContents != "" {
 				if err = ioutil.WriteFile(filepath.Join(dir, "_main-package-path"), []byte(tc.stagerFileContents), 0755); err != nil {
@@ -125,7 +124,7 @@ func TestMainPath(t *testing.T) {
 				}
 			}()
 
-			if got := mainPath(ctx, dir); got != tc.want {
+			if got := mainPath(ctx); got != tc.want {
 				t.Errorf("mainPath() = %q, want %q", got, tc.want)
 			}
 		})

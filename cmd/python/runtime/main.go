@@ -49,7 +49,7 @@ func main() {
 func detectFn(ctx *gcp.Context) error {
 	runtime.CheckOverride(ctx, "python")
 
-	if !ctx.HasAtLeastOne(ctx.ApplicationRoot(), "*.py") {
+	if !ctx.HasAtLeastOne("*.py") {
 		ctx.OptOut("No *.py files found.")
 	}
 	return nil

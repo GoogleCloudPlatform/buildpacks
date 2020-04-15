@@ -50,7 +50,7 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	buildMainPath, err := cleanMainPath(mainPath(ctx, ctx.ApplicationRoot()))
+	buildMainPath, err := cleanMainPath(mainPath(ctx))
 	if err != nil {
 		return fmt.Errorf("cleaning main package path: %w", err)
 	}
@@ -72,12 +72,12 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 // mainPath chooses the main package path from the paths provided by _main-package-path or GAE_YAML_MAIN.
-func mainPath(ctx *gcp.Context, appRoot string) string {
+func mainPath(ctx *gcp.Context) string {
 	if path := os.Getenv(env.GAEMain); path != "" {
 		return path
 	}
 
-	if pathFile := filepath.Join(appRoot, stagerFileName); ctx.FileExists(pathFile) {
+	if pathFile := filepath.Join(ctx.ApplicationRoot(), stagerFileName); ctx.FileExists(pathFile) {
 		path := string(ctx.ReadFile(pathFile))
 		ctx.RemoveAll(pathFile)
 		return path
