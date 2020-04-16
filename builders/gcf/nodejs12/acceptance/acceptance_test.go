@@ -110,6 +110,21 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{npm},
 			MustNotUse: []string{yarn},
 		},
+		// This test fails because of a bug in npm ci,
+		//   - nodejs12 runs npm ci --production
+		//   - npm ci runs the prepare script that uses a package in devDependencies.
+		// {
+		// 	Name:       "function with prepare",
+		// 	App:        "with_prepare",
+		// 	MustUse:    []string{npm},
+		// 	MustNotUse: []string{yarn},
+		// },
+		{
+			Name:       "function with prepare and with yarn",
+			App:        "with_prepare_yarn",
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

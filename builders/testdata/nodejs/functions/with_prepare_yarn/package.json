@@ -1,0 +1,13 @@
+{
+  "name": "nodejs-app-with-prepare",
+  "scripts": {
+    "compile": "tsc -p .",
+    "prepare": "npm run compile"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^3.8.3"
+  }
+}

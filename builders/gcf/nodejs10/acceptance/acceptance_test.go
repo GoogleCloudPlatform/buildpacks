@@ -116,6 +116,18 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{yarn},
 		},
 		{
+			Name:       "function with prepare",
+			App:        "with_prepare",
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
+		},
+		{
+			Name:       "function with prepare and with yarn",
+			App:        "with_prepare_yarn",
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
+		},
+		{
 			Name:       "firebase function pre v3.4.0",
 			App:        "firebase_pre_3.4.0",
 			RunEnv:     []string{gcloudProject, firebaseConfig},
