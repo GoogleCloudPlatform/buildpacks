@@ -63,6 +63,10 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	}
 
+	if !ctx.FileExists(fnFile) {
+		return gcp.UserErrorf("%s does not exist", fnFile)
+	}
+
 	// Syntax check the function code without executing.
 	ctx.ExecUser([]string{"node", "--check", fnFile})
 

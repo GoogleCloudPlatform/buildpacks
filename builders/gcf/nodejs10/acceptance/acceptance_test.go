@@ -174,7 +174,7 @@ func TestFailures(t *testing.T) {
 		{
 			App:       "fail_wrong_main",
 			Env:       []string{"FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=nodejs10"},
-			MustMatch: "Error: Cannot find module",
+			MustMatch: "function.js does not exist",
 		},
 	}
 
