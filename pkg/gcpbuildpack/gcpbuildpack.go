@@ -229,6 +229,17 @@ func (ctx *Context) Exit(exitCode int, be *Error) {
 		ctx.Logf("Failure: " + be.Message)
 		ctx.saveErrorOutput(be)
 	}
+
+	if exitCode != 0 {
+		ctx.Tipf(divider)
+		ctx.Tipf(`Sorry your project couldn't be built.`)
+		ctx.Tipf(`Our documentation explains ways to configure Buildpacks to better recognise your project:`)
+		ctx.Tipf(` -> https://github.com/GoogleCloudPlatform/buildpacks/blob/master/README.md`)
+		ctx.Tipf(`If you think you've found an issue, please report it:`)
+		ctx.Tipf(` -> https://github.com/GoogleCloudPlatform/buildpacks/issues/new`)
+		ctx.Tipf(divider)
+	}
+
 	ctx.exitCode = exitCode
 	os.Exit(exitCode)
 }
