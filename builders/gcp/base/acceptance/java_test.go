@@ -60,6 +60,12 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{javaMaven, javaRuntime, javaEntrypoint},
 			MustNotUse: []string{entrypoint},
 		},
+		{
+			Name:       "Java gradle",
+			App:        "java/gradle_micronaut",
+			MustUse:    []string{javaGradle, javaRuntime, javaEntrypoint},
+			MustNotUse: []string{entrypoint},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

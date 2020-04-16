@@ -69,6 +69,14 @@ func TestAcceptance(t *testing.T) {
 			App:  "ktordemo",
 			Env:  []string{"GOOGLE_ENTRYPOINT=java -jar target/ktor-0.0.1-jar-with-dependencies.jar"},
 		},
+		{
+			Name: "gradle micronaut",
+			App:  "gradle_micronaut",
+		},
+		{
+			Name: "gradlew micronaut",
+			App:  "gradlew_micronaut",
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

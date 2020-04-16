@@ -26,6 +26,7 @@ const (
 	goPath         = "google.go.gopath"
 	goRuntime      = "google.go.runtime"
 	javaEntrypoint = "google.java.entrypoint"
+	javaGradle     = "google.java.gradle"
 	javaMaven      = "google.java.maven"
 	javaRuntime    = "google.java.runtime"
 	nodeFF         = "google.nodejs.functions-framework"
