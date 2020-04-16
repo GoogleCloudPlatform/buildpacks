@@ -263,6 +263,14 @@ func (ctx *Context) Warnf(format string, args ...interface{}) {
 	ctx.Logf("Warning: "+format, args...)
 }
 
+// Tipf emits a structured logging line for usage tips.
+func (ctx *Context) Tipf(format string, args ...interface{}) {
+	// Tips are only displayed for the gcp/base builder, not in GAE/GCF environments.
+	if os.Getenv("CNB_STACK_ID") == "google" {
+		ctx.Logf(format, args...)
+	}
+}
+
 // CacheHit records a cache hit debug message. This is used in acceptance test validation.
 func (ctx *Context) CacheHit(tag string) {
 	ctx.Debugf("%s %q", cacheHitMessage, tag)

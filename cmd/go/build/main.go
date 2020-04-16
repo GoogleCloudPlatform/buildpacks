@@ -19,12 +19,17 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 	"github.com/buildpack/libbuildpack/layers"
+)
+
+const (
+	cantLoadDefaultPackageError = "can't load package: package ."
 )
 
 func main() {
@@ -62,7 +67,7 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.ExecUserWithParams(gcp.ExecParams{
 		Cmd: []string{"go", "build", "-o", filepath.Join(bl.Root, golang.OutBin), pkg},
 		Env: []string{"GOCACHE=" + cl.Root},
-	}, gcp.UserErrorKeepStderrTail)
+	}, printTipsAndKeepStderrTail(ctx))
 
 	// Configure the entrypoint for production.
 	if !devmode.Enabled(ctx) {
@@ -78,4 +83,14 @@ func buildFn(ctx *gcp.Context) error {
 	devmode.AddSyncMetadata(ctx, devmode.GoSyncRules)
 
 	return nil
+}
+
+func printTipsAndKeepStderrTail(ctx *gcp.Context) gcp.ErrorSummaryProducer {
+	return func(result *gcp.ExecResult) *gcp.Error {
+		if result.ExitCode != 0 && strings.Contains(result.Stderr, cantLoadDefaultPackageError) {
+			ctx.Tipf("Tip: %q env var configures which Go package is built. Default is '.'", env.Buildable)
+		}
+
+		return gcp.UserErrorKeepStderrTail(result)
+	}
 }
