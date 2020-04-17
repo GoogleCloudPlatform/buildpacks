@@ -16,7 +16,7 @@ go_test(
         "-test-data=$(location //builders/testdata:generic)",
         "-structure-test-config=$(location :config.yaml)",
         "-builder-source=$(location //builders/gcp/base:builder.tar)",
-        "-builder-prefix=gcpbase-acceptance-test-",
+        "-builder-prefix=gcpbase-dotnet-test-",
     ],
     data = [
         ":config.yaml",
@@ -39,7 +39,7 @@ go_test(
         "-test-data=$(location //builders/testdata:generic)",
         "-structure-test-config=$(location :config.yaml)",
         "-builder-source=$(location //builders/gcp/base:builder.tar)",
-        "-builder-prefix=gcpbase-acceptance-test-",
+        "-builder-prefix=gcpbase-go-test-",
     ],
     data = [
         ":config.yaml",
@@ -62,7 +62,7 @@ go_test(
         "-test-data=$(location //builders/testdata:generic)",
         "-structure-test-config=$(location :config.yaml)",
         "-builder-source=$(location //builders/gcp/base:builder.tar)",
-        "-builder-prefix=gcpbase-acceptance-test-",
+        "-builder-prefix=gcpbase-java-test-",
     ],
     data = [
         ":config.yaml",
@@ -85,7 +85,7 @@ go_test(
         "-test-data=$(location //builders/testdata:generic)",
         "-structure-test-config=$(location :config.yaml)",
         "-builder-source=$(location //builders/gcp/base:builder.tar)",
-        "-builder-prefix=gcpbase-acceptance-test-",
+        "-builder-prefix=gcpbase-nodejs-test-",
     ],
     data = [
         ":config.yaml",
@@ -108,7 +108,7 @@ go_test(
         "-test-data=$(location //builders/testdata:generic)",
         "-structure-test-config=$(location :config.yaml)",
         "-builder-source=$(location //builders/gcp/base:builder.tar)",
-        "-builder-prefix=gcpbase-acceptance-test-",
+        "-builder-prefix=gcpbase-python-test-",
     ],
     data = [
         ":config.yaml",
@@ -131,7 +131,7 @@ go_test(
         "-test-data=$(location //builders/testdata/nodejs:functions)",
         "-structure-test-config=$(location :config.yaml)",
         "-builder-source=$(location //builders/gcp/base:builder.tar)",
-        "-builder-prefix=gcpbase-nodejs-fn-acceptance-test-",
+        "-builder-prefix=gcpbase-nodejs-fn-test-",
     ],
     data = [
         ":config.yaml",
@@ -154,7 +154,7 @@ go_test(
         "-test-data=$(location //builders/testdata/go:functions)",
         "-structure-test-config=$(location :config.yaml)",
         "-builder-source=$(location //builders/gcp/base:builder.tar)",
-        "-builder-prefix=gcpbase-go-fn-acceptance-test-",
+        "-builder-prefix=gcpbase-go-fn-test-",
     ],
     data = [
         ":config.yaml",
@@ -177,7 +177,7 @@ go_test(
         "-test-data=$(location //builders/testdata/python:functions)",
         "-structure-test-config=$(location :config.yaml)",
         "-builder-source=$(location //builders/gcp/base:builder.tar)",
-        "-builder-prefix=gcpbase-python-fn-acceptance-test-",
+        "-builder-prefix=gcpbase-python-fn-test-",
     ],
     data = [
         ":config.yaml",

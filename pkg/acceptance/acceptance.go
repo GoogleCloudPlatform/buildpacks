@@ -59,6 +59,7 @@ var (
 	packBin             string // Path to pack binary.
 	structureBin        string // Path to container-structure-test binary.
 	lifecycle           string // Path to lifecycle archive; optional.
+	pullImages          bool   // Pull stack images instead of using local daemon.
 
 	specialChars = regexp.MustCompile("[^a-zA-Z0-9]+")
 )
@@ -79,9 +80,10 @@ func DefineFlags() {
 	flag.StringVar(&builderSource, "builder-source", "", "Location of the builder source files.")
 	flag.StringVar(&builderPrefix, "builder-prefix", "acceptance-test-builder-", "Prefix for the generated builder image.")
 	flag.BoolVar(&keepArtifacts, "keep-artifacts", false, "Keep images and other artifacts after tests have finished.")
-	flag.StringVar(&packBin, "pack", "/usr/bin/pack", "Path to pack binary.")
-	flag.StringVar(&structureBin, "structure-test", "/usr/bin/container-structure-test", "Path to container-structure-test.")
+	flag.StringVar(&packBin, "pack", "pack", "Path to pack binary.")
+	flag.StringVar(&structureBin, "structure-test", "container-structure-test", "Path to container-structure-test.")
 	flag.StringVar(&lifecycle, "lifecycle", "", "Location of lifecycle archive. Overrides builder.toml if specified.")
+	flag.BoolVar(&pullImages, "pull-images", true, "Pull stack images before running the tests.")
 }
 
 // UnarchiveTestData extracts the test-data tgz into a temp dir and returns a cleanup function to be deferred.
@@ -230,8 +232,8 @@ func invokeApp(t *testing.T, image, pathname string, env []string, cache bool) {
 	var res *http.Response
 	var err error
 
-	// Try to connect the the container until it succeeds (up to 30s).
-	for retry := 0; retry < 300; retry++ {
+	// Try to connect the the container until it succeeds (up to 60s).
+	for retry := 0; retry < 600; retry++ {
 		res, err = http.Get(fmt.Sprintf("http://localhost:%d%s", port, pathname))
 		if err == nil {
 			break
@@ -318,18 +320,35 @@ func CreateBuilder(t *testing.T) (string, func()) {
 		}
 	}
 
+	run, build, err := builderStackImages(config)
+	if err != nil {
+		t.Fatalf("Extracting stack images: %v", err)
+	}
+	// Pull images once in the beginning to prevent them from changing in the middle of testing.
+	// The images are intentionally not cleaned up to prevent conflicts across different test targets.
+	if pullImages {
+		if _, err := runOutput("docker", "pull", run); err != nil {
+			t.Fatalf("Error pulling %s: %v", run, err)
+		}
+		if _, err := runOutput("docker", "pull", build); err != nil {
+			t.Fatalf("Error pulling %s: %v", build, err)
+		}
+	}
+
 	// Pack command to create the builder.
 	args := strings.Fields(fmt.Sprintf("create-builder %s --builder-config %s --no-pull --verbose --no-color", name, config))
 	cmd := exec.Command(packBin, args...)
 
 	outFile, errFile, cleanup := outFiles(t, name, "pack", "create-builder")
 	defer cleanup()
-	cmd.Stdout, cmd.Stderr = outFile, errFile
+	var errb bytes.Buffer
+	cmd.Stdout = outFile
+	cmd.Stderr = io.MultiWriter(errFile, &errb) // pack emits buildpack output to stderr.
 
 	start := time.Now()
 	t.Logf("Creating builder (logs %s)", filepath.Dir(outFile.Name()))
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("Error creating builder: %v", err)
+		t.Fatalf("Error creating builder: %v (%v)", err, errb.String())
 	}
 	t.Logf("Successfully created builder: %s (in %s)", name, time.Since(start))
 
@@ -396,6 +415,24 @@ func updateLifecycle(config, uri string) (string, error) {
 	return dest, nil
 }
 
+// builderStackImages returns the stack images specified by the given builder.toml.
+func builderStackImages(path string) (string, string, error) {
+	p, err := ioutil.ReadFile(path)
+	if err != nil {
+		return "", "", fmt.Errorf("reading %s: %v", path, err)
+	}
+	var config struct {
+		Stack struct {
+			RunImage   string `toml:"run-image"`
+			BuildImage string `toml:"build-image"`
+		} `toml:"stack"`
+	}
+	if err := toml.Unmarshal(p, &config); err != nil {
+		return "", "", fmt.Errorf("unmarshaling %s: %v", path, err)
+	}
+	return config.Stack.RunImage, config.Stack.BuildImage, nil
+}
+
 func buildCommand(app, image, builder string, env map[string]string, cache bool) []string {
 	src := filepath.Join(testData, app)
 	// Pack command to build app.
@@ -406,6 +443,11 @@ func buildCommand(app, image, builder string, env map[string]string, cache bool)
 	for k, v := range env {
 		args = append(args, "--env", fmt.Sprintf("%s=%s", k, v))
 	}
+	// Prevents a race condition in pack when concurrently running builds with the same builder.
+	// Pack generates an "emphemeral builder" that contains env vars, adding an env var with a random
+	// value ensures that the generated builder sha is unique and removing it after one build will
+	// not affect other builds running concurrently.
+	args = append(args, "--env", "GOOGLE_RANDOM="+randString(8))
 	log.Printf("Running %v\n", args)
 	return args
 }
@@ -683,6 +725,7 @@ func cleanUpVolumes(t *testing.T, image string) {
 	}
 }
 
+// envSliceAsMap converts the given slice of KEY=VAL strings to a map.
 func envSliceAsMap(t *testing.T, env []string) map[string]string {
 	t.Helper()
 	result := make(map[string]string)
