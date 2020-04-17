@@ -61,7 +61,7 @@ func ExecutableJar(ctx *gcp.Context) (string, error) {
 	var executables []string
 	for _, jar := range jars {
 		if hasMain, err := hasMainManifestEntry(jar); err != nil {
-			return "", fmt.Errorf("finding Main-Class manifest: %w", err)
+			ctx.Warnf("Failed to inspect %s, skipping: %v.", jar, err)
 		} else if hasMain {
 			executables = append(executables, jar)
 		}
