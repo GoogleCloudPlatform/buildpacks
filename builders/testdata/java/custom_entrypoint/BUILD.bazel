@@ -17,5 +17,6 @@ java_binary(
     srcs = [
         "Main.java",
     ],
+    javacopts = ["-Xep:DefaultPackage:OFF"],
     main_class = "Main",
 )
