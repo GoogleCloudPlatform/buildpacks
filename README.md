@@ -1,101 +1,110 @@
-# Google Cloud Platform Buildpacks
+# Google Cloud Buildpacks
 
-Google Cloud Platform Buildpacks is a set of buildpacks and builder definitions
-based on the Buildpack v3 [specification](https://github.com/buildpacks/spec).
+This repository contains a set of builders and buildpacks designed to run on
+Google Cloud's container platforms:
+ [Cloud Run](https://cloud.google.com/run),
+ [GKE](https://cloud.google.com/kubernetes-engine),
+ [Anthos](https://cloud.google.com/anthos),
+ [App Engine](https://cloud.google.com/appengine),
+ [Cloud Functions](https://cloud.google.com/functions),
+ and [Compute Engine runing Container-Optimized OS](https://cloud.google.com/container-optimized-os/docs).
+ They are 100% compatible with [CNCF Buildbacks](https://buildpacks.io/).
 
-Builders are available for the following languages and products:
+## Quickstart
 
-|Runtime|GCP           |GAE       |GCF   |
-|-------|--------------|----------|------|
-|Go     |1.1x          |1.13, 1.14|1.13  |
-|Java   |8+ (apps only)|11        |      |
-|Node.js|1x            |10, 12    |10, 12|
-|PHP    |              |7.3, 7.4  |      |
-|Python |3.7+          |3.7, 3.8  |3.8   |
-|Ruby   |              |2.5       |      |
-|.NET   |3+ (apps only)|3         |      |
+Install [Docker](https://store.docker.com/search?type=edition&offering=community) and [pack](https://buildpacks.io/docs/install-pack/).
 
-
-For more details on Cloud Native Buildpacks, please visit https://buildpacks.io.
-
-----
-
-Note: Go 1.14 triggers a kernel bug in some versions of the Linux kernel
-(version other than 5.3.15+, 5.4.2+, or 5.5+). If using an affected version,
-please set the following in your /etc/docker/daemon.json:
-
-```
-"default-ulimits": {
-        "memlock": {
-                "Name": "memlock",
-                "Soft": -1,
-                "Hard": -1
-        }
-},
+```bash
+pack build <app-name> --builder gcr.io/buildpacks/builder
 ```
 
-----
+## Concepts
+
+To read more, see Buildpack project
+[documentation](https://buildpacks.io/docs/concepts/).
+
+  * **[Builder](https://buildpacks.io/docs/concepts/components/builder/)** A container image that contains buildpacks and detection order in which builds are executed.
+* **[Buildpack](https://buildpacks.io/docs/concepts/components/buildpack/)** An executable that "inspects your app source code and formulates a plan to build and run your application".
+* **Buildpack Group** Several buildpacks which together provide support for a
+specific language or framework.
+* **[Run Image](https://buildpacks.io/docs/concepts/components/stack/)** The container image that serves as the base for the built application.
+
+
+## Generic Builder and Buildpacks
+
+This is a general purpose builder that creates container images designed to run on most
+platforms (e.g. Kubernetes / Anthos, Knative / Cloud Run, Container OS, etc),
+and should be used by the majority of users. The builder attempts to autodetect
+the language of your source code, and can also build functions compatible with
+the [Google Cloud Function Framework](https://cloud.google.com/functions/docs/functions-framework) by [setting the FUCNTION_TARGET env var](#configuration).
+
+The generic builder is hosted at `gcr.io/buildpacks/builder`.
+
+Supported languages include:
+
+
+|Runtime       |App Support | Function Support  |
+|--------------|------------|-------------------|
+| Go 1.10 +    | ✓          | ✓                 |
+| Node.js 10 + | ✓          | ✓                 |
+| Python 3.7 + | ✓          | ✓                 |
+| Java 8, 11   | ✓          |                   |
+| .Net 3 +     | ✓          |                   |
+
+## App Engine and Cloud Function Builders and Buildpacks
+
+These builders create container images designed to run on Google Cloud's App
+Engine and Functions services. Most of the buildpacks are
+identical to those in the generic builder.
+
+Compared to the generic builder, there are two primary differences. First,
+there are additional buildpacks which add transformations specific to each
+service. Second, in order to optimize execution speed, each
+language has a seperate builder.
 
 ## Usage
 
-The GCP Buildpacks project provides builder images suitable for use
+The Google Cloud Buildpacks project provides builder images suitable for use
 with
 [pack](https://github.com/buildpacks/pack),
 [tekton](https://github.com/tektoncd/catalog/tree/master/buildpacks),
 [skaffold](https://github.com/GoogleContainerTools/skaffold/tree/master/examples/buildpacks),
-and other platforms that support the Buildpacks v3 specification.
+and other tools that support the Buildpacks v3 specification.
 
-Most users will be
-interested in the `gcr.io/buildpacks/builder` builder.
 
 ### Building an application
 
-The following command invokes `pack` to apply the GCP builder to build
-the application in the current directory, and then containerize the result
-into a container image named `<app>`.
+The following command invokes [pack](https://github.com/buildpacks/pack) to
+apply the general builder to build the application in the current directory, and then containerizes the result into a local container image named `<app-name>`.
 
 ```bash
-pack build <app> --builder gcr.io/buildpacks/builder
+pack build <app-name> --builder gcr.io/buildpacks/builder
 ```
 
-### Runtime configuration
+The application you built can then be executed locally:
 
-GCP Buildpacks support configuration using a set of environment
-variables that are supported across runtimes.
+```bash
+docker run --rm -p8080:8080 <app-name>
+```
 
-* `GOOGLE_DEVMODE`
-  * Enables the development mode buildpack.
-  * **Example**: `true`, `True`, `1` will enable development mode.
-* `GOOGLE_ENTRYPOINT`:
-  * Specifies entrypoint to set on the final image.
-  * **Example**: `gunicorn -p :8080 main:app` for Python. `java -jar target/myjar.jar` for Java.
+You can set Cloud Buildpacks as your default:
 
-Only applicable to compiled languages:
+```bash
+pack set-default-builder gcr.io/buildpacks/builder
+```
 
-* `GOOGLE_BUILDABLE`:
-  * Specifies path to a buildable unit.
-  * **Example**: `./maindir` for Go will build the package rooted at maindir.
-* `GOOGLE_KEEP_SOURCE`:
-  * Keep the source folder in the final image.
-  * **Example**: `true`, `True`, `1` will keep the source.
+And you can publish the built image to the cloud directly with [pack](https://github.com/buildpacks/pack):
 
-Only applicable to the `runtime` buildpacks:
+```bash
+pack build <app-name> --publish gcr.io/YOUR_PROJECT_ID/APP_NAME
+```
 
-* `GOOGLE_RUNTIME`:
-  * If specified, forces the runtime to opt-in.
-  * **Note**: If the runtime buildpack appears in multiple groups, the first group
-    will be chosen consistently with the specification.
-  * **Example**: `nodejs` will cause the nodejs/runtime buildpack to opt-in.
-* `GOOGLE_RUNTIME_VERSION`:
-  * If specified, overrides the runtime version to install.
-  * **Example**: `13.7.0` for Node.js, `1.14.1` for Go. `8` for Java.
 
-### Adding custom packages
+### Extending the run image
 
-The provided run images and builders can be extended by installing additional
-system-level packages. The two approaches below can be combined.
-
-#### Extending the run image
+If your application requires additional system packages to be installed and
+available when it runs, you can accomplish this by customizing the **run**
+container image.
 
 ```bash
 cat > run.Dockerfile << EOF
@@ -116,8 +125,10 @@ To use the custom run image with pack:
 ```bash
 pack build my-app --builder gcr.io/buildpacks/builder --run-image my-run-image
 ```
+### Extending the builder image
 
-#### Extending the builder image
+If you require certain packages for **building** your application, create a custom
+builder image based on the base builder:
 
 ```bash
 cat > builder.Dockerfile << EOF
@@ -139,6 +150,60 @@ To use the custom builder with pack:
 pack build my-app --builder my-builder-image
 ```
 
+### Configuration
+
+Google Cloud Buildpacks support configuration using a set of **environment
+variables** that are supported across runtimes.
+
+* `GOOGLE_ENTRYPOINT`
+  * Specifies the command which is run when the container is executed; equivalent to [entrypoint](https://docs.docker.com/engine/reference/builder/#entrypoint) in a Dockerfile.
+  * **Example** `gunicorn -p :8080 main:app` for Python. `java -jar target/myjar.jar` for Java.
+* `FUNCTION_TARGET`
+  * For use with source code built around the [Google Cloud Function Framework](https://cloud.google.com/functions/docs/functions-framework). Specifies the path to the function to be built.
+  *   **Example** `./my-function.js`
+* `GOOGLE_RUNTIME`
+  * If specified, forces the runtime to opt-in. If the runtime buildpack appears in multiple groups, the first group will be chosen, consistent with the buildpack specification. *(only works with buildpacks which install language runtimes)*.
+  * **Example** `nodejs` will cause the nodejs/runtime buildpack to opt-in.
+* `GOOGLE_RUNTIME_VERSION`
+  * If specified, overrides the runtime version to install.
+*(only works with buildpacks which install language runtimes)*
+  * **Example** `13.7.0` for Node.js, `1.14.1` for Go. `11.0.6+10` for Java.
+* `GOOGLE_BUILDABLE`
+  * *(only applicable to compiled languages)* Specifies path to a buildable unit.
+  * **Example** `./maindir` for Go will build the package rooted at maindir.
+* `GOOGLE_DEVMODE`
+  * Enables the development mode buildpacks. This is used by [Skaffold](https://skaffold.dev) to enable live local
+  development where changes to your source code trigger automatic container rebuilds. To use, install Skaffold and run `skaffold dev`.
+  * **Example** `true`, `True`, `1` will enable development mode.
+
+## Known Limitations
+
+* **Node**: Custom build steps (e.g. executing the "build" script of package.json) are not supported.
+* **Java**: It is not possible to pass arguments to the maven command (for example, a specific Maven profile)
+* **Go**
+  * *(generic builder only)* Applications without a go.mod cannot have sub-packages.
+  * Go 1.14 triggers a kernel bug in some versions of the Linux kernel
+(versions other than 5.3.15+, 5.4.2+, or 5.5+). If using an affected version,
+please set the following in your /etc/docker/daemon.json:
+
+    ```
+    "default-ulimits": {
+        "memlock": {
+            "Name": "memlock",
+            "Soft": -1,
+            "Hard": -1
+        }
+    },
+    ```
+
+---
+## Support
+
+Please note that this project is not an officially supported Google product.
+Customers of Google Cloud can use [standard support channels](https://cloud.google.com/support-hub)
+for help using buildpacks with Google Cloud Products.
+
+----
 
 ## Get involved with the community
 
@@ -151,8 +216,6 @@ We welcome contributions! Here's how you can contribute:
   * Help out on [issues that need help](https://github.com/GoogleCloudPlatform/buildpacks/labels/help%20wanted)
   * Join in on [discussion issues](https://github.com/GoogleCloudPlatform/buildpacks/labels/discuss)
 <!--  * Read the [style guide] -->
-
-Please note that this project is not an officially supported Google product.
 
 ## License
 
