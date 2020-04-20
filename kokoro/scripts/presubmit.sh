@@ -4,7 +4,7 @@
 set -euo pipefail
 
 if [[ -v KOKORO_ARTIFACTS_DIR ]]; then
-  cd ${KOKORO_ARTIFACTS_DIR}/git/kokoro-codelab-bergerl/buildpacks
+  cd ${KOKORO_ARTIFACTS_DIR}/git/buildpacks
   use_bazel.sh latest
 
   # Move docker's storage location to scratch disk so we don't run out of space.
@@ -12,7 +12,7 @@ if [[ -v KOKORO_ARTIFACTS_DIR ]]; then
   sudo service docker restart
 fi
 
-if [[ -v FILTER ]]; then
+if [[ ! -v FILTER ]]; then
   echo 'Must specify $FILTER.'
   exit 1
 fi
