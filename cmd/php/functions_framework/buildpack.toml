@@ -1,0 +1,15 @@
+api = "0.2"
+
+[buildpack]
+id = "google.php.functions-framework"
+version = "0.9.0"
+name = "Google - PHP - Functions Framework"
+
+[[stacks]]
+id = "google"
+
+[[stacks]]
+id = "google.php73"
+
+[[stacks]]
+id = "google.php74"

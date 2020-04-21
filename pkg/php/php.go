@@ -40,6 +40,7 @@ type composerScriptsJSON struct {
 
 // ComposerJSON represents the contents of a composer.json file.
 type ComposerJSON struct {
+	Require map[string]string   `json:"require"`
 	Scripts composerScriptsJSON `json:"scripts"`
 }
 
@@ -106,9 +107,17 @@ func composerInstall(ctx *gcp.Context, flags []string) {
 	ctx.ExecUser(cmd)
 }
 
-// ComposerInstall runs `composer install` with the given flags, using the cache iff a lock file is present.
-// It creates a layer, so it returns the layer so that the caller may further modify it if they desire.
-func ComposerInstall(ctx *gcp.Context, cacheTag string, flags []string) (*layers.Layer, error) {
+// ComposerInstall runs `composer install`, using the cache iff a lock file is present.
+// It creates a layer, so it returns the layer so that the caller may further modify it
+// if they desire.
+func ComposerInstall(ctx *gcp.Context, cacheTag string) (*layers.Layer, error) {
+	// We don't install dev dependencies (i.e. we pass --no-dev to composer) because doing so has caused
+	// problems for customers in the past. For more information see these links:
+	//   https://github.com/GoogleCloudPlatform/php-docs-samples/issues/736
+	//   https://github.com/GoogleCloudPlatform/runtimes-common/pull/763
+	//   https://github.com/GoogleCloudPlatform/runtimes-common/commit/6c4970f609d80f9436ac58ae272cfcc6bcd57143
+	flags := []string{"--no-dev", "--no-progress", "--no-suggest", "--no-interaction"}
+
 	ctx.RemoveAll(Vendor)
 	l := ctx.Layer("composer")
 	layerVendor := filepath.Join(l.Root, Vendor)
@@ -144,4 +153,12 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string, flags []string) (*layers
 
 	ctx.WriteMetadata(l, &meta, layers.Cache)
 	return l, nil
+}
+
+// ComposerRequire runs `composer require` with the given packages. It expects packages to
+// be specified as `composer require` would expect them on the command line, for example
+// "myorg/mypackage:^0.7". It does no caching.
+func ComposerRequire(ctx *gcp.Context, packages []string) {
+	cmd := append([]string{"composer", "require", "--no-progress", "--no-suggest", "--no-interaction"}, packages...)
+	ctx.ExecUser(cmd)
 }

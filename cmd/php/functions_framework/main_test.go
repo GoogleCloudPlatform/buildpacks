@@ -12,37 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements php/composer buildpack.
-// The composer buildpack installs dependencies using composer.
 package main
 
 import (
-	"fmt"
+	"testing"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
 )
 
-const (
-	cacheTag = "prod dependencies"
-)
-
-func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) error {
-	if !ctx.FileExists("composer.json") {
-		ctx.OptOut("composer.json not found.")
+func TestDetect(t *testing.T) {
+	testCases := []struct {
+		name  string
+		files map[string]string
+		env   []string
+		want  int
+	}{
+		{
+			name: "with target",
+			files: map[string]string{
+				"index.php": "",
+			},
+			env:  []string{"FUNCTION_TARGET=helloWorld"},
+			want: 0,
+		},
+		{
+			name: "without target",
+			files: map[string]string{
+				"index.php": "",
+			},
+			env:  []string{"FOO=helloWorld"},
+			want: 100,
+		},
 	}
-	return nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	_, err := php.ComposerInstall(ctx, cacheTag)
-	if err != nil {
-		return fmt.Errorf("composer install: %w", err)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			gcp.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
+		})
 	}
-
-	return nil
 }

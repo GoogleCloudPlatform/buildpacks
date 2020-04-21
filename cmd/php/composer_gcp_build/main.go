@@ -48,12 +48,7 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	// We don't install dev dependencies (i.e. we pass --no-dev to composer) because doing so has caused
-	// problems for customers in the past. For more information see these links:
-	//   https://github.com/GoogleCloudPlatform/php-docs-samples/issues/736
-	//   https://github.com/GoogleCloudPlatform/runtimes-common/pull/763
-	//   https://github.com/GoogleCloudPlatform/runtimes-common/commit/6c4970f609d80f9436ac58ae272cfcc6bcd57143
-	_, err := php.ComposerInstall(ctx, cacheTag, []string{"--no-dev", "--no-progress", "--no-suggest", "--no-interaction"})
+	_, err := php.ComposerInstall(ctx, cacheTag)
 	if err != nil {
 		return fmt.Errorf("composer install: %w", err)
 	}

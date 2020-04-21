@@ -32,6 +32,9 @@ func TestReadComposerJSON(t *testing.T) {
 
 	contents := strings.TrimSpace(`
 {
+  "require": {
+    "myorg/mypackage": "^0.7"
+  },
   "scripts": {
     "gcp-build": "my-script"
   }
@@ -43,6 +46,9 @@ func TestReadComposerJSON(t *testing.T) {
 	}
 
 	want := ComposerJSON{
+		Require: map[string]string{
+			"myorg/mypackage": "^0.7",
+		},
 		Scripts: composerScriptsJSON{
 			GCPBuild: "my-script",
 		},
