@@ -29,8 +29,27 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name: "with invoker",
-			App:  "with_invoker",
+			Name: "cs single target",
+			App:  "cs_single_target",
+			Env:  []string{"FUNCTION_TARGET=TestFunction.Function"},
+			Path: "/function",
+		},
+		{
+			Name: "cs multiple targets",
+			App:  "cs_multiple_targets",
+			Env:  []string{"FUNCTION_TARGET=TestFunction.Function"},
+			Path: "/function",
+		},
+		{
+			Name: "fs function",
+			App:  "fs_function",
+			Env:  []string{"FUNCTION_TARGET=fs_function.Function"},
+			Path: "/function",
+		},
+		{
+			Name: "vb function",
+			App:  "vb_function",
+			Env:  []string{"FUNCTION_TARGET=vb_function.CloudFunction"},
 			Path: "/function",
 		},
 	}
@@ -38,7 +57,6 @@ func TestAcceptance(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
 			tc.Env = append(tc.Env,
-				"FUNCTION_TARGET=TestFunction.Function",
 				"GOOGLE_RUNTIME=dotnet3",
 			)
 
