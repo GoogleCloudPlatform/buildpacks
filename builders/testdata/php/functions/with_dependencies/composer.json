@@ -1,0 +1,5 @@
+{
+    "require": {
+        "phpunit/phpunit": "9.1.1"
+    }
+}

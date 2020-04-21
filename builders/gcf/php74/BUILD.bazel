@@ -1,0 +1,14 @@
+load("//tools:defs.bzl", "builder")
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/php/functions_framework:functions_framework.tgz",
+        "//cmd/php/composer:composer.tgz",
+        "//cmd/php/composer_gcp_build:composer_gcp_build.tgz",
+    ],
+    image = "gcf/php74",
+    visibility = ["//builders/gcf/php74/acceptance:__pkg__"],
+)

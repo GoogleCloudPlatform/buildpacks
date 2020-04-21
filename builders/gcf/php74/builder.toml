@@ -1,0 +1,33 @@
+description = "Builder for the GCF PHP 7.4 runtime"
+
+[[buildpacks]]
+  id = "google.php.composer"
+  uri = "composer.tgz"
+
+[[buildpacks]]
+  id = "google.php.composer-gcp-build"
+  uri = "composer_gcp_build.tgz"
+
+[[buildpacks]]
+  id = "google.php.functions-framework"
+  uri = "functions_framework.tgz"
+
+[[order]]
+  [[order.group]]
+    id = "google.php.composer-gcp-build"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.functions-framework"
+
+[stack]
+  id = "google.php74"
+  build-image = "gcr.io/gae-runtimes/buildpacks/php74/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/php74/run"
+
+[lifecycle]
+  version = "0.6.1"
