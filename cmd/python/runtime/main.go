@@ -74,7 +74,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	ctx.Logf("Installing Python v%s", version)
-	command := fmt.Sprintf("curl --fail --show-error --silent --location %s | tar xz --directory=%s", archiveURL, l.Root)
+	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s", archiveURL, l.Root)
 	ctx.Exec([]string{"bash", "-c", command})
 
 	meta.Version = version

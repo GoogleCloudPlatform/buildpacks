@@ -138,7 +138,7 @@ func installYarn(ctx *gcp.Context) error {
 	// Download and install yarn in layer.
 	ctx.Logf("Installing Yarn v%s", version)
 	archiveURL := fmt.Sprintf(yarnURL, version)
-	command := fmt.Sprintf("curl --fail --show-error --silent --location %s | tar xz --directory=%s --strip-components=1", archiveURL, yrl.Root)
+	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, yrl.Root)
 	ctx.Exec([]string{"bash", "-c", command})
 
 	// Store layer flags and metadata.

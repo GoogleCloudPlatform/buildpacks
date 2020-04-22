@@ -82,7 +82,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Download and install Node.js in layer.
 	ctx.Logf("Installing Node.js v%s", version)
-	command := fmt.Sprintf("curl --fail --show-error --silent --location %s | tar xJ --directory=%s --strip-components=1", archiveURL, nrl.Root)
+	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xJ --directory %s --strip-components=1", archiveURL, nrl.Root)
 	ctx.Exec([]string{"bash", "-c", command})
 
 	meta.Version = version

@@ -78,7 +78,7 @@ func buildFn(ctx *gcp.Context) error {
 
 		// Download and install Go in layer.
 		ctx.Logf("Installing Go v%s", version)
-		command := fmt.Sprintf("curl --fail --show-error --silent --location %s | tar xz --directory=%s --strip-components=1", archiveURL, grl.Root)
+		command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, grl.Root)
 		ctx.Exec([]string{"bash", "-c", command})
 
 		meta.Version = version

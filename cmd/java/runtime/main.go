@@ -92,7 +92,7 @@ func buildFn(ctx *gcp.Context) error {
 	// Download and install Java in layer.
 	ctx.Logf("Installing Java v%s", version)
 
-	command := fmt.Sprintf("curl --fail --show-error --silent --location %s | tar xz --directory=%s --strip-components=1", archiveURL, l.Root)
+	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, l.Root)
 	ctx.Exec([]string{"bash", "-c", command})
 
 	meta.Version = version

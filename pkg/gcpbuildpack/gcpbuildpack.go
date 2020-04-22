@@ -346,7 +346,7 @@ func (ctx *Context) AddWebProcess(cmd []string) {
 
 // HTTPStatus returns the status code for a url.
 func (ctx *Context) HTTPStatus(url string) int {
-	result := ctx.Exec([]string{"curl", "--head", "-w", "%{http_code}", "-o", "/dev/null", "--silent", "--location", url})
+	result := ctx.Exec([]string{"curl", "--head", "-w", "%{http_code}", "-o", "/dev/null", "--silent", "--location", "--retry", "3", url})
 	cs := strings.TrimSpace(result.Stdout)
 	c, err := strconv.Atoi(cs)
 	if err != nil {

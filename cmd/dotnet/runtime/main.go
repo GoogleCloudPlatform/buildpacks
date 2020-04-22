@@ -102,7 +102,7 @@ func buildFn(ctx *gcp.Context) error {
 	// With --keep-directory-symlink, the SDK will be unpacked into /runtime/sdk,
 	// which is symlinked to the SDK layer. This is needed because the dotnet CLI
 	// needs an sdk directory in the same directory as the dotnet executable.
-	command := fmt.Sprintf("curl --fail --show-error --silent --location %s | tar xz --directory=%s --keep-directory-symlink --strip-components=1", archiveURL, rtl.Root)
+	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --keep-directory-symlink --strip-components=1", archiveURL, rtl.Root)
 	ctx.Exec([]string{"bash", "-c", command})
 
 	// Keep the SDK layer for launch in devmode because we use `dotnet watch`.
