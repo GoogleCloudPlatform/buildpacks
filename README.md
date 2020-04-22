@@ -185,8 +185,6 @@ variables** that are supported across runtimes.
 * **Node**:
   * Custom build steps (e.g. executing the "build" script of package.json) are not supported.
   * Existing `node_modules` directory is deleted and dependencies reinstalled using package.json and a lockfile if present.
-* **PHP**:
-  * Existing `vendor` directory is deleted if composer.json exists and dependencies reinstalled using the composer.json and a lockfile if present.
 * **Go**
   * *(generic builder only)* Applications without a go.mod cannot have sub-packages.
   * Go 1.14 triggers a kernel bug in some versions of the Linux kernel
