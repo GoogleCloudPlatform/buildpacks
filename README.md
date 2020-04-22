@@ -157,29 +157,36 @@ variables** that are supported across runtimes.
 
 * `GOOGLE_ENTRYPOINT`
   * Specifies the command which is run when the container is executed; equivalent to [entrypoint](https://docs.docker.com/engine/reference/builder/#entrypoint) in a Dockerfile.
-  * **Example** `gunicorn -p :8080 main:app` for Python. `java -jar target/myjar.jar` for Java.
+  * **Example:** `gunicorn -p :8080 main:app` for Python. `java -jar target/myjar.jar` for Java.
 * `FUNCTION_TARGET`
   * For use with source code built around the [Google Cloud Functions Framework](https://cloud.google.com/functions/docs/functions-framework). Specifies the name of the function to be invoked.
-  *   **Example** `myFunction` will cause the Functions Framework to invoke the function of the same name.
+  * **Example:** `myFunction` will cause the Functions Framework to invoke the function of the same name.
 * `GOOGLE_RUNTIME`
   * If specified, forces the runtime to opt-in. If the runtime buildpack appears in multiple groups, the first group will be chosen, consistent with the buildpack specification. *(only works with buildpacks which install language runtimes)*.
-  * **Example** `nodejs` will cause the nodejs/runtime buildpack to opt-in.
+  * **Example:** `nodejs` will cause the nodejs/runtime buildpack to opt-in.
 * `GOOGLE_RUNTIME_VERSION`
   * If specified, overrides the runtime version to install.
 *(only works with buildpacks which install language runtimes)*
-  * **Example** `13.7.0` for Node.js, `1.14.1` for Go. `11.0.6+10` for Java.
+  * **Example:** `13.7.0` for Node.js, `1.14.1` for Go. `11.0.6+10` for Java.
 * `GOOGLE_BUILDABLE`
   * *(only applicable to compiled languages)* Specifies path to a buildable unit.
-  * **Example** `./maindir` for Go will build the package rooted at maindir.
+  * **Example:** `./maindir` for Go will build the package rooted at maindir.
 * `GOOGLE_DEVMODE`
   * Enables the development mode buildpacks. This is used by [Skaffold](https://skaffold.dev) to enable live local
   development where changes to your source code trigger automatic container rebuilds. To use, install Skaffold and run `skaffold dev`.
-  * **Example** `true`, `True`, `1` will enable development mode.
+  * **Example:** `true`, `True`, `1` will enable development mode.
 
 ## Known Limitations
 
-* **Node**: Custom build steps (e.g. executing the "build" script of package.json) are not supported.
-* **Java**: It is not possible to pass arguments to the maven command (for example, a specific Maven profile)
+* **General**:
+  * Caching is project-specific, not cross-project. Dependencies, such as the JDK, cannot be shared across projects and need to be redownloaded on first build.
+* **Java**:
+  * It is not possible to pass arguments to the maven command (for example, a specific Maven profile)
+* **Node**:
+  * Custom build steps (e.g. executing the "build" script of package.json) are not supported.
+  * Existing `node_modules` directory is deleted and dependencies reinstalled using package.json and a lockfile if present.
+* **PHP**:
+  * Existing `vendor` directory is deleted if composer.json exists and dependencies reinstalled using the composer.json and a lockfile if present.
 * **Go**
   * *(generic builder only)* Applications without a go.mod cannot have sub-packages.
   * Go 1.14 triggers a kernel bug in some versions of the Linux kernel
@@ -197,6 +204,7 @@ please set the following in your /etc/docker/daemon.json:
     ```
 
 ---
+
 ## Support
 
 Please note that this project is not an officially supported Google product.
