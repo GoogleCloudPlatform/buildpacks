@@ -46,7 +46,7 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:       "non default source file",
 			App:        "non_default_source_file",
-			Env:        []string{"FUNCTION_SOURCE=myfunc.php"},
+			Env:        []string{"GOOGLE_FUNCTION_SOURCE=myfunc.php"},
 			MustNotUse: []string{composer, composerGCPBuild},
 			MustOutput: []string{
 				"Handling function without composer.json",
@@ -100,7 +100,7 @@ func TestAcceptance(t *testing.T) {
 			t.Parallel()
 
 			tc.Path = "/testFunction"
-			tc.Env = append(tc.Env, "FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=php74")
+			tc.Env = append(tc.Env, "GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=php74")
 
 			acceptance.TestApp(t, builder, tc)
 		})
@@ -135,7 +135,7 @@ func TestFailures(t *testing.T) {
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
 
-			tc.Env = append(tc.Env, "FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=php74")
+			tc.Env = append(tc.Env, "GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=php74")
 			acceptance.TestBuildFailure(t, builder, tc)
 		})
 	}

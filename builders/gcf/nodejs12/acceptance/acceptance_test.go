@@ -133,7 +133,7 @@ func TestAcceptance(t *testing.T) {
 
 			tc.Path = "/testFunction"
 			tc.Env = append(tc.Env,
-				"FUNCTION_TARGET=testFunction",
+				"GOOGLE_FUNCTION_TARGET=testFunction",
 				"GOOGLE_RUNTIME=nodejs12",
 			)
 
@@ -149,12 +149,12 @@ func TestFailures(t *testing.T) {
 	testCases := []acceptance.FailureTest{
 		{
 			App:       "fail_syntax_error",
-			Env:       []string{"FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=nodejs12"},
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=nodejs12"},
 			MustMatch: "SyntaxError:",
 		},
 		{
 			App:       "fail_wrong_main",
-			Env:       []string{"FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=nodejs12"},
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=nodejs12"},
 			MustMatch: "function.js does not exist",
 		},
 	}

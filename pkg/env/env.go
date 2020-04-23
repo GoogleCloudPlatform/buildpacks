@@ -61,17 +61,23 @@ const (
 	// FunctionTarget is an env var used to specify function name.
 	// FunctionTarget must be respected by all functions-framework buildpacks.
 	// Example: `helloWorld` or any exported function name.
-	FunctionTarget = "FUNCTION_TARGET"
+	FunctionTarget = "GOOGLE_FUNCTION_TARGET"
+	// FunctionTargetLaunch is a launch time version of FunctionTarget.
+	FunctionTargetLaunch = "FUNCTION_TARGET"
 
 	// FunctionSource is an env var used to specify function source location.
 	// FunctionSource must be respected by all functions-framework buildpacks.
 	// Example: `./path/to/source` will build the function at the specfied path.
-	FunctionSource = "FUNCTION_SOURCE"
+	FunctionSource = "GOOGLE_FUNCTION_SOURCE"
+	// FunctionSourceLaunch is a launch time version of FunctionSource.
+	FunctionSourceLaunch = "FUNCTION_SOURCE"
 
 	// FunctionSignatureType is an env var used to specify function signature type.
 	// FunctionSignatureType must be respected by all functions-framework buildpacks.
 	// Example: `http` for HTTP-triggered functions or `event` for event-triggered functions.
-	FunctionSignatureType = "FUNCTION_SIGNATURE_TYPE"
+	FunctionSignatureType = "GOOGLE_FUNCTION_SIGNATURE_TYPE"
+	// FunctionSignatureTypeLaunch is a launch time version of FunctionSignatureType.
+	FunctionSignatureTypeLaunch = "FUNCTION_SIGNATURE_TYPE"
 )
 
 // IsDebugMode returns true if the buildpack debug mode is enabled.

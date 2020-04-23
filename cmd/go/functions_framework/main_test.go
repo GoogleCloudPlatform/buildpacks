@@ -22,26 +22,37 @@ import (
 
 func TestDetect(t *testing.T) {
 	testCases := []struct {
-		name string
-		env  []string
-		want int
+		name  string
+		files map[string]string
+		env   []string
+		stack string
+		want  int
 	}{
 		{
-			name: "function target defined",
-			env: []string{
-				"FUNCTION_TARGET=HelloWorld",
-			},
+			name: "with target",
+			env:  []string{"GOOGLE_FUNCTION_TARGET=HelloWorld"},
 			want: 0,
 		},
 		{
-			name: "function target undefined",
-			env:  []string{},
+			name:  "with target GCF",
+			env:   []string{"FUNCTION_TARGET=HelloWorld"},
+			stack: "google.go",
+			want:  0,
+		},
+		{
+			name:  "with target GCP",
+			env:   []string{"FUNCTION_TARGET=HelloWorld"},
+			stack: "google",
+			want:  100,
+		},
+		{
+			name: "without target",
 			want: 100,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			gcp.TestDetect(t, detectFn, tc.name, map[string]string{}, tc.env, tc.want)
+			gcp.TestDetectWithStack(t, detectFn, tc.name, tc.files, tc.env, tc.stack, tc.want)
 		})
 	}
 }

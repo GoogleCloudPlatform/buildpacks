@@ -53,7 +53,7 @@ func TestAcceptance(t *testing.T) {
 
 			tc.Path = "/testFunction"
 			tc.Env = append(tc.Env,
-				"FUNCTION_TARGET=testFunction",
+				"GOOGLE_FUNCTION_TARGET=testFunction",
 				"GOOGLE_RUNTIME=python38",
 			)
 
@@ -69,7 +69,7 @@ func TestFailures(t *testing.T) {
 	testCases := []acceptance.FailureTest{
 		{
 			App:       "fail_syntax_error",
-			Env:       []string{"FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=python38"},
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=python38"},
 			MustMatch: "SyntaxError: invalid syntax",
 		},
 	}

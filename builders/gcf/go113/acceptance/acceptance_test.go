@@ -35,34 +35,47 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name: "function without deps",
 			App:  "no_deps",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			Path: "/Func",
 		},
 		{
 			Name:    "function without framework",
 			App:     "no_framework",
+			Env:     []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			MustUse: []string{gomod},
 			Path:    "/Func",
 		},
 		{
 			Name:       "vendored function without framwork",
 			App:        "no_framework_vendored",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			MustNotUse: []string{gomod},
 			Path:       "/Func",
 		},
 		{
 			Name:    "function with framework",
 			App:     "with_framework",
+			Env:     []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			MustUse: []string{gomod},
 			Path:    "/Func",
 		},
 		{
 			Name: "function at /*",
 			App:  "no_deps",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			Path: "/",
 		},
 		{
 			Name: "function with subdirectories",
 			App:  "with_subdir",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
+		},
+		// TODO: For compatibility with GCF; this will be removed later.
+		{
+			Name: "function without deps old env",
+			App:  "no_deps",
+			Env:  []string{"FUNCTION_TARGET=Func"},
+			Path: "/Func",
 		},
 	}
 
@@ -71,10 +84,7 @@ func TestAcceptance(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 
-			tc.Env = append(tc.Env,
-				"FUNCTION_TARGET=Func",
-				"GOOGLE_RUNTIME=go113",
-			)
+			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=go113")
 
 			acceptance.TestApp(t, builder, tc)
 		})

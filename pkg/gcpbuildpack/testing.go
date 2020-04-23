@@ -38,13 +38,19 @@ type tempDirs struct {
 
 // TestDetect is a helper for testing a buildpack's implementation of /bin/detect.
 func TestDetect(t *testing.T, detectFn DetectFn, testName string, files map[string]string, env []string, want int) {
+	TestDetectWithStack(t, detectFn, testName, files, env, "com.stack", want)
+}
+
+// TestDetectWithStack is a helper for testing a buildpack's implementation of /bin/detect which allows setting a custom stack name.
+func TestDetectWithStack(t *testing.T, detectFn DetectFn, testName string, files map[string]string, env []string, stack string, want int) {
+
 	testDir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("getting working directory: %v", err)
 	}
 	testArgs := os.Args
 
-	temps, cleanUp := setUpDetectEnvironment(t)
+	temps, cleanUp := setUpDetectEnvironmentWithStack(t, stack)
 	defer cleanUp()
 
 	for f, c := range files {
@@ -138,7 +144,7 @@ func setOSArgs(t *testing.T, args []string) func() {
 	}
 }
 
-func setUpTempDirs(t *testing.T) (tempDirs, func()) {
+func setUpTempDirs(t *testing.T, stack string) (tempDirs, func()) {
 	t.Helper()
 	layersDir, err := ioutil.TempDir("", "layers-")
 	if err != nil {
@@ -166,15 +172,16 @@ func setUpTempDirs(t *testing.T) (tempDirs, func()) {
 		t.Fatalf("changing to code dir %q: %v", codeDir, err)
 	}
 
-	buildpackTOML := `
+	buildpackTOML := fmt.Sprintf(`
 [buildpack]
 id = "my-id"
 version = "my-version"
 name = "my-name"
 
 [[stacks]]
-id = "com.stack"
-`
+id = "%s"
+`, stack)
+
 	if err := ioutil.WriteFile(filepath.Join(buildpackDir, "buildpack.toml"), []byte(buildpackTOML), 0644); err != nil {
 		t.Fatalf("writing buildpack.toml: %v", err)
 	}
@@ -190,7 +197,7 @@ version = "entry-version"
 		t.Fatalf("writing plan.toml: %v", err)
 	}
 
-	if err := os.Setenv("CNB_STACK_ID", "com.stack"); err != nil {
+	if err := os.Setenv("CNB_STACK_ID", stack); err != nil {
 		t.Fatalf("setting env var CNB_STACK_ID: %v", err)
 	}
 
@@ -225,8 +232,12 @@ version = "entry-version"
 }
 
 func setUpDetectEnvironment(t *testing.T) (tempDirs, func()) {
+	return setUpDetectEnvironmentWithStack(t, "com.stack")
+}
+
+func setUpDetectEnvironmentWithStack(t *testing.T, stack string) (tempDirs, func()) {
 	t.Helper()
-	temps, cleanUpTempDirs := setUpTempDirs(t)
+	temps, cleanUpTempDirs := setUpTempDirs(t, stack)
 	cleanUpArgs := setOSArgs(t, []string{filepath.Join(temps.buildpackDir, "bin", "detect"), temps.platformDir, temps.planFile})
 
 	return temps, func() {
@@ -237,7 +248,7 @@ func setUpDetectEnvironment(t *testing.T) (tempDirs, func()) {
 
 func setUpBuildEnvironment(t *testing.T) (tempDirs, func()) {
 	t.Helper()
-	temps, cleanUpTempDirs := setUpTempDirs(t)
+	temps, cleanUpTempDirs := setUpTempDirs(t, "com.stack")
 	cleanUpArgs := setOSArgs(t, []string{filepath.Join(temps.buildpackDir, "bin", "build"), temps.layersDir, temps.platformDir, temps.planFile})
 
 	return temps, func() {

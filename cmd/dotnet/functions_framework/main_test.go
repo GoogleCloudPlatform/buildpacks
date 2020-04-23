@@ -25,28 +25,34 @@ func TestDetect(t *testing.T) {
 		name  string
 		files map[string]string
 		env   []string
+		stack string
 		want  int
 	}{
 		{
 			name: "with target",
-			files: map[string]string{
-				"Function.cs": "",
-			},
-			env:  []string{"FUNCTION_TARGET=HelloWorld.Function"},
+			env:  []string{"GOOGLE_FUNCTION_TARGET=HelloWorld.Function"},
 			want: 0,
 		},
 		{
+			name:  "with target GCF",
+			env:   []string{"FUNCTION_TARGET=HelloWorld.Function"},
+			stack: "google.dotnet",
+			want:  0,
+		},
+		{
+			name:  "with target GCP",
+			env:   []string{"FUNCTION_TARGET=HelloWorld.Function"},
+			stack: "google",
+			want:  100,
+		},
+		{
 			name: "without target",
-			files: map[string]string{
-				"Function.cs": "",
-			},
-			env:  []string{"FOO=HelloWorld.Function"},
 			want: 100,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			gcp.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
+			gcp.TestDetectWithStack(t, detectFn, tc.name, tc.files, tc.env, tc.stack, tc.want)
 		})
 	}
 }

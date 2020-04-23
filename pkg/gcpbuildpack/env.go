@@ -21,20 +21,23 @@ import (
 	"github.com/buildpack/libbuildpack/layers"
 )
 
-// SetFunctionsEnvVars overrides functions environment variables.
+// SetFunctionsEnvVars sets launch-time functions environment variables.
 func (ctx *Context) SetFunctionsEnvVars(l *layers.Layer) {
 	if target := os.Getenv(env.FunctionTarget); target != "" {
-		ctx.DefaultLaunchEnv(l, env.FunctionTarget, target)
+		ctx.DefaultLaunchEnv(l, env.FunctionTargetLaunch, target)
+		// TODO: For compatibility with GCF; this will be removed later.
+	} else if target := os.Getenv(env.FunctionTargetLaunch); target != "" {
+		ctx.DefaultLaunchEnv(l, env.FunctionTargetLaunch, target)
 	} else {
 		ctx.Exit(1, UserErrorf("required env var %s not found", env.FunctionTarget))
 	}
 
 	if signature, ok := os.LookupEnv(env.FunctionSignatureType); ok {
-		ctx.DefaultLaunchEnv(l, env.FunctionSignatureType, signature)
+		ctx.DefaultLaunchEnv(l, env.FunctionSignatureTypeLaunch, signature)
 	}
 
 	if source, ok := os.LookupEnv(env.FunctionSource); ok {
-		ctx.DefaultLaunchEnv(l, env.FunctionSource, source)
+		ctx.DefaultLaunchEnv(l, env.FunctionSourceLaunch, source)
 	}
 }
 

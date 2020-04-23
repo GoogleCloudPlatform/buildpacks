@@ -31,25 +31,32 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name: "cs single target",
 			App:  "cs_single_target",
-			Env:  []string{"FUNCTION_TARGET=TestFunction.Function"},
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=TestFunction.Function"},
 			Path: "/function",
 		},
 		{
 			Name: "cs multiple targets",
 			App:  "cs_multiple_targets",
-			Env:  []string{"FUNCTION_TARGET=TestFunction.Function"},
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=TestFunction.Function"},
 			Path: "/function",
 		},
 		{
 			Name: "fs function",
 			App:  "fs_function",
-			Env:  []string{"FUNCTION_TARGET=fs_function.Function"},
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=fs_function.Function"},
 			Path: "/function",
 		},
 		{
 			Name: "vb function",
 			App:  "vb_function",
-			Env:  []string{"FUNCTION_TARGET=vb_function.CloudFunction"},
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=vb_function.CloudFunction"},
+			Path: "/function",
+		},
+		// TODO: For compatibility with GCF; this will be removed later.
+		{
+			Name: "cs single target old env",
+			App:  "cs_single_target",
+			Env:  []string{"FUNCTION_TARGET=TestFunction.Function"},
 			Path: "/function",
 		},
 	}

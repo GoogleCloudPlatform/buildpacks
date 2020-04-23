@@ -158,7 +158,7 @@ variables** that are supported across runtimes.
 * `GOOGLE_ENTRYPOINT`
   * Specifies the command which is run when the container is executed; equivalent to [entrypoint](https://docs.docker.com/engine/reference/builder/#entrypoint) in a Dockerfile.
   * **Example:** `gunicorn -p :8080 main:app` for Python. `java -jar target/myjar.jar` for Java.
-* `FUNCTION_TARGET`
+* `GOOGLE_FUNCTION_TARGET`
   * For use with source code built around the [Google Cloud Functions Framework](https://cloud.google.com/functions/docs/functions-framework). Specifies the name of the function to be invoked.
   * **Example:** `myFunction` will cause the Functions Framework to invoke the function of the same name.
 * `GOOGLE_RUNTIME`
