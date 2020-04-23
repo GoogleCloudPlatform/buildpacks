@@ -80,6 +80,18 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{composer, composerGCPBuild},
 			MustOutput: []string{"Handling function with dependency on functions framework"},
 		},
+		{
+			Name:       "function with vendor dir but no framework",
+			App:        "vendored_no_framework",
+			MustNotUse: []string{composer, composerGCPBuild},
+			MustOutput: []string{
+				"Handling function without composer.json",
+				"Functions framework is not present at vendor/google/cloud-functions-framework",
+				// The version spec of the functions framework follows this string.
+				// Omitting it here so we don't fail when it's upgraded.
+				"Installing functions framework google/cloud-functions-framework:",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -103,6 +115,14 @@ func TestFailures(t *testing.T) {
 		{
 			App:       "fail_syntax_error",
 			MustMatch: "Parse error: syntax error",
+		},
+		{
+			App:       "fail_vendored_framework_no_router_script",
+			MustMatch: `functions framework router script vendor/bin/router\.php is not present`,
+		},
+		{
+			App:       "fail_vendored_no_framework_no_installed_json",
+			MustMatch: `vendor/composer/installed\.json is not present, so it appears that Composer was not used to install dependencies\.`,
 		},
 		{
 			App:       "fail_wrong_file",
