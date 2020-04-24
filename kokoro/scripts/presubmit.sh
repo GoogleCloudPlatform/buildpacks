@@ -22,16 +22,19 @@
 set -euo pipefail
 
 if [[ -v KOKORO_ARTIFACTS_DIR ]]; then
-  cd ${KOKORO_ARTIFACTS_DIR}/git/buildpacks
+  cd "${KOKORO_ARTIFACTS_DIR}/git/buildpacks"
   use_bazel.sh latest
 
-  # Move docker's storage location to scratch disk so we don't run out of space.
+  # Move docker storage location to scratch disk so we don't run out of space.
   echo 'DOCKER_OPTS="${DOCKER_OPTS} --data-root=/tmpfs/docker"' | sudo tee --append /etc/default/docker
   sudo service docker restart
+else
+  export KOKORO_ARTIFACTS_DIR="$(mktemp -d)"
+  echo "Setting KOKORO_ARTIFACTS_DIR=$KOKORO_ARTIFACTS_DIR"
 fi
 
 if [[ ! -v FILTER ]]; then
-  echo 'Must specify $FILTER.'
+  echo 'Must specify $FILTER'
   exit 1
 fi
 
@@ -42,7 +45,25 @@ curl -fsSL "https://storage.googleapis.com/container-structure-test/latest/conta
 curl -fsSL "https://github.com/buildpacks/pack/releases/download/v${PACK_VERSION}/pack-v${PACK_VERSION}-linux.tgz" | tar xz -C "$temp"
 
 # TODO: Build stack images when testing GCP builder instead of pulling.
-# TODO: Process logs to be parseable by Sponge.
 
 # Filter out non-test targets, such as builder.image rules.
 bazel test --test_output=errors --action_env="PATH=$temp:$PATH" $(bazel query "filter('${FILTER}', kind('.*_test rule', '//builders/...'))")
+
+# The exit code of the bazel command should be used to determine test outcome.
+readonly EXIT_CODE="${?}"
+
+# The following commands should run on a best-effort basis.
+set +e
+
+# bazel-artifacts is specfied in build .cfg files.
+mkdir -p "$KOKORO_ARTIFACTS_DIR/bazel-artifacts"
+# bazel-testlogs is a symlink to a directory containing test output files.
+cd bazel-testlogs
+# Sponge expects sponge_log.(log|xml) instead of test.(log|xml).
+find -L . -name test.log -exec rename 's/test.log$/sponge_log.log/' {} \;
+find -L . -name test.xml -exec rename 's/test.xml$/sponge_log.xml/' {} \;
+
+find -L .  \( -name "sponge_log.*" -o -name "test.outputs" \) \
+  -exec cp -r --parents {} "$KOKORO_ARTIFACTS_DIR/bazel-artifacts" \;
+
+exit "${EXIT_CODE}"
