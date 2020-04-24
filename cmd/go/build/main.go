@@ -53,10 +53,12 @@ func buildFn(ctx *gcp.Context) error {
 	}
 	ctx.WriteMetadata(cl, nil, lf...)
 
-	// Create a layer for the compiled binary.
+	// Create a layer for the compiled binary.  Add it to PATH in case
+	// users wish to invoke the binary manually.
 	bl := ctx.Layer("bin")
 	ctx.PrependPathLaunchEnv(bl, "PATH", bl.Root)
 	ctx.WriteMetadata(bl, nil, layers.Launch)
+	outBin := filepath.Join(bl.Root, golang.OutBin)
 
 	pkg, ok := os.LookupEnv(env.Buildable)
 	if !ok {
@@ -65,13 +67,14 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Build the application.
 	ctx.ExecUserWithParams(gcp.ExecParams{
-		Cmd: []string{"go", "build", "-o", filepath.Join(bl.Root, golang.OutBin), pkg},
+		Cmd: []string{"go", "build", "-o", outBin, pkg},
 		Env: []string{"GOCACHE=" + cl.Root},
 	}, printTipsAndKeepStderrTail(ctx))
 
-	// Configure the entrypoint for production.
+	// Configure the entrypoint for production: use the full path to ease `skaffold debug`
+	// as it does not access image contents.
 	if !devmode.Enabled(ctx) {
-		ctx.AddWebProcess([]string{golang.OutBin})
+		ctx.AddWebProcess([]string{outBin})
 		return nil
 	}
 
