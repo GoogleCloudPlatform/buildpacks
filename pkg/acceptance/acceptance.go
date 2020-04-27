@@ -54,12 +54,14 @@ var (
 	testData            string // Path to directory or archive containing source test data.
 	structureTestConfig string // Path to container test configuration file.
 	builderSource       string // Path to directory or archive containing builder source.
+	builderImage        string // Name of the builder image to test; takes precendence over builderSource.
 	builderPrefix       string // Prefix for created builder image.
 	keepArtifacts       bool   // If true, keeps intermediate artifacts such as application images.
 	packBin             string // Path to pack binary.
 	structureBin        string // Path to container-structure-test binary.
 	lifecycle           string // Path to lifecycle archive; optional.
 	pullImages          bool   // Pull stack images instead of using local daemon.
+	cloudbuild          bool   // Use cloudbuild network; required for Cloud Build.
 
 	specialChars = regexp.MustCompile("[^a-zA-Z0-9]+")
 )
@@ -78,12 +80,14 @@ func DefineFlags() {
 	flag.StringVar(&testData, "test-data", "", "Location of the test data files.")
 	flag.StringVar(&structureTestConfig, "structure-test-config", "", "Location of the container structure test configuration.")
 	flag.StringVar(&builderSource, "builder-source", "", "Location of the builder source files.")
+	flag.StringVar(&builderImage, "builder-image", "", "Name of the builder image to test; takes precedence over builderSource.")
 	flag.StringVar(&builderPrefix, "builder-prefix", "acceptance-test-builder-", "Prefix for the generated builder image.")
 	flag.BoolVar(&keepArtifacts, "keep-artifacts", false, "Keep images and other artifacts after tests have finished.")
 	flag.StringVar(&packBin, "pack", "pack", "Path to pack binary.")
 	flag.StringVar(&structureBin, "structure-test", "container-structure-test", "Path to container-structure-test.")
 	flag.StringVar(&lifecycle, "lifecycle", "", "Location of lifecycle archive. Overrides builder.toml if specified.")
 	flag.BoolVar(&pullImages, "pull-images", true, "Pull stack images before running the tests.")
+	flag.BoolVar(&cloudbuild, "cloudbuild", false, "Use cloudbuild network; required for Cloud Build.")
 }
 
 // UnarchiveTestData extracts the test-data tgz into a temp dir and returns a cleanup function to be deferred.
@@ -224,7 +228,7 @@ func TestBuildFailure(t *testing.T, builder string, cfg FailureTest) {
 func invokeApp(t *testing.T, image, pathname string, env []string, cache bool) {
 	t.Helper()
 
-	port, cleanup := startContainer(t, image, env, cache)
+	host, port, cleanup := startContainer(t, image, env, cache)
 	defer cleanup()
 
 	start := time.Now()
@@ -234,7 +238,7 @@ func invokeApp(t *testing.T, image, pathname string, env []string, cache bool) {
 
 	// Try to connect the the container until it succeeds (up to 60s).
 	for retry := 0; retry < 600; retry++ {
-		res, err = http.Get(fmt.Sprintf("http://localhost:%d%s", port, pathname))
+		res, err = http.Get(fmt.Sprintf("http://%s:%d%s", host, port, pathname))
 		if err == nil {
 			break
 		}
@@ -248,20 +252,20 @@ func invokeApp(t *testing.T, image, pathname string, env []string, cache bool) {
 	}
 
 	// The connection was a success.
-	bodyb, err := ioutil.ReadAll(res.Body)
+	bytes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		t.Fatalf("Error reading body: %v", err)
 	}
 	res.Body.Close()
 
-	body := strings.TrimSpace(string(bodyb))
+	body := strings.TrimSpace(string(bytes))
 	t.Logf("Got response: status %v, body %q (in %s)", res.Status, body, time.Since(start))
 
 	if want := http.StatusOK; res.StatusCode != want {
 		t.Errorf("Unexpected status code: got %d, want %d", res.StatusCode, want)
 	}
 	if want := "PASS"; !strings.HasSuffix(body, want) {
-		t.Errorf("Response body does not contain substring: got %q, want %q", body, want)
+		t.Errorf("Response body does not contain suffix: got %q, want %q", body, want)
 	}
 }
 
@@ -307,6 +311,17 @@ func CreateBuilder(t *testing.T) (string, func()) {
 	t.Helper()
 
 	name := builderPrefix + randString(10)
+
+	if builderImage != "" {
+		t.Logf("Testing existing builder image: %s", builderImage)
+		// Pack cache is based on builder name; retag with a unique name.
+		if _, err := runOutput("docker", "tag", builderImage, name); err != nil {
+			t.Fatalf("Error tagging %s as %s: %v", builderImage, name, err)
+		}
+		return name, func() {
+			cleanUpImage(t, name)
+		}
+	}
 
 	builderLoc, cleanUpBuilder := extractBuilder(t, builderSource)
 	config := filepath.Join(builderLoc, "builder.toml")
@@ -629,13 +644,17 @@ func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []strin
 }
 
 // startContainer starts a container for the given app and exposes port 8080.
-func startContainer(t *testing.T, image string, env []string, cache bool) (int, func()) {
+// The function returns the host and port at which the app is reachable and a cleanup funciton.
+func startContainer(t *testing.T, image string, env []string, cache bool) (string, int, func()) {
 	t.Helper()
 
 	// Start docker container and get its id.
 	command := []string{"docker", "run", "--detach", "--publish=8080"}
 	for _, e := range env {
 		command = append(command, "--env", e)
+	}
+	if cloudbuild {
+		command = append(command, "--network=cloudbuild")
 	}
 	command = append(command, image)
 
@@ -645,19 +664,16 @@ func startContainer(t *testing.T, image string, env []string, cache bool) (int, 
 	}
 	t.Logf("Successfully started container: %s", id)
 
-	// Get exposed port from the container.
-	portstr, err := runOutput("docker", "inspect", id, "--format={{(index (index .NetworkSettings.Ports \"8080/tcp\") 0).HostPort}}")
-	if err != nil {
-		t.Fatalf("Error getting port: %v", err)
-	}
-	t.Logf("Successfully got port: %s", portstr)
-
-	port, err := strconv.Atoi(portstr)
-	if err != nil {
-		t.Fatalf("Error converting port to int: %v", err)
+	// Cloud Build uses the exposed port and assigns an IP address.
+	// Local execution uses "localhost" and assigns a random port.
+	host, port := "localhost", 8080
+	if cloudbuild {
+		host = cloudbuildIP(t, id)
+	} else {
+		port = hostPort(t, id)
 	}
 
-	return port, func() {
+	return host, port, func() {
 		if _, err := runOutput("docker", "stop", id); err != nil {
 			t.Logf("Failed to stop container: %v", err)
 		}
@@ -668,6 +684,36 @@ func startContainer(t *testing.T, image string, env []string, cache bool) (int, 
 			t.Logf("Failed to clean up container: %v", err)
 		}
 	}
+}
+
+// hostPort returns the host port assigned to the exposed container port.
+func hostPort(t *testing.T, id string) int {
+	t.Helper()
+
+	format := "--format={{(index (index .NetworkSettings.Ports \"8080/tcp\") 0).HostPort}}"
+	portstr, err := runOutput("docker", "inspect", id, format)
+	if err != nil {
+		t.Fatalf("Error getting port: %v", err)
+	}
+	port, err := strconv.Atoi(portstr)
+	if err != nil {
+		t.Fatalf("Error converting port to int: %v", err)
+	}
+	t.Logf("Successfully got port: %d", port)
+	return port
+}
+
+// cloudbuildIP returns the cloudbuild network IP address of the container.
+func cloudbuildIP(t *testing.T, id string) string {
+	t.Helper()
+
+	format := "--format={{(index .NetworkSettings.Networks \"cloudbuild\").IPAddress}}"
+	ip, err := runOutput("docker", "inspect", id, format)
+	if err != nil {
+		t.Fatalf("Error getting IP address: %v", err)
+	}
+	t.Logf("Successfully got IP address: %s", ip)
+	return ip
 }
 
 func outFiles(t *testing.T, builder, dir, logName string) (outFile, errFile *os.File, cleanup func()) {

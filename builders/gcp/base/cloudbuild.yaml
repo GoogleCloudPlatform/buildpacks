@@ -15,6 +15,16 @@ steps:
     name: bazel-pack
     args: ['build', '//builders/gcp/base:builder.image']
 
+  - id: run-acceptance-tests
+    name: bazel-pack
+    args:
+      - 'test'
+      - '--test_output=errors'
+      - '--test_arg=-cloudbuild'
+      - '--test_arg=-pull-images=false'
+      - '--test_arg=-builder-image=gcp/base'
+      - '//builders/gcp/base/acceptance/...'
+
   - id: validate-licenses
     name: gcr.io/gae-runtimes/license_validator:current
     args: ['-pull_images=false', 'gcp/base']
@@ -39,3 +49,7 @@ images:
   - 'gcr.io/$PROJECT_ID/gcp/run:$COMMIT_SHA'
   - 'gcr.io/$PROJECT_ID/gcp/build'
   - 'gcr.io/$PROJECT_ID/gcp/build:$COMMIT_SHA'
+
+timeout: '1800s'
+options:
+  machineType: 'N1_HIGHCPU_8'
