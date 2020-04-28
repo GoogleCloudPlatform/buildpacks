@@ -42,12 +42,12 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer("npm")
-	nm := filepath.Join(l.Root, "node_modules")
+	ml := ctx.Layer("npm")
+	nm := filepath.Join(ml.Root, "node_modules")
 	ctx.RemoveAll("node_modules")
 	nodejs.EnsurePackageLock(ctx)
 
-	cached, meta, err := nodejs.CheckCache(ctx, l, nodejs.PackageLock)
+	cached, meta, err := nodejs.CheckCache(ctx, ml, nodejs.PackageLock)
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
@@ -59,16 +59,19 @@ func buildFn(ctx *gcp.Context) error {
 	} else {
 		ctx.CacheMiss(cacheTag)
 		// Clear cached node_modules to ensure we don't end up with outdated dependencies.
-		ctx.ClearLayer(l)
+		ctx.ClearLayer(ml)
 		ctx.ExecUser([]string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet", "--production"})
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)
 		ctx.Exec([]string{"cp", "--archive", "node_modules", nm})
 	}
 
-	ctx.PrependPathSharedEnv(l, "PATH", "node_modules/.bin")
-	ctx.DefaultLaunchEnv(l, "NODE_ENV", "production")
-	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache)
+	ctx.WriteMetadata(ml, &meta, layers.Build, layers.Cache)
+
+	el := ctx.Layer("env")
+	ctx.PrependPathSharedEnv(el, "PATH", filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
+	ctx.DefaultLaunchEnv(el, "NODE_ENV", "production")
+	ctx.WriteMetadata(el, nil, layers.Launch, layers.Build)
 
 	// Configure the entrypoint for production.
 	cmd := []string{"npm", "start"}

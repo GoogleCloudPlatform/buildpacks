@@ -57,11 +57,11 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("installing Yarn: %w", err)
 	}
 
-	l := ctx.Layer("yarn")
-	nm := filepath.Join(l.Root, "node_modules")
+	ml := ctx.Layer("yarn")
+	nm := filepath.Join(ml.Root, "node_modules")
 	ctx.RemoveAll("node_modules")
 
-	cached, meta, err := nodejs.CheckCache(ctx, l, nodejs.YarnLock)
+	cached, meta, err := nodejs.CheckCache(ctx, ml, nodejs.YarnLock)
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
@@ -73,7 +73,7 @@ func buildFn(ctx *gcp.Context) error {
 	} else {
 		ctx.CacheMiss(cacheTag)
 		// Clear cached node_modules to ensure we don't end up with outdated dependencies.
-		ctx.ClearLayer(l)
+		ctx.ClearLayer(ml)
 
 		cmd := []string{"yarn", "install", "--production", "--non-interactive"}
 		if lf := nodejs.LockfileFlag(ctx); lf != "" {
@@ -86,9 +86,12 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Exec([]string{"cp", "--archive", "node_modules", nm})
 	}
 
-	ctx.PrependPathSharedEnv(l, "PATH", "node_modules/.bin")
-	ctx.DefaultLaunchEnv(l, "NODE_ENV", "production")
-	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)
+	ctx.WriteMetadata(ml, &meta, layers.Build, layers.Cache)
+
+	el := ctx.Layer("env")
+	ctx.PrependPathSharedEnv(el, "PATH", filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
+	ctx.DefaultSharedEnv(el, "NODE_ENV", "production")
+	ctx.WriteMetadata(el, nil, layers.Launch, layers.Build)
 
 	// Configure the entrypoint for production.
 	cmd := []string{"yarn", "run", "start"}
