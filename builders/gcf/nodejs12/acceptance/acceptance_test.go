@@ -125,6 +125,12 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{yarn},
 			MustNotUse: []string{npm},
 		},
+		{
+			Name:       "framework loads user dependencies",
+			App:        "load_user_dependencies",
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

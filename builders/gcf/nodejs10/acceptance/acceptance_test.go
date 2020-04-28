@@ -128,6 +128,12 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{npm},
 		},
 		{
+			Name:       "framework loads user dependencies",
+			App:        "load_user_dependencies",
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
+		},
+		{
 			Name:       "firebase function pre v3.4.0",
 			App:        "firebase_pre_3.4.0",
 			RunEnv:     []string{gcloudProject, firebaseConfig},

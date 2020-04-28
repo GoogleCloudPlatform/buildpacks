@@ -115,6 +115,12 @@ func buildFn(ctx *gcp.Context) error {
 		ff = filepath.Join("node_modules", ff)
 	} else {
 		ff = filepath.Join(nm, ff)
+
+		// Add user's node_modules to NODE_PATH so functions-framework can always find user's packages.
+		unm := filepath.Join(ctx.ApplicationRoot(), "node_modules")
+		if ctx.FileExists(unm) {
+			ctx.PrependPathLaunchEnv(l, "NODE_PATH", unm)
+		}
 	}
 
 	ctx.SetFunctionsEnvVars(l)
