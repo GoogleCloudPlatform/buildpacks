@@ -25,7 +25,7 @@ import (
 func (ctx *Context) SetFunctionsEnvVars(l *layers.Layer) {
 	if target := os.Getenv(env.FunctionTarget); target != "" {
 		ctx.DefaultLaunchEnv(l, env.FunctionTargetLaunch, target)
-		// TODO: For compatibility with GCF; this will be removed later.
+		// TODO(b/154846199): For compatibility with GCF; this will be removed later.
 	} else if target := os.Getenv(env.FunctionTargetLaunch); target != "" {
 		ctx.DefaultLaunchEnv(l, env.FunctionTargetLaunch, target)
 	} else {

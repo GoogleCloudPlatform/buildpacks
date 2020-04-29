@@ -96,7 +96,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	ctx.Logf("Installing .NET SDK v%s", version)
 	// Ensure there's a symlink from runtime/sdk dir to the sdk layer.
-	// TODO: remove the symlink in the final image.
+	// TODO(b/150893022): remove the symlink in the final image.
 	ctx.Exec([]string{"ln", "--symbolic", "--force", sdkl.Root, filepath.Join(rtl.Root, "sdk")})
 
 	// With --keep-directory-symlink, the SDK will be unpacked into /runtime/sdk,

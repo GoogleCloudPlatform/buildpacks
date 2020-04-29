@@ -30,4 +30,5 @@ description = "Builder for the GCF PHP 7.4 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/php74/run"
 
 [lifecycle]
+  # TODO(b/154154852): Update to latest version.
   version = "0.6.1"

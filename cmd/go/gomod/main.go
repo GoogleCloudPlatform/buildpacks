@@ -42,7 +42,7 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.OverrideBuildEnv(l, "GOPROXY", "off")
 	ctx.WriteMetadata(l, nil, layers.Build)
 
-	// TODO: Investigate caching the modules layer.
+	// TODO(b/145604612): Investigate caching the modules layer.
 
 	// When there's a vendor folder and go is 1.14+, we shouldn't download the modules
 	// and let go build use the vendored dependencies.

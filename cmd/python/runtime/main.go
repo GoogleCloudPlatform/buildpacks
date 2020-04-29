@@ -32,7 +32,7 @@ import (
 const (
 	pythonLayer = "python"
 	pythonURL   = "https://storage.googleapis.com/gcp-buildpacks/python/python-%s.tar.gz"
-	// TODO: Add mapping for stable/beta versions.
+	// TODO(b/148375706): Add mapping for stable/beta versions.
 	versionURL  = "https://storage.googleapis.com/gcp-buildpacks/python/latest.version"
 	versionFile = ".python-version"
 )

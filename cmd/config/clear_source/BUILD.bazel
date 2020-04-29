@@ -17,6 +17,11 @@ buildpack(
 go_binary(
     name = "main",
     srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
     visibility = [
         "//cmd/config/clear_source:__pkg__",
     ],

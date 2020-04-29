@@ -24,6 +24,11 @@ go_binary(
         "main.go",
         "template.go",
     ],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
     visibility = [
         "//cmd/config/entrypoint:__pkg__",
     ],

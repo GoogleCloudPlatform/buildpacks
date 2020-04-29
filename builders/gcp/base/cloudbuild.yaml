@@ -1,5 +1,6 @@
 # Build stack images and create gcr.io/buildpacks/builder.
 #
+# NOTE: This only works inside a Bazel workspace.
 
 steps:
   - id: build-bazel-pack-image

@@ -70,7 +70,7 @@ func TestAcceptance(t *testing.T) {
 			App:  "with_subdir",
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
 		},
-		// TODO: For compatibility with GCF; this will be removed later.
+		// TODO(b/154846199): For compatibility with GCF; this will be removed later.
 		{
 			Name: "function without deps old env",
 			App:  "no_deps",

@@ -36,7 +36,7 @@ var (
 const (
 	dateFormat = time.RFC3339Nano
 	// repoExpiration is an arbitrary amount of time of 10 weeks to refresh the cache layer.
-	// TODO: Investigate proper cache-clearing strategy.
+	// TODO(b/148099877): Investigate proper cache-clearing strategy.
 	repoExpiration = time.Duration(time.Hour * 24 * 7 * 10)
 )
 

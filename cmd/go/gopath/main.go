@@ -38,7 +38,7 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.OverrideBuildEnv(l, "GO111MODULE", "off")
 	ctx.WriteMetadata(l, nil, layers.Build)
 
-	// TODO: Investigate caching the modules layer.
+	// TODO(b/145604612): Investigate caching the modules layer.
 
 	ctx.ExecUserWithParams(gcp.ExecParams{
 		Cmd: []string{"go", "get", "-d"},

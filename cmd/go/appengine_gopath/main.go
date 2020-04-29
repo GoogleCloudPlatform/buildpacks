@@ -86,7 +86,7 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.OverrideBuildEnv(l, env.Buildable, buildMainPath)
 	}
 
-	// TODO: Investigate creating and caching a GOCACHE layer.
+	// TODO(b/145608768): Investigate creating and caching a GOCACHE layer.
 	return nil
 }
 

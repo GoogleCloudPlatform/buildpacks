@@ -44,7 +44,7 @@ temp="$(mktemp -d)"
 curl -fsSL "https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64" -o "$temp/container-structure-test" && chmod +x "$temp/container-structure-test"
 curl -fsSL "https://github.com/buildpacks/pack/releases/download/v${PACK_VERSION}/pack-v${PACK_VERSION}-linux.tgz" | tar xz -C "$temp"
 
-# TODO: Build stack images when testing GCP builder instead of pulling.
+# TODO(b/155193275): Build stack images when testing GCP builder instead of pulling.
 
 # Filter out non-test targets, such as builder.image rules.
 bazel test --test_output=errors --action_env="PATH=$temp:$PATH" $(bazel query "filter('${FILTER}', kind('.*_test rule', '//builders/...'))")

@@ -179,7 +179,7 @@ func TestAcceptance(t *testing.T) {
 	}
 }
 
-// TODO: For compatibility with GCF; this will be removed later.
+// TODO(b/154846199): For compatibility with GCF; this will be removed later.
 func TestAcceptanceOldEnv(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
