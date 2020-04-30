@@ -92,7 +92,7 @@ func buildFn(ctx *gcp.Context) error {
 	pjs := filepath.Join(cvt, "package.json")
 	pljs := filepath.Join(cvt, nodejs.PackageLock)
 
-	cached, meta, err := nodejs.CheckCache(ctx, l, pjs, pljs)
+	cached, meta, err := nodejs.CheckCache(ctx, l, nodejs.EnvProduction, pjs, pljs)
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}

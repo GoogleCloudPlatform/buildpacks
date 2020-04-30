@@ -32,11 +32,11 @@ func DependencyHash(ctx *Context, langVer string, files ...string) (string, erro
 	for _, file := range files {
 		components = append(components, HashFileContents(file))
 	}
-	return computeSHA256(ctx, components...)
+	return ComputeSHA256(ctx, components...)
 }
 
-// computeSHA256 returns a sha256 string based on the given components.
-func computeSHA256(ctx *Context, components ...interface{}) (result string, err error) {
+// ComputeSHA256 returns a sha256 string based on the given components.
+func ComputeSHA256(ctx *Context, components ...interface{}) (result string, err error) {
 	h := sha256.New()
 
 	h.Write([]byte(ctx.BuildpackID()))

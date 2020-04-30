@@ -55,7 +55,8 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.RemoveAll("node_modules")
 	nodejs.EnsurePackageLock(ctx)
 
-	cached, meta, err := nodejs.CheckCache(ctx, l, nodejs.PackageLock)
+	nodeEnv := nodejs.EnvDevelopment
+	cached, meta, err := nodejs.CheckCache(ctx, l, nodeEnv, nodejs.PackageLock)
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
@@ -67,7 +68,10 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.CacheMiss(cacheTag)
 		// Clear cached node_modules to ensure we don't end up with outdated dependencies.
 		ctx.ClearLayer(l)
-		ctx.ExecUser([]string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet"})
+		ctx.ExecUserWithParams(gcp.ExecParams{
+			Cmd: []string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet"},
+			Env: []string{"NODE_ENV=" + nodeEnv},
+		}, gcp.UserErrorKeepStderrTail)
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)
 		ctx.Exec([]string{"cp", "--archive", "node_modules", nm})

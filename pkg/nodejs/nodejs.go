@@ -19,10 +19,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpack/libbuildpack/layers"
+)
+
+const (
+	// EnvDevelopment represents a NODE_ENV development value.
+	EnvDevelopment = "development"
+	// EnvProduction represents a NODE_ENV production value.
+	EnvProduction = "production"
 )
 
 type packageEnginesJSON struct {
@@ -70,10 +78,24 @@ func NodeVersion(ctx *gcp.Context) string {
 	return result.Stdout
 }
 
+// NodeEnv returns the value of NODE_ENV or `production`.
+func NodeEnv() string {
+	nodeEnv := os.Getenv("NODE_ENV")
+	if nodeEnv == "" {
+		nodeEnv = EnvProduction
+	}
+	return nodeEnv
+}
+
 // CheckCache checks whether cached dependencies exist and match.
-func CheckCache(ctx *gcp.Context, l *layers.Layer, files ...string) (bool, *Metadata, error) {
+func CheckCache(ctx *gcp.Context, l *layers.Layer, env string, files ...string) (bool, *Metadata, error) {
 	currentNodeVersion := NodeVersion(ctx)
-	currentDependencyHash, err := gcp.DependencyHash(ctx, currentNodeVersion, files...)
+
+	components := []interface{}{currentNodeVersion, env}
+	for _, f := range files {
+		components = append(components, f)
+	}
+	currentDependencyHash, err := gcp.ComputeSHA256(ctx, components...)
 	if err != nil {
 		return false, nil, fmt.Errorf("computing dependency hash: %v", err)
 	}

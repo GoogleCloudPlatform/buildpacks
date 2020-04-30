@@ -110,6 +110,18 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{npm},
 		},
 		{
+			App:        "dev_dependency_npm",
+			Env:        []string{"NODE_ENV=development"},
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
+		},
+		{
+			App:        "dev_dependency_yarn",
+			Env:        []string{"NODE_ENV=development"},
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
+		},
+		{
 			App:        "node_modules_bin_npm",
 			Path:       "/index.txt",
 			MustUse:    []string{npm},

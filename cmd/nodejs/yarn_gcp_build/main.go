@@ -57,7 +57,8 @@ func buildFn(ctx *gcp.Context) error {
 	nm := filepath.Join(l.Root, "node_modules")
 	ctx.RemoveAll("node_modules")
 
-	cached, meta, err := nodejs.CheckCache(ctx, l, nodejs.YarnLock)
+	nodeEnv := nodejs.EnvDevelopment
+	cached, meta, err := nodejs.CheckCache(ctx, l, nodeEnv, nodejs.YarnLock)
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
@@ -75,7 +76,10 @@ func buildFn(ctx *gcp.Context) error {
 		if lf := nodejs.LockfileFlag(ctx); lf != "" {
 			cmd = append(cmd, lf)
 		}
-		ctx.ExecUser(cmd)
+		ctx.ExecUserWithParams(gcp.ExecParams{
+			Cmd: cmd,
+			Env: []string{"NODE_ENV=" + nodeEnv},
+		}, gcp.UserErrorKeepStderrTail)
 
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)

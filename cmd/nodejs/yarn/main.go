@@ -61,7 +61,8 @@ func buildFn(ctx *gcp.Context) error {
 	nm := filepath.Join(ml.Root, "node_modules")
 	ctx.RemoveAll("node_modules")
 
-	cached, meta, err := nodejs.CheckCache(ctx, ml, nodejs.YarnLock)
+	nodeEnv := nodejs.NodeEnv()
+	cached, meta, err := nodejs.CheckCache(ctx, ml, nodeEnv, nodejs.YarnLock)
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
@@ -75,11 +76,14 @@ func buildFn(ctx *gcp.Context) error {
 		// Clear cached node_modules to ensure we don't end up with outdated dependencies.
 		ctx.ClearLayer(ml)
 
-		cmd := []string{"yarn", "install", "--production", "--non-interactive"}
+		cmd := []string{"yarn", "install", "--non-interactive"}
 		if lf := nodejs.LockfileFlag(ctx); lf != "" {
 			cmd = append(cmd, lf)
 		}
-		ctx.ExecUser(cmd)
+		ctx.ExecUserWithParams(gcp.ExecParams{
+			Cmd: cmd,
+			Env: []string{"NODE_ENV=" + nodeEnv},
+		}, gcp.UserErrorKeepStderrTail)
 
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)
@@ -90,7 +94,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	el := ctx.Layer("env")
 	ctx.PrependPathSharedEnv(el, "PATH", filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
-	ctx.DefaultSharedEnv(el, "NODE_ENV", "production")
+	ctx.DefaultSharedEnv(el, "NODE_ENV", nodeEnv)
 	ctx.WriteMetadata(el, nil, layers.Launch, layers.Build)
 
 	// Configure the entrypoint for production.

@@ -132,6 +132,10 @@ func (ctx *Context) configuredExec(params ExecParams) (*ExecResult, error) {
 	}
 
 	readableCmd := strings.Join(params.Cmd, " ")
+	if len(params.Env) > 0 {
+		env := strings.Join(params.Env, " ")
+		readableCmd = fmt.Sprintf("%s (%s)", readableCmd, env)
+	}
 	optionalLogf(divider)
 	optionalLogf("Running %q", readableCmd)
 

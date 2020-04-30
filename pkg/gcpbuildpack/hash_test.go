@@ -272,7 +272,7 @@ func writeFile(t *testing.T, tempDir, name, contents string) string {
 
 func computeHash(t *testing.T, ctx *Context, c ...interface{}) string {
 	t.Helper()
-	h, err := computeSHA256(ctx, c...)
+	h, err := ComputeSHA256(ctx, c...)
 	if err != nil {
 		t.Fatalf("computeSHA256(%v) got err=%v, want err=nil", c, err)
 	}
