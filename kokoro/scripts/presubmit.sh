@@ -46,14 +46,14 @@ curl -fsSL "https://github.com/buildpacks/pack/releases/download/v${PACK_VERSION
 
 # TODO(b/155193275): Build stack images when testing GCP builder instead of pulling.
 
+# Do not exit if bazel fails to allow for log collection.
+set +e
+
 # Filter out non-test targets, such as builder.image rules.
 bazel test --test_output=errors --action_env="PATH=$temp:$PATH" $(bazel query "filter('${FILTER}', kind('.*_test rule', '//builders/...'))")
 
 # The exit code of the bazel command should be used to determine test outcome.
 readonly EXIT_CODE="${?}"
-
-# The following commands should run on a best-effort basis.
-set +e
 
 # bazel-artifacts is specfied in build .cfg files.
 mkdir -p "$KOKORO_ARTIFACTS_DIR/bazel-artifacts"
