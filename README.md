@@ -44,7 +44,7 @@ Supported languages include:
 
 
 |Runtime       |App Support | Function Support  |
-|--------------|------------|-------------------|
+|--------------|:----------:|:-----------------:|
 | Go 1.10 +    | ✓          | ✓                 |
 | Node.js 10 + | ✓          | ✓                 |
 | Python 3.7 + | ✓          | ✓                 |
