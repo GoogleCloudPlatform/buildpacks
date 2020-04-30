@@ -71,8 +71,8 @@ func buildFn(ctx *gcp.Context) error {
 		Env: []string{"GOCACHE=" + cl.Root},
 	}, printTipsAndKeepStderrTail(ctx))
 
-	// Configure the entrypoint for production: use the full path to ease `skaffold debug`
-	// as it does not access image contents.
+	// Configure the entrypoint for production.  Use the full path to save `skaffold debug`
+	// from fetching the remote container image (tens to hundreds of megabytes), which is slow.
 	if !devmode.Enabled(ctx) {
 		ctx.AddWebProcess([]string{outBin})
 		return nil
