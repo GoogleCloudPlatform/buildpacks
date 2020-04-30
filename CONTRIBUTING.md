@@ -96,7 +96,7 @@ example `ctx.Symlink` instead of `ln -s`.
 ```bash
 export runtime=nodejs
 export buildpack=npm
-bazel build "cmd/${runtime}/${buildpack}:${buildpack}.tar"
+bazel build "cmd/${runtime}/${buildpack}:${buildpack}.tgz"
 ```
 
 This will produce a tar archive containing the `/bin/build` and `/bin/detect`
