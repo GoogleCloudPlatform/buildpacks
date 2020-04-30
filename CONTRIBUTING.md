@@ -39,12 +39,12 @@ Builder definitions and acceptance tests are located in the `builders`
 directory.
 
 * GCP
-  * Builders used in Cloud Code/Cloud Run/Skaffold and appropriate for the
-    general use case, e.g. Kubernetes, local development.
+  * Builders used in [Cloud Code](https://cloud.google.com/code)/[Cloud Run](https://cloud.google.com/run)/[Skaffold](https://github.com/GoogleContainerTools/skaffold)
+    and appropriate for the general use case, e.g. Kubernetes, local development.
 * GAE
-  * Builders used for runtimes in App Engine.
+  * Builders used for runtimes in [App Engine](https://cloud.google.com/appengine).
 * GCF
-  * Builders used for runtimes in Cloud Functions.
+  * Builders used for runtimes in [Cloud Functions](https://cloud.google.com/functions).
 
 ### gcpbuildpack package
 
