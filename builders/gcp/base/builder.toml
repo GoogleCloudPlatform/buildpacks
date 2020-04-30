@@ -17,6 +17,10 @@ description = "GCP Builder for all runtimes"
   uri = "dotnet/publish.tgz"
 
 [[buildpacks]]
+  id = "google.dotnet.functions-framework"
+  uri = "dotnet/functions_framework.tgz"
+
+[[buildpacks]]
   id = "google.go.runtime"
   uri = "go/runtime.tgz"
 
@@ -81,6 +85,10 @@ description = "GCP Builder for all runtimes"
 ########
 
 [[order]]
+
+  [[order.group]]
+    id = "google.dotnet.functions-framework"
+    optional = true
 
   [[order.group]]
     id = "google.dotnet.runtime"

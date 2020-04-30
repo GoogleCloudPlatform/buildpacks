@@ -10,6 +10,7 @@ builder(
     ],
     groups = {
         "dotnet": [
+            "//cmd/dotnet/functions_framework:functions_framework.tgz",
             "//cmd/dotnet/publish:publish.tgz",
             "//cmd/dotnet/runtime:runtime.tgz",
         ],
