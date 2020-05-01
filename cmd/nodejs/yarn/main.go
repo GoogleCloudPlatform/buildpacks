@@ -62,7 +62,7 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.RemoveAll("node_modules")
 
 	nodeEnv := nodejs.NodeEnv()
-	cached, meta, err := nodejs.CheckCache(ctx, ml, nodeEnv, nodejs.YarnLock)
+	cached, meta, err := nodejs.CheckCache(ctx, ml, nodeEnv, "package.json", nodejs.YarnLock)
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}

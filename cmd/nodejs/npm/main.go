@@ -48,7 +48,7 @@ func buildFn(ctx *gcp.Context) error {
 	nodejs.EnsurePackageLock(ctx)
 
 	nodeEnv := nodejs.NodeEnv()
-	cached, meta, err := nodejs.CheckCache(ctx, ml, nodeEnv, nodejs.PackageLock)
+	cached, meta, err := nodejs.CheckCache(ctx, ml, nodeEnv, "package.json", nodejs.PackageLock)
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
