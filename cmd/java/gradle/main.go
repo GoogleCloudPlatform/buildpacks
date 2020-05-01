@@ -122,10 +122,10 @@ func installGradle(ctx *gcp.Context) (string, error) {
 	gradleZip := filepath.Join(tmpDir, "gradle.zip")
 	defer ctx.RemoveAll(gradleZip)
 
-	curl := fmt.Sprintf("curl --location %s --output %s", downloadURL, gradleZip)
+	curl := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s --output %s", downloadURL, gradleZip)
 	ctx.Exec([]string{"bash", "-c", curl})
 
-	unzip := fmt.Sprintf("unzip %s -d %s", gradleZip, tmpDir)
+	unzip := fmt.Sprintf("unzip -q %s -d %s", gradleZip, tmpDir)
 	ctx.Exec([]string{"bash", "-c", unzip})
 
 	gradleExtracted := filepath.Join(tmpDir, fmt.Sprintf("gradle-%s", version))
