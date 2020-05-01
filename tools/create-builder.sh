@@ -23,15 +23,20 @@
 
 set -euo pipefail
 
-if ! type -P pack; then
-  echo "pack not found, please follow https://buildpacks.io/docs/install-pack/."
-  exit 1
-fi
+# Check that the command in $1 is in $PATH. If not, show what $PATH is and also
+# the installation link in $2.
+function check_in_path() {
+  if ! type -P $1; then
+    cat >&1 <<EOF
+$1 not found, please follow $2 and ensure that $1 is in \$PATH, which is:
+  $PATH
+EOF
+    exit 1
+  fi
+}
 
-if ! type -P docker; then
-  echo "docker not found, please follow https://docs.docker.com/install/."
-  exit 1
-fi
+check_in_path pack https://buildpacks.io/docs/install-pack/
+check_in_path docker https://docs.docker.com/install/
 
 readonly name="${1:?image name missing}"
 readonly tar="${2:?tar path missing}"
