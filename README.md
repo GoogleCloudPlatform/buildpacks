@@ -29,11 +29,8 @@ Google Cloud's container platforms:
     ```
     docker run --rm -p8080:8080 sample-go
     ```
+See the [Usage section](#usage) for more details.
 
-1. You can also build and publish to a container registry, like:
-    ```
-    pack build --publish --builder gcr.io/buildpacks/builder gcr.io/YOUR_PROJECT_ID/sample-go
-    ```
 
 ## Concepts
 
