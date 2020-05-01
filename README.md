@@ -24,7 +24,6 @@ Google Cloud's container platforms:
     cd sample-go
     pack build --builder gcr.io/buildpacks/builder sample-go
     ```
-
 1. Run it with docker, like:
     ```
     docker run --rm -p8080:8080 sample-go
