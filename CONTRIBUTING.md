@@ -29,7 +29,8 @@ This project follows
 
 ## Building Buildpacks
 
-The GCP Buildpacks project uses Bazel for building.  Implementation is in Go.
+The GCP Buildpacks project is implemented in Go and uses
+[Bazel](https://bazel.build/) as the build system.
 
 * [Install Bazel](https://docs.bazel.build/versions/master/install.html)
 
@@ -42,9 +43,9 @@ directory.
   * Builders used in [Cloud Code](https://cloud.google.com/code)/[Cloud Run](https://cloud.google.com/run)/[Skaffold](https://github.com/GoogleContainerTools/skaffold)
     and appropriate for the general use case, e.g. Kubernetes, local development.
 * GAE
-  * Builders used for runtimes in [App Engine](https://cloud.google.com/appengine).
+  * Builders used in [App Engine](https://cloud.google.com/appengine).
 * GCF
-  * Builders used for runtimes in [Cloud Functions](https://cloud.google.com/functions).
+  * Builders used in [Cloud Functions](https://cloud.google.com/functions).
 
 ### gcpbuildpack package
 
@@ -56,11 +57,13 @@ to manipulate files and layers and to execute arbitrary commands.
 Each buildpack has a single `main.go` file that implements a `detectFn` and
 a `buildFn`:
 
-`detectFn` is invoked through `/bin/detect`.
-A buildpack signals that it can participate in the build unless it explicitly
-opts out using `ctx.OptOut` or returns an error.
+* `detectFn` is invoked through `/bin/detect`.
+  A buildpack signals that it can participate in the build unless it explicitly
+  opts out using `ctx.OptOut` or returns an error.
 
-`buildFn` is invoked through `/bin/build`.
+* `buildFn` is invoked through `/bin/build`.
+  The responsibility of the build function is to create layers and populate them
+  with data using a combination of Go and shell commands.
 
 ### Error attribution
 
@@ -70,7 +73,7 @@ processing user code, such as installing dependencies or compiling a program,
 should be attributed to the user. Errors that occur while manipulating files or
 directories or when performing actions the user has no control over should be
 attributed to the platform. Some errors may be ambiguous, such as downloading
-dependencies from a remote repository, can be attributable to both the user
+dependencies from a remote repository, and attributable to both the user
 (wrong dependency version) and the platform (network error). In these cases,
 errors should be attributed based on the **most likely** cause. It is much
 more likely that the dependencies file has an incorrect version, undeclared
@@ -99,8 +102,9 @@ export buildpack=npm
 bazel build "cmd/${runtime}/${buildpack}:${buildpack}.tgz"
 ```
 
-This will produce a tar archive containing the `/bin/build` and `/bin/detect`
-binaries, as well as any other files required by the buildpack.
+This will produce a tgz archive containing `buildpack.toml`, the `/bin/build`
+and `/bin/detect` binaries, as well as any other files required by the
+buildpack.
 
 ### Creating a builder
 
@@ -126,23 +130,33 @@ export runtime=nodejs12
 bazel build "builders/${product}/${runtime}:builder.image"
 ```
 
-This will produce a builder in the form of a Docker image tagged as
-`<product>/<runtime>`.
+This will produce a builder image tagged as `<product>/<runtime>` in the local
+Docker daemon.
 
 ### Updating Dependencies
 
-[Gazelle](https://github.com/bazelbuild/bazel-gazelle) is a buildfile generator
-for bazel, and synchronizes the WORKSPACE's `go_repository` specs with the versions
-specified in `go.mod`.  After updating the `go.mod` then run:
-```sh
-bazel run //:gazelle -- update-repos -from_file=go.mod
-```
+If you would like to update any project dependencies, please file a new issue.
 
 ## Testing
 
-To run acceptance tests, perform the following:
+Each builder has a set of acceptance tests that validate the builder by
+building and running a set of applications. By default, the tests pull the
+latest stack images from GCR. Running all acceptance tests is CPU, memory,
+and network intensive, so we recommend only running tests for affected builders.
+
+To run acceptance tests for the `gcp/base` builder, use the following command:
+
 ```bash
-bazel test builders/gcp/base:all
+bazel test builders/gcp/base/acceptance/...
+```
+
+or more generally:
+
+```bash
+export product=gae
+export runtime=nodejs12
+bazel test "builders/${product}/${runtime}/acceptance/..."
+```
 
 ### Cleaning up Docker artifacts
 
