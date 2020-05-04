@@ -49,7 +49,7 @@ This is a general purpose builder that creates container images designed to run 
 platforms (e.g. Kubernetes / Anthos, Knative / Cloud Run, Container OS, etc),
 and should be used by the majority of users. The builder attempts to autodetect
 the language of your source code, and can also build functions compatible with
-the [Google Cloud Function Framework](https://cloud.google.com/functions/docs/functions-framework) by [setting the FUCNTION_TARGET env var](#configuration).
+the [Google Cloud Function Framework](https://cloud.google.com/functions/docs/functions-framework) by [setting the GOOGLE_FUNCTION_TARGET env var](#configuration).
 
 The generic builder is hosted at `gcr.io/buildpacks/builder`.
 
