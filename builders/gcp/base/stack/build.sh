@@ -29,11 +29,11 @@ set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "> Building gcp/base common image"
-docker build -t "common" -f "${DIR}/Dockerfile.parent" "${DIR}"
+docker build -t "common" -f "${DIR}/parent.Dockerfile" "${DIR}"
 echo "> Building gcr.io/buildpacks/gcp/run"
-docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/run" -f "${DIR}/Dockerfile.run" "${DIR}"
+docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/run" -f "${DIR}/run.Dockerfile" "${DIR}"
 echo "> Building gcr.io/buildpacks/gcp/build"
-docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/build" -f "${DIR}/Dockerfile.build" "${DIR}"
+docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/build" -f "${DIR}/build.Dockerfile" "${DIR}"
 
 echo "> Validating gcr.io/buildpacks/gcp/build"
 container-structure-test test -c "${DIR}/build-test.yaml" -i gcr.io/buildpacks/gcp/build:latest
