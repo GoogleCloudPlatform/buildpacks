@@ -28,15 +28,6 @@ set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Gather license files in a tar as Docker's ADD preserves file ownership and mod times.
-# The tar must be located within the docker build context (${DIR})
-echo "> Gathering licenses"
-LICENSES_BASE="licenses"
-LICENSES_TAR="licenses.tar"
-trap "rm -rf \"${DIR}/${LICENSES_TAR}\"" EXIT
-tar -cf "${DIR}/${LICENSES_TAR}" --mode="a=rX" --mtime="@0" --owner=0 --group=0 --sort=name -C "${DIR}/${LICENSES_BASE}" .
-tar -rf "${DIR}/${LICENSES_TAR}" --mode="a=rX" --mtime="@0" --owner=0 --group=0 -C "${DIR}" licenses.yaml
-
 echo "> Building gcp/base common image"
 docker build -t "common" -f "${DIR}/Dockerfile.parent" "${DIR}"
 echo "> Building gcr.io/buildpacks/gcp/run"
