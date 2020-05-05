@@ -63,8 +63,9 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:       "Java gradle",
 			App:        "java/gradle_micronaut",
-			MustUse:    []string{javaGradle, javaRuntime, javaEntrypoint},
-			MustNotUse: []string{entrypoint},
+			Env:        []string{"GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
+			MustUse:    []string{javaGradle, javaRuntime, entrypoint},
+			MustNotUse: []string{javaEntrypoint},
 		},
 	}
 	for _, tc := range testCases {
