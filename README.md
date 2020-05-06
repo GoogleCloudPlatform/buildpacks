@@ -80,6 +80,7 @@ language has a seperate builder.
 The Google Cloud Buildpacks project provides builder images suitable for use
 with
 [pack](https://github.com/buildpacks/pack),
+[kpack](https://github.com/pivotal/kpack),
 [tekton](https://github.com/tektoncd/catalog/tree/master/buildpacks),
 [skaffold](https://github.com/GoogleContainerTools/skaffold/tree/master/examples/buildpacks),
 and other tools that support the Buildpacks v3 specification.
