@@ -72,6 +72,11 @@ func TestFailures(t *testing.T) {
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=python38"},
 			MustMatch: "SyntaxError: invalid syntax",
 		},
+		{
+			App:       "fail_broken_dependencies",
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=python38"},
+			MustMatch: "functions-framework 1.4.0 has requirement flask<2.0,>=1.0, but you have flask 0.1.",
+		},
 	}
 
 	for _, tc := range testCases {

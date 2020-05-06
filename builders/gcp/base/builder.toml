@@ -210,11 +210,11 @@ description = "GCP Builder for all runtimes"
     id = "google.python.runtime"
 
   [[order.group]]
-    id = "google.python.pip"
-    optional = true
+    id = "google.python.functions-framework"
 
   [[order.group]]
-    id = "google.python.functions-framework"
+    id = "google.python.pip"
+    optional = true
 
   [[order.group]]
     id = "google.config.entrypoint"
