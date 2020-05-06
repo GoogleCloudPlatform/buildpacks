@@ -1,0 +1,34 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+# Buildpack for the Java functions framework copy.
+load("//tools:defs.bzl", "buildpack")
+
+licenses(["notice"])
+
+buildpack(
+    name = "functions_framework_invoker",
+    executables = [
+        ":main",
+    ],
+    visibility = [
+        "//builders:java_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    visibility = [
+        "//cmd/config/entrypoint:__pkg__",
+    ],
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+        "@com_github_buildpack_libbuildpack//layers:go_default_library",
+    ],
+)
