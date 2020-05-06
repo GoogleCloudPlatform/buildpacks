@@ -594,11 +594,13 @@ func verifyStructure(t *testing.T, app, image, builder string, cache bool, check
 
 	outFile, errFile, cleanup := outFiles(t, builder, "container-structure-test", fmt.Sprintf("%s-cache-%t", image, cache))
 	defer cleanup()
-	cmd.Stdout, cmd.Stderr = outFile, errFile
+	var outb bytes.Buffer
+	cmd.Stdout = io.MultiWriter(outFile, &outb)
+	cmd.Stderr = errFile
 
 	t.Logf("Running structure tests (logs %s)", filepath.Dir(outFile.Name()))
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("Error running structure tests: %v", err)
+		t.Fatalf("Error running structure tests: %v (%v)", err, outb.String())
 	}
 	t.Logf("Successfully ran structure tests on %s (in %s)", image, time.Since(start))
 }
