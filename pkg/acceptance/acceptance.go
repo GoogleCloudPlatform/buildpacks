@@ -314,6 +314,18 @@ func CreateBuilder(t *testing.T) (string, func()) {
 
 	if builderImage != "" {
 		t.Logf("Testing existing builder image: %s", builderImage)
+		if pullImages {
+			if _, err := runOutput("docker", "pull", builderImage); err != nil {
+				t.Fatalf("Error pulling %s: %v", builderImage, err)
+			}
+			run, err := runImageFromMetadata(builderImage)
+			if err != nil {
+				t.Fatalf("Error extracting run image from image %s: %v", builderImage, err)
+			}
+			if _, err := runOutput("docker", "pull", run); err != nil {
+				t.Fatalf("Error pulling %s: %v", run, err)
+			}
+		}
 		// Pack cache is based on builder name; retag with a unique name.
 		if _, err := runOutput("docker", "tag", builderImage, name); err != nil {
 			t.Fatalf("Error tagging %s as %s: %v", builderImage, name, err)
@@ -335,9 +347,9 @@ func CreateBuilder(t *testing.T) (string, func()) {
 		}
 	}
 
-	run, build, err := builderStackImages(config)
+	run, build, err := stackImagesFromConfig(config)
 	if err != nil {
-		t.Fatalf("Extracting stack images: %v", err)
+		t.Fatalf("Error extracting stack images from %s: %v", config, err)
 	}
 	// Pull images once in the beginning to prevent them from changing in the middle of testing.
 	// The images are intentionally not cleaned up to prevent conflicts across different test targets.
@@ -430,8 +442,30 @@ func updateLifecycle(config, uri string) (string, error) {
 	return dest, nil
 }
 
-// builderStackImages returns the stack images specified by the given builder.toml.
-func builderStackImages(path string) (string, string, error) {
+// runImageFromMetadata returns the run image name from the metadata of the given image.
+func runImageFromMetadata(image string) (string, error) {
+	format := "--format={{(index (index .Config.Labels) \"io.buildpacks.builder.metadata\")}}"
+	out, err := runOutput("docker", "inspect", image, format)
+	if err != nil {
+		return "", fmt.Errorf("reading builer metadata: %v", err)
+	}
+
+	var metadata struct {
+		Stack struct {
+			RunImage struct {
+				Image string `json:"image"`
+			} `json:"runImage"`
+		} `json:"stack"`
+	}
+
+	if err := json.Unmarshal([]byte(out), &metadata); err != nil {
+		return "", fmt.Errorf("error unmarshalling build metadata: %v", err)
+	}
+	return metadata.Stack.RunImage.Image, nil
+}
+
+// stackImagesFromConfig returns the run images specified by the given builder.toml.
+func stackImagesFromConfig(path string) (string, string, error) {
 	p, err := ioutil.ReadFile(path)
 	if err != nil {
 		return "", "", fmt.Errorf("reading %s: %v", path, err)
