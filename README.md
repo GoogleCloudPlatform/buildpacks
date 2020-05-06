@@ -197,7 +197,6 @@ variables** that are supported across runtimes.
   * It is not possible to pass arguments to the maven command (for example, a specific Maven profile)
 * **Node**:
   * Custom build steps (e.g. executing the "build" script of package.json) are not supported.
-  * Existing `node_modules` directory is deleted and dependencies reinstalled using package.json and a lockfile if present.
 * **Go**
   * *(generic builder only)* Applications without a go.mod cannot have sub-packages.
   * Go 1.14 triggers a kernel bug in some versions of the Linux kernel
