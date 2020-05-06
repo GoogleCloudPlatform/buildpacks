@@ -235,6 +235,7 @@ We welcome contributions! Here's how you can contribute:
   * Try to fix [good first issues](https://github.com/GoogleCloudPlatform/buildpacks/labels/good%20first%20issue)
   * Help out on [issues that need help](https://github.com/GoogleCloudPlatform/buildpacks/labels/help%20wanted)
   * Join in on [discussion issues](https://github.com/GoogleCloudPlatform/buildpacks/labels/discuss)
+  * Join us on [Slack](https://googlecloud-community.slack.com/archives/C011ZHLLB2T)
 <!--  * Read the [style guide] -->
 
 ## License
