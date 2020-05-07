@@ -1,5 +1,7 @@
 load("//tools:defs.bzl", "builder")
 
+package(default_visibility = ["//builders/gae/go114/acceptance:__pkg__"])
+
 licenses(["notice"])
 
 builder(
@@ -12,5 +14,4 @@ builder(
         "//cmd/go/gomod:gomod.tgz",
     ],
     image = "gae/go114",
-    visibility = ["//builders/gae/go114/acceptance:__pkg__"],
 )
