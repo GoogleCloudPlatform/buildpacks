@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -333,5 +334,18 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 				t.Errorf("Expected stats do not match got %#v, want %#v", got.Stats, tc.want)
 			}
 		})
+	}
+}
+
+func TestMarshalJSON(t *testing.T) {
+	b := builderOutput{Error: Error{Status: StatusInternal}}
+
+	s, err := json.Marshal(b)
+
+	if err != nil {
+		t.Fatalf("Failed to marshal %v: %v", b, err)
+	}
+	if !strings.Contains(string(s), "INTERNAL") {
+		t.Errorf("Expected string 'INTERNAL' not found in %s", s)
 	}
 }
