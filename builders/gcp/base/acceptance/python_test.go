@@ -95,6 +95,11 @@ func TestFailures(t *testing.T) {
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS", "GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustMatch: "Runtime version BAD_NEWS_BEARS does not exist",
 		},
+		{
+			Name:      "python-version empty",
+			App:       "python/empty_version",
+			MustMatch: ".python-version exists but does not specify a version",
+		},
 	}
 
 	for _, tc := range testCases {

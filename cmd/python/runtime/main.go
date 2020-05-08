@@ -56,7 +56,10 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	version := runtimeVersion(ctx)
+	version, err := runtimeVersion(ctx)
+	if err != nil {
+		return fmt.Errorf("determining runtime version: %w", err)
+	}
 	// Check the metadata in the cache layer to determine if we need to proceed.
 	var meta metadata
 	l := ctx.Layer(pythonLayer)
@@ -87,18 +90,21 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
-func runtimeVersion(ctx *gcp.Context) string {
+func runtimeVersion(ctx *gcp.Context) (string, error) {
 	if v := os.Getenv(env.RuntimeVersion); v != "" {
 		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, v)
-		return v
+		return v, nil
 	}
 	if ctx.FileExists(versionFile) {
 		raw := ctx.ReadFile(versionFile)
 		v := strings.TrimSpace(string(raw))
-		ctx.Logf("Using runtime version from %s: %s", versionFile, v)
-		return v
+		if v != "" {
+			ctx.Logf("Using runtime version from %s: %s", versionFile, v)
+			return v, nil
+		}
+		return "", gcp.UserErrorf("%s exists but does not specify a version", versionFile)
 	}
 	v := ctx.Exec([]string{"curl", "--silent", versionURL}).Stdout
 	ctx.Logf("Using latest runtime version: %s", v)
-	return v
+	return v, nil
 }
