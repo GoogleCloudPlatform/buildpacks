@@ -45,9 +45,9 @@ const (
 	// Example: `gunicorn -p :8080 main:app` for Python.
 	Entrypoint = "GOOGLE_ENTRYPOINT"
 
-	// KeepSource is an env var used to keep the source in the final image.
-	// Buildpacks for compiled languages (e.g., Go, Java, .Net) will typically strip out the source.
-	KeepSource = "GOOGLE_KEEP_SOURCE"
+	// ClearSource is an env var used to clear source files from the final image.
+	// Buildpacks for compiled languages (e.g., Go, Java, .Net) will typically support clearing the source.
+	ClearSource = "GOOGLE_CLEAR_SOURCE"
 
 	// Buildable is an env var used to specify the buildable unit to build.
 	// Buildable should be respected by buildpacks that build source.

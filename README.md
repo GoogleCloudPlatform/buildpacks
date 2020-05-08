@@ -186,9 +186,11 @@ variables** that are supported across runtimes.
   * *(only applicable to compiled languages)* Specifies path to a buildable unit.
   * **Example:** `./maindir` for Go will build the package rooted at maindir.
 * `GOOGLE_DEVMODE`
-  * Enables the development mode buildpacks. This is used by [Skaffold](https://skaffold.dev) to enable live local
-  development where changes to your source code trigger automatic container rebuilds. To use, install Skaffold and run `skaffold dev`.
+  * Enables the development mode buildpacks. This is used by [Skaffold](https://skaffold.dev) to enable live local development where changes to your source code trigger automatic container rebuilds. To use, install Skaffold and run `skaffold dev`.
   * **Example:** `true`, `True`, `1` will enable development mode.
+* `GOOGLE_CLEAR_SOURCE`
+  * *(only applicable to Go)* Clears source after the application is built. If the application depends on static files, such as Go templates, setting this variable may cause the application to misbehave.
+  * **Example:** `true`, `True`, `1` will clear the source.
 
 ## Known Limitations
 

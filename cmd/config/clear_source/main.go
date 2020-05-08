@@ -33,22 +33,22 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) error {
-	if keepSource, present := os.LookupEnv(env.KeepSource); present {
-		keep, err := strconv.ParseBool(keepSource)
-		if err != nil {
-			return fmt.Errorf("parsing %q: %v", env.KeepSource, err)
-		}
-
-		if keep {
-			ctx.OptOut("%s set, keeping the source", env.KeepSource)
-		}
-	}
-
 	if devmode.Enabled(ctx) {
 		ctx.OptOut("Keeping the source for dev mode")
 	}
 
-	// Opt in by default.
+	if clearSource, ok := os.LookupEnv(env.ClearSource); ok {
+		clear, err := strconv.ParseBool(clearSource)
+		if err != nil {
+			return fmt.Errorf("parsing %q: %v", env.ClearSource, err)
+		}
+
+		if clear {
+			ctx.OptIn("%s set, clearing source", env.ClearSource)
+		}
+	}
+
+	ctx.OptOut("%s not set, opting out", env.ClearSource)
 	return nil
 }
 
