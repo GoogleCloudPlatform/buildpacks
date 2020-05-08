@@ -110,7 +110,7 @@ pack set-default-builder gcr.io/buildpacks/builder
 And you can publish the built image to the cloud directly with [pack](https://github.com/buildpacks/pack):
 
 ```bash
-pack build <app-name> --publish gcr.io/YOUR_PROJECT_ID/APP_NAME
+pack build --publish gcr.io/YOUR_PROJECT_ID/APP_NAME
 ```
 
 
