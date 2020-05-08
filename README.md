@@ -26,7 +26,7 @@ Google Cloud's container platforms:
     ```
 1. Run it with docker, like:
     ```
-    docker run --rm -p8080:8080 sample-go
+    docker run --rm -p 8080:8080 sample-go
     ```
 See the [Usage section](#usage) for more details.
 
@@ -98,7 +98,7 @@ pack build <app-name> --builder gcr.io/buildpacks/builder
 The application you built can then be executed locally:
 
 ```bash
-docker run --rm -p8080:8080 <app-name>
+docker run --rm -p 8080:8080 <app-name>
 ```
 
 You can set Cloud Buildpacks as your default:
