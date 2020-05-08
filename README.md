@@ -7,7 +7,7 @@ Google Cloud's container platforms:
  [Anthos](https://cloud.google.com/anthos),
  [App Engine](https://cloud.google.com/appengine),
  [Cloud Functions](https://cloud.google.com/functions),
- and [Compute Engine runing Container-Optimized OS](https://cloud.google.com/container-optimized-os/docs).
+ and [Compute Engine running Container-Optimized OS](https://cloud.google.com/container-optimized-os/docs).
  They are 100% compatible with [CNCF Buildpacks](https://buildpacks.io/).
 
 ## Quickstart
