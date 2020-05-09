@@ -191,6 +191,17 @@ variables** that are supported across runtimes.
   * *(only applicable to Go)* Clears source after the application is built. If the application depends on static files, such as Go templates, setting this variable may cause the application to misbehave.
   * **Example:** `true`, `True`, `1` will clear the source.
 
+Certain language buildpacks support other environment variables.
+
+### Go Buildpacks
+
+* `GOOGLE_GOGCFLAGS`
+  * Passed to `go build` and `go run` as `-gcflags value` with no interpretation.
+  * **Example:** `all=-N -l` enables race condition analysis and changes how source filepaths are recorded in the binary.
+* `GOOGLE_GOLDFLAGS`
+  * Passed to `go build` and `go run` as `-ldflags value` with no interpretation.
+  * **Example:** `-s -w` is used to strip and reduce binary size.
+
 ## Known Limitations
 
 * **General**:

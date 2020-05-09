@@ -78,6 +78,13 @@ const (
 	FunctionSignatureType = "GOOGLE_FUNCTION_SIGNATURE_TYPE"
 	// FunctionSignatureTypeLaunch is a launch time version of FunctionSignatureType.
 	FunctionSignatureTypeLaunch = "FUNCTION_SIGNATURE_TYPE"
+
+	// GoGCFlags is an env var used to pass through compilation flags to the Go compiler.
+	// Example: `-N -l` is used during debugging to disable optimizations and inlining.
+	GoGCFlags = "GOOGLE_GOGCFLAGS"
+	// GoLDFlags is an env var used to pass through linker flags to the Go linker.
+	// Example: `-s -w` is sometimes used to strip and reduce binary size.
+	GoLDFlags = "GOOGLE_GOLDFLAGS"
 )
 
 // IsDebugMode returns true if the buildpack debug mode is enabled.

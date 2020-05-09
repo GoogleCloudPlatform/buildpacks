@@ -66,8 +66,11 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Build the application.
+	cmd := []string{"go", "build"}
+	cmd = append(cmd, goBuildFlags()...)
+	cmd = append(cmd, "-o", outBin, pkg)
 	ctx.ExecUserWithParams(gcp.ExecParams{
-		Cmd: []string{"go", "build", "-o", outBin, pkg},
+		Cmd: cmd,
 		Env: []string{"GOCACHE=" + cl.Root},
 	}, printTipsAndKeepStderrTail(ctx))
 
@@ -79,13 +82,27 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Configure the entrypoint and metadata for dev mode.
+	cmd = []string{"go", "run"}
+	cmd = append(cmd, goBuildFlags()...)
+	cmd = append(cmd, pkg)
 	devmode.AddFileWatcherProcess(ctx, devmode.Config{
-		Cmd: []string{"go", "run", pkg},
+		Cmd: cmd,
 		Ext: devmode.GoWatchedExtensions,
 	})
 	devmode.AddSyncMetadata(ctx, devmode.GoSyncRules)
 
 	return nil
+}
+
+func goBuildFlags() []string {
+	var flags []string
+	if v := os.Getenv(env.GoGCFlags); v != "" {
+		flags = append(flags, "-gcflags", v)
+	}
+	if v := os.Getenv(env.GoLDFlags); v != "" {
+		flags = append(flags, "-ldflags", v)
+	}
+	return flags
 }
 
 func printTipsAndKeepStderrTail(ctx *gcp.Context) gcp.ErrorSummaryProducer {
