@@ -6,7 +6,7 @@ Google Cloud's container platforms:
  [GKE](https://cloud.google.com/kubernetes-engine),
  [Anthos](https://cloud.google.com/anthos),
  and [Compute Engine runing Container-Optimized OS](https://cloud.google.com/container-optimized-os/docs).
- They are also used as part of the build steps of [App Engine](https://cloud.google.com/appengine) and [Cloud Functions](https://cloud.google.com/functions).
+ They are also used as the build system for [App Engine](https://cloud.google.com/appengine) and [Cloud Functions](https://cloud.google.com/functions).
  They are 100% compatible with [CNCF Buildpacks](https://buildpacks.io/).
 
 ## Quickstart
