@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements config/clear_source buildpack.
-// The clear_source buildpack clears the source out.
+// Implements go/clear_source buildpack.
+// The clear_source buildpack deletes source files after building the application.
 package main
 
 import (
@@ -34,7 +34,7 @@ func main() {
 
 func detectFn(ctx *gcp.Context) error {
 	if devmode.Enabled(ctx) {
-		ctx.OptOut("Keeping the source for dev mode")
+		ctx.OptOut("Development mode enabled")
 	}
 
 	if clearSource, ok := os.LookupEnv(env.ClearSource); ok {
@@ -44,11 +44,11 @@ func detectFn(ctx *gcp.Context) error {
 		}
 
 		if clear {
-			ctx.OptIn("%s set, clearing source", env.ClearSource)
+			ctx.OptIn("%s set", env.ClearSource)
 		}
 	}
 
-	ctx.OptOut("%s not set, opting out", env.ClearSource)
+	ctx.OptOut("%s not set", env.ClearSource)
 	return nil
 }
 

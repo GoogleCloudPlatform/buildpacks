@@ -5,8 +5,8 @@ description = "GCP Builder for all runtimes"
   uri = "entrypoint.tgz"
 
 [[buildpacks]]
-  id = "google.config.clear_source"
-  uri = "clear_source.tgz"
+  id = "google.go.clear_source"
+  uri = "go/clear_source.tgz"
 
 [[buildpacks]]
   id = "google.dotnet.runtime"
@@ -129,7 +129,7 @@ description = "GCP Builder for all runtimes"
     optional = true
 
   [[order.group]]
-    id = "google.config.clear_source"
+    id = "google.go.clear_source"
     optional = true
 
 [[order]]
@@ -149,7 +149,7 @@ description = "GCP Builder for all runtimes"
     optional = true
 
   [[order.group]]
-    id = "google.config.clear_source"
+    id = "google.go.clear_source"
     optional = true
 
 ########

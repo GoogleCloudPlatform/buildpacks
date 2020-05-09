@@ -23,7 +23,7 @@ go_binary(
         "-w",
     ],
     visibility = [
-        "//cmd/config/clear_source:__pkg__",
+        "//cmd/go/clear_source:__pkg__",
     ],
     deps = [
         "//pkg/devmode",

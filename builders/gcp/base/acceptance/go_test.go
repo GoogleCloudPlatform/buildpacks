@@ -32,7 +32,7 @@ func TestAcceptance(t *testing.T) {
 			Name:           "simple Go application",
 			App:            "go/simple",
 			MustUse:        []string{goRuntime, goBuild, goPath},
-			MustNotUse:     []string{clearSource},
+			MustNotUse:     []string{goClearSource},
 			FilesMustExist: []string{"/layers/google.go.build/bin/main", "/workspace/main.go"},
 		},
 		{
@@ -72,7 +72,7 @@ func TestAcceptance(t *testing.T) {
 			Name:              "clear source",
 			App:               "go/simple",
 			Env:               []string{"GOOGLE_CLEAR_SOURCE=true"},
-			MustUse:           []string{clearSource},
+			MustUse:           []string{goClearSource},
 			FilesMustExist:    []string{"/layers/google.go.build/bin/main"},
 			FilesMustNotExist: []string{"/layers/google.go.runtime", "/workspace/main.go"},
 		},
