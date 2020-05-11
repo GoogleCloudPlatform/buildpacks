@@ -171,29 +171,45 @@ variables** that are supported across runtimes.
 * `GOOGLE_ENTRYPOINT`
   * Specifies the command which is run when the container is executed; equivalent to [entrypoint](https://docs.docker.com/engine/reference/builder/#entrypoint) in a Dockerfile.
   * **Example:** `gunicorn -p :8080 main:app` for Python. `java -jar target/myjar.jar` for Java.
-* `GOOGLE_FUNCTION_TARGET`
-  * For use with source code built around the [Google Cloud Functions Framework](https://cloud.google.com/functions/docs/functions-framework). Specifies the name of the function to be invoked.
-  * **Example:** `myFunction` will cause the Functions Framework to invoke the function of the same name.
 * `GOOGLE_RUNTIME`
-  * If specified, forces the runtime to opt-in. If the runtime buildpack appears in multiple groups, the first group will be chosen, consistent with the buildpack specification. *(only works with buildpacks which install language runtimes)*.
+  * If specified, forces the runtime to opt-in. If the runtime buildpack appears in multiple groups, the first group will be chosen, consistent with the buildpack specification.
+  * *(Only applicable to buildpacks install language runtime or toolchain.)*
   * **Example:** `nodejs` will cause the nodejs/runtime buildpack to opt-in.
 * `GOOGLE_RUNTIME_VERSION`
   * If specified, overrides the runtime version to install.
-*(only works with buildpacks which install language runtimes)*
+  * *(Only applicable to buildpacks install language runtime or toolchain.)*
   * **Example:** `13.7.0` for Node.js, `1.14.1` for Go. `11.0.6+10` for Java.
 * `GOOGLE_BUILDABLE`
-  * *(only applicable to compiled languages)* Specifies path to a buildable unit.
+  * Specifies path to a buildable unit.
+  * *(Only applicable to compiled languages.)*
   * **Example:** `./maindir` for Go will build the package rooted at maindir.
 * `GOOGLE_DEVMODE`
   * Enables the development mode buildpacks. This is used by [Skaffold](https://skaffold.dev) to enable live local development where changes to your source code trigger automatic container rebuilds. To use, install Skaffold and run `skaffold dev`.
   * **Example:** `true`, `True`, `1` will enable development mode.
 * `GOOGLE_CLEAR_SOURCE`
-  * *(only applicable to Go)* Clears source after the application is built. If the application depends on static files, such as Go templates, setting this variable may cause the application to misbehave.
+  * Clears source after the application is built. If the application depends on static files, such as Go templates, setting this variable may cause the application to misbehave.
+  * *(Only applicable to Go.)*
   * **Example:** `true`, `True`, `1` will clear the source.
 
-Certain language buildpacks support other environment variables.
+Certain buildpacks support other environment variables:
 
-### Go Buildpacks
+#### Functions Framework buildpacks
+
+For use with source code built around the [Google Cloud Functions Framework](https://cloud.google.com/functions/docs/functions-framework).
+See the [contract](https://github.com/GoogleCloudPlatform/functions-framework) for more information about the configuration options.
+
+* `GOOGLE_FUNCTION_TARGET`
+  * Specifies the name of the exported function to be invoked in response to requests.
+  * **Example:** `myFunction` will cause the Functions Framework to invoke the function of the same name.
+* `GOOGLE_FUNCTION_SIGNATURE_TYPE`
+  * Specifies the signature used by the function.
+  * **Example:** `http` or `event`.
+* `GOOGLE_FUNCTION_SOURCE`
+  * Specifies the name of the file containing the function source.
+  * *(Only applicable to some languages, please see the language-specific [documentation](https://github.com/GoogleCloudPlatform/functions-framework#languages).)*
+  * **Example:** `myFunction` will cause the Functions Framework to invoke the function of the same name.
+
+#### Go Buildpacks
 
 * `GOOGLE_GOGCFLAGS`
   * Passed to `go build` and `go run` as `-gcflags value` with no interpretation.
