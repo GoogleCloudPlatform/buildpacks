@@ -67,6 +67,7 @@ package_group(
         "//builders/gae/ruby25",
         "//builders/gae/ruby26",
         "//builders/gae/ruby27",
+        "//builders/gcf/ruby26",
         "//builders/gcp/base",
     ],
 )

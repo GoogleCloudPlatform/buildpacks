@@ -1,0 +1,26 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    functions_framework (0.1.1)
+      puma (~> 4.3)
+      rack (~> 2.1)
+    google-protobuf (3.11.4)
+    googleapis-common-protos-types (1.0.5)
+      google-protobuf (~> 3.11)
+    grpc (1.28.0)
+      google-protobuf (~> 3.11)
+      googleapis-common-protos-types (~> 1.0)
+    nio4r (2.5.2)
+    puma (4.3.3)
+      nio4r (~> 2.0)
+    rack (2.2.2)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  functions_framework (~> 0.1)
+  grpc (~> 1.28)
+
+BUNDLED WITH
+   2.1.4
