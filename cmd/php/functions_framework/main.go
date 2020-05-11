@@ -58,12 +58,6 @@ func detectFn(ctx *gcp.Context) error {
 	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
 		ctx.OptIn("%s set", env.FunctionTarget)
 	}
-	// TODO(b/154846199): For compatibility with GCF; this will be removed later.
-	if os.Getenv("CNB_STACK_ID") != "google" {
-		if _, ok := os.LookupEnv(env.FunctionTargetLaunch); ok {
-			ctx.OptIn("%s set", env.FunctionTargetLaunch)
-		}
-	}
 	ctx.OptOut("%s not set", env.FunctionTarget)
 	return nil
 }

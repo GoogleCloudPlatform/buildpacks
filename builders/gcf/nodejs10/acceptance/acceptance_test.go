@@ -179,34 +179,6 @@ func TestAcceptance(t *testing.T) {
 	}
 }
 
-// TODO(b/154846199): For compatibility with GCF; this will be removed later.
-func TestAcceptanceOldEnv(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
-	t.Cleanup(cleanup)
-
-	testCases := []acceptance.Test{
-		{
-			Name: "function without package",
-			App:  "no_package",
-		},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
-
-			tc.Path = "/testFunction"
-			tc.Env = append(tc.Env,
-				"FUNCTION_TARGET=testFunction",
-				"GOOGLE_RUNTIME=nodejs10",
-			)
-
-			acceptance.TestApp(t, builder, tc)
-		})
-	}
-}
-
 func TestFailures(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)

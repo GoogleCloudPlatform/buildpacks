@@ -34,18 +34,6 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
-			name:  "with target GCF",
-			env:   []string{"FUNCTION_TARGET=helloWorld"},
-			stack: "google.php",
-			want:  0,
-		},
-		{
-			name:  "with target GCP",
-			env:   []string{"FUNCTION_TARGET=helloWorld"},
-			stack: "google",
-			want:  100,
-		},
-		{
 			name: "without target",
 			want: 100,
 		},

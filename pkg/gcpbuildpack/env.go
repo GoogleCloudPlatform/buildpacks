@@ -25,9 +25,6 @@ import (
 func (ctx *Context) SetFunctionsEnvVars(l *layers.Layer) {
 	if target := os.Getenv(env.FunctionTarget); target != "" {
 		ctx.DefaultLaunchEnv(l, env.FunctionTargetLaunch, target)
-		// TODO(b/154846199): For compatibility with GCF; this will be removed later.
-	} else if target := os.Getenv(env.FunctionTargetLaunch); target != "" {
-		ctx.DefaultLaunchEnv(l, env.FunctionTargetLaunch, target)
 	} else {
 		ctx.Exit(1, UserErrorf("required env var %s not found", env.FunctionTarget))
 	}
