@@ -49,5 +49,4 @@ description = "Builder for the GCF Node.js 10 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/nodejs10/run"
 
 [lifecycle]
-  # TODO(b/154154852): Update to latest version.
-  version = "0.6.1"
+  version = "0.7.2"
