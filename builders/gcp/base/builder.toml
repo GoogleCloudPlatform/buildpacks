@@ -302,4 +302,4 @@ description = "GCP Builder for all runtimes"
   run-image = "gcr.io/buildpacks/gcp/run"
 
 [lifecycle]
-  version = "0.7.2"
+  version = "0.7.5"

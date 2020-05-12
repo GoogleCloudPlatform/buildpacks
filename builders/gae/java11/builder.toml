@@ -33,4 +33,4 @@ description = "Builder for the GAE Java 11 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/java11/run"
 
 [lifecycle]
-  version = "0.7.2"
+  version = "0.7.5"

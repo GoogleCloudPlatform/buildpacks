@@ -21,5 +21,4 @@ description = "Builder for the GCF Ruby 2.6 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/ruby26/run"
 
 [lifecycle]
-  # TODO(b/154154852): Update to latest version.
-  version = "0.6.1"
+  version = "0.7.5"
