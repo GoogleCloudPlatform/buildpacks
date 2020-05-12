@@ -205,9 +205,9 @@ See the [contract](https://github.com/GoogleCloudPlatform/functions-framework) f
   * Specifies the signature used by the function.
   * **Example:** `http` or `event`.
 * `GOOGLE_FUNCTION_SOURCE`
-  * Specifies the name of the file containing the function source.
+  * Specifies the name of the directory or file containing the function source, depending on the language.
   * *(Only applicable to some languages, please see the language-specific [documentation](https://github.com/GoogleCloudPlatform/functions-framework#languages).)*
-  * **Example:** `myFunction` will cause the Functions Framework to invoke the function of the same name.
+  * **Example:** `path/to/function/dir` for Node.js, `function.py` for Python.
 
 #### Go Buildpacks
 
