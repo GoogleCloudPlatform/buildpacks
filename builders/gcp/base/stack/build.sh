@@ -28,12 +28,16 @@ set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# The licenses.tar archive is used by builder.Dockerfile.
+bazel build //licenses:licenses.tar
+LICENSES_DIR="$(bazel info bazel-bin)/licenses"
+
 echo "> Building gcp/base common image"
-docker build -t "common" -f "${DIR}/parent.Dockerfile" "${DIR}"
+docker build -t "common" - < "${DIR}/parent.Dockerfile"
 echo "> Building gcr.io/buildpacks/gcp/run"
-docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/run" -f "${DIR}/run.Dockerfile" "${DIR}"
+docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/run" - < "${DIR}/run.Dockerfile"
 echo "> Building gcr.io/buildpacks/gcp/build"
-docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/build" -f "${DIR}/build.Dockerfile" "${DIR}"
+docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/build" -f "${DIR}/build.Dockerfile" "${LICENSES_DIR}"
 
 echo "> Validating gcr.io/buildpacks/gcp/build"
 container-structure-test test -c "${DIR}/build-test.yaml" -i gcr.io/buildpacks/gcp/build:latest

@@ -13,28 +13,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# The update-licenses.sh script updates licenses for all dependencies.
+#
+# The scripts updates:
+#   licenses/licenses.yaml  a file containing dependecy names and licenses.
+#   licenses/licenses/...   a directory containing all license files.
+#
+# Usage:
+#   update-licenses.sh
+
 set -euo pipefail
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# TOPDIR is the top-level project directory
-TOPDIR="$(cd "${DIR}/../../../.." && pwd)"
+# Version of lifecycle to get licenses for.
+LIFECYCLE_VERSION="v0.7.3"
+
+DIR="$(dirname "${BASH_SOURCE[0]}")"
+PROJECT_DIR="$(cd "${DIR}/.." && pwd)"
+LICENSES_DIR="${PROJECT_DIR}/licenses"
+LICENSEFILES_DIR="${LICENSES_DIR}/files"
+
+# Perform all operations relative to $PROJECT_DIR.
+cd "${PROJECT_DIR}"
 
 # Use github.com/google/go-licenses to extract third-party licenses for
 # Go libraries used in this project to licenses/, and to build a summary
 # licenses.yaml.
 
-LICENSES_BASE="licenses"
+# Require and download lifecycle separately because go-licenses does not support
+# the @version notation.
+go get "github.com/buildpacks/lifecycle@${LIFECYCLE_VERSION}"
 
 # Extract Go licenses for third-party libraries used in the GCP Buildpacks
 # and other binaries included in the builder images like the CNB Lifecycle.
 # Use --force to cause the save_path to be deleted.
+echo "Saving license files to ${LICENSEFILES_DIR}"
 go run github.com/google/go-licenses save --force \
-  --save_path "${DIR}/${LICENSES_BASE}" \
-  "${TOPDIR}/..." \
+  --save_path "${LICENSEFILES_DIR}" \
+  "${PROJECT_DIR}/..." \
   github.com/buildpacks/lifecycle
 
 # Build licenses.yaml.
-cat > licenses.yaml << EOF
+cat > "${LICENSES_DIR}/licenses.yaml" << EOF
 # List of licenses and source for software packages included in image.
 #
 # Valid keys:
@@ -56,14 +75,14 @@ outputLicenseEntry() {
   # (note licenseUrl = "Unknown" for go modules).  If not found, look for
   # well-known license files.
   local license_path=$(echo "${licenseUrl}" | sed 's;https://\(.*\)/blob/master\(/.*\);\1\2;')
-  if [ -f "${DIR}/${LICENSES_BASE}/${license_path}" ]; then
-    echo "  license_path: /usr/share/doc/${license_path}"
-  elif [ -f "${DIR}/${LICENSES_BASE}/${package}/LICENSE" ]; then
-    echo "  license_path: /usr/share/doc/${package}/LICENSE"
-  elif [ -f "${DIR}/${LICENSES_BASE}/${package}/COPYING" ]; then
-    echo "  license_path: /usr/share/doc/${package}/COPYING"
-  elif [ -f "${DIR}/${LICENSES_BASE}/${package}/NOTICE" ]; then
-    echo "  license_path: /usr/share/doc/${package}/NOTICE"
+  if [ -f "${LICENSEFILES_DIR}/${license_path}" ]; then
+    echo "  license_path: /usr/local/share/licenses/${license_path}"
+  elif [ -f "${LICENSEFILES_DIR}/${package}/LICENSE" ]; then
+    echo "  license_path: /usr/local/share/licenses/${package}/LICENSE"
+  elif [ -f "${LICENSEFILES_DIR}/${package}/COPYING" ]; then
+    echo "  license_path: /usr/local/share/licenses/${package}/COPYING"
+  elif [ -f "${LICENSEFILES_DIR}/${package}/NOTICE" ]; then
+    echo "  license_path: /usr/local/share/licenses/${package}/NOTICE"
   else
     echo "ERROR: unable to find license file for ${package}" 1>&2
     exit 1
@@ -72,13 +91,14 @@ outputLicenseEntry() {
 
 # example output from `wgo-licenses csv`:
 #   github.com/blang/semver,https://github.com/blang/semver/blob/master/LICENSE,MIT
+echo "Writing ${LICENSES_DIR}/licenses.yaml"
 echo "Note: it is expected to see 'error discovering URL' messages for go modules"
 go run github.com/google/go-licenses csv \
-  "${TOPDIR}/..." \
+  "${PROJECT_DIR}/..." \
   github.com/buildpacks/lifecycle \
 | sort \
 | (IFS=","; while read package licenseUrl licenseName; do \
-  exec >>licenses.yaml; \
+  exec >>"${LICENSES_DIR}/licenses.yaml"; \
   echo; \
   outputLicenseEntry; \
 done)
