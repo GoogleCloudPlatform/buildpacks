@@ -14,19 +14,25 @@ Google Cloud's container platforms:
 1. [Install Docker](https://store.docker.com/search?type=edition&offering=community)
 1. [Install the pack tool (a CLI for running Buildpacks)](https://buildpacks.io/docs/install-pack/)
 1. Clone the [sample apps](https://github.com/GoogleCloudPlatform/buildpack-samples):
+
     ```
     git clone https://github.com/GoogleCloudPlatform/buildpack-samples.git
     cd buildpack-samples
     ```
+
 1. Pick a sample and build it, for instance with `sample-go`:
+
     ```
     cd sample-go
     pack build --builder gcr.io/buildpacks/builder sample-go
     ```
+
 1. Run it with docker, like:
+
     ```
     docker run --rm -p 8080:8080 sample-go
     ```
+
 See the [Usage section](#usage) for more details.
 
 
