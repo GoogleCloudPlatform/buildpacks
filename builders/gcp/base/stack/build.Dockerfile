@@ -14,7 +14,7 @@
 
 ARG from_image
 FROM ${from_image}
-ADD licenses.tar /usr/local/share/licenses
+ADD licenses.tar /usr/local/share/licenses/buildpacks
 
 # Required to install nodejs/runtime.
 RUN apt-get update && apt-get install -y --no-install-recommends \

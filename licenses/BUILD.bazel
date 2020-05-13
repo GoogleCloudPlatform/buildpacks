@@ -11,8 +11,15 @@ pkg_tar(
 
 pkg_tar(
     name = "licenses",
-    srcs = ["licenses.yaml"],
+    srcs = [":licenses.yaml"],
     extension = "tar",
     visibility = ["//:__subpackages__"],
     deps = [":files.tar"],
+)
+
+genrule(
+    name = "licenses_yaml",
+    srcs = glob(["*.yaml"]),
+    outs = ["licenses.yaml"],
+    cmd = "cat $(SRCS) > $@",
 )
