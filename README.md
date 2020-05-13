@@ -183,6 +183,10 @@ variables** that are supported across runtimes.
   * Specifies path to a buildable unit.
   * *(Only applicable to compiled languages.)*
   * **Example:** `./maindir` for Go will build the package rooted at maindir.
+* `GOOGLE_BUILD_ARGS`
+  * Appends arguments to build command.
+  * *(Currently only applicable to Java Maven.)*
+  * **Example:** `-Pprod` for a Java will run `mvn clean package ... -Pprod`.
 * `GOOGLE_DEVMODE`
   * Enables the development mode buildpacks. This is used by [Skaffold](https://skaffold.dev) to enable live local development where changes to your source code trigger automatic container rebuilds. To use, install Skaffold and run `skaffold dev`.
   * **Example:** `true`, `True`, `1` will enable development mode.

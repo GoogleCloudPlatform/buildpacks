@@ -54,6 +54,10 @@ const (
 	// Example: `./maindir` for Go will build the package rooted at maindir.
 	Buildable = "GOOGLE_BUILDABLE"
 
+	// BuildArgs is an env var used to append arguments to the build command.
+	// Example: `-Pprod` for Maven apps run "mvn clear package ... -Pprod" command.
+	BuildArgs = "GOOGLE_BUILD_ARGS"
+
 	// GAEMain is an env var used to specify path or fully qualified package name of the main package in App Engine buildpacks.
 	// Behavior: In Go, the value is cleaned up and passed on to subsequent buildpacks as GOOGLE_BUILDABLE.
 	GAEMain = "GAE_YAML_MAIN"

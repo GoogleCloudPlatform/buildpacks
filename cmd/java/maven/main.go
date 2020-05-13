@@ -19,8 +19,11 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 	"github.com/buildpack/libbuildpack/layers"
@@ -70,6 +73,13 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	command := []string{mvn, "clean", "package", "--batch-mode", "-DskipTests", "-Dmaven.repo.local=" + m2CachedRepo.Root}
+
+	if buildArgs := os.Getenv(env.BuildArgs); buildArgs != "" {
+		if strings.Contains(buildArgs, "maven.repo.local") {
+			ctx.Warnf("Detected maven.repo.local property set in GOOGLE_BUILD_ARGS. Maven caching may not work properly.")
+		}
+		command = append(command, buildArgs)
+	}
 	if !ctx.Debug() {
 		command = append(command, "--quiet")
 	}
