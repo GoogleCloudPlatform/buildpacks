@@ -14,7 +14,7 @@
 
 
 # Cloud Build builder that extends the bazel builder with pack and
-# container-structure-test binaries.
+# container-structure-test binaries, as well as the Go toolchain.
 
 FROM gcr.io/cloud-builders/bazel
 
@@ -22,3 +22,10 @@ FROM gcr.io/cloud-builders/bazel
 ARG PACK_VERSION=0.10.0
 RUN curl -fsSL https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64 -o /usr/bin/container-structure-test && chmod +x /usr/bin/container-structure-test
 RUN curl -fsSL https://github.com/buildpacks/pack/releases/download/v${PACK_VERSION}/pack-v${PACK_VERSION}-linux.tgz | tar xz -C /usr/bin
+
+# Go is required for go-licenses even when statically compiled.
+RUN mkdir -p /usr/local/go \
+  && curl --silent https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz \
+  | tar xz --strip-components=1 --directory /usr/local/go
+ENV GOROOT=/usr/local/go/
+ENV PATH=/usr/local/go/bin:${PATH}

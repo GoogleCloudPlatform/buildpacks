@@ -67,6 +67,7 @@ go-licenses csv "$PROJECT_DIR/..." | sort | to_yaml "buildpacks" "$LICENSE_FILES
 
 echo "Gathering licenses for lifecycle"
 LIFECYCLE_DIR="$(mktemp -d)"
+trap "rm -rf $LIFECYCLE_DIR" EXIT
 
 # Find all versions of lifecycle refereced in builder.toml files.
 versions="$(grep "version = " builders/**/builder.toml | sed -r 's|.*"(.*)".*|\1|' | sort | uniq)"
@@ -93,7 +94,7 @@ for version in $versions; do
   go-licenses csv "$lifecycle_dir/..." | sort | to_yaml "lifecycle-${version}" "$license_files_dir" > "${LICENSE_DIR}/lifecycle-v${version}.yaml"
   popd
   # Add lifecycle license files to the other license files.
-  rsync -a "$license_files_dir/" "$LICENSE_FILES_DIR/"
+  cp -R "$license_files_dir"/* "$LICENSE_FILES_DIR/"
   rm -rf "$license_files_dir"
 done
 

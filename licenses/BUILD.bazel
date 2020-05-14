@@ -3,18 +3,10 @@ load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 licenses(["notice"])
 
 pkg_tar(
-    name = "files",
-    srcs = glob(["files/**"]),
-    strip_prefix = "./files",
-    visibility = ["//:__subpackages__"],
-)
-
-pkg_tar(
     name = "licenses",
     srcs = [":licenses.yaml"],
     extension = "tar",
     visibility = ["//:__subpackages__"],
-    deps = [":files.tar"],
 )
 
 genrule(

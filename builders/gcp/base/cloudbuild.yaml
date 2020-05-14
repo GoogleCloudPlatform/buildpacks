@@ -25,6 +25,11 @@ steps:
       - '--test_arg=-builder-image=gcp/base'
       - '//builders/gcp/base/acceptance/...'
 
+  - id: add-licenses
+    name: bazel-pack
+    entrypoint: /bin/bash
+    args: ['-c', 'tools/licenses/add.sh gcp/base']
+
   - id: validate-licenses
     name: gcr.io/gae-runtimes/license_validator:current
     args: ['-pull_images=false', 'gcp/base']
@@ -33,14 +38,14 @@ steps:
     name: bazel-pack
     entrypoint: /bin/bash
     args:
-    - '-c'
-    - >
-      docker tag gcr.io/buildpacks/gcp/run gcr.io/$PROJECT_ID/gcp/run
-      && docker tag gcr.io/buildpacks/gcp/run gcr.io/$PROJECT_ID/gcp/run:$COMMIT_SHA
-      && docker tag gcr.io/buildpacks/gcp/build gcr.io/$PROJECT_ID/gcp/build
-      && docker tag gcr.io/buildpacks/gcp/build gcr.io/$PROJECT_ID/gcp/build:$COMMIT_SHA
-      && docker tag gcp/base gcr.io/$PROJECT_ID/builder
-      && docker tag gcp/base gcr.io/$PROJECT_ID/builder:$COMMIT_SHA
+      - -c
+      - >
+        docker tag gcr.io/buildpacks/gcp/run gcr.io/$PROJECT_ID/gcp/run
+        && docker tag gcr.io/buildpacks/gcp/run gcr.io/$PROJECT_ID/gcp/run:$COMMIT_SHA
+        && docker tag gcr.io/buildpacks/gcp/build gcr.io/$PROJECT_ID/gcp/build
+        && docker tag gcr.io/buildpacks/gcp/build gcr.io/$PROJECT_ID/gcp/build:$COMMIT_SHA
+        && docker tag gcp/base gcr.io/$PROJECT_ID/builder
+        && docker tag gcp/base gcr.io/$PROJECT_ID/builder:$COMMIT_SHA
 
 images:
   - 'gcr.io/$PROJECT_ID/builder'
