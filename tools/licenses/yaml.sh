@@ -60,8 +60,11 @@ function to_yaml() {
   licenses_dir="${2?}"
   license_header
 
+  # The sort flags make sorting consistent. The default behavior may differ
+  # based on machine setup. For example, The Bazel Cloud Builder seems to sort
+  # special characters and uppercase characters differently than local sort.
   cat - \
-    | sort \
+    | sort --ignore-case --stable --dictionary-order \
     | (IFS=","; while read package license_url license_name; do \
         echo; \
         license_entry $licenses_dir $package $license_url $license_name; \

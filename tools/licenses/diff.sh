@@ -31,9 +31,14 @@ NEW_LICENSES="$(mktemp -d)"
 echo "Gathering new licenses into $NEW_LICENSES"
 echo
 "${DIR}/gather.sh" "$NEW_LICENSES"
+echo
 
-echo
-echo
+# Licenses files are not submitted, only keep yaml files.
+echo "Removing license files"
+rm -rf "$NEW_LICENSES/files"
+
 echo "Diffing $NEW_LICENSES and $OLD_LICENSES"
 echo
 diff -r --exclude "BUILD.bazel" "$NEW_LICENSES" "$OLD_LICENSES"
+# The folllowing message will only be printed if there are no diffs.
+echo "No diff found"

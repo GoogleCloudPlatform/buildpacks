@@ -1,0 +1,13 @@
+# Verify that `licenses` are up-to-date.
+#
+# NOTE: This only works inside a Bazel workspace.
+
+steps:
+  - id: build-bazel-pack-image
+    name: gcr.io/cloud-builders/docker
+    args: ['build', '-t=bazel-pack', '-f=tools/cloudbuild/Dockerfile', '.']
+
+  - id: verify-licenses
+    name: bazel-pack
+    entrypoint: /bin/bash
+    args: ['-c', 'tools/licenses/diff.sh']

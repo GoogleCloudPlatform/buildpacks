@@ -58,12 +58,13 @@ if ! type -P go-licenses; then
   bin="$(mktemp -d)"
   GOBIN="$bin" go install github.com/google/go-licenses
   PATH="$bin:$PATH"
+  echo
 fi
 
 echo "Gathering licenses for buildpacks"
 go-licenses check "$PROJECT_DIR/..."
 go-licenses save "$PROJECT_DIR/..."  --force --save_path "$LICENSE_FILES_DIR"
-go-licenses csv "$PROJECT_DIR/..." | sort | to_yaml "buildpacks" "$LICENSE_FILES_DIR" > "${LICENSE_DIR}/buildpacks.yaml"
+go-licenses csv "$PROJECT_DIR/..." | to_yaml "buildpacks" "$LICENSE_FILES_DIR" > "${LICENSE_DIR}/buildpacks.yaml"
 
 echo "Gathering licenses for lifecycle"
 LIFECYCLE_DIR="$(mktemp -d)"
@@ -91,10 +92,10 @@ for version in $versions; do
   pushd "$lifecycle_dir"
   go-licenses check "$lifecycle_dir/..."
   go-licenses save "$lifecycle_dir/..." --force --save_path "$license_files_dir"
-  go-licenses csv "$lifecycle_dir/..." | sort | to_yaml "lifecycle-${version}" "$license_files_dir" > "${LICENSE_DIR}/lifecycle-v${version}.yaml"
+  go-licenses csv "$lifecycle_dir/..." | to_yaml "lifecycle-${version}" "$license_files_dir" > "${LICENSE_DIR}/lifecycle-v${version}.yaml"
   popd
   # Add lifecycle license files to the other license files.
-  cp -R "$license_files_dir"/* "$LICENSE_FILES_DIR/"
+  cp -Rf "$license_files_dir"/* "$LICENSE_FILES_DIR/"
   rm -rf "$license_files_dir"
 done
 
