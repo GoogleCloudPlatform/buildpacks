@@ -9,8 +9,7 @@ steps:
 
   - id: build-stack-images
     name: bazel-pack
-    entrypoint: /bin/bash
-    args: ['-c', 'builders/gcp/base/stack/build.sh ${PROJECT_ID}']
+    args: ['run', '//builders/gcp/base/stack:build']
 
   - id: create-builder
     name: bazel-pack

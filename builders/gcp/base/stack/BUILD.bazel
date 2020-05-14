@@ -1,0 +1,16 @@
+licenses(["notice"])
+
+sh_binary(
+    name = "build",
+    srcs = ["build.sh"],
+    args = [
+        "$(location build.sh)",
+        "$(location //licenses:licenses.tar)",
+    ],
+    data = [
+        "build.Dockerfile",
+        "parent.Dockerfile",
+        "run.Dockerfile",
+        "//licenses:licenses.tar",
+    ],
+)

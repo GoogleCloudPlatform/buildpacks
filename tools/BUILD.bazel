@@ -9,3 +9,8 @@ exports_files(
         "//:__subpackages__",
     ],
 )
+
+sh_binary(
+    name = "pull_images",
+    srcs = ["pull-images.sh"],
+)

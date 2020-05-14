@@ -99,7 +99,7 @@ example `ctx.Symlink` instead of `ln -s`.
 ```bash
 export runtime=nodejs
 export buildpack=npm
-bazel build "cmd/${runtime}/${buildpack}:${buildpack}.tgz"
+bazel build "//cmd/${runtime}/${buildpack}:${buildpack}.tgz"
 ```
 
 This will produce a tgz archive containing `buildpack.toml`, the `/bin/build`
@@ -113,21 +113,29 @@ stack images required by the builder:
 
 ```bash
 # Optional, pull stack images required by the builder.
-./tools/pull-images.sh gcp base
+bazel run //tools:pull_images gcp base
 # Create a builder image tagged as gcp/base.
-bazel build builders/gcp/base:builder.image
+bazel build //builders/gcp/base:builder.image
 ```
 
-or more generally:
+You can also rebuild the gcp/base stack images:
+
+```bash
+# Optional, build stack images required by the builder.
+bazel run //builders/gcp/base/stack:build
+```
+
+GAE and GCF stack images cannot be modified, to pull the latest stack images
+and create a builder:
 
 ```bash
 export product=gae
 export runtime=nodejs12
 
 # Optional, pull stack images required by the builder.
-./tools/pull-images.sh "$product" "$runtime"
+bazel run //tools:pull_images "$product" "$runtime"
 # Create a builder image tagged as gcp/base.
-bazel build "builders/${product}/${runtime}:builder.image"
+bazel build "//builders/${product}/${runtime}:builder.image"
 ```
 
 This will produce a builder image tagged as `<product>/<runtime>` in the local
@@ -147,7 +155,7 @@ and network intensive, so we recommend only running tests for affected builders.
 To run acceptance tests for the `gcp/base` builder, use the following command:
 
 ```bash
-bazel test builders/gcp/base/acceptance/...
+bazel test //builders/gcp/base/acceptance/...
 ```
 
 or more generally:
@@ -155,7 +163,7 @@ or more generally:
 ```bash
 export product=gae
 export runtime=nodejs12
-bazel test "builders/${product}/${runtime}/acceptance/..."
+bazel test "//builders/${product}/${runtime}/acceptance/..."
 ```
 
 ### Cleaning up Docker artifacts

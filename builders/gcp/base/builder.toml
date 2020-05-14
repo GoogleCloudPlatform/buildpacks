@@ -295,7 +295,7 @@ description = "GCP Builder for all runtimes"
   [[order.group]]
     id = "google.config.entrypoint"
 
-# Currently built with stack/build.sh
+# Currently built with //builders/gcp/base/stack/stack:build.
 [stack]
   id = "google"
   build-image = "gcr.io/buildpacks/gcp/build"

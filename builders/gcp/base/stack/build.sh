@@ -22,22 +22,26 @@
 # It also validates that the build image includes all required licenses.
 #
 # Usage:
-#   ./build.sh
+#   ./build.sh <path to self> <path to licenses.tar>
 
 set -euo pipefail
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Convenient way to find the runfiles directory containing the Dockerfiles.
+# $0 is in a different directory top-level directory.
+DIR="$(dirname "$1")"
+LICENSES="$2"
 
-# The licenses.tar archive is used by builder.Dockerfile.
-bazel build //licenses:licenses.tar
-LICENSES_DIR="$(bazel info bazel-bin)/licenses"
+# Extract licenses.tar because it is symlinked, which Docker does not support.
+readonly TEMP="$(mktemp -d)"
+trap "rm -rf $TEMP" EXIT
+
+echo "> Extracting licenses tar"
+mkdir -p "$TEMP/licenses"
+tar xf "$LICENSES" -C "$TEMP/licenses"
 
 echo "> Building gcp/base common image"
 docker build -t "common" - < "${DIR}/parent.Dockerfile"
 echo "> Building gcr.io/buildpacks/gcp/run"
 docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/run" - < "${DIR}/run.Dockerfile"
 echo "> Building gcr.io/buildpacks/gcp/build"
-docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/build" -f "${DIR}/build.Dockerfile" "${LICENSES_DIR}"
-
-echo "> Validating gcr.io/buildpacks/gcp/build"
-container-structure-test test -c "${DIR}/build-test.yaml" -i gcr.io/buildpacks/gcp/build:latest
+docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/build" -f "${DIR}/build.Dockerfile" "${TEMP}"
