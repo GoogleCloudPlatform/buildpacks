@@ -30,11 +30,31 @@ This project follows
 ## Building Buildpacks
 
 The GCP Buildpacks project is implemented in Go and uses
-[Bazel](https://bazel.build/) as the build system.
+[Bazel](https:bazel.build/) as the build system. Throughout the document, all
+commands are relative to project root and `bazel` is interchangable
+with `blaze`.
 
-* [Install Bazel](https://docs.bazel.build/versions/master/install.html)
+### Installing project dependencies
 
-### Builders
+Please follow the links below for installation instructions.
+
+* [Bazel](https:docs.bazel.build/versions/master/install.html)
+* [Docker](https:store.docker.com/search?type=edition&offering=community)
+* [pack](https:buildpacks.io/docs/install-pack/)
+* [container-structure-test](https:github.com/GoogleContainerTools/container-structure-test#installation)
+
+Note: `docker`, `pack`, and `container-structure-test` must to be on `$PATH`
+as interpreted by Bazel, which may differ from system `$PATH`. When using
+Blaze, the programs or symlinks to them must be in `/usr/bin`.
+
+The following command verifies that all dependencies are installed correctly
+or prints further instructions:
+
+```bash
+bazel run tools:check_dependencies
+```
+
+### Builder overview
 
 Builder definitions and acceptance tests are located in the `builders`
 directory.
@@ -99,7 +119,7 @@ example `ctx.Symlink` instead of `ln -s`.
 ```bash
 export runtime=nodejs
 export buildpack=npm
-bazel build "//cmd/${runtime}/${buildpack}:${buildpack}.tgz"
+bazel build "cmd/${runtime}/${buildpack}:${buildpack}.tgz"
 ```
 
 This will produce a tgz archive containing `buildpack.toml`, the `/bin/build`
@@ -113,16 +133,16 @@ stack images required by the builder:
 
 ```bash
 # Optional, pull stack images required by the builder.
-bazel run //tools:pull_images gcp base
+bazel run tools:pull_images gcp base
 # Create a builder image tagged as gcp/base.
-bazel build //builders/gcp/base:builder.image
+bazel build builders/gcp/base:builder.image
 ```
 
 You can also rebuild the gcp/base stack images:
 
 ```bash
 # Optional, build stack images required by the builder.
-bazel run //builders/gcp/base/stack:build
+bazel run builders/gcp/base/stack:build
 ```
 
 GAE and GCF stack images cannot be modified, to pull the latest stack images
@@ -133,9 +153,9 @@ export product=gae
 export runtime=nodejs12
 
 # Optional, pull stack images required by the builder.
-bazel run //tools:pull_images "$product" "$runtime"
+bazel run tools:pull_images "$product" "$runtime"
 # Create a builder image tagged as gcp/base.
-bazel build "//builders/${product}/${runtime}:builder.image"
+bazel build "builders/${product}/${runtime}:builder.image"
 ```
 
 This will produce a builder image tagged as `<product>/<runtime>` in the local
@@ -155,7 +175,7 @@ and network intensive, so we recommend only running tests for affected builders.
 To run acceptance tests for the `gcp/base` builder, use the following command:
 
 ```bash
-bazel test //builders/gcp/base/acceptance/...
+bazel test builders/gcp/base/acceptance/...
 ```
 
 or more generally:
@@ -163,7 +183,7 @@ or more generally:
 ```bash
 export product=gae
 export runtime=nodejs12
-bazel test "//builders/${product}/${runtime}/acceptance/..."
+bazel test "builders/${product}/${runtime}/acceptance/..."
 ```
 
 ### Cleaning up Docker artifacts

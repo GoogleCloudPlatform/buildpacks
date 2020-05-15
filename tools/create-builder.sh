@@ -15,6 +15,8 @@
 
 # The create-builder.sh script creates a builder image from source.
 #
+# Note: This script should not be invoked directly; it is used in defs.bzl.
+#
 # Usage:
 # ./create-builder.sh <name> <source tar> <sha file>
 #
@@ -22,21 +24,6 @@
 # <source tar> path and writes the image sha to <sha file> path.
 
 set -euo pipefail
-
-# Check that the command in $1 is in $PATH. If not, show what $PATH is and also
-# the installation link in $2.
-function check_in_path() {
-  if ! type -P $1; then
-    cat >&1 <<EOF
-$1 not found, please follow $2 and ensure that $1 is in \$PATH, which is:
-  $PATH
-EOF
-    exit 1
-  fi
-}
-
-check_in_path pack https://buildpacks.io/docs/install-pack/
-check_in_path docker https://docs.docker.com/install/
 
 readonly name="${1:?image name missing}"
 readonly tar="${2:?tar path missing}"

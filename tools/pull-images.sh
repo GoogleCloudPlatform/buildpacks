@@ -15,6 +15,8 @@
 
 # The pull-images.sh script pulls and retags stack images.
 #
+# Note: This script is meant to be invoked using Blaze/Bazel.
+#
 # Usage:
 #   ./pull-images <product> <runtime>
 #
