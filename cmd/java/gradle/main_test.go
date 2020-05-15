@@ -34,7 +34,14 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
-			name:  "no build.gradle",
+			name: "build.gradle.kts",
+			files: map[string]string{
+				"build.gradle.kts": "",
+			},
+			want: 0,
+		},
+		{
+			name:  "no files",
 			files: map[string]string{},
 			want:  100,
 		},

@@ -43,8 +43,8 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) error {
-	if !ctx.FileExists("build.gradle") {
-		ctx.OptOut("build.gradle not found.")
+	if !ctx.FileExists("build.gradle") && !ctx.FileExists("build.gradle.kts") {
+		ctx.OptOut("Neither build.gradle nor build.gradle.kts found.")
 	}
 	return nil
 }
