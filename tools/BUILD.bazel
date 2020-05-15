@@ -8,14 +8,22 @@ exports_files([
     "defs.bzl",
 ])
 
+# Used in builder macro in defs.bzl.
 sh_binary(
     name = "create_builder",
     srcs = ["create-builder.sh"],
 )
 
+# Used in builder macro in defs.bzl.
 sh_binary(
     name = "check_dependencies",
     srcs = ["check-dependencies.sh"],
+)
+
+sh_test(
+    name = "check_dependencies_test",
+    srcs = ["check-dependencies.sh"],
+    local = 1,
 )
 
 sh_binary(

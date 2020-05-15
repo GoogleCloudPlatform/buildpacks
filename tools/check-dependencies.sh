@@ -26,8 +26,10 @@ set -euo pipefail
 # the installation link in $2.
 function check_in_path() {
   if ! type -P "$1"; then
-    echo "$1 not found, please follow $2 and ensure that '$1' is in \$PATH:" >&2
-    echo "  PATH=$PATH" >&2
+    echo >&2
+    echo >&2 "$1 not found, please follow $2 and ensure that '$1' is in \$PATH:"
+    echo >&2 "  PATH=$PATH"
+    echo >&2
     exit 1
   fi
 }
