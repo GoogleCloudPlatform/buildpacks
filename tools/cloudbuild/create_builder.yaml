@@ -1,0 +1,60 @@
+# Build stack images and create gcr.io/buildpacks/builder.
+#
+# NOTE: This only works inside a Bazel workspace.
+
+steps:
+  - id: build-bazel-pack-image
+    name: gcr.io/cloud-builders/docker
+    args: ['build', '-t=bazel-pack', '-f=tools/cloudbuild/Dockerfile', '.']
+
+  - id: build-stack-images
+    name: bazel-pack
+    args: ['run', '//builders/gcp/base/stack:build']
+
+  - id: create-builder
+    name: bazel-pack
+    args: ['build', '//builders/gcp/base:builder.image']
+
+  - id: run-acceptance-tests
+    name: bazel-pack
+    args:
+      - 'test'
+      - '--test_output=errors'
+      - '--test_arg=-cloudbuild'
+      - '--test_arg=-pull-images=false'
+      - '--test_arg=-builder-image=gcp/base'
+      - '//builders/gcp/base/acceptance/...'
+
+  - id: add-licenses
+    name: bazel-pack
+    entrypoint: /bin/bash
+    args: ['-c', 'tools/licenses/add.sh gcp/base']
+
+  - id: validate-licenses
+    name: gcr.io/gae-runtimes/license_validator:current
+    args: ['-pull_images=false', 'gcp/base']
+
+  - id: tag-images
+    name: bazel-pack
+    entrypoint: /bin/bash
+    args:
+      - -c
+      - >
+        docker tag gcr.io/buildpacks/gcp/run gcr.io/$PROJECT_ID/gcp/run
+        && docker tag gcr.io/buildpacks/gcp/run gcr.io/$PROJECT_ID/gcp/run:$COMMIT_SHA
+        && docker tag gcr.io/buildpacks/gcp/build gcr.io/$PROJECT_ID/gcp/build
+        && docker tag gcr.io/buildpacks/gcp/build gcr.io/$PROJECT_ID/gcp/build:$COMMIT_SHA
+        && docker tag gcp/base gcr.io/$PROJECT_ID/builder
+        && docker tag gcp/base gcr.io/$PROJECT_ID/builder:$COMMIT_SHA
+
+images:
+  - 'gcr.io/$PROJECT_ID/builder'
+  - 'gcr.io/$PROJECT_ID/builder:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/gcp/run'
+  - 'gcr.io/$PROJECT_ID/gcp/run:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/gcp/build'
+  - 'gcr.io/$PROJECT_ID/gcp/build:$COMMIT_SHA'
+
+timeout: '1800s'
+options:
+  machineType: 'N1_HIGHCPU_8'
