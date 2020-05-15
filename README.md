@@ -94,7 +94,8 @@ and other tools that support the Buildpacks v3 specification.
 ### Building an application
 
 The following command invokes [pack](https://github.com/buildpacks/pack) to
-apply the general builder to build the application in the current directory, and then containerizes the result into a local container image named `<app-name>`.
+apply the general builder to build the application in the current directory, and then
+containerizes the result into a local container image named `<app-name>`.
 
 ```bash
 pack build <app-name> --builder gcr.io/buildpacks/builder
@@ -118,6 +119,14 @@ And you can publish the built image to the cloud directly with [pack](https://gi
 pack build --publish gcr.io/YOUR_PROJECT_ID/APP_NAME
 ```
 
+### Building a function
+
+The same commands as above can be used to build a function image. The following command builds
+a function called `myFunction` and produces a local image named `<fn-name>`.
+
+```bash
+pack build <fn-name> --builder gcr.io/buildpacks/builder --env GOOGLE_FUNCTION_TARGET=myFunction
+```
 
 ### Extending the run image
 
