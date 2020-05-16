@@ -94,10 +94,10 @@ def builder(name, image, descriptor = "builder.toml", buildpacks = None, groups 
             "//tools:check_dependencies",
             "//tools:create_builder",
         ],
-        cmd = """{check_script} && {create_script} {image} $(execpath {tar}) $@""".format(
+        cmd = """$(execpath {check_script}) && $(execpath {create_script}) {image} $(execpath {tar}) $@""".format(
             image = image,
             tar = name + ".tar",
-            check_script = "//tools/check_dependencies",
-            create_script = "//tools/create_builder",
+            check_script = "//tools:check_dependencies",
+            create_script = "//tools:create_builder",
         ),
     )
