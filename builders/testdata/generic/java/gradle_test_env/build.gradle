@@ -1,3 +1,5 @@
+// This gradle project is meant to fail on a default build.
+// System property "env" must be set to "test" in order to pass.
 plugins {
     id "net.ltgt.apt-eclipse" version "0.21"
     id "com.github.johnrengelman.shadow" version "5.2.0"
@@ -17,8 +19,15 @@ configurations {
     developmentOnly
 }
 
+ext {
+    testDependencies = ["io.micronaut:micronaut-inject-java"]
+    isTest = System.properties['env'] == 'test'
+}
+
 dependencies {
-    annotationProcessor platform("io.micronaut:micronaut-bom:$micronautVersion")
+    if (isTest) {
+      annotationProcessor platform("io.micronaut:micronaut-bom:$micronautVersion")
+    }
     annotationProcessor "io.micronaut:micronaut-inject-java"
     annotationProcessor "io.micronaut:micronaut-validation"
     annotationProcessor "io.micronaut.configuration:micronaut-openapi"

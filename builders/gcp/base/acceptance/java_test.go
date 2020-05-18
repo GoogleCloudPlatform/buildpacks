@@ -68,11 +68,18 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{javaEntrypoint},
 		},
 		{
-			Name:       "Java build args",
+			Name:       "Maven build args",
 			App:        "java/maven_testing_profile",
 			Env:        []string{"GOOGLE_BUILD_ARGS=-Dnative=false"},
 			MustUse:    []string{javaMaven, javaRuntime, javaEntrypoint},
 			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:       "Gradle build args",
+			App:        "java/gradle_test_env",
+			Env:        []string{"GOOGLE_BUILD_ARGS=-Denv=test", "GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
+			MustUse:    []string{javaGradle, javaRuntime, entrypoint},
+			MustNotUse: []string{javaEntrypoint},
 		},
 	}
 	for _, tc := range testCases {
