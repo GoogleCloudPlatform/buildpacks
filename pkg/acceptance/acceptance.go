@@ -525,12 +525,12 @@ func buildApp(t *testing.T, app, image, builder string, env map[string]string, c
 	if !cache {
 		for _, text := range mustOutput {
 			if !strings.Contains(errb.String(), text) {
-				t.Errorf("Build logs must contain %q", text)
+				t.Errorf("Build logs must contain %q:\n%s", text, errb.String())
 			}
 		}
 		for _, text := range mustNotOutput {
 			if strings.Contains(errb.String(), text) {
-				t.Errorf("Build logs must not contain %q", text)
+				t.Errorf("Build logs must not contain %q:\n%s", text, errb.String())
 			}
 		}
 	}
@@ -538,11 +538,11 @@ func buildApp(t *testing.T, app, image, builder string, env map[string]string, c
 	// Scan for incorrect cache hits/misses.
 	if cache {
 		if strings.Contains(errb.String(), cacheMissMessage) {
-			t.Fatalf("FAIL: Cached build had a cache miss.")
+			t.Fatalf("FAIL: Cached build had a cache miss:\n%s", errb.String())
 		}
 	} else {
 		if strings.Contains(errb.String(), cacheHitMessage) {
-			t.Fatalf("FAIL: Non-cache build had a cache hit.")
+			t.Fatalf("FAIL: Non-cache build had a cache hit:\n%s", errb.String())
 		}
 	}
 
