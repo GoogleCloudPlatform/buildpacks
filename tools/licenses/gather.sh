@@ -22,11 +22,12 @@
 #
 # The output structure will be:
 #   <directory>/
-#     files/github.com/foo/bar/LICENSE
-#     files/github.com/bar/baz/NOTICE
-#     buildpacks.yaml
-#     lifecycle-v0.7.4.yaml
-#     lifecycle-v0.7.5.yaml
+#     buildpacks/licenses.yaml
+#     lifecycle-v0.7.4/licenses.yaml
+#     lifecycle-v0.7.5/licenses.yaml
+#     files/buildpacks/...
+#     files/lifecycle-v0.7.4/...
+#     files/lifecycle-v0.7.5/...
 #
 # Usage:
 #   gather.sh <directory>
@@ -61,10 +62,26 @@ if ! type -P go-licenses; then
   echo
 fi
 
+# licenses generates licenses.yaml and licenses files for the given component
+# whose source code is in the specified directory.
+function licenses() {
+  local readonly component="${1?}"   # component name
+  local readonly image_dir="${2?}"   # name of directory with licenses on image
+  local readonly source_dir="${3?}"  # path to source
+
+  echo "Note: it is expected to see 'error discovering URL' messages"
+
+  mkdir -p "$LICENSE_DIR/$component"
+  pushd "$source_dir"
+  go-licenses check "./..."
+  go-licenses save "./..."  --force --save_path "$LICENSE_FILES_DIR/$component"
+  go-licenses csv "./..." | to_yaml "$image_dir" "$LICENSE_FILES_DIR/$component" > "$LICENSE_DIR/$component/licenses.yaml"
+  popd
+}
+
+
 echo "Gathering licenses for buildpacks"
-go-licenses check "$PROJECT_DIR/..."
-go-licenses save "$PROJECT_DIR/..."  --force --save_path "$LICENSE_FILES_DIR"
-go-licenses csv "$PROJECT_DIR/..." | to_yaml "buildpacks" "$LICENSE_FILES_DIR" > "${LICENSE_DIR}/buildpacks.yaml"
+licenses "buildpacks" "buildpacks" "$PROJECT_DIR"
 
 echo "Gathering licenses for lifecycle"
 LIFECYCLE_DIR="$(mktemp -d)"
@@ -83,20 +100,5 @@ for version in $versions; do
   curl -fsSL "https://github.com/buildpacks/lifecycle/archive/v${version}.tar.gz" | tar xz -C "$LIFECYCLE_DIR"
 
   echo "Gathering licenses for lifecycle-v${version}"
-  echo "Note: it is expected to see 'error discovering URL' messages for official Go modules"
-  echo
-
-  lifecycle_dir="$LIFECYCLE_DIR/lifecycle-${version}"
-  license_files_dir="$LICENSE_FILES_DIR/lifecycle-v${version}"
-  # go-licenses only works from the package root.
-  pushd "$lifecycle_dir"
-  go-licenses check "$lifecycle_dir/..."
-  go-licenses save "$lifecycle_dir/..." --force --save_path "$license_files_dir"
-  go-licenses csv "$lifecycle_dir/..." | to_yaml "lifecycle-${version}" "$license_files_dir" > "${LICENSE_DIR}/lifecycle-v${version}.yaml"
-  popd
-  # Add lifecycle license files to the other license files.
-  cp -Rf "$license_files_dir"/* "$LICENSE_FILES_DIR/"
-  rm -rf "$license_files_dir"
+  licenses "lifecycle-v${version}" "lifecycle" "$LIFECYCLE_DIR/lifecycle-${version}"
 done
-
-

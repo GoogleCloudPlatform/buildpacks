@@ -31,10 +31,11 @@ EOF
 }
 
 function license_entry() {
-  local files="${1?}"
-  local package="${2?}"
-  local license_url="${3?}"
-  local license_name="${4?}"
+  local image_dir="${1?}"
+  local local_dir="${2?}"
+  local package="${3?}"
+  local license_url="${4?}"
+  local license_name="${5?}"
   # Do not emit license_url as go modules often do not have a resolvable URL.
   echo "- package: $package"
   echo "  license_name: $license_name"
@@ -45,19 +46,20 @@ function license_entry() {
   local license_path="$(echo "${license_url}" | sed 's;https://\(.*\)/blob/master\(/.*\);\1\2;')"
   # Regex from https://github.com/google/go-licenses/blob/master/licenses/find.go#L26.
   local regex=".*/\(LICEN\(S\|C\)E\|COPYING\|README\|NOTICE\)\(\..+\)?$"
-  local license_file="$(find "${files}/${package}" -regex "$regex" -printf '%P\n' | head -1)"
-  if [ -f "${files}/${license_path}" ]; then
-    echo "  license_path: /usr/local/share/licenses/buildpacks/${license_path}"
-  elif [ -f "${files}/${package}/${license_file}" ]; then
-    echo "  license_path: /usr/local/share/licenses/buildpacks/${package}/${license_file}"
+  local license_file="$(find "${local_dir}/${package}" -regex "$regex" -printf '%P\n' | head -1)"
+  if [ -f "${local_dir}/${license_path}" ]; then
+    echo "  license_path: /usr/local/share/licenses/${image_dir}/${license_path}"
+  elif [ -f "${local_dir}/${package}/${license_file}" ]; then
+    echo "  license_path: /usr/local/share/licenses/${image_dir}/${package}/${license_file}"
   else
-    echo "ERROR: unable to find license file for ${package} under ${files}/${package}" 1>&2
+    echo "ERROR: unable to find license file for ${package} under ${local_dir}/${package}" 1>&2
     exit 1
   fi
 }
 
 function to_yaml() {
-  licenses_dir="${2?}"
+  image_dir="${1?}"  # Name of directrory in which licenses are be on the image.
+  local_dir="${2?}"  # Full directory path on which licenses are locally.
   license_header
 
   # The sort flags make sorting consistent. The default behavior may differ
@@ -67,6 +69,6 @@ function to_yaml() {
     | sort --ignore-case --stable --dictionary-order \
     | (IFS=","; while read package license_url license_name; do \
         echo; \
-        license_entry $licenses_dir $package $license_url $license_name; \
+        license_entry $image_dir $local_dir $package $license_url $license_name; \
       done)
 }

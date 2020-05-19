@@ -38,10 +38,13 @@ echo "Gathering licenses into $TEMP"
 echo
 "${DIR}/gather.sh" "$TEMP"
 
+LIFECYCLE_VERSION="$(docker inspect "$IMAGE" --format='{{(index (index .Config.Labels) "io.buildpacks.builder.metadata")}}' | jq -r '.lifecycle.version')"
+
 echo "Adding licenses to $IMAGE"
 cat <<EOF > "$TEMP/Dockerfile"
 FROM "$IMAGE"
-COPY files/ /usr/local/share/licenses/buildpacks/
+COPY files/buildpacks /usr/local/share/licenses/buildpacks/
+COPY files/lifecycle-v$LIFECYCLE_VERSION/ /usr/local/share/licenses/lifecycle/
 EOF
 
 docker build -t "$IMAGE" "$TEMP"
