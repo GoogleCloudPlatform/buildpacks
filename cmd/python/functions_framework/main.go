@@ -50,6 +50,11 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
+
+	if err := validateSource(ctx); err != nil {
+		return err
+	}
+
 	// Determine if the function has dependency on functions-framework.
 	hasFrameworkDependency := false
 	if ctx.FileExists("requirements.txt") {
@@ -76,6 +81,19 @@ func buildFn(ctx *gcp.Context) error {
 
 	ctx.ExecUser([]string{"python3", "-m", "compileall", "."})
 	ctx.AddWebProcess([]string{"functions-framework"})
+	return nil
+}
+
+func validateSource(ctx *gcp.Context) error {
+	// Fail if the default|custom source file doesn't exist, otherwise the app will fail at runtime but still build here.
+	fnSource, ok := os.LookupEnv(env.FunctionSource)
+	if !ok {
+		if !ctx.FileExists("main.py") {
+			return gcp.UserErrorf("missing main.py and %s not specified. Either create the function in main.py or specify %s to point to the file that contains the function", env.FunctionSource, env.FunctionSource)
+		}
+	} else if !ctx.FileExists(fnSource) {
+		return gcp.UserErrorf("%s specified file '%s' but it does not exist", env.FunctionSource, fnSource)
+	}
 	return nil
 }
 
