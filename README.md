@@ -193,7 +193,7 @@ variables** that are supported across runtimes.
 * `GOOGLE_RUNTIME_VERSION`
   * If specified, overrides the runtime version to install.
   * *(Only applicable to buildpacks install language runtime or toolchain.)*
-  * **Example:** `13.7.0` for Node.js, `1.14.1` for Go. `11.0.6+10` for Java.
+  * **Example:** `13.7.0` for Node.js, `1.14.1` for Go. `8` for Java.
 * `GOOGLE_BUILDABLE`
   * Specifies path to a buildable unit.
   * *(Only applicable to compiled languages.)*

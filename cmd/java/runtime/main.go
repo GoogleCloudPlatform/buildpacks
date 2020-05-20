@@ -64,7 +64,7 @@ func buildFn(ctx *gcp.Context) error {
 		featureVersion = v
 		ctx.Logf("Using requested runtime feature version: %s", featureVersion)
 	} else {
-		ctx.Logf("Using latest Java %s runtime version.", defaultFeatureVersion)
+		ctx.Logf("Using latest Java %s runtime version. You can specify a different version with %s: https://github.com/GoogleCloudPlatform/buildpacks#configuration", defaultFeatureVersion, env.RuntimeVersion)
 	}
 
 	releaseURL := fmt.Sprintf(javaVersionURL, featureVersion)
