@@ -41,7 +41,7 @@ See the [Usage section](#usage) for more details.
 To read more, see Buildpack project
 [documentation](https://buildpacks.io/docs/concepts/).
 
-  * **[Builder](https://buildpacks.io/docs/concepts/components/builder/)** A container image that contains buildpacks and detection order in which builds are executed.
+* **[Builder](https://buildpacks.io/docs/concepts/components/builder/)** A container image that contains buildpacks and detection order in which builds are executed.
 * **[Buildpack](https://buildpacks.io/docs/concepts/components/buildpack/)** An executable that "inspects your app source code and formulates a plan to build and run your application".
 * **Buildpack Group** Several buildpacks which together provide support for a
 specific language or framework.
@@ -236,6 +236,34 @@ See the [contract](https://github.com/GoogleCloudPlatform/functions-framework) f
 * `GOOGLE_GOLDFLAGS`
   * Passed to `go build` and `go run` as `-ldflags value` with no interpretation.
   * **Example:** `-s -w` is used to strip and reduce binary size.
+
+#### Language-idiomatic configuration options
+
+Buildpacks support language-idiomatic configuration through environment
+variables. These environment variables should be specified without a
+`GOOGLE_` prefix.
+
+* **Go**
+  * `GO<key>`, see [documentation](https://golang.org/cmd/go/#hdr-Environment_variables).
+  * **Example:** `GOFLAGS=-flag=value` passes `-flag=value` to `go` commands.
+* **Java**
+  * `MAVEN_OPTS`, see [documentation](https://maven.apache.org/configure.html).
+  * **Example:** `MAVEN_OPTS=-Xms256m -Xmx512m` passes these flags to the JVM running Maven.
+  * `GRADLE_OPTS`, see [documentation](https://docs.gradle.org/current/userguide/build_environment.html#sec:gradle_configuration_properties).
+  * **Example:** `GRADLE_OPTS=-Xms256m -Xmx512m` passes these flags to the JVM running Gradle.
+* **Node.js**
+  * `NPM_CONFIG_<key>`, see [documentation](https://docs.npmjs.com/misc/config#environment-variables).
+  * **Example:** `NPM_CONFIG_FLAG=value` passes `-flag=value` to `npm` commands.
+* **PHP**
+  * `COMPOSER_<key>`, see [documentation](https://getcomposer.org/doc/03-cli.md#environment-variables).
+  * **Example:** `COMPOSER_PROCESS_TIMEOUT=60` sets the timeout for `composer` commands.
+* **Python**
+  * `PIP_<key>`, see [documentation](https://pip.pypa.io/en/stable/user_guide/#environment-variables).
+  * **Example:** `PIP_DEFAULT_TIMEOUT=60` sets `--default-timeout=60` for `pip` commands.
+* **Ruby**
+  * `BUNDLE_<key>`, see [documentation](https://bundler.io/v2.0/bundle_config.html#LIST-OF-AVAILABLE-KEYS).
+  * **Example:** `BUNDLE_TIMEOUT=60` sets `--timeout=60` for `bundle` commands.
+
 
 ## Known Limitations
 
