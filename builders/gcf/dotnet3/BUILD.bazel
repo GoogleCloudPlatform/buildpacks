@@ -1,5 +1,7 @@
 load("//tools:defs.bzl", "builder")
 
+package(default_visibility = ["//builders/gcf/dotnet3/acceptance:__pkg__"])
+
 licenses(["notice"])
 
 builder(
@@ -9,5 +11,4 @@ builder(
         "//cmd/dotnet/functions_framework:functions_framework.tgz",
     ],
     image = "gcf/dotnet3",
-    visibility = ["//builders/gcf/dotnet3/acceptance:__pkg__"],
 )
