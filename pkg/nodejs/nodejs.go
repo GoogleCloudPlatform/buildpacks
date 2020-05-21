@@ -93,7 +93,7 @@ func CheckCache(ctx *gcp.Context, l *layers.Layer, env string, files ...string) 
 
 	components := []interface{}{currentNodeVersion, env}
 	for _, f := range files {
-		components = append(components, f)
+		components = append(components, gcp.HashFileContents(f))
 	}
 	currentDependencyHash, err := gcp.ComputeSHA256(ctx, components...)
 	if err != nil {
