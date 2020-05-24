@@ -29,7 +29,8 @@ import (
 )
 
 const (
-	cantLoadDefaultPackageError = "can't load package: package ."
+	noGoFileError         = "no Go files in"
+	cannotFindModuleError = "cannot find module"
 )
 
 func main() {
@@ -107,8 +108,12 @@ func goBuildFlags() []string {
 
 func printTipsAndKeepStderrTail(ctx *gcp.Context) gcp.ErrorSummaryProducer {
 	return func(result *gcp.ExecResult) *gcp.Error {
-		if result.ExitCode != 0 && strings.Contains(result.Stderr, cantLoadDefaultPackageError) {
-			ctx.Tipf("Tip: %q env var configures which Go package is built. Default is '.'", env.Buildable)
+		if result.ExitCode != 0 {
+			// If `go build` fails with any of those two errors, there's a great chance
+			// that we are not building the right package.
+			if strings.Contains(result.Stderr, noGoFileError) || strings.Contains(result.Stderr, cannotFindModuleError) {
+				ctx.Tipf("Tip: %q env var configures which Go package is built. Default is '.'", env.Buildable)
+			}
 		}
 
 		return gcp.UserErrorKeepStderrTail(result)
