@@ -32,4 +32,6 @@ RUN mkdir -p /go \
 ENV GOPATH=/go
 ENV GOROOT=/usr/local/go/
 ENV PATH=/go/bin:/usr/local/go/bin:${PATH}
-RUN go get github.com/google/go-licenses
+
+WORKDIR /go-licenses
+RUN go mod init tmp; go get github.com/google/go-licenses
