@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/buildpack/libbuildpack/layers"
@@ -58,7 +59,7 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.RemoveAll("node_modules")
 
 	nodeEnv := nodejs.EnvDevelopment
-	cached, meta, err := nodejs.CheckCache(ctx, l, nodeEnv, "package.json", nodejs.YarnLock)
+	cached, meta, err := nodejs.CheckCache(ctx, l, cache.WithStrings(nodeEnv), cache.WithFiles("package.json", nodejs.YarnLock))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}

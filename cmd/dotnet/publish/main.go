@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/dotnet"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -173,7 +174,7 @@ func checkCache(ctx *gcp.Context, l *layers.Layer) (bool, *metadata, error) {
 	}
 	currentVersion := ctx.Exec([]string{"dotnet", "--version"}).Stdout
 
-	hash, err := gcp.DependencyHash(ctx, currentVersion, projectFiles...)
+	hash, err := cache.Hash(ctx, cache.WithStrings(currentVersion), cache.WithFiles(projectFiles...))
 	if err != nil {
 		return false, nil, fmt.Errorf("computing dependency hash: %w", err)
 	}

@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpack/libbuildpack/layers"
 )
@@ -88,14 +89,10 @@ func NodeEnv() string {
 }
 
 // CheckCache checks whether cached dependencies exist and match.
-func CheckCache(ctx *gcp.Context, l *layers.Layer, env string, files ...string) (bool, *Metadata, error) {
+func CheckCache(ctx *gcp.Context, l *layers.Layer, opts ...cache.Option) (bool, *Metadata, error) {
 	currentNodeVersion := NodeVersion(ctx)
-
-	components := []interface{}{currentNodeVersion, env}
-	for _, f := range files {
-		components = append(components, gcp.HashFileContents(f))
-	}
-	currentDependencyHash, err := gcp.ComputeSHA256(ctx, components...)
+	opts = append(opts, cache.WithStrings(currentNodeVersion))
+	currentDependencyHash, err := cache.Hash(ctx, opts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("computing dependency hash: %v", err)
 	}

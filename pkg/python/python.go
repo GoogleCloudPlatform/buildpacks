@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpack/libbuildpack/layers"
 )
@@ -36,9 +37,10 @@ func Version(ctx *gcp.Context) string {
 }
 
 // CheckCache checks whether cached dependencies exist and match.
-func CheckCache(ctx *gcp.Context, l *layers.Layer, files ...string) (bool, *Metadata, error) {
+func CheckCache(ctx *gcp.Context, l *layers.Layer, opts ...cache.Option) (bool, *Metadata, error) {
 	currentPythonVersion := Version(ctx)
-	currentDependencyHash, err := gcp.DependencyHash(ctx, currentPythonVersion, files...)
+	opts = append(opts, cache.WithStrings(currentPythonVersion))
+	currentDependencyHash, err := cache.Hash(ctx, opts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("computing dependency hash: %v", err)
 	}

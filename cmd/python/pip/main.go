@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
 	"github.com/buildpack/libbuildpack/layers"
@@ -48,7 +49,7 @@ func detectFn(ctx *gcp.Context) error {
 
 func buildFn(ctx *gcp.Context) error {
 	l := ctx.Layer(layerName)
-	cached, meta, err := python.CheckCache(ctx, l, "requirements.txt")
+	cached, meta, err := python.CheckCache(ctx, l, cache.WithFiles("requirements.txt"))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}

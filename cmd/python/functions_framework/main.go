@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
@@ -104,7 +105,7 @@ func containsFF(s string) bool {
 func installFramework(ctx *gcp.Context, l *layers.Layer) error {
 	cvt := filepath.Join(ctx.BuildpackRoot(), "converter")
 	req := filepath.Join(cvt, "requirements.txt")
-	cached, meta, err := python.CheckCache(ctx, l, req)
+	cached, meta, err := python.CheckCache(ctx, l, cache.WithFiles(req))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
