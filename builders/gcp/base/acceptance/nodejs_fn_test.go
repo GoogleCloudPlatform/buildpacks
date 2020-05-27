@@ -127,6 +127,12 @@ func TestFailuresNodeJsFn(t *testing.T) {
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction"},
 			MustMatch: "function.js does not exist",
 		},
+		{
+			Name:      "function fail without valid GOOGLE_FUNCTION_SOURCE",
+			App:       "no_package",
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_FUNCTION_SOURCE=sub_dir"},
+			MustMatch: "GOOGLE_FUNCTION_SOURCE is not currently supported for Node.js buildpacks",
+		},
 	}
 
 	for _, tc := range testCases {

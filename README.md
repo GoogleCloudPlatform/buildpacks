@@ -226,7 +226,7 @@ See the [contract](https://github.com/GoogleCloudPlatform/functions-framework) f
 * `GOOGLE_FUNCTION_SOURCE`
   * Specifies the name of the directory or file containing the function source, depending on the language.
   * *(Only applicable to some languages, please see the language-specific [documentation](https://github.com/GoogleCloudPlatform/functions-framework#languages).)*
-  * **Example:** `path/to/function/dir` for Node.js, `function.py` for Python.
+  * **Example:** `function.py` for Python.
 
 #### Go Buildpacks
 

@@ -45,6 +45,10 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	if _, ok := os.LookupEnv(env.FunctionSource); ok {
+		return gcp.UserErrorf("%s is not currently supported for Node.js buildpacks", env.FunctionSource)
+	}
+
 	// Function source code should be defined in the "main" field in package.json, index.js or function.js.
 	// https://cloud.google.com/functions/docs/writing#structuring_source_code
 	fnFile := "function.js"
