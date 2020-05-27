@@ -23,7 +23,7 @@ func init() {
 	acceptance.DefineFlags()
 }
 
-func TestAcceptance(t *testing.T) {
+func TestAcceptanceGoFn(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 

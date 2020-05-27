@@ -23,7 +23,7 @@ func init() {
 	acceptance.DefineFlags()
 }
 
-func TestAcceptance(t *testing.T) {
+func TestAcceptanceNodeJsFn(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
@@ -112,7 +112,7 @@ func TestAcceptance(t *testing.T) {
 	}
 }
 
-func TestFailures(t *testing.T) {
+func TestFailuresNodeJsFn(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 

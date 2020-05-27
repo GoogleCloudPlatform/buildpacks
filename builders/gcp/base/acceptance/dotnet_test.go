@@ -24,7 +24,7 @@ func init() {
 	acceptance.DefineFlags()
 }
 
-func TestAcceptance(t *testing.T) {
+func TestAcceptanceDotNet(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	defer cleanup()
 
@@ -81,7 +81,7 @@ func TestAcceptance(t *testing.T) {
 	}
 }
 
-func TestFailures(t *testing.T) {
+func TestFailuresDotNet(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
