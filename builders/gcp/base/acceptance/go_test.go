@@ -42,6 +42,13 @@ func TestAcceptanceGo(t *testing.T) {
 			MustNotUse: []string{goPath},
 		},
 		{
+			Name:       "Go.mod package",
+			App:        "go/gomod_package",
+			Env:        []string{"GOOGLE_BUILDABLE=cmd/main.go"},
+			MustUse:    []string{goRuntime, goBuild},
+			MustNotUse: []string{goPath},
+		},
+		{
 			Name:       "Go.mod and vendor",
 			App:        "go/simple_gomod_vendor",
 			MustUse:    []string{goRuntime, goBuild},
@@ -97,6 +104,18 @@ func TestFailuresGo(t *testing.T) {
 			App:       "go/simple",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
 			MustMatch: "Runtime version BAD_NEWS_BEARS does not exist",
+		},
+		{
+			Name:      "no Go files in root (Go 1.12)",
+			App:       "go/gomod_package",
+			Env:       []string{"GOOGLE_RUNTIME_VERSION=1.12"},
+			MustMatch: `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built.`,
+		},
+		{
+			Name:      "no Go files in root (Go 1.14)",
+			App:       "go/gomod_package",
+			Env:       []string{"GOOGLE_RUNTIME_VERSION=1.14"},
+			MustMatch: `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built.`,
 		},
 	}
 
