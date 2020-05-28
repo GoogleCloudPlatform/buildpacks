@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -79,6 +80,10 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.Logf("Installing Python v%s", version)
 	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s", archiveURL, l.Root)
 	ctx.Exec([]string{"bash", "-c", command})
+
+	ctx.Logf("Upgrading pip to the latest version and installing build tools")
+	path := filepath.Join(l.Root, "bin/python3")
+	ctx.Exec([]string{path, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"})
 
 	meta.Version = version
 	ctx.WriteMetadata(l, meta, layers.Build, layers.Cache, layers.Launch)
