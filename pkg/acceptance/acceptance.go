@@ -220,7 +220,7 @@ func TestBuildFailure(t *testing.T, builder string, cfg FailureTest) {
 	} else if r.Match(errb) {
 		t.Logf("Expected regexp %q found in stderr.", r)
 	} else {
-		t.Errorf("Expected regexp %q not found in stdout nor stderr.", r)
+		t.Errorf("Expected regexp %q not found in stdout or stderr:\n\nstdout:\n\n%s\n\nstderr:\n\n%s", r, outb, errb)
 	}
 }
 
