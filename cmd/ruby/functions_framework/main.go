@@ -49,6 +49,10 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	if err := validateSource(ctx); err != nil {
+		return err
+	}
+
 	// The framework has been installed with the dependencies, so this layer is
 	// used only for env vars.
 	l := ctx.Layer(layerName)
@@ -65,5 +69,14 @@ func buildFn(ctx *gcp.Context) error {
 
 	ctx.AddWebProcess([]string{"bundle", "exec", "functions-framework"})
 
+	return nil
+}
+
+func validateSource(ctx *gcp.Context) error {
+	// Fail if the default|custom source file doesn't exist, otherwise the app will fail at runtime but still build here.
+	fnSource, ok := os.LookupEnv(env.FunctionSource)
+	if ok && !ctx.FileExists(fnSource) {
+		return gcp.UserErrorf("%s specified file '%s' but it does not exist", env.FunctionSource, fnSource)
+	}
 	return nil
 }

@@ -37,6 +37,11 @@ func TestAcceptance(t *testing.T) {
 			App:    "with_env_var",
 			RunEnv: []string{"FOO=foo"},
 		},
+		{
+			Name: "function in fn_source file",
+			App:  "with_fn_source",
+			Env:  []string{"GOOGLE_FUNCTION_SOURCE=sub_dir/custom_file.rb"},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -67,6 +72,12 @@ func TestFailures(t *testing.T) {
 		{
 			App:       "fail_framework_missing",
 			MustMatch: "unable to execute functions-framework",
+		},
+		{
+			Name:      "must fail due to missing source file",
+			App:       "with_dependencies",
+			Env:       []string{"GOOGLE_FUNCTION_SOURCE=missing_file.rb"},
+			MustMatch: "GOOGLE_FUNCTION_SOURCE specified file 'missing_file.rb' but it does not exist",
 		},
 	}
 
