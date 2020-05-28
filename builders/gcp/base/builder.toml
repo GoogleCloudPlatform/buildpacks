@@ -1,4 +1,4 @@
-description = "GCP Builder for all runtimes"
+description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js, and Python"
 
 [[buildpacks]]
   id = "google.config.entrypoint"
