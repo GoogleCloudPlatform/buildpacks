@@ -274,7 +274,12 @@ variables. These environment variables should be specified without a
 * **Node**:
   * Custom build steps (e.g. executing the "build" script of package.json) are not supported.
   * Existing `node_modules` directory is deleted and dependencies reinstalled using package.json and a lockfile if present.
+* **Python**
+  * Private dependencies must be vendored. The build does not have access to private repository credentials and cannot pull dependencies at build time.
+    Please see the App Engine [instructions](https://cloud.google.com/appengine/docs/standard/python3/specifying-dependencies#private_dependencies).
 * **Go**
+  * Private dependencies must be vendored. The build does not have access to private repository credentials and cannot pull dependencies at build time.
+    Please see the App Engine [instructions](https://cloud.google.com/appengine/docs/standard/go/specifying-dependencies#using_private_dependencies)
   * *(generic builder only)* Applications without a go.mod cannot have sub-packages.
   * Go 1.14 triggers a kernel bug in some versions of the Linux kernel
 (versions other than 5.3.15+, 5.4.2+, or 5.5+). If using an affected version,
