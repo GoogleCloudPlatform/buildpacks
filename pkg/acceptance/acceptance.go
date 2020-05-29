@@ -92,16 +92,15 @@ func DefineFlags() {
 
 // UnarchiveTestData extracts the test-data tgz into a temp dir and returns a cleanup function to be deferred.
 // This function overwrites the "test-data" to the /tmp/test-data-* directory that is created.
-// Call this function if passing test-data as an archive instead of a directory.
-func UnarchiveTestData(t *testing.T) func() {
-	t.Helper()
-
+// Call this function from TestMain if passing test-data as an archive instead of a directory.
+// Don't forget to call flag.Parse() first.
+func UnarchiveTestData() func() {
 	tmpDir, err := ioutil.TempDir("", "test-data-")
 	if err != nil {
-		t.Fatalf("Creating temp directory: %v", err)
+		log.Fatalf("Creating temp directory: %v", err)
 	}
 	if _, err = runOutput("tar", "xzCf", tmpDir, testData); err != nil {
-		t.Fatalf("Extracting test data archive: %v", err)
+		log.Fatalf("Extracting test data archive: %v", err)
 	}
 	testData = tmpDir
 	return func() {

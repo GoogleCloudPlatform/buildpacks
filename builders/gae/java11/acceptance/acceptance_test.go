@@ -14,6 +14,8 @@
 package acceptance
 
 import (
+	"flag"
+	"os"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/acceptance"
@@ -24,9 +26,6 @@ func init() {
 }
 
 func TestAcceptance(t *testing.T) {
-	cleanup := acceptance.UnarchiveTestData(t)
-	t.Cleanup(cleanup)
-
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
@@ -88,4 +87,13 @@ func TestAcceptance(t *testing.T) {
 			acceptance.TestApp(t, builder, tc)
 		})
 	}
+}
+
+func TestMain(m *testing.M) {
+	flag.Parse()
+	cleanup := acceptance.UnarchiveTestData()
+	// We can't use defer cleanup() here because os.Exit prevents deferred functions from running.
+	status := m.Run()
+	cleanup()
+	os.Exit(status)
 }
