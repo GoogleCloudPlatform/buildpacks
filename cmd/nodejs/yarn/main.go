@@ -76,16 +76,19 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.CacheMiss(cacheTag)
 		// Clear cached node_modules to ensure we don't end up with outdated dependencies.
 		ctx.ClearLayer(ml)
+	}
 
-		cmd := []string{"yarn", "install", "--non-interactive"}
-		if lf := nodejs.LockfileFlag(ctx); lf != "" {
-			cmd = append(cmd, lf)
-		}
-		ctx.ExecUserWithParams(gcp.ExecParams{
-			Cmd: cmd,
-			Env: []string{"NODE_ENV=" + nodeEnv},
-		}, gcp.UserErrorKeepStderrTail)
+	// Always run yarn install to run preinstall/postinstall scripts.
+	cmd := []string{"yarn", "install", "--non-interactive"}
+	if lf := nodejs.LockfileFlag(ctx); lf != "" {
+		cmd = append(cmd, lf)
+	}
+	ctx.ExecUserWithParams(gcp.ExecParams{
+		Cmd: cmd,
+		Env: []string{"NODE_ENV=" + nodeEnv},
+	}, gcp.UserErrorKeepStderrTail)
 
+	if !cached {
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)
 		ctx.Exec([]string{"cp", "--archive", "node_modules", nm})
@@ -99,7 +102,7 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.WriteMetadata(el, nil, layers.Launch, layers.Build)
 
 	// Configure the entrypoint for production.
-	cmd := []string{"yarn", "run", "start"}
+	cmd = []string{"yarn", "run", "start"}
 
 	if !devmode.Enabled(ctx) {
 		ctx.AddWebProcess(cmd)
@@ -138,16 +141,16 @@ func installYarn(ctx *gcp.Context) error {
 	if version == meta.Version {
 		ctx.CacheHit(yarnLayer)
 		ctx.Logf("Yarn cache hit, skipping installation.")
-		return nil
-	}
-	ctx.CacheMiss(yarnLayer)
-	ctx.ClearLayer(yrl)
+	} else {
+		ctx.CacheMiss(yarnLayer)
+		ctx.ClearLayer(yrl)
 
-	// Download and install yarn in layer.
-	ctx.Logf("Installing Yarn v%s", version)
-	archiveURL := fmt.Sprintf(yarnURL, version)
-	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, yrl.Root)
-	ctx.Exec([]string{"bash", "-c", command})
+		// Download and install yarn in layer.
+		ctx.Logf("Installing Yarn v%s", version)
+		archiveURL := fmt.Sprintf(yarnURL, version)
+		command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, yrl.Root)
+		ctx.Exec([]string{"bash", "-c", command})
+	}
 
 	// Store layer flags and metadata.
 	meta.Version = version
