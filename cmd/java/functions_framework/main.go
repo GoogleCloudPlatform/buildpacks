@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements java/functions_framework_invoker buildpack.
-// The functions_framework_invoker buildpack copies the function framework into a layer.
+// Implements java/functions_framework buildpack.
+// The functions_framework buildpack copies the function framework into a layer, and adds it to a compiled function to make an executable app.
 package main
 
 import (
@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -53,6 +54,38 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	layer := ctx.Layer(layerName)
+
+	if err := installFunctionsFramework(ctx, layer); err != nil {
+		return err
+	}
+
+	// Copy the dependencies of the function (<dependencies> in pom.xml) into target/dependency.
+	ctx.ExecUser([]string{"mvn", "dependency:copy-dependencies"})
+
+	// Extract the artifact/version coordinates from the user's pom.xml definitions.
+	// mvn help:evaluate is quite slow so we do it this way rather than calling it twice.
+	// The name of the built jar file will be <artifact>-<version>.jar, for example myfunction-0.9.jar.
+	execResult := ctx.ExecUser([]string{"mvn", "help:evaluate", "-q", "-DforceStdout", "-Dexpression=project.artifactId/${project.version}"})
+	groupArtifactVersion := execResult.Stdout
+	components := strings.Split(groupArtifactVersion, "/")
+	if len(components) != 2 {
+		return gcp.UserErrorf("could not parse query output into artifact/version: %s", groupArtifactVersion)
+	}
+	artifact, version := components[0], components[1]
+
+	// The Functions Framework understands "*" to mean every jar file in that directory.
+	// So this classpath consists of the just-built jar and all of the dependency jars.
+	classpath := fmt.Sprintf("target/%s-%s.jar:target/dependency/*", artifact, version)
+
+	ctx.SetFunctionsEnvVars(layer)
+
+	ctx.AddWebProcess([]string{"java", "-jar", filepath.Join(layer.Root, "functions-framework.jar"), "--classpath", classpath})
+
+	return nil
+}
+
+func installFunctionsFramework(ctx *gcp.Context, layer *layers.Layer) error {
 	frameworkVersion := defaultFrameworkVersion
 	// TODO(emcmanus): extract framework version from pom.xml if present
 	if version, err := latestFrameworkVersion(ctx); err == nil {
@@ -64,7 +97,6 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Install functions-framework.
 	var meta metadata
-	layer := ctx.Layer(layerName)
 	ctx.ReadMetadata(layer, &meta)
 	if frameworkVersion == meta.Version {
 		ctx.CacheHit(layerName)
@@ -78,9 +110,6 @@ func buildFn(ctx *gcp.Context) error {
 
 		ctx.WriteMetadata(layer, meta, layers.Launch, layers.Cache)
 	}
-
-	ctx.SetFunctionsEnvVars(layer)
-
 	return nil
 }
 

@@ -6,7 +6,7 @@ load("//tools:defs.bzl", "buildpack")
 licenses(["notice"])
 
 buildpack(
-    name = "functions_framework_invoker",
+    name = "functions_framework",
     executables = [
         ":main",
     ],
