@@ -6,7 +6,6 @@ builder(
     name = "builder",
     buildpacks = [
         "//cmd/config/entrypoint:entrypoint.tgz",
-        "//cmd/config/clear_source:clear_source.tgz",
     ],
     groups = {
         "dotnet": [
@@ -16,15 +15,16 @@ builder(
         ],
         "go": [
             "//cmd/go/build:build.tgz",
+            "//cmd/go/clear_source:clear_source.tgz",
             "//cmd/go/functions_framework:functions_framework.tgz",
             "//cmd/go/gopath:gopath.tgz",
             "//cmd/go/runtime:runtime.tgz",
         ],
         "java": [
             "//cmd/java/entrypoint:entrypoint.tgz",
-            "//cmd/java/runtime:runtime.tgz",
-            "//cmd/java/maven:maven.tgz",
             "//cmd/java/gradle:gradle.tgz",
+            "//cmd/java/maven:maven.tgz",
+            "//cmd/java/runtime:runtime.tgz",
         ],
         "nodejs": [
             "//cmd/nodejs/functions_framework:functions_framework.tgz",

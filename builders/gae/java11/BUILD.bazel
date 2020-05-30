@@ -1,5 +1,7 @@
 load("//tools:defs.bzl", "builder")
 
+package(default_visibility = ["//builders/gae/java11/acceptance:__pkg__"])
+
 licenses(["notice"])
 
 builder(
@@ -10,5 +12,4 @@ builder(
         "//cmd/java/gradle:gradle.tgz",
     ],
     image = "gae/java11",
-    visibility = ["//builders/gae/java11/acceptance:__pkg__"],
 )

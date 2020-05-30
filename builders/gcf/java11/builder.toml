@@ -1,0 +1,24 @@
+description = "Builder for the GCF Java 11 runtime"
+
+[[buildpacks]]
+  id = "google.java.maven"
+  uri = "maven.tgz"
+
+[[buildpacks]]
+  id = "google.java.functions-framework"
+  uri = "functions_framework.tgz"
+
+[[order]]
+  [[order.group]]
+    id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.functions-framework"
+
+[stack]
+  id = "google.java11"
+  build-image = "gcr.io/gae-runtimes/buildpacks/java11/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/java11/run"
+
+[lifecycle]
+  version = "0.7.4"

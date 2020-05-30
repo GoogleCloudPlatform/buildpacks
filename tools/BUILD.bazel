@@ -1,11 +1,32 @@
 licenses(["notice"])
 
-exports_files(
-    [
-        "defs.bzl",
-        "create-builder.sh",
-    ],
-    visibility = [
-        "//:__subpackages__",
-    ],
+package(
+    default_visibility = ["//:__subpackages__"],
+)
+
+exports_files([
+    "defs.bzl",
+])
+
+# Used in builder macro in defs.bzl.
+sh_binary(
+    name = "create_builder",
+    srcs = ["create-builder.sh"],
+)
+
+# Used in builder macro in defs.bzl.
+sh_binary(
+    name = "check_dependencies",
+    srcs = ["check-dependencies.sh"],
+)
+
+sh_test(
+    name = "check_dependencies_test",
+    srcs = ["check-dependencies.sh"],
+    local = 1,
+)
+
+sh_binary(
+    name = "pull_images",
+    srcs = ["pull-images.sh"],
 )

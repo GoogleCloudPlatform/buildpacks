@@ -27,6 +27,7 @@ go_binary(
         "//cmd/config/entrypoint:__pkg__",
     ],
     deps = [
+        "//pkg/cache",
         "//pkg/gcpbuildpack",
         "@com_github_buildpack_libbuildpack//layers:go_default_library",
     ],

@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpack/libbuildpack/layers"
 )
@@ -72,9 +73,10 @@ func version(ctx *gcp.Context) string {
 }
 
 // checkCache checks whether cached dependencies exist and match.
-func checkCache(ctx *gcp.Context, l *layers.Layer, files ...string) (bool, *Metadata, error) {
+func checkCache(ctx *gcp.Context, l *layers.Layer, opts ...cache.Option) (bool, *Metadata, error) {
 	currentPHPVersion := version(ctx)
-	currentDependencyHash, err := gcp.DependencyHash(ctx, currentPHPVersion, files...)
+	opts = append(opts, cache.WithStrings(currentPHPVersion))
+	currentDependencyHash, err := cache.Hash(ctx, opts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("computing dependency hash: %v", err)
 	}
@@ -131,7 +133,7 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*layers.Layer, error) {
 		return l, nil
 	}
 
-	cached, meta, err := checkCache(ctx, l, composerLock)
+	cached, meta, err := checkCache(ctx, l, cache.WithStrings(composerLock))
 	if err != nil {
 		return l, fmt.Errorf("checking cache: %w", err)
 	}

@@ -92,16 +92,15 @@ func DefineFlags() {
 
 // UnarchiveTestData extracts the test-data tgz into a temp dir and returns a cleanup function to be deferred.
 // This function overwrites the "test-data" to the /tmp/test-data-* directory that is created.
-// Call this function if passing test-data as an archive instead of a directory.
-func UnarchiveTestData(t *testing.T) func() {
-	t.Helper()
-
+// Call this function from TestMain if passing test-data as an archive instead of a directory.
+// Don't forget to call flag.Parse() first.
+func UnarchiveTestData() func() {
 	tmpDir, err := ioutil.TempDir("", "test-data-")
 	if err != nil {
-		t.Fatalf("Creating temp directory: %v", err)
+		log.Fatalf("Creating temp directory: %v", err)
 	}
 	if _, err = runOutput("tar", "xzCf", tmpDir, testData); err != nil {
-		t.Fatalf("Extracting test data archive: %v", err)
+		log.Fatalf("Extracting test data archive: %v", err)
 	}
 	testData = tmpDir
 	return func() {
@@ -140,6 +139,10 @@ type Test struct {
 	MustOutput []string
 	// MustNotOutput specifies strings to not be found in the build logs.
 	MustNotOutput []string
+	// MustOutputCached specifies strings to be found in the build logs of a cached build.
+	MustOutputCached []string
+	// MustNotOutputCached specifies strings to not be found in the build logs of a cached build.
+	MustNotOutputCached []string
 }
 
 // TestApp builds and a single application and verifies that it runs and handles requests.
@@ -171,7 +174,7 @@ func TestApp(t *testing.T, builder string, cfg Test) {
 	}
 	for _, cache := range cacheOptions {
 		t.Run(fmt.Sprintf("cache %t", cache), func(t *testing.T) {
-			buildApp(t, cfg.App, image, builder, env, cache, cfg.MustOutput, cfg.MustNotOutput)
+			buildApp(t, cfg.App, image, builder, env, cache, cfg)
 			verifyBuildMetadata(t, image, cfg.MustUse, cfg.MustNotUse)
 			verifyStructure(t, cfg.App, image, builder, cache, checks)
 			invokeApp(t, image, cfg.Path, cfg.RunEnv, cache)
@@ -220,7 +223,7 @@ func TestBuildFailure(t *testing.T, builder string, cfg FailureTest) {
 	} else if r.Match(errb) {
 		t.Logf("Expected regexp %q found in stderr.", r)
 	} else {
-		t.Errorf("Expected regexp %q not found in stdout nor stderr.", r)
+		t.Errorf("Expected regexp %q not found in stdout or stderr:\n\nstdout:\n\n%s\n\nstderr:\n\n%s", r, outb, errb)
 	}
 }
 
@@ -314,6 +317,18 @@ func CreateBuilder(t *testing.T) (string, func()) {
 
 	if builderImage != "" {
 		t.Logf("Testing existing builder image: %s", builderImage)
+		if pullImages {
+			if _, err := runOutput("docker", "pull", builderImage); err != nil {
+				t.Fatalf("Error pulling %s: %v", builderImage, err)
+			}
+			run, err := runImageFromMetadata(builderImage)
+			if err != nil {
+				t.Fatalf("Error extracting run image from image %s: %v", builderImage, err)
+			}
+			if _, err := runOutput("docker", "pull", run); err != nil {
+				t.Fatalf("Error pulling %s: %v", run, err)
+			}
+		}
 		// Pack cache is based on builder name; retag with a unique name.
 		if _, err := runOutput("docker", "tag", builderImage, name); err != nil {
 			t.Fatalf("Error tagging %s as %s: %v", builderImage, name, err)
@@ -335,9 +350,9 @@ func CreateBuilder(t *testing.T) (string, func()) {
 		}
 	}
 
-	run, build, err := builderStackImages(config)
+	run, build, err := stackImagesFromConfig(config)
 	if err != nil {
-		t.Fatalf("Extracting stack images: %v", err)
+		t.Fatalf("Error extracting stack images from %s: %v", config, err)
 	}
 	// Pull images once in the beginning to prevent them from changing in the middle of testing.
 	// The images are intentionally not cleaned up to prevent conflicts across different test targets.
@@ -430,8 +445,30 @@ func updateLifecycle(config, uri string) (string, error) {
 	return dest, nil
 }
 
-// builderStackImages returns the stack images specified by the given builder.toml.
-func builderStackImages(path string) (string, string, error) {
+// runImageFromMetadata returns the run image name from the metadata of the given image.
+func runImageFromMetadata(image string) (string, error) {
+	format := "--format={{(index (index .Config.Labels) \"io.buildpacks.builder.metadata\")}}"
+	out, err := runOutput("docker", "inspect", image, format)
+	if err != nil {
+		return "", fmt.Errorf("reading builer metadata: %v", err)
+	}
+
+	var metadata struct {
+		Stack struct {
+			RunImage struct {
+				Image string `json:"image"`
+			} `json:"runImage"`
+		} `json:"stack"`
+	}
+
+	if err := json.Unmarshal([]byte(out), &metadata); err != nil {
+		return "", fmt.Errorf("error unmarshalling build metadata: %v", err)
+	}
+	return metadata.Stack.RunImage.Image, nil
+}
+
+// stackImagesFromConfig returns the run images specified by the given builder.toml.
+func stackImagesFromConfig(path string) (string, string, error) {
 	p, err := ioutil.ReadFile(path)
 	if err != nil {
 		return "", "", fmt.Errorf("reading %s: %v", path, err)
@@ -468,7 +505,7 @@ func buildCommand(app, image, builder string, env map[string]string, cache bool)
 }
 
 // buildApp builds an application image from source.
-func buildApp(t *testing.T, app, image, builder string, env map[string]string, cache bool, mustOutput []string, mustNotOutput []string) {
+func buildApp(t *testing.T, app, image, builder string, env map[string]string, cache bool, cfg Test) {
 	t.Helper()
 
 	bcmd := buildCommand(app, image, builder, env, cache)
@@ -488,27 +525,32 @@ func buildApp(t *testing.T, app, image, builder string, env map[string]string, c
 	}
 
 	// Check that expected output is found in the logs.
-	if !cache {
-		for _, text := range mustOutput {
-			if !strings.Contains(errb.String(), text) {
-				t.Errorf("Build logs must contain %q", text)
-			}
+	mustOutput := cfg.MustOutput
+	mustNotOutput := cfg.MustNotOutput
+	if cache {
+		mustOutput = cfg.MustOutputCached
+		mustNotOutput = cfg.MustNotOutputCached
+	}
+
+	for _, text := range mustOutput {
+		if !strings.Contains(errb.String(), text) {
+			t.Errorf("Build logs must contain %q:\n%s", text, errb.String())
 		}
-		for _, text := range mustNotOutput {
-			if strings.Contains(errb.String(), text) {
-				t.Errorf("Build logs must not contain %q", text)
-			}
+	}
+	for _, text := range mustNotOutput {
+		if strings.Contains(errb.String(), text) {
+			t.Errorf("Build logs must not contain %q:\n%s", text, errb.String())
 		}
 	}
 
 	// Scan for incorrect cache hits/misses.
 	if cache {
 		if strings.Contains(errb.String(), cacheMissMessage) {
-			t.Fatalf("FAIL: Cached build had a cache miss.")
+			t.Fatalf("FAIL: Cached build had a cache miss:\n%s", errb.String())
 		}
 	} else {
 		if strings.Contains(errb.String(), cacheHitMessage) {
-			t.Fatalf("FAIL: Non-cache build had a cache hit.")
+			t.Fatalf("FAIL: Non-cache build had a cache hit:\n%s", errb.String())
 		}
 	}
 

@@ -19,8 +19,12 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"os/user"
 	"path/filepath"
+	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 	"github.com/buildpack/libbuildpack/layers"
@@ -55,9 +59,20 @@ func buildFn(ctx *gcp.Context) error {
 	m2CachedRepo := ctx.Layer(m2Layer)
 	ctx.ReadMetadata(m2CachedRepo, &repoMeta)
 	java.CheckCacheExpiration(ctx, &repoMeta, m2CachedRepo)
+	ctx.WriteMetadata(m2CachedRepo, &repoMeta, layers.Cache)
+
+	usr, err := user.Current()
+	if err != nil {
+		return fmt.Errorf("getting current user: %v", err)
+	}
+	// TODO(b/157297290): just use os.Getenv("HOME") when that is consistent with /etc/passwd.
+	homeM2 := filepath.Join(usr.HomeDir, ".m2")
+	// Symlink the m2 layer into ~/.m2. If ~/.m2 already exists, delete it first.
+	// If it exists as a symlink, RemoveAll will remove the link, not anything it's linked to.
+	ctx.RemoveAll(homeM2)
+	ctx.Symlink(m2CachedRepo.Root, homeM2)
 
 	var mvn string
-	var err error
 	if ctx.FileExists("mvnw") {
 		mvn = "./mvnw"
 	} else if mvnInstalled(ctx) {
@@ -69,12 +84,18 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	}
 
-	command := []string{mvn, "clean", "package", "--batch-mode", "-DskipTests", "-Dmaven.repo.local=" + m2CachedRepo.Root}
+	command := []string{mvn, "clean", "package", "--batch-mode", "-DskipTests"}
+
+	if buildArgs := os.Getenv(env.BuildArgs); buildArgs != "" {
+		if strings.Contains(buildArgs, "maven.repo.local") {
+			ctx.Warnf("Detected maven.repo.local property set in GOOGLE_BUILD_ARGS. Maven caching may not work properly.")
+		}
+		command = append(command, buildArgs)
+	}
 	if !ctx.Debug() {
 		command = append(command, "--quiet")
 	}
 	ctx.ExecUser(command)
-	ctx.WriteMetadata(m2CachedRepo, &repoMeta, layers.Cache)
 
 	return nil
 }

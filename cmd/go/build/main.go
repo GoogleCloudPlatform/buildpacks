@@ -29,7 +29,8 @@ import (
 )
 
 const (
-	cantLoadDefaultPackageError = "can't load package: package ."
+	noGoFileError         = "no Go files in"
+	cannotFindModuleError = "cannot find module"
 )
 
 func main() {
@@ -66,8 +67,11 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Build the application.
+	cmd := []string{"go", "build"}
+	cmd = append(cmd, goBuildFlags()...)
+	cmd = append(cmd, "-o", outBin, pkg)
 	ctx.ExecUserWithParams(gcp.ExecParams{
-		Cmd: []string{"go", "build", "-o", outBin, pkg},
+		Cmd: cmd,
 		Env: []string{"GOCACHE=" + cl.Root},
 	}, printTipsAndKeepStderrTail(ctx))
 
@@ -79,8 +83,11 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Configure the entrypoint and metadata for dev mode.
+	cmd = []string{"go", "run"}
+	cmd = append(cmd, goBuildFlags()...)
+	cmd = append(cmd, pkg)
 	devmode.AddFileWatcherProcess(ctx, devmode.Config{
-		Cmd: []string{"go", "run", pkg},
+		Cmd: cmd,
 		Ext: devmode.GoWatchedExtensions,
 	})
 	devmode.AddSyncMetadata(ctx, devmode.GoSyncRules)
@@ -88,10 +95,25 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
+func goBuildFlags() []string {
+	var flags []string
+	if v := os.Getenv(env.GoGCFlags); v != "" {
+		flags = append(flags, "-gcflags", v)
+	}
+	if v := os.Getenv(env.GoLDFlags); v != "" {
+		flags = append(flags, "-ldflags", v)
+	}
+	return flags
+}
+
 func printTipsAndKeepStderrTail(ctx *gcp.Context) gcp.ErrorSummaryProducer {
 	return func(result *gcp.ExecResult) *gcp.Error {
-		if result.ExitCode != 0 && strings.Contains(result.Stderr, cantLoadDefaultPackageError) {
-			ctx.Tipf("Tip: %q env var configures which Go package is built. Default is '.'", env.Buildable)
+		if result.ExitCode != 0 {
+			// If `go build` fails with any of those two errors, there's a great chance
+			// that we are not building the right package.
+			if strings.Contains(result.Stderr, noGoFileError) || strings.Contains(result.Stderr, cannotFindModuleError) {
+				ctx.Tipf("Tip: %q env var configures which Go package is built. Default is '.'", env.Buildable)
+			}
 		}
 
 		return gcp.UserErrorKeepStderrTail(result)

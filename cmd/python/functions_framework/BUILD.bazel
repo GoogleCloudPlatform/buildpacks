@@ -30,6 +30,7 @@ go_binary(
         "//cmd/config/entrypoint:__pkg__",
     ],
     deps = [
+        "//pkg/cache",
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/python",

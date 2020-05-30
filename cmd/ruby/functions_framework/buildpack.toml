@@ -1,0 +1,15 @@
+api = "0.2"
+
+[buildpack]
+id = "google.ruby.functions-framework"
+version = "0.9.0"
+name = "Ruby - Functions Framework"
+
+[[stacks]]
+id = "google"
+
+[[stacks]]
+id = "google.ruby26"
+
+[[stacks]]
+id = "google.ruby27"

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
@@ -48,23 +49,31 @@ func buildFn(ctx *gcp.Context) error {
 	nodejs.EnsurePackageLock(ctx)
 
 	nodeEnv := nodejs.NodeEnv()
-	cached, meta, err := nodejs.CheckCache(ctx, ml, nodeEnv, "package.json", nodejs.PackageLock)
+	cached, meta, err := nodejs.CheckCache(ctx, ml, cache.WithStrings(nodeEnv), cache.WithFiles("package.json", nodejs.PackageLock))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
 	if cached {
 		ctx.CacheHit(cacheTag)
-		ctx.Logf("Due to cache hit, package.json scripts will not be run. To run the scripts, disable caching.")
 		// Restore cached node_modules.
 		ctx.Exec([]string{"cp", "--archive", nm, "node_modules"})
+
+		// Always run npm install to run preinstall/postinstall scripts.
+		// Otherwise it should be a no-op because the lockfile is unchanged.
+		ctx.ExecUserWithParams(gcp.ExecParams{
+			Cmd: []string{"npm", "install", "--quiet"},
+			Env: []string{"NODE_ENV=" + nodeEnv},
+		}, gcp.UserErrorKeepStderrTail)
 	} else {
 		ctx.CacheMiss(cacheTag)
-		// Clear cached node_modules to ensure we don't end up with outdated dependencies.
+		// Clear cached node_modules to ensure we don't end up with outdated dependencies after copying.
 		ctx.ClearLayer(ml)
+
 		ctx.ExecUserWithParams(gcp.ExecParams{
 			Cmd: []string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet"},
 			Env: []string{"NODE_ENV=" + nodeEnv},
 		}, gcp.UserErrorKeepStderrTail)
+
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)
 		ctx.Exec([]string{"cp", "--archive", "node_modules", nm})

@@ -2,6 +2,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 licenses(["notice"])
 
+exports_files(["config.yaml"])
+
 go_library(
     name = "acceptance",
     srcs = ["acceptance.go"],

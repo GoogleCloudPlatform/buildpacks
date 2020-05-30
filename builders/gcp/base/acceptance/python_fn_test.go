@@ -23,7 +23,7 @@ func init() {
 	acceptance.DefineFlags()
 }
 
-func TestAcceptance(t *testing.T) {
+func TestAcceptancePythonFn(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
@@ -33,6 +33,14 @@ func TestAcceptance(t *testing.T) {
 			App:        "without_framework",
 			Path:       "/testFunction",
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction"},
+			MustUse:    []string{pythonRuntime, pythonFF},
+			MustNotUse: []string{pythonPIP, entrypoint},
+		},
+		{
+			Name:       "function with custom source file",
+			App:        "custom_file",
+			Path:       "/testFunction",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_FUNCTION_SOURCE=func.py"},
 			MustUse:    []string{pythonRuntime, pythonFF},
 			MustNotUse: []string{pythonPIP, entrypoint},
 		},
@@ -68,6 +76,35 @@ func TestAcceptance(t *testing.T) {
 			t.Parallel()
 
 			acceptance.TestApp(t, builder, tc)
+		})
+	}
+}
+
+func TestFailuresPythonFn(t *testing.T) {
+	builder, cleanup := acceptance.CreateBuilder(t)
+	t.Cleanup(cleanup)
+
+	testCases := []acceptance.FailureTest{
+		{
+			Name:      "missing framework file",
+			App:       "with_framework",
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_FUNCTION_SOURCE=func.py"},
+			MustMatch: "GOOGLE_FUNCTION_SOURCE specified file 'func.py' but it does not exist",
+		},
+		{
+			Name:      "missing main.py",
+			App:       "custom_file",
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction"},
+			MustMatch: "missing main.py and GOOGLE_FUNCTION_SOURCE not specified. Either create the function in main.py or specify GOOGLE_FUNCTION_SOURCE to point to the file that contains the function",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
+
+			acceptance.TestBuildFailure(t, builder, tc)
 		})
 	}
 }

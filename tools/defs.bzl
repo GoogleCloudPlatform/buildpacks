@@ -90,10 +90,14 @@ def builder(name, image, descriptor = "builder.toml", buildpacks = None, groups 
         srcs = [name + ".tar"],
         outs = [name + ".sha"],
         local = 1,
-        tools = ["//tools:create-builder.sh"],
-        cmd = """$(execpath {script}) {image} $(execpath {tar}) $@""".format(
+        tools = [
+            "//tools:check_dependencies",
+            "//tools:create_builder",
+        ],
+        cmd = """$(execpath {check_script}) && $(execpath {create_script}) {image} $(execpath {tar}) $@""".format(
             image = image,
             tar = name + ".tar",
-            script = "//tools:create-builder.sh",
+            check_script = "//tools:check_dependencies",
+            create_script = "//tools:create_builder",
         ),
     )

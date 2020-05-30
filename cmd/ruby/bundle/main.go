@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpack/libbuildpack/layers"
 )
@@ -68,7 +69,7 @@ func buildFn(ctx *gcp.Context) error {
 	// This layer directory contains the files installed by bundler into the application .bundle directory
 	bundleOutput := filepath.Join(deps.Root, ".bundle")
 
-	cached, meta, err := checkCache(ctx, deps, lockFile)
+	cached, meta, err := checkCache(ctx, deps, cache.WithFiles(lockFile))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
@@ -110,9 +111,10 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 // checkCache checks whether cached dependencies exist and match.
-func checkCache(ctx *gcp.Context, l *layers.Layer, files ...string) (bool, *metadata, error) {
+func checkCache(ctx *gcp.Context, l *layers.Layer, opts ...cache.Option) (bool, *metadata, error) {
 	currentRubyVersion := ctx.Exec([]string{"ruby", "-v"}).Stdout
-	currentDependencyHash, err := gcp.DependencyHash(ctx, currentRubyVersion, files...)
+	opts = append(opts, cache.WithStrings(currentRubyVersion))
+	currentDependencyHash, err := cache.Hash(ctx, opts...)
 	if err != nil {
 		return false, nil, fmt.Errorf("computing dependency hash: %v", err)
 	}

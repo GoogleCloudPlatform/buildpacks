@@ -1,5 +1,7 @@
 load("//tools:defs.bzl", "builder")
 
+package(default_visibility = ["//builders/gae/php73/acceptance:__pkg__"])
+
 licenses(["notice"])
 
 builder(
@@ -10,5 +12,4 @@ builder(
         "//cmd/php/composer_gcp_build:composer_gcp_build.tgz",
     ],
     image = "gae/php73",
-    visibility = ["//builders/gae/php73/acceptance:__pkg__"],
 )

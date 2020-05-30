@@ -25,6 +25,7 @@ package_group(
     name = "java_builders",
     packages = [
         "//builders/gae/java11",
+        "//builders/gcf/java11",
         "//builders/gcp/base",
     ],
 )
@@ -67,6 +68,7 @@ package_group(
         "//builders/gae/ruby25",
         "//builders/gae/ruby26",
         "//builders/gae/ruby27",
+        "//builders/gcf/ruby26",
         "//builders/gcp/base",
     ],
 )

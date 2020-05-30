@@ -18,7 +18,9 @@ package main
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
 	"github.com/buildpack/libbuildpack/layers"
@@ -47,7 +49,7 @@ func detectFn(ctx *gcp.Context) error {
 
 func buildFn(ctx *gcp.Context) error {
 	l := ctx.Layer(layerName)
-	cached, meta, err := python.CheckCache(ctx, l, "requirements.txt")
+	cached, meta, err := python.CheckCache(ctx, l, cache.WithFiles("requirements.txt"))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
@@ -62,6 +64,17 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.ExecUser([]string{"python3", "-m", "pip", "install", "--upgrade", "-r", "requirements.txt", "-t", l.Root})
 
 	ctx.PrependPathSharedEnv(l, "PYTHONPATH", l.Root)
+
+	// Check for broken dependencies.
+	ctx.Logf("Checking for incompatible dependencies.")
+	checkDeps := ctx.ExecWithParams(gcp.ExecParams{
+		Cmd: []string{"python3", "-m", "pip", "check"},
+		Env: []string{"PYTHONPATH=" + l.Root + ":" + os.Getenv("PYTHONPATH")},
+	})
+	if checkDeps.ExitCode != 0 {
+		return fmt.Errorf("incompatible dependencies installed: %q", checkDeps.Stdout)
+	}
+
 	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)
 	return nil
 }

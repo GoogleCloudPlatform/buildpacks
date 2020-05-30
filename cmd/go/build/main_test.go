@@ -15,6 +15,9 @@
 package main
 
 import (
+	"os"
+	"reflect"
+	"strings"
 	"testing"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -43,5 +46,56 @@ func TestDetect(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			gcp.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
 		})
+	}
+}
+
+func TestGoBuildFlags(t *testing.T) {
+	oldEnv := os.Environ()
+	t.Cleanup(func() {
+		clearAndSetEnv(oldEnv)
+	})
+	testCases := []struct {
+		name     string
+		env      []string
+		expected []string
+	}{
+		{
+			name:     "no GOOGLE_GOGCFLAGS or GOOGLE_GOLDFLAGS",
+			expected: nil,
+		},
+		{
+			name:     "with GOOGLE_GOGCFLAGS",
+			env:      []string{"GOOGLE_GOGCFLAGS=gcflags"},
+			expected: []string{"-gcflags", "gcflags"},
+		},
+		{
+			name:     "with GOOGLE_GOLDFLAGS",
+			env:      []string{"GOOGLE_GOLDFLAGS=ldflags"},
+			expected: []string{"-ldflags", "ldflags"},
+		},
+		{
+			name:     "with GOOGLE_GOGCFLAGS and GOOGLE_GOLDFLAGS",
+			env:      []string{"GOOGLE_GOGCFLAGS=gcflags1 gcflags2", "GOOGLE_GOLDFLAGS=ldflags1 ldflags2"},
+			expected: []string{"-gcflags", "gcflags1 gcflags2", "-ldflags", "ldflags1 ldflags2"},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			clearAndSetEnv(tc.env)
+			result := goBuildFlags()
+			if !reflect.DeepEqual(tc.expected, result) {
+				t.Errorf("goBuildFlags() = %v, want %v", result, tc.expected)
+			}
+		})
+	}
+}
+
+func clearAndSetEnv(env []string) {
+	os.Clearenv()
+	for _, p := range env {
+		kv := strings.SplitN(p, "=", 2)
+		if len(kv) == 2 {
+			os.Setenv(kv[0], kv[1])
+		}
 	}
 }

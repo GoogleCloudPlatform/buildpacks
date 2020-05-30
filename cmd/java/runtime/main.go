@@ -47,9 +47,14 @@ func main() {
 func detectFn(ctx *gcp.Context) error {
 	runtime.CheckOverride(ctx, "java")
 
-	if !ctx.HasAtLeastOne("*.java") && !ctx.HasAtLeastOne("**/*.jar") {
-		ctx.OptOut("No *.java or *.jar files found.")
+	if ctx.FileExists("pom.xml") ||
+		ctx.FileExists("build.gradle") ||
+		ctx.FileExists("build.gradle.kts") ||
+		len(ctx.Glob("*.java")) > 0 ||
+		len(ctx.Glob("*.jar")) > 0 {
+		return nil
 	}
+	ctx.OptOut("None of the following found: pom.xml, build.gradle, build.gradle.kts, *.java, *.jar.")
 	return nil
 }
 
@@ -59,7 +64,7 @@ func buildFn(ctx *gcp.Context) error {
 		featureVersion = v
 		ctx.Logf("Using requested runtime feature version: %s", featureVersion)
 	} else {
-		ctx.Logf("Using latest Java %s runtime version.", defaultFeatureVersion)
+		ctx.Logf("Using latest Java %s runtime version. You can specify a different version with %s: https://github.com/GoogleCloudPlatform/buildpacks#configuration", defaultFeatureVersion, env.RuntimeVersion)
 	}
 
 	releaseURL := fmt.Sprintf(javaVersionURL, featureVersion)

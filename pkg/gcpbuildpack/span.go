@@ -15,6 +15,7 @@
 package gcpbuildpack
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -64,6 +65,45 @@ func (s Status) String() string {
 		"DATA_LOSS",
 		"UNAUTHENTICATED",
 	}[s]
+}
+
+var fromStatusString = map[string]Status{
+	"OK":                  StatusOk,
+	"CANCELLED":           StatusCancelled,
+	"UNKNOWN":             StatusUnknown,
+	"INVALID_ARGUMENT":    StatusInvalidArgument,
+	"DEADLINE_EXCEEDED":   StatusDeadlineExceeded,
+	"NOT_FOUND":           StatusNotFound,
+	"ALREADY_EXISTS":      StatusAlreadyExists,
+	"PERMISSION_DENIED":   StatusPermissionDenied,
+	"RESOURCE_EXHAUSTED":  StatusResourceExhausted,
+	"FAILED_PRECONDITION": StatusFailedPrecondition,
+	"ABORTED":             StatusAborted,
+	"OUT_OF_RANGE":        StatusOutOfRange,
+	"UNIMPLEMENTED":       StatusUnimplemented,
+	"INTERNAL":            StatusInternal,
+	"UNAVAILABLE":         StatusUnavailable,
+	"DATA_LOSS":           StatusDataLoss,
+	"UNAUTHENTICATED":     StatusUnauthenticated,
+}
+
+// MarshalJSON marshals the enum as a quoted json string
+func (s Status) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf("%q", s)), nil
+}
+
+// UnmarshalJSON unmashals a quoted json string to the enum value
+func (s *Status) UnmarshalJSON(b []byte) error {
+	var val string
+	if err := json.Unmarshal(b, &val); err != nil {
+		return err
+	}
+	st, ok := fromStatusString[strings.ToUpper(val)]
+	if !ok {
+		return fmt.Errorf("unknown value %q", val)
+	}
+	*s = st
+	return nil
 }
 
 type spanInfo struct {

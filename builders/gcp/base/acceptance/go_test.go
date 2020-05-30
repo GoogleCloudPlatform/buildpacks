@@ -23,21 +23,28 @@ func init() {
 	acceptance.DefineFlags()
 }
 
-func TestAcceptance(t *testing.T) {
+func TestAcceptanceGo(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
 		{
-			Name:              "simple Go application",
-			App:               "go/simple",
-			MustUse:           []string{goRuntime, goBuild, clearSource, goPath},
-			FilesMustExist:    []string{"/layers/google.go.build/bin/main"},
-			FilesMustNotExist: []string{"/layers/google.go.runtime", "/workspace/main.go"},
+			Name:           "simple Go application",
+			App:            "go/simple",
+			MustUse:        []string{goRuntime, goBuild, goPath},
+			MustNotUse:     []string{goClearSource},
+			FilesMustExist: []string{"/layers/google.go.build/bin/main", "/workspace/main.go"},
 		},
 		{
 			Name:       "Go.mod",
 			App:        "go/simple_gomod",
+			MustUse:    []string{goRuntime, goBuild},
+			MustNotUse: []string{goPath},
+		},
+		{
+			Name:       "Go.mod package",
+			App:        "go/gomod_package",
+			Env:        []string{"GOOGLE_BUILDABLE=cmd/main.go"},
 			MustUse:    []string{goRuntime, goBuild},
 			MustNotUse: []string{goPath},
 		},
@@ -69,11 +76,12 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{javaRuntime, nodeRuntime, pythonRuntime},
 		},
 		{
-			Name:           "keep source",
-			App:            "go/simple",
-			Env:            []string{"GOOGLE_KEEP_SOURCE=true"},
-			MustNotUse:     []string{clearSource},
-			FilesMustExist: []string{"/workspace/main.go"},
+			Name:              "clear source",
+			App:               "go/simple",
+			Env:               []string{"GOOGLE_CLEAR_SOURCE=true"},
+			MustUse:           []string{goClearSource},
+			FilesMustExist:    []string{"/layers/google.go.build/bin/main"},
+			FilesMustNotExist: []string{"/layers/google.go.runtime", "/workspace/main.go"},
 		},
 	}
 	for _, tc := range testCases {
@@ -86,7 +94,7 @@ func TestAcceptance(t *testing.T) {
 	}
 }
 
-func TestFailures(t *testing.T) {
+func TestFailuresGo(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
@@ -96,6 +104,18 @@ func TestFailures(t *testing.T) {
 			App:       "go/simple",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
 			MustMatch: "Runtime version BAD_NEWS_BEARS does not exist",
+		},
+		{
+			Name:      "no Go files in root (Go 1.12)",
+			App:       "go/gomod_package",
+			Env:       []string{"GOOGLE_RUNTIME_VERSION=1.12"},
+			MustMatch: `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built.`,
+		},
+		{
+			Name:      "no Go files in root (Go 1.14)",
+			App:       "go/gomod_package",
+			Env:       []string{"GOOGLE_RUNTIME_VERSION=1.14"},
+			MustMatch: `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built.`,
 		},
 	}
 

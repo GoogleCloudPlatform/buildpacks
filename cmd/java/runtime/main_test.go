@@ -28,9 +28,37 @@ func TestDetect(t *testing.T) {
 		want  int
 	}{
 		{
+			name: "pom.xml",
+			files: map[string]string{
+				"pom.xml": "",
+			},
+			want: 0,
+		},
+		{
+			name: "build.gradle",
+			files: map[string]string{
+				"build.gradle": "",
+			},
+			want: 0,
+		},
+		{
+			name: "build.gradle.kts",
+			files: map[string]string{
+				"build.gradle.kts": "",
+			},
+			want: 0,
+		},
+		{
 			name: "java files",
 			files: map[string]string{
 				"main.java": "",
+			},
+			want: 0,
+		},
+		{
+			name: "jar files",
+			files: map[string]string{
+				"myjar.jar": "",
 			},
 			want: 0,
 		},

@@ -1,12 +1,12 @@
-description = "GCP Builder for all runtimes"
+description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js, and Python"
 
 [[buildpacks]]
   id = "google.config.entrypoint"
   uri = "entrypoint.tgz"
 
 [[buildpacks]]
-  id = "google.config.clear_source"
-  uri = "clear_source.tgz"
+  id = "google.go.clear_source"
+  uri = "go/clear_source.tgz"
 
 [[buildpacks]]
   id = "google.dotnet.runtime"
@@ -129,7 +129,7 @@ description = "GCP Builder for all runtimes"
     optional = true
 
   [[order.group]]
-    id = "google.config.clear_source"
+    id = "google.go.clear_source"
     optional = true
 
 [[order]]
@@ -149,7 +149,7 @@ description = "GCP Builder for all runtimes"
     optional = true
 
   [[order.group]]
-    id = "google.config.clear_source"
+    id = "google.go.clear_source"
     optional = true
 
 ########
@@ -210,11 +210,11 @@ description = "GCP Builder for all runtimes"
     id = "google.python.runtime"
 
   [[order.group]]
-    id = "google.python.pip"
-    optional = true
+    id = "google.python.functions-framework"
 
   [[order.group]]
-    id = "google.python.functions-framework"
+    id = "google.python.pip"
+    optional = true
 
   [[order.group]]
     id = "google.config.entrypoint"
@@ -295,11 +295,11 @@ description = "GCP Builder for all runtimes"
   [[order.group]]
     id = "google.config.entrypoint"
 
-# Currently built with stack/build.sh
+# Currently built with //builders/gcp/base/stack/stack:build.
 [stack]
   id = "google"
   build-image = "gcr.io/buildpacks/gcp/build"
   run-image = "gcr.io/buildpacks/gcp/run"
 
 [lifecycle]
-  version = "0.7.2"
+  version = "0.7.4"

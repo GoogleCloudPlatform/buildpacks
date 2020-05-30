@@ -12,17 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-# Add licenses for third-party go libraries as a separate build stage
-# to ensure consistent timestamps and permissions.
 ARG from_image
-FROM ${from_image} as licenses
-WORKDIR /l
-COPY licenses licenses.yaml /l/
-RUN chmod -R a=rX . && chown -R 0:0 .
-
 FROM ${from_image}
-COPY --from=licenses /l/ /usr/local/share/licenses/
+COPY licenses/ /usr/local/share/licenses/buildpacks/
 
 # Required to install nodejs/runtime.
 RUN apt-get update && apt-get install -y --no-install-recommends \

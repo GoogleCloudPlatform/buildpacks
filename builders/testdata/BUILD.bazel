@@ -23,10 +23,11 @@ exports_files(
 #   ./single_jar/fatjar.jar
 #   ./<other test cases>
 # Note that java/custom_entrypoint is considered a package due to the BUILD file
-# and so must be fully-resolved
+# and so must be fully-resolved. Likewise the presence of a java/BUILD file
+# means that we can't just use java/** here.
 pkg_tar(
     name = "javatestdata",
-    srcs = glob(["java/**"]),
+    srcs = ["//builders/testdata/java:files"],
     extension = "tgz",
     files = {
         "//builders/testdata/java/custom_entrypoint:Main.java": "custom_entrypoint/Main.java",

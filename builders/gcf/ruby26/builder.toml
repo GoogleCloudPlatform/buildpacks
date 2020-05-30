@@ -1,0 +1,24 @@
+description = "Builder for the GCF Ruby 2.6 runtime"
+
+[[buildpacks]]
+  id = "google.ruby.bundle"
+  uri = "bundle.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.functions-framework"
+  uri = "functions_framework.tgz"
+
+[[order]]
+  [[order.group]]
+    id = "google.ruby.bundle"
+
+  [[order.group]]
+    id = "google.ruby.functions-framework"
+
+[stack]
+  id = "google.ruby26"
+  build-image = "gcr.io/gae-runtimes/buildpacks/ruby26/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/ruby26/run"
+
+[lifecycle]
+  version = "0.7.4"

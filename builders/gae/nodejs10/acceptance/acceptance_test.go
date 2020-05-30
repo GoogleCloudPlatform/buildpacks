@@ -68,16 +68,14 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{npm},
 		},
 		{
-			App:           "postinstall_npm",
-			MustUse:       []string{npm},
-			MustNotUse:    []string{npmGCPBuild, yarn, yarnGCPBuild},
-			SkipCacheTest: true, // postinstall does not run on cached builds.
+			App:        "postinstall_npm",
+			MustUse:    []string{npm},
+			MustNotUse: []string{npmGCPBuild, yarn, yarnGCPBuild},
 		},
 		{
-			App:           "postinstall_yarn",
-			MustUse:       []string{yarn},
-			MustNotUse:    []string{npmGCPBuild, npm, yarnGCPBuild},
-			SkipCacheTest: true, // postinstall does not run on cached builds.
+			App:        "postinstall_yarn",
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npmGCPBuild, npm, yarnGCPBuild},
 		},
 		{
 			App:        "gcp_build_npm",

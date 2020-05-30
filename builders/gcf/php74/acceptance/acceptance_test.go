@@ -128,6 +128,12 @@ func TestFailures(t *testing.T) {
 			App:       "fail_wrong_file",
 			MustMatch: "Could not open input file:",
 		},
+		{
+			// todo(mtraver): This acceptance test must exist in the OSS buildpack for PHP when created per b/156265858.
+			App:       "no_composer_json",
+			Env:       []string{"GOOGLE_FUNCTION_SOURCE=file_does_not_exist.php"},
+			MustMatch: "Could not open input file: file_does_not_exist.php",
+		},
 	}
 
 	for _, tc := range testCases {

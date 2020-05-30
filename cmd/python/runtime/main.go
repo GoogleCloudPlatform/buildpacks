@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -56,7 +57,10 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	version := runtimeVersion(ctx)
+	version, err := runtimeVersion(ctx)
+	if err != nil {
+		return fmt.Errorf("determining runtime version: %w", err)
+	}
 	// Check the metadata in the cache layer to determine if we need to proceed.
 	var meta metadata
 	l := ctx.Layer(pythonLayer)
@@ -77,6 +81,10 @@ func buildFn(ctx *gcp.Context) error {
 	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s", archiveURL, l.Root)
 	ctx.Exec([]string{"bash", "-c", command})
 
+	ctx.Logf("Upgrading pip to the latest version and installing build tools")
+	path := filepath.Join(l.Root, "bin/python3")
+	ctx.Exec([]string{path, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"})
+
 	meta.Version = version
 	ctx.WriteMetadata(l, meta, layers.Build, layers.Cache, layers.Launch)
 
@@ -87,18 +95,21 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
-func runtimeVersion(ctx *gcp.Context) string {
+func runtimeVersion(ctx *gcp.Context) (string, error) {
 	if v := os.Getenv(env.RuntimeVersion); v != "" {
 		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, v)
-		return v
+		return v, nil
 	}
 	if ctx.FileExists(versionFile) {
 		raw := ctx.ReadFile(versionFile)
 		v := strings.TrimSpace(string(raw))
-		ctx.Logf("Using runtime version from %s: %s", versionFile, v)
-		return v
+		if v != "" {
+			ctx.Logf("Using runtime version from %s: %s", versionFile, v)
+			return v, nil
+		}
+		return "", gcp.UserErrorf("%s exists but does not specify a version", versionFile)
 	}
 	v := ctx.Exec([]string{"curl", "--silent", versionURL}).Stdout
 	ctx.Logf("Using latest runtime version: %s", v)
-	return v
+	return v, nil
 }

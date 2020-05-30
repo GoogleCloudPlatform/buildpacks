@@ -1,5 +1,7 @@
 load("//tools:defs.bzl", "builder")
 
+package(default_visibility = ["//builders/gae/ruby25/acceptance:__pkg__"])
+
 licenses(["notice"])
 
 builder(
@@ -12,5 +14,4 @@ builder(
         # "runtime.tgz",
     ],
     image = "gae/ruby25",
-    visibility = ["//builders/gae/ruby25/acceptance:__pkg__"],
 )

@@ -1,0 +1,12 @@
+api = "0.2"
+
+[buildpack]
+id = "google.java.functions-framework"
+version = "0.9.0"
+name = "Java - Functions Framework Invoker"
+
+[[stacks]]
+id = "google"
+
+[[stacks]]
+id = "google.java11"

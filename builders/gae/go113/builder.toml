@@ -53,4 +53,4 @@ description = "Builder for the GAE Go 1.13 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/go113/run"
 
 [lifecycle]
-  version = "0.7.2"
+  version = "0.7.4"

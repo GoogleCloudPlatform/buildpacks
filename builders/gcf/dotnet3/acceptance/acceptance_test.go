@@ -52,13 +52,6 @@ func TestAcceptance(t *testing.T) {
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=vb_function.CloudFunction"},
 			Path: "/function",
 		},
-		// TODO(b/154846199): For compatibility with GCF; this will be removed later.
-		{
-			Name: "cs single target old env",
-			App:  "cs_single_target",
-			Env:  []string{"FUNCTION_TARGET=TestFunction.Function"},
-			Path: "/function",
-		},
 	}
 
 	for _, tc := range testCases {

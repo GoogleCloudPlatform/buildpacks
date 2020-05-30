@@ -23,7 +23,7 @@ func init() {
 	acceptance.DefineFlags()
 }
 
-func TestAcceptance(t *testing.T) {
+func TestAcceptanceNodeJsFn(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
@@ -112,7 +112,7 @@ func TestAcceptance(t *testing.T) {
 	}
 }
 
-func TestFailures(t *testing.T) {
+func TestFailuresNodeJsFn(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
@@ -126,6 +126,12 @@ func TestFailures(t *testing.T) {
 			App:       "fail_wrong_main",
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction"},
 			MustMatch: "function.js does not exist",
+		},
+		{
+			Name:      "function fail without valid GOOGLE_FUNCTION_SOURCE",
+			App:       "no_package",
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_FUNCTION_SOURCE=sub_dir"},
+			MustMatch: "GOOGLE_FUNCTION_SOURCE is not currently supported for Node.js buildpacks",
 		},
 	}
 

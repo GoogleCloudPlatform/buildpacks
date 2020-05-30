@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
@@ -39,17 +40,15 @@ func detectFn(ctx *gcp.Context) error {
 	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
 		ctx.OptIn("%s set", env.FunctionTarget)
 	}
-	// TODO(b/154846199): For compatibility with GCF; this will be removed later.
-	if os.Getenv("CNB_STACK_ID") != "google" {
-		if _, ok := os.LookupEnv(env.FunctionTargetLaunch); ok {
-			ctx.OptIn("%s set", env.FunctionTargetLaunch)
-		}
-	}
 	ctx.OptOut("%s not set", env.FunctionTarget)
 	return nil
 }
 
 func buildFn(ctx *gcp.Context) error {
+	if _, ok := os.LookupEnv(env.FunctionSource); ok {
+		return gcp.UserErrorf("%s is not currently supported for Node.js buildpacks", env.FunctionSource)
+	}
+
 	// Function source code should be defined in the "main" field in package.json, index.js or function.js.
 	// https://cloud.google.com/functions/docs/writing#structuring_source_code
 	fnFile := "function.js"
@@ -92,7 +91,7 @@ func buildFn(ctx *gcp.Context) error {
 	pjs := filepath.Join(cvt, "package.json")
 	pljs := filepath.Join(cvt, nodejs.PackageLock)
 
-	cached, meta, err := nodejs.CheckCache(ctx, l, nodejs.EnvProduction, pjs, pljs)
+	cached, meta, err := nodejs.CheckCache(ctx, l, cache.WithStrings(nodejs.EnvProduction), cache.WithFiles(pjs, pljs))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}

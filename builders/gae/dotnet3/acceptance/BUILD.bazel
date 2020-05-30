@@ -3,6 +3,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 # This package implements acceptance tests for dotnet3 buildpacks
 licenses(["notice"])
 
+exports_files(["config.yaml"])
+
 go_library(
     name = "acceptance",
     srcs = ["acceptance.go"],

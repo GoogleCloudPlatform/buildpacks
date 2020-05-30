@@ -67,16 +67,19 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{npm},
 		},
 		{
-			App:           "postinstall_npm",
-			MustUse:       []string{npm},
-			MustNotUse:    []string{npmGCPBuild, yarn, yarnGCPBuild},
-			SkipCacheTest: true, // postinstall does not run on cached builds.
+			App:        "postinstall_npm",
+			MustUse:    []string{npm},
+			MustNotUse: []string{npmGCPBuild, yarn, yarnGCPBuild},
+			MustNotOutputCached: []string{
+				"removing existing node_modules/ before installation",
+				"added 1 package",
+			},
 		},
 		{
-			App:           "postinstall_yarn",
-			MustUse:       []string{yarn},
-			MustNotUse:    []string{npmGCPBuild, npm, yarnGCPBuild},
-			SkipCacheTest: true, // postinstall does not run on cached builds.
+			App:              "postinstall_yarn",
+			MustUse:          []string{yarn},
+			MustNotUse:       []string{npmGCPBuild, npm, yarnGCPBuild},
+			MustOutputCached: []string{"Already up-to-date."},
 		},
 		{
 			App:        "gcp_build_npm",

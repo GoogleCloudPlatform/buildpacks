@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
@@ -45,17 +46,16 @@ func detectFn(ctx *gcp.Context) error {
 	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
 		ctx.OptIn("%s set", env.FunctionTarget)
 	}
-	// TODO(b/154846199): For compatibility with GCF; this will be removed later.
-	if os.Getenv("CNB_STACK_ID") != "google" {
-		if _, ok := os.LookupEnv(env.FunctionTargetLaunch); ok {
-			ctx.OptIn("%s set", env.FunctionTargetLaunch)
-		}
-	}
 	ctx.OptOut("%s not set", env.FunctionTarget)
 	return nil
 }
 
 func buildFn(ctx *gcp.Context) error {
+
+	if err := validateSource(ctx); err != nil {
+		return err
+	}
+
 	// Determine if the function has dependency on functions-framework.
 	hasFrameworkDependency := false
 	if ctx.FileExists("requirements.txt") {
@@ -85,6 +85,19 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
+func validateSource(ctx *gcp.Context) error {
+	// Fail if the default|custom source file doesn't exist, otherwise the app will fail at runtime but still build here.
+	fnSource, ok := os.LookupEnv(env.FunctionSource)
+	if !ok {
+		if !ctx.FileExists("main.py") {
+			return gcp.UserErrorf("missing main.py and %s not specified. Either create the function in main.py or specify %s to point to the file that contains the function", env.FunctionSource, env.FunctionSource)
+		}
+	} else if !ctx.FileExists(fnSource) {
+		return gcp.UserErrorf("%s specified file '%s' but it does not exist", env.FunctionSource, fnSource)
+	}
+	return nil
+}
+
 func containsFF(s string) bool {
 	return ffRegexp.MatchString(s) || eggRegexp.MatchString(s)
 }
@@ -92,7 +105,7 @@ func containsFF(s string) bool {
 func installFramework(ctx *gcp.Context, l *layers.Layer) error {
 	cvt := filepath.Join(ctx.BuildpackRoot(), "converter")
 	req := filepath.Join(cvt, "requirements.txt")
-	cached, meta, err := python.CheckCache(ctx, l, req)
+	cached, meta, err := python.CheckCache(ctx, l, cache.WithFiles(req))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}

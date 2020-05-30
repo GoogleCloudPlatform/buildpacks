@@ -45,14 +45,18 @@ const (
 	// Example: `gunicorn -p :8080 main:app` for Python.
 	Entrypoint = "GOOGLE_ENTRYPOINT"
 
-	// KeepSource is an env var used to keep the source in the final image.
-	// Buildpacks for compiled languages (e.g., Go, Java, .Net) will typically strip out the source.
-	KeepSource = "GOOGLE_KEEP_SOURCE"
+	// ClearSource is an env var used to clear source files from the final image.
+	// Buildpacks for compiled languages (e.g., Go, Java, .Net) will typically support clearing the source.
+	ClearSource = "GOOGLE_CLEAR_SOURCE"
 
 	// Buildable is an env var used to specify the buildable unit to build.
 	// Buildable should be respected by buildpacks that build source.
 	// Example: `./maindir` for Go will build the package rooted at maindir.
 	Buildable = "GOOGLE_BUILDABLE"
+
+	// BuildArgs is an env var used to append arguments to the build command.
+	// Example: `-Pprod` for Maven apps run "mvn clear package ... -Pprod" command.
+	BuildArgs = "GOOGLE_BUILD_ARGS"
 
 	// GAEMain is an env var used to specify path or fully qualified package name of the main package in App Engine buildpacks.
 	// Behavior: In Go, the value is cleaned up and passed on to subsequent buildpacks as GOOGLE_BUILDABLE.
@@ -78,6 +82,13 @@ const (
 	FunctionSignatureType = "GOOGLE_FUNCTION_SIGNATURE_TYPE"
 	// FunctionSignatureTypeLaunch is a launch time version of FunctionSignatureType.
 	FunctionSignatureTypeLaunch = "FUNCTION_SIGNATURE_TYPE"
+
+	// GoGCFlags is an env var used to pass through compilation flags to the Go compiler.
+	// Example: `-N -l` is used during debugging to disable optimizations and inlining.
+	GoGCFlags = "GOOGLE_GOGCFLAGS"
+	// GoLDFlags is an env var used to pass through linker flags to the Go linker.
+	// Example: `-s -w` is sometimes used to strip and reduce binary size.
+	GoLDFlags = "GOOGLE_GOLDFLAGS"
 )
 
 // IsDebugMode returns true if the buildpack debug mode is enabled.
