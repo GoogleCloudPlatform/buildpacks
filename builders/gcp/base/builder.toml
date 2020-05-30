@@ -302,4 +302,4 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   run-image = "gcr.io/buildpacks/gcp/run"
 
 [lifecycle]
-  version = "0.7.4"
+  version = "0.7.5"
