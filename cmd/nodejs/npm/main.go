@@ -57,19 +57,23 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.CacheHit(cacheTag)
 		// Restore cached node_modules.
 		ctx.Exec([]string{"cp", "--archive", nm, "node_modules"})
+
+		// Always run npm install to run preinstall/postinstall scripts.
+		// Otherwise it should be a no-op because the lockfile is unchanged.
+		ctx.ExecUserWithParams(gcp.ExecParams{
+			Cmd: []string{"npm", "install", "--quiet"},
+			Env: []string{"NODE_ENV=" + nodeEnv},
+		}, gcp.UserErrorKeepStderrTail)
 	} else {
 		ctx.CacheMiss(cacheTag)
-		// Clear cached node_modules to ensure we don't end up with outdated dependencies.
+		// Clear cached node_modules to ensure we don't end up with outdated dependencies after copying.
 		ctx.ClearLayer(ml)
-	}
 
-	// Always run npm ci/install to run preinstall/postinstall scripts.
-	ctx.ExecUserWithParams(gcp.ExecParams{
-		Cmd: []string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet"},
-		Env: []string{"NODE_ENV=" + nodeEnv},
-	}, gcp.UserErrorKeepStderrTail)
+		ctx.ExecUserWithParams(gcp.ExecParams{
+			Cmd: []string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet"},
+			Env: []string{"NODE_ENV=" + nodeEnv},
+		}, gcp.UserErrorKeepStderrTail)
 
-	if !cached {
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)
 		ctx.Exec([]string{"cp", "--archive", "node_modules", nm})

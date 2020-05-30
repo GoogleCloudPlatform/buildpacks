@@ -139,6 +139,10 @@ type Test struct {
 	MustOutput []string
 	// MustNotOutput specifies strings to not be found in the build logs.
 	MustNotOutput []string
+	// MustOutputCached specifies strings to be found in the build logs of a cached build.
+	MustOutputCached []string
+	// MustNotOutputCached specifies strings to not be found in the build logs of a cached build.
+	MustNotOutputCached []string
 }
 
 // TestApp builds and a single application and verifies that it runs and handles requests.
@@ -170,7 +174,7 @@ func TestApp(t *testing.T, builder string, cfg Test) {
 	}
 	for _, cache := range cacheOptions {
 		t.Run(fmt.Sprintf("cache %t", cache), func(t *testing.T) {
-			buildApp(t, cfg.App, image, builder, env, cache, cfg.MustOutput, cfg.MustNotOutput)
+			buildApp(t, cfg.App, image, builder, env, cache, cfg)
 			verifyBuildMetadata(t, image, cfg.MustUse, cfg.MustNotUse)
 			verifyStructure(t, cfg.App, image, builder, cache, checks)
 			invokeApp(t, image, cfg.Path, cfg.RunEnv, cache)
@@ -501,7 +505,7 @@ func buildCommand(app, image, builder string, env map[string]string, cache bool)
 }
 
 // buildApp builds an application image from source.
-func buildApp(t *testing.T, app, image, builder string, env map[string]string, cache bool, mustOutput []string, mustNotOutput []string) {
+func buildApp(t *testing.T, app, image, builder string, env map[string]string, cache bool, cfg Test) {
 	t.Helper()
 
 	bcmd := buildCommand(app, image, builder, env, cache)
@@ -521,16 +525,21 @@ func buildApp(t *testing.T, app, image, builder string, env map[string]string, c
 	}
 
 	// Check that expected output is found in the logs.
-	if !cache {
-		for _, text := range mustOutput {
-			if !strings.Contains(errb.String(), text) {
-				t.Errorf("Build logs must contain %q:\n%s", text, errb.String())
-			}
+	mustOutput := cfg.MustOutput
+	mustNotOutput := cfg.MustNotOutput
+	if cache {
+		mustOutput = cfg.MustOutputCached
+		mustNotOutput = cfg.MustNotOutputCached
+	}
+
+	for _, text := range mustOutput {
+		if !strings.Contains(errb.String(), text) {
+			t.Errorf("Build logs must contain %q:\n%s", text, errb.String())
 		}
-		for _, text := range mustNotOutput {
-			if strings.Contains(errb.String(), text) {
-				t.Errorf("Build logs must not contain %q:\n%s", text, errb.String())
-			}
+	}
+	for _, text := range mustNotOutput {
+		if strings.Contains(errb.String(), text) {
+			t.Errorf("Build logs must not contain %q:\n%s", text, errb.String())
 		}
 	}
 
