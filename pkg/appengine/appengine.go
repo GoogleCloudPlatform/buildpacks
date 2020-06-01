@@ -43,6 +43,7 @@ type Config struct {
 type Entrypoint struct {
 	Type    string `json:"type"`
 	Command string `json:"command"`
+	WorkDir string `json:"workdir"`
 }
 
 // EntrypointType represents how the entrypoint command was created.
