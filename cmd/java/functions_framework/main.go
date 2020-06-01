@@ -60,6 +60,43 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
+	classpath, err := classpath(ctx)
+	if err != nil {
+		return err
+	}
+
+	ctx.SetFunctionsEnvVars(layer)
+
+	ctx.AddWebProcess([]string{"java", "-jar", filepath.Join(layer.Root, "functions-framework.jar"), "--classpath", classpath})
+
+	return nil
+}
+
+// classpath determines what the --classpath argument should be. This tells the Functions Framework where to find
+// the classes of the function, including dependencies.
+func classpath(ctx *gcp.Context) (string, error) {
+	if ctx.FileExists("pom.xml") {
+		return mavenClasspath(ctx)
+	}
+	jars := ctx.Glob("*.jar")
+	if len(jars) == 1 {
+		// Already-built jar file. It should be self-contained, which means that it can be the only thing given to --classpath.
+		return jars[0], nil
+	}
+	if len(jars) > 1 {
+		return "", gcp.UserErrorf("function has no pom.xml and more than one jar file: %s", strings.Join(jars, ", "))
+	}
+	// We have neither pom.xml nor a jar file. Show what files there are. If the user deployed the wrong directory, this may help them see the problem more easily.
+	description := "directory is empty"
+	if files := ctx.Glob("*"); len(files) > 0 {
+		description = fmt.Sprintf("directory has these entries: %s", strings.Join(files, ", "))
+	}
+	return "", gcp.UserErrorf("function has neither pom.xml nor already-built jar file; %s", description)
+}
+
+// mavenClasspath determines the --classpath when there is a pom.xml. This will consist of the jar file built
+// from the pom.xml itself, plus all jar files that are dependencies mentioned in the pom.xml.
+func mavenClasspath(ctx *gcp.Context) (string, error) {
 	// Copy the dependencies of the function (<dependencies> in pom.xml) into target/dependency.
 	ctx.ExecUser([]string{"mvn", "dependency:copy-dependencies"})
 
@@ -70,19 +107,13 @@ func buildFn(ctx *gcp.Context) error {
 	groupArtifactVersion := execResult.Stdout
 	components := strings.Split(groupArtifactVersion, "/")
 	if len(components) != 2 {
-		return gcp.UserErrorf("could not parse query output into artifact/version: %s", groupArtifactVersion)
+		return "", gcp.UserErrorf("could not parse query output into artifact/version: %s", groupArtifactVersion)
 	}
 	artifact, version := components[0], components[1]
 
 	// The Functions Framework understands "*" to mean every jar file in that directory.
 	// So this classpath consists of the just-built jar and all of the dependency jars.
-	classpath := fmt.Sprintf("target/%s-%s.jar:target/dependency/*", artifact, version)
-
-	ctx.SetFunctionsEnvVars(layer)
-
-	ctx.AddWebProcess([]string{"java", "-jar", filepath.Join(layer.Root, "functions-framework.jar"), "--classpath", classpath})
-
-	return nil
+	return fmt.Sprintf("target/%s-%s.jar:target/dependency/*", artifact, version), nil
 }
 
 func installFunctionsFramework(ctx *gcp.Context, layer *layers.Layer) error {

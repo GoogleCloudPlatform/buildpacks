@@ -1,0 +1,21 @@
+# Incorrect function consisting of two already-built jars (there must be only one).
+
+licenses(["notice"])
+
+package(
+    default_visibility = ["//builders/testdata/java:__pkg__"],
+)
+
+genrule(
+    name = "fatjar1",
+    srcs = ["//builders/testdata/java/functions/jar:fatjar_deploy.jar"],
+    outs = ["fatjar1.jar"],
+    cmd = "cp $< $@",
+)
+
+genrule(
+    name = "fatjar2",
+    srcs = ["//builders/testdata/java/functions/jar:fatjar_deploy.jar"],
+    outs = ["fatjar2.jar"],
+    cmd = "cp $< $@",
+)

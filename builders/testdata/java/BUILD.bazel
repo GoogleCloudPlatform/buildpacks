@@ -1,13 +1,20 @@
 # Test data for function builder acceptance tests.
 
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+
 licenses(["notice"])
 
 package(default_visibility = ["//builders:__subpackages__"])
 
-exports_files(
-    [
-        "functions",
+pkg_tar(
+    name = "functions",
+    srcs = glob(["functions/**"]) + [
+        "//builders/testdata/java/functions/fail_two_jars:fatjar1.jar",
+        "//builders/testdata/java/functions/fail_two_jars:fatjar2.jar",
+        "//builders/testdata/java/functions/jar:fatjar_deploy.jar",
     ],
+    extension = "tgz",
+    strip_prefix = "functions",
 )
 
 filegroup(

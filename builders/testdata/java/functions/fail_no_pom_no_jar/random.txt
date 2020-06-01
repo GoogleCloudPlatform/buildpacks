@@ -1,0 +1,1 @@
+This supposed app contains neither a pom.xml nor a jar file.

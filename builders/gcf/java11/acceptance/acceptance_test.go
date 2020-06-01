@@ -14,6 +14,8 @@
 package acceptance
 
 import (
+	"flag"
+	"os"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/acceptance"
@@ -31,6 +33,12 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name: "function with maven",
 			App:  "maven",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
+		},
+		{
+			Name: "prebuilt jar",
+			App:  "jar",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=functions.jar.HelloWorld"},
 		},
 	}
 	for _, tc := range testCases {
@@ -40,7 +48,6 @@ func TestAcceptance(t *testing.T) {
 
 			tc.Path = "/"
 			tc.Env = append(tc.Env,
-				"GOOGLE_FUNCTION_TARGET=functions.HelloWorld",
 				"GOOGLE_RUNTIME=java11",
 			)
 
@@ -59,6 +66,16 @@ func TestFailures(t *testing.T) {
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld", "GOOGLE_RUNTIME=java11"},
 			MustMatch: `\[ERROR\].*not a statement`,
 		},
+		{
+			App:       "fail_no_pom_no_jar",
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld", "GOOGLE_RUNTIME=java11"},
+			MustMatch: "function has neither pom.xml nor already-built jar file; directory has these entries: random.txt",
+		},
+		{
+			App:       "fail_two_jars",
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld", "GOOGLE_RUNTIME=java11"},
+			MustMatch: "function has no pom.xml and more than one jar file: fatjar1.jar, fatjar2.jar",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -69,4 +86,13 @@ func TestFailures(t *testing.T) {
 			acceptance.TestBuildFailure(t, builder, tc)
 		})
 	}
+}
+
+func TestMain(m *testing.M) {
+	flag.Parse()
+	cleanup := acceptance.UnarchiveTestData()
+	// We can't use defer cleanup() here because os.Exit prevents deferred functions from running.
+	status := m.Run()
+	cleanup()
+	os.Exit(status)
 }

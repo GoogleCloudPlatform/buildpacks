@@ -1,0 +1,14 @@
+# Function deployed as an already-built jar.
+
+licenses(["notice"])
+
+# We can use :fatjar_deploy.jar as a "far jar" (one that contains all its
+# dependencies). This is something of an abuse since we're not actually making
+# a java_binary. java_single_jar would work better but is not straightforward to
+# set up in the external environment.
+java_binary(
+    name = "fatjar",
+    srcs = ["HelloWorld.java"],
+    visibility = ["//builders/testdata/java:__subpackages__"],
+    deps = ["@maven//:com_google_cloud_functions_functions_framework_api"],
+)

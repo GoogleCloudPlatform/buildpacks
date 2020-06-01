@@ -23,7 +23,7 @@ import java.util.Map;
 
 /** A function that just prints out PASS. */
 public class HelloWorld implements HttpFunction {
-  private static String TEMPLATE_TEXT = "$pass";
+  private static final String TEMPLATE_TEXT = "$pass";
 
   @Override
   public void service(HttpRequest request, HttpResponse response) throws IOException {
