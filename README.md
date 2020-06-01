@@ -297,6 +297,27 @@ please set the following in your /etc/docker/daemon.json:
 
 ---
 
+## Using with Google Cloud Build
+
+The buildpack builder can be invoked as a step of a [Google Cloud Build](https://cloud.google.com/cloud-build) process, for instance by using the pack builder image provided by the Skaffold project:
+
+```
+steps:
+- name: 'gcr.io/k8s-skaffold/pack'
+  entrypoint: 'pack'
+  args: ['build', '--builder=gcr.io/buildpacks/builder', '--publish', 'gcr.io/$PROJECT_ID/sample-go:$COMMIT_SHA']
+```
+
+There is also alpha support for invoking this builder directly [using `gcloud`](https://cloud.google.com/sdk/gcloud/reference/alpha/builds/submit):
+
+```
+gcloud alpha builds submit --pack --tag=gcr.io/my-project/imageg
+```
+
+This command will send the local source directory to Cloud Build, invoke this buildpack builder on it, and publish the resulting image to Google Container Registry.
+
+---
+
 ## Support
 
 Please note that this project is not an officially supported Google product.
