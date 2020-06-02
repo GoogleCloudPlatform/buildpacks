@@ -85,6 +85,10 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/mattn/go-isatty/LICENSE
 
+- package: github.com/morikuni/aec
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/morikuni/aec/LICENSE
+
 - package: github.com/opencontainers/go-digest
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/opencontainers/go-digest/LICENSE.code
