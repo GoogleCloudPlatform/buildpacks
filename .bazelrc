@@ -1,0 +1,6 @@
+# Produce linux-amd64 binaries by default as expected by our container images. 
+# To run tests on the local machine, use `bazel test --platforms="" pkg/...`.
+build --platforms=@io_bazel_rules_go//go/toolchain:linux_amd64
+
+# Allow loading produced container images to other Docker Daemons.
+build --action_env=DOCKER_HOST --action_env=DOCKER_TLS_VERIFY --action_env=DOCKER_CERT_PATH --action_env=DOCKER_API_VERSION
