@@ -76,6 +76,10 @@ func TestAcceptance(t *testing.T) {
 			Name: "gradlew micronaut",
 			App:  "gradlew_micronaut",
 		},
+		{
+			Name: "gradle kotlin",
+			App:  "gradle-kotlin",
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc
