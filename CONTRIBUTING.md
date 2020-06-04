@@ -134,7 +134,7 @@ stack images required by the builder:
 ```bash
 # Optional, pull stack images required by the builder.
 bazel run tools:pull_images gcp base
-# Create a builder image tagged as gcp/base.
+# Create a builder image tagged as <product>/<runtime>.
 bazel build builders/gcp/base:builder.image
 ```
 
