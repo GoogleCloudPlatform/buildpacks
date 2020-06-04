@@ -16,8 +16,8 @@
 # The build.sh script builds stack images for the gcp/base builder.
 #
 # The script builds the following two images:
-#   gcr.io/buildpacks/gcp/run
-#   gcr.io/buildpacks/gcp/build
+#   gcr.io/buildpacks/gcp/run:$tag
+#   gcr.io/buildpacks/gcp/build:$tag
 #
 # It also validates that the build image includes all required licenses.
 #
@@ -31,6 +31,8 @@ set -euo pipefail
 DIR="$(dirname "$1")"
 LICENSES="$2"
 
+TAG="v1"
+
 # Extract licenses.tar because it is symlinked, which Docker does not support.
 readonly TEMP="$(mktemp -d)"
 trap "rm -rf $TEMP" EXIT
@@ -41,7 +43,7 @@ tar xf "$LICENSES" -C "$TEMP/licenses"
 
 echo "> Building gcp/base common image"
 docker build -t "common" - < "${DIR}/parent.Dockerfile"
-echo "> Building gcr.io/buildpacks/gcp/run"
-docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/run" - < "${DIR}/run.Dockerfile"
-echo "> Building gcr.io/buildpacks/gcp/build"
-docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/build" -f "${DIR}/build.Dockerfile" "${TEMP}"
+echo "> Building gcr.io/buildpacks/gcp/run:$TAG"
+docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/run:$TAG" - < "${DIR}/run.Dockerfile"
+echo "> Building gcr.io/buildpacks/gcp/build:$TAG"
+docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/build:$TAG" -f "${DIR}/build.Dockerfile" "${TEMP}"

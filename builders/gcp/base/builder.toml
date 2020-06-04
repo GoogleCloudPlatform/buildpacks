@@ -298,8 +298,8 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 # Currently built with //builders/gcp/base/stack/stack:build.
 [stack]
   id = "google"
-  build-image = "gcr.io/buildpacks/gcp/build"
-  run-image = "gcr.io/buildpacks/gcp/run"
+  build-image = "gcr.io/buildpacks/gcp/build:v1"
+  run-image = "gcr.io/buildpacks/gcp/run:v1"
 
 [lifecycle]
   version = "0.8.0"

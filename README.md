@@ -24,7 +24,7 @@ Google Cloud's container platforms:
 
     ```
     cd sample-go
-    pack build --builder gcr.io/buildpacks/builder sample-go
+    pack build --builder gcr.io/buildpacks/builder:v1 sample-go
     ```
 
 1. Run it with docker, like:
@@ -56,7 +56,7 @@ and should be used by the majority of users. The builder attempts to autodetect
 the language of your source code, and can also build functions compatible with
 the [Google Cloud Function Framework](https://cloud.google.com/functions/docs/functions-framework) by [setting the GOOGLE_FUNCTION_TARGET env var](#configuration).
 
-The generic builder is hosted at `gcr.io/buildpacks/builder`.
+The generic builder is hosted at `gcr.io/buildpacks/builder:v1`.
 
 Supported languages include:
 
@@ -98,7 +98,7 @@ apply the general builder to build the application in the current directory, and
 containerizes the result into a local container image named `<app-name>`.
 
 ```bash
-pack build <app-name> --builder gcr.io/buildpacks/builder
+pack build <app-name> --builder gcr.io/buildpacks/builder:v1
 ```
 
 The application you built can then be executed locally:
@@ -110,7 +110,7 @@ docker run --rm -p 8080:8080 <app-name>
 You can set Cloud Buildpacks as your default:
 
 ```bash
-pack set-default-builder gcr.io/buildpacks/builder
+pack set-default-builder gcr.io/buildpacks/builder:v1
 ```
 
 And you can publish the built image to the cloud directly with [pack](https://github.com/buildpacks/pack):
@@ -125,7 +125,7 @@ The same commands as above can be used to build a function image. The following 
 a function called `myFunction` and produces a local image named `<fn-name>`.
 
 ```bash
-pack build <fn-name> --builder gcr.io/buildpacks/builder --env GOOGLE_FUNCTION_TARGET=myFunction
+pack build <fn-name> --builder gcr.io/buildpacks/builder:v1 --env GOOGLE_FUNCTION_TARGET=myFunction
 ```
 
 ### Extending the run image
@@ -136,7 +136,7 @@ container image.
 
 ```bash
 cat > run.Dockerfile << EOF
-FROM gcr.io/buildpacks/gcp/run
+FROM gcr.io/buildpacks/gcp/run:v1
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends \
   imagemagick && \
@@ -151,7 +151,7 @@ docker build -t my-run-image -f run.Dockerfile .
 To use the custom run image with pack:
 
 ```bash
-pack build my-app --builder gcr.io/buildpacks/builder --run-image my-run-image
+pack build my-app --builder gcr.io/buildpacks/builder:v1 --run-image my-run-image
 ```
 ### Extending the builder image
 
@@ -160,7 +160,7 @@ builder image based on the base builder:
 
 ```bash
 cat > builder.Dockerfile << EOF
-FROM gcr.io/buildpacks/builder
+FROM gcr.io/buildpacks/builder:v1
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends \
   subversion && \
