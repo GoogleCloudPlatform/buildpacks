@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -33,7 +34,7 @@ import (
 const (
 	gradleVersionURL = "https://services.gradle.org/versions/current"
 	gradleLayer      = "gradle"
-	m2Layer          = "m2"
+	cacheLayer       = "cache"
 )
 
 // gradleMetadata represents metadata stored for a gradle layer.
@@ -54,12 +55,23 @@ func detectFn(ctx *gcp.Context) error {
 
 func buildFn(ctx *gcp.Context) error {
 	var repoMeta java.RepoMetadata
-	m2CachedRepo := ctx.Layer(m2Layer)
-	ctx.ReadMetadata(m2CachedRepo, &repoMeta)
-	java.CheckCacheExpiration(ctx, &repoMeta, m2CachedRepo)
+	gradleCachedRepo := ctx.Layer(cacheLayer)
+	ctx.ReadMetadata(gradleCachedRepo, &repoMeta)
+	java.CheckCacheExpiration(ctx, &repoMeta, gradleCachedRepo)
+	ctx.WriteMetadata(gradleCachedRepo, &repoMeta, layers.Cache)
+
+	usr, err := user.Current()
+	if err != nil {
+		return fmt.Errorf("getting current user: %v", err)
+	}
+	// TODO(b/157297290): just use os.Getenv("HOME") when that is consistent with /etc/passwd.
+	homeGradle := filepath.Join(usr.HomeDir, ".gradle")
+	// Symlink the gradle-cache layer into ~/.gradle. If ~/.gradle already exists, delete it first.
+	// If it exists as a symlink, RemoveAll will remove the link, not anything it's linked to.
+	ctx.RemoveAll(homeGradle)
+	ctx.Symlink(gradleCachedRepo.Root, homeGradle)
 
 	var gradle string
-	var err error
 	if ctx.FileExists("gradlew") {
 		gradle = "./gradlew"
 	} else if gradleInstalled(ctx) {
@@ -71,7 +83,7 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	}
 
-	command := []string{gradle, "assemble", "-x", "test", "--project-cache-dir=" + m2CachedRepo.Root}
+	command := []string{gradle, "clean", "assemble", "-x", "test", "--build-cache"}
 
 	if buildArgs := os.Getenv(env.BuildArgs); buildArgs != "" {
 		if strings.Contains(buildArgs, "project-cache-dir") {
@@ -85,8 +97,6 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	ctx.ExecUser(command)
-
-	ctx.WriteMetadata(m2CachedRepo, &repoMeta, layers.Cache)
 
 	return nil
 }
