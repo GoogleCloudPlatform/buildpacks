@@ -203,3 +203,20 @@ docker volume prune
 docker image prune --all --filter until=720h
 ```
 
+## Common Problems
+
+### Testing builder with `pack build` fails
+
+Run `pack build ... -v` to produce more verbose debug output.
+
+### `bazel test` fails on macOS or Windows 
+
+By default, `bazel` builds Go binaries for the current platform.  As GCP Buildpacks
+are targeted to Linux-based container images, our `.bazelrc` configures builds for
+the Linux AMD64 platform by default.
+
+To run tests on the local platform, override the `--plaforms` as
+follows:
+```sh
+bazel test --platforms="" pkg/...
+```
