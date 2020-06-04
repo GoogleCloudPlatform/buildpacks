@@ -1,0 +1,85 @@
+version: 1
+update_configs:
+
+  # dotnet
+  - package_manager: "dotnet:nuget"
+    directory: "/builders/testdata/dotnet/functions/cs_multiple_targets/"
+    update_schedule: "live"
+  - package_manager: "dotnet:nuget"
+    directory: "/builders/testdata/dotnet/functions/cs_single_target/"
+    update_schedule: "live"
+  - package_manager: "dotnet:nuget"
+    directory: "/builders/testdata/dotnet/functions/fs_function/"
+    update_schedule: "live"
+  - package_manager: "dotnet:nuget"
+    directory: "/builders/testdata/dotnet/functions/vb_function/"
+    update_schedule: "live"
+
+  # go
+  - package_manager: "go:modules"
+    directory: "/builders/testdata/go/functions/with_framework"
+    update_schedule: "live"
+  - package_manager: "go:modules"
+    directory: "/builders/testdata/go/functions/with_subdir"
+    update_schedule: "live"
+
+  # java
+  #- package_manager: "java"
+  #  directory: "/"
+  #  update_schedule: "live"
+
+  # nodejs
+  - package_manager: "javascript"
+    directory: "/builders/testdata/nodejs/functions/load_user_dependencies"
+    update_schedule: "live"
+  - package_manager: "javascript"
+    directory: "/builders/testdata/nodejs/functions/with_framework"
+    update_schedule: "live"
+  - package_manager: "javascript"
+    directory: "/builders/testdata/nodejs/functions/with_framework_yarn"
+    update_schedule: "live"
+  - package_manager: "javascript"
+    directory: "/builders/testdata/nodejs/functions/with_gcp_build"
+    update_schedule: "live"
+  - package_manager: "javascript"
+    directory: "/builders/testdata/nodejs/functions/with_gcp_build_yarn"
+    update_schedule: "live"
+  - package_manager: "javascript"
+    directory: "/builders/testdata/nodejs/functions/with_prepare"
+    update_schedule: "live"
+  - package_manager: "javascript"
+    directory: "/builders/testdata/nodejs/functions/with_prepare_yarn"
+    update_schedule: "live"
+  - package_manager: "javascript"
+    directory: "/cmd/nodejs/functions_framework/converter/without-framework"
+    update_schedule: "live"
+
+  # php
+  - package_manager: "php:composer"
+    directory: "/builders/testdata/php/functions/with_framework"
+    update_schedule: "live"
+  - package_manager: "php:composer"
+    directory: "/builders/testdata/php/functions/with_gcp_build"
+    update_schedule: "live"
+  - package_manager: "php:composer"
+    directory: "/cmd/php/functions_framework/converter"
+    update_schedule: "live"
+
+  # python
+  - package_manager: "python"
+    directory: "/builders/testdata/python/functions/with_framework"
+    update_schedule: "live"
+  - package_manager: "python"
+    directory: "/cmd/python/functions_framework/converter"
+    update_schedule: "live"
+
+  # ruby
+  - package_manager: "ruby:bundler"
+    directory: "/builders/testdata/ruby/functions/fail_ruby_version"
+    update_schedule: "live"
+  - package_manager: "ruby:bundler"
+    directory: "/builders/testdata/ruby/functions/with_dependencies"
+    update_schedule: "live"
+  - package_manager: "ruby:bundler"
+    directory: "/builders/testdata/ruby/functions/with_env_var"
+    update_schedule: "live"
