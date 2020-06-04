@@ -226,7 +226,12 @@ func build(b BuildFn) {
 // Exit causes the buildpack to exit with the given exit code and message.
 func (ctx *Context) Exit(exitCode int, be *Error) {
 	if be != nil {
-		ctx.Logf("Failure: " + be.Message)
+		msg := "Failure: "
+		if be.ID != "" {
+			msg += fmt.Sprintf("(ID: %s) ", be.ID)
+		}
+		msg += be.Message
+		ctx.Logf(msg)
 		ctx.saveErrorOutput(be)
 	}
 
