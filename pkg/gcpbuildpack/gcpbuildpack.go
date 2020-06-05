@@ -19,10 +19,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -351,11 +350,9 @@ func (ctx *Context) AddWebProcess(cmd []string) {
 
 // HTTPStatus returns the status code for a url.
 func (ctx *Context) HTTPStatus(url string) int {
-	result := ctx.Exec([]string{"curl", "--head", "-w", "%{http_code}", "-o", "/dev/null", "--silent", "--location", "--retry", "3", url})
-	cs := strings.TrimSpace(result.Stdout)
-	c, err := strconv.Atoi(cs)
+	res, err := http.Head(url)
 	if err != nil {
-		ctx.Exit(1, UserErrorf("Unexpected response code %q from %s.", cs, url))
+		ctx.Exit(1, UserErrorf("making a request to %s", url))
 	}
-	return c
+	return res.StatusCode
 }
