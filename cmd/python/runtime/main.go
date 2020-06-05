@@ -85,6 +85,9 @@ func buildFn(ctx *gcp.Context) error {
 	path := filepath.Join(l.Root, "bin/python3")
 	ctx.Exec([]string{path, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"})
 
+	// Force stdout/stderr streams to be unbuffered so that log messages appear immediately in the logs.
+	ctx.DefaultLaunchEnv(l, "PYTHONUNBUFFERED", "TRUE")
+
 	meta.Version = version
 	ctx.WriteMetadata(l, meta, layers.Build, layers.Cache, layers.Launch)
 
@@ -92,6 +95,7 @@ func buildFn(ctx *gcp.Context) error {
 		Name:    pythonLayer,
 		Version: version,
 	})
+
 	return nil
 }
 
