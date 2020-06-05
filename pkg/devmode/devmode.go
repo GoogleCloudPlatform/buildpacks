@@ -37,11 +37,11 @@ const (
 // SyncRule represents a sync rule.
 type SyncRule struct {
 	// Src is a glob, and assumed to be a path relative to the user's workspace.
-	Src string `json:"src"`
+	Src string `toml:"src"`
 
 	// Dest is the destination root folder where changed files are copied.
 	// Relative directory structure is preserved while copying.
-	Dest string `json:"dest"`
+	Dest string `toml:"dest"`
 }
 
 // Enabled indicates that the builder is running in Development mode.
