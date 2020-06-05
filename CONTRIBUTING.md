@@ -30,7 +30,7 @@ This project follows
 ## Building Buildpacks
 
 The GCP Buildpacks project is implemented in Go and uses
-[Bazel](https:bazel.build/) as the build system. Throughout the document, all
+[Bazel](https://bazel.build/) as the build system. Throughout the document, all
 commands are relative to project root and `bazel` is interchangable
 with `blaze`.
 
@@ -38,10 +38,10 @@ with `blaze`.
 
 Please follow the links below for installation instructions.
 
-* [Bazel](https:docs.bazel.build/versions/master/install.html)
-* [Docker](https:store.docker.com/search?type=edition&offering=community)
-* [pack](https:buildpacks.io/docs/install-pack/)
-* [container-structure-test](https:github.com/GoogleContainerTools/container-structure-test#installation)
+* [Bazel](https://docs.bazel.build/versions/master/install.html)
+* [Docker](https://store.docker.com/search?type=edition&offering=community)
+* [pack](https://buildpacks.io/docs/install-pack/)
+* [container-structure-test](https://github.com/GoogleContainerTools/container-structure-test#installation)
 
 Note: `docker`, `pack`, and `container-structure-test` must to be on `$PATH`
 as interpreted by Bazel, which may differ from system `$PATH`. When using
