@@ -61,15 +61,13 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.WriteMetadata(bl, nil, layers.Launch)
 	outBin := filepath.Join(bl.Root, golang.OutBin)
 
-	pkg, ok := os.LookupEnv(env.Buildable)
-	if !ok {
-		pkg = "."
-	}
+	buildable := goBuildable(ctx)
 
 	// Build the application.
 	cmd := []string{"go", "build"}
 	cmd = append(cmd, goBuildFlags()...)
-	cmd = append(cmd, "-o", outBin, pkg)
+	cmd = append(cmd, "-o", outBin)
+	cmd = append(cmd, buildable)
 	ctx.ExecUserWithParams(gcp.ExecParams{
 		Cmd: cmd,
 		Env: []string{"GOCACHE=" + cl.Root},
@@ -85,7 +83,7 @@ func buildFn(ctx *gcp.Context) error {
 	// Configure the entrypoint and metadata for dev mode.
 	cmd = []string{"go", "run"}
 	cmd = append(cmd, goBuildFlags()...)
-	cmd = append(cmd, pkg)
+	cmd = append(cmd, buildable)
 	devmode.AddFileWatcherProcess(ctx, devmode.Config{
 		Cmd: cmd,
 		Ext: devmode.GoWatchedExtensions,
@@ -93,6 +91,43 @@ func buildFn(ctx *gcp.Context) error {
 	devmode.AddSyncMetadata(ctx, devmode.GoSyncRules)
 
 	return nil
+}
+
+func goBuildable(ctx *gcp.Context) string {
+	// The user tells us what to build.
+	if buildable, ok := os.LookupEnv(env.Buildable); ok {
+		return buildable
+	}
+
+	// We have to guess which package/file to build.
+	// `go build` will by default build the `.` package
+	// but we try to be smarter by searching for a valid buildable.
+	buildables := searchBuildables(ctx)
+	if len(buildables) == 1 {
+		return buildables[0]
+	}
+
+	// Found no buildable or multiple buildables. Let Go build the default package.
+	return "."
+}
+
+// searchBuildables searches the source for all the files that contain
+// a `main()` entrypoint.
+func searchBuildables(ctx *gcp.Context) []string {
+	result := ctx.Exec([]string{"go", "list", "-f", `{{if eq .Name "main"}}{{.Dir}}{{end}}`, "./..."})
+
+	var buildables []string
+
+	for _, dir := range strings.Fields(result.Stdout) {
+		rel, err := filepath.Rel(ctx.ApplicationRoot(), dir)
+		if err != nil {
+			ctx.Exit(1, gcp.InternalErrorf("unable to find relative path for %q", dir))
+		}
+
+		buildables = append(buildables, "./"+rel)
+	}
+
+	return buildables
 }
 
 func goBuildFlags() []string {

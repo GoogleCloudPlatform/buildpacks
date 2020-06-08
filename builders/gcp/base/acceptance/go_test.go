@@ -44,7 +44,13 @@ func TestAcceptanceGo(t *testing.T) {
 		{
 			Name:       "Go.mod package",
 			App:        "go/gomod_package",
-			Env:        []string{"GOOGLE_BUILDABLE=cmd/main.go"},
+			MustUse:    []string{goRuntime, goBuild},
+			MustNotUse: []string{goPath},
+		},
+		{
+			Name:       "Multiple entrypoints",
+			App:        "go/entrypoints",
+			Env:        []string{"GOOGLE_BUILDABLE=cmd/first/main.go"},
 			MustUse:    []string{goRuntime, goBuild},
 			MustNotUse: []string{goPath},
 		},
@@ -107,15 +113,15 @@ func TestFailuresGo(t *testing.T) {
 		},
 		{
 			Name:      "no Go files in root (Go 1.12)",
-			App:       "go/gomod_package",
+			App:       "go/entrypoints",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=1.12"},
-			MustMatch: `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built.`,
+			MustMatch: `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built`,
 		},
 		{
 			Name:      "no Go files in root (Go 1.14)",
-			App:       "go/gomod_package",
+			App:       "go/entrypoints",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=1.14"},
-			MustMatch: `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built.`,
+			MustMatch: `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built`,
 		},
 	}
 
