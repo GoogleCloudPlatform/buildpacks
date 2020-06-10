@@ -61,13 +61,13 @@ The generic builder is hosted at `gcr.io/buildpacks/builder:v1`.
 Supported languages include:
 
 
-|Runtime       |App Support | Function Support  |
-|--------------|:----------:|:-----------------:|
-| Go 1.10 +    | ✓          | ✓                 |
-| Node.js 10 + | ✓          | ✓                 |
-| Python 3.7 + | ✓          | ✓                 |
-| Java 8, 11   | ✓          |                   |
-| .Net 3 +     | ✓          |                   |
+|Runtime        |App Support | Function Support  |
+|---------------|:----------:|:-----------------:|
+| Go 1.10 +     | ✓          | ✓                 |
+| Node.js 10 +  | ✓          | ✓                 |
+| Python 3.7 +  | ✓          | ✓                 |
+| Java 8, 11    | ✓          |                   |
+| .NET Core 3 + | ✓          | ✓                 |
 
 ## App Engine and Cloud Function Builders and Buildpacks
 
