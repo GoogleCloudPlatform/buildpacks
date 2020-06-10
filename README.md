@@ -61,13 +61,13 @@ The generic builder is hosted at `gcr.io/buildpacks/builder:v1`.
 Supported languages include:
 
 
-|Runtime        |App Support | Function Support  |
-|---------------|:----------:|:-----------------:|
-| Go 1.10 +     | ✓          | ✓                 |
-| Node.js 10 +  | ✓          | ✓                 |
-| Python 3.7 +  | ✓          | ✓                 |
-| Java 8, 11    | ✓          |                   |
-| .NET Core 3 + | ✓          | ✓                 |
+|Runtime            |App Support | Function Support  |
+|-------------------|:----------:|:-----------------:|
+| Go 1.10 +         | ✓          | ✓                 |
+| Node.js 10 +      | ✓          | ✓                 |
+| Python 3.7 +      | ✓          | ✓                 |
+| Java 8, 11        | ✓          |                   |
+| .NET Core 3.1 +   | ✓          | ✓                 |
 
 ## App Engine and Cloud Function Builders and Buildpacks
 
@@ -191,9 +191,9 @@ variables** that are supported across runtimes.
   * *(Only applicable to buildpacks install language runtime or toolchain.)*
   * **Example:** `nodejs` will cause the nodejs/runtime buildpack to opt-in.
 * `GOOGLE_RUNTIME_VERSION`
-  * If specified, overrides the runtime version to install.
+  * If specified, overrides the runtime version to install. In .NET, overrides the .NET SDK version to install.
   * *(Only applicable to buildpacks install language runtime or toolchain.)*
-  * **Example:** `13.7.0` for Node.js, `1.14.1` for Go. `8` for Java.
+  * **Example:** `13.7.0` for Node.js, `1.14.1` for Go, `8` for Java, `3.1.301` for .NET.
 * `GOOGLE_BUILDABLE`
   * Specifies path to a buildable unit.
   * *(Only applicable to compiled languages.)*
