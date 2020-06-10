@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -61,7 +62,10 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.WriteMetadata(bl, nil, layers.Launch)
 	outBin := filepath.Join(bl.Root, golang.OutBin)
 
-	buildable := goBuildable(ctx)
+	buildable, err := goBuildable(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to find a valid buildable: %w", err)
+	}
 
 	// Build the application.
 	cmd := []string{"go", "build"}
@@ -93,27 +97,31 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
-func goBuildable(ctx *gcp.Context) string {
+func goBuildable(ctx *gcp.Context) (string, error) {
 	// The user tells us what to build.
 	if buildable, ok := os.LookupEnv(env.Buildable); ok {
-		return buildable
+		return buildable, nil
 	}
 
 	// We have to guess which package/file to build.
 	// `go build` will by default build the `.` package
 	// but we try to be smarter by searching for a valid buildable.
-	buildables := searchBuildables(ctx)
+	buildables, err := searchBuildables(ctx)
+	if err != nil {
+		return "", err
+	}
+
 	if len(buildables) == 1 {
-		return buildables[0]
+		return buildables[0], nil
 	}
 
 	// Found no buildable or multiple buildables. Let Go build the default package.
-	return "."
+	return ".", nil
 }
 
 // searchBuildables searches the source for all the files that contain
 // a `main()` entrypoint.
-func searchBuildables(ctx *gcp.Context) []string {
+func searchBuildables(ctx *gcp.Context) ([]string, error) {
 	result := ctx.Exec([]string{"go", "list", "-f", `{{if eq .Name "main"}}{{.Dir}}{{end}}`, "./..."})
 
 	var buildables []string
@@ -121,13 +129,13 @@ func searchBuildables(ctx *gcp.Context) []string {
 	for _, dir := range strings.Fields(result.Stdout) {
 		rel, err := filepath.Rel(ctx.ApplicationRoot(), dir)
 		if err != nil {
-			ctx.Exit(1, gcp.InternalErrorf("unable to find relative path for %q", dir))
+			return nil, fmt.Errorf("unable to find relative path for %q: %w", dir, err)
 		}
 
 		buildables = append(buildables, "./"+rel)
 	}
 
-	return buildables
+	return buildables, nil
 }
 
 func goBuildFlags() []string {
