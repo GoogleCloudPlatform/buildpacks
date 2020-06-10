@@ -25,6 +25,7 @@ go_test(
         "//builders/gae/java11:builder.tar",
         "//builders/testdata:javatestdata.tgz",
     ],
+    flaky = 1,
     embed = [":acceptance"],
     rundir = ".",
     tags = [
