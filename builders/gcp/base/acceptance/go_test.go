@@ -61,11 +61,12 @@ func TestAcceptanceGo(t *testing.T) {
 			MustNotUse: []string{goPath},
 		},
 		{
-			Name:           "simple Go application (Dev Mode)",
-			App:            "go/simple",
-			Env:            []string{"GOOGLE_DEVMODE=1"},
-			MustUse:        []string{goRuntime, goBuild, goPath},
-			FilesMustExist: []string{"/layers/google.go.runtime/go/bin/go", "/workspace/main.go"},
+			Name:                "simple Go application (Dev Mode)",
+			App:                 "go/simple",
+			Env:                 []string{"GOOGLE_DEVMODE=1"},
+			MustUse:             []string{goRuntime, goBuild, goPath},
+			FilesMustExist:      []string{"/layers/google.go.runtime/go/bin/go", "/workspace/main.go"},
+			MustRebuildOnChange: "/workspace/main.go",
 		},
 		{
 			Name:    "Go runtime version respected",

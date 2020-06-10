@@ -143,6 +143,8 @@ type Test struct {
 	MustOutputCached []string
 	// MustNotOutputCached specifies strings to not be found in the build logs of a cached build.
 	MustNotOutputCached []string
+	// MustRebuildOnChange specifies a file that, when changed in Dev Mode, triggers a rebuild.
+	MustRebuildOnChange string
 }
 
 // TestApp builds and a single application and verifies that it runs and handles requests.
@@ -177,7 +179,7 @@ func TestApp(t *testing.T, builder string, cfg Test) {
 			buildApp(t, cfg.App, image, builder, env, cache, cfg)
 			verifyBuildMetadata(t, image, cfg.MustUse, cfg.MustNotUse)
 			verifyStructure(t, cfg.App, image, builder, cache, checks)
-			invokeApp(t, image, cfg.Path, cfg.RunEnv, cache)
+			invokeApp(t, cfg, image, cache)
 		})
 	}
 }
@@ -228,20 +230,64 @@ func TestBuildFailure(t *testing.T, builder string, cfg FailureTest) {
 }
 
 // invokeApp performs an HTTP GET on the app.
-func invokeApp(t *testing.T, image, pathname string, env []string, cache bool) {
+func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 	t.Helper()
 
-	host, port, cleanup := startContainer(t, image, env, cache)
+	containerID, host, port, cleanup := startContainer(t, image, cfg.RunEnv, cache)
 	defer cleanup()
 
+	// Check that the application responds with `PASS`.
 	start := time.Now()
 
+	body, status, statusCode, err := invokeHTTP(host, port, cfg.Path)
+	if err != nil {
+		t.Fatalf("Unable to invoke app: %v", err)
+	}
+
+	t.Logf("Got response: status %v, body %q (in %s)", status, body, time.Since(start))
+
+	if want := http.StatusOK; statusCode != want {
+		t.Errorf("Unexpected status code: got %d, want %d", statusCode, want)
+	}
+	if want := "PASS"; !strings.HasSuffix(body, want) {
+		t.Errorf("Response body does not contain suffix: got %q, want %q", body, want)
+	}
+
+	if cfg.MustRebuildOnChange != "" {
+		// Modify a source file in the running container.
+		if _, err := runOutput("docker", "exec", containerID, "sed", "-i", "s/PASS/UPDATED/", cfg.MustRebuildOnChange); err != nil {
+			t.Fatalf("Unable to modify a source file in the running container %q: %v", containerID, err)
+		}
+
+		// Check that the application responds with `UPDATED`.
+		for try := 10; try >= 1; try-- {
+			time.Sleep(1 * time.Second)
+
+			body, _, _, err := invokeHTTP(host, port, cfg.Path)
+			if err != nil {
+				continue
+			}
+
+			want := "UPDATED"
+			if body == want {
+				break
+			}
+			if try == 1 {
+				t.Errorf("Wrong body: got %q, want %q", body, want)
+			}
+		}
+	}
+}
+
+// invokeHTTP makes an http call to a given host:port/path. Returns the body, status
+// and statusCode of the response.
+func invokeHTTP(host string, port int, path string) (string, string, int, error) {
 	var res *http.Response
 	var err error
 
 	// Try to connect the the container until it succeeds (up to 60s).
 	for retry := 0; retry < 600; retry++ {
-		res, err = http.Get(fmt.Sprintf("http://%s:%d%s", host, port, pathname))
+		res, err = http.Get(fmt.Sprintf("http://%s:%d%s", host, port, path))
 		if err == nil {
 			break
 		}
@@ -251,25 +297,17 @@ func invokeApp(t *testing.T, image, pathname string, env []string, cache bool) {
 
 	// The connection never succeeded.
 	if err != nil {
-		t.Fatalf("Error making request: %v", err)
+		return "", "", 0, fmt.Errorf("error making request: %w", err)
 	}
 
 	// The connection was a success.
 	bytes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		t.Fatalf("Error reading body: %v", err)
+		return "", "", 0, fmt.Errorf("error reading body: %w", err)
 	}
 	res.Body.Close()
 
-	body := strings.TrimSpace(string(bytes))
-	t.Logf("Got response: status %v, body %q (in %s)", res.Status, body, time.Since(start))
-
-	if want := http.StatusOK; res.StatusCode != want {
-		t.Errorf("Unexpected status code: got %d, want %d", res.StatusCode, want)
-	}
-	if want := "PASS"; !strings.HasSuffix(body, want) {
-		t.Errorf("Response body does not contain suffix: got %q, want %q", body, want)
-	}
+	return strings.TrimSpace(string(bytes)), res.Status, res.StatusCode, nil
 }
 
 // randString generates a random string of length n.
@@ -688,8 +726,8 @@ func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []strin
 }
 
 // startContainer starts a container for the given app and exposes port 8080.
-// The function returns the host and port at which the app is reachable and a cleanup funciton.
-func startContainer(t *testing.T, image string, env []string, cache bool) (string, int, func()) {
+// The function returns the containerID, the host and port at which the app is reachable and a cleanup function.
+func startContainer(t *testing.T, image string, env []string, cache bool) (string, string, int, func()) {
 	t.Helper()
 
 	// Start docker container and get its id.
@@ -717,7 +755,7 @@ func startContainer(t *testing.T, image string, env []string, cache bool) (strin
 		port = hostPort(t, id)
 	}
 
-	return host, port, func() {
+	return id, host, port, func() {
 		if _, err := runOutput("docker", "stop", id); err != nil {
 			t.Logf("Failed to stop container: %v", err)
 		}

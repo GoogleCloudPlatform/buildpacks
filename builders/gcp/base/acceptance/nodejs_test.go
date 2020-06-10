@@ -34,10 +34,12 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			MustUse: []string{nodeRuntime, nodeNPM},
 		},
 		{
-			Name:    "simple application (Dev Mode)",
-			App:     "nodejs/simple",
-			Env:     []string{"GOOGLE_DEVMODE=1"},
-			MustUse: []string{nodeRuntime, nodeNPM},
+			Name:                "simple application (Dev Mode)",
+			App:                 "nodejs/simple",
+			Env:                 []string{"GOOGLE_DEVMODE=1"},
+			MustUse:             []string{nodeRuntime, nodeNPM},
+			FilesMustExist:      []string{"/workspace/server.js"},
+			MustRebuildOnChange: "/workspace/server.js",
 		},
 		{
 			Name:    "simple application (custom entrypoint)",
