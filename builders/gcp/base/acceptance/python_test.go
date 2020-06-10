@@ -100,6 +100,11 @@ func TestFailuresPython(t *testing.T) {
 			App:       "python/empty_version",
 			MustMatch: ".python-version exists but does not specify a version",
 		},
+		{
+			Name:      "missing entrypoint",
+			App:       "python/missing_entrypoint",
+			MustMatch: `for Python, an entrypoint must be manually set, either with "GOOGLE_ENTRYPOINT" env var or by creating a "Procfile" file`,
+		},
 	}
 
 	for _, tc := range testCases {
