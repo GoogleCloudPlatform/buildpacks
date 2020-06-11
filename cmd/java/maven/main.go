@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
@@ -59,7 +60,11 @@ func buildFn(ctx *gcp.Context) error {
 	m2CachedRepo := ctx.Layer(m2Layer)
 	ctx.ReadMetadata(m2CachedRepo, &repoMeta)
 	java.CheckCacheExpiration(ctx, &repoMeta, m2CachedRepo)
-	ctx.WriteMetadata(m2CachedRepo, &repoMeta, layers.Cache)
+	lf := []layers.Flag{layers.Cache}
+	if devmode.Enabled(ctx) {
+		lf = append(lf, layers.Launch)
+	}
+	ctx.WriteMetadata(m2CachedRepo, &repoMeta, lf...)
 
 	usr, err := user.Current()
 	if err != nil {
@@ -69,6 +74,8 @@ func buildFn(ctx *gcp.Context) error {
 	homeM2 := filepath.Join(usr.HomeDir, ".m2")
 	// Symlink the m2 layer into ~/.m2. If ~/.m2 already exists, delete it first.
 	// If it exists as a symlink, RemoveAll will remove the link, not anything it's linked to.
+	// We can't just use `-Dmaven.repo.local`. It does set the path to `m2/repo` but it fails
+	// to set the path to `m2/wrapper` which is used by mvnw to download Maven.
 	ctx.RemoveAll(homeM2)
 	ctx.Symlink(m2CachedRepo.Root, homeM2)
 
@@ -92,10 +99,15 @@ func buildFn(ctx *gcp.Context) error {
 		}
 		command = append(command, buildArgs)
 	}
-	if !ctx.Debug() {
+	if !ctx.Debug() && !devmode.Enabled(ctx) {
 		command = append(command, "--quiet")
 	}
 	ctx.ExecUser(command)
+
+	// Store the build steps in a script to be run on each file change.
+	if devmode.Enabled(ctx) {
+		devmode.WriteMavenBuildScript(ctx, m2CachedRepo.Root, command)
+	}
 
 	return nil
 }
@@ -131,6 +143,12 @@ func installMaven(ctx *gcp.Context) (string, error) {
 	ctx.Exec([]string{"bash", "-c", command})
 
 	meta.Version = mavenVersion
-	ctx.WriteMetadata(mvnl, meta, layers.Cache)
+
+	lf := []layers.Flag{layers.Cache}
+	if devmode.Enabled(ctx) {
+		lf = append(lf, layers.Launch)
+	}
+	ctx.WriteMetadata(mvnl, meta, lf...)
+
 	return filepath.Join(mvnl.Root, "bin", "mvn"), nil
 }

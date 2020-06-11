@@ -17,7 +17,9 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 )
@@ -37,6 +39,20 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("finding executable jar: %w", err)
 	}
 
-	ctx.AddWebProcess([]string{"java", "-jar", executable})
+	command := []string{"java", "-jar", executable}
+
+	// Configure the entrypoint and metadata for dev mode.
+	if devmode.Enabled(ctx) {
+		devmode.AddSyncMetadata(ctx, devmode.JavaSyncRules)
+		devmode.AddFileWatcherProcess(ctx, devmode.Config{
+			Cmd: []string{".devmode_rebuild.sh && " + strings.Join(command, " ")},
+			Ext: devmode.JavaWatchedExtensions,
+		})
+
+		return nil
+	}
+
+	// Configure the entrypoint for production.
+	ctx.AddWebProcess(command)
 	return nil
 }

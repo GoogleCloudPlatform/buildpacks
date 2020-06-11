@@ -9,6 +9,7 @@ go_library(
         "devmode.go",
         "dotnet.go",
         "go.go",
+        "java.go",
         "nodejs.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
@@ -16,6 +17,7 @@ go_library(
         "//cmd/config/clear_source:__subpackages__",
         "//cmd/dotnet:__subpackages__",
         "//cmd/go:__subpackages__",
+        "//cmd/java:__subpackages__",
         "//cmd/nodejs:__subpackages__",
     ],
     deps = [

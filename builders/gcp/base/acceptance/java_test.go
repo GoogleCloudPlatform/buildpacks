@@ -61,6 +61,13 @@ func TestAcceptanceJava(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 		{
+			Name:                "Java maven (Dev Mode)",
+			App:                 "java/hello_quarkus_maven",
+			Env:                 []string{"GOOGLE_DEVMODE=1"},
+			FilesMustExist:      []string{"/layers/google.java.maven/m2", "/layers/google.java.maven/m2/bin/.devmode_rebuild.sh"},
+			MustRebuildOnChange: "/workspace/src/main/java/hello/Hello.java",
+		},
+		{
 			Name:       "Java gradle",
 			App:        "java/gradle_micronaut",
 			Env:        []string{"GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
