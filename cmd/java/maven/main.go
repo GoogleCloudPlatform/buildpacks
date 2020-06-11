@@ -144,7 +144,7 @@ func installMaven(ctx *gcp.Context) (string, error) {
 
 	meta.Version = mavenVersion
 
-	lf := []layers.Flag{layers.Cache}
+	lf := []layers.Flag{layers.Cache, layers.Build}
 	if devmode.Enabled(ctx) {
 		lf = append(lf, layers.Launch)
 	}

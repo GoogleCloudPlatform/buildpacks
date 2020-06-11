@@ -41,6 +41,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "java/entrypoint.tgz"
 
 [[buildpacks]]
+  id = "google.java.functions-framework"
+  uri = "java/functions_framework.tgz"
+
+[[buildpacks]]
   id = "google.java.gradle"
   uri = "java/gradle.tgz"
 
@@ -159,6 +163,18 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 ########
 # Java #
 ########
+
+# Functions have a separate group because entrypoint not supported.
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.maven"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.functions-framework"
 
 # Maven applications.
 [[order]]
