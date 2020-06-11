@@ -1,0 +1,9 @@
+dist: xenial
+language: go
+go: "1.14.x"
+branches:
+  only:
+    - master
+
+script:
+  - echo "Hello, World!"
