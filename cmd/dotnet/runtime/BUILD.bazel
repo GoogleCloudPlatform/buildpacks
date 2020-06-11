@@ -23,9 +23,6 @@ go_binary(
         "-s",
         "-w",
     ],
-    visibility = [
-        "//cmd/config/entrypoint:__pkg__",
-    ],
     deps = [
         "//pkg/devmode",
         "//pkg/dotnet",

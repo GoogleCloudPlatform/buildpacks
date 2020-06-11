@@ -29,9 +29,6 @@ go_binary(
         "-s",
         "-w",
     ],
-    visibility = [
-        "//cmd/config/entrypoint:__pkg__",
-    ],
     deps = [
         "//pkg/env",
         "//pkg/gcpbuildpack",
