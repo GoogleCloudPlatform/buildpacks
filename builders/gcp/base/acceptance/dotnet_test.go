@@ -61,10 +61,12 @@ func TestAcceptanceDotNet(t *testing.T) {
 			FilesMustNotExist: []string{sdk},
 		},
 		{
-			Name:    "simple dotnet app (Dev Mode)",
-			App:     "dotnet/simple",
-			Env:     []string{"GOOGLE_DEVMODE=1"},
-			MustUse: []string{dotnetRuntime, dotnetPublish},
+			Name:                "simple dotnet app (Dev Mode)",
+			App:                 "dotnet/simple",
+			Env:                 []string{"GOOGLE_DEVMODE=1"},
+			MustUse:             []string{dotnetRuntime, dotnetPublish},
+			FilesMustExist:      []string{sdk, "/workspace/Startup.cs"},
+			MustRebuildOnChange: "/workspace/Startup.cs",
 		},
 		{
 			Name:       "dotnet selected via GOOGLE_RUNTIME",
