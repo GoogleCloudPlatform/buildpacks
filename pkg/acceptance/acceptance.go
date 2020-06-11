@@ -526,7 +526,7 @@ func stackImagesFromConfig(path string) (string, string, error) {
 func buildCommand(app, image, builder string, env map[string]string, cache bool) []string {
 	src := filepath.Join(testData, app)
 	// Pack command to build app.
-	args := strings.Fields(fmt.Sprintf("%s build %s --builder %s --path %s --no-pull --verbose --no-color", packBin, image, builder, src))
+	args := strings.Fields(fmt.Sprintf("%s build %s --builder %s --path %s --no-pull --verbose --no-color --trust-builder", packBin, image, builder, src))
 	if !cache {
 		args = append(args, "--clear-cache")
 	}
