@@ -99,14 +99,16 @@ func buildFn(ctx *gcp.Context) error {
 		}
 		command = append(command, buildArgs)
 	}
+
 	if !ctx.Debug() && !devmode.Enabled(ctx) {
 		command = append(command, "--quiet")
 	}
+
 	ctx.ExecUser(command)
 
 	// Store the build steps in a script to be run on each file change.
 	if devmode.Enabled(ctx) {
-		devmode.WriteMavenBuildScript(ctx, m2CachedRepo.Root, command)
+		devmode.WriteBuildScript(ctx, m2CachedRepo.Root, "~/.m2", command)
 	}
 
 	return nil

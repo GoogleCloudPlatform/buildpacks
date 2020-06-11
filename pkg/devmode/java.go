@@ -28,14 +28,14 @@ var (
 	// A change to any of those files triggers a rebuild/restart of the application.
 	JavaWatchedExtensions = []string{"java", "kt", "scala", "groovy", "clj"}
 
-	// mavenBuildScriptTmpl is the template for a maven build script that runs on each file change in dev mode.
-	mavenBuildScriptTmpl = template.Must(template.New("script").Parse(`#!/bin/bash
+	// buildScriptTmpl is the template for a build script that runs on each file change in dev mode.
+	buildScriptTmpl = template.Must(template.New("script").Parse(`#!/bin/bash
 set -e
 
-if [ ! -L ~/.m2 ]; then
+if [ ! -L {{ .dest }} ]; then
   # The first time the build script runs, it only creates a symlink to the m2 repo.
   # It should skip the build because the application is already built
-	ln -s "{{ .m2Layer }}" ~/.m2
+	ln -s {{ .src }} {{ .dest }}
 	exit
 fi
 
@@ -60,15 +60,16 @@ func JavaSyncRules(dest string) []SyncRule {
 	return rules
 }
 
-// WriteMavenBuildScript writes the build steps to a script to be run on each file change in dev mode.
-func WriteMavenBuildScript(ctx *gcp.Context, m2Layer string, command []string) {
+// WriteBuildScript writes the build steps to a script to be run on each file change in dev mode.
+func WriteBuildScript(ctx *gcp.Context, layerSrc, dest string, command []string) {
 	var script bytes.Buffer
-	mavenBuildScriptTmpl.Execute(&script, map[string]string{
-		"m2Layer":      m2Layer,
+	buildScriptTmpl.Execute(&script, map[string]string{
+		"src":          layerSrc,
+		"dest":         dest,
 		"buildCommand": strings.Join(command, " "),
 	})
 
-	bin := filepath.Join(m2Layer, "bin")
+	bin := filepath.Join(layerSrc, "bin")
 	ctx.MkdirAll(bin, 0755)
 	ctx.WriteFile(filepath.Join(bin, ".devmode_rebuild.sh"), script.Bytes(), 0744)
 }

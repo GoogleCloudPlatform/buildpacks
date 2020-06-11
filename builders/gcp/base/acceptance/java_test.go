@@ -75,6 +75,13 @@ func TestAcceptanceJava(t *testing.T) {
 			MustNotUse: []string{javaEntrypoint},
 		},
 		{
+			Name:                "Java gradle (Dev Mode)",
+			App:                 "java/gradle_micronaut",
+			Env:                 []string{"GOOGLE_DEVMODE=1"},
+			FilesMustExist:      []string{"/layers/google.java.gradle/cache", "/layers/google.java.gradle/cache/bin/.devmode_rebuild.sh"},
+			MustRebuildOnChange: "/workspace/src/main/java/example/HelloController.java",
+		},
+		{
 			Name:       "Maven build args",
 			App:        "java/maven_testing_profile",
 			Env:        []string{"GOOGLE_BUILD_ARGS=-Dnative=false"},

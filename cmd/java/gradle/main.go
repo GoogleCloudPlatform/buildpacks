@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
@@ -58,7 +59,11 @@ func buildFn(ctx *gcp.Context) error {
 	gradleCachedRepo := ctx.Layer(cacheLayer)
 	ctx.ReadMetadata(gradleCachedRepo, &repoMeta)
 	java.CheckCacheExpiration(ctx, &repoMeta, gradleCachedRepo)
-	ctx.WriteMetadata(gradleCachedRepo, &repoMeta, layers.Cache)
+	lf := []layers.Flag{layers.Cache}
+	if devmode.Enabled(ctx) {
+		lf = append(lf, layers.Launch)
+	}
+	ctx.WriteMetadata(gradleCachedRepo, &repoMeta, lf...)
 
 	usr, err := user.Current()
 	if err != nil {
@@ -92,11 +97,16 @@ func buildFn(ctx *gcp.Context) error {
 		command = append(command, buildArgs)
 	}
 
-	if !ctx.Debug() {
+	if !ctx.Debug() && !devmode.Enabled(ctx) {
 		command = append(command, "--quiet")
 	}
 
 	ctx.ExecUser(command)
+
+	// Store the build steps in a script to be run on each file change.
+	if devmode.Enabled(ctx) {
+		devmode.WriteBuildScript(ctx, gradleCachedRepo.Root, "~/.gradle", command)
+	}
 
 	return nil
 }
