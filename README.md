@@ -269,8 +269,6 @@ variables. These environment variables should be specified without a
 
 * **General**:
   * Caching is project-specific, not cross-project. Dependencies, such as the JDK, cannot be shared across projects and need to be redownloaded on first build.
-* **Java**:
-  * It is not possible to pass arguments to the maven command (for example, a specific Maven profile)
 * **Node**:
   * Custom build steps (e.g. executing the "build" script of package.json) are not supported.
   * Existing `node_modules` directory is deleted and dependencies reinstalled using package.json and a lockfile if present.
