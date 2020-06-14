@@ -67,9 +67,17 @@ func buildFn(ctx *gcp.Context) error {
 
 	ctx.SetFunctionsEnvVars(layer)
 
-	ctx.AddWebProcess([]string{"java", "-jar", filepath.Join(layer.Root, "functions-framework.jar"), "--classpath", classpath})
+	launcherSource := filepath.Join(ctx.BuildpackRoot(), "launch.sh")
+	launcherTarget := filepath.Join(layer.Root, "launch.sh")
+	createLauncher(ctx, launcherSource, launcherTarget)
+	ctx.AddWebProcess([]string{launcherTarget, "java", "-jar", filepath.Join(layer.Root, "functions-framework.jar"), "--classpath", classpath})
 
 	return nil
+}
+
+func createLauncher(ctx *gcp.Context, launcherSource, launcherTarget string) {
+	launcherContents := ctx.ReadFile(launcherSource)
+	ctx.WriteFile(launcherTarget, launcherContents, 0755)
 }
 
 // classpath determines what the --classpath argument should be. This tells the Functions Framework where to find
