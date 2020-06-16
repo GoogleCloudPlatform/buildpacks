@@ -35,6 +35,13 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
+			name: ".mvn/extensions.xml",
+			files: map[string]string{
+				".mvn/extensions.xml": "",
+			},
+			want: 0,
+		},
+		{
 			name: "build.gradle",
 			files: map[string]string{
 				"build.gradle": "",
