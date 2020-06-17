@@ -61,6 +61,6 @@ images:
   - 'gcr.io/$PROJECT_ID/gcp/build:v1'
   - 'gcr.io/$PROJECT_ID/gcp/build:$COMMIT_SHA'
 
-timeout: '2400s'
+timeout: '3600s'
 options:
   machineType: 'N1_HIGHCPU_8'
