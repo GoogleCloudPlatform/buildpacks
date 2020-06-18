@@ -18,10 +18,10 @@ update_configs:
   # go
   - package_manager: "go:modules"
     directory: "/builders/testdata/go/functions/with_framework"
-    update_schedule: "live"
+    update_schedule: "daily"
   - package_manager: "go:modules"
     directory: "/builders/testdata/go/functions/with_subdir"
-    update_schedule: "live"
+    update_schedule: "daily"
 
   # java
   #- package_manager: "java"
