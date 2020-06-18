@@ -56,6 +56,9 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
+	// Check for syntax errors.
+	ctx.ExecUserWithParams(gcp.ExecParams{Cmd: []string{"python3", "-m", "compileall", "."}}, gcp.UserErrorKeepStdoutTail)
+
 	// Determine if the function has dependency on functions-framework.
 	hasFrameworkDependency := false
 	if ctx.FileExists("requirements.txt") {
@@ -79,8 +82,6 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	ctx.SetFunctionsEnvVars(l)
-
-	ctx.ExecUser([]string{"python3", "-m", "compileall", "."})
 	ctx.AddWebProcess([]string{"functions-framework"})
 	return nil
 }
