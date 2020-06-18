@@ -249,7 +249,6 @@ variables. These environment variables should be specified without a
 * **Java**
   * `MAVEN_OPTS`, see [documentation](https://maven.apache.org/configure.html).
   * **Example:** `MAVEN_OPTS=-Xms256m -Xmx512m` passes these flags to the JVM running Maven.
-  * **Example:** `MAVEN_OPTS=--add-opens java.base/java.lang=ALL-UNNAMED` to suppress "illegal reflective access" warnings from Maven.
   * `GRADLE_OPTS`, see [documentation](https://docs.gradle.org/current/userguide/build_environment.html#sec:gradle_configuration_properties).
   * **Example:** `GRADLE_OPTS=-Xms256m -Xmx512m` passes these flags to the JVM running Gradle.
 * **Node.js**

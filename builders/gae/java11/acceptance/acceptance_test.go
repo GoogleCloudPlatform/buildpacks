@@ -29,70 +29,56 @@ func TestAcceptance(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
-	// In general we fail if we see the string WARNING, because it should be possible to have a project that produces no warnings.
-	// In a few cases that is hard and we omit the check.
 	testCases := []acceptance.Test{
 		{
-			Name:          "custom entrypoint",
-			App:           "custom_entrypoint",
-			Env:           []string{"GOOGLE_ENTRYPOINT=java Main.java"},
-			MustNotOutput: []string{"WARNING"},
+			Name: "custom entrypoint",
+			App:  "custom_entrypoint",
+			Env:  []string{"GOOGLE_ENTRYPOINT=java Main.java"},
 		},
 		{
-			Name:          "single jar",
-			App:           "single_jar",
-			MustNotOutput: []string{"WARNING"},
+			Name: "single jar",
+			App:  "single_jar",
 		},
 		{
-			Name:          "hello quarkus maven",
-			App:           "hello_quarkus_maven",
-			MustNotOutput: []string{"WARNING"},
+			Name: "hello quarkus maven",
+			App:  "hello_quarkus_maven",
 		},
 		{
-			Name:          "hello springboot maven",
-			App:           "springboot-helloworld",
-			MustNotOutput: []string{"WARNING"},
+			Name: "hello springboot maven",
+			App:  "springboot-helloworld",
 		},
 		{
-			Name:          "hello sparkjava maven",
-			App:           "sparkjava-helloworld",
-			MustNotOutput: []string{"WARNING"},
+			Name: "hello sparkjava maven",
+			App:  "sparkjava-helloworld",
 		},
 		{
 			Name: "hello micronaut maven",
 			App:  "micronaut-helloworld",
-			// We don't check for WARNING, because we get a bunch of them from maven-shade-plugin that would be hard to eliminate.
 		},
 		{
-			Name:          "hello vertx maven",
-			App:           "vertx-helloworld",
-			MustNotOutput: []string{"WARNING"},
+			Name: "hello vertx maven",
+			App:  "vertx-helloworld",
 		},
 		{
-			Name:          "http server",
-			App:           "http-server",
-			MustNotOutput: []string{"WARNING"},
+			Name: "http server",
+			App:  "http-server",
 		},
 		{
 			Name: "Ktor Kotlin maven mwnw",
 			App:  "ktordemo",
 			Env:  []string{"GOOGLE_ENTRYPOINT=java -jar target/ktor-0.0.1-jar-with-dependencies.jar"},
-			// We don't check for WARNING, because our project-artifact-generated code produces several of them.
 		},
 		{
-			Name:          "gradle micronaut",
-			App:           "gradle_micronaut",
-			MustNotOutput: []string{"WARNING"},
+			Name: "gradle micronaut",
+			App:  "gradle_micronaut",
 		},
 		{
-			Name:          "gradlew micronaut",
-			App:           "gradlew_micronaut",
-			MustNotOutput: []string{"WARNING"},
+			Name: "gradlew micronaut",
+			App:  "gradlew_micronaut",
 		},
 		{
-			Name:          "gradle kotlin",
-			App:           "gradle-kotlin",
-			MustNotOutput: []string{"WARNING"},
+			Name: "gradle kotlin",
+			App:  "gradle-kotlin",
 		},
 	}
 	for _, tc := range testCases {
