@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/user"
@@ -79,6 +80,8 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.RemoveAll(homeM2)
 	ctx.Symlink(m2CachedRepo.Root, homeM2)
 
+	addJvmConfig(ctx)
+
 	var mvn string
 	if ctx.FileExists("mvnw") {
 		mvn = "./mvnw"
@@ -112,6 +115,30 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	return nil
+}
+
+// addJvmConfig is a workaround for https://github.com/google/guice/issues/1133, an "illegal reflective access" warning.
+// When that bug has been fixed in a version of mvn we can use, we can remove this workaround.
+// Write a JVM flag to .mvn/jvm.config in the project being built to suppress the warning.
+// Don't do anything if there already is a .mvn/jvm.config.
+func addJvmConfig(ctx *gcp.Context) {
+	version := os.Getenv(env.RuntimeVersion)
+	if version == "8" || strings.HasPrefix(version, "8.") {
+		// We don't need this workaround on Java 8, and in fact it fails there because there's no --add-opens option.
+		return
+	}
+	configFile := ".mvn/jvm.config"
+	if ctx.FileExists(configFile) {
+		return
+	}
+	if err := os.MkdirAll(".mvn", 0755); err != nil {
+		ctx.Logf("Could not create .mvn, reflection warnings may not be disabled: %v", err)
+		return
+	}
+	jvmOptions := "--add-opens java.base/java.lang=ALL-UNNAMED"
+	if err := ioutil.WriteFile(configFile, []byte(jvmOptions), 0644); err != nil {
+		ctx.Logf("Could not create %s, reflection warnings may not be disabled: %v", configFile, err)
+	}
 }
 
 func mvnInstalled(ctx *gcp.Context) bool {
