@@ -55,7 +55,14 @@ func TestAcceptanceJava(t *testing.T) {
 			MustNotUse: []string{goRuntime, nodeRuntime, pythonRuntime},
 		},
 		{
-			Name:       "Java maven",
+			Name:       "Java 8 maven",
+			App:        "java/hello_quarkus_maven",
+			Env:        []string{"GOOGLE_RUNTIME_VERSION=8"},
+			MustUse:    []string{javaMaven, javaRuntime, javaEntrypoint},
+			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:       "Java 11 maven",
 			App:        "java/hello_quarkus_maven",
 			MustUse:    []string{javaMaven, javaRuntime, javaEntrypoint},
 			MustNotUse: []string{entrypoint},
@@ -68,7 +75,14 @@ func TestAcceptanceJava(t *testing.T) {
 			MustRebuildOnChange: "/workspace/src/main/java/hello/Hello.java",
 		},
 		{
-			Name:       "Java gradle",
+			Name:       "Java 8 gradle",
+			App:        "java/gradle_micronaut",
+			Env:        []string{"GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar", "GOOGLE_RUNTIME_VERSION=8"},
+			MustUse:    []string{javaGradle, javaRuntime, entrypoint},
+			MustNotUse: []string{javaEntrypoint},
+		},
+		{
+			Name:       "Java 11 gradle",
 			App:        "java/gradle_micronaut",
 			Env:        []string{"GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
 			MustUse:    []string{javaGradle, javaRuntime, entrypoint},
