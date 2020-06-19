@@ -245,25 +245,55 @@ variables. These environment variables should be specified without a
 
 * **Go**
   * `GO<key>`, see [documentation](https://golang.org/cmd/go/#hdr-Environment_variables).
-  * **Example:** `GOFLAGS=-flag=value` passes `-flag=value` to `go` commands.
+      * **Example:** `GOFLAGS=-flag=value` passes `-flag=value` to `go` commands.
 * **Java**
   * `MAVEN_OPTS`, see [documentation](https://maven.apache.org/configure.html).
-  * **Example:** `MAVEN_OPTS=-Xms256m -Xmx512m` passes these flags to the JVM running Maven.
-  * **Example:** `MAVEN_OPTS=--add-opens java.base/java.lang=ALL-UNNAMED` to suppress "illegal reflective access" warnings from Maven.
+    * **Example:** `MAVEN_OPTS=-Xms256m -Xmx512m` passes these flags to the JVM running Maven.
+    * **Example:** `MAVEN_OPTS=--add-opens java.base/java.lang=ALL-UNNAMED` to suppress "illegal reflective access" warnings from Maven.
   * `GRADLE_OPTS`, see [documentation](https://docs.gradle.org/current/userguide/build_environment.html#sec:gradle_configuration_properties).
-  * **Example:** `GRADLE_OPTS=-Xms256m -Xmx512m` passes these flags to the JVM running Gradle.
+      * **Example:** `GRADLE_OPTS=-Xms256m -Xmx512m` passes these flags to the JVM running Gradle.
+  * Using the Google Maven Central mirror
+      * Mirror URL can be found [here](https://storage-download.googleapis.com/maven-central/index.html)
+      * For Maven: [Using Mirrors for Repositories](https://maven.apache.org/guides/mini/guide-mirror-settings.html)
+         * Create a copy of the settings.xml from the default location of ~/.m2/settings.xml to inside your application source directory and specify `GOOGLE_BUILD_ARGS=--settings <path/to/settings>`. (Note <path/to/settings> is relative to the source directory.)
+         * Example `settings.xml`
+
+              ```
+              <settings>
+                <mirrors>
+                  <mirror>
+                    <id>google-maven-central</id>
+                    <name>GCS Maven Central mirror</name>
+                    <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
+                    <mirrorOf>central</mirrorOf>
+                  </mirror>
+                </mirrors>
+              </settings>
+              ```
+      * For Gradle: [Declaring Repositories](https://docs.gradle.org/current/userguide/declaring_repositories.html)
+
+          * Example `build.gradle` entry
+
+              ```
+              repositories {
+                  maven {
+                      url "https://maven-central.storage-download.googleapis.com/maven2/"
+                  }
+              }
+              ```
+
 * **Node.js**
   * `NPM_CONFIG_<key>`, see [documentation](https://docs.npmjs.com/misc/config#environment-variables).
-  * **Example:** `NPM_CONFIG_FLAG=value` passes `-flag=value` to `npm` commands.
+      * **Example:** `NPM_CONFIG_FLAG=value` passes `-flag=value` to `npm` commands.
 * **PHP**
   * `COMPOSER_<key>`, see [documentation](https://getcomposer.org/doc/03-cli.md#environment-variables).
-  * **Example:** `COMPOSER_PROCESS_TIMEOUT=60` sets the timeout for `composer` commands.
+      * **Example:** `COMPOSER_PROCESS_TIMEOUT=60` sets the timeout for `composer` commands.
 * **Python**
   * `PIP_<key>`, see [documentation](https://pip.pypa.io/en/stable/user_guide/#environment-variables).
-  * **Example:** `PIP_DEFAULT_TIMEOUT=60` sets `--default-timeout=60` for `pip` commands.
+      * **Example:** `PIP_DEFAULT_TIMEOUT=60` sets `--default-timeout=60` for `pip` commands.
 * **Ruby**
   * `BUNDLE_<key>`, see [documentation](https://bundler.io/v2.0/bundle_config.html#LIST-OF-AVAILABLE-KEYS).
-  * **Example:** `BUNDLE_TIMEOUT=60` sets `--timeout=60` for `bundle` commands.
+      * **Example:** `BUNDLE_TIMEOUT=60` sets `--timeout=60` for `bundle` commands.
 
 
 ## Known Limitations
