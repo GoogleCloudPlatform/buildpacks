@@ -310,7 +310,7 @@ steps:
 There is also alpha support for invoking this builder directly [using `gcloud`](https://cloud.google.com/sdk/gcloud/reference/alpha/builds/submit):
 
 ```
-gcloud alpha builds submit --pack --tag=gcr.io/my-project/imageg
+gcloud alpha builds submit --pack image=gcr.io/my-project/imageg
 ```
 
 This command will send the local source directory to Cloud Build, invoke this buildpack builder on it, and publish the resulting image to Google Container Registry.
