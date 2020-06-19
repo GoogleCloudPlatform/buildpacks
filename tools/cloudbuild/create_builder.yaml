@@ -41,8 +41,10 @@ steps:
       - -c
       - >
         docker tag gcr.io/buildpacks/gcp/run:v1 gcr.io/$PROJECT_ID/gcp/run
+        && docker tag gcr.io/buildpacks/gcp/run:v1 gcr.io/$PROJECT_ID/gcp/run:v1
         && docker tag gcr.io/buildpacks/gcp/run:v1 gcr.io/$PROJECT_ID/gcp/run:$COMMIT_SHA
         && docker tag gcr.io/buildpacks/gcp/build:v1 gcr.io/$PROJECT_ID/gcp/build
+        && docker tag gcr.io/buildpacks/gcp/build:v1 gcr.io/$PROJECT_ID/gcp/build:v1
         && docker tag gcr.io/buildpacks/gcp/build:v1 gcr.io/$PROJECT_ID/gcp/build:$COMMIT_SHA
         && docker tag gcp/base gcr.io/$PROJECT_ID/builder
         && docker tag gcp/base gcr.io/$PROJECT_ID/builder:v1
