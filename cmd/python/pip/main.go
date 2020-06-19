@@ -28,12 +28,14 @@ import (
 
 const (
 	layerName = "pip"
+	cacheName = "pipcache"
 )
 
 // metadata represents metadata stored for a dependencies layer.
 type metadata struct {
-	PythonVersion  string `toml:"python_version"`
-	DependencyHash string `toml:"dependency_hash"`
+	PythonVersion   string `toml:"python_version"`
+	DependencyHash  string `toml:"dependency_hash"`
+	ExpiryTimestamp string `toml:"expiry_timestamp"`
 }
 
 func main() {
@@ -49,6 +51,8 @@ func detectFn(ctx *gcp.Context) error {
 
 func buildFn(ctx *gcp.Context) error {
 	l := ctx.Layer(layerName)
+	cl := ctx.Layer(cacheName)
+
 	cached, meta, err := python.CheckCache(ctx, l, cache.WithFiles("requirements.txt"))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
@@ -61,7 +65,10 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Install modules in requirements.txt.
 	ctx.Logf("Running pip install.")
-	ctx.ExecUser([]string{"python3", "-m", "pip", "install", "--upgrade", "-r", "requirements.txt", "-t", l.Root})
+	ctx.ExecWithParams(gcp.ExecParams{
+		Cmd: []string{"python3", "-m", "pip", "install", "--upgrade", "-r", "requirements.txt", "-t", l.Root},
+		Env: []string{"PIP_CACHE_DIR=" + cl.Root},
+	})
 
 	ctx.PrependPathSharedEnv(l, "PYTHONPATH", l.Root)
 
@@ -76,5 +83,6 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)
+	ctx.WriteMetadata(cl, nil, layers.Cache)
 	return nil
 }

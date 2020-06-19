@@ -18,16 +18,24 @@ package python
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpack/libbuildpack/layers"
 )
 
+const (
+	dateFormat = time.RFC3339Nano
+	// expirationTime is an arbitrary amount of time of 1 day to refresh the cache layer.
+	expirationTime = time.Duration(time.Hour * 24)
+)
+
 // Metadata represents metadata stored for a dependencies layer.
 type Metadata struct {
-	PythonVersion  string `toml:"python_version"`
-	DependencyHash string `toml:"dependency_hash"`
+	PythonVersion   string `toml:"python_version"`
+	DependencyHash  string `toml:"dependency_hash"`
+	ExpiryTimestamp string `toml:"expiry_timestamp"`
 }
 
 // Version returns the installed version of Python.
@@ -48,10 +56,12 @@ func CheckCache(ctx *gcp.Context, l *layers.Layer, opts ...cache.Option) (bool, 
 	var meta Metadata
 	ctx.ReadMetadata(l, &meta)
 
+	expired := checkCacheExpiration(ctx, &meta)
+
 	// Perform install, skipping if the dependency hash matches existing metadata.
 	ctx.Debugf("Current dependency hash: %q", currentDependencyHash)
 	ctx.Debugf("  Cache dependency hash: %q", meta.DependencyHash)
-	if currentDependencyHash == meta.DependencyHash {
+	if currentDependencyHash == meta.DependencyHash && !expired {
 		ctx.Logf("Dependencies cache hit, skipping installation.")
 		return true, &meta, nil
 	}
@@ -59,10 +69,30 @@ func CheckCache(ctx *gcp.Context, l *layers.Layer, opts ...cache.Option) (bool, 
 	if meta.DependencyHash == "" {
 		ctx.Debugf("No metadata found from a previous build, skipping cache.")
 	}
+
+	ctx.ClearLayer(l)
+
 	ctx.Logf("Installing application dependencies.")
 	// Update the layer metadata.
 	meta.DependencyHash = currentDependencyHash
 	meta.PythonVersion = currentPythonVersion
+	meta.ExpiryTimestamp = time.Now().Add(expirationTime).Format(dateFormat)
 
 	return false, &meta, nil
+}
+
+// checkCacheExpiration returns true when the cache is past expiration.
+func checkCacheExpiration(ctx *gcp.Context, meta *Metadata) bool {
+	t := time.Now()
+	if meta.ExpiryTimestamp != "" {
+		var err error
+		t, err = time.Parse(dateFormat, meta.ExpiryTimestamp)
+		if err != nil {
+			ctx.Debugf("Could not parse expiration date %q, assuming now: %v", meta.ExpiryTimestamp, err)
+		}
+	}
+	if t.After(time.Now()) {
+		return false
+	}
+	return true
 }
