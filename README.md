@@ -253,7 +253,7 @@ variables. These environment variables should be specified without a
   * `GRADLE_OPTS`, see [documentation](https://docs.gradle.org/current/userguide/build_environment.html#sec:gradle_configuration_properties).
       * **Example:** `GRADLE_OPTS=-Xms256m -Xmx512m` passes these flags to the JVM running Gradle.
   * Using the Google Maven Central mirror
-      * Mirror URL can be found [here](https://storage-download.googleapis.com/maven-central/index.html)
+      * Mirror URLs can be found [here](https://storage-download.googleapis.com/maven-central/index.html)
       * For Maven: [Using Mirrors for Repositories](https://maven.apache.org/guides/mini/guide-mirror-settings.html)
          * Create a copy of the settings.xml from the default location of ~/.m2/settings.xml to inside your application source directory and specify `GOOGLE_BUILD_ARGS=--settings <path/to/settings>`. (Note <path/to/settings> is relative to the source directory.)
          * Example `settings.xml`
