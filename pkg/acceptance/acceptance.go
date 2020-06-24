@@ -194,6 +194,8 @@ type FailureTest struct {
 	Env []string
 	// MustMatch specifies a string that must appear in the builder output.
 	MustMatch string
+	// SkipBuilderOutputMatch is true if the MustMatch string is not expected in $BUILDER_OUTPUT.
+	SkipBuilderOutputMatch bool
 }
 
 // TestBuildFailure runs a build and ensures that it fails. Additionally, it ensures the emitted logs match mustMatch regexps.
@@ -202,6 +204,10 @@ func TestBuildFailure(t *testing.T, builder string, cfg FailureTest) {
 
 	env := envSliceAsMap(t, cfg.Env)
 	env["GOOGLE_DEBUG"] = "true"
+	if !cfg.SkipBuilderOutputMatch {
+		env["BUILDER_OUTPUT"] = "/tmp/builderoutput"
+		env["EXPECTED_BUILDER_OUTPUT"] = cfg.MustMatch
+	}
 
 	if cfg.Name == "" {
 		cfg.Name = cfg.App
@@ -226,6 +232,10 @@ func TestBuildFailure(t *testing.T, builder string, cfg FailureTest) {
 		t.Logf("Expected regexp %q found in stderr.", r)
 	} else {
 		t.Errorf("Expected regexp %q not found in stdout or stderr:\n\nstdout:\n\n%s\n\nstderr:\n\n%s", r, outb, errb)
+	}
+	expectedLog := "Expected pattern included in error output: true"
+	if !cfg.SkipBuilderOutputMatch && !strings.Contains(string(errb), expectedLog) {
+		t.Errorf("Expected regexp %q not found in BUILDER_OUTPUT", r)
 	}
 }
 

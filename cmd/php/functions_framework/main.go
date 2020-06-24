@@ -69,7 +69,8 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Syntax check the function code without executing.
-	ctx.ExecUser([]string{"php", "-l", fnFile})
+	command := []string{"php", "-l", fnFile}
+	ctx.ExecUserWithParams(gcp.ExecParams{Cmd: command}, gcp.UserErrorKeepStdoutTail)
 
 	// Install the functions framework if need be.
 	if ctx.FileExists("composer.json") {

@@ -23,14 +23,16 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
 
 const (
-	errorIDLength         = 8
-	builderOutputEnv      = "BUILDER_OUTPUT"
-	builderOutputFilename = "output"
+	errorIDLength            = 8
+	builderOutputEnv         = "BUILDER_OUTPUT"
+	builderOutputFilename    = "output"
+	expectedBuilderOutputEnv = "EXPECTED_BUILDER_OUTPUT"
 )
 
 var (
@@ -125,6 +127,17 @@ func (ctx *Context) saveErrorOutput(be *Error) {
 	if _, err := ctx.ExecWithErr([]string{"mv", "-f", tname, fname}); err != nil {
 		ctx.Warnf("Failed to move %s to %s, skipping structured error output: %v", tname, fname, err)
 		return
+	}
+	if expected := os.Getenv(expectedBuilderOutputEnv); expected != "" {
+		// This logic is for acceptance tests. Ideally they would examine $BUILDER_OUTPUT themselves, but as
+		// currently constructed that is difficult. So instead they delegate the task of checking whether
+		// $BUILDER_OUTPUT contains a certain expected error-message pattern to this code.
+		r, err := regexp.Compile(expected)
+		if err == nil {
+			ctx.Logf("Expected pattern included in error output: %t", r.MatchString(be.Message))
+		} else {
+			ctx.Warnf("Bad regexp %q: %v", expectedBuilderOutputEnv, err)
+		}
 	}
 	return
 }
