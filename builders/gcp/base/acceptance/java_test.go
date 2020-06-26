@@ -109,6 +109,11 @@ func TestAcceptanceJava(t *testing.T) {
 			MustUse:    []string{javaGradle, javaRuntime, entrypoint},
 			MustNotUse: []string{javaEntrypoint},
 		},
+		{
+			Name:    "Exploded Jar",
+			App:     "java/exploded_jar",
+			MustUse: []string{javaRuntime, javaExplodedJar},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

@@ -97,6 +97,82 @@ another: example`,
 	}
 }
 
+func TestMainFromManifest(t *testing.T) {
+	testCases := []struct {
+		name             string
+		manifestContents string
+		want             string
+	}{
+		{
+			name:             "simple case",
+			manifestContents: `Main-Class: test`,
+			want:             "test",
+		},
+		{
+			name: "2 line case",
+			manifestContents: `ex: example
+Main-Class: test`,
+			want: "test",
+		},
+		{
+			name: "3 line case",
+			manifestContents: `ex: example
+Main-Class: test
+another: example`,
+			want: "test",
+		},
+		{
+			name: "3 line with trailing space case",
+			manifestContents: `ex: example 
+Main-Class: test 
+another: example`,
+			want: "test",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mfPath := setupTestManifest(t, []byte(tc.manifestContents))
+			ctx := gcp.NewContextForTests(buildpack.Info{}, "")
+			got, err := MainFromManifest(ctx, mfPath)
+			if err != nil {
+				t.Errorf("MainFromMainfest() errored: %v", err)
+			}
+
+			if got != tc.want {
+				t.Errorf("MainFromMainfest() returned %s, wanted %s", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestMainFromManifestFail(t *testing.T) {
+	testCases := []struct {
+		name             string
+		manifestContents string
+	}{
+		{
+			name:             "empty manifest",
+			manifestContents: ``,
+		},
+		{
+			name:             "no main-class entry found",
+			manifestContents: `key: value`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mfPath := setupTestManifest(t, []byte(tc.manifestContents))
+			ctx := gcp.NewContextForTests(buildpack.Info{}, "")
+			_, err := MainFromManifest(ctx, mfPath)
+			if err == nil {
+				t.Error("MainFromMainfest() did not error as expected")
+			}
+		})
+	}
+}
+
 func TestCheckCacheNewDateMiss(t *testing.T) {
 	testCases := []struct {
 		name            string
@@ -181,4 +257,18 @@ func setupTestLayer(t *testing.T, ctx *gcp.Context) (string, *layers.Layer) {
 		Root: testLayerRoot,
 	}
 	return testFilePath, m2CachedRepo
+}
+
+func setupTestManifest(t *testing.T, mfContent []byte) string {
+	t.Helper()
+	tDir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("creating temp dir: %v", err)
+	}
+	mfPath := filepath.Join(tDir, "TEST.MF")
+	err = ioutil.WriteFile(mfPath, mfContent, 0644)
+	if err != nil {
+		t.Fatalf("writing to file %s: %v", mfPath, err)
+	}
+	return mfPath
 }

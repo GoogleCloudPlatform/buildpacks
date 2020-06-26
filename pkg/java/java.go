@@ -17,11 +17,12 @@ package java
 
 import (
 	"archive/zip"
-	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -29,8 +30,8 @@ import (
 )
 
 var (
-	// re matches lines in the manifest for a Main-Class entry to detect which jar is appropriate for execution.
-	re = regexp.MustCompile("^Main-Class: [^\n]+")
+	// re matches lines in the manifest for a Main-Class entry to detect which jar is appropriate for execution. For some reason, it does not like `(?m)^Main-Class: [^\s]+`.
+	re = regexp.MustCompile("(?m)^Main-Class: [^\r\n\t\f\v ]+")
 )
 
 const (
@@ -38,6 +39,8 @@ const (
 	// repoExpiration is an arbitrary amount of time of 10 weeks to refresh the cache layer.
 	// TODO(b/148099877): Investigate proper cache-clearing strategy.
 	repoExpiration = time.Duration(time.Hour * 24 * 7 * 10)
+	// ManifestPath specifies the path of MANIFEST.MF relative to the working directory.
+	ManifestPath = "META-INF/MANIFEST.MF"
 )
 
 // RepoMetadata contains the information for the m2 cache repo layer.
@@ -82,7 +85,7 @@ func hasMainManifestEntry(jar string) (bool, error) {
 	}
 	defer r.Close()
 	for _, f := range r.File {
-		if f.Name != "META-INF/MANIFEST.MF" {
+		if f.Name != ManifestPath {
 			continue
 		}
 		rc, err := f.Open()
@@ -95,13 +98,21 @@ func hasMainManifestEntry(jar string) (bool, error) {
 }
 
 func hasMain(r io.Reader) bool {
-	s := bufio.NewScanner(r)
-	for s.Scan() {
-		if re.MatchString(s.Text()) {
-			return true
-		}
+	content, err := ioutil.ReadAll(r)
+	if err != nil {
+		return false
 	}
-	return false
+	return re.Match(content)
+}
+
+// MainFromManifest returns the main class specified in the manifest at the input path.
+func MainFromManifest(ctx *gcp.Context, manifestPath string) (string, error) {
+	content := ctx.ReadFile(manifestPath)
+	match := re.Find(content)
+	if len(match) != 0 {
+		return strings.TrimPrefix(string(match), "Main-Class: "), nil
+	}
+	return "", gcp.UserErrorf("no Main-Class manifest entry found in %s", manifestPath)
 }
 
 // CheckCacheExpiration clears the m2 layer and sets a new expiry timestamp when the cache is past expiration.

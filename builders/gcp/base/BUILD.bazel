@@ -22,6 +22,7 @@ builder(
         ],
         "java": [
             "//cmd/java/entrypoint:entrypoint.tgz",
+            "//cmd/java/exploded_jar:exploded_jar.tgz",
             "//cmd/java/functions_framework:functions_framework.tgz",
             "//cmd/java/gradle:gradle.tgz",
             "//cmd/java/maven:maven.tgz",

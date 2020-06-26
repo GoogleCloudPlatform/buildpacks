@@ -41,6 +41,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "java/entrypoint.tgz"
 
 [[buildpacks]]
+  id = "google.java.exploded-jar"
+  uri = "java/exploded_jar.tgz"
+
+[[buildpacks]]
   id = "google.java.functions-framework"
   uri = "java/functions_framework.tgz"
 
@@ -175,6 +179,14 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.java.functions-framework"
+
+# Exploded Jars
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.exploded-jar"
 
 # Maven applications.
 [[order]]

@@ -50,11 +50,12 @@ func detectFn(ctx *gcp.Context) error {
 	if ctx.FileExists("pom.xml") ||
 		ctx.FileExists("build.gradle") ||
 		ctx.FileExists("build.gradle.kts") ||
+		ctx.FileExists("META-INF/MANIFEST.MF") ||
 		len(ctx.Glob("*.java")) > 0 ||
 		len(ctx.Glob("*.jar")) > 0 {
 		return nil
 	}
-	ctx.OptOut("None of the following found: pom.xml, build.gradle, build.gradle.kts, *.java, *.jar.")
+	ctx.OptOut("None of the following found: pom.xml, build.gradle, build.gradle.kts, MANIFEST.MF, *.java, *.jar.")
 	return nil
 }
 
