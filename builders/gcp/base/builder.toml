@@ -168,13 +168,23 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 # Java #
 ########
 
-# Functions have a separate group because entrypoint not supported.
+# Functions have separate groups because entrypoint not supported.
 [[order]]
   [[order.group]]
     id = "google.java.runtime"
 
   [[order.group]]
     id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.functions-framework"
+
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.gradle"
     optional = true
 
   [[order.group]]

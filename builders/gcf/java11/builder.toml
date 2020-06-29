@@ -5,17 +5,33 @@ description = "Builder for the GCF Java 11 runtime"
   uri = "maven.tgz"
 
 [[buildpacks]]
+  id = "google.java.gradle"
+  uri = "gradle.tgz"
+
+[[buildpacks]]
   id = "google.java.functions-framework"
   uri = "functions_framework.tgz"
 
 # We'll use google.java.maven to compile the function code if there is a pom.xml.
 # In that case google.java.functions-framework will inspect the pom.xml to
-# determine what should be in the classpath of the final function. Otherwise, it
-# expects there is an already-compiled jar file and that's what it will put in
-# the classpath.
+# determine what should be in the classpath of the final function.
 [[order]]
   [[order.group]]
     id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.functions-framework"
+
+# We'll use google.java.gradle to compile the function code if there is a build.gradle.
+# In that case google.java.functions-framework will inspect the build.gradle to
+# determine what should be in the classpath of the final function. Since
+# google.java.gradle is optional, google.java.functions-framework will also run
+# if there is neither a pom.xml nor a build.gradle. In that case, it expects
+# there is an already-compiled jar file and that's what it will put in the
+# classpath.
+[[order]]
+  [[order.group]]
+    id = "google.java.gradle"
     optional = true
 
   [[order.group]]

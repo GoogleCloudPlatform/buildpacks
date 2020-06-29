@@ -86,6 +86,9 @@ func classpath(ctx *gcp.Context) (string, error) {
 	if ctx.FileExists("pom.xml") {
 		return mavenClasspath(ctx)
 	}
+	if ctx.FileExists("build.gradle") {
+		return gradleClasspath(ctx)
+	}
 	jars := ctx.Glob("*.jar")
 	if len(jars) == 1 {
 		// Already-built jar file. It should be self-contained, which means that it can be the only thing given to --classpath.
@@ -105,7 +108,7 @@ func classpath(ctx *gcp.Context) (string, error) {
 // mavenClasspath determines the --classpath when there is a pom.xml. This will consist of the jar file built
 // from the pom.xml itself, plus all jar files that are dependencies mentioned in the pom.xml.
 func mavenClasspath(ctx *gcp.Context) (string, error) {
-	// Copy the dependencies of the function (<dependencies> in pom.xml) into target/dependency.
+	// Copy the dependencies of the function (`<dependencies>` in pom.xml) into target/dependency.
 	ctx.ExecUser([]string{"mvn", "dependency:copy-dependencies"})
 
 	// Extract the artifact/version coordinates from the user's pom.xml definitions.
@@ -118,10 +121,40 @@ func mavenClasspath(ctx *gcp.Context) (string, error) {
 		return "", gcp.UserErrorf("could not parse query output into artifact/version: %s", groupArtifactVersion)
 	}
 	artifact, version := components[0], components[1]
+	jarName := fmt.Sprintf("target/%s-%s.jar", artifact, version)
+	if !ctx.FileExists(jarName) {
+		return "", gcp.UserErrorf("expected output jar %s does not exist", jarName)
+	}
 
 	// The Functions Framework understands "*" to mean every jar file in that directory.
 	// So this classpath consists of the just-built jar and all of the dependency jars.
-	return fmt.Sprintf("target/%s-%s.jar:target/dependency/*", artifact, version), nil
+	return jarName + ":target/dependency/*", nil
+}
+
+// gradleClasspath determines the --classpath when there is a build.gradle. This will consist of the jar file built
+// from the build.gradle, plus all jar files that are dependencies mentioned there.
+// Unlike Maven, Gradle doesn't have a simple way to query the contents of the build.gradle. But we can execute
+// a script that includes the user's script and also defines some extra tasks for the query we need
+// and for dependency copying.
+func gradleClasspath(ctx *gcp.Context) (string, error) {
+	scriptSource := filepath.Join(ctx.BuildpackRoot(), "extra_tasks.gradle")
+	scriptText := ctx.ReadFile(scriptSource)
+	scriptTarget := "_javaFunctionExtraTasks.gradle"
+	ctx.WriteFile(scriptTarget, scriptText, 0644)
+
+	// Copy the dependencies of the function (`dependencies {...}` in build.gradle) into _javaFunctionDependencies.
+	ctx.ExecUser([]string{"gradle", "--build-file", scriptTarget, "--quiet", "_javaFunctionCopyAllDependencies"})
+
+	// Extract the name of the target jar.
+	execResult := ctx.ExecUser([]string{"gradle", "--build-file", scriptTarget, "--quiet", "_javaFunctionPrintJarTarget"})
+	jarName := strings.TrimSpace(execResult.Stdout)
+	if !ctx.FileExists(jarName) {
+		return "", gcp.UserErrorf("expected output jar %s does not exist", jarName)
+	}
+
+	// The Functions Framework understands "*" to mean every jar file in that directory.
+	// So this classpath consists of the just-built jar and all of the dependency jars.
+	return fmt.Sprintf("%s:_javaFunctionDependencies/*", jarName), nil
 }
 
 func installFunctionsFramework(ctx *gcp.Context, layer *layers.Layer) error {

@@ -1,0 +1,15 @@
+apply plugin: 'java'
+
+repositories {
+  mavenCentral()
+  maven { url "https://jcenter.bintray.com" }
+}
+
+dependencies {
+  compileOnly "com.google.cloud.functions:functions-framework-api:1.0.1"
+  compile "com.google.escapevelocity:escapevelocity:0.9.1"
+}
+
+jar {
+  baseName = "function"
+}
