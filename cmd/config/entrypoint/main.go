@@ -19,13 +19,14 @@ package main
 import (
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 var (
-	webRegexp = regexp.MustCompile(`(?m)^web:\s*(.+)$`)
+	webRegexp = regexp.MustCompile(`(?m)^web:(.+)$`)
 )
 
 func main() {
@@ -62,5 +63,5 @@ func procfileWebProcess(content string) (string, error) {
 	if len(matches) != 2 {
 		return "", gcp.UserErrorf("could not find web process in Procfile: %v", matches)
 	}
-	return matches[1], nil
+	return strings.TrimSpace(matches[1]), nil
 }

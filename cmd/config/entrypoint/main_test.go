@@ -35,8 +35,18 @@ func TestProcfileWebProcess(t *testing.T) {
 			want:    "foo $bar baz",
 		},
 		{
-			name:    "whitespace",
+			name:    "whitespace start",
 			content: "web:  foo bar baz",
+			want:    "foo bar baz",
+		},
+		{
+			name:    "whitespace end",
+			content: "web:  foo bar baz  ",
+			want:    "foo bar baz",
+		},
+		{
+			name:    "carriage return",
+			content: "web: foo bar baz\r\n",
 			want:    "foo bar baz",
 		},
 		{
