@@ -78,7 +78,7 @@ identical to those in the generic builder.
 Compared to the generic builder, there are two primary differences. First,
 there are additional buildpacks which add transformations specific to each
 service. Second, in order to optimize execution speed, each
-language has a seperate builder.
+language has a separate builder.
 
 ## Usage
 
