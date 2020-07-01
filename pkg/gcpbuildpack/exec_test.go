@@ -47,7 +47,7 @@ func TestExecWithErrInvokesCommand(t *testing.T) {
 	defer cleanUp()
 	result, err := ctx.ExecWithErr(cmd)
 	if err != nil {
-		t.Errorf("ExecWithErr(%v) got unexpected error: %v", err)
+		t.Errorf("ExecWithErr(%v) got unexpected error: %v", cmd, err)
 	}
 	want := "Hello"
 	if result.Stdout != want {
