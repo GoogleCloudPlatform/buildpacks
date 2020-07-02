@@ -67,6 +67,17 @@ func buildFn(ctx *gcp.Context) error {
 
 	ctx.SetFunctionsEnvVars(layer)
 
+	// Use javap to check that the class is indeed in the classpath we just determined.
+	// On success, it will output a description of the class and its public members, which we discard.
+	// On failure it will output an error saying what's wrong (usually that the class doesn't exist).
+	// Success here doesn't guarantee that the function will execute. It might not implement one of the
+	// required interfaces, for example. But it eliminates the commonest problem of specifying the wrong target.
+	target := os.Getenv(env.FunctionTarget)
+	if result, err := ctx.ExecWithErr([]string{"javap", "-classpath", classpath, target}); err != nil {
+		// The javap error output will typically be "Error: class not found: foo.Bar".
+		return gcp.UserErrorf("build succeeded but did not produce the class %q specified as the function target: %s", target, result.Combined)
+	}
+
 	launcherSource := filepath.Join(ctx.BuildpackRoot(), "launch.sh")
 	launcherTarget := filepath.Join(layer.Root, "launch.sh")
 	createLauncher(ctx, launcherSource, launcherTarget)

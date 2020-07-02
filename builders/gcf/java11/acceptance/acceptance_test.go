@@ -68,18 +68,33 @@ func TestFailures(t *testing.T) {
 	testCases := []acceptance.FailureTest{
 		{
 			App:       "fail_syntax_error",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld", "GOOGLE_RUNTIME=java11"},
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
 			MustMatch: `\[ERROR\].*not a statement`,
 		},
 		{
 			App:       "fail_no_pom_no_jar",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld", "GOOGLE_RUNTIME=java11"},
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
 			MustMatch: "function has neither pom.xml nor already-built jar file; directory has these entries: random.txt",
 		},
 		{
 			App:       "fail_two_jars",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld", "GOOGLE_RUNTIME=java11"},
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
 			MustMatch: "function has no pom.xml and more than one jar file: fatjar1.jar, fatjar2.jar",
+		},
+		{
+			App:       "maven",
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.NonExistent"},
+			MustMatch: `build succeeded but did not produce the class "functions.NonExistent"`,
+		},
+		{
+			App:       "gradle",
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.NonExistent"},
+			MustMatch: `build succeeded but did not produce the class "functions.NonExistent"`,
+		},
+		{
+			App:       "jar",
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.NonExistent"},
+			MustMatch: `build succeeded but did not produce the class "functions.NonExistent"`,
 		},
 	}
 
@@ -87,6 +102,10 @@ func TestFailures(t *testing.T) {
 		tc := tc
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
+
+			tc.Env = append(tc.Env,
+				"GOOGLE_RUNTIME=java11",
+			)
 
 			acceptance.TestBuildFailure(t, builder, tc)
 		})
