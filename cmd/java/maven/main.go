@@ -85,6 +85,12 @@ func buildFn(ctx *gcp.Context) error {
 	var mvn string
 	if ctx.FileExists("mvnw") {
 		mvn = "./mvnw"
+
+		// Make sure `mvnw` is executable. On windows, there's no executable bit
+		// so the file will be copied to `/workspace` without it.
+		if err := os.Chmod(mvn, 0755); err != nil {
+			return fmt.Errorf("couldn't make %q executable: %w", mvn, err)
+		}
 	} else if mvnInstalled(ctx) {
 		mvn = "mvn"
 	} else {
