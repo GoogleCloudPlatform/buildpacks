@@ -72,8 +72,10 @@ func buildFn(ctx *gcp.Context) error {
 	// On failure it will output an error saying what's wrong (usually that the class doesn't exist).
 	// Success here doesn't guarantee that the function will execute. It might not implement one of the
 	// required interfaces, for example. But it eliminates the commonest problem of specifying the wrong target.
+	// We use an ExecUser* method so that the time taken by the javap command is counted as user time.
 	target := os.Getenv(env.FunctionTarget)
-	if result, err := ctx.ExecWithErr([]string{"javap", "-classpath", classpath, target}); err != nil {
+	javap := gcp.ExecParams{Cmd: []string{"javap", "-classpath", classpath, target}}
+	if result, err := ctx.ExecUserWithErrWithParams(javap, gcp.UserErrorKeepStderrTail); err != nil {
 		// The javap error output will typically be "Error: class not found: foo.Bar".
 		return gcp.UserErrorf("build succeeded but did not produce the class %q specified as the function target: %s", target, result.Combined)
 	}
