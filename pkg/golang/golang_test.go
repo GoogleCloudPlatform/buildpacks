@@ -375,3 +375,58 @@ func TestSupportsAutoVendor(t *testing.T) {
 		})
 	}
 }
+
+func TestVersionMatches(t *testing.T) {
+	testCases := []struct {
+		goVersion    string
+		goMod        string
+		versionCheck string
+		want         bool
+	}{
+		{
+			goVersion:    "go version go1.13 darwin/amd64",
+			goMod:        "module dir\ngo 1.13",
+			versionCheck: ">1.13.0",
+			want:         false,
+		},
+		{
+			goVersion:    "go version go1.14 darwin/amd64",
+			goMod:        "module dir\ngo 1.14",
+			versionCheck: ">1.13.0",
+			want:         true,
+		},
+		{
+			goVersion:    "go version go1.15 darwin/amd64",
+			goMod:        "module dir\ngo 1.15",
+			versionCheck: ">=1.15.0",
+			want:         true,
+		},
+		{
+			goVersion:    "go version go1.14.2 darwin/amd64",
+			goMod:        "module v\ngo 1.14.1",
+			versionCheck: ">=1.15.0",
+			want:         false,
+		},
+		{
+			goMod:        "",
+			versionCheck: ">=1.15.0",
+			want:         false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.goMod, func(t *testing.T) {
+			defer func(fn func(*gcp.Context) string) { readGoVersion = fn }(readGoVersion)
+			readGoVersion = func(*gcp.Context) string { return tc.goVersion }
+
+			defer func(fn func(*gcp.Context) string) { readGoMod = fn }(readGoMod)
+			readGoMod = func(*gcp.Context) string { return tc.goMod }
+
+			supported := VersionMatches(nil, tc.versionCheck)
+
+			if supported != tc.want {
+				t.Errorf("VersionMatches() returned %v, wanted %v", supported, tc.want)
+			}
+		})
+	}
+}

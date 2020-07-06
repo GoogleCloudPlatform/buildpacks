@@ -95,8 +95,20 @@ func (ctx *Context) ExecUser(cmd []string) *ExecResult {
 // ExecUserWithParams runs the given command under the specified configuration, saving an error summary from producer on error.
 // ExecUserWithParams failures attribute the failure to the user, not the platform, when recording the error (see builderoutput.go).
 func (ctx *Context) ExecUserWithParams(params ExecParams, esp ErrorSummaryProducer) *ExecResult {
+	result, err := ctx.ExecUserWithErrWithParams(params, esp)
+	if err != nil {
+		ctx.Exit(1, err)
+	}
+	return result
+}
+
+// ExecUserWithErrWithParams runs the given command under the specified configuration, saving an error summary from producer on error.
+// ExecUserWithErrWithParams failures attribute the failure to the user, not the platform, when recording the error (see builderoutput.go).
+// ExecUserWithErrWithParams differs from ExecUserWithParams as it leaves error handling to the caller.
+func (ctx *Context) ExecUserWithErrWithParams(params ExecParams, esp ErrorSummaryProducer) (*ExecResult, *Error) {
 	start := time.Now()
 	result, err := ctx.configuredExec(params)
+	ctx.stats.user += time.Since(start)
 	if err != nil {
 		var be *Error
 		if result == nil {
@@ -105,10 +117,9 @@ func (ctx *Context) ExecUserWithParams(params ExecParams, esp ErrorSummaryProduc
 			be = esp(result)
 		}
 		be.ID = generateErrorID(params.Cmd...)
-		ctx.Exit(1, be)
+		return result, be
 	}
-	ctx.stats.user += time.Since(start)
-	return result
+	return result, nil
 }
 
 func (ctx *Context) configuredExec(params ExecParams) (*ExecResult, error) {

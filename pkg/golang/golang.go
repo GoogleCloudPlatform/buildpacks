@@ -56,6 +56,13 @@ func SupportsNoGoMod(ctx *gcp.Context) bool {
 // Starting from Go 1.14, `go build` automatically detects and use a `vendor` folder
 // if `go.mod` contains a `go 1.14` line.
 func SupportsAutoVendor(ctx *gcp.Context) bool {
+	return VersionMatches(ctx, ">=1.14.0")
+}
+
+// VersionMatches returns true if the given versionCheck
+// string of format Boolean operator MAJOR.MINOR (e.g. ">=1.14") version check passes
+// the semver check. This functions checks both GoModVersion and GoMod.
+func VersionMatches(ctx *gcp.Context, versionCheck string) bool {
 	v := GoModVersion(ctx)
 	if v == "" {
 		return false
@@ -66,8 +73,12 @@ func SupportsAutoVendor(ctx *gcp.Context) bool {
 		ctx.Exit(1, gcp.InternalErrorf("unable to parse go version string %q: %s", v, err))
 	}
 
-	go114OrHigher := semver.MustParseRange(">=1.14.0")
-	if !go114OrHigher(version) {
+	goVersionMatches, err := semver.ParseRange(versionCheck)
+	if err != nil {
+		ctx.Exit(1, gcp.InternalErrorf("unable to parse go version string %q: %s", v, err))
+	}
+
+	if !goVersionMatches(version) {
 		return false
 	}
 
@@ -78,7 +89,7 @@ func SupportsAutoVendor(ctx *gcp.Context) bool {
 		ctx.Exit(1, gcp.InternalErrorf("unable to parse go version string %q: %s", v, err))
 	}
 
-	return go114OrHigher(version)
+	return goVersionMatches(version)
 }
 
 // GoVersion reads the version of the installed Go runtime.

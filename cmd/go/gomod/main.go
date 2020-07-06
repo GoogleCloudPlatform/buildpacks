@@ -56,7 +56,20 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	env := []string{"GOPATH=" + l.Root, "GO111MODULE=on"}
-	ctx.ExecUserWithParams(gcp.ExecParams{Cmd: []string{"go", "mod", "download"}, Env: env}, gcp.UserErrorKeepStderrTail)
+	if golang.VersionMatches(ctx, ">=1.15.0") {
+		env = append(env, "GOPROXY=https://proxy.golang.org|direct")
+		ctx.ExecUserWithParams(gcp.ExecParams{Cmd: []string{"go", "mod", "download"}, Env: env}, gcp.UserErrorKeepStderrTail)
+	} else {
+		_, err := ctx.ExecUserWithErrWithParams(gcp.ExecParams{Cmd: []string{"go", "mod", "download"}, Env: env}, gcp.UserErrorKeepStderrTail)
+		if err != nil {
+			ctx.Warnf("go mod download failed. Retrying with GOSUMDB=off GOPROXY=direct. Error: %v", err)
+			ctx.ExecUserWithParams(gcp.ExecParams{
+				Cmd: []string{"go", "mod", "download"},
+				Env: append(env, "GOSUMDB=off", "GOPROXY=direct"),
+			}, gcp.UserErrorKeepStderrTail)
+		}
+	}
+
 	// go build -mod=readonly requires a complete graph of modules which `go mod download` does not produce in all cases (https://golang.org/issue/35832).
 	ctx.ExecUserWithParams(gcp.ExecParams{Cmd: []string{"go", "mod", "tidy"}, Env: env}, gcp.UserErrorKeepStderrTail)
 
