@@ -61,6 +61,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "java/runtime.tgz"
 
 [[buildpacks]]
+  id = "google.java.clear_source"
+  uri = "java/clear_source.tgz"
+
+[[buildpacks]]
   id = "google.nodejs.runtime"
   uri = "nodejs/runtime.tgz"
 
@@ -209,6 +213,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   [[order.group]]
     id = "google.config.entrypoint"
 
+  [[order.group]]
+    id = "google.java.clear_source"
+    optional = true
+
 [[order]]
   [[order.group]]
     id = "google.java.runtime"
@@ -218,6 +226,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.java.entrypoint"
+
+  [[order.group]]
+    id = "google.java.clear_source"
+    optional = true
 
 # Gradle & Jar-based applications.
 [[order]]
@@ -231,6 +243,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   [[order.group]]
     id = "google.config.entrypoint"
 
+  [[order.group]]
+    id = "google.java.clear_source"
+    optional = true
+
 [[order]]
   [[order.group]]
     id = "google.java.runtime"
@@ -241,6 +257,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.java.entrypoint"
+
+  [[order.group]]
+    id = "google.java.clear_source"
+    optional = true
 
 ##############
 # Python 1/2 #

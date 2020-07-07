@@ -1,35 +1,29 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
+# helper to delete source code.
 licenses(["notice"])
 
 go_library(
-    name = "appengine",
-    srcs = [
-        "appengine.go",
-    ],
+    name = "clearsource",
+    srcs = ["clearsource.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
-        "//cmd/dotnet:__subpackages__",
         "//cmd/go:__subpackages__",
         "//cmd/java:__subpackages__",
-        "//cmd/nodejs:__subpackages__",
-        "//cmd/php:__subpackages__",
-        "//cmd/python:__subpackages__",
-        "//cmd/ruby:__subpackages__",
-        "//pkg/clearsource:__subpackages__",
     ],
     deps = [
+        "//pkg/appengine",
+        "//pkg/devmode",
         "//pkg/env",
         "//pkg/gcpbuildpack",
-        "@com_github_buildpack_libbuildpack//layers:go_default_library",
     ],
 )
 
 go_test(
-    name = "appengine_test",
+    name = "clearsource_test",
     size = "small",
-    srcs = ["appengine_test.go"],
-    embed = [":appengine"],
+    srcs = ["clearsource_test.go"],
+    embed = [":clearsource"],
     rundir = ".",
     deps = [
         "//pkg/gcpbuildpack",

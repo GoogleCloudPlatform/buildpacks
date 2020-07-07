@@ -21,6 +21,7 @@ builder(
             "//cmd/go/runtime:runtime.tgz",
         ],
         "java": [
+            "//cmd/java/clear_source:clear_source.tgz",
             "//cmd/java/entrypoint:entrypoint.tgz",
             "//cmd/java/exploded_jar:exploded_jar.tgz",
             "//cmd/java/functions_framework:functions_framework.tgz",

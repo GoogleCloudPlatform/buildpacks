@@ -94,6 +94,20 @@ func TestAcceptance(t *testing.T) {
 			App:           "gradle-kotlin",
 			MustNotOutput: []string{"WARNING"},
 		},
+		{
+			Name:              "hello quarkus maven with source clearing",
+			App:               "hello_quarkus_maven",
+			Env:               []string{"GOOGLE_CLEAR_SOURCE=true"},
+			MustNotOutput:     []string{"WARNING"},
+			FilesMustNotExist: []string{"/workspace/src/main/java/hello/Hello.java", "/workspace/pom.xml"},
+		},
+		{
+			Name:              "Gradle with source clearing",
+			App:               "gradle_micronaut",
+			Env:               []string{"GOOGLE_CLEAR_SOURCE=true", "GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
+			MustNotOutput:     []string{"WARNING"},
+			FilesMustNotExist: []string{"/workspace/src/main/java/example/Application.java", "/workspace/build.gradle"},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

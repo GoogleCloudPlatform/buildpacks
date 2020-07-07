@@ -114,6 +114,24 @@ func TestAcceptanceJava(t *testing.T) {
 			App:     "java/exploded_jar",
 			MustUse: []string{javaRuntime, javaExplodedJar},
 		},
+		{
+			Name:              "Maven with source clearing",
+			App:               "java/hello_quarkus_maven",
+			Env:               []string{"GOOGLE_CLEAR_SOURCE=true"},
+			MustUse:           []string{javaMaven, javaRuntime, javaEntrypoint, javaClearSource},
+			MustNotUse:        []string{entrypoint},
+			FilesMustExist:    []string{"/workspace/target/hello-1-runner.jar"},
+			FilesMustNotExist: []string{"/workspace/src/main/java/hello/Hello.java", "/workspace/pom.xml"},
+		},
+		{
+			Name:              "Gradle with source clearing",
+			App:               "java/gradle_micronaut",
+			Env:               []string{"GOOGLE_CLEAR_SOURCE=true", "GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
+			MustUse:           []string{javaGradle, javaRuntime, entrypoint, javaClearSource},
+			MustNotUse:        []string{javaEntrypoint},
+			FilesMustExist:    []string{"/workspace/build/libs/helloworld-0.1-all.jar"},
+			FilesMustNotExist: []string{"/workspace/src/main/java/example/Application.java", "/workspace/build.gradle"},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

@@ -5,12 +5,16 @@ description = "Builder for the GAE Java 11 runtime"
   uri = "appengine.tgz"
 
 [[buildpacks]]
-  id = "google.java.maven"
-  uri = "maven.tgz"
+  id = "google.java.clear_source"
+  uri = "clear_source.tgz"
 
 [[buildpacks]]
   id = "google.java.gradle"
   uri = "gradle.tgz"
+
+[[buildpacks]]
+  id = "google.java.maven"
+  uri = "maven.tgz"
 
 [[order]]
   [[order.group]]
@@ -19,6 +23,10 @@ description = "Builder for the GAE Java 11 runtime"
   [[order.group]]
     id = "google.java.appengine"
 
+  [[order.group]]
+    id = "google.java.clear_source"
+    optional = true
+
 [[order]]
   [[order.group]]
     id = "google.java.gradle"
@@ -26,6 +34,10 @@ description = "Builder for the GAE Java 11 runtime"
 
   [[order.group]]
     id = "google.java.appengine"
+
+  [[order.group]]
+    id = "google.java.clear_source"
+    optional = true
 
 [stack]
   id = "google.java11"

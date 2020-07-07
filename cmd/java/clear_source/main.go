@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements go/clear_source buildpack.
-// The clear_source buildpack deletes source files after building the application.
+// Implements java/clear_source buildpack.
+// The clear_source buildpack clears the source out.
 package main
 
 import (
@@ -26,9 +26,15 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) error {
-	return clearsource.DetectFn(ctx)
+	if err := clearsource.DetectFn(ctx); err != nil {
+		return err
+	}
+	if !ctx.FileExists("pom.xml") && !ctx.FileExists("build.gradle") && !ctx.FileExists("build.gradle.kts") {
+		ctx.OptOut("None of pom.xml, build.gradle, nor build.gradle.kts found. Clearing souce only supported on maven and gradle projects.")
+	}
+	return nil
 }
 
 func buildFn(ctx *gcp.Context) error {
-	return clearsource.BuildFn(ctx, nil)
+	return clearsource.BuildFn(ctx, []string{"target", "build"})
 }

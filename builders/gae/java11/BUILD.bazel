@@ -8,6 +8,7 @@ builder(
     name = "builder",
     buildpacks = [
         "//cmd/java/appengine:appengine.tgz",
+        "//cmd/java/clear_source:clear_source.tgz",
         "//cmd/java/maven:maven.tgz",
         "//cmd/java/gradle:gradle.tgz",
     ],

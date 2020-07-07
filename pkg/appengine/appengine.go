@@ -28,8 +28,9 @@ import (
 const (
 	// DefaultCommand is the command used in app_start.json if no entrypoint is specified.
 	DefaultCommand = "/serve"
-	configDir      = ".googleconfig"
-	configFile     = configDir + "/app_start.json"
+	// ConfigDir is the location relative to the user's application where the configFile lives.
+	ConfigDir  = ".googleconfig"
+	configFile = ConfigDir + "/app_start.json"
 )
 
 // Config holds the parameters to pass into app_start.json
@@ -118,8 +119,8 @@ func Build(ctx *gcp.Context, runtime string, eg entrypointGenerator) error {
 		return fmt.Errorf("marshalling JSON: %v", err)
 	}
 
-	ctx.RemoveAll(configDir)
-	ctx.Symlink(l.Root, configDir)
+	ctx.RemoveAll(ConfigDir)
+	ctx.Symlink(l.Root, ConfigDir)
 
 	ctx.WriteFile(configFile, cb, 0444)
 	ctx.WriteMetadata(l, nil, layers.Launch)

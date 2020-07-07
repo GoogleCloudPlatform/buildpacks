@@ -46,7 +46,7 @@ const (
 	Entrypoint = "GOOGLE_ENTRYPOINT"
 
 	// ClearSource is an env var used to clear source files from the final image.
-	// Buildpacks for compiled languages (e.g., Go, Java, .Net) will typically support clearing the source.
+	// Buildpacks for Go and Java support clearing the source.
 	ClearSource = "GOOGLE_CLEAR_SOURCE"
 
 	// Buildable is an env var used to specify the buildable unit to build.

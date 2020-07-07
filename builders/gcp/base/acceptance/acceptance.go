@@ -26,6 +26,7 @@ const (
 	goFF            = "google.go.functions-framework"
 	goPath          = "google.go.gopath"
 	goRuntime       = "google.go.runtime"
+	javaClearSource = "google.java.clear_source"
 	javaEntrypoint  = "google.java.entrypoint"
 	javaExplodedJar = "google.java.exploded-jar"
 	javaGradle      = "google.java.gradle"
