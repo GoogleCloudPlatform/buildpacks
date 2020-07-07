@@ -79,12 +79,6 @@ func buildFn(ctx *gcp.Context) error {
 	var gradle string
 	if ctx.FileExists("gradlew") {
 		gradle = "./gradlew"
-
-		// Make sure `gradlew` is executable. On windows, there's no executable bit
-		// so the file will be copied to `/workspace` without it.
-		if err := os.Chmod(gradle, 0755); err != nil {
-			return fmt.Errorf("couldn't make %q executable: %w", gradle, err)
-		}
 	} else if gradleInstalled(ctx) {
 		gradle = "gradle"
 	} else {
