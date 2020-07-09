@@ -1,5 +1,5 @@
 {
     "require": {
-        "google/cloud-functions-framework": "^0.2"
+        "google/cloud-functions-framework": "^0.3"
     }
 }

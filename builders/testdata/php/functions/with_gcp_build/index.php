@@ -13,9 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use Symfony\Component\HttpFoundation\Request;
+use Psr\Http\Message\ServerRequestInterface;
 
-function testFunction(Request $request) {
+function testFunction(ServerRequestInterface $request) {
   if (file_exists('generated.txt')) {
     echo 'PASS';
   } else {
