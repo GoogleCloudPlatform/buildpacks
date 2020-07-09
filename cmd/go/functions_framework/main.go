@@ -165,10 +165,16 @@ func createMainVendored(ctx *gcp.Context, l *layers.Layer, fn fnInfo) error {
 		cache := ctx.TempDir("", appName)
 		defer ctx.RemoveAll(cache)
 
-		ctx.ExecWithParams(gcp.ExecParams{
+		// The gopath version of `go get` doesn't allow tags, but does checkout the whole repo so we
+		// can checkout the appropriate tag ourselves.
+		ctx.ExecUserWithParams(gcp.ExecParams{
 			Cmd: []string{"go", "get", functionsFrameworkPackage},
 			Env: []string{"GOPATH=" + ctx.ApplicationRoot(), "GOCACHE=" + cache},
-		})
+		}, gcp.UserErrorKeepStderrTail)
+		ctx.ExecUserWithParams(gcp.ExecParams{
+			Cmd: []string{"git", "checkout", functionsFrameworkVersion},
+			Dir: filepath.Join(gopath, functionsFrameworkModule),
+		}, gcp.UserErrorKeepStderrTail)
 	}
 
 	return createMainGoFile(ctx, fn, filepath.Join(appPath, "main.go"))
