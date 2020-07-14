@@ -35,6 +35,7 @@ package_group(
     packages = [
         "//builders/gae/nodejs10",
         "//builders/gae/nodejs12",
+        "//builders/gae/nodejs14",
         "//builders/gcf/nodejs10",
         "//builders/gcf/nodejs12",
         "//builders/gcp/base",

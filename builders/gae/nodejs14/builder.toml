@@ -1,0 +1,52 @@
+description = "Builder for the GAE Node.js 14 runtime"
+
+[[buildpacks]]
+  id = "google.nodejs.npm"
+  uri = "npm.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.npm-gcp-build"
+  uri = "npm_gcp_build.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.yarn"
+  uri = "yarn.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.yarn-gcp-build"
+  uri = "yarn_gcp_build.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.appengine"
+  uri = "appengine.tgz"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.yarn-gcp-build"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.yarn"
+
+  [[order.group]]
+    id = "google.nodejs.appengine"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.npm-gcp-build"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.npm"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.appengine"
+
+[stack]
+  id = "google.nodejs14"
+  build-image = "gcr.io/gae-runtimes/buildpacks/nodejs14/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/nodejs14/run"
+
+[lifecycle]
+  version = "0.8.0"
