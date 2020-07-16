@@ -8,7 +8,15 @@ description = "Builder for the GCF Ruby 2.6 runtime"
   id = "google.ruby.functions-framework"
   uri = "functions_framework.tgz"
 
+[[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source.tgz"
+
 [[order]]
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+
   [[order.group]]
     id = "google.ruby.bundle"
 

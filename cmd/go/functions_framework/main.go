@@ -39,7 +39,8 @@ const (
 )
 
 var (
-	tmpl = template.Must(template.New("main").Parse(mainTextTemplate))
+	tmpl       = template.Must(template.New("main").Parse(mainTextTemplate))
+	googleDirs = []string{fnSourceDir, ".googlebuild", ".googleconfig"}
 )
 
 type fnInfo struct {
@@ -76,7 +77,8 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.RemoveAll(fnSourceDir)
 	ctx.MkdirAll(fnSourceDir, 0755)
 	// mindepth=1 excludes '.', '+' collects all file names before running the command.
-	command := fmt.Sprintf("find . -mindepth 1 -not -name %[1]s -prune -exec mv -t %[1]s {} +", fnSourceDir)
+	// Exclude serverless_function_source_code and .google* dir e.g. .googlebuild, .googleconfig
+	command := fmt.Sprintf("find . -mindepth 1 -not -name %[1]s -prune -not -name %[2]q -prune -exec mv -t %[1]s {} +", fnSourceDir, ".google*")
 	ctx.Exec([]string{"bash", "-c", command})
 
 	fnSource := filepath.Join(ctx.ApplicationRoot(), fnSourceDir)

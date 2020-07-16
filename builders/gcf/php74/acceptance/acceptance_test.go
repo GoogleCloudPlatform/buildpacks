@@ -101,6 +101,10 @@ func TestAcceptance(t *testing.T) {
 
 			tc.Path = "/testFunction"
 			tc.Env = append(tc.Env, "GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=php74")
+			tc.FilesMustExist = append(tc.FilesMustExist,
+				"/layers/google.utils.archive-source/src/source-code.tar.gz",
+				"/workspace/.googlebuild/source-code.tar.gz",
+			)
 
 			acceptance.TestApp(t, builder, tc)
 		})

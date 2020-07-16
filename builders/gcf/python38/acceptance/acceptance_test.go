@@ -56,6 +56,10 @@ func TestAcceptance(t *testing.T) {
 				"GOOGLE_FUNCTION_TARGET=testFunction",
 				"GOOGLE_RUNTIME=python38",
 			)
+			tc.FilesMustExist = append(tc.FilesMustExist,
+				"/layers/google.utils.archive-source/src/source-code.tar.gz",
+				"/workspace/.googlebuild/source-code.tar.gz",
+			)
 
 			acceptance.TestApp(t, builder, tc)
 		})

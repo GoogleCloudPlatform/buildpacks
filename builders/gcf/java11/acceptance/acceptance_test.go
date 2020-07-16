@@ -56,6 +56,11 @@ func TestAcceptance(t *testing.T) {
 				"GOOGLE_RUNTIME=java11",
 			)
 
+			tc.FilesMustExist = append(tc.FilesMustExist,
+				"/layers/google.utils.archive-source/src/source-code.tar.gz",
+				"/workspace/.googlebuild/source-code.tar.gz",
+			)
+
 			acceptance.TestApp(t, builder, tc)
 		})
 	}
@@ -74,7 +79,7 @@ func TestFailures(t *testing.T) {
 		{
 			App:       "fail_no_pom_no_jar",
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
-			MustMatch: "function has neither pom.xml nor already-built jar file; directory has these entries: random.txt",
+			MustMatch: "function has neither pom.xml nor already-built jar file; directory has these entries: .googlebuild, random.txt",
 		},
 		{
 			App:       "fail_two_jars",

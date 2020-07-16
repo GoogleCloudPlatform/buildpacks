@@ -10,6 +10,7 @@ builder(
         "//cmd/java/gradle:gradle.tgz",
         "//cmd/java/maven:maven.tgz",
         "//cmd/java/functions_framework:functions_framework.tgz",
+        "//cmd/utils/archive_source:archive_source.tgz",
     ],
     image = "gcf/java11",
 )

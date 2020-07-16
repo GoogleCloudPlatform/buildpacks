@@ -73,3 +73,17 @@ package_group(
         "//builders/gcp/base",
     ],
 )
+
+package_group(
+    name = "function_builders",
+    packages = [
+        "//builders/gcf/dotnet3",
+        "//builders/gcf/go113",
+        "//builders/gcf/java11",
+        "//builders/gcf/nodejs10",
+        "//builders/gcf/nodejs12",
+        "//builders/gcf/php74",
+        "//builders/gcf/python38",
+        "//builders/gcf/ruby26",
+    ],
+)

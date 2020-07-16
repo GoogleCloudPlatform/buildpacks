@@ -79,8 +79,8 @@ func TestNewStructureTest(t *testing.T) {
 						Name:        "/bin/name",
 						Path:        "/bin/name",
 						ShouldExist: true,
-						UID:         1000,
-						GID:         1000,
+						UID:         -1,
+						GID:         -1,
 					},
 					{
 						Name:        "/notfound",

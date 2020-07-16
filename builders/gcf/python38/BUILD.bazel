@@ -10,6 +10,7 @@ builder(
         "//cmd/python/functions_framework:functions_framework.tgz",
         "//cmd/python/pip:pip.tgz",
         "//cmd/python/webserver:webserver.tgz",
+        "//cmd/utils/archive_source:archive_source.tgz",
     ],
     image = "gcf/python38",
 )

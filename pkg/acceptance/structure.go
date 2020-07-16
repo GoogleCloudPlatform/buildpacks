@@ -57,8 +57,8 @@ func NewStructureTest(filesMustExist, filesMustNotExist []string) *StructureTest
 			Name:        file,
 			Path:        file,
 			ShouldExist: true,
-			UID:         1000,
-			GID:         1000,
+			UID:         -1, // -1 means "ignore"
+			GID:         -1, // -1 means "ignore"
 		})
 	}
 	for _, file := range filesMustNotExist {

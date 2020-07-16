@@ -8,7 +8,15 @@ description = "Builder for the GCF Python 3.8 runtime"
   id = "google.python.functions-framework"
   uri = "functions_framework.tgz"
 
+[[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source.tgz"
+
 [[order]]
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+
   [[order.group]]
     id = "google.python.functions-framework"
 
