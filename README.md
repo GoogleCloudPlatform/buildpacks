@@ -349,7 +349,7 @@ This command will send the local source directory to Cloud Build, invoke this bu
 
 ## Support
 
-Please note that this project is not an officially supported Google product.
+Google Cloud Buildpacks are only officially supported when used with Google Cloud products.
 Customers of Google Cloud can use [standard support channels](https://cloud.google.com/support-hub)
 for help using buildpacks with Google Cloud Products.
 
