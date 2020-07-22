@@ -879,3 +879,9 @@ func envSliceAsMap(t *testing.T, env []string) map[string]string {
 	}
 	return result
 }
+
+// PullImages returns true if the -pull-images flag is set.
+// TODO(b/161842563): Remove after publishing images.
+func PullImages() bool {
+	return pullImages
+}

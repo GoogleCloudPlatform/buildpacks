@@ -13,6 +13,7 @@ package_group(
 package_group(
     name = "go_builders",
     packages = [
+        "//builders/gae/go111",
         "//builders/gae/go112",
         "//builders/gae/go113",
         "//builders/gae/go114",

@@ -6,6 +6,9 @@ version = "0.9.0"
 name = "App Engine Gomod"
 
 [[stacks]]
+id = "google.go111"
+
+[[stacks]]
 id = "google.go112"
 
 [[stacks]]

@@ -9,6 +9,9 @@ name = "Go - Build"
 id = "google"
 
 [[stacks]]
+id = "google.go111"
+
+[[stacks]]
 id = "google.go112"
 
 [[stacks]]
