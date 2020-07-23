@@ -68,12 +68,12 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Build the application.
-	cmd := []string{"go", "build"}
-	cmd = append(cmd, goBuildFlags()...)
-	cmd = append(cmd, "-o", outBin)
-	cmd = append(cmd, buildable)
+	bld := []string{"go", "build"}
+	bld = append(bld, goBuildFlags()...)
+	bld = append(bld, "-o", outBin)
+	bld = append(bld, buildable)
 	ctx.ExecUserWithParams(gcp.ExecParams{
-		Cmd: cmd,
+		Cmd: bld,
 		Env: []string{"GOCACHE=" + cl.Root},
 	}, printTipsAndKeepStderrTail(ctx))
 
@@ -85,13 +85,12 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Configure the entrypoint and metadata for dev mode.
-	cmd = []string{"go", "run"}
-	cmd = append(cmd, goBuildFlags()...)
-	cmd = append(cmd, buildable)
 	devmode.AddFileWatcherProcess(ctx, devmode.Config{
-		Cmd: cmd,
-		Ext: devmode.GoWatchedExtensions,
+		BuildCmd: bld,
+		RunCmd:   []string{outBin},
+		Ext:      devmode.GoWatchedExtensions,
 	})
+
 	devmode.AddSyncMetadata(ctx, devmode.GoSyncRules)
 
 	return nil

@@ -17,7 +17,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -45,8 +44,9 @@ func buildFn(ctx *gcp.Context) error {
 	if devmode.Enabled(ctx) {
 		devmode.AddSyncMetadata(ctx, devmode.JavaSyncRules)
 		devmode.AddFileWatcherProcess(ctx, devmode.Config{
-			Cmd: []string{".devmode_rebuild.sh && " + strings.Join(command, " ")},
-			Ext: devmode.JavaWatchedExtensions,
+			BuildCmd: []string{".devmode_rebuild.sh"},
+			RunCmd:   command,
+			Ext:      devmode.JavaWatchedExtensions,
 		})
 
 		return nil

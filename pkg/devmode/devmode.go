@@ -32,6 +32,12 @@ const (
 	watchexecLayer   = "watchexec"
 	watchexecVersion = "1.12.0"
 	watchexecURL     = "https://github.com/watchexec/watchexec/releases/download/%[1]s/watchexec-%[1]s-x86_64-unknown-linux-gnu.tar.xz"
+	scriptsLayer     = "devmode_scripts"
+	buildAndRun      = "build_and_run.sh"
+
+	// WatchAndRun is the name of the script that watches source files and runs the
+	// build_and_run.sh script when those files change.
+	WatchAndRun = "watch_and_run.sh"
 )
 
 // SyncRule represents a sync rule.
@@ -67,8 +73,8 @@ type metadata struct {
 
 // Config describes the dev mode for a given language.
 type Config struct {
-	// Cmd is the command and args the file watcher should run.
-	Cmd []string
+	BuildCmd []string
+	RunCmd   []string
 	// Ext lists the file extensions that trigger a restart.
 	Ext []string
 }
@@ -76,9 +82,9 @@ type Config struct {
 // AddFileWatcherProcess installs and configures a file watcher as the entrypoint.
 func AddFileWatcherProcess(ctx *gcp.Context, cfg Config) {
 	installFileWatcher(ctx)
-
+	writeBuildAndRunScript(ctx, ctx.Layer(scriptsLayer), cfg)
 	// Override the web process.
-	ctx.AddWebProcess([]string{"watchexec", "-r", "-e", strings.Join(cfg.Ext, ","), strings.Join(cfg.Cmd, " ")})
+	ctx.AddWebProcess([]string{WatchAndRun})
 }
 
 // AddSyncMetadata adds sync metadata to the final image.
@@ -88,6 +94,31 @@ func AddSyncMetadata(ctx *gcp.Context, syncRulesFn func(string) []SyncRule) {
 			"devmode.sync": syncRulesFn(ctx.ApplicationRoot()),
 		},
 	})
+}
+
+// writeBuildAndRunScript writes the contents of a file that builds code and then runs the resulting program
+func writeBuildAndRunScript(ctx *gcp.Context, sl *layers.Layer, cfg Config) {
+
+	binDir := filepath.Join(sl.Root, "bin")
+	ctx.MkdirAll(binDir, 0755)
+
+	var cmd []string
+	if cfg.BuildCmd != nil {
+		cmd = append(cmd, strings.Join(cfg.BuildCmd, " "))
+	}
+	if cfg.RunCmd != nil {
+		cmd = append(cmd, strings.Join(cfg.RunCmd, " "))
+	}
+
+	c := fmt.Sprintf("#!/bin/sh\n%s", strings.Join(cmd, " && "))
+	br := filepath.Join(binDir, buildAndRun)
+	ctx.WriteFile(br, []byte(c), os.FileMode(0755))
+
+	c = fmt.Sprintf("#!/bin/sh\nwatchexec -r -e %s %s", strings.Join(cfg.Ext, ","), br)
+	wr := filepath.Join(binDir, WatchAndRun)
+	ctx.WriteFile(wr, []byte(c), os.FileMode(0755))
+
+	ctx.WriteMetadata(sl, nil, layers.Launch)
 }
 
 // installFileWatcher installs the `watchexec` file watcher.

@@ -111,8 +111,8 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Configure the entrypoint and metadata for dev mode.
 	devmode.AddFileWatcherProcess(ctx, devmode.Config{
-		Cmd: cmd,
-		Ext: devmode.NodeWatchedExtensions,
+		RunCmd: cmd,
+		Ext:    devmode.NodeWatchedExtensions,
 	})
 	devmode.AddSyncMetadata(ctx, devmode.NodeSyncRules)
 
