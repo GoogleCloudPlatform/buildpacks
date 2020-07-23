@@ -37,6 +37,112 @@ type ExecResult struct {
 	Combined string
 }
 
+type execOpts struct {
+	userFailure bool
+	userTiming  bool
+	workDir     string
+	env         []string
+	esp         ErrorSummaryProducer
+	logOnDebug  bool
+}
+
+type execOption func(o *execOpts)
+
+// WithErrorSummaryProducer sets a custom ErrorSummaryProducer.
+func WithErrorSummaryProducer(esp ErrorSummaryProducer) execOption {
+	return func(o *execOpts) {
+		o.esp = esp
+	}
+}
+
+// WithEnv sets environment variables (of the form "KEY=value").
+func WithEnv(env ...string) execOption {
+	return func(o *execOpts) {
+		o.env = env
+	}
+}
+
+// WithWorkDir sets a specific working directory.
+func WithWorkDir(workDir string) execOption {
+	return func(o *execOpts) {
+		o.workDir = workDir
+	}
+}
+
+// WithLogOnDebug emits logging only if GOOGLE_DEBUG is set (otherwise logs are always emitted).
+var WithLogOnDebug = func(o *execOpts) {
+	o.logOnDebug = true
+}
+
+// WithUserAttribution indicates that failure and timing both are attributed to the user.
+var WithUserAttribution = func(o *execOpts) {
+	o.userFailure = true
+	o.userTiming = true
+}
+
+// WithUserTimingAttribution indicates that only timing is attributed to the user.
+var WithUserTimingAttribution = func(o *execOpts) {
+	o.userTiming = true
+}
+
+// WithUserFailureAttribution indicates that only failure is attributed to the user.
+var WithUserFailureAttribution = func(o *execOpts) {
+	o.userFailure = true
+}
+
+// Exec2 runs the given command under the default configuration, handling error if present.
+func (ctx *Context) Exec2(cmd []string, opts ...execOption) *ExecResult {
+	result, err := ctx.Exec2WithErr(cmd, opts...)
+	if err == nil {
+		return result
+	}
+
+	ctx.Exit(result.ExitCode, err)
+	return nil
+}
+
+// Exec2WithErr runs the given command (with args) under the default configuration, allowing the caller to handle the error.
+func (ctx *Context) Exec2WithErr(cmd []string, opts ...execOption) (*ExecResult, *Error) {
+	var eo execOpts
+	for _, o := range opts {
+		o(&eo)
+	}
+
+	params := ExecParams{ // TODO: ExecParams can become internal after migration.
+		Cmd:        cmd,
+		Dir:        eo.workDir,
+		Env:        eo.env,
+		logOnDebug: eo.logOnDebug,
+	}
+
+	start := time.Now()
+
+	result, err := ctx.configuredExec(params) // TODO: inline configuredExec after migration, or have explicit params instead of ExecParams (or leave it as-is for clarity)
+
+	if eo.userTiming {
+		ctx.stats.user += time.Since(start)
+	}
+
+	if err == nil {
+		return result, nil
+	}
+
+	var be *Error
+	if result == nil {
+		be = Errorf(StatusInternal, err.Error())
+	} else {
+		if eo.esp != nil {
+			be = eo.esp(result) // TODO: instead of returning an error, just returned the parsed error string. use eo.failure to determine what kind of error to raise.
+		} else if eo.userFailure {
+			be = UserErrorf(result.Combined)
+		} else {
+			be = Errorf(StatusInternal, result.Combined)
+		}
+	}
+	be.ID = generateErrorID(params.Cmd...)
+	return result, be
+}
+
 // ExecParams bundles exec parameters.
 type ExecParams struct {
 	// Cmd is the required command and optional arguments to be run.
