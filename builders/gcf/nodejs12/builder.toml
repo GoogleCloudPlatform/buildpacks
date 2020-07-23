@@ -61,4 +61,4 @@ description = "Builder for the GCF Node.js 12 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/nodejs12/run"
 
 [lifecycle]
-  version = "0.8.0"
+  version = "0.8.1"
