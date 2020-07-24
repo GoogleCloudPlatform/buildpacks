@@ -83,7 +83,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	ctx.Logf("Upgrading pip to the latest version and installing build tools")
 	path := filepath.Join(l.Root, "bin/python3")
-	ctx.Exec([]string{path, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"})
+	ctx.Exec([]string{path, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"}, gcp.WithUserAttribution)
 
 	// Force stdout/stderr streams to be unbuffered so that log messages appear immediately in the logs.
 	ctx.DefaultLaunchEnv(l, "PYTHONUNBUFFERED", "TRUE")

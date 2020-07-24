@@ -95,5 +95,5 @@ func copyDir(ctx *gcp.Context, src, dst string) {
 
 	// Trailing "/." copies the contents of src directory, but not src itself.
 	src = filepath.Clean(src) + string(filepath.Separator) + "."
-	ctx.Exec([]string{"cp", "--dereference", "-R", src, dst})
+	ctx.Exec([]string{"cp", "--dereference", "-R", src, dst}, gcp.WithUserTimingAttribution)
 }

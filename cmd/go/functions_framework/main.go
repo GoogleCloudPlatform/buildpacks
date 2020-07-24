@@ -79,7 +79,7 @@ func buildFn(ctx *gcp.Context) error {
 	// mindepth=1 excludes '.', '+' collects all file names before running the command.
 	// Exclude serverless_function_source_code and .google* dir e.g. .googlebuild, .googleconfig
 	command := fmt.Sprintf("find . -mindepth 1 -not -name %[1]s -prune -not -name %[2]q -prune -exec mv -t %[1]s {} +", fnSourceDir, ".google*")
-	ctx.Exec([]string{"bash", "-c", command})
+	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserTimingAttribution)
 
 	fnSource := filepath.Join(ctx.ApplicationRoot(), fnSourceDir)
 	fn := fnInfo{
@@ -157,7 +157,7 @@ func createMainVendored(ctx *gcp.Context, l *layers.Layer, fn fnInfo) error {
 
 	fnFrameworkVendoredPath := filepath.Join(fnVendoredPath, functionsFrameworkPackage)
 	if ctx.FileExists(fnFrameworkVendoredPath) {
-		ctx.Exec([]string{"cp", "-r", fnVendoredPath, appPath})
+		ctx.Exec([]string{"cp", "-r", fnVendoredPath, appPath}, gcp.WithUserTimingAttribution)
 	} else {
 		// If the framework isn't in the user-provided vendor directory, we need to fetch it ourselves.
 		// Create a temporary GOCACHE directory so GOPATH go get works.

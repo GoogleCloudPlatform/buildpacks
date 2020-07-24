@@ -118,7 +118,7 @@ func goBuildable(ctx *gcp.Context) (string, error) {
 // searchBuildables searches the source for all the files that contain
 // a `main()` entrypoint.
 func searchBuildables(ctx *gcp.Context) ([]string, error) {
-	result := ctx.Exec([]string{"go", "list", "-f", `{{if eq .Name "main"}}{{.Dir}}{{end}}`, "./..."})
+	result := ctx.Exec([]string{"go", "list", "-f", `{{if eq .Name "main"}}{{.Dir}}{{end}}`, "./..."}, gcp.WithUserAttribution)
 
 	var buildables []string
 

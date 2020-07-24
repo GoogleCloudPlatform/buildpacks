@@ -55,5 +55,5 @@ func archiveSource(ctx *gcp.Context, fileName, dirName string) {
 		"--create", "--gzip", "--preserve-permissions",
 		"--file=" + fileName,
 		"--directory", dirName,
-		"."})
+		"."}, gcp.WithUserTimingAttribution)
 }

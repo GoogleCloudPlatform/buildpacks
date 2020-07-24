@@ -83,7 +83,7 @@ func buildFn(ctx *gcp.Context) error {
 	// Download and install Node.js in layer.
 	ctx.Logf("Installing Node.js v%s", version)
 	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xJ --directory %s --strip-components=1", archiveURL, nrl.Root)
-	ctx.Exec([]string{"bash", "-c", command})
+	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 
 	meta.Version = version
 	ctx.WriteMetadata(nrl, meta, layers.Build, layers.Cache, layers.Launch)
@@ -113,7 +113,7 @@ func runtimeVersion(ctx *gcp.Context) (string, error) {
 	}
 	// Use package.json and semver.io to determine best-fit Node.js version.
 	ctx.Logf("Resolving Node.js version based on semver %q", versionRange)
-	result := ctx.Exec([]string{"curl", "--silent", "--get", "--data-urlencode", fmt.Sprintf("range=%s", versionRange), "http://semver.io/node/resolve"})
+	result := ctx.Exec([]string{"curl", "--silent", "--get", "--data-urlencode", fmt.Sprintf("range=%s", versionRange), "http://semver.io/node/resolve"}, gcp.WithUserAttribution)
 	version := result.Stdout
 	ctx.Logf("Using resolved runtime version from package.json: %s", version)
 	return version, nil

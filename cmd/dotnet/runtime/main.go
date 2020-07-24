@@ -103,7 +103,7 @@ func buildFn(ctx *gcp.Context) error {
 	// which is symlinked to the SDK layer. This is needed because the dotnet CLI
 	// needs an sdk directory in the same directory as the dotnet executable.
 	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --keep-directory-symlink --strip-components=1", archiveURL, rtl.Root)
-	ctx.Exec([]string{"bash", "-c", command})
+	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 
 	// Keep the SDK layer for launch in devmode because we use `dotnet watch`.
 	sdkMeta.Version = version
@@ -161,7 +161,7 @@ func runtimeVersion(ctx *gcp.Context) (string, error) {
 
 	// Use the latest LTS version.
 	command := fmt.Sprintf("curl --silent %s | tail -n 1", versionURL)
-	result := ctx.Exec([]string{"bash", "-c", command})
+	result := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 	version = result.Stdout
 	ctx.Logf("Using the latest LTS version of .NET Core SDK: %s", version)
 	return version, nil

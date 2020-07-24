@@ -153,15 +153,15 @@ func installGradle(ctx *gcp.Context) (string, error) {
 	defer ctx.RemoveAll(gradleZip)
 
 	curl := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s --output %s", downloadURL, gradleZip)
-	ctx.Exec([]string{"bash", "-c", curl})
+	ctx.Exec([]string{"bash", "-c", curl}, gcp.WithUserAttribution)
 
 	unzip := fmt.Sprintf("unzip -q %s -d %s", gradleZip, tmpDir)
-	ctx.Exec([]string{"bash", "-c", unzip})
+	ctx.Exec([]string{"bash", "-c", unzip}, gcp.WithUserAttribution)
 
 	gradleExtracted := filepath.Join(tmpDir, fmt.Sprintf("gradle-%s", version))
 	defer ctx.RemoveAll(gradleExtracted)
 	install := fmt.Sprintf("mv %s/* %s", gradleExtracted, gradlel.Root)
-	ctx.Exec([]string{"bash", "-c", install})
+	ctx.Exec([]string{"bash", "-c", install}, gcp.WithUserTimingAttribution)
 
 	meta.Version = version
 	ctx.WriteMetadata(gradlel, meta, layers.Cache)
@@ -174,7 +174,7 @@ func fetchGradleVersion(ctx *gcp.Context) (string, string, error) {
 		return "", "", fmt.Errorf("Gradle latest version info does not exist at %s (status %d)", gradleVersionURL, code)
 	}
 
-	jsonStr := ctx.Exec([]string{"curl", "--silent", gradleVersionURL}).Stdout
+	jsonStr := ctx.Exec([]string{"curl", "--silent", gradleVersionURL}, gcp.WithUserAttribution).Stdout
 	var gv gradleVersion
 	if err := json.Unmarshal([]byte(jsonStr), &gv); err != nil {
 		return "", "", fmt.Errorf("parsing JSON response from URL %q: %v", gradleVersionURL, err)

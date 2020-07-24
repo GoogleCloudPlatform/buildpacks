@@ -141,7 +141,7 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*layers.Layer, error) {
 		ctx.CacheHit(cacheTag)
 
 		// PHP expects the vendor/ directory to be in the application directory.
-		ctx.Exec([]string{"cp", "--archive", layerVendor, Vendor})
+		ctx.Exec([]string{"cp", "--archive", layerVendor, Vendor}, gcp.WithUserTimingAttribution)
 	} else {
 		ctx.CacheMiss(cacheTag)
 		// Clear layer so we don't end up with outdated dependencies (e.g. something was removed from composer.json).
@@ -150,7 +150,7 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*layers.Layer, error) {
 
 		// Ensure vendor exists even if no dependencies were installed.
 		ctx.MkdirAll(Vendor, 0755)
-		ctx.Exec([]string{"cp", "--archive", Vendor, layerVendor})
+		ctx.Exec([]string{"cp", "--archive", Vendor, layerVendor}, gcp.WithUserTimingAttribution)
 	}
 
 	ctx.WriteMetadata(l, &meta, layers.Cache)

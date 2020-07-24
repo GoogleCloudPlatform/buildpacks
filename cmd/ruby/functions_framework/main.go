@@ -62,8 +62,8 @@ func buildFn(ctx *gcp.Context) error {
 	// Verify that the framework is installed and ready.
 	// TODO(b/156038129): Implement a --verify flag in the functions framework
 	// that also checks the actual function for readiness.
-	verifyCmd := []string{"bundle", "exec", "functions-framework", "--help"}
-	if _, err := ctx.ExecWithErr(verifyCmd); err != nil {
+	cmd := []string{"bundle", "exec", "functions-framework", "--help"}
+	if _, err := ctx.ExecWithErr(cmd, gcp.WithUserAttribution); err != nil {
 		return gcp.UserErrorf("unable to execute functions-framework; please ensure the functions_framework gem is in your Gemfile")
 	}
 

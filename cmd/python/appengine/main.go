@@ -45,7 +45,7 @@ func buildFn(ctx *gcp.Context) error {
 
 func entrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
 	// Check installed gunicorn version and warn if version is lower than supported
-	result, err := ctx.ExecWithErr([]string{"python3", "-m", "pip", "show", "gunicorn"})
+	result, err := ctx.ExecWithErr([]string{"python3", "-m", "pip", "show", "gunicorn"}, gcp.WithUserTimingAttribution)
 	if err != nil {
 		if result != nil && result.ExitCode == 1 {
 			return nil, fmt.Errorf("gunicorn not installed: %s", result.Combined)

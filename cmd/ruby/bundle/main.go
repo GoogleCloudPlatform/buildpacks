@@ -99,7 +99,7 @@ func buildFn(ctx *gcp.Context) error {
 
 		// Move the built .bundle directory into the layer
 		ctx.RemoveAll(bundleOutput)
-		ctx.Exec([]string{"mv", ".bundle", bundleOutput})
+		ctx.Exec([]string{"mv", ".bundle", bundleOutput}, gcp.WithUserTimingAttribution)
 	}
 
 	// Always link local .bundle directory to the actual installation stored in the layer.

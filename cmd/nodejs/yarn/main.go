@@ -125,7 +125,7 @@ func installYarn(ctx *gcp.Context) error {
 
 	// Use semver.io to determine the latest available version of Yarn.
 	ctx.Logf("Finding latest stable version of Yarn.")
-	result := ctx.Exec([]string{"curl", "--silent", "--get", "http://semver.io/yarn/stable"})
+	result := ctx.Exec([]string{"curl", "--silent", "--get", "http://semver.io/yarn/stable"}, gcp.WithUserAttribution)
 	version := result.Stdout
 	ctx.Logf("The latest stable version of Yarn is v%s", version)
 
@@ -146,7 +146,7 @@ func installYarn(ctx *gcp.Context) error {
 		ctx.Logf("Installing Yarn v%s", version)
 		archiveURL := fmt.Sprintf(yarnURL, version)
 		command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, yrl.Root)
-		ctx.Exec([]string{"bash", "-c", command})
+		ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 	}
 
 	// Store layer flags and metadata.

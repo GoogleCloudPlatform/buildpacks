@@ -101,7 +101,7 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.CacheMiss(layerName)
 		ctx.ClearLayer(l)
 		// NPM expects package.json and the lock file in the prefix directory.
-		ctx.Exec([]string{"cp", "-t", l.Root, pjs, pljs})
+		ctx.Exec([]string{"cp", "-t", l.Root, pjs, pljs}, gcp.WithUserTimingAttribution)
 		ctx.Exec([]string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet", "--production", "--prefix", l.Root}, gcp.WithUserAttribution)
 	}
 
