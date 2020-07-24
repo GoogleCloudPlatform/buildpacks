@@ -17,7 +17,6 @@
 package main
 
 import (
-	"encoding/xml"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -172,12 +171,6 @@ func gradleClasspath(ctx *gcp.Context) (string, error) {
 func installFunctionsFramework(ctx *gcp.Context, layer *layers.Layer) error {
 	frameworkVersion := defaultFrameworkVersion
 	// TODO(emcmanus): extract framework version from pom.xml if present
-	if version, err := latestFrameworkVersion(ctx); err == nil {
-		frameworkVersion = version
-		ctx.Logf("Using latest framework version %s", version)
-	} else {
-		ctx.Warnf("Could not determine latest framework version, defaulting to %s: %v", defaultFrameworkVersion, err)
-	}
 
 	// Install functions-framework.
 	var meta metadata
@@ -208,22 +201,4 @@ func installFramework(ctx *gcp.Context, layer *layers.Layer, version string) err
 		return gcp.InternalErrorf("fetching functions framework jar: %v\n%s", err, result.Stderr)
 	}
 	return nil
-}
-
-type mavenMetadata struct {
-	XMLName xml.Name `xml:"metadata"`
-	Release string   `xml:"versioning>release"`
-}
-
-func latestFrameworkVersion(ctx *gcp.Context) (string, error) {
-	result, err := ctx.ExecWithErr([]string{"curl", "--silent", "--fail", "--show-error", functionsFrameworkMetadataURL})
-	if err != nil {
-		return "", gcp.InternalErrorf("fetching latest version: %v\n%s", err, result.Stderr)
-	}
-	metadataXML := result.Stdout
-	var mavenMetadata mavenMetadata
-	if err := xml.Unmarshal([]byte(metadataXML), &mavenMetadata); err != nil {
-		return "", gcp.InternalErrorf("decoding release version in text from %s: %v:\n%s", functionsFrameworkMetadataURL, err, metadataXML)
-	}
-	return mavenMetadata.Release, nil
 }
