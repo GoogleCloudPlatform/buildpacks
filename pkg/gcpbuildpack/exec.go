@@ -38,22 +38,16 @@ type ExecResult struct {
 }
 
 type execParams struct {
-	cmd         []string
-	userFailure bool
-	userTiming  bool
-	dir         string
-	env         []string
-	esp         ErrorSummaryProducer
+	cmd []string
+	dir string
+	env []string
+
+	userFailure     bool
+	userTiming      bool
+	messageProducer MessageProducer
 }
 
 type execOption func(o *execParams)
-
-// WithErrorSummaryProducer sets a custom ErrorSummaryProducer.
-func WithErrorSummaryProducer(esp ErrorSummaryProducer) execOption {
-	return func(o *execParams) {
-		o.esp = esp
-	}
-}
 
 // WithEnv sets environment variables (of the form "KEY=value").
 func WithEnv(env ...string) execOption {
@@ -85,6 +79,31 @@ var WithUserFailureAttribution = func(o *execParams) {
 	o.userFailure = true
 }
 
+// WithMessageProducer sets a custom MessageProducer to produce the error message.
+func WithMessageProducer(mp MessageProducer) execOption {
+	return func(o *execParams) {
+		o.messageProducer = mp
+	}
+}
+
+// WithCombinedTail keeps the tail of the combined stdout/stderr for the error message.
+var WithCombinedTail = WithMessageProducer(KeepCombinedTail)
+
+// WithCombinedHead keeps the head of the combined stdout/stderr for the error message.
+var WithCombinedHead = WithMessageProducer(KeepCombinedHead)
+
+// WithStderrTail keeps the tail of stderr for the error message.
+var WithStderrTail = WithMessageProducer(KeepStderrTail)
+
+// WithStderrHead keeps the head of stderr for the error message.
+var WithStderrHead = WithMessageProducer(KeepStderrHead)
+
+// WithStdoutTail keeps the tail of stdout for the error message.
+var WithStdoutTail = WithMessageProducer(KeepStdoutTail)
+
+// WithStdoutHead keeps the head of stdout for the error message.
+var WithStdoutHead = WithMessageProducer(KeepStdoutHead)
+
 // Exec runs the given command under the default configuration, handling error if present.
 func (ctx *Context) Exec(cmd []string, opts ...execOption) *ExecResult {
 	result, err := ctx.ExecWithErr(cmd, opts...)
@@ -98,7 +117,7 @@ func (ctx *Context) Exec(cmd []string, opts ...execOption) *ExecResult {
 
 // ExecWithErr runs the given command (with args) under the default configuration, allowing the caller to handle the error.
 func (ctx *Context) ExecWithErr(cmd []string, opts ...execOption) (*ExecResult, *Error) {
-	params := execParams{cmd: cmd}
+	params := execParams{cmd: cmd, messageProducer: KeepCombinedTail}
 	for _, o := range opts {
 		o(&params)
 	}
@@ -119,12 +138,11 @@ func (ctx *Context) ExecWithErr(cmd []string, opts ...execOption) (*ExecResult, 
 	if result == nil {
 		be = Errorf(StatusInternal, err.Error())
 	} else {
-		if params.esp != nil {
-			be = params.esp(result) // TODO: instead of returning an error, just returned the parsed error string. use eo.failure to determine what kind of error to raise.
-		} else if params.userFailure {
-			be = UserErrorf(result.Combined)
+		message := params.messageProducer(result)
+		if params.userFailure {
+			be = UserErrorf(message)
 		} else {
-			be = Errorf(StatusInternal, result.Combined)
+			be = Errorf(StatusInternal, message)
 		}
 	}
 	be.ID = generateErrorID(params.cmd...)

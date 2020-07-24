@@ -300,14 +300,79 @@ func TestExecWithWorkDir(t *testing.T) {
 	}
 }
 
-func TestExecWithErrorSummaryProducer(t *testing.T) {
+func TestExecWithMessageProducer(t *testing.T) {
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
-	wantErr := Errorf(StatusResourceExhausted, "I'm exhausted")
+	wantProducer := func(result *ExecResult) string { return "HELLO" }
 
-	_, gotErr := ctx.ExecWithErr([]string{"/bin/bash", "-c", "exit 99"}, WithErrorSummaryProducer(func(result *ExecResult) *Error { return wantErr }))
+	_, gotErr := ctx.ExecWithErr([]string{"/bin/bash", "-c", "exit 99"}, WithMessageProducer(wantProducer))
 
-	if gotErr != wantErr {
-		t.Errorf("incorrect output got=%q want=%q", gotErr, wantErr)
+	if got, want := gotErr.Message, "HELLO"; got != want {
+		t.Errorf("incorrect message got=%q want=%q", got, want)
+	}
+}
+
+func TestMessageProducerHelpers(t *testing.T) {
+	testCases := []struct {
+		name     string
+		opt      execOption
+		stdout   string
+		stderr   string
+		combined string
+		want     string
+	}{
+		{
+			name:   "WithStdoutTail",
+			opt:    WithStdoutTail,
+			stdout: "123456789stdout",
+			want:   "...stdout",
+		},
+		{
+			name:   "WithStderrTail",
+			opt:    WithStderrTail,
+			stderr: "123456789stderr",
+			want:   "...stderr",
+		},
+		{
+			name:     "WithCombinedTail",
+			opt:      WithCombinedTail,
+			combined: "123456789combined",
+			want:     "...mbined",
+		},
+		{
+			name:   "WithStdoutHead",
+			opt:    WithStdoutHead,
+			stdout: "stdout123456789",
+			want:   "stdout...",
+		},
+		{
+			name:   "WithStderrHead",
+			opt:    WithStderrHead,
+			stderr: "stderr123456789",
+			want:   "stderr...",
+		},
+		{
+			name:     "WithCombinedHead",
+			opt:      WithCombinedHead,
+			combined: "combined123456789",
+			want:     "combin...",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			oldMax := maxMessageBytes
+			maxMessageBytes = 9
+			defer func() {
+				maxMessageBytes = oldMax
+			}()
+
+			ep := execParams{}
+			tc.opt(&ep)
+			got := ep.messageProducer(&ExecResult{Stdout: tc.stdout, Stderr: tc.stderr, Combined: tc.combined})
+
+			if got != tc.want {
+				t.Errorf("message got %q want %q", got, tc.want)
+			}
+		})
 	}
 }

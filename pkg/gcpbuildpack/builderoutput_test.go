@@ -73,50 +73,50 @@ func TestSaveErrorOutput(t *testing.T) {
 	}
 }
 
-func TestErrorFormatterHelpers(t *testing.T) {
+func TestMessageProducers(t *testing.T) {
 	testCases := []struct {
-		name      string
-		formatter ErrorSummaryProducer
-		stdout    string
-		stderr    string
-		combined  string
-		want      string
+		name     string
+		producer MessageProducer
+		stdout   string
+		stderr   string
+		combined string
+		want     string
 	}{
 		{
-			name:      "UserErrorKeepStdoutTail",
-			formatter: UserErrorKeepStdoutTail,
-			stdout:    "123456789stdout",
-			want:      "...stdout",
+			name:     "KeepStdoutTail",
+			producer: KeepStdoutTail,
+			stdout:   "123456789stdout",
+			want:     "...stdout",
 		},
 		{
-			name:      "UserErrorKeepStderrTail",
-			formatter: UserErrorKeepStderrTail,
-			stderr:    "123456789stderr",
-			want:      "...stderr",
+			name:     "KeepStderrTail",
+			producer: KeepStderrTail,
+			stderr:   "123456789stderr",
+			want:     "...stderr",
 		},
 		{
-			name:      "UserErrorKeepCombinedTail",
-			formatter: UserErrorKeepCombinedTail,
-			combined:  "123456789combined",
-			want:      "...mbined",
+			name:     "KeepCombinedTail",
+			producer: KeepCombinedTail,
+			combined: "123456789combined",
+			want:     "...mbined",
 		},
 		{
-			name:      "UserErrorKeepStdoutHead",
-			formatter: UserErrorKeepStdoutHead,
-			stdout:    "stdout123456789",
-			want:      "stdout...",
+			name:     "KeepStdoutHead",
+			producer: KeepStdoutHead,
+			stdout:   "stdout123456789",
+			want:     "stdout...",
 		},
 		{
-			name:      "UserErrorKeepStderrHead",
-			formatter: UserErrorKeepStderrHead,
-			stderr:    "stderr123456789",
-			want:      "stderr...",
+			name:     "KeepStderrHead",
+			producer: KeepStderrHead,
+			stderr:   "stderr123456789",
+			want:     "stderr...",
 		},
 		{
-			name:      "UserErrorKeepCombinedHead",
-			formatter: UserErrorKeepCombinedHead,
-			combined:  "combined123456789",
-			want:      "combin...",
+			name:     "KeepCombinedHead",
+			producer: KeepCombinedHead,
+			combined: "combined123456789",
+			want:     "combin...",
 		},
 	}
 	for _, tc := range testCases {
@@ -127,13 +127,10 @@ func TestErrorFormatterHelpers(t *testing.T) {
 				maxMessageBytes = oldMax
 			}()
 
-			be := tc.formatter(&ExecResult{Stdout: tc.stdout, Stderr: tc.stderr, Combined: tc.combined})
+			got := tc.producer(&ExecResult{Stdout: tc.stdout, Stderr: tc.stderr, Combined: tc.combined})
 
-			if be.Status != StatusUnknown {
-				t.Errorf("status got %s want %s", be.Status, StatusUnknown)
-			}
-			if be.Message != tc.want {
-				t.Errorf("message got %q want %q", be.Message, tc.want)
+			if got != tc.want {
+				t.Errorf("message got %q want %q", got, tc.want)
 			}
 		})
 	}

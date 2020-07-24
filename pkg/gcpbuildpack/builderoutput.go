@@ -92,6 +92,27 @@ func UserErrorf(format string, args ...interface{}) *Error {
 	return Errorf(StatusUnknown, format, args...)
 }
 
+// MessageProducer is a function that produces a useful message from the result.
+type MessageProducer func(result *ExecResult) string
+
+// KeepCombinedTail returns the tail of the combined stdout/stderr from the result.
+var KeepCombinedTail = func(result *ExecResult) string { return keepTail(result.Combined) }
+
+// KeepCombinedHead returns the head of the combined stdout/stderr from the result.
+var KeepCombinedHead = func(result *ExecResult) string { return keepHead(result.Combined) }
+
+// KeepStderrTail returns the tail of stderr from the result.
+var KeepStderrTail = func(result *ExecResult) string { return keepTail(result.Stderr) }
+
+// KeepStderrHead returns the head of stderr from the result.
+var KeepStderrHead = func(result *ExecResult) string { return keepHead(result.Stderr) }
+
+// KeepStdoutTail returns the tail of stdout from the result.
+var KeepStdoutTail = func(result *ExecResult) string { return keepTail(result.Stdout) }
+
+// KeepStdoutHead returns the head of stdout from the result.
+var KeepStdoutHead = func(result *ExecResult) string { return keepHead(result.Stdout) }
+
 // saveErrorOutput saves to the builder output file, if appropriate.
 func (ctx *Context) saveErrorOutput(be *Error) {
 	outputDir := os.Getenv(builderOutputEnv)
@@ -140,44 +161,6 @@ func (ctx *Context) saveErrorOutput(be *Error) {
 		}
 	}
 	return
-}
-
-// ErrorSummaryProducer is responsible to produce summary error information.
-// The function must return a *gcpbuildpack.Error. The overall BUILDER_OUTPUT
-// file has a maximum size, so the message must be at most maxMessageBytes; this formatter
-// should attempt to shorten the message to something user actionable if the message
-// is too long. There are helper functions that can be used as the formatter, like
-// ErrorKeepStdoutTail(), ErrorKeepStderrTail(), etc.
-type ErrorSummaryProducer func(result *ExecResult) *Error
-
-// UserErrorKeepStdoutTail returns a user error that keeps stdout tail.
-func UserErrorKeepStdoutTail(result *ExecResult) *Error {
-	return UserErrorf(keepTail(result.Stdout))
-}
-
-// UserErrorKeepStderrTail returns a user error that keeps stderr tail.
-func UserErrorKeepStderrTail(result *ExecResult) *Error {
-	return UserErrorf(keepTail(result.Stderr))
-}
-
-// UserErrorKeepCombinedTail returns a user error that keeps combined stdout/stderr tail.
-func UserErrorKeepCombinedTail(result *ExecResult) *Error {
-	return UserErrorf(keepTail(result.Combined))
-}
-
-// UserErrorKeepStdoutHead returns a user error that keeps stdout head.
-func UserErrorKeepStdoutHead(result *ExecResult) *Error {
-	return UserErrorf(keepHead(result.Stdout))
-}
-
-// UserErrorKeepStderrHead returns a user error that keeps stderr head.
-func UserErrorKeepStderrHead(result *ExecResult) *Error {
-	return UserErrorf(keepHead(result.Stderr))
-}
-
-// UserErrorKeepCombinedHead returns a user error that keeps combined stdout/stderr head.
-func UserErrorKeepCombinedHead(result *ExecResult) *Error {
-	return UserErrorf(keepHead(result.Combined))
 }
 
 func keepTail(message string) string {

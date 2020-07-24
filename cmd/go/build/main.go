@@ -72,7 +72,7 @@ func buildFn(ctx *gcp.Context) error {
 	bld = append(bld, goBuildFlags()...)
 	bld = append(bld, "-o", outBin)
 	bld = append(bld, buildable)
-	ctx.Exec(bld, gcp.WithEnv("GOCACHE="+cl.Root), gcp.WithErrorSummaryProducer(printTipsAndKeepStderrTail(ctx)), gcp.WithUserAttribution)
+	ctx.Exec(bld, gcp.WithEnv("GOCACHE="+cl.Root), gcp.WithMessageProducer(printTipsAndKeepStderrTail(ctx)), gcp.WithUserAttribution)
 
 	// Configure the entrypoint for production.  Use the full path to save `skaffold debug`
 	// from fetching the remote container image (tens to hundreds of megabytes), which is slow.
@@ -145,8 +145,8 @@ func goBuildFlags() []string {
 	return flags
 }
 
-func printTipsAndKeepStderrTail(ctx *gcp.Context) gcp.ErrorSummaryProducer {
-	return func(result *gcp.ExecResult) *gcp.Error {
+func printTipsAndKeepStderrTail(ctx *gcp.Context) gcp.MessageProducer {
+	return func(result *gcp.ExecResult) string {
 		if result.ExitCode != 0 {
 			// If `go build` fails with any of those two errors, there's a great chance
 			// that we are not building the right package.
@@ -155,6 +155,6 @@ func printTipsAndKeepStderrTail(ctx *gcp.Context) gcp.ErrorSummaryProducer {
 			}
 		}
 
-		return gcp.UserErrorKeepStderrTail(result)
+		return gcp.KeepStderrTail(result)
 	}
 }
