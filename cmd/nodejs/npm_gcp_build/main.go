@@ -69,16 +69,13 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.CacheMiss(cacheTag)
 		// Clear cached node_modules to ensure we don't end up with outdated dependencies.
 		ctx.ClearLayer(l)
-		ctx.ExecUserWithParams(gcp.ExecParams{
-			Cmd: []string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet"},
-			Env: []string{"NODE_ENV=" + nodeEnv},
-		}, gcp.UserErrorKeepStderrTail)
+		ctx.Exec([]string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution)
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)
 		ctx.Exec([]string{"cp", "--archive", "node_modules", nm})
 	}
 
-	ctx.ExecUser([]string{"npm", "run", "gcp-build"})
+	ctx.Exec([]string{"npm", "run", "gcp-build"}, gcp.WithUserAttribution)
 	ctx.RemoveAll("node_modules")
 	ctx.WriteMetadata(l, &meta, layers.Cache)
 	return nil

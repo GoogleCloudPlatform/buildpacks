@@ -36,7 +36,7 @@ func EnsurePackageLock(ctx *gcp.Context) {
 	if !ctx.FileExists(PackageLock) {
 		ctx.Logf("Generating %s.", PackageLock)
 		ctx.Warnf("*** Improve build performance by generating and committing %s.", PackageLock)
-		ctx.ExecUser([]string{"npm", "install", "--package-lock-only", "--quiet"})
+		ctx.Exec([]string{"npm", "install", "--package-lock-only", "--quiet"}, gcp.WithUserAttribution)
 	}
 }
 

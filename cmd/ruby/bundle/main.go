@@ -83,11 +83,11 @@ func buildFn(ctx *gcp.Context) error {
 
 		// Install the bundle locally into .bundle/gems
 		ctx.RemoveAll(localGemsDir, localBinDir)
-		ctx.ExecUser([]string{"bundle", "config", "--local", "deployment", "true"})
-		ctx.ExecUser([]string{"bundle", "config", "--local", "frozen", "true"})
-		ctx.ExecUser([]string{"bundle", "config", "--local", "without", "development test"})
-		ctx.ExecUser([]string{"bundle", "config", "--local", "path", localGemsDir})
-		ctx.ExecUser([]string{"bundle", "install"})
+		ctx.Exec([]string{"bundle", "config", "--local", "deployment", "true"}, gcp.WithUserAttribution)
+		ctx.Exec([]string{"bundle", "config", "--local", "frozen", "true"}, gcp.WithUserAttribution)
+		ctx.Exec([]string{"bundle", "config", "--local", "without", "development test"}, gcp.WithUserAttribution)
+		ctx.Exec([]string{"bundle", "config", "--local", "path", localGemsDir}, gcp.WithUserAttribution)
+		ctx.Exec([]string{"bundle", "install"}, gcp.WithUserAttribution)
 
 		// Find any gem-installed binary directory and symlink as a static path
 		foundBinDirs := ctx.Glob(".bundle/gems/ruby/*/bin")

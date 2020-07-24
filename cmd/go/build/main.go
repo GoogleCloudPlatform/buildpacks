@@ -72,10 +72,7 @@ func buildFn(ctx *gcp.Context) error {
 	bld = append(bld, goBuildFlags()...)
 	bld = append(bld, "-o", outBin)
 	bld = append(bld, buildable)
-	ctx.ExecUserWithParams(gcp.ExecParams{
-		Cmd: bld,
-		Env: []string{"GOCACHE=" + cl.Root},
-	}, printTipsAndKeepStderrTail(ctx))
+	ctx.Exec(bld, gcp.WithEnv("GOCACHE="+cl.Root), gcp.WithErrorSummaryProducer(printTipsAndKeepStderrTail(ctx)), gcp.WithUserAttribution)
 
 	// Configure the entrypoint for production.  Use the full path to save `skaffold debug`
 	// from fetching the remote container image (tens to hundreds of megabytes), which is slow.

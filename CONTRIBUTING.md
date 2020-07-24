@@ -105,14 +105,17 @@ Some examples:
 * Compiling a Go program: USER (syntax error, dependency not found, etc.)
 * Downloading Go modules: USER (module not found more likely than network issue)
 
-### Exec vs ExecUser
+### Using gcp.WithUserAttribution()
 
 The `Context` struct provides convenience functions to execute arbitrary
-commands. Use `Exec` and its derivatives for internal commands such as moving
-files and `ExecUser` its derivatives for commands that depend on user input,
-such as downloading dependencies or compiling a program. In all cases, prefer
-using specialized functions when available on `Context` instead of `Exec`, for
-example `ctx.Symlink` instead of `ln -s`.
+commands. When calling `Exec`, use the option `gcp.WithUserAttribution`
+for commands that depend on user input, such as downloading dependencies or
+compiling a program. It is also possible to split failure attribution and
+timing attribution, using `gcp.WithUserFailureAttribution`, or
+`gcp.WithUserTimingAttribution`. In the absence of these options, attribution
+is assigned to the system.
+In all cases, prefer using specialized functions when available on `Context`
+instead of `Exec`, for example `ctx.Symlink` instead of `ln -s`.
 
 ### Compiling a buildpack
 
@@ -209,7 +212,7 @@ docker image prune --all --filter until=720h
 
 Run `pack build ... -v` to produce more verbose debug output.
 
-### `bazel test` fails on macOS or Windows 
+### `bazel test` fails on macOS or Windows
 
 By default, `bazel` builds Go binaries for the current platform.  As GCP Buildpacks
 are targeted to Linux-based container images, our `.bazelrc` configures builds for

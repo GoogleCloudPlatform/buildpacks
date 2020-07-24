@@ -57,7 +57,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Check for syntax errors.
-	ctx.ExecUserWithParams(gcp.ExecParams{Cmd: []string{"python3", "-m", "compileall", "-q", "."}}, gcp.UserErrorKeepStdoutTail)
+	ctx.Exec([]string{"python3", "-m", "compileall", "-q", "."}, gcp.WithErrorSummaryProducer(gcp.UserErrorKeepStdoutTail), gcp.WithUserAttribution)
 
 	// Determine if the function has dependency on functions-framework.
 	hasFrameworkDependency := false
@@ -114,7 +114,7 @@ func installFramework(ctx *gcp.Context, l *layers.Layer) error {
 		ctx.CacheHit(layerName)
 	} else {
 		ctx.CacheMiss(layerName)
-		ctx.ExecUser([]string{"python3", "-m", "pip", "install", "--upgrade", "-t", l.Root, "-r", req})
+		ctx.Exec([]string{"python3", "-m", "pip", "install", "--upgrade", "-t", l.Root, "-r", req}, gcp.WithUserAttribution)
 	}
 	ctx.PrependPathSharedEnv(l, "PYTHONPATH", l.Root)
 	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)

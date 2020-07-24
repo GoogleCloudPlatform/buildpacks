@@ -49,10 +49,9 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	script := filepath.Join(ctx.BuildpackRoot(), "scripts", "check_gemfile_version.rb")
-	cmd := []string{"ruby", script, gemfile}
-	result, err := ctx.ExecWithErr(cmd)
+	result, err := ctx.ExecWithErr([]string{"ruby", script, gemfile})
 	if err != nil && result != nil && result.ExitCode != 0 {
 		return gcp.UserErrorf(result.Stdout)
 	}
-	return err
+	return nil
 }

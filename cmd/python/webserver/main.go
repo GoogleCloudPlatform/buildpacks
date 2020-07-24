@@ -61,7 +61,7 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.ReadMetadata(l, &meta)
 
 	// Check for up to date gunicorn version
-	raw := ctx.ExecUser([]string{"python3", "-m", "pip", "search", "gunicorn"}).Stdout
+	raw := ctx.Exec([]string{"python3", "-m", "pip", "search", "gunicorn"}, gcp.WithUserAttribution).Stdout
 	match := versionRegexp.FindStringSubmatch(raw)
 	if len(match) < 2 || match[1] == "" {
 		return fmt.Errorf("pip search returned unexpected gunicorn version %q", raw)
@@ -82,7 +82,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	ctx.Logf("Installing gunicorn.")
-	ctx.ExecUser([]string{"python3", "-m", "pip", "install", "--upgrade", "gunicorn", "-t", l.Root})
+	ctx.Exec([]string{"python3", "-m", "pip", "install", "--upgrade", "gunicorn", "-t", l.Root}, gcp.WithUserAttribution)
 
 	ctx.PrependPathSharedEnv(l, "PYTHONPATH", l.Root)
 

@@ -53,7 +53,7 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("composer install: %w", err)
 	}
 
-	ctx.ExecUser([]string{"composer", "run-script", "--timeout=600", "--no-dev", "gcp-build"})
+	ctx.Exec([]string{"composer", "run-script", "--timeout=600", "--no-dev", "gcp-build"}, gcp.WithUserAttribution)
 	ctx.RemoveAll(php.Vendor)
 	return nil
 }

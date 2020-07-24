@@ -74,8 +74,7 @@ func buildFn(ctx *gcp.Context) error {
 	// required interfaces, for example. But it eliminates the commonest problem of specifying the wrong target.
 	// We use an ExecUser* method so that the time taken by the javap command is counted as user time.
 	target := os.Getenv(env.FunctionTarget)
-	javap := gcp.ExecParams{Cmd: []string{"javap", "-classpath", classpath, target}}
-	if result, err := ctx.ExecUserWithErrWithParams(javap, gcp.UserErrorKeepStderrTail); err != nil {
+	if result, err := ctx.ExecWithErr([]string{"javap", "-classpath", classpath, target}, gcp.WithUserAttribution); err != nil {
 		// The javap error output will typically be "Error: class not found: foo.Bar".
 		return gcp.UserErrorf("build succeeded but did not produce the class %q specified as the function target: %s", target, result.Combined)
 	}
@@ -122,12 +121,12 @@ func classpath(ctx *gcp.Context) (string, error) {
 // from the pom.xml itself, plus all jar files that are dependencies mentioned in the pom.xml.
 func mavenClasspath(ctx *gcp.Context) (string, error) {
 	// Copy the dependencies of the function (`<dependencies>` in pom.xml) into target/dependency.
-	ctx.ExecUser([]string{"mvn", "dependency:copy-dependencies"})
+	ctx.Exec([]string{"mvn", "dependency:copy-dependencies"}, gcp.WithUserAttribution)
 
 	// Extract the artifact/version coordinates from the user's pom.xml definitions.
 	// mvn help:evaluate is quite slow so we do it this way rather than calling it twice.
 	// The name of the built jar file will be <artifact>-<version>.jar, for example myfunction-0.9.jar.
-	execResult := ctx.ExecUser([]string{"mvn", "help:evaluate", "-q", "-DforceStdout", "-Dexpression=project.artifactId/${project.version}"})
+	execResult := ctx.Exec([]string{"mvn", "help:evaluate", "-q", "-DforceStdout", "-Dexpression=project.artifactId/${project.version}"}, gcp.WithUserAttribution)
 	groupArtifactVersion := execResult.Stdout
 	components := strings.Split(groupArtifactVersion, "/")
 	if len(components) != 2 {
@@ -156,10 +155,10 @@ func gradleClasspath(ctx *gcp.Context) (string, error) {
 	ctx.WriteFile(scriptTarget, scriptText, 0644)
 
 	// Copy the dependencies of the function (`dependencies {...}` in build.gradle) into _javaFunctionDependencies.
-	ctx.ExecUser([]string{"gradle", "--build-file", scriptTarget, "--quiet", "_javaFunctionCopyAllDependencies"})
+	ctx.Exec([]string{"gradle", "--build-file", scriptTarget, "--quiet", "_javaFunctionCopyAllDependencies"}, gcp.WithUserAttribution)
 
 	// Extract the name of the target jar.
-	execResult := ctx.ExecUser([]string{"gradle", "--build-file", scriptTarget, "--quiet", "_javaFunctionPrintJarTarget"})
+	execResult := ctx.Exec([]string{"gradle", "--build-file", scriptTarget, "--quiet", "_javaFunctionPrintJarTarget"}, gcp.WithUserAttribution)
 	jarName := strings.TrimSpace(execResult.Stdout)
 	if !ctx.FileExists(jarName) {
 		return "", gcp.UserErrorf("expected output jar %s does not exist", jarName)

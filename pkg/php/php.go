@@ -106,7 +106,7 @@ func checkCache(ctx *gcp.Context, l *layers.Layer, opts ...cache.Option) (bool, 
 // composerInstall runs `composer install` with the given flags.
 func composerInstall(ctx *gcp.Context, flags []string) {
 	cmd := append([]string{"composer", "install"}, flags...)
-	ctx.ExecUser(cmd)
+	ctx.Exec(cmd, gcp.WithUserAttribution)
 }
 
 // ComposerInstall runs `composer install`, using the cache iff a lock file is present.
@@ -162,5 +162,5 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*layers.Layer, error) {
 // "myorg/mypackage:^0.7". It does no caching.
 func ComposerRequire(ctx *gcp.Context, packages []string) {
 	cmd := append([]string{"composer", "require", "--no-progress", "--no-suggest", "--no-interaction"}, packages...)
-	ctx.ExecUser(cmd)
+	ctx.Exec(cmd, gcp.WithUserAttribution)
 }

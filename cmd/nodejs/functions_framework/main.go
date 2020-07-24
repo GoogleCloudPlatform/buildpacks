@@ -74,7 +74,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Syntax check the function code without executing.
-	ctx.ExecUser([]string{"node", "--check", fnFile})
+	ctx.Exec([]string{"node", "--check", fnFile}, gcp.WithUserAttribution)
 
 	cvt := filepath.Join(ctx.BuildpackRoot(), "converter")
 	if hasFrameworkDependency {
@@ -102,7 +102,7 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.ClearLayer(l)
 		// NPM expects package.json and the lock file in the prefix directory.
 		ctx.Exec([]string{"cp", "-t", l.Root, pjs, pljs})
-		ctx.ExecUser([]string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet", "--production", "--prefix", l.Root})
+		ctx.Exec([]string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet", "--production", "--prefix", l.Root}, gcp.WithUserAttribution)
 	}
 
 	// Determine the path to the executable file to start functions-framework.

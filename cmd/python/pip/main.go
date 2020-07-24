@@ -65,19 +65,13 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Install modules in requirements.txt.
 	ctx.Logf("Running pip install.")
-	ctx.ExecWithParams(gcp.ExecParams{
-		Cmd: []string{"python3", "-m", "pip", "install", "--upgrade", "-r", "requirements.txt", "-t", l.Root},
-		Env: []string{"PIP_CACHE_DIR=" + cl.Root},
-	})
+	ctx.Exec([]string{"python3", "-m", "pip", "install", "--upgrade", "-r", "requirements.txt", "-t", l.Root}, gcp.WithEnv("PIP_CACHE_DIR="+cl.Root))
 
 	ctx.PrependPathSharedEnv(l, "PYTHONPATH", l.Root)
 
 	// Check for broken dependencies.
 	ctx.Logf("Checking for incompatible dependencies.")
-	checkDeps := ctx.ExecWithParams(gcp.ExecParams{
-		Cmd: []string{"python3", "-m", "pip", "check"},
-		Env: []string{"PYTHONPATH=" + l.Root + ":" + os.Getenv("PYTHONPATH")},
-	})
+	checkDeps := ctx.Exec([]string{"python3", "-m", "pip", "check"}, gcp.WithEnv("PYTHONPATH="+l.Root+":"+os.Getenv("PYTHONPATH")))
 	if checkDeps.ExitCode != 0 {
 		return fmt.Errorf("incompatible dependencies installed: %q", checkDeps.Stdout)
 	}

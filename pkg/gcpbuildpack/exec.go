@@ -37,62 +37,57 @@ type ExecResult struct {
 	Combined string
 }
 
-type execOpts struct {
+type execParams struct {
+	cmd         []string
 	userFailure bool
 	userTiming  bool
-	workDir     string
+	dir         string
 	env         []string
 	esp         ErrorSummaryProducer
-	logOnDebug  bool
 }
 
-type execOption func(o *execOpts)
+type execOption func(o *execParams)
 
 // WithErrorSummaryProducer sets a custom ErrorSummaryProducer.
 func WithErrorSummaryProducer(esp ErrorSummaryProducer) execOption {
-	return func(o *execOpts) {
+	return func(o *execParams) {
 		o.esp = esp
 	}
 }
 
 // WithEnv sets environment variables (of the form "KEY=value").
 func WithEnv(env ...string) execOption {
-	return func(o *execOpts) {
+	return func(o *execParams) {
 		o.env = env
 	}
 }
 
 // WithWorkDir sets a specific working directory.
-func WithWorkDir(workDir string) execOption {
-	return func(o *execOpts) {
-		o.workDir = workDir
+func WithWorkDir(dir string) execOption {
+	return func(o *execParams) {
+		o.dir = dir
 	}
 }
 
-// WithLogOnDebug emits logging only if GOOGLE_DEBUG is set (otherwise logs are always emitted).
-var WithLogOnDebug = func(o *execOpts) {
-	o.logOnDebug = true
-}
-
 // WithUserAttribution indicates that failure and timing both are attributed to the user.
-var WithUserAttribution = func(o *execOpts) {
+var WithUserAttribution = func(o *execParams) {
 	o.userFailure = true
 	o.userTiming = true
 }
 
 // WithUserTimingAttribution indicates that only timing is attributed to the user.
-var WithUserTimingAttribution = func(o *execOpts) {
+var WithUserTimingAttribution = func(o *execParams) {
 	o.userTiming = true
 }
 
 // WithUserFailureAttribution indicates that only failure is attributed to the user.
-var WithUserFailureAttribution = func(o *execOpts) {
+var WithUserFailureAttribution = func(o *execParams) {
 	o.userFailure = true
 }
 
-// Exec2 runs the given command under the default configuration, handling error if present.
-func (ctx *Context) Exec2(cmd []string, opts ...execOption) *ExecResult {
-	result, err := ctx.Exec2WithErr(cmd, opts...)
+// Exec runs the given command under the default configuration, handling error if present.
+func (ctx *Context) Exec(cmd []string, opts ...execOption) *ExecResult {
+	result, err := ctx.ExecWithErr(cmd, opts...)
 	if err == nil {
 		return result
 	}
@@ -101,25 +96,18 @@ func (ctx *Context) Exec2(cmd []string, opts ...execOption) *ExecResult {
 	return nil
 }
 
-// Exec2WithErr runs the given command (with args) under the default configuration, allowing the caller to handle the error.
-func (ctx *Context) Exec2WithErr(cmd []string, opts ...execOption) (*ExecResult, *Error) {
-	var eo execOpts
+// ExecWithErr runs the given command (with args) under the default configuration, allowing the caller to handle the error.
+func (ctx *Context) ExecWithErr(cmd []string, opts ...execOption) (*ExecResult, *Error) {
+	params := execParams{cmd: cmd}
 	for _, o := range opts {
-		o(&eo)
-	}
-
-	params := ExecParams{ // TODO: ExecParams can become internal after migration.
-		Cmd:        cmd,
-		Dir:        eo.workDir,
-		Env:        eo.env,
-		logOnDebug: eo.logOnDebug,
+		o(&params)
 	}
 
 	start := time.Now()
 
-	result, err := ctx.configuredExec(params) // TODO: inline configuredExec after migration, or have explicit params instead of ExecParams (or leave it as-is for clarity)
+	result, err := ctx.configuredExec(params)
 
-	if eo.userTiming {
+	if params.userTiming {
 		ctx.stats.user += time.Since(start)
 	}
 
@@ -131,113 +119,29 @@ func (ctx *Context) Exec2WithErr(cmd []string, opts ...execOption) (*ExecResult,
 	if result == nil {
 		be = Errorf(StatusInternal, err.Error())
 	} else {
-		if eo.esp != nil {
-			be = eo.esp(result) // TODO: instead of returning an error, just returned the parsed error string. use eo.failure to determine what kind of error to raise.
-		} else if eo.userFailure {
+		if params.esp != nil {
+			be = params.esp(result) // TODO: instead of returning an error, just returned the parsed error string. use eo.failure to determine what kind of error to raise.
+		} else if params.userFailure {
 			be = UserErrorf(result.Combined)
 		} else {
 			be = Errorf(StatusInternal, result.Combined)
 		}
 	}
-	be.ID = generateErrorID(params.Cmd...)
+	be.ID = generateErrorID(params.cmd...)
 	return result, be
 }
 
-// ExecParams bundles exec parameters.
-type ExecParams struct {
-	// Cmd is the required command and optional arguments to be run.
-	Cmd []string
-	// Dir identifies the directory in which the command should be run. Default to the current working directory.
-	Dir string
-	// Env specifies additional environment variables for the command invocation. Must be in key=value format.
-	Env []string
-
-	// logOnDebug indicates that the logs will be emitted only if GOOGLE_DEBUG is set (otherwise logs are always emitted).
-	logOnDebug bool
-}
-
-// Exec runs the given command under the default configuration, handling error if present.
-// Exec failures attribute the failure to the platform, not the user, when recording the error (see builderoutput.go).
-func (ctx *Context) Exec(cmd []string) *ExecResult {
-	return ctx.ExecWithParams(ExecParams{Cmd: cmd})
-}
-
-// ExecWithParams runs the given command under the specified configuration, handling the error if present.
-// ExecWithParams failures attribute the failure to the platform, not the user, when recording the error (see builderoutput.go).
-func (ctx *Context) ExecWithParams(params ExecParams) *ExecResult {
-	result, err := ctx.ExecWithErrWithParams(params)
-	if err != nil {
-		var be *Error
-		exitCode := 1
-		if result == nil {
-			be = Errorf(StatusInternal, err.Error())
-		} else {
-			be = Errorf(StatusInternal, result.Combined)
-			exitCode = result.ExitCode
-		}
-		be.ID = generateErrorID(params.Cmd...)
-		ctx.Exit(exitCode, be)
-	}
-	return result
-}
-
-// ExecWithErr runs the given command (with args) under the default configuration, allowing the caller to handle the error.
-func (ctx *Context) ExecWithErr(cmd []string) (*ExecResult, error) {
-	return ctx.ExecWithErrWithParams(ExecParams{Cmd: cmd})
-}
-
-// ExecWithErrWithParams runs the given command (with args) under the specified configuration, allowing the caller to handle the error.
-func (ctx *Context) ExecWithErrWithParams(params ExecParams) (*ExecResult, error) {
-	params.logOnDebug = true
-	return ctx.configuredExec(params)
-}
-
-// ExecUser runs the given command under the default configuration, saving the tail of stderr.
-// ExecUser failures attribute the failure to the user, not the platform, when recording the error (see builderoutput.go).
-func (ctx *Context) ExecUser(cmd []string) *ExecResult {
-	return ctx.ExecUserWithParams(ExecParams{Cmd: cmd}, UserErrorKeepStderrTail)
-}
-
-// ExecUserWithParams runs the given command under the specified configuration, saving an error summary from producer on error.
-// ExecUserWithParams failures attribute the failure to the user, not the platform, when recording the error (see builderoutput.go).
-func (ctx *Context) ExecUserWithParams(params ExecParams, esp ErrorSummaryProducer) *ExecResult {
-	result, err := ctx.ExecUserWithErrWithParams(params, esp)
-	if err != nil {
-		ctx.Exit(1, err)
-	}
-	return result
-}
-
-// ExecUserWithErrWithParams runs the given command under the specified configuration, saving an error summary from producer on error.
-// ExecUserWithErrWithParams failures attribute the failure to the user, not the platform, when recording the error (see builderoutput.go).
-// ExecUserWithErrWithParams differs from ExecUserWithParams as it leaves error handling to the caller.
-func (ctx *Context) ExecUserWithErrWithParams(params ExecParams, esp ErrorSummaryProducer) (*ExecResult, *Error) {
-	start := time.Now()
-	result, err := ctx.configuredExec(params)
-	ctx.stats.user += time.Since(start)
-	if err != nil {
-		var be *Error
-		if result == nil {
-			be = Errorf(StatusInternal, err.Error())
-		} else {
-			be = esp(result)
-		}
-		be.ID = generateErrorID(params.Cmd...)
-		return result, be
-	}
-	return result, nil
-}
-
-func (ctx *Context) configuredExec(params ExecParams) (*ExecResult, error) {
-	if len(params.Cmd) < 1 {
+func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
+	if len(params.cmd) < 1 {
 		return nil, fmt.Errorf("no command provided")
 	}
-	if params.Cmd[0] == "" {
+	if params.cmd[0] == "" {
 		return nil, fmt.Errorf("empty command provided")
 	}
 
 	log := true
-	if params.logOnDebug && !ctx.debug {
+	if !params.userFailure && !ctx.debug {
+		// For "system" commands, we will only log if the debug flag is present.
 		log = false
 	}
 
@@ -248,9 +152,9 @@ func (ctx *Context) configuredExec(params ExecParams) (*ExecResult, error) {
 		ctx.Logf(format, args...)
 	}
 
-	readableCmd := strings.Join(params.Cmd, " ")
-	if len(params.Env) > 0 {
-		env := strings.Join(params.Env, " ")
+	readableCmd := strings.Join(params.cmd, " ")
+	if len(params.env) > 0 {
+		env := strings.Join(params.env, " ")
 		readableCmd = fmt.Sprintf("%s (%s)", readableCmd, env)
 	}
 	optionalLogf(divider)
@@ -263,18 +167,18 @@ func (ctx *Context) configuredExec(params ExecParams) (*ExecResult, error) {
 			truncated = truncated[:60] + "..."
 		}
 		optionalLogf("Done %q (%v)", truncated, time.Since(start))
-		ctx.Span(ctx.createSpanName(params.Cmd), start, status)
+		ctx.Span(ctx.createSpanName(params.cmd), start, status)
 	}(time.Now())
 
 	exitCode := 0
-	ecmd := exec.Command(params.Cmd[0], params.Cmd[1:]...)
+	ecmd := exec.Command(params.cmd[0], params.cmd[1:]...)
 
-	if params.Dir != "" {
-		ecmd.Dir = params.Dir
+	if params.dir != "" {
+		ecmd.Dir = params.dir
 	}
 
-	if len(params.Env) > 0 {
-		ecmd.Env = append(os.Environ(), params.Env...)
+	if len(params.env) > 0 {
+		ecmd.Env = append(os.Environ(), params.env...)
 	}
 
 	var outb, errb bytes.Buffer

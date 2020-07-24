@@ -83,10 +83,7 @@ func buildFn(ctx *gcp.Context) error {
 	if lf := nodejs.LockfileFlag(ctx); lf != "" {
 		cmd = append(cmd, lf)
 	}
-	ctx.ExecUserWithParams(gcp.ExecParams{
-		Cmd: cmd,
-		Env: []string{"NODE_ENV=" + nodeEnv},
-	}, gcp.UserErrorKeepStderrTail)
+	ctx.Exec(cmd, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution)
 
 	if !cached {
 		// Ensure node_modules exists even if no dependencies were installed.

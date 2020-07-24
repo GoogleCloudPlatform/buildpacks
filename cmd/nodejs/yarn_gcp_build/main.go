@@ -77,17 +77,14 @@ func buildFn(ctx *gcp.Context) error {
 		if lf := nodejs.LockfileFlag(ctx); lf != "" {
 			cmd = append(cmd, lf)
 		}
-		ctx.ExecUserWithParams(gcp.ExecParams{
-			Cmd: cmd,
-			Env: []string{"NODE_ENV=" + nodeEnv},
-		}, gcp.UserErrorKeepStderrTail)
+		ctx.Exec(cmd, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution)
 
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)
 		ctx.Exec([]string{"cp", "--archive", "node_modules", nm})
 	}
 
-	ctx.ExecUser([]string{"yarn", "run", "gcp-build"})
+	ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution)
 	ctx.RemoveAll("node_modules")
 	ctx.WriteMetadata(l, &meta, layers.Cache)
 	return nil

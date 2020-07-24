@@ -109,10 +109,7 @@ func buildFn(ctx *gcp.Context) error {
 func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	ctx.Exec([]string{"go", "mod", "init", appName})
 
-	fnMod := ctx.ExecWithParams(gcp.ExecParams{
-		Cmd: []string{"go", "list", "-m"},
-		Dir: fn.Source,
-	}).Stdout
+	fnMod := ctx.Exec([]string{"go", "list", "-m"}, gcp.WithWorkDir(fn.Source)).Stdout
 
 	// Add the module name to the the package name, such that go build will be able to find it,
 	// if a directory with the package name is not at the app root. Otherwise, assume the package is at the module root.
@@ -129,7 +126,7 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	if specified, err := frameworkSpecified(ctx, fn.Source); err != nil {
 		return fmt.Errorf("checking for functions framework dependency in go.mod: %w", err)
 	} else if !specified {
-		ctx.ExecUser([]string{"go", "get", fmt.Sprintf("%s@%s", functionsFrameworkModule, functionsFrameworkVersion)})
+		ctx.Exec([]string{"go", "get", fmt.Sprintf("%s@%s", functionsFrameworkModule, functionsFrameworkVersion)}, gcp.WithUserAttribution)
 	}
 
 	return createMainGoFile(ctx, fn, filepath.Join(ctx.ApplicationRoot(), "main.go"))
@@ -169,14 +166,8 @@ func createMainVendored(ctx *gcp.Context, l *layers.Layer, fn fnInfo) error {
 
 		// The gopath version of `go get` doesn't allow tags, but does checkout the whole repo so we
 		// can checkout the appropriate tag ourselves.
-		ctx.ExecUserWithParams(gcp.ExecParams{
-			Cmd: []string{"go", "get", functionsFrameworkPackage},
-			Env: []string{"GOPATH=" + ctx.ApplicationRoot(), "GOCACHE=" + cache},
-		}, gcp.UserErrorKeepStderrTail)
-		ctx.ExecUserWithParams(gcp.ExecParams{
-			Cmd: []string{"git", "checkout", functionsFrameworkVersion},
-			Dir: filepath.Join(gopath, functionsFrameworkModule),
-		}, gcp.UserErrorKeepStderrTail)
+		ctx.Exec([]string{"go", "get", functionsFrameworkPackage}, gcp.WithEnv("GOPATH="+ctx.ApplicationRoot(), "GOCACHE="+cache), gcp.WithUserAttribution)
+		ctx.Exec([]string{"git", "checkout", functionsFrameworkVersion}, gcp.WithWorkDir(filepath.Join(gopath, functionsFrameworkModule)), gcp.WithUserAttribution)
 	}
 
 	return createMainGoFile(ctx, fn, filepath.Join(appPath, "main.go"))
@@ -193,10 +184,7 @@ func createMainGoFile(ctx *gcp.Context, fn fnInfo, main string) error {
 }
 
 func frameworkSpecified(ctx *gcp.Context, fnSource string) (bool, error) {
-	res, err := ctx.ExecWithErrWithParams(gcp.ExecParams{
-		Cmd: []string{"go", "list", "-m", functionsFrameworkModule},
-		Dir: fnSource,
-	})
+	res, err := ctx.ExecWithErr([]string{"go", "list", "-m", functionsFrameworkModule}, gcp.WithWorkDir(fnSource))
 	if err == nil {
 		return true, nil
 	}
@@ -215,9 +203,5 @@ func extractPackageNameInDir(ctx *gcp.Context, source string) string {
 	scriptDir := filepath.Join(ctx.BuildpackRoot(), "converter", "get_package")
 	cacheDir := ctx.TempDir("", appName)
 	defer ctx.RemoveAll(cacheDir)
-	return ctx.ExecUserWithParams(gcp.ExecParams{
-		Cmd: []string{"go", "run", "main", "-dir", source},
-		Env: []string{"GOPATH=" + scriptDir, "GOCACHE=" + cacheDir},
-		Dir: scriptDir,
-	}, gcp.UserErrorKeepStderrTail).Stdout
+	return ctx.Exec([]string{"go", "run", "main", "-dir", source}, gcp.WithEnv("GOPATH="+scriptDir, "GOCACHE="+cacheDir), gcp.WithWorkDir(scriptDir), gcp.WithUserAttribution).Stdout
 }

@@ -60,11 +60,7 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.Logf("Running Rails asset precompilation")
 
 	// It is common practise in Ruby asset precompilation to ignore non-zero exit codes.
-	params := gcp.ExecParams{
-		Cmd: []string{"bundle", "exec", "bin/rails", "assets:precompile"},
-		Env: []string{"RAILS_ENV=production"},
-	}
-	result, err := ctx.ExecWithErrWithParams(params)
+	result, err := ctx.ExecWithErr([]string{"bundle", "exec", "bin/rails", "assets:precompile"}, gcp.WithEnv("RAILS_ENV=production"))
 	if err != nil && result != nil && result.ExitCode != 0 {
 		ctx.Logf("WARNING: Asset precompilation returned non-zero exit code %d. Ignoring.", result.ExitCode)
 		return nil

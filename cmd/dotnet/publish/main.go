@@ -84,7 +84,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Run restore regardless of cache status because it generates files expected by publish.
 	cmd := []string{"dotnet", "restore", "--packages", pkgLayer.Root, proj}
-	ctx.ExecUserWithParams(gcp.ExecParams{Cmd: cmd, Env: []string{"DOTNET_CLI_TELEMETRY_OPTOUT=true"}}, gcp.UserErrorKeepStderrTail)
+	ctx.Exec(cmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution)
 	ctx.WriteMetadata(pkgLayer, &meta, layers.Build, layers.Cache)
 
 	binLayer := ctx.Layer("bin")
@@ -100,7 +100,7 @@ func buildFn(ctx *gcp.Context) error {
 		proj,
 	}
 
-	ctx.ExecUserWithParams(gcp.ExecParams{Cmd: cmd, Env: []string{"DOTNET_CLI_TELEMETRY_OPTOUT=true"}}, gcp.UserErrorKeepStderrTail)
+	ctx.Exec(cmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution)
 
 	// Infer the entrypoint in case an explicit override was not provided.
 	entrypoint := os.Getenv(env.Entrypoint)

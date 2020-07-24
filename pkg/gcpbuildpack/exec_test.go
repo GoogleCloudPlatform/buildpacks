@@ -19,7 +19,6 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestExecEmitsSpan(t *testing.T) {
@@ -41,44 +40,11 @@ func TestExecEmitsSpan(t *testing.T) {
 	}
 }
 
-func TestExec2EmitsSpan(t *testing.T) {
-	ctx, cleanUp := simpleContext(t)
-	defer cleanUp()
-
-	ctx.Exec2WithErr(strings.Fields("echo Hello"))
-
-	if len(ctx.stats.spans) != 1 {
-		t.Fatalf("Unexpected number of spans, got %d want 1", len(ctx.stats.spans))
-	}
-	span := ctx.stats.spans[0]
-	wantSpanName := `Exec "echo Hello"`
-	if span.name != wantSpanName {
-		t.Errorf("Unexpected span name got %q want %q", span.name, wantSpanName)
-	}
-	if span.status != StatusOk {
-		t.Errorf("Unexpected span status got %d want %d", span.status, StatusOk)
-	}
-}
-
 func TestExecWithErrInvokesCommand(t *testing.T) {
 	cmd := strings.Fields("echo Hello")
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
 	result, err := ctx.ExecWithErr(cmd)
-	if err != nil {
-		t.Errorf("ExecWithErr(%v) got unexpected error: %v", cmd, err)
-	}
-	want := "Hello"
-	if result.Stdout != want {
-		t.Errorf("ExecWithErr(%v) got stdout=%q, want stdout=%q", cmd, result.Stdout, want)
-	}
-}
-
-func TestExec2WithErrInvokesCommand(t *testing.T) {
-	cmd := strings.Fields("echo Hello")
-	ctx, cleanUp := simpleContext(t)
-	defer cleanUp()
-	result, err := ctx.Exec2WithErr(cmd)
 	if err != nil {
 		t.Errorf("Exec2WithErr(%v) got unexpected error: %v", cmd, err)
 	}
@@ -99,48 +65,12 @@ func TestExecInvokesCommand(t *testing.T) {
 	}
 }
 
-func TestExec2InvokesCommand(t *testing.T) {
-	cmd := strings.Fields("echo Hello")
-	ctx, cleanUp := simpleContext(t)
-	defer cleanUp()
-	result := ctx.Exec2(cmd)
-	want := "Hello"
-	if result.Stdout != want {
-		t.Errorf("Exec(%v) got stdout=%q, want stdout=%q", cmd, result.Stdout, want)
-	}
-}
-
 func TestExecResult(t *testing.T) {
 	cmd := []string{"/bin/bash", "-f", "-c", "printf 'stdout'; printf 'stderr' >&2"}
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
 
 	got := ctx.Exec(cmd)
-
-	if got.ExitCode != 0 {
-		t.Error("Exit code got 0, want != 0")
-	}
-	if got.Stdout != "stdout" {
-		t.Errorf("stdout got %q, want `out`", got.Stdout)
-	}
-	if got.Stderr != "stderr" {
-		t.Errorf("stderr got %q, want `err`", got.Stderr)
-	}
-	// Combined may be some arbitrary interleaving of stdout/stderr.
-	if !hasInterleavedString(t, got.Combined, "out") {
-		t.Errorf("Combined %q does not contain interleaved `out`", got.Combined)
-	}
-	if !hasInterleavedString(t, got.Combined, "err") {
-		t.Errorf("Combined %q does not contain interleaved `err`", got.Combined)
-	}
-}
-
-func TestExec2Result(t *testing.T) {
-	cmd := []string{"/bin/bash", "-f", "-c", "printf 'stdout'; printf 'stderr' >&2"}
-	ctx, cleanUp := simpleContext(t)
-	defer cleanUp()
-
-	got := ctx.Exec2(cmd)
 
 	if got.ExitCode != 0 {
 		t.Error("Exit code got 0, want != 0")
@@ -234,34 +164,10 @@ func TestHasInterleavedString(t *testing.T) {
 	}
 }
 
-func TestExecUserUpdatesDuration(t *testing.T) {
-	ctx, cleanUp := simpleContext(t)
-	defer cleanUp()
-
-	dur := ctx.stats.user
-	if dur != 0 {
-		t.Fatalf("User duration is not zero to start")
-	}
-
-	ctx.ExecUser(strings.Fields("sleep .1"))
-	if ctx.stats.user <= dur {
-		t.Errorf("ExecUser(): user duration did not increase")
-	}
-
-	dur = ctx.stats.user
-	ctx.ExecUserWithParams(ExecParams{Cmd: strings.Fields("sleep .1")}, nil)
-	if ctx.stats.user <= dur {
-		t.Errorf("ExecUserWithParams(): user duration did not increase")
-	}
-	if ctx.stats.user < 200*time.Millisecond {
-		t.Errorf("ExecUserWithParams(): user duration did not increase enough, got %s, want >= %s", ctx.stats.user, 200*time.Millisecond)
-	}
-}
-
-func TestExec2AsUserUpdatesDuration(t *testing.T) {
+func TestExecAsUserUpdatesDuration(t *testing.T) {
 	testCases := []struct {
 		name string
-		opt  func(*execOpts)
+		opt  func(*execParams)
 	}{
 		{name: "WithUserTimingAttribution", opt: WithUserTimingAttribution},
 		{name: "WithUserAttribution", opt: WithUserAttribution},
@@ -276,7 +182,7 @@ func TestExec2AsUserUpdatesDuration(t *testing.T) {
 				t.Fatalf("user duration is not zero to start")
 			}
 
-			ctx.Exec2(strings.Fields("sleep .1"), tc.opt)
+			ctx.Exec(strings.Fields("sleep .1"), tc.opt)
 			if ctx.stats.user <= dur {
 				t.Errorf("user duration did not increase")
 			}
@@ -284,30 +190,10 @@ func TestExec2AsUserUpdatesDuration(t *testing.T) {
 	}
 }
 
-func TestExecDoesNotUpdateDuration(t *testing.T) {
-	ctx, cleanUp := simpleContext(t)
-	defer cleanUp()
-
-	dur := ctx.stats.user
-	if dur != 0 {
-		t.Fatalf("User duration is not zero to start")
-	}
-
-	ctx.Exec(strings.Fields("sleep .1"))
-	if ctx.stats.user != 0 {
-		t.Fatalf("Exec(): user duration changed unexpectedly")
-	}
-
-	ctx.ExecWithParams(ExecParams{Cmd: strings.Fields("sleep .1")})
-	if ctx.stats.user != 0 {
-		t.Fatalf("ExecWithParams(): user duration changed unexpectedly")
-	}
-}
-
-func TestExec2AsDefaultDoesNotUpdateDuration(t *testing.T) {
+func TestExecAsDefaultDoesNotUpdateDuration(t *testing.T) {
 	testCases := []struct {
 		name string
-		opt  func(*execOpts)
+		opt  func(*execParams)
 	}{
 		{name: "default"},
 		{name: "WithUserFailureAttribution", opt: WithUserFailureAttribution}, // WithUserFailureAttribution should not impact timing attribution.
@@ -326,7 +212,7 @@ func TestExec2AsDefaultDoesNotUpdateDuration(t *testing.T) {
 				t.Fatalf("User duration is not zero to start")
 			}
 
-			ctx.Exec2(strings.Fields("sleep .1"), opts...)
+			ctx.Exec(strings.Fields("sleep .1"), opts...)
 			if ctx.stats.user != 0 {
 				t.Fatalf("Exec(): user duration changed unexpectedly")
 			}
@@ -334,10 +220,10 @@ func TestExec2AsDefaultDoesNotUpdateDuration(t *testing.T) {
 	}
 }
 
-func TestExec2AsUserDoesNotReturnStatusInternal(t *testing.T) {
+func TestExecAsUserDoesNotReturnStatusInternal(t *testing.T) {
 	testCases := []struct {
 		name string
-		opt  func(*execOpts)
+		opt  func(*execParams)
 	}{
 		{name: "WithUserFailureAttribution", opt: WithUserFailureAttribution},
 		{name: "WithUserAttribution", opt: WithUserAttribution},
@@ -347,7 +233,7 @@ func TestExec2AsUserDoesNotReturnStatusInternal(t *testing.T) {
 			ctx, cleanUp := simpleContext(t)
 			defer cleanUp()
 
-			result, err := ctx.Exec2WithErr([]string{"/bin/bash", "-c", "exit 99"}, tc.opt)
+			result, err := ctx.ExecWithErr([]string{"/bin/bash", "-c", "exit 99"}, tc.opt)
 
 			if err.Status == StatusInternal {
 				t.Error("unexpected error status StatusInternal")
@@ -359,10 +245,10 @@ func TestExec2AsUserDoesNotReturnStatusInternal(t *testing.T) {
 	}
 }
 
-func TestExec2AsDefaultReturnsStatusInternal(t *testing.T) {
+func TestExecAsDefaultReturnsStatusInternal(t *testing.T) {
 	testCases := []struct {
 		name string
-		opt  func(*execOpts)
+		opt  func(*execParams)
 	}{
 		{name: "default"},
 		{name: "WithUserTimingAttribution", opt: WithUserTimingAttribution}, // WithUserTimingAttribution should not impact failure attribution.
@@ -376,7 +262,7 @@ func TestExec2AsDefaultReturnsStatusInternal(t *testing.T) {
 				opts = append(opts, tc.opt)
 			}
 
-			result, err := ctx.Exec2WithErr([]string{"/bin/bash", "-c", "exit 99"}, opts...)
+			result, err := ctx.ExecWithErr([]string{"/bin/bash", "-c", "exit 99"}, opts...)
 
 			if got, want := err.Status, StatusInternal; got != want {
 				t.Errorf("incorrect error status got %v want %v", got, want)
@@ -388,18 +274,18 @@ func TestExec2AsDefaultReturnsStatusInternal(t *testing.T) {
 	}
 }
 
-func TestExec2WithEnv(t *testing.T) {
+func TestExecWithEnv(t *testing.T) {
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
 
-	result := ctx.Exec2([]string{"/bin/bash", "-c", "echo $FOO"}, WithEnv("A=B", "FOO=bar"))
+	result := ctx.Exec([]string{"/bin/bash", "-c", "echo $FOO"}, WithEnv("A=B", "FOO=bar"))
 
 	if got, want := strings.TrimSpace(result.Stdout), "bar"; got != want {
 		t.Errorf("incorrect output got=%q want=%q", got, want)
 	}
 }
 
-func TestExec2WithWorkDir(t *testing.T) {
+func TestExecWithWorkDir(t *testing.T) {
 	tdir, err := ioutil.TempDir("", "exec2-")
 	if err != nil {
 		t.Fatal(err)
@@ -407,19 +293,19 @@ func TestExec2WithWorkDir(t *testing.T) {
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
 
-	result := ctx.Exec2([]string{"/bin/bash", "-c", "echo $PWD"}, WithWorkDir(tdir))
+	result := ctx.Exec([]string{"/bin/bash", "-c", "echo $PWD"}, WithWorkDir(tdir))
 
 	if got, want := strings.TrimSpace(result.Stdout), tdir; got != want {
 		t.Errorf("incorrect output got=%q want=%q", got, want)
 	}
 }
 
-func TestExec2WithErrorSummaryProducer(t *testing.T) {
+func TestExecWithErrorSummaryProducer(t *testing.T) {
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
 	wantErr := Errorf(StatusResourceExhausted, "I'm exhausted")
 
-	_, gotErr := ctx.Exec2WithErr([]string{"/bin/bash", "-c", "exit 99"}, WithErrorSummaryProducer(func(result *ExecResult) *Error { return wantErr }))
+	_, gotErr := ctx.ExecWithErr([]string{"/bin/bash", "-c", "exit 99"}, WithErrorSummaryProducer(func(result *ExecResult) *Error { return wantErr }))
 
 	if gotErr != wantErr {
 		t.Errorf("incorrect output got=%q want=%q", gotErr, wantErr)

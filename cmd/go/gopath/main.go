@@ -40,10 +40,6 @@ func buildFn(ctx *gcp.Context) error {
 
 	// TODO(b/145604612): Investigate caching the modules layer.
 
-	ctx.ExecUserWithParams(gcp.ExecParams{
-		Cmd: []string{"go", "get", "-d"},
-		Env: []string{"GOPATH=" + l.Root, "GO111MODULE=off"},
-	}, gcp.UserErrorKeepStderrTail)
-
+	ctx.Exec([]string{"go", "get", "-d"}, gcp.WithEnv("GOPATH="+l.Root, "GO111MODULE=off"), gcp.WithUserAttribution)
 	return nil
 }

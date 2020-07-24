@@ -107,7 +107,7 @@ func buildFn(ctx *gcp.Context) error {
 		command = append(command, "--quiet")
 	}
 
-	ctx.ExecUserWithParams(gcp.ExecParams{Cmd: command}, gcp.UserErrorKeepStdoutTail)
+	ctx.Exec(command, gcp.WithErrorSummaryProducer(gcp.UserErrorKeepStdoutTail), gcp.WithUserAttribution)
 
 	// Store the build steps in a script to be run on each file change.
 	if devmode.Enabled(ctx) {

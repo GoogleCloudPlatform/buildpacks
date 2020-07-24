@@ -59,9 +59,9 @@ func entrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
 	}
 
 	versionString := match[1]
-	version, err := semver.ParseTolerant(versionString)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse gunicorn version string %q: %v", versionString, err)
+	version, verr := semver.ParseTolerant(versionString)
+	if verr != nil {
+		return nil, fmt.Errorf("unable to parse gunicorn version string %q: %v", versionString, verr)
 	}
 
 	if version.LT(minVersion) {
