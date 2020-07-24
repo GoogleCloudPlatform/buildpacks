@@ -56,7 +56,7 @@ func buildFn(ctx *gcp.Context) error {
 	if cached {
 		ctx.CacheHit(cacheTag)
 		// Restore cached node_modules.
-		ctx.Exec([]string{"cp", "--archive", nm, "node_modules"})
+		ctx.Exec([]string{"cp", "--archive", nm, "node_modules"}, gcp.WithUserTimingAttribution)
 
 		// Always run npm install to run preinstall/postinstall scripts.
 		// Otherwise it should be a no-op because the lockfile is unchanged.
@@ -70,7 +70,7 @@ func buildFn(ctx *gcp.Context) error {
 
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)
-		ctx.Exec([]string{"cp", "--archive", "node_modules", nm})
+		ctx.Exec([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution)
 	}
 
 	ctx.WriteMetadata(ml, &meta, layers.Build, layers.Cache)

@@ -67,7 +67,7 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.CacheHit(cacheTag)
 		ctx.Logf("Due to cache hit, package.json scripts will not be run. To run the scripts, disable caching.")
 		// Restore cached node_modules.
-		ctx.Exec([]string{"cp", "--archive", nm, "node_modules"})
+		ctx.Exec([]string{"cp", "--archive", nm, "node_modules"}, gcp.WithUserTimingAttribution)
 	} else {
 		ctx.CacheMiss(cacheTag)
 		// Clear cached node_modules to ensure we don't end up with outdated dependencies.
@@ -81,7 +81,7 @@ func buildFn(ctx *gcp.Context) error {
 
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)
-		ctx.Exec([]string{"cp", "--archive", "node_modules", nm})
+		ctx.Exec([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution)
 	}
 
 	ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution)
