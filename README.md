@@ -86,8 +86,8 @@ The Google Cloud Buildpacks project provides builder images suitable for use
 with
 [pack](https://github.com/buildpacks/pack),
 [kpack](https://github.com/pivotal/kpack),
-[tekton](https://github.com/tektoncd/catalog/tree/master/buildpacks),
-[skaffold](https://github.com/GoogleContainerTools/skaffold/tree/master/examples/buildpacks),
+[tekton](https://github.com/tektoncd/catalog/tree/HEAD/buildpacks),
+[skaffold](https://github.com/GoogleContainerTools/skaffold/tree/HEAD/examples/buildpacks),
 and other tools that support the Buildpacks v3 specification.
 
 
@@ -361,7 +361,7 @@ We welcome contributions! Here's how you can contribute:
 
 * [Browse issues](https://github.com/GoogleCloudPlatform/buildpacks/issues) or [file an issue](https://github.com/GoogleCloudPlatform/buildpacks/issues/new)
 * Contribute:
-  * *Read the [contributing guide](https://github.com/GoogleCloudPlatform/buildpacks/blob/master/CONTRIBUTING.md) before starting work on an issue*
+  * *Read the [contributing guide](https://github.com/GoogleCloudPlatform/buildpacks/blob/main/CONTRIBUTING.md) before starting work on an issue*
   * Try to fix [good first issues](https://github.com/GoogleCloudPlatform/buildpacks/labels/good%20first%20issue)
   * Help out on [issues that need help](https://github.com/GoogleCloudPlatform/buildpacks/labels/help%20wanted)
   * Join in on [discussion issues](https://github.com/GoogleCloudPlatform/buildpacks/labels/discuss)

@@ -38,7 +38,7 @@ with `blaze`.
 
 Please follow the links below for installation instructions.
 
-* [Bazel](https://docs.bazel.build/versions/master/install.html)
+* [Bazel](https://docs.bazel.build/install.html)
 * [Docker](https://store.docker.com/search?type=edition&offering=community)
 * [pack](https://buildpacks.io/docs/install-pack/)
 * [container-structure-test](https://github.com/GoogleContainerTools/container-structure-test#installation)
