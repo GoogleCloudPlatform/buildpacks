@@ -88,3 +88,27 @@ func TestAcceptance(t *testing.T) {
 		})
 	}
 }
+
+func TestFailures(t *testing.T) {
+	builder, cleanup := acceptance.CreateBuilder(t)
+	t.Cleanup(cleanup)
+
+	testCases := []acceptance.FailureTest{
+		{
+			App:       "no_framework_relative",
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			MustMatch: "the module path in the function's go.mod must contain a dot in the first path element before a slash, e.g. example.com/module, found: func",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.App, func(t *testing.T) {
+			t.Parallel()
+
+			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=go113")
+
+			acceptance.TestBuildFailure(t, builder, tc)
+		})
+	}
+}
