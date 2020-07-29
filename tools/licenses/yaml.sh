@@ -43,7 +43,7 @@ function license_entry() {
   # Try to use the go-licenses-derived licenseUrl to find the license file
   # (note licenses_url = "Unknown" for golang.org modules). If not found, look
   # for well-known license files.
-  local license_path="$(echo "${license_url}" | sed 's;https://\(.*\)/blob/\(master|main\)\(/.*\);\1\2;')"
+  local license_path="$(echo "${license_url}" | sed 's;https://\(.*\)/blob/\(master\|main\)\(/.*\);\1\3;')"
   # Regex from https://github.com/google/go-licenses/blob/master/licenses/find.go#L26.
   local regex=".*/\(LICEN\(S\|C\)E\|COPYING\|README\|NOTICE\)\(\..+\)?$"
   local license_file="$(find "${local_dir}/${package}" -regex "$regex" -printf '%P\n' | head -1)"
