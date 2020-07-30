@@ -17,8 +17,11 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
+	"strconv"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpack/libbuildpack/layers"
 )
@@ -36,6 +39,17 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	// Fail archiving source when users want to clear source from the final container.
+	// TODO(https://github.com/buildpacks/lifecycle/issues/306): Move this logic to the detect phase when we can attribute failures to users.
+	if cs, ok := os.LookupEnv(env.ClearSource); ok {
+		c, err := strconv.ParseBool(cs)
+		if err != nil {
+			ctx.Warnf("Failed to parse %q: %v", env.ClearSource, err)
+		} else if c {
+			return gcp.UserErrorf("%s is not allowed in this environment", env.ClearSource)
+		}
+	}
+
 	sl := ctx.Layer("src")
 	sp := filepath.Join(sl.Root, archiveName)
 	archiveSource(ctx, sp, ctx.ApplicationRoot())
