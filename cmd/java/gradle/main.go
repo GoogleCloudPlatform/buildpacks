@@ -59,11 +59,11 @@ func buildFn(ctx *gcp.Context) error {
 	gradleCachedRepo := ctx.Layer(cacheLayer)
 	ctx.ReadMetadata(gradleCachedRepo, &repoMeta)
 	java.CheckCacheExpiration(ctx, &repoMeta, gradleCachedRepo)
-	lf := []layers.Flag{layers.Cache}
+	flags := []layers.Flag{layers.Cache}
 	if devmode.Enabled(ctx) {
-		lf = append(lf, layers.Launch)
+		flags = append(flags, layers.Launch)
 	}
-	ctx.WriteMetadata(gradleCachedRepo, &repoMeta, lf...)
+	ctx.WriteMetadata(gradleCachedRepo, &repoMeta, flags...)
 
 	usr, err := user.Current()
 	if err != nil {
@@ -164,7 +164,11 @@ func installGradle(ctx *gcp.Context) (string, error) {
 	ctx.Exec([]string{"bash", "-c", install}, gcp.WithUserTimingAttribution)
 
 	meta.Version = version
-	ctx.WriteMetadata(gradlel, meta, layers.Cache)
+	flags := []layers.Flag{layers.Cache}
+	if devmode.Enabled(ctx) {
+		flags = append(flags, layers.Launch)
+	}
+	ctx.WriteMetadata(gradlel, meta, flags...)
 	return filepath.Join(gradlel.Root, "bin", "gradle"), nil
 }
 

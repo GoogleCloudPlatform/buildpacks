@@ -264,22 +264,29 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 	}
 
 	if cfg.MustRebuildOnChange != "" {
+		start = time.Now()
 		// Modify a source file in the running container.
 		if _, err := runOutput("docker", "exec", containerID, "sed", "-i", "s/PASS/UPDATED/", cfg.MustRebuildOnChange); err != nil {
 			t.Fatalf("Unable to modify a source file in the running container %q: %v", containerID, err)
 		}
 
 		// Check that the application responds with `UPDATED`.
-		for try := 10; try >= 1; try-- {
+		tries := 10
+		for try := tries; try >= 1; try-- {
 			time.Sleep(1 * time.Second)
 
-			body, _, _, err := invokeHTTP(host, port, cfg.Path)
+			body, status, _, err := invokeHTTPWithTimeout(host, port, cfg.Path, 10*time.Second)
+			// An app that is rebuilding can be unresponsive.
 			if err != nil {
+				if try == 1 {
+					t.Fatalf("Unable to invoke app after updating source with %d attempts: %v", tries, err)
+				}
 				continue
 			}
 
 			want := "UPDATED"
 			if body == want {
+				t.Logf("Got response: status %v, body %q (in %s)", status, body, time.Since(start))
 				break
 			}
 			if try == 1 {
@@ -289,20 +296,28 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 	}
 }
 
-// invokeHTTP makes an http call to a given host:port/path. Returns the body, status
-// and statusCode of the response.
+// invokeHTTP makes an http call to a given host:port/path.
+// Returns the body, status and statusCode of the response.
 func invokeHTTP(host string, port int, path string) (string, string, int, error) {
+	return invokeHTTPWithTimeout(host, port, path, 120*time.Second)
+}
+
+// invokeHTTPWithTimeout makes an http call to a given host:port/path with the specified timeout.
+//Returns the body, status and statusCode of the response.
+func invokeHTTPWithTimeout(host string, port int, path string, timeout time.Duration) (string, string, int, error) {
 	var res *http.Response
 	var err error
 
-	// Try to connect the the container until it succeeds (up to 60s).
-	for retry := 0; retry < 600; retry++ {
+	// Try to connect the the container until it succeeds up to the timeout.
+	sleep := 100 * time.Millisecond
+	attempts := int(timeout / sleep)
+	for attempt := 0; attempt < attempts; attempt++ {
 		res, err = http.Get(fmt.Sprintf("http://%s:%d%s", host, port, path))
 		if err == nil {
 			break
 		}
 
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(sleep)
 	}
 
 	// The connection never succeeded.
@@ -333,6 +348,7 @@ func randString(n int) string {
 // runOutput runs the given command and returns its stdout or an error.
 func runOutput(args ...string) (string, error) {
 	log.Printf("Running %v\n", args)
+	start := time.Now()
 	cmd := exec.Command(args[0], args[1:]...)
 	out, err := cmd.Output()
 	if err != nil {
@@ -342,6 +358,7 @@ func runOutput(args ...string) (string, error) {
 		}
 		return "", fmt.Errorf("running command %v: %v%s", args, err, logs)
 	}
+	log.Printf("Finished %v (in %s)\n", args, time.Since(start))
 	return strings.TrimSpace(string(out)), nil
 }
 
