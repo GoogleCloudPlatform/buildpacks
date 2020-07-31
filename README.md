@@ -86,7 +86,7 @@ The Google Cloud Buildpacks project provides builder images suitable for use
 with
 [pack](https://github.com/buildpacks/pack),
 [kpack](https://github.com/pivotal/kpack),
-[tekton](https://github.com/tektoncd/catalog/tree/HEAD/buildpacks),
+[tekton](https://github.com/tektoncd/catalog/tree/HEAD/task/buildpacks/0.1),
 [skaffold](https://github.com/GoogleContainerTools/skaffold/tree/HEAD/examples/buildpacks),
 and other tools that support the Buildpacks v3 specification.
 
