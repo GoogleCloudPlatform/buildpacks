@@ -17,6 +17,7 @@
 package main
 
 import (
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 	"github.com/buildpack/libbuildpack/layers"
@@ -40,7 +41,11 @@ func buildFn(ctx *gcp.Context) error {
 	// Set GOPROXY to ensure no additional dependency is downloaded at built time.
 	// All of them are downloaded here.
 	ctx.OverrideBuildEnv(l, "GOPROXY", "off")
-	ctx.WriteMetadata(l, nil, layers.Build)
+	lyr := []layers.Flag{layers.Build}
+	if devmode.Enabled(ctx) {
+		lyr = append(lyr, layers.Launch)
+	}
+	ctx.WriteMetadata(l, nil, lyr...)
 
 	// TODO(b/145604612): Investigate caching the modules layer.
 

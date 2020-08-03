@@ -102,10 +102,24 @@ func TestAcceptance(t *testing.T) {
 			App:  "gomod_module_main",
 			Env:  []string{"GAE_YAML_MAIN=example.com/package/maindir"},
 		},
-		// Test that we can build a gomod app with no dependencies.
+		// Test that we can build a gomod app.
 		{
-			Name: "gomod no dependencies",
+			Name: "gomod",
 			App:  "gomod",
+		},
+		// Test that we can build a go app DEVMODE.
+		{
+			Name:                "gomod DEVMODE",
+			App:                 "gomod",
+			Env:                 []string{"GOOGLE_DEVMODE=1"},
+			MustRebuildOnChange: "/workspace/main.go",
+		},
+		// Test that GOOGLE_BUILDABLE takes precedence over go-app-stager with DEVMODE
+		{
+			Name:                "gomod GOOGLE_BUILDABLE vs go-app-stager main package DEVMODE",
+			App:                 "gomod_wrong_stager_mainpackage",
+			Env:                 []string{"GOOGLE_BUILDABLE=./maindir", "GOOGLE_DEVMODE=1"},
+			MustRebuildOnChange: "/workspace/maindir/main.go",
 		},
 	}
 	for _, tc := range testCases {
