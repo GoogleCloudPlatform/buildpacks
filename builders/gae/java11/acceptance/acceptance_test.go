@@ -108,6 +108,11 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput:     []string{"WARNING"},
 			FilesMustNotExist: []string{"/workspace/src/main/java/example/Application.java", "/workspace/build.gradle"},
 		},
+		{
+			Name:          "Java gradle quarkus",
+			App:           "gradle_quarkus",
+			MustNotOutput: []string{"WARNING"},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

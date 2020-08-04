@@ -43,21 +43,36 @@ const (
 var (
 	// re matches lines in the manifest for a Main-Class entry to detect which jar is appropriate for execution. For some reason, it does not like `(?m)^Main-Class: [^\s]+`.
 	re = regexp.MustCompile("(?m)^Main-Class: [^\r\n\t\f\v ]+")
+	// jarPaths contains the paths that we search for executable jar files. Order of paths decides precedence.
+	jarPaths = [][]string{
+		[]string{"target"},
+		[]string{"build"},
+		[]string{"build", "libs"},
+		// An empty file path searches the application root for jars.
+		[]string{},
+	}
 )
 
 // ExecutableJar looks for the jar with a Main-Class manifest. If there is not exactly 1 of these jars, throw an error.
 func ExecutableJar(ctx *gcp.Context) (string, error) {
-	// Maven-built jar(s) in target directory take precedence over existing jars at app root.
-	jars := ctx.Glob(filepath.Join(ctx.ApplicationRoot(), "target", "*.jar"))
-	if len(jars) == 0 {
-		jars = ctx.Glob(filepath.Join(ctx.ApplicationRoot(), "build", "libs", "*.jar"))
+	for i, path := range jarPaths {
+		path = append([]string{ctx.ApplicationRoot()}, path...)
+		path = append(path, "*.jar")
+		jars := ctx.Glob(filepath.Join(path...))
+		// There may be multiple jars due to some frameworks like Quarkus creating multiple jars,
+		// so we look for the jar that contains a Main-Class entry in its manifest.
+		executables := filterExecutables(ctx, jars)
+		// We've found a path with exactly 1 jar, so return that jar.
+		if len(executables) == 1 {
+			return executables[0], nil
+		} else if len(executables) > 1 {
+			return "", gcp.UserErrorf("found more than one jar with a Main-Class manifest entry in %s: %v, please specify an entrypoint", jarPaths[i], executables)
+		}
 	}
-	if len(jars) == 0 {
-		jars = ctx.Glob(filepath.Join(ctx.ApplicationRoot(), "*.jar"))
-	}
+	return "", gcp.UserErrorf("did not find any jar files with a Main-Class manifest entry")
+}
 
-	// There may be multiple jars due to some frameworks like Quarkus creating multiple jars,
-	// so we look for the jar that contains a Main-Class entry in its manifest.
+func filterExecutables(ctx *gcp.Context, jars []string) []string {
 	var executables []string
 	for _, jar := range jars {
 		if hasMain, err := hasMainManifestEntry(jar); err != nil {
@@ -66,13 +81,7 @@ func ExecutableJar(ctx *gcp.Context) (string, error) {
 			executables = append(executables, jar)
 		}
 	}
-	if len(executables) == 0 {
-		return "", gcp.UserErrorf("did not find any jar files with a Main-Class manifest entry")
-	}
-	if len(executables) > 1 {
-		return "", gcp.UserErrorf("found more than one jar with a Main-Class manifest entry: %v, please specify an entrypoint", executables)
-	}
-	return executables[0], nil
+	return executables
 }
 
 func hasMainManifestEntry(jar string) (bool, error) {
