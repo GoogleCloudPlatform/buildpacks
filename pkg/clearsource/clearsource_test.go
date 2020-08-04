@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/buildpack"
+	"github.com/buildpacks/libcnb"
 )
 
 func TestPathsToRemove(t *testing.T) {
@@ -80,7 +80,7 @@ func TestPathsToRemove(t *testing.T) {
 					t.Fatalf("writing to file %s: %v", path, err)
 				}
 			}
-			ctx := gcp.NewContextForTests(buildpack.Info{}, "")
+			ctx := gcp.NewContextForTests(libcnb.BuildpackInfo{}, "")
 
 			got, err := pathsToRemove(ctx, tDir, tc.exclusions)
 			if err != nil {

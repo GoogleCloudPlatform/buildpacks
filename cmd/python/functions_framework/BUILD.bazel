@@ -31,7 +31,7 @@ go_binary(
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/python",
-        "@com_github_buildpack_libbuildpack//layers:go_default_library",
+        "@com_github_buildpacks_libcnb//:go_default_library",
     ],
 )
 

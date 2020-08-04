@@ -25,7 +25,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/buildpack/libbuildpack/buildpack"
+	"github.com/buildpacks/libcnb"
 )
 
 type tempDirs struct {
@@ -67,7 +67,7 @@ func TestDetectWithStack(t *testing.T, detectFn DetectFn, testName string, files
 		}
 	}
 
-	ctx := newDetectContext()
+	ctx := newDetectContext(libcnb.DetectContext{})
 	ctx.applicationRoot = temps.codeDir
 	ctx.buildpackRoot = temps.buildpackDir
 
@@ -131,7 +131,7 @@ func tempWorkingDir(t *testing.T) (string, func()) {
 func simpleContext(t *testing.T) (*Context, func()) {
 	t.Helper()
 	_, cleanUp := setUpDetectEnvironment(t)
-	c := NewContext(buildpack.Info{ID: "my-id", Version: "my-version", Name: "my-name"})
+	c := NewContext(libcnb.BuildpackInfo{ID: "my-id", Version: "my-version", Name: "my-name"})
 	return c, cleanUp
 }
 
@@ -255,4 +255,28 @@ func setUpBuildEnvironment(t *testing.T) (tempDirs, func()) {
 		cleanUpArgs()
 		cleanUpTempDirs()
 	}
+}
+
+// fakeExitHandler allows libcnb's Detect() function to be called without causing an os.Exit().
+type fakeExitHandler struct {
+	err        error
+	errCalled  bool
+	passCalled bool
+	failCalled bool
+}
+
+// Error is called when an error is encountered.
+func (eh fakeExitHandler) Error(err error) {
+	eh.errCalled = true
+	eh.err = err
+}
+
+// Fail is called when a buildpack fails.
+func (eh fakeExitHandler) Fail() {
+	eh.failCalled = true
+}
+
+// Pass is called when a buildpack passes.
+func (eh fakeExitHandler) Pass() {
+	eh.passCalled = true
 }

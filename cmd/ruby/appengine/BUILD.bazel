@@ -38,6 +38,6 @@ go_test(
     deps = [
         "//pkg/appengine",
         "//pkg/gcpbuildpack",
-        "@com_github_buildpack_libbuildpack//buildpack:go_default_library",
+        "@com_github_buildpacks_libcnb//:go_default_library",
     ],
 )

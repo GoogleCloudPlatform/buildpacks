@@ -24,7 +24,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -33,12 +33,8 @@ const (
 	defaultFrameworkVersion       = "1.0.0-beta2"
 	functionsFrameworkMetadataURL = javaFunctionInvokerURLBase + "maven-metadata.xml"
 	functionsFrameworkURLTemplate = javaFunctionInvokerURLBase + "%[1]s/java-function-invoker-%[1]s.jar"
+	versionKey                    = "version"
 )
-
-// metadata represents metadata stored for the functions framework layer.
-type metadata struct {
-	Version string `toml:"version"`
-}
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -79,9 +75,9 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	launcherSource := filepath.Join(ctx.BuildpackRoot(), "launch.sh")
-	launcherTarget := filepath.Join(layer.Root, "launch.sh")
+	launcherTarget := filepath.Join(layer.Path, "launch.sh")
 	createLauncher(ctx, launcherSource, launcherTarget)
-	ctx.AddWebProcess([]string{launcherTarget, "java", "-jar", filepath.Join(layer.Root, "functions-framework.jar"), "--classpath", classpath})
+	ctx.AddWebProcess([]string{launcherTarget, "java", "-jar", filepath.Join(layer.Path, "functions-framework.jar"), "--classpath", classpath})
 
 	return nil
 }
@@ -168,14 +164,15 @@ func gradleClasspath(ctx *gcp.Context) (string, error) {
 	return fmt.Sprintf("%s:_javaFunctionDependencies/*", jarName), nil
 }
 
-func installFunctionsFramework(ctx *gcp.Context, layer *layers.Layer) error {
+func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) error {
+	layer.Launch = true
+	layer.Cache = true
 	frameworkVersion := defaultFrameworkVersion
 	// TODO(emcmanus): extract framework version from pom.xml if present
 
 	// Install functions-framework.
-	var meta metadata
-	ctx.ReadMetadata(layer, &meta)
-	if frameworkVersion == meta.Version {
+	metaVersion := ctx.GetMetadata(layer, versionKey)
+	if frameworkVersion == metaVersion {
 		ctx.CacheHit(layerName)
 	} else {
 		ctx.CacheMiss(layerName)
@@ -183,16 +180,14 @@ func installFunctionsFramework(ctx *gcp.Context, layer *layers.Layer) error {
 		if err := installFramework(ctx, layer, frameworkVersion); err != nil {
 			return err
 		}
-		meta.Version = frameworkVersion
-
-		ctx.WriteMetadata(layer, meta, layers.Launch, layers.Cache)
+		ctx.SetMetadata(layer, versionKey, frameworkVersion)
 	}
 	return nil
 }
 
-func installFramework(ctx *gcp.Context, layer *layers.Layer, version string) error {
+func installFramework(ctx *gcp.Context, layer *libcnb.Layer, version string) error {
 	url := fmt.Sprintf(functionsFrameworkURLTemplate, version)
-	ffName := filepath.Join(layer.Root, "functions-framework.jar")
+	ffName := filepath.Join(layer.Path, "functions-framework.jar")
 	result, err := ctx.ExecWithErr([]string{"curl", "--silent", "--fail", "--show-error", "--output", ffName, url})
 	// We use ExecWithErr rather than plain Exec because if it fails we want to exit with an error message better
 	// than "Failure: curl: (22) The requested URL returned error: 404".

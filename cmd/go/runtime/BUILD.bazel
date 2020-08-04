@@ -24,12 +24,10 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/devmode",
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/golang",
         "//pkg/runtime",
-        "@com_github_buildpack_libbuildpack//layers:go_default_library",
     ],
 )
 

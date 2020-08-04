@@ -26,12 +26,7 @@ import (
 	"time"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
-)
-
-var (
-	// re matches lines in the manifest for a Main-Class entry to detect which jar is appropriate for execution. For some reason, it does not like `(?m)^Main-Class: [^\s]+`.
-	re = regexp.MustCompile("(?m)^Main-Class: [^\r\n\t\f\v ]+")
+	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -41,12 +36,14 @@ const (
 	repoExpiration = time.Duration(time.Hour * 24 * 7 * 10)
 	// ManifestPath specifies the path of MANIFEST.MF relative to the working directory.
 	ManifestPath = "META-INF/MANIFEST.MF"
+
+	expiryTimestampKey = "expiry_timestamp"
 )
 
-// RepoMetadata contains the information for the m2 cache repo layer.
-type RepoMetadata struct {
-	ExpiryTimestamp string `toml:"expiry_timestamp"`
-}
+var (
+	// re matches lines in the manifest for a Main-Class entry to detect which jar is appropriate for execution. For some reason, it does not like `(?m)^Main-Class: [^\s]+`.
+	re = regexp.MustCompile("(?m)^Main-Class: [^\r\n\t\f\v ]+")
+)
 
 // ExecutableJar looks for the jar with a Main-Class manifest. If there is not exactly 1 of these jars, throw an error.
 func ExecutableJar(ctx *gcp.Context) (string, error) {
@@ -116,13 +113,14 @@ func MainFromManifest(ctx *gcp.Context, manifestPath string) (string, error) {
 }
 
 // CheckCacheExpiration clears the m2 layer and sets a new expiry timestamp when the cache is past expiration.
-func CheckCacheExpiration(ctx *gcp.Context, repoMeta *RepoMetadata, m2CachedRepo *layers.Layer) {
+func CheckCacheExpiration(ctx *gcp.Context, m2CachedRepo *libcnb.Layer) {
 	t := time.Now()
-	if repoMeta.ExpiryTimestamp != "" {
+	expiry := ctx.GetMetadata(m2CachedRepo, expiryTimestampKey)
+	if expiry != "" {
 		var err error
-		t, err = time.Parse(dateFormat, repoMeta.ExpiryTimestamp)
+		t, err = time.Parse(dateFormat, expiry)
 		if err != nil {
-			ctx.Debugf("Could not parse expiration date %q, assuming now: %v", repoMeta.ExpiryTimestamp, err)
+			ctx.Debugf("Could not parse expiration date %q, assuming now: %v", expiry, err)
 		}
 	}
 	if t.After(time.Now()) {
@@ -131,6 +129,5 @@ func CheckCacheExpiration(ctx *gcp.Context, repoMeta *RepoMetadata, m2CachedRepo
 
 	ctx.Debugf("Cache expired on %v, clearing", t)
 	ctx.ClearLayer(m2CachedRepo)
-	repoMeta.ExpiryTimestamp = time.Now().Add(repoExpiration).Format(dateFormat)
-	return
+	ctx.SetMetadata(m2CachedRepo, expiryTimestampKey, time.Now().Add(repoExpiration).Format(dateFormat))
 }

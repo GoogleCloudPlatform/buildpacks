@@ -23,7 +23,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 const (
@@ -54,12 +53,12 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer("yarn")
-	nm := filepath.Join(l.Root, "node_modules")
+	l := ctx.Layer("yarn", gcp.CacheLayer)
+	nm := filepath.Join(l.Path, "node_modules")
 	ctx.RemoveAll("node_modules")
 
 	nodeEnv := nodejs.EnvDevelopment
-	cached, meta, err := nodejs.CheckCache(ctx, l, cache.WithStrings(nodeEnv), cache.WithFiles("package.json", nodejs.YarnLock))
+	cached, err := nodejs.CheckCache(ctx, l, cache.WithStrings(nodeEnv), cache.WithFiles("package.json", nodejs.YarnLock))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
@@ -86,6 +85,5 @@ func buildFn(ctx *gcp.Context) error {
 
 	ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution)
 	ctx.RemoveAll("node_modules")
-	ctx.WriteMetadata(l, &meta, layers.Cache)
 	return nil
 }

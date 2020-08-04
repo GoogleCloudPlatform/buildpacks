@@ -21,7 +21,6 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 func main() {
@@ -40,8 +39,7 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer("main_env")
-	ctx.OverrideBuildEnv(l, env.Buildable, os.Getenv(env.GAEMain))
-	ctx.WriteMetadata(l, nil, layers.Build)
+	l := ctx.Layer("main_env", gcp.BuildLayer)
+	l.BuildEnvironment.Override(env.Buildable, os.Getenv(env.GAEMain))
 	return nil
 }

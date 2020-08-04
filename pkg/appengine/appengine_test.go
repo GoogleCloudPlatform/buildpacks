@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/buildpack"
+	"github.com/buildpacks/libcnb"
 )
 
 func TestConfig(t *testing.T) {
@@ -70,7 +70,7 @@ func TestConfig(t *testing.T) {
 		},
 	}
 
-	ctx := gcp.NewContext(buildpack.Info{ID: "id", Version: "version", Name: "name"})
+	ctx := gcp.NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
 	eg := func(*gcp.Context) (*Entrypoint, error) {
 		return &Entrypoint{
 			Type:    EntrypointGenerated.String(),

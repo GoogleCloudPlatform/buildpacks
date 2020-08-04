@@ -13,9 +13,9 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/buildpacks/github.com/blang/semver/LICENSE
 
-- package: github.com/buildpack/libbuildpack
+- package: github.com/buildpacks/libcnb
   license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/buildpacks/github.com/buildpack/libbuildpack/LICENSE
+  license_path: /usr/local/share/licenses/buildpacks/github.com/buildpacks/libcnb/LICENSE
 
 - package: github.com/BurntSushi/toml
   license_name: MIT

@@ -23,11 +23,11 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 const (
-	layerName string = "gunicorn"
+	layerName         = "gunicorn"
+	gunicornVersonKey = "gunicorn_version"
 )
 
 var (
@@ -35,11 +35,6 @@ var (
 	eggRegexp      = regexp.MustCompile(`(?m)#egg=gunicorn$`)
 	versionRegexp  = regexp.MustCompile(`(?m)^gunicorn\ \((.*?)\)`)
 )
-
-// metadata represents metadata stored for a dependencies layer.
-type metadata struct {
-	GunicornVersion string `toml:"gunicorn_version"`
-}
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -56,9 +51,7 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	var meta metadata
-	l := ctx.Layer(layerName)
-	ctx.ReadMetadata(l, &meta)
+	l := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 
 	// Check for up to date gunicorn version
 	raw := ctx.Exec([]string{"python3", "-m", "pip", "search", "gunicorn"}, gcp.WithUserAttribution).Stdout
@@ -67,27 +60,26 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("pip search returned unexpected gunicorn version %q", raw)
 	}
 
+	metaGunicornVersion := ctx.GetMetadata(l, gunicornVersonKey)
 	version := match[1]
 	ctx.Debugf("Current gunicorn version: %q", version)
-	ctx.Debugf(" Cached gunicorn version: %q", meta.GunicornVersion)
-	if version == meta.GunicornVersion {
+	ctx.Debugf(" Cached gunicorn version: %q", metaGunicornVersion)
+	if version == metaGunicornVersion {
 		ctx.CacheHit(layerName)
 		ctx.Logf("Dependencies cache hit, skipping installation.")
 		return nil
 	}
 	ctx.CacheMiss(layerName)
 
-	if meta.GunicornVersion == "" {
+	if metaGunicornVersion == "" {
 		ctx.Debugf("No metadata found from a previous build, skipping cache.")
 	}
 
 	ctx.Logf("Installing gunicorn.")
-	ctx.Exec([]string{"python3", "-m", "pip", "install", "--upgrade", "gunicorn", "-t", l.Root}, gcp.WithUserAttribution)
+	ctx.Exec([]string{"python3", "-m", "pip", "install", "--upgrade", "gunicorn", "-t", l.Path}, gcp.WithUserAttribution)
 
-	ctx.PrependPathSharedEnv(l, "PYTHONPATH", l.Root)
-
-	meta.GunicornVersion = version
-	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)
+	l.SharedEnvironment.PrependPath("PYTHONPATH", l.Path)
+	ctx.SetMetadata(l, gunicornVersonKey, version)
 	return nil
 }
 

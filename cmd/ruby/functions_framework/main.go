@@ -23,7 +23,6 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 const (
@@ -55,8 +54,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	// The framework has been installed with the dependencies, so this layer is
 	// used only for env vars.
-	l := ctx.Layer(layerName)
-	ctx.WriteMetadata(l, nil, layers.Launch)
+	l := ctx.Layer(layerName, gcp.LaunchLayer)
 	ctx.SetFunctionsEnvVars(l)
 
 	// Verify that the framework is installed and ready.

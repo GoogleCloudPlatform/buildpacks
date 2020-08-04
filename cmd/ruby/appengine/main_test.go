@@ -24,7 +24,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/buildpack"
+	"github.com/buildpacks/libcnb"
 )
 
 func TestDetect(t *testing.T) {
@@ -122,7 +122,7 @@ func TestEntrypoint(t *testing.T) {
 					t.Fatalf("writing file %s: %v", fn, err)
 				}
 			}
-			ctx := gcp.NewContext(buildpack.Info{ID: "id", Name: "name", Version: "version"})
+			ctx := gcp.NewContext(libcnb.BuildpackInfo{ID: "id", Name: "name", Version: "version"})
 
 			got, gotErr := entrypoint(ctx, tempDir)
 

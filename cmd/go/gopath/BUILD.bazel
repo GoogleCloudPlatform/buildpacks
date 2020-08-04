@@ -23,10 +23,7 @@ go_binary(
         "-s",
         "-w",
     ],
-    deps = [
-        "//pkg/gcpbuildpack",
-        "@com_github_buildpack_libbuildpack//layers:go_default_library",
-    ],
+    deps = ["//pkg/gcpbuildpack"],
 )
 
 go_test(

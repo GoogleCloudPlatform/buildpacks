@@ -27,7 +27,6 @@ go_binary(
         "//pkg/cache",
         "//pkg/gcpbuildpack",
         "//pkg/python",
-        "@com_github_buildpack_libbuildpack//layers:go_default_library",
     ],
 )
 

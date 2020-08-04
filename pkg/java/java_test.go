@@ -22,8 +22,7 @@ import (
 	"time"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/buildpack"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb"
 )
 
 func TestHasMainTrue(t *testing.T) {
@@ -133,7 +132,7 @@ another: example`,
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mfPath := setupTestManifest(t, []byte(tc.manifestContents))
-			ctx := gcp.NewContextForTests(buildpack.Info{}, "")
+			ctx := gcp.NewContextForTests(libcnb.BuildpackInfo{}, "")
 			got, err := MainFromManifest(ctx, mfPath)
 			if err != nil {
 				t.Errorf("MainFromMainfest() errored: %v", err)
@@ -164,7 +163,7 @@ func TestMainFromManifestFail(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mfPath := setupTestManifest(t, []byte(tc.manifestContents))
-			ctx := gcp.NewContextForTests(buildpack.Info{}, "")
+			ctx := gcp.NewContextForTests(libcnb.BuildpackInfo{}, "")
 			_, err := MainFromManifest(ctx, mfPath)
 			if err == nil {
 				t.Error("MainFromMainfest() did not error as expected")
@@ -194,16 +193,15 @@ func TestCheckCacheNewDateMiss(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := gcp.NewContext(buildpack.Info{ID: "id", Version: "version", Name: "name"})
-			repoMeta := &RepoMetadata{
-				ExpiryTimestamp: tc.expiryTimestamp,
-			}
+			ctx := gcp.NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
 
 			testFilePath, m2CachedRepo := setupTestLayer(t, ctx)
+			ctx.SetMetadata(m2CachedRepo, "expiry_timestamp", tc.expiryTimestamp)
 
-			CheckCacheExpiration(ctx, repoMeta, m2CachedRepo)
-			if repoMeta.ExpiryTimestamp == tc.expiryTimestamp {
-				t.Errorf("checkCacheExpiration() did not set new date when expected to with ExpiryTimestamp: %q", repoMeta.ExpiryTimestamp)
+			CheckCacheExpiration(ctx, m2CachedRepo)
+			metaExpiry := ctx.GetMetadata(m2CachedRepo, "expiry_timestamp")
+			if metaExpiry == tc.expiryTimestamp {
+				t.Errorf("checkCacheExpiration() did not set new date when expected to with ExpiryTimestamp: %q", metaExpiry)
 			}
 			if ctx.FileExists(testFilePath) {
 				ctx.RemoveAll(testFilePath)
@@ -226,16 +224,13 @@ func TestCheckCacheNewDateHit(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := gcp.NewContext(buildpack.Info{ID: "id", Version: "version", Name: "name"})
-			repoMeta := &RepoMetadata{
-				ExpiryTimestamp: tc.expiryTimestamp,
-			}
-
+			ctx := gcp.NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
 			testFilePath, m2CachedRepo := setupTestLayer(t, ctx)
+			ctx.SetMetadata(m2CachedRepo, "expiry_timestamp", tc.expiryTimestamp)
 
-			CheckCacheExpiration(ctx, repoMeta, m2CachedRepo)
-			if repoMeta.ExpiryTimestamp != tc.expiryTimestamp {
-				t.Errorf("checkCacheExpiration() set new date when expected not to with ExpiryTimestamp: %q", repoMeta.ExpiryTimestamp)
+			CheckCacheExpiration(ctx, m2CachedRepo)
+			if got, want := ctx.GetMetadata(m2CachedRepo, "expiry_timestamp"), tc.expiryTimestamp; got != want {
+				t.Errorf("checkCacheExpiration() set new date when expected not to with ExpiryTimestamp: %q", got)
 			}
 			if !ctx.FileExists(testFilePath) {
 				t.Errorf("checkCacheExpiration() cleared layer")
@@ -246,15 +241,16 @@ func TestCheckCacheNewDateHit(t *testing.T) {
 	}
 }
 
-func setupTestLayer(t *testing.T, ctx *gcp.Context) (string, *layers.Layer) {
+func setupTestLayer(t *testing.T, ctx *gcp.Context) (string, *libcnb.Layer) {
 	testLayerRoot, err := ioutil.TempDir("", "test-layer-")
 	if err != nil {
 		t.Fatalf("Creating temp directory: %v", err)
 	}
 	testFilePath := filepath.Join(testLayerRoot, "testfile")
 	ctx.CreateFile(testFilePath)
-	m2CachedRepo := &layers.Layer{
-		Root: testLayerRoot,
+	m2CachedRepo := &libcnb.Layer{
+		Path:     testLayerRoot,
+		Metadata: map[string]interface{}{},
 	}
 	return testFilePath, m2CachedRepo
 }

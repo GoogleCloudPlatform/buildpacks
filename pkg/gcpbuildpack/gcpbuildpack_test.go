@@ -25,8 +25,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	"github.com/buildpack/libbuildpack/buildpack"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb"
 )
 
 func TestDebugModeInitialized(t *testing.T) {
@@ -67,7 +66,7 @@ func TestDebugModeInitialized(t *testing.T) {
 				}
 			}
 
-			ctx := NewContext(buildpack.Info{ID: "id", Version: "version", Name: "name"})
+			ctx := NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
 			if ctx.debug != tc.want {
 				t.Errorf("ctx.debug=%t, want %t", ctx.debug, tc.want)
 			}
@@ -85,12 +84,11 @@ func TestDetectContextInitialized(t *testing.T) {
 	id := "my-id"
 	version := "my-version"
 	name := "my-name"
-
 	var ctx *Context
 	detect(func(c *Context) error {
 		ctx = c
 		return nil
-	})
+	}, libcnb.WithExitHandler(fakeExitHandler{}))
 
 	if ctx.BuildpackID() != id {
 		t.Errorf("Unexpected id got=%q want=%q", ctx.BuildpackID(), id)
@@ -111,7 +109,7 @@ func TestDetectEmitsSpan(t *testing.T) {
 	detect(func(c *Context) error {
 		ctx = c
 		return nil
-	})
+	}, libcnb.WithExitHandler(fakeExitHandler{}))
 
 	if len(ctx.stats.spans) != 1 {
 		t.Fatalf("len(spans)=%d want=1", len(ctx.stats.spans))
@@ -131,9 +129,6 @@ func TestDetectEmitsSpan(t *testing.T) {
 		t.Errorf("Unexpected status got=%s want=%s", got.status, StatusOk)
 	}
 }
-
-// func TestDetectCallbackReturingErrorExits(t *testing.T) {}
-// func TestDetectFinalizes(t *testing.T) {}
 
 func TestBuildContextInitialized(t *testing.T) {
 	_, cleanUp := setUpBuildEnvironment(t)
@@ -228,39 +223,39 @@ func TestBuildEmitsSuccessOutput(t *testing.T) {
 func TestAddWebProcess(t *testing.T) {
 	testCases := []struct {
 		name    string
-		initial layers.Processes
+		initial []libcnb.Process
 		cmd     []string
-		want    layers.Processes
+		want    []libcnb.Process
 	}{
 		{
 			name:    "empty processes",
-			initial: layers.Processes{},
+			initial: []libcnb.Process{},
 			cmd:     []string{"/web"},
-			want:    layers.Processes{proc("/web", "web")},
+			want:    []libcnb.Process{proc("/web", "web")},
 		},
 		{
 			name:    "existing web",
-			initial: layers.Processes{proc("/dev", "dev"), proc("/web", "web"), proc("/cli", "cli")},
+			initial: []libcnb.Process{proc("/dev", "dev"), proc("/web", "web"), proc("/cli", "cli")},
 			cmd:     []string{"/OVERRIDE"},
-			want:    layers.Processes{proc("/dev", "dev"), proc("/cli", "cli"), proc("/OVERRIDE", "web")},
+			want:    []libcnb.Process{proc("/dev", "dev"), proc("/cli", "cli"), proc("/OVERRIDE", "web")},
 		},
 		{
 			name:    "no web",
-			initial: layers.Processes{proc("/dev", "dev"), proc("/cli", "cli")},
+			initial: []libcnb.Process{proc("/dev", "dev"), proc("/cli", "cli")},
 			cmd:     []string{"/web"},
-			want:    layers.Processes{proc("/dev", "dev"), proc("/cli", "cli"), proc("/web", "web")},
+			want:    []libcnb.Process{proc("/dev", "dev"), proc("/cli", "cli"), proc("/web", "web")},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := NewContext(buildpack.Info{ID: "id", Version: "version", Name: "name"})
-			ctx.processes = tc.initial
+			ctx := NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+			ctx.buildResult.Processes = tc.initial
 
 			ctx.AddWebProcess(tc.cmd)
 
-			if !reflect.DeepEqual(ctx.processes, tc.want) {
-				t.Errorf("Processes not equal got %#v, want %#v", ctx.processes, tc.want)
+			if !reflect.DeepEqual(ctx.buildResult.Processes, tc.want) {
+				t.Errorf("Processes not equal got %#v, want %#v", ctx.buildResult.Processes, tc.want)
 			}
 		})
 	}
@@ -316,7 +311,7 @@ func TestHasAtLeastOne(t *testing.T) {
 			dir, cleanup := tempWorkingDir(t)
 			defer cleanup()
 
-			ctx := NewContextForTests(buildpack.Info{ID: "id", Version: "version", Name: "name"}, dir)
+			ctx := NewContextForTests(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"}, dir)
 			for _, f := range tc.files {
 				ctx.MkdirAll(tc.prefix, 0777)
 				_, err := ioutil.TempFile(tc.prefix, f)
@@ -333,6 +328,6 @@ func TestHasAtLeastOne(t *testing.T) {
 	}
 }
 
-func proc(command, commandType string) layers.Process {
-	return layers.Process{Command: command, Type: commandType, Direct: true}
+func proc(command, commandType string) libcnb.Process {
+	return libcnb.Process{Command: command, Type: commandType, Direct: true}
 }

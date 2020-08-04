@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/buildpack"
+	"github.com/buildpacks/libcnb"
 )
 
 func TestGoModVersion(t *testing.T) {
@@ -259,7 +259,7 @@ module dir
 			}
 			defer os.RemoveAll(dir)
 
-			ctx := gcp.NewContextForTests(buildpack.Info{}, dir)
+			ctx := gcp.NewContextForTests(libcnb.BuildpackInfo{}, dir)
 
 			if err := ioutil.WriteFile(filepath.Join(dir, "go.mod"), []byte(tc.gomod), 0644); err != nil {
 				t.Fatalf("writing go.mod: %v", err)

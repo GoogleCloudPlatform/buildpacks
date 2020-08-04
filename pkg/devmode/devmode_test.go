@@ -22,8 +22,7 @@ import (
 	"testing"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/buildpack"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb"
 )
 
 func TestWriteAndRunScripts(t *testing.T) {
@@ -68,12 +67,8 @@ func TestWriteAndRunScripts(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Creating temp directory: %v", err)
 			}
-			metadata := tc.layerRoot + ".metadata"
-			ctx := gcp.NewContextForTests(buildpack.Info{ID: "id", Version: "version", Name: "name"}, tc.layerRoot)
-			l := &layers.Layer{
-				Root:     tc.layerRoot,
-				Metadata: metadata,
-			}
+			ctx := gcp.NewContextForTests(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"}, tc.layerRoot)
+			l := &libcnb.Layer{Path: tc.layerRoot}
 
 			writeBuildAndRunScript(ctx, l, tc.config)
 

@@ -26,7 +26,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 const (
@@ -47,20 +46,16 @@ func detectFn(ctx *gcp.Context) error {
 
 func buildFn(ctx *gcp.Context) error {
 	// Create a cached layer for the GOCACHE.
-	cl := ctx.Layer("gocache")
-	lf := []layers.Flag{layers.Cache, layers.Build}
+	cl := ctx.Layer("gocache", gcp.CacheLayer, gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
 	if devmode.Enabled(ctx) {
-		lf = append(lf, layers.Launch)
-		ctx.OverrideLaunchEnv(cl, "GOCACHE", cl.Root)
+		cl.LaunchEnvironment.Override("GOCACHE", cl.Path)
 	}
-	ctx.WriteMetadata(cl, nil, lf...)
 
 	// Create a layer for the compiled binary.  Add it to PATH in case
 	// users wish to invoke the binary manually.
-	bl := ctx.Layer("bin")
-	ctx.PrependPathLaunchEnv(bl, "PATH", bl.Root)
-	ctx.WriteMetadata(bl, nil, layers.Launch)
-	outBin := filepath.Join(bl.Root, golang.OutBin)
+	bl := ctx.Layer("bin", gcp.LaunchLayer)
+	bl.LaunchEnvironment.PrependPath("PATH", bl.Path)
+	outBin := filepath.Join(bl.Path, golang.OutBin)
 
 	buildable, err := goBuildable(ctx)
 	if err != nil {
@@ -72,7 +67,7 @@ func buildFn(ctx *gcp.Context) error {
 	bld = append(bld, goBuildFlags()...)
 	bld = append(bld, "-o", outBin)
 	bld = append(bld, buildable)
-	ctx.Exec(bld, gcp.WithEnv("GOCACHE="+cl.Root), gcp.WithMessageProducer(printTipsAndKeepStderrTail(ctx)), gcp.WithUserAttribution)
+	ctx.Exec(bld, gcp.WithEnv("GOCACHE="+cl.Path), gcp.WithMessageProducer(printTipsAndKeepStderrTail(ctx)), gcp.WithUserAttribution)
 
 	// Configure the entrypoint for production.  Use the full path to save `skaffold debug`
 	// from fetching the remote container image (tens to hundreds of megabytes), which is slow.

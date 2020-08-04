@@ -29,7 +29,7 @@ go_binary(
         "//pkg/dotnet",
         "//pkg/env",
         "//pkg/gcpbuildpack",
-        "@com_github_buildpack_libbuildpack//layers:go_default_library",
+        "@com_github_buildpacks_libcnb//:go_default_library",
     ],
 )
 
@@ -41,6 +41,6 @@ go_test(
     rundir = ".",
     deps = [
         "//pkg/gcpbuildpack",
-        "@com_github_buildpack_libbuildpack//buildpack:go_default_library",
+        "@com_github_buildpacks_libcnb//:go_default_library",
     ],
 )

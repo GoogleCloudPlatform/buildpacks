@@ -27,18 +27,14 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/dotnet"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb"
 )
 
 const (
-	cacheTag = "prod dependencies"
+	cacheTag          = "prod dependencies"
+	dependencyHashKey = "dependency_hash"
+	versionKey        = "version"
 )
-
-// Metadata represents metadata stored for a packages layer.
-type metadata struct {
-	Version        string `toml:"version"`
-	DependencyHash string `toml:"dependency_hash"`
-}
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -70,8 +66,9 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	ctx.Logf("Installing application dependencies.")
-	pkgLayer := ctx.Layer("packages")
-	cached, meta, err := checkCache(ctx, pkgLayer)
+	pkgLayer := ctx.Layer("packages", gcp.BuildLayer, gcp.CacheLayer)
+
+	cached, err := checkCache(ctx, pkgLayer)
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
@@ -83,11 +80,11 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Run restore regardless of cache status because it generates files expected by publish.
-	cmd := []string{"dotnet", "restore", "--packages", pkgLayer.Root, proj}
+	cmd := []string{"dotnet", "restore", "--packages", pkgLayer.Path, proj}
 	ctx.Exec(cmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution)
-	ctx.WriteMetadata(pkgLayer, &meta, layers.Build, layers.Cache)
 
-	binLayer := ctx.Layer("bin")
+	binLayer := ctx.Layer("bin", gcp.BuildLayer, gcp.LaunchLayer)
+
 	cmd = []string{
 		"dotnet",
 		"publish",
@@ -96,7 +93,7 @@ func buildFn(ctx *gcp.Context) error {
 		"--configuration", "Release",
 		"--output", "bin",
 		"--no-restore",
-		"--packages", pkgLayer.Root,
+		"--packages", pkgLayer.Path,
 		proj,
 	}
 
@@ -110,10 +107,9 @@ func buildFn(ctx *gcp.Context) error {
 			return fmt.Errorf("getting entrypoint: %w", err)
 		}
 		entrypoint = strings.Join(ep, " ")
-		ctx.DefaultBuildEnv(binLayer, env.Entrypoint, entrypoint)
+		binLayer.BuildEnvironment.Default(env.Entrypoint, entrypoint)
 	}
-	ctx.DefaultLaunchEnv(binLayer, "DOTNET_RUNNING_IN_CONTAINER", "true")
-	ctx.WriteMetadata(binLayer, nil, layers.Build, layers.Launch)
+	binLayer.LaunchEnvironment.Default("DOTNET_RUNNING_IN_CONTAINER", "true")
 
 	// Configure the entrypoint for production.
 	if !devmode.Enabled(ctx) {
@@ -124,7 +120,6 @@ func buildFn(ctx *gcp.Context) error {
 	// Configure the entrypoint and metadata for dev mode.
 	ctx.AddWebProcess([]string{"dotnet", "watch", "--project", proj, "run"})
 	devmode.AddSyncMetadata(ctx, devmode.DotNetSyncRules)
-
 	return nil
 }
 
@@ -161,7 +156,7 @@ func getEntrypointCmd(ctx *gcp.Context, ep string) []string {
 	return nil
 }
 
-func checkCache(ctx *gcp.Context, l *layers.Layer) (bool, *metadata, error) {
+func checkCache(ctx *gcp.Context, l *libcnb.Layer) (bool, error) {
 	// We cache all *.*proj files, as if we just cache just the main one, we would miss any changes
 	// to other libraries implemented as part of the app. As many apps are structured such that the
 	// main app only depends on the local binaries, that root project file would change very
@@ -176,27 +171,25 @@ func checkCache(ctx *gcp.Context, l *layers.Layer) (bool, *metadata, error) {
 
 	hash, err := cache.Hash(ctx, cache.WithStrings(currentVersion), cache.WithFiles(projectFiles...))
 	if err != nil {
-		return false, nil, fmt.Errorf("computing dependency hash: %w", err)
+		return false, fmt.Errorf("computing dependency hash: %w", err)
 	}
-
-	var meta metadata
-	ctx.ReadMetadata(l, &meta)
 
 	// Perform install, skipping if the dependency hash matches existing metadata.
+	metaDependencyHash := ctx.GetMetadata(l, dependencyHashKey)
 	ctx.Debugf("Current dependency hash: %q", hash)
-	ctx.Debugf("  Cache dependency hash: %q", meta.DependencyHash)
-	if hash == meta.DependencyHash {
+	ctx.Debugf("  Cache dependency hash: %q", metaDependencyHash)
+	if hash == metaDependencyHash {
 		ctx.Logf("Dependencies cache hit, skipping installation.")
-		return true, &meta, nil
+		return true, nil
 	}
 
-	if meta.DependencyHash == "" {
+	if metaDependencyHash == "" {
 		ctx.Debugf("No metadata found from a previous build, skipping cache.")
 	}
 	// Update the layer metadata.
-	meta.DependencyHash = hash
-	meta.Version = currentVersion
-	return false, &meta, nil
+	ctx.SetMetadata(l, dependencyHashKey, hash)
+	ctx.SetMetadata(l, versionKey, currentVersion)
+	return false, nil
 }
 
 func getAssemblyName(ctx *gcp.Context, proj string) (string, error) {

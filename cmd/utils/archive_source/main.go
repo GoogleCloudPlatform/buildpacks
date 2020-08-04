@@ -23,7 +23,6 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 const (
@@ -50,15 +49,14 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	}
 
-	sl := ctx.Layer("src")
-	sp := filepath.Join(sl.Root, archiveName)
+	sl := ctx.Layer("src", gcp.LaunchLayer)
+
+	sp := filepath.Join(sl.Path, archiveName)
 	archiveSource(ctx, sp, ctx.ApplicationRoot())
 
 	// Symlink the archive to /workspace/.googlebuild for a stable path.
 	ctx.MkdirAll(".googlebuild", 0755)
 	ctx.Symlink(sp, filepath.Join(ctx.ApplicationRoot(), ".googlebuild", archiveName))
-
-	ctx.WriteMetadata(sl, nil, layers.Launch)
 
 	return nil
 }

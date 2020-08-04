@@ -24,7 +24,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 const (
@@ -43,13 +42,13 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	ml := ctx.Layer("npm")
-	nm := filepath.Join(ml.Root, "node_modules")
+	ml := ctx.Layer("npm", gcp.BuildLayer, gcp.CacheLayer)
+	nm := filepath.Join(ml.Path, "node_modules")
 	ctx.RemoveAll("node_modules")
 	nodejs.EnsurePackageLock(ctx)
 
 	nodeEnv := nodejs.NodeEnv()
-	cached, meta, err := nodejs.CheckCache(ctx, ml, cache.WithStrings(nodeEnv), cache.WithFiles("package.json", nodejs.PackageLock))
+	cached, err := nodejs.CheckCache(ctx, ml, cache.WithStrings(nodeEnv), cache.WithFiles("package.json", nodejs.PackageLock))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
@@ -73,12 +72,9 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Exec([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution)
 	}
 
-	ctx.WriteMetadata(ml, &meta, layers.Build, layers.Cache)
-
-	el := ctx.Layer("env")
-	ctx.PrependPathSharedEnv(el, "PATH", filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
-	ctx.DefaultSharedEnv(el, "NODE_ENV", nodeEnv)
-	ctx.WriteMetadata(el, nil, layers.Launch, layers.Build)
+	el := ctx.Layer("env", gcp.BuildLayer, gcp.LaunchLayer)
+	el.SharedEnvironment.PrependPath("PATH", filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
+	el.SharedEnvironment.Default("NODE_ENV", nodeEnv)
 
 	// Configure the entrypoint for production.
 	cmd := []string{"npm", "start"}

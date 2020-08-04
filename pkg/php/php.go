@@ -23,7 +23,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -33,6 +33,9 @@ const (
 	composerLock = "composer.lock"
 	// Vendor is the name of the Composer vendor directory.
 	Vendor = "vendor"
+
+	phpVersionKey     = "php_version"
+	dependencyHashKey = "dependency_hash"
 )
 
 type composerScriptsJSON struct {
@@ -43,12 +46,6 @@ type composerScriptsJSON struct {
 type ComposerJSON struct {
 	Require map[string]string   `json:"require"`
 	Scripts composerScriptsJSON `json:"scripts"`
-}
-
-// Metadata represents metadata stored for a dependencies layer.
-type Metadata struct {
-	PHPVersion     string `toml:"php_version"`
-	DependencyHash string `toml:"dependency_hash"`
 }
 
 // ReadComposerJSON returns the deserialized composer.json from the given dir. Empty dir uses the current working directory.
@@ -73,34 +70,33 @@ func version(ctx *gcp.Context) string {
 }
 
 // checkCache checks whether cached dependencies exist and match.
-func checkCache(ctx *gcp.Context, l *layers.Layer, opts ...cache.Option) (bool, *Metadata, error) {
+func checkCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
 	currentPHPVersion := version(ctx)
 	opts = append(opts, cache.WithStrings(currentPHPVersion))
 	currentDependencyHash, err := cache.Hash(ctx, opts...)
 	if err != nil {
-		return false, nil, fmt.Errorf("computing dependency hash: %v", err)
+		return false, fmt.Errorf("computing dependency hash: %v", err)
 	}
-
-	var meta Metadata
-	ctx.ReadMetadata(l, &meta)
 
 	// Perform install, skipping if the dependency hash matches existing metadata.
+	metaDependencyHash := ctx.GetMetadata(l, dependencyHashKey)
 	ctx.Debugf("Current dependency hash: %q", currentDependencyHash)
-	ctx.Debugf("  Cache dependency hash: %q", meta.DependencyHash)
-	if currentDependencyHash == meta.DependencyHash {
+	ctx.Debugf("  Cache dependency hash: %q", metaDependencyHash)
+	if currentDependencyHash == metaDependencyHash {
 		ctx.Logf("Dependencies cache hit, skipping installation.")
-		return true, &meta, nil
+		return true, nil
 	}
 
-	if meta.DependencyHash == "" {
+	if metaDependencyHash == "" {
 		ctx.Debugf("No metadata found from a previous build, skipping cache.")
 	}
 	ctx.Logf("Installing application dependencies.")
-	// Update the layer metadata.
-	meta.DependencyHash = currentDependencyHash
-	meta.PHPVersion = currentPHPVersion
 
-	return false, &meta, nil
+	// Update the layer metadata.
+	ctx.SetMetadata(l, dependencyHashKey, currentDependencyHash)
+	ctx.SetMetadata(l, phpVersionKey, currentPHPVersion)
+
+	return false, nil
 }
 
 // composerInstall runs `composer install` with the given flags.
@@ -112,7 +108,7 @@ func composerInstall(ctx *gcp.Context, flags []string) {
 // ComposerInstall runs `composer install`, using the cache iff a lock file is present.
 // It creates a layer, so it returns the layer so that the caller may further modify it
 // if they desire.
-func ComposerInstall(ctx *gcp.Context, cacheTag string) (*layers.Layer, error) {
+func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 	// We don't install dev dependencies (i.e. we pass --no-dev to composer) because doing so has caused
 	// problems for customers in the past. For more information see these links:
 	//   https://github.com/GoogleCloudPlatform/php-docs-samples/issues/736
@@ -121,8 +117,8 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*layers.Layer, error) {
 	flags := []string{"--no-dev", "--no-progress", "--no-suggest", "--no-interaction"}
 
 	ctx.RemoveAll(Vendor)
-	l := ctx.Layer("composer")
-	layerVendor := filepath.Join(l.Root, Vendor)
+	l := ctx.Layer("composer", gcp.CacheLayer)
+	layerVendor := filepath.Join(l.Path, Vendor)
 
 	// If there's no composer.lock then don't attempt to cache. We'd have to cache using composer.json,
 	// which could result in outdated dependencies if the version constraints in composer.json resolve
@@ -133,7 +129,7 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*layers.Layer, error) {
 		return l, nil
 	}
 
-	cached, meta, err := checkCache(ctx, l, cache.WithStrings(composerLock))
+	cached, err := checkCache(ctx, l, cache.WithStrings(composerLock))
 	if err != nil {
 		return l, fmt.Errorf("checking cache: %w", err)
 	}
@@ -153,7 +149,6 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*layers.Layer, error) {
 		ctx.Exec([]string{"cp", "--archive", Vendor, layerVendor}, gcp.WithUserTimingAttribution)
 	}
 
-	ctx.WriteMetadata(l, &meta, layers.Cache)
 	return l, nil
 }
 

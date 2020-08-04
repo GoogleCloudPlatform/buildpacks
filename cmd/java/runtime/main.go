@@ -25,20 +25,15 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/buildpack/libbuildpack/buildpackplan"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb"
 )
 
 const (
 	javaLayer             = "java"
 	javaVersionURL        = "https://api.adoptopenjdk.net/v3/assets/feature_releases/%s/ga?architecture=x64&heap_size=normal&image_type=jdk&jvm_impl=hotspot&os=linux&page=0&page_size=1&project=jdk&sort_order=DESC&vendor=adoptopenjdk"
 	defaultFeatureVersion = "11"
+	versionKey            = "version"
 )
-
-// metadata represents metadata stored for a runtime layer.
-type metadata struct {
-	Version string `toml:"version"`
-}
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -85,10 +80,9 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Check the metadata in the cache layer to determine if we need to proceed.
-	var meta metadata
-	l := ctx.Layer(javaLayer)
-	ctx.ReadMetadata(l, &meta)
-	if version == meta.Version {
+	l := ctx.Layer(javaLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	metaVersion := ctx.GetMetadata(l, versionKey)
+	if version == metaVersion {
 		ctx.CacheHit(javaLayer)
 		return nil
 	}
@@ -98,15 +92,13 @@ func buildFn(ctx *gcp.Context) error {
 	// Download and install Java in layer.
 	ctx.Logf("Installing Java v%s", version)
 
-	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, l.Root)
+	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, l.Path)
 	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 
-	meta.Version = version
-	ctx.WriteMetadata(l, meta, layers.Build, layers.Cache, layers.Launch)
-
-	ctx.AddBuildpackPlan(buildpackplan.Plan{
-		Name:    javaLayer,
-		Version: version,
+	ctx.SetMetadata(l, versionKey, version)
+	ctx.AddBuildpackPlanEntry(libcnb.BuildpackPlanEntry{
+		Name:     javaLayer,
+		Metadata: map[string]interface{}{"version": version},
 	})
 	return nil
 }

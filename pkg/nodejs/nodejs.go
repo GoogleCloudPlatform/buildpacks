@@ -24,7 +24,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -32,6 +32,9 @@ const (
 	EnvDevelopment = "development"
 	// EnvProduction represents a NODE_ENV production value.
 	EnvProduction = "production"
+
+	nodeVersionKey    = "node_version"
+	dependencyHashKey = "dependency_hash"
 )
 
 type packageEnginesJSON struct {
@@ -51,12 +54,6 @@ type PackageJSON struct {
 	Scripts         packageScriptsJSON `json:"scripts"`
 	Dependencies    map[string]string  `json:"dependencies"`
 	DevDependencies map[string]string  `json:"devDependencies"`
-}
-
-// Metadata represents metadata stored for a dependencies layer.
-type Metadata struct {
-	NodeVersion    string `toml:"node_version"`
-	DependencyHash string `toml:"dependency_hash"`
 }
 
 // ReadPackageJSON returns deserialized package.json from the given dir. Empty dir uses the current working directory.
@@ -89,32 +86,31 @@ func NodeEnv() string {
 }
 
 // CheckCache checks whether cached dependencies exist and match.
-func CheckCache(ctx *gcp.Context, l *layers.Layer, opts ...cache.Option) (bool, *Metadata, error) {
+func CheckCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
 	currentNodeVersion := NodeVersion(ctx)
 	opts = append(opts, cache.WithStrings(currentNodeVersion))
 	currentDependencyHash, err := cache.Hash(ctx, opts...)
 	if err != nil {
-		return false, nil, fmt.Errorf("computing dependency hash: %v", err)
+		return false, fmt.Errorf("computing dependency hash: %v", err)
 	}
-
-	var meta Metadata
-	ctx.ReadMetadata(l, &meta)
 
 	// Perform install, skipping if the dependency hash matches existing metadata.
+	metaDependencyHash := ctx.GetMetadata(l, dependencyHashKey)
 	ctx.Debugf("Current dependency hash: %q", currentDependencyHash)
-	ctx.Debugf("  Cache dependency hash: %q", meta.DependencyHash)
-	if currentDependencyHash == meta.DependencyHash {
+	ctx.Debugf("  Cache dependency hash: %q", metaDependencyHash)
+	if currentDependencyHash == metaDependencyHash {
 		ctx.Logf("Dependencies cache hit, skipping installation.")
-		return true, &meta, nil
+		return true, nil
 	}
 
-	if meta.DependencyHash == "" {
+	if metaDependencyHash == "" {
 		ctx.Debugf("No metadata found from a previous build, skipping cache.")
 	}
 	ctx.Logf("Installing application dependencies.")
-	// Update the layer metadata.
-	meta.DependencyHash = currentDependencyHash
-	meta.NodeVersion = currentNodeVersion
 
-	return false, &meta, nil
+	// Update the layer metadata.
+	ctx.SetMetadata(l, dependencyHashKey, currentDependencyHash)
+	ctx.SetMetadata(l, nodeVersionKey, currentNodeVersion)
+
+	return false, nil
 }

@@ -29,7 +29,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 const (
@@ -38,12 +37,8 @@ const (
 	mavenURL     = "https://downloads.apache.org/maven/maven-3/%[1]s/binaries/apache-maven-%[1]s-bin.tar.gz"
 	mavenLayer   = "maven"
 	m2Layer      = "m2"
+	versionKey   = "version"
 )
-
-// mavenMetadata represents metadata stored for a maven layer.
-type mavenMetadata struct {
-	Version string `toml:"version"`
-}
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -57,15 +52,8 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	var repoMeta java.RepoMetadata
-	m2CachedRepo := ctx.Layer(m2Layer)
-	ctx.ReadMetadata(m2CachedRepo, &repoMeta)
-	java.CheckCacheExpiration(ctx, &repoMeta, m2CachedRepo)
-	lf := []layers.Flag{layers.Cache}
-	if devmode.Enabled(ctx) {
-		lf = append(lf, layers.Launch)
-	}
-	ctx.WriteMetadata(m2CachedRepo, &repoMeta, lf...)
+	m2CachedRepo := ctx.Layer(m2Layer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	java.CheckCacheExpiration(ctx, m2CachedRepo)
 
 	usr, err := user.Current()
 	if err != nil {
@@ -78,7 +66,7 @@ func buildFn(ctx *gcp.Context) error {
 	// We can't just use `-Dmaven.repo.local`. It does set the path to `m2/repo` but it fails
 	// to set the path to `m2/wrapper` which is used by mvnw to download Maven.
 	ctx.RemoveAll(homeM2)
-	ctx.Symlink(m2CachedRepo.Root, homeM2)
+	ctx.Symlink(m2CachedRepo.Path, homeM2)
 
 	addJvmConfig(ctx)
 
@@ -111,7 +99,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Store the build steps in a script to be run on each file change.
 	if devmode.Enabled(ctx) {
-		devmode.WriteBuildScript(ctx, m2CachedRepo.Root, "~/.m2", command)
+		devmode.WriteBuildScript(ctx, m2CachedRepo.Path, "~/.m2", command)
 	}
 
 	return nil
@@ -148,16 +136,14 @@ func mvnInstalled(ctx *gcp.Context) bool {
 
 // installMaven installs Maven and returns the path of the mvn binary
 func installMaven(ctx *gcp.Context) (string, error) {
-	mvnl := ctx.Layer(mavenLayer)
+	mvnl := ctx.Layer(mavenLayer, gcp.CacheLayer, gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
 
 	// Check the metadata in the cache layer to determine if we need to proceed.
-	var meta mavenMetadata
-	ctx.ReadMetadata(mvnl, &meta)
-
-	if mavenVersion == meta.Version {
+	metaVersion := ctx.GetMetadata(mvnl, versionKey)
+	if mavenVersion == metaVersion {
 		ctx.CacheHit(mavenLayer)
 		ctx.Logf("Maven cache hit, skipping installation.")
-		return filepath.Join(mvnl.Root, "bin", "mvn"), nil
+		return filepath.Join(mvnl.Path, "bin", "mvn"), nil
 	}
 	ctx.CacheMiss(mavenLayer)
 	ctx.ClearLayer(mvnl)
@@ -168,16 +154,9 @@ func installMaven(ctx *gcp.Context) (string, error) {
 	if code := ctx.HTTPStatus(archiveURL); code != http.StatusOK {
 		return "", gcp.UserErrorf("Maven version %s does not exist at %s (status %d).", mavenVersion, archiveURL, code)
 	}
-	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, mvnl.Root)
+	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, mvnl.Path)
 	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 
-	meta.Version = mavenVersion
-
-	lf := []layers.Flag{layers.Cache, layers.Build}
-	if devmode.Enabled(ctx) {
-		lf = append(lf, layers.Launch)
-	}
-	ctx.WriteMetadata(mvnl, meta, lf...)
-
-	return filepath.Join(mvnl.Root, "bin", "mvn"), nil
+	ctx.SetMetadata(mvnl, versionKey, mavenVersion)
+	return filepath.Join(mvnl.Path, "bin", "mvn"), nil
 }

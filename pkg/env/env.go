@@ -103,3 +103,18 @@ func IsDebugMode() (bool, error) {
 	}
 	return parsed, nil
 }
+
+// IsDevMode indicates that the builder is running in Development mode.
+func IsDevMode() (bool, error) {
+	devMode, present := os.LookupEnv(DevMode)
+	if !present {
+		return false, nil
+	}
+
+	parsed, err := strconv.ParseBool(devMode)
+	if err != nil {
+		return false, fmt.Errorf("parsing %s: %v", DevMode, err)
+	}
+
+	return parsed, nil
+}

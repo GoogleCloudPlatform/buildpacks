@@ -21,7 +21,6 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 const (
@@ -41,8 +40,7 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer(layerName)
+	l := ctx.Layer(layerName, gcp.BuildLayer, gcp.LaunchLayer)
 	ctx.SetFunctionsEnvVars(l)
-	ctx.WriteMetadata(l, nil, layers.Build, layers.Launch)
 	return nil
 }

@@ -23,7 +23,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 const (
@@ -50,10 +49,10 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer(layerName)
-	cl := ctx.Layer(cacheName)
+	l := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	cl := ctx.Layer(cacheName, gcp.CacheLayer)
 
-	cached, meta, err := python.CheckCache(ctx, l, cache.WithFiles("requirements.txt"))
+	cached, err := python.CheckCache(ctx, l, cache.WithFiles("requirements.txt"))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
@@ -65,18 +64,15 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Install modules in requirements.txt.
 	ctx.Logf("Running pip install.")
-	ctx.Exec([]string{"python3", "-m", "pip", "install", "--upgrade", "-r", "requirements.txt", "-t", l.Root}, gcp.WithEnv("PIP_CACHE_DIR="+cl.Root), gcp.WithUserAttribution)
+	ctx.Exec([]string{"python3", "-m", "pip", "install", "--upgrade", "-r", "requirements.txt", "-t", l.Path}, gcp.WithEnv("PIP_CACHE_DIR="+cl.Path), gcp.WithUserAttribution)
 
-	ctx.PrependPathSharedEnv(l, "PYTHONPATH", l.Root)
+	l.SharedEnvironment.PrependPath("PYTHONPATH", l.Path)
 
 	// Check for broken dependencies.
 	ctx.Logf("Checking for incompatible dependencies.")
-	checkDeps := ctx.Exec([]string{"python3", "-m", "pip", "check"}, gcp.WithEnv("PYTHONPATH="+l.Root+":"+os.Getenv("PYTHONPATH")), gcp.WithUserAttribution)
+	checkDeps := ctx.Exec([]string{"python3", "-m", "pip", "check"}, gcp.WithEnv("PYTHONPATH="+l.Path+":"+os.Getenv("PYTHONPATH")), gcp.WithUserAttribution)
 	if checkDeps.ExitCode != 0 {
 		return fmt.Errorf("incompatible dependencies installed: %q", checkDeps.Stdout)
 	}
-
-	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)
-	ctx.WriteMetadata(cl, nil, layers.Cache)
 	return nil
 }

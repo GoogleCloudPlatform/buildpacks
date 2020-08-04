@@ -24,7 +24,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 const (
@@ -85,9 +84,8 @@ func buildFn(ctx *gcp.Context) error {
 
 	ctx.AddWebProcess([]string{"/bin/bash", "-c", fmt.Sprintf("php -S 0.0.0.0:${PORT} %s", routerScript)})
 
-	l := ctx.Layer("functions-framework")
+	l := ctx.Layer("functions-framework", gcp.BuildLayer, gcp.LaunchLayer)
 	ctx.SetFunctionsEnvVars(l)
-	ctx.WriteMetadata(l, nil, layers.Build, layers.Launch)
 	return nil
 }
 

@@ -26,7 +26,6 @@ go_binary(
     deps = [
         "//pkg/env",
         "//pkg/gcpbuildpack",
-        "@com_github_buildpack_libbuildpack//layers:go_default_library",
     ],
 )
 

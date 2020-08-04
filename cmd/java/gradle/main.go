@@ -29,19 +29,14 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 const (
 	gradleVersionURL = "https://services.gradle.org/versions/current"
 	gradleLayer      = "gradle"
 	cacheLayer       = "cache"
+	versionKey       = "version"
 )
-
-// gradleMetadata represents metadata stored for a gradle layer.
-type gradleMetadata struct {
-	Version string `toml:"version"`
-}
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -55,15 +50,9 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	var repoMeta java.RepoMetadata
-	gradleCachedRepo := ctx.Layer(cacheLayer)
-	ctx.ReadMetadata(gradleCachedRepo, &repoMeta)
-	java.CheckCacheExpiration(ctx, &repoMeta, gradleCachedRepo)
-	flags := []layers.Flag{layers.Cache}
-	if devmode.Enabled(ctx) {
-		flags = append(flags, layers.Launch)
-	}
-	ctx.WriteMetadata(gradleCachedRepo, &repoMeta, flags...)
+	gradleCachedRepo := ctx.Layer(cacheLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+
+	java.CheckCacheExpiration(ctx, gradleCachedRepo)
 
 	usr, err := user.Current()
 	if err != nil {
@@ -74,7 +63,7 @@ func buildFn(ctx *gcp.Context) error {
 	// Symlink the gradle-cache layer into ~/.gradle. If ~/.gradle already exists, delete it first.
 	// If it exists as a symlink, RemoveAll will remove the link, not anything it's linked to.
 	ctx.RemoveAll(homeGradle)
-	ctx.Symlink(gradleCachedRepo.Root, homeGradle)
+	ctx.Symlink(gradleCachedRepo.Path, homeGradle)
 
 	var gradle string
 	if ctx.FileExists("gradlew") {
@@ -105,7 +94,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Store the build steps in a script to be run on each file change.
 	if devmode.Enabled(ctx) {
-		devmode.WriteBuildScript(ctx, gradleCachedRepo.Root, "~/.gradle", command)
+		devmode.WriteBuildScript(ctx, gradleCachedRepo.Path, "~/.gradle", command)
 	}
 
 	return nil
@@ -123,21 +112,18 @@ type gradleVersion struct {
 
 // installGradle installs Gradle and returns the path of the gradle binary
 func installGradle(ctx *gcp.Context) (string, error) {
-	gradlel := ctx.Layer(gradleLayer)
+	gradlel := ctx.Layer(gradleLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
 
 	// Check the metadata in the cache layer to determine if we need to proceed.
-	var meta gradleMetadata
-	ctx.ReadMetadata(gradlel, &meta)
-
 	version, downloadURL, err := fetchGradleVersion(ctx)
 	if err != nil {
 		return "", fmt.Errorf("fetching latest Gradle version: %w", err)
 	}
-
-	if version == meta.Version {
+	metaVersion := ctx.GetMetadata(gradlel, versionKey)
+	if version == metaVersion {
 		ctx.CacheHit(gradleLayer)
 		ctx.Logf("Gradle cache hit, skipping installation.")
-		return filepath.Join(gradlel.Root, "bin", "gradle"), nil
+		return filepath.Join(gradlel.Path, "bin", "gradle"), nil
 	}
 	ctx.CacheMiss(gradleLayer)
 	ctx.ClearLayer(gradlel)
@@ -160,16 +146,11 @@ func installGradle(ctx *gcp.Context) (string, error) {
 
 	gradleExtracted := filepath.Join(tmpDir, fmt.Sprintf("gradle-%s", version))
 	defer ctx.RemoveAll(gradleExtracted)
-	install := fmt.Sprintf("mv %s/* %s", gradleExtracted, gradlel.Root)
+	install := fmt.Sprintf("mv %s/* %s", gradleExtracted, gradlel.Path)
 	ctx.Exec([]string{"bash", "-c", install}, gcp.WithUserTimingAttribution)
 
-	meta.Version = version
-	flags := []layers.Flag{layers.Cache}
-	if devmode.Enabled(ctx) {
-		flags = append(flags, layers.Launch)
-	}
-	ctx.WriteMetadata(gradlel, meta, flags...)
-	return filepath.Join(gradlel.Root, "bin", "gradle"), nil
+	ctx.SetMetadata(gradlel, versionKey, version)
+	return filepath.Join(gradlel.Path, "bin", "gradle"), nil
 }
 
 // fetchGradleVersion returns the latest gradle version, its downloadURL, and an error in that order.

@@ -17,10 +17,8 @@
 package main
 
 import (
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 func main() {
@@ -35,17 +33,12 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer("gopath")
-	ctx.OverrideBuildEnv(l, "GOPATH", l.Root)
-	ctx.OverrideBuildEnv(l, "GO111MODULE", "on")
+	l := ctx.Layer("gopath", gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
+	l.BuildEnvironment.Override("GOPATH", l.Path)
+	l.BuildEnvironment.Override("GO111MODULE", "on")
 	// Set GOPROXY to ensure no additional dependency is downloaded at built time.
 	// All of them are downloaded here.
-	ctx.OverrideBuildEnv(l, "GOPROXY", "off")
-	lyr := []layers.Flag{layers.Build}
-	if devmode.Enabled(ctx) {
-		lyr = append(lyr, layers.Launch)
-	}
-	ctx.WriteMetadata(l, nil, lyr...)
+	l.BuildEnvironment.Override("GOPROXY", "off")
 
 	// TODO(b/145604612): Investigate caching the modules layer.
 
@@ -60,7 +53,7 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Logf("Ignoring `vendor` directory: the Go runtime must be 1.14+ and go.mod should contain a `go 1.14`+ entry")
 	}
 
-	env := []string{"GOPATH=" + l.Root, "GO111MODULE=on"}
+	env := []string{"GOPATH=" + l.Path, "GO111MODULE=on"}
 	if golang.VersionMatches(ctx, ">=1.15.0") {
 		env = append(env, "GOPROXY=https://proxy.golang.org|direct")
 		ctx.Exec([]string{"go", "mod", "download"}, gcp.WithEnv(env...), gcp.WithUserAttribution)

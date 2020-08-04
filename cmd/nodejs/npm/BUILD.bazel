@@ -28,7 +28,6 @@ go_binary(
         "//pkg/devmode",
         "//pkg/gcpbuildpack",
         "//pkg/nodejs",
-        "@com_github_buildpack_libbuildpack//layers:go_default_library",
     ],
 )
 

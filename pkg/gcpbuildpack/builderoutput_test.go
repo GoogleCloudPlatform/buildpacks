@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/libbuildpack/buildpack"
+	"github.com/buildpacks/libcnb"
 )
 
 func TestSaveErrorOutput(t *testing.T) {
@@ -43,7 +43,7 @@ func TestSaveErrorOutput(t *testing.T) {
 	defer func() {
 		maxMessageBytes = oldMax
 	}()
-	ctx := NewContext(buildpack.Info{ID: "id", Version: "version", Name: "name"})
+	ctx := NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
 	msg := "This is a long message that will be truncated."
 
 	ctx.saveErrorOutput(Errorf(StatusInternal, msg))
@@ -313,7 +313,7 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 					t.Fatalf("Failed to write %s: %v", fname, err)
 				}
 			}
-			ctx := NewContext(buildpack.Info{ID: buildpackID, Version: buildpackVersion, Name: "name"})
+			ctx := NewContext(libcnb.BuildpackInfo{ID: buildpackID, Version: buildpackVersion, Name: "name"})
 			ctx.stats.user = userDur
 
 			ctx.saveSuccessOutput(dur)

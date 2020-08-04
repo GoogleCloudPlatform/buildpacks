@@ -22,21 +22,18 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb"
 )
 
 const (
 	dateFormat = time.RFC3339Nano
 	// expirationTime is an arbitrary amount of time of 1 day to refresh the cache layer.
 	expirationTime = time.Duration(time.Hour * 24)
-)
 
-// Metadata represents metadata stored for a dependencies layer.
-type Metadata struct {
-	PythonVersion   string `toml:"python_version"`
-	DependencyHash  string `toml:"dependency_hash"`
-	ExpiryTimestamp string `toml:"expiry_timestamp"`
-}
+	pythonVersionKey   = "python_version"
+	dependencyHashKey  = "dependency_hash"
+	expiryTimestampKey = "expiry_timestamp"
+)
 
 // Version returns the installed version of Python.
 func Version(ctx *gcp.Context) string {
@@ -45,28 +42,26 @@ func Version(ctx *gcp.Context) string {
 }
 
 // CheckCache checks whether cached dependencies exist and match.
-func CheckCache(ctx *gcp.Context, l *layers.Layer, opts ...cache.Option) (bool, *Metadata, error) {
+func CheckCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
 	currentPythonVersion := Version(ctx)
 	opts = append(opts, cache.WithStrings(currentPythonVersion))
 	currentDependencyHash, err := cache.Hash(ctx, opts...)
 	if err != nil {
-		return false, nil, fmt.Errorf("computing dependency hash: %v", err)
+		return false, fmt.Errorf("computing dependency hash: %v", err)
 	}
 
-	var meta Metadata
-	ctx.ReadMetadata(l, &meta)
-
-	expired := checkCacheExpiration(ctx, &meta)
+	metaDependencyHash := ctx.GetMetadata(l, dependencyHashKey)
+	expired := checkCacheExpiration(ctx, l)
 
 	// Perform install, skipping if the dependency hash matches existing metadata.
 	ctx.Debugf("Current dependency hash: %q", currentDependencyHash)
-	ctx.Debugf("  Cache dependency hash: %q", meta.DependencyHash)
-	if currentDependencyHash == meta.DependencyHash && !expired {
+	ctx.Debugf("  Cache dependency hash: %q", metaDependencyHash)
+	if currentDependencyHash == metaDependencyHash && !expired {
 		ctx.Logf("Dependencies cache hit, skipping installation.")
-		return true, &meta, nil
+		return true, nil
 	}
 
-	if meta.DependencyHash == "" {
+	if metaDependencyHash == "" {
 		ctx.Debugf("No metadata found from a previous build, skipping cache.")
 	}
 
@@ -74,25 +69,24 @@ func CheckCache(ctx *gcp.Context, l *layers.Layer, opts ...cache.Option) (bool, 
 
 	ctx.Logf("Installing application dependencies.")
 	// Update the layer metadata.
-	meta.DependencyHash = currentDependencyHash
-	meta.PythonVersion = currentPythonVersion
-	meta.ExpiryTimestamp = time.Now().Add(expirationTime).Format(dateFormat)
+	ctx.SetMetadata(l, dependencyHashKey, currentDependencyHash)
+	ctx.SetMetadata(l, pythonVersionKey, currentPythonVersion)
+	ctx.SetMetadata(l, expiryTimestampKey, time.Now().Add(expirationTime).Format(dateFormat))
 
-	return false, &meta, nil
+	return false, nil
 }
 
 // checkCacheExpiration returns true when the cache is past expiration.
-func checkCacheExpiration(ctx *gcp.Context, meta *Metadata) bool {
+func checkCacheExpiration(ctx *gcp.Context, l *libcnb.Layer) bool {
 	t := time.Now()
-	if meta.ExpiryTimestamp != "" {
+	expiry := ctx.GetMetadata(l, expiryTimestampKey)
+	if expiry != "" {
 		var err error
-		t, err = time.Parse(dateFormat, meta.ExpiryTimestamp)
+		t, err = time.Parse(dateFormat, expiry)
 		if err != nil {
-			ctx.Debugf("Could not parse expiration date %q, assuming now: %v", meta.ExpiryTimestamp, err)
+			ctx.Debugf("Could not parse expiration date %q, assuming now: %v", expiry, err)
 		}
 	}
-	if t.After(time.Now()) {
-		return false
-	}
-	return true
+
+	return !t.After(time.Now())
 }

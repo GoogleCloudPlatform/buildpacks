@@ -25,19 +25,14 @@ import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/buildpack/libbuildpack/buildpackplan"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb"
 )
 
 const (
-	nodeLayer = "node"
-	nodeURL   = "https://nodejs.org/dist/v%[1]s/node-v%[1]s-linux-x64.tar.xz"
+	nodeLayer  = "node"
+	nodeURL    = "https://nodejs.org/dist/v%[1]s/node-v%[1]s-linux-x64.tar.xz"
+	versionKey = "version"
 )
-
-// metadata represents metadata stored for a runtime layer.
-type metadata struct {
-	Version string `toml:"version"`
-}
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -64,10 +59,9 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Check the metadata in the cache layer to determine if we need to proceed.
-	var meta metadata
-	nrl := ctx.Layer(nodeLayer)
-	ctx.ReadMetadata(nrl, &meta)
-	if version == meta.Version {
+	nrl := ctx.Layer(nodeLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	metaVersion := ctx.GetMetadata(nrl, versionKey)
+	if version == metaVersion {
 		ctx.CacheHit(nodeLayer)
 		ctx.Logf("Runtime cache hit, skipping installation.")
 		return nil
@@ -82,15 +76,13 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Download and install Node.js in layer.
 	ctx.Logf("Installing Node.js v%s", version)
-	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xJ --directory %s --strip-components=1", archiveURL, nrl.Root)
+	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xJ --directory %s --strip-components=1", archiveURL, nrl.Path)
 	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 
-	meta.Version = version
-	ctx.WriteMetadata(nrl, meta, layers.Build, layers.Cache, layers.Launch)
-
-	ctx.AddBuildpackPlan(buildpackplan.Plan{
-		Name:    nodeLayer,
-		Version: version,
+	ctx.SetMetadata(nrl, versionKey, version)
+	ctx.AddBuildpackPlanEntry(libcnb.BuildpackPlanEntry{
+		Name:     nodeLayer,
+		Metadata: map[string]interface{}{"version": version},
 	})
 	return nil
 }

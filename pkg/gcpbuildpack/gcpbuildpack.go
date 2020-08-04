@@ -25,12 +25,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	libbuild "github.com/buildpack/libbuildpack/build"
-	"github.com/buildpack/libbuildpack/buildpack"
-	"github.com/buildpack/libbuildpack/buildpackplan"
-	"github.com/buildpack/libbuildpack/buildplan"
-	libdetect "github.com/buildpack/libbuildpack/detect"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -39,6 +34,9 @@ const (
 
 	// cacheMissMessage is emitted by ctx.CacheMiss(). Must match acceptance test value.
 	cacheMissMessage = "***** CACHE MISS:"
+
+	passStatusCode = 0
+	failStatusCode = 100
 )
 
 var (
@@ -58,21 +56,24 @@ type stats struct {
 
 // Context provides contextually aware functions for buildpack authors.
 type Context struct {
-	info            buildpack.Info
+	info            libcnb.BuildpackInfo
 	applicationRoot string
 	buildpackRoot   string
 	exitCode        int
-	buildPlan       buildplan.Plan
-	buildpackPlans  []buildpackplan.Plan
 	debug           bool
-	processes       layers.Processes
-	d               *libdetect.Detect
-	b               *libbuild.Build
 	stats           stats
+
+	// detect items
+	detectContext libcnb.DetectContext
+	detectResult  libcnb.DetectResult
+
+	// build items
+	buildContext libcnb.BuildContext
+	buildResult  libcnb.BuildResult
 }
 
 // NewContext creates a context.
-func NewContext(info buildpack.Info) *Context {
+func NewContext(info libcnb.BuildpackInfo) *Context {
 	debug, err := env.IsDebugMode()
 	if err != nil {
 		logger.Printf("Failed to parse debug mode: %v", err)
@@ -85,35 +86,26 @@ func NewContext(info buildpack.Info) *Context {
 }
 
 // NewContextForTests creates a context to be used for tests.
-func NewContextForTests(info buildpack.Info, root string) *Context {
+func NewContextForTests(info libcnb.BuildpackInfo, root string) *Context {
 	ctx := NewContext(info)
 	ctx.applicationRoot = root
 	return ctx
 }
 
-func newDetectContext() *Context {
-	d, err := libdetect.DefaultDetect()
-	if err != nil {
-		logger.Printf("Failed to initialize /bin/detect: %v", err)
-		os.Exit(1)
-	}
-	ctx := NewContext(d.Buildpack.Info)
-	ctx.d = &d
-	ctx.applicationRoot = ctx.d.Application.Root
-	ctx.buildpackRoot = ctx.d.Buildpack.Root
+func newDetectContext(detectContext libcnb.DetectContext) *Context {
+	ctx := NewContext(detectContext.Buildpack.Info)
+	ctx.detectContext = detectContext
+	ctx.applicationRoot = ctx.detectContext.Application.Path
+	ctx.buildpackRoot = ctx.detectContext.Buildpack.Path
 	return ctx
 }
 
-func newBuildContext() *Context {
-	b, err := libbuild.DefaultBuild()
-	if err != nil {
-		logger.Printf("Failed to initialize /bin/build: %v", err)
-		os.Exit(1)
-	}
-	ctx := NewContext(b.Buildpack.Info)
-	ctx.b = &b
-	ctx.applicationRoot = ctx.b.Application.Root
-	ctx.buildpackRoot = ctx.b.Buildpack.Root
+func newBuildContext(buildContext libcnb.BuildContext) *Context {
+	ctx := NewContext(buildContext.Buildpack.Info)
+	ctx.buildContext = buildContext
+	ctx.applicationRoot = ctx.buildContext.Application.Path
+	ctx.buildpackRoot = ctx.buildContext.Buildpack.Path
+	ctx.buildResult = libcnb.NewBuildResult()
 	return ctx
 }
 
@@ -160,35 +152,45 @@ func Main(d DetectFn, b BuildFn) {
 	}
 }
 
-// detect implements the /bin/detect phase of the buildpack.
-func detect(f DetectFn) {
-	ctx := newDetectContext()
+type gcpdetector struct {
+	detectFn DetectFn
+}
+
+func (gcpd gcpdetector) Detect(ldctx libcnb.DetectContext) (libcnb.DetectResult, error) {
+	ctx := newDetectContext(ldctx)
 	status := StatusInternal
 	defer func(now time.Time) {
 		ctx.Span(fmt.Sprintf("Buildpack Detect %s", ctx.info.ID), now, status)
 	}(time.Now())
 
-	if err := f(ctx); err != nil {
+	if err := gcpd.detectFn(ctx); err != nil {
 		msg := fmt.Sprintf("Failed to run /bin/detect: %v", err)
 		var be *Error
 		if errors.As(err, &be) {
 			status = be.Status
-			ctx.Exit(ctx.d.Error(1), be)
+			return ctx.detectResult, be
 		}
-		ctx.Exit(ctx.d.Error(1), Errorf(status, msg))
+		return ctx.detectResult, Errorf(status, msg)
 	}
-
-	_, err := ctx.d.Pass(ctx.buildPlan)
-	if err != nil {
-		ctx.Exit(ctx.d.Error(1), Errorf(StatusInternal, err.Error()))
-	}
+	ctx.detectResult.Pass = true
 
 	status = StatusOk
+	return ctx.detectResult, nil
 }
 
-func build(b BuildFn) {
+// detect implements the /bin/detect phase of the buildpack.
+func detect(detectFn DetectFn, opts ...libcnb.Option) {
+	gcpd := gcpdetector{detectFn: detectFn}
+	libcnb.Detect(gcpd, opts...)
+}
+
+type gcpbuilder struct {
+	buildFn BuildFn
+}
+
+func (gcpb gcpbuilder) Build(lbctx libcnb.BuildContext) (libcnb.BuildResult, error) {
 	start := time.Now()
-	ctx := newBuildContext()
+	ctx := newBuildContext(lbctx)
 	ctx.Logf("=== %s (%s@%s) ===", ctx.BuildpackName(), ctx.BuildpackID(), ctx.BuildpackVersion())
 
 	status := StatusInternal
@@ -196,30 +198,24 @@ func build(b BuildFn) {
 		ctx.Span(fmt.Sprintf("Buildpack Build %s", ctx.BuildpackID()), now, status)
 	}(time.Now())
 
-	if err := b(ctx); err != nil {
+	if err := gcpb.buildFn(ctx); err != nil {
 		msg := fmt.Sprintf("Failed to run /bin/build: %v", err)
 		var be *Error
 		if errors.As(err, &be) {
 			status = be.Status
-			ctx.Exit(ctx.b.Failure(1), be)
+			ctx.Exit(1, be)
 		}
-		ctx.Exit(ctx.b.Failure(1), Errorf(status, msg))
-	}
-
-	// Emit application metadata.
-	if len(ctx.processes) > 0 {
-		metadata := layers.Metadata{Processes: ctx.processes}
-		if err := ctx.b.Layers.WriteApplicationMetadata(metadata); err != nil {
-			ctx.Exit(ctx.b.Failure(1), Errorf(StatusInternal, "writing application metadata: %v", err))
-		}
-	}
-
-	if _, err := ctx.b.Success(ctx.buildpackPlans...); err != nil {
-		ctx.Exit(ctx.b.Failure(1), Errorf(StatusInternal, err.Error()))
+		ctx.Exit(1, Errorf(status, msg))
 	}
 
 	status = StatusOk
 	ctx.saveSuccessOutput(time.Since(start))
+	return ctx.buildResult, nil
+}
+
+func build(buildFn BuildFn) {
+	gcpb := gcpbuilder{buildFn: buildFn}
+	libcnb.Build(gcpb)
 }
 
 // Exit causes the buildpack to exit with the given exit code and message.
@@ -251,13 +247,13 @@ func (ctx *Context) Exit(exitCode int, be *Error) {
 // OptOut is used during the detect phase to opt out of the build process.
 func (ctx *Context) OptOut(format string, args ...interface{}) {
 	ctx.Logf(format, args...)
-	os.Exit(libdetect.FailStatusCode)
+	os.Exit(failStatusCode)
 }
 
 // OptIn is used during the detect phase to opt in to the build process.
 func (ctx *Context) OptIn(format string, args ...interface{}) {
 	ctx.Logf(format, args...)
-	os.Exit(libdetect.PassStatusCode)
+	os.Exit(passStatusCode)
 }
 
 // Logf emits a structured logging line.
@@ -312,40 +308,52 @@ func (ctx *Context) Span(label string, start time.Time, status Status) {
 }
 
 // AddBuildPlanProvides adds a provided dependency to the build plan.
-func (ctx *Context) AddBuildPlanProvides(provided buildplan.Provided) {
-	ctx.buildPlan.Provides = append(ctx.buildPlan.Provides, provided)
+func (ctx *Context) AddBuildPlanProvides(provides libcnb.BuildPlanProvide) {
+	if len(ctx.detectResult.Plans) == 0 {
+		ctx.detectResult.Plans = []libcnb.BuildPlan{libcnb.BuildPlan{}}
+	}
+	// TODO: Figure when/why there would be multiple plans and how that will affect this interface.
+	plan := ctx.detectResult.Plans[0]
+	plan.Provides = append(plan.Provides, provides)
 }
 
 // AddBuildPlanRequires adds a required dependency to the build plan.
-func (ctx *Context) AddBuildPlanRequires(required buildplan.Required) {
-	ctx.buildPlan.Requires = append(ctx.buildPlan.Requires, required)
+func (ctx *Context) AddBuildPlanRequires(requires libcnb.BuildPlanRequire) {
+	if len(ctx.detectResult.Plans) == 0 {
+		ctx.detectResult.Plans = []libcnb.BuildPlan{libcnb.BuildPlan{}}
+	}
+	plan := ctx.detectResult.Plans[0]
+	plan.Requires = append(plan.Requires, requires)
 }
 
-// AddBuildpackPlan adds a required dependency to the build plan.
-func (ctx *Context) AddBuildpackPlan(plan buildpackplan.Plan) {
-	ctx.buildpackPlans = append(ctx.buildpackPlans, plan)
+// AddBuildpackPlanEntry adds an entry to the build plan.
+func (ctx *Context) AddBuildpackPlanEntry(entry libcnb.BuildpackPlanEntry) {
+	if ctx.buildResult.Plan == nil {
+		ctx.buildResult.Plan = &libcnb.BuildpackPlan{}
+	}
+	ctx.buildResult.Plan.Entries = append(ctx.buildResult.Plan.Entries, entry)
 }
 
 // AddWebProcess adds the given command as the web start process, overwriting any previous web start process.
 func (ctx *Context) AddWebProcess(cmd []string) {
-	current := ctx.processes
-	ctx.processes = layers.Processes{}
+	current := ctx.buildResult.Processes
+	ctx.buildResult.Processes = []libcnb.Process{}
 	for _, p := range current {
 		if p.Type == "web" {
 			ctx.Logf("Warning: overwriting existing web process %q.", p.Command)
 			continue // Do not add this item back to the ctx.processes; we are overwriting it.
 		}
-		ctx.processes = append(ctx.processes, p)
+		ctx.buildResult.Processes = append(ctx.buildResult.Processes, p)
 	}
-	p := layers.Process{
+	p := libcnb.Process{
 		Type:    "web",
 		Command: cmd[0],
 		Direct:  true, // Uses Exec (no shell).
 	}
 	if len(cmd) > 1 {
-		p.Args = cmd[1:]
+		p.Arguments = cmd[1:]
 	}
-	ctx.processes = append(ctx.processes, p)
+	ctx.buildResult.Processes = append(ctx.buildResult.Processes, p)
 }
 
 // HTTPStatus returns the status code for a url.

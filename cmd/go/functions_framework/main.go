@@ -26,7 +26,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -63,7 +63,7 @@ func detectFn(ctx *gcp.Context) error {
 
 func buildFn(ctx *gcp.Context) error {
 	l := ctx.Layer(layerName)
-	ctx.Setenv("GOPATH", l.Root)
+	ctx.Setenv("GOPATH", l.Path)
 
 	ctx.SetFunctionsEnvVars(l)
 
@@ -142,13 +142,12 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 // These deployments were created by running `go mod vendor` and then .gcloudignoring the go.mod file,
 // so that Go versions that don't natively handle gomod vendoring would be able to pick up the vendored deps.
 // n.b. later versions of Go (1.14+) handle vendored go.mod files natively, and so we just use the go.mod route there.
-func createMainVendored(ctx *gcp.Context, l *layers.Layer, fn fnInfo) error {
-	ctx.OverrideBuildEnv(l, "GOPATH", ctx.ApplicationRoot())
+func createMainVendored(ctx *gcp.Context, l *libcnb.Layer, fn fnInfo) error {
+	l.Build = true
+	l.BuildEnvironment.Override("GOPATH", ctx.ApplicationRoot())
 	gopath := filepath.Join(ctx.ApplicationRoot(), "src")
 	ctx.MkdirAll(gopath, 0755)
-
-	ctx.OverrideBuildEnv(l, env.Buildable, appName+"/main")
-	ctx.WriteMetadata(l, nil, layers.Build)
+	l.BuildEnvironment.Override(env.Buildable, appName+"/main")
 
 	appPath := filepath.Join(gopath, appName, "main")
 	ctx.MkdirAll(appPath, 0755)

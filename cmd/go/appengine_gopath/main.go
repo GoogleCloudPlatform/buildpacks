@@ -26,7 +26,6 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 func main() {
@@ -44,16 +43,15 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer("gopath")
+	l := ctx.Layer("gopath", gcp.BuildLayer)
 
-	goPath := l.Root
+	goPath := l.Path
 	goPathSrc := filepath.Join(goPath, "src")
 
 	ctx.MkdirAll(goPathSrc, 0755)
 
-	ctx.OverrideBuildEnv(l, "GOPATH", goPath)
-	ctx.OverrideBuildEnv(l, "GO111MODULE", "off")
-	ctx.WriteMetadata(l, nil, layers.Build)
+	l.BuildEnvironment.Override("GOPATH", goPath)
+	l.BuildEnvironment.Override("GO111MODULE", "off")
 
 	stagerGoPath := filepath.Join(ctx.ApplicationRoot(), "_gopath")
 	stagerGoPathSrc := filepath.Join(stagerGoPath, "src")
@@ -83,7 +81,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	if _, exists := os.LookupEnv(env.Buildable); !exists {
-		ctx.OverrideBuildEnv(l, env.Buildable, buildMainPath)
+		l.BuildEnvironment.Override(env.Buildable, buildMainPath)
 	}
 
 	// TODO(b/145608768): Investigate creating and caching a GOCACHE layer.

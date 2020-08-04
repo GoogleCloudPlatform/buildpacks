@@ -26,7 +26,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -67,13 +67,10 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Install functions-framework.
-	l := ctx.Layer(layerName)
+	l := ctx.Layer(layerName, gcp.LaunchLayer)
 	if hasFrameworkDependency {
 		ctx.Logf("Handling functions with dependency on functions-framework.")
 		ctx.ClearLayer(l)
-
-		// With framework dependency, framework module is in pip buildpack, so only env vars are present in this layer.
-		ctx.WriteMetadata(l, nil, layers.Launch)
 	} else {
 		ctx.Logf("Handling functions without dependency on functions-framework.")
 		if err := installFramework(ctx, l); err != nil {
@@ -103,10 +100,12 @@ func containsFF(s string) bool {
 	return ffRegexp.MatchString(s) || eggRegexp.MatchString(s)
 }
 
-func installFramework(ctx *gcp.Context, l *layers.Layer) error {
+func installFramework(ctx *gcp.Context, l *libcnb.Layer) error {
+	l.Build = true
+	l.Cache = true
 	cvt := filepath.Join(ctx.BuildpackRoot(), "converter")
 	req := filepath.Join(cvt, "requirements.txt")
-	cached, meta, err := python.CheckCache(ctx, l, cache.WithFiles(req))
+	cached, err := python.CheckCache(ctx, l, cache.WithFiles(req))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
@@ -114,9 +113,8 @@ func installFramework(ctx *gcp.Context, l *layers.Layer) error {
 		ctx.CacheHit(layerName)
 	} else {
 		ctx.CacheMiss(layerName)
-		ctx.Exec([]string{"python3", "-m", "pip", "install", "--upgrade", "-t", l.Root, "-r", req}, gcp.WithUserAttribution)
+		ctx.Exec([]string{"python3", "-m", "pip", "install", "--upgrade", "-t", l.Path, "-r", req}, gcp.WithUserAttribution)
 	}
-	ctx.PrependPathSharedEnv(l, "PYTHONPATH", l.Root)
-	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)
+	l.SharedEnvironment.PrependPath("PYTHONPATH", l.Path)
 	return nil
 }

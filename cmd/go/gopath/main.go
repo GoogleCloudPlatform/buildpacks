@@ -18,7 +18,6 @@ package main
 
 import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 func main() {
@@ -33,13 +32,12 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer("gopath")
-	ctx.OverrideBuildEnv(l, "GOPATH", l.Root)
-	ctx.OverrideBuildEnv(l, "GO111MODULE", "off")
-	ctx.WriteMetadata(l, nil, layers.Build)
+	l := ctx.Layer("gopath", gcp.BuildLayer)
+	l.BuildEnvironment.Override("GOPATH", l.Path)
+	l.BuildEnvironment.Override("GO111MODULE", "off")
 
 	// TODO(b/145604612): Investigate caching the modules layer.
 
-	ctx.Exec([]string{"go", "get", "-d"}, gcp.WithEnv("GOPATH="+l.Root, "GO111MODULE=off"), gcp.WithUserAttribution)
+	ctx.Exec([]string{"go", "get", "-d"}, gcp.WithEnv("GOPATH="+l.Path, "GO111MODULE=off"), gcp.WithUserAttribution)
 	return nil
 }

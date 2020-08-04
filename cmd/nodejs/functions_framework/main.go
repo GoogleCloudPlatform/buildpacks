@@ -25,7 +25,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 const (
@@ -86,12 +85,12 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Install functions-framework.
-	l := ctx.Layer(layerName)
-	nm := filepath.Join(l.Root, "node_modules")
+	l := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	nm := filepath.Join(l.Path, "node_modules")
 	pjs := filepath.Join(cvt, "package.json")
 	pljs := filepath.Join(cvt, nodejs.PackageLock)
 
-	cached, meta, err := nodejs.CheckCache(ctx, l, cache.WithStrings(nodejs.EnvProduction), cache.WithFiles(pjs, pljs))
+	cached, err := nodejs.CheckCache(ctx, l, cache.WithStrings(nodejs.EnvProduction), cache.WithFiles(pjs, pljs))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
@@ -101,8 +100,8 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.CacheMiss(layerName)
 		ctx.ClearLayer(l)
 		// NPM expects package.json and the lock file in the prefix directory.
-		ctx.Exec([]string{"cp", "-t", l.Root, pjs, pljs}, gcp.WithUserTimingAttribution)
-		ctx.Exec([]string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet", "--production", "--prefix", l.Root}, gcp.WithUserAttribution)
+		ctx.Exec([]string{"cp", "-t", l.Path, pjs, pljs}, gcp.WithUserTimingAttribution)
+		ctx.Exec([]string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet", "--production", "--prefix", l.Path}, gcp.WithUserAttribution)
 	}
 
 	// Determine the path to the executable file to start functions-framework.
@@ -118,14 +117,11 @@ func buildFn(ctx *gcp.Context) error {
 		// Add user's node_modules to NODE_PATH so functions-framework can always find user's packages.
 		unm := filepath.Join(ctx.ApplicationRoot(), "node_modules")
 		if ctx.FileExists(unm) {
-			ctx.PrependPathLaunchEnv(l, "NODE_PATH", unm)
+			l.LaunchEnvironment.PrependPath("NODE_PATH", unm)
 		}
 	}
 
 	ctx.SetFunctionsEnvVars(l)
-
 	ctx.AddWebProcess([]string{"/bin/bash", "-c", ff})
-	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)
-
 	return nil
 }

@@ -22,7 +22,6 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 const (
@@ -113,17 +112,16 @@ func Build(ctx *gcp.Context, runtime string, eg entrypointGenerator) error {
 		return fmt.Errorf("building config: %w", err)
 	}
 
-	l := ctx.Layer("config")
+	l := ctx.Layer("config", gcp.LaunchLayer)
+
 	cb, err := json.Marshal(c)
 	if err != nil {
 		return fmt.Errorf("marshalling JSON: %v", err)
 	}
 
 	ctx.RemoveAll(ConfigDir)
-	ctx.Symlink(l.Root, ConfigDir)
-
+	ctx.Symlink(l.Path, ConfigDir)
 	ctx.WriteFile(configFile, cb, 0444)
-	ctx.WriteMetadata(l, nil, layers.Launch)
 
 	ctx.AddWebProcess([]string{"/start"})
 	return nil

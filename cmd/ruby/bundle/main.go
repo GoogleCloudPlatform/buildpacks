@@ -22,18 +22,14 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb"
 )
 
 const (
-	layerName = "gems"
+	layerName         = "gems"
+	dependencyHashKey = "dependency_hash"
+	rubyVersionKey    = "ruby_version"
 )
-
-// metadata represents metadata stored for a dependencies layer.
-type metadata struct {
-	RubyVersion    string `toml:"ruby_version"`
-	DependencyHash string `toml:"dependency_hash"`
-}
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -65,11 +61,12 @@ func buildFn(ctx *gcp.Context) error {
 		lockFile = "gems.locked"
 	}
 
-	deps := ctx.Layer(layerName)
-	// This layer directory contains the files installed by bundler into the application .bundle directory
-	bundleOutput := filepath.Join(deps.Root, ".bundle")
+	deps := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 
-	cached, meta, err := checkCache(ctx, deps, cache.WithFiles(lockFile))
+	// This layer directory contains the files installed by bundler into the application .bundle directory
+	bundleOutput := filepath.Join(deps.Path, ".bundle")
+
+	cached, err := checkCache(ctx, deps, cache.WithFiles(lockFile))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
@@ -106,37 +103,35 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.RemoveAll(".bundle")
 	ctx.Symlink(bundleOutput, ".bundle")
 
-	ctx.WriteMetadata(deps, &meta, layers.Build, layers.Cache, layers.Launch)
 	return nil
 }
 
 // checkCache checks whether cached dependencies exist and match.
-func checkCache(ctx *gcp.Context, l *layers.Layer, opts ...cache.Option) (bool, *metadata, error) {
+func checkCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
 	currentRubyVersion := ctx.Exec([]string{"ruby", "-v"}).Stdout
 	opts = append(opts, cache.WithStrings(currentRubyVersion))
 	currentDependencyHash, err := cache.Hash(ctx, opts...)
 	if err != nil {
-		return false, nil, fmt.Errorf("computing dependency hash: %v", err)
+		return false, fmt.Errorf("computing dependency hash: %v", err)
 	}
-
-	var meta metadata
-	ctx.ReadMetadata(l, &meta)
 
 	// Perform install, skipping if the dependency hash matches existing metadata.
+	metaDependencyHash := ctx.GetMetadata(l, dependencyHashKey)
 	ctx.Debugf("Current dependency hash: %q", currentDependencyHash)
-	ctx.Debugf("  Cache dependency hash: %q", meta.DependencyHash)
-	if currentDependencyHash == meta.DependencyHash {
+	ctx.Debugf("  Cache dependency hash: %q", metaDependencyHash)
+	if currentDependencyHash == metaDependencyHash {
 		ctx.Logf("Dependencies cache hit, skipping installation.")
-		return true, &meta, nil
+		return true, nil
 	}
 
-	if meta.DependencyHash == "" {
+	if metaDependencyHash == "" {
 		ctx.Debugf("No metadata found from a previous build, skipping cache.")
 	}
 	ctx.Logf("Installing application dependencies.")
-	// Update the layer metadata.
-	meta.DependencyHash = currentDependencyHash
-	meta.RubyVersion = currentRubyVersion
 
-	return false, &meta, nil
+	// Update the layer metadata.
+	ctx.SetMetadata(l, dependencyHashKey, currentDependencyHash)
+	ctx.SetMetadata(l, rubyVersionKey, currentRubyVersion)
+
+	return false, nil
 }

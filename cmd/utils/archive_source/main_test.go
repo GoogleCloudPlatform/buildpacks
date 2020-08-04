@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/buildpack"
+	"github.com/buildpacks/libcnb"
 )
 
 func TestArchiveSource(t *testing.T) {
@@ -112,7 +112,7 @@ func TestArchiveSource(t *testing.T) {
 			defer os.RemoveAll(srcDir)
 
 			sp := filepath.Join(srcDir, archiveName)
-			archiveSource(gcp.NewContext(buildpack.Info{}), sp, appDir)
+			archiveSource(gcp.NewContext(libcnb.BuildpackInfo{}), sp, appDir)
 
 			if _, err := os.Stat(sp); err != nil {
 				if os.IsNotExist(err) {

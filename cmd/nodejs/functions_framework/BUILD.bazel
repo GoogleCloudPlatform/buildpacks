@@ -34,7 +34,6 @@ go_binary(
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/nodejs",
-        "@com_github_buildpack_libbuildpack//layers:go_default_library",
     ],
 )
 
