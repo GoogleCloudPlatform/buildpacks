@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Wrapper that imports the user's build.gradle and defines some extra tasks.
-
-apply from: 'build.gradle'
+// Extra Gradle definitions that are appended to the user's build.gradle.
 
 // Copy the runtime dependencies into the directory _javaFunctionDependencies.
 task _javaFunctionCopyAllDependencies(type: Copy) {

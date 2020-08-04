@@ -1,4 +1,6 @@
-apply plugin: 'java'
+plugins {
+  id 'java-library'
+}
 
 repositories {
   mavenCentral()
@@ -8,8 +10,4 @@ repositories {
 dependencies {
   compileOnly "com.google.cloud.functions:functions-framework-api:1.0.1"
   compile "com.google.escapevelocity:escapevelocity:0.9.1"
-}
-
-jar {
-  baseName = "function"
 }

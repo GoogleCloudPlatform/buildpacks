@@ -140,20 +140,30 @@ func mavenClasspath(ctx *gcp.Context) (string, error) {
 
 // gradleClasspath determines the --classpath when there is a build.gradle. This will consist of the jar file built
 // from the build.gradle, plus all jar files that are dependencies mentioned there.
-// Unlike Maven, Gradle doesn't have a simple way to query the contents of the build.gradle. But we can execute
-// a script that includes the user's script and also defines some extra tasks for the query we need
-// and for dependency copying.
+// Unlike Maven, Gradle doesn't have a simple way to query the contents of the build.gradle. But we can update
+// the user's build.gradle to append tasks that do that. This is a bit ugly, but using --init-script didn't work
+// because apparently you can't define tasks there; and having the predefined script include the user's build.gradle
+// didn't work very well either, because you can't use a plugins {} clause in an included script.
 func gradleClasspath(ctx *gcp.Context) (string, error) {
-	scriptSource := filepath.Join(ctx.BuildpackRoot(), "extra_tasks.gradle")
-	scriptText := ctx.ReadFile(scriptSource)
-	scriptTarget := "_javaFunctionExtraTasks.gradle"
-	ctx.WriteFile(scriptTarget, scriptText, 0644)
+	extraTasksSource := filepath.Join(ctx.BuildpackRoot(), "extra_tasks.gradle")
+	extraTasksText := ctx.ReadFile(extraTasksSource)
+	if err := os.Chmod("build.gradle", 0644); err != nil {
+		return "", gcp.InternalErrorf("making build.gradle writable: %v", err)
+	}
+	f, err := os.OpenFile("build.gradle", os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		return "", gcp.InternalErrorf("opening build.gradle for appending: %v", err)
+	}
+	defer f.Close()
+	if _, err := f.Write(extraTasksText); err != nil {
+		return "", gcp.InternalErrorf("appending extra definitions to build.gradle: %v", err)
+	}
 
 	// Copy the dependencies of the function (`dependencies {...}` in build.gradle) into _javaFunctionDependencies.
-	ctx.Exec([]string{"gradle", "--build-file", scriptTarget, "--quiet", "_javaFunctionCopyAllDependencies"}, gcp.WithUserAttribution)
+	ctx.Exec([]string{"gradle", "--quiet", "_javaFunctionCopyAllDependencies"}, gcp.WithUserAttribution)
 
 	// Extract the name of the target jar.
-	execResult := ctx.Exec([]string{"gradle", "--build-file", scriptTarget, "--quiet", "_javaFunctionPrintJarTarget"}, gcp.WithUserAttribution)
+	execResult := ctx.Exec([]string{"gradle", "--quiet", "_javaFunctionPrintJarTarget"}, gcp.WithUserAttribution)
 	jarName := strings.TrimSpace(execResult.Stdout)
 	if !ctx.FileExists(jarName) {
 		return "", gcp.UserErrorf("expected output jar %s does not exist", jarName)
