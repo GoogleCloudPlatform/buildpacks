@@ -22,6 +22,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -37,10 +39,20 @@ const (
 
 	passStatusCode = 0
 	failStatusCode = 100
+
+	// labelKeyRegexpStr are valid characters for input to a label name. The label
+	// name itself undergoes some transformation _after_ this regexp. See
+	// AddLabel() for specifcs.
+	// See https://docs.docker.com/config/labels-custom-metadata/#key-format-recommendations
+	// for the formal label specification, though this regexp is also sensitive to strings
+	// allowable as env vars - for example, it does not allow "." even though the label
+	// specification does.
+	labelKeyRegexpStr = `\A[A-Za-z][A-Za-z0-9-_]*\z`
 )
 
 var (
-	logger = log.New(os.Stderr, "", 0)
+	logger         = log.New(os.Stderr, "", 0)
+	labelKeyRegexp = regexp.MustCompile(labelKeyRegexpStr)
 )
 
 // DetectFn is the callback signature for Detect()
@@ -363,4 +375,18 @@ func (ctx *Context) HTTPStatus(url string) int {
 		ctx.Exit(1, UserErrorf("making a request to %s", url))
 	}
 	return res.StatusCode
+}
+
+// AddLabel adds a label to the user's application container.
+func (ctx *Context) AddLabel(key, value string) {
+	if !labelKeyRegexp.MatchString(key) {
+		ctx.Warnf("Label %q does not match %s, skipping.", key, labelKeyRegexpStr)
+		return
+	}
+	if strings.Contains(key, "__") {
+		ctx.Warnf("Label %q must not contain consecutive underscores, skipping.", key)
+		return
+	}
+	key = "google." + strings.ToLower(strings.ReplaceAll(key, "_", "-"))
+	ctx.buildResult.Labels = append(ctx.buildResult.Labels, libcnb.Label{Key: key, Value: value})
 }

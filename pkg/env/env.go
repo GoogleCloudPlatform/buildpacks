@@ -89,6 +89,13 @@ const (
 	// GoLDFlags is an env var used to pass through linker flags to the Go linker.
 	// Example: `-s -w` is sometimes used to strip and reduce binary size.
 	GoLDFlags = "GOOGLE_GOLDFLAGS"
+
+	// LabelPrefix is a prefix for values that will be added to the final
+	// built user container. The prefix is stripped and the remainder forms the
+	// label key. For example, "GOOGLE_LABEL_ABC=Some-Value" will result in a
+	// label on the final container of "abc=Some-Value". The label key itself is
+	// lowercased, underscores changed to dashes, and is prefixed with "google.".
+	LabelPrefix = "GOOGLE_LABEL_"
 )
 
 // IsDebugMode returns true if the buildpack debug mode is enabled.

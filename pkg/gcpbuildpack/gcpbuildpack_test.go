@@ -261,6 +261,75 @@ func TestAddWebProcess(t *testing.T) {
 	}
 }
 
+func TestAddLabel(t *testing.T) {
+	testCases := []struct {
+		name      string
+		keyvalues []string
+		value     string
+		want      []libcnb.Label
+	}{
+		{
+			name:      "simple",
+			keyvalues: []string{"my-key=my-value"},
+			want:      []libcnb.Label{{Key: "google.my-key", Value: "my-value"}},
+		},
+		{
+			name:      "uppercase key",
+			keyvalues: []string{"MY-KEY=my-value"},
+			want:      []libcnb.Label{{Key: "google.my-key", Value: "my-value"}},
+		},
+		{
+			name:      "mixed case value",
+			keyvalues: []string{"my-key=My-Value"},
+			want:      []libcnb.Label{{Key: "google.my-key", Value: "My-Value"}},
+		},
+		{
+			name:      "underscore to dash key",
+			keyvalues: []string{"my_key=My-Value"},
+			want:      []libcnb.Label{{Key: "google.my-key", Value: "My-Value"}},
+		},
+		{
+			name:      "multiple",
+			keyvalues: []string{"my-key=My-Value", "my-other-key=my-other-value"},
+			want: []libcnb.Label{
+				{Key: "google.my-key", Value: "My-Value"},
+				{Key: "google.my-other-key", Value: "my-other-value"},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+
+			for _, kv := range tc.keyvalues {
+				parts := strings.SplitN(kv, "=", 2)
+				if len(parts) != 2 {
+					t.Fatalf("incorrect format %q, expect key=value", kv)
+				}
+				ctx.AddLabel(parts[0], parts[1])
+			}
+
+			if !reflect.DeepEqual(ctx.buildResult.Labels, tc.want) {
+				t.Errorf("Labels not equal got %#v, want %#v", ctx.buildResult.Labels, tc.want)
+			}
+		})
+	}
+}
+
+func TestAddLabelErrors(t *testing.T) {
+	invalids := []string{"", "0", "00invalid", "abc def", "abd@def", "  abc", "def  ", "a__b"}
+
+	for _, invalid := range invalids {
+		ctx := NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+		ctx.AddLabel(invalid, "some-value")
+
+		if len(ctx.buildResult.Labels) > 0 {
+			t.Errorf("invalid label %q was incorrectly included", invalid)
+		}
+	}
+}
+
 func TestHasAtLeastOne(t *testing.T) {
 	testCases := []struct {
 		name   string

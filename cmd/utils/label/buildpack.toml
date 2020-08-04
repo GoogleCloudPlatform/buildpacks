@@ -1,0 +1,63 @@
+api = "0.2"
+
+[buildpack]
+id = "google.utils.label"
+version = "0.0.1"
+name = "Utils - Label Image"
+
+[[stacks]]
+id = "google"
+
+[[stacks]]
+id = "google.dotnet3"
+
+[[stacks]]
+id = "google.go111"
+
+[[stacks]]
+id = "google.go112"
+
+[[stacks]]
+id = "google.go113"
+
+[[stacks]]
+id = "google.go114"
+
+[[stacks]]
+id = "google.go115"
+
+[[stacks]]
+id = "google.java11"
+
+[[stacks]]
+id = "google.nodejs10"
+
+[[stacks]]
+id = "google.nodejs12"
+
+[[stacks]]
+id = "google.nodejs14"
+
+[[stacks]]
+id = "google.php72"
+
+[[stacks]]
+id = "google.php73"
+
+[[stacks]]
+id = "google.php74"
+
+[[stacks]]
+id = "google.python37"
+
+[[stacks]]
+id = "google.python38"
+
+[[stacks]]
+id = "google.ruby25"
+
+[[stacks]]
+id = "google.ruby26"
+
+[[stacks]]
+id = "google.ruby27"
