@@ -111,7 +111,11 @@ func (ctx *Context) Exec(cmd []string, opts ...execOption) *ExecResult {
 		return result
 	}
 
-	ctx.Exit(result.ExitCode, err)
+	exitCode := 1
+	if result != nil {
+		exitCode = result.ExitCode
+	}
+	ctx.Exit(exitCode, err)
 	return nil
 }
 
