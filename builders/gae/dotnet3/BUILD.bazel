@@ -10,6 +10,7 @@ builder(
         "//cmd/dotnet/appengine:appengine.tgz",
         "//cmd/dotnet/appengine_main:appengine_main.tgz",
         "//cmd/dotnet/publish:publish.tgz",
+        "//cmd/utils/label:label.tgz",
     ],
     image = "gae/dotnet3",
 )

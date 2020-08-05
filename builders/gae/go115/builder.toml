@@ -20,6 +20,10 @@ description = "Builder for the GAE Go 1.15 runtime"
   id = "google.go.appengine_gomod"
   uri = "appengine_gomod.tgz"
 
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
 [[order]]
 
   [[order.group]]
@@ -35,6 +39,9 @@ description = "Builder for the GAE Go 1.15 runtime"
   [[order.group]]
     id = "google.go.appengine"
 
+  [[order.group]]
+    id = "google.utils.label"
+
 [[order]]
 
   [[order.group]]
@@ -45,6 +52,9 @@ description = "Builder for the GAE Go 1.15 runtime"
 
   [[order.group]]
     id = "google.go.appengine"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 
 [stack]

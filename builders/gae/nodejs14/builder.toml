@@ -20,6 +20,10 @@ description = "Builder for the GAE Node.js 14 runtime"
   id = "google.nodejs.appengine"
   uri = "appengine.tgz"
 
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
 [[order]]
   [[order.group]]
     id = "google.nodejs.yarn-gcp-build"
@@ -30,6 +34,9 @@ description = "Builder for the GAE Node.js 14 runtime"
 
   [[order.group]]
     id = "google.nodejs.appengine"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 [[order]]
   [[order.group]]
@@ -42,6 +49,9 @@ description = "Builder for the GAE Node.js 14 runtime"
 
   [[order.group]]
     id = "google.nodejs.appengine"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 [stack]
   id = "google.nodejs14"

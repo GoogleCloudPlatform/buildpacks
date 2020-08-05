@@ -12,6 +12,10 @@ description = "Builder for the GAE PHP 7.3 runtime"
   id = "google.php.appengine"
   uri = "appengine.tgz"
 
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
 [[order]]
   [[order.group]]
     id = "google.php.composer-gcp-build"
@@ -23,6 +27,9 @@ description = "Builder for the GAE PHP 7.3 runtime"
 
   [[order.group]]
     id = "google.php.appengine"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 [stack]
   id = "google.php73"

@@ -12,6 +12,7 @@ builder(
         "//cmd/ruby/bundle:bundle.tgz",
         "//cmd/ruby/rails:rails.tgz",
         # "runtime.tgz",
+        "//cmd/utils/label:label.tgz",
     ],
     image = "gae/ruby26",
 )

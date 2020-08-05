@@ -12,6 +12,10 @@ description = "Builder for the GAE .NET 3 runtime"
   id = "google.dotnet.publish"
   uri = "publish.tgz"
 
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
 [[order]]
   [[order.group]]
     id = "google.dotnet.appengine_main"
@@ -23,6 +27,9 @@ description = "Builder for the GAE .NET 3 runtime"
 
   [[order.group]]
     id = "google.dotnet.appengine"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 [stack]
   id = "google.dotnet3"

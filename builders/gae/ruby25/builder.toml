@@ -16,12 +16,16 @@ description = "Builder for the GAE Ruby 2.5 runtime"
   id = "google.ruby.rails"
   uri = "rails.tgz"
 
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
 [[order]]
   [[order.group]]
     id = "google.ruby.appengine_validation"
     optional = true
 
-[[order.group]]
+  [[order.group]]
     id = "google.ruby.bundle"
 
   [[order.group]]
@@ -30,6 +34,9 @@ description = "Builder for the GAE Ruby 2.5 runtime"
 
   [[order.group]]
     id = "google.ruby.appengine"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 [stack]
   id = "google.ruby25"

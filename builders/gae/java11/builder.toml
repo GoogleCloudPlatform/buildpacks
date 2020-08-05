@@ -16,6 +16,10 @@ description = "Builder for the GAE Java 11 runtime"
   id = "google.java.maven"
   uri = "maven.tgz"
 
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
 [[order]]
   [[order.group]]
     id = "google.java.maven"
@@ -26,6 +30,9 @@ description = "Builder for the GAE Java 11 runtime"
   [[order.group]]
     id = "google.java.clear_source"
     optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
 
 [[order]]
   [[order.group]]
@@ -38,6 +45,9 @@ description = "Builder for the GAE Java 11 runtime"
   [[order.group]]
     id = "google.java.clear_source"
     optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
 
 [stack]
   id = "google.java11"

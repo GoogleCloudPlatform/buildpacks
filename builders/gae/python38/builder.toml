@@ -12,6 +12,10 @@ description = "Builder for the GAE Python 3.8 runtime"
   id = "google.python.appengine"
   uri = "appengine.tgz"
 
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
 [[order]]
   [[order.group]]
     id = "google.python.webserver"
@@ -23,6 +27,9 @@ description = "Builder for the GAE Python 3.8 runtime"
 
   [[order.group]]
     id = "google.python.appengine"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 [stack]
   id = "google.python38"
