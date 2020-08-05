@@ -112,7 +112,7 @@ type gradleVersion struct {
 
 // installGradle installs Gradle and returns the path of the gradle binary
 func installGradle(ctx *gcp.Context) (string, error) {
-	gradlel := ctx.Layer(gradleLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	gradlel := ctx.Layer(gradleLayer, gcp.CacheLayer, gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
 
 	// Check the metadata in the cache layer to determine if we need to proceed.
 	version, downloadURL, err := fetchGradleVersion(ctx)

@@ -36,6 +36,11 @@ func TestAcceptance(t *testing.T) {
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
 		},
 		{
+			Name: "function with gradle",
+			App:  "gradle",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
+		},
+		{
 			Name: "prebuilt jar",
 			App:  "jar",
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=functions.jar.HelloWorld"},
