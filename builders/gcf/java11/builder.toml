@@ -16,6 +16,10 @@ description = "Builder for the GCF Java 11 runtime"
   id = "google.utils.archive-source"
   uri = "archive_source.tgz"
 
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
 # We'll use google.java.maven to compile the function code if there is a pom.xml.
 # In that case google.java.functions-framework will inspect the pom.xml to
 # determine what should be in the classpath of the final function.
@@ -29,6 +33,9 @@ description = "Builder for the GCF Java 11 runtime"
 
   [[order.group]]
     id = "google.java.functions-framework"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 # We'll use google.java.gradle to compile the function code if there is a build.gradle.
 # In that case google.java.functions-framework will inspect the build.gradle to
@@ -48,6 +55,9 @@ description = "Builder for the GCF Java 11 runtime"
 
   [[order.group]]
     id = "google.java.functions-framework"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 [stack]
   id = "google.java11"

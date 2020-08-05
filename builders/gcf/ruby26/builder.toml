@@ -12,6 +12,10 @@ description = "Builder for the GCF Ruby 2.6 runtime"
   id = "google.utils.archive-source"
   uri = "archive_source.tgz"
 
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
 [[order]]
 
   [[order.group]]
@@ -22,6 +26,9 @@ description = "Builder for the GCF Ruby 2.6 runtime"
 
   [[order.group]]
     id = "google.ruby.functions-framework"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 [stack]
   id = "google.ruby26"

@@ -24,6 +24,10 @@ description = "Builder for the GCF Node.js 12 runtime"
   id = "google.utils.archive-source"
   uri = "archive_source.tgz"
 
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
 [[order]]
 
   [[order.group]]
@@ -38,6 +42,9 @@ description = "Builder for the GCF Node.js 12 runtime"
 
   [[order.group]]
     id = "google.nodejs.functions-framework"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 [[order]]
 
@@ -54,6 +61,9 @@ description = "Builder for the GCF Node.js 12 runtime"
 
   [[order.group]]
     id = "google.nodejs.functions-framework"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 [stack]
   id = "google.nodejs12"

@@ -11,6 +11,7 @@ builder(
         "//cmd/php/composer:composer.tgz",
         "//cmd/php/composer_gcp_build:composer_gcp_build.tgz",
         "//cmd/utils/archive_source:archive_source.tgz",
+        "//cmd/utils/label:label.tgz",
     ],
     image = "gcf/php74",
 )

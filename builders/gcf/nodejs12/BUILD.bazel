@@ -13,6 +13,7 @@ builder(
         "//cmd/nodejs/yarn:yarn.tgz",
         "//cmd/nodejs/yarn_gcp_build:yarn_gcp_build.tgz",
         "//cmd/utils/archive_source:archive_source.tgz",
+        "//cmd/utils/label:label.tgz",
     ],
     image = "gcf/nodejs12",
 )

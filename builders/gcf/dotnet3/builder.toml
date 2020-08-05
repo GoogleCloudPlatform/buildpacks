@@ -12,6 +12,10 @@ description = "Builder for the GCF .NET 3 runtime"
   id = "google.utils.archive-source"
   uri = "archive_source.tgz"
 
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
 [[order]]
 
   [[order.group]]
@@ -22,6 +26,9 @@ description = "Builder for the GCF .NET 3 runtime"
 
   [[order.group]]
     id = "google.dotnet.publish"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 [stack]
   id = "google.dotnet3"

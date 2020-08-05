@@ -11,6 +11,7 @@ builder(
         "//cmd/python/pip:pip.tgz",
         "//cmd/python/webserver:webserver.tgz",
         "//cmd/utils/archive_source:archive_source.tgz",
+        "//cmd/utils/label:label.tgz",
     ],
     image = "gcf/python38",
 )

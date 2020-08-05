@@ -16,6 +16,10 @@ description = "Builder for the GCF Go 1.13 runtime"
   id = "google.utils.archive-source"
   uri = "archive_source.tgz"
 
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
 [[order]]
 
   [[order.group]]
@@ -30,6 +34,9 @@ description = "Builder for the GCF Go 1.13 runtime"
 
   [[order.group]]
     id = "google.go.build"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 [stack]
   id = "google.go113"

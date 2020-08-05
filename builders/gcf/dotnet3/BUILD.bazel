@@ -10,6 +10,7 @@ builder(
         "//cmd/dotnet/publish:publish.tgz",
         "//cmd/dotnet/functions_framework:functions_framework.tgz",
         "//cmd/utils/archive_source:archive_source.tgz",
+        "//cmd/utils/label:label.tgz",
     ],
     image = "gcf/dotnet3",
 )
