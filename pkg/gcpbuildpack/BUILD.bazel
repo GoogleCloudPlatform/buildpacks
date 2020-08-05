@@ -10,6 +10,7 @@ go_library(
         "builderoutput.go",
         "env.go",
         "exec.go",
+        "exit.go",
         "filepath.go",
         "gcpbuildpack.go",
         "ioutil.go",

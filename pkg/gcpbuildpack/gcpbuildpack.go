@@ -71,9 +71,9 @@ type Context struct {
 	info            libcnb.BuildpackInfo
 	applicationRoot string
 	buildpackRoot   string
-	exitCode        int
 	debug           bool
 	stats           stats
+	exiter          Exiter
 
 	// detect items
 	detectContext libcnb.DetectContext
@@ -91,10 +91,12 @@ func NewContext(info libcnb.BuildpackInfo) *Context {
 		logger.Printf("Failed to parse debug mode: %v", err)
 		os.Exit(1)
 	}
-	return &Context{
+	ctx := &Context{
 		debug: debug,
 		info:  info,
 	}
+	ctx.exiter = defaultExiter{ctx: ctx}
+	return ctx
 }
 
 // NewContextForTests creates a context to be used for tests.
@@ -232,28 +234,7 @@ func build(buildFn BuildFn) {
 
 // Exit causes the buildpack to exit with the given exit code and message.
 func (ctx *Context) Exit(exitCode int, be *Error) {
-	if be != nil {
-		msg := "Failure: "
-		if be.ID != "" {
-			msg += fmt.Sprintf("(ID: %s) ", be.ID)
-		}
-		msg += be.Message
-		ctx.Logf(msg)
-		ctx.saveErrorOutput(be)
-	}
-
-	if exitCode != 0 {
-		ctx.Tipf(divider)
-		ctx.Tipf(`Sorry your project couldn't be built.`)
-		ctx.Tipf(`Our documentation explains ways to configure Buildpacks to better recognise your project:`)
-		ctx.Tipf(` -> https://github.com/GoogleCloudPlatform/buildpacks/blob/main/README.md`)
-		ctx.Tipf(`If you think you've found an issue, please report it:`)
-		ctx.Tipf(` -> https://github.com/GoogleCloudPlatform/buildpacks/issues/new`)
-		ctx.Tipf(divider)
-	}
-
-	ctx.exitCode = exitCode
-	os.Exit(exitCode)
+	ctx.exiter.Exit(exitCode, be)
 }
 
 // OptOut is used during the detect phase to opt out of the build process.
