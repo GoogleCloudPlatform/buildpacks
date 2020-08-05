@@ -207,7 +207,7 @@ variables** that are supported across runtimes.
   * **Example:** `true`, `True`, `1` will enable development mode.
 * `GOOGLE_CLEAR_SOURCE`
   * Clears source after the application is built. If the application depends on static files, such as Go templates, setting this variable may cause the application to misbehave.
-  * *(Only applicable to Go and Java.)*
+  * *(Only applicable to Go apps and Java apps & functions.)*
   * **Example:** `true`, `True`, `1` will clear the source.
 
 Certain buildpacks support other environment variables:

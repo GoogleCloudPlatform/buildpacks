@@ -14,10 +14,10 @@
 
 // Extra Gradle definitions that are appended to the user's build.gradle.
 
-// Copy the runtime dependencies into the directory _javaFunctionDependencies.
+// Copy the runtime dependencies into the directory build/_javaFunctionDependencies.
 task _javaFunctionCopyAllDependencies(type: Copy) {
   from configurations.runtimeClasspath
-  into '_javaFunctionDependencies'
+  into 'build/_javaFunctionDependencies'
 }
 
 // Print the path of the jar target.

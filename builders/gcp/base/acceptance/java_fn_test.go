@@ -41,6 +41,18 @@ func TestAcceptance(t *testing.T) {
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
 		},
 		{
+			Name:              "function with clear source maven",
+			App:               "maven",
+			Env:               []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld", "GOOGLE_CLEAR_SOURCE=true"},
+			FilesMustNotExist: []string{"/workspace/src/main/java/functions/HelloWorld.java", "/workspace/pom.xml"},
+		},
+		{
+			Name:              "function with clear source gradle",
+			App:               "gradle",
+			Env:               []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld", "GOOGLE_CLEAR_SOURCE=true"},
+			FilesMustNotExist: []string{"/workspace/src/main/java/functions/HelloWorld.java", "/workspace/build.gradle"},
+		},
+		{
 			Name: "prebuilt jar",
 			App:  "jar",
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=functions.jar.HelloWorld"},

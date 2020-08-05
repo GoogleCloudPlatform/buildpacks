@@ -159,7 +159,7 @@ func gradleClasspath(ctx *gcp.Context) (string, error) {
 		return "", gcp.InternalErrorf("appending extra definitions to build.gradle: %v", err)
 	}
 
-	// Copy the dependencies of the function (`dependencies {...}` in build.gradle) into _javaFunctionDependencies.
+	// Copy the dependencies of the function (`dependencies {...}` in build.gradle) into build/_javaFunctionDependencies.
 	ctx.Exec([]string{"gradle", "--quiet", "_javaFunctionCopyAllDependencies"}, gcp.WithUserAttribution)
 
 	// Extract the name of the target jar.
@@ -171,7 +171,7 @@ func gradleClasspath(ctx *gcp.Context) (string, error) {
 
 	// The Functions Framework understands "*" to mean every jar file in that directory.
 	// So this classpath consists of the just-built jar and all of the dependency jars.
-	return fmt.Sprintf("%s:_javaFunctionDependencies/*", jarName), nil
+	return fmt.Sprintf("%s:build/_javaFunctionDependencies/*", jarName), nil
 }
 
 func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) error {

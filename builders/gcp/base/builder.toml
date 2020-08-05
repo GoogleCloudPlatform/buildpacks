@@ -183,6 +183,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   [[order.group]]
     id = "google.java.functions-framework"
 
+  [[order.group]]
+    id = "google.java.clear_source"
+    optional = true
+
 [[order]]
   [[order.group]]
     id = "google.java.runtime"
@@ -193,6 +197,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.java.functions-framework"
+
+  [[order.group]]
+    id = "google.java.clear_source"
+    optional = true
 
 # Exploded Jars
 [[order]]
