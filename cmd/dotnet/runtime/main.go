@@ -32,11 +32,12 @@ import (
 )
 
 const (
-	sdkLayer     = "sdk"
-	runtimeLayer = "runtime"
-	sdkURL       = "https://dotnetcli.azureedge.net/dotnet/Sdk/%[1]s/dotnet-sdk-%[1]s-linux-x64.tar.gz"
-	versionURL   = "https://dotnetcli.azureedge.net/dotnet/Sdk/LTS/latest.version"
-	versionKey   = "version"
+	sdkLayer       = "sdk"
+	runtimeLayer   = "runtime"
+	sdkURL         = "https://dotnetcli.azureedge.net/dotnet/Sdk/%[1]s/dotnet-sdk-%[1]s-linux-x64.tar.gz"
+	uncachedSdkURL = "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/%[1]s/dotnet-sdk-%[1]s-linux-x64.tar.gz"
+	versionURL     = "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/LTS/latest.version"
+	versionKey     = "version"
 )
 
 func main() {
@@ -80,9 +81,9 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.CacheMiss(runtimeLayer)
 	ctx.ClearLayer(rtl)
 
-	archiveURL := fmt.Sprintf(sdkURL, version)
-	if code := ctx.HTTPStatus(archiveURL); code != http.StatusOK {
-		return gcp.UserErrorf("Runtime version %s does not exist at %s (status %d). You can specify the version with %s.", version, archiveURL, code, env.RuntimeVersion)
+	archiveURL, err := archiveURL(ctx, version)
+	if err != nil {
+		return err
 	}
 
 	ctx.Logf("Installing .NET SDK v%s", version)
@@ -149,4 +150,20 @@ func runtimeVersion(ctx *gcp.Context) (string, error) {
 	version = result.Stdout
 	ctx.Logf("Using the latest LTS version of .NET Core SDK: %s", version)
 	return version, nil
+}
+
+// archiveURL returns the URL to fetch the .NET SDK.
+func archiveURL(ctx *gcp.Context, version string) (string, error) {
+	url := fmt.Sprintf(sdkURL, version)
+	if code := ctx.HTTPStatus(url); code == http.StatusOK {
+		return url, nil
+	}
+
+	// Retry with the uncached URL.
+	url = fmt.Sprintf(uncachedSdkURL, version)
+	if code := ctx.HTTPStatus(url); code != http.StatusOK {
+		return "", gcp.UserErrorf("Runtime version %s does not exist at %s (status %d). You can specify the version with %s.", version, url, code, env.RuntimeVersion)
+	}
+
+	return url, nil
 }
