@@ -54,9 +54,11 @@ func buildFn(ctx *gcp.Context) error {
 	sp := filepath.Join(sl.Path, archiveName)
 	archiveSource(ctx, sp, ctx.ApplicationRoot())
 
-	// Symlink the archive to /workspace/.googlebuild for a stable path.
+	// Symlink the archive to /workspace/.googlebuild for a stable path; add LABEL to container.
 	ctx.MkdirAll(".googlebuild", 0755)
-	ctx.Symlink(sp, filepath.Join(ctx.ApplicationRoot(), ".googlebuild", archiveName))
+	stable := filepath.Join(ctx.ApplicationRoot(), ".googlebuild", archiveName)
+	ctx.Symlink(sp, stable)
+	ctx.AddLabel("source-archive", stable)
 
 	return nil
 }
