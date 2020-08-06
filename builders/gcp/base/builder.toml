@@ -96,6 +96,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   id = "google.python.missing-entrypoint"
   uri = "python/missing_entrypoint.tgz"
 
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
 ########
 # .NET #
 ########
@@ -116,6 +120,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.config.entrypoint"
     optional = true
 
+  [[order.group]]
+    id = "google.utils.label"
+
 # Prebuilt .NET applications.
 [[order]]
 
@@ -124,6 +131,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 ######
 # Go #
@@ -148,6 +158,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.go.clear_source"
     optional = true
 
+  [[order.group]]
+    id = "google.utils.label"
+
 [[order]]
 
   [[order.group]]
@@ -168,6 +181,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.go.clear_source"
     optional = true
 
+  [[order.group]]
+    id = "google.utils.label"
+
 ########
 # Java #
 ########
@@ -187,6 +203,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.java.clear_source"
     optional = true
 
+  [[order.group]]
+    id = "google.utils.label"
+
 [[order]]
   [[order.group]]
     id = "google.java.runtime"
@@ -202,6 +221,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.java.clear_source"
     optional = true
 
+  [[order.group]]
+    id = "google.utils.label"
+
 # Exploded Jars
 [[order]]
   [[order.group]]
@@ -209,6 +231,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.java.exploded-jar"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 # Maven applications.
 [[order]]
@@ -225,6 +250,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.java.clear_source"
     optional = true
 
+  [[order.group]]
+    id = "google.utils.label"
+
 [[order]]
   [[order.group]]
     id = "google.java.runtime"
@@ -238,6 +266,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   [[order.group]]
     id = "google.java.clear_source"
     optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
 
 # Gradle & Jar-based applications.
 [[order]]
@@ -255,6 +286,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.java.clear_source"
     optional = true
 
+  [[order.group]]
+    id = "google.utils.label"
+
 [[order]]
   [[order.group]]
     id = "google.java.runtime"
@@ -269,6 +303,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   [[order.group]]
     id = "google.java.clear_source"
     optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
 
 ##############
 # Python 1/2 #
@@ -290,6 +327,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.config.entrypoint"
     optional = true
 
+  [[order.group]]
+    id = "google.utils.label"
+
 # Python applications.
 # Entrypoint buildpack is required because it cannot be easily inferred.
 [[order]]
@@ -302,6 +342,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 ###########
 # Node.js #
@@ -325,6 +368,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.config.entrypoint"
     optional = true
 
+  [[order.group]]
+    id = "google.utils.label"
+
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"
@@ -339,6 +385,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   [[order.group]]
     id = "google.config.entrypoint"
     optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
 
 # Separate groups for Node.js projects without dependencies.
 # Making both yarn and npm optional in the previous groups leads
@@ -356,6 +405,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.config.entrypoint"
     optional = true
 
+  [[order.group]]
+    id = "google.utils.label"
+
 # Node.js applications without a package.json.
 # Entrypoint is required because it cannot be read from package.json.
 [[order]]
@@ -364,6 +416,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 ##############
 # Python 2/2 #
@@ -378,6 +433,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.python.missing-entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 # Currently built with //builders/gcp/base/stack/stack:build.
 [stack]

@@ -6,6 +6,7 @@ builder(
     name = "builder",
     buildpacks = [
         "//cmd/config/entrypoint:entrypoint.tgz",
+        "//cmd/utils/label:label.tgz",
     ],
     groups = {
         "dotnet": [
