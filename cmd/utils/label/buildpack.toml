@@ -54,6 +54,9 @@ id = "google.python37"
 id = "google.python38"
 
 [[stacks]]
+id = "google.python39"
+
+[[stacks]]
 id = "google.ruby25"
 
 [[stacks]]

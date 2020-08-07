@@ -27,4 +27,7 @@ id = "google.php74"
 id = "google.python38"
 
 [[stacks]]
+id = "google.python39"
+
+[[stacks]]
 id = "google.ruby26"

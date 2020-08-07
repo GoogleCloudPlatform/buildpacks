@@ -60,6 +60,7 @@ package_group(
     packages = [
         "//builders/gae/python37",
         "//builders/gae/python38",
+        "//builders/gae/python39",
         "//builders/gcf/python38",
         "//builders/gcp/base",
     ],
