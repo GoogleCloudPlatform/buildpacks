@@ -1,3 +1,5 @@
+load("//tools/build_defs/testing:bzl_library.bzl", "bzl_library")
+
 licenses(["notice"])
 
 package(
@@ -29,4 +31,11 @@ sh_test(
 sh_binary(
     name = "pull_images",
     srcs = ["pull-images.sh"],
+)
+
+bzl_library(
+    name = "defs_bzl",
+    srcs = ["defs.bzl"],
+    parse_tests = False,
+    visibility = ["//visibility:private"],
 )
