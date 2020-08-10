@@ -59,4 +59,4 @@ description = "Builder for the GAE Node.js 14 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/nodejs14/run"
 
 [lifecycle]
-  version = "0.8.1"
+  version = "0.9.0"
