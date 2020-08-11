@@ -31,3 +31,6 @@ id = "google.python39"
 
 [[stacks]]
 id = "google.ruby26"
+
+[[stacks]]
+id = "google.ruby27"

@@ -73,6 +73,7 @@ package_group(
         "//builders/gae/ruby26",
         "//builders/gae/ruby27",
         "//builders/gcf/ruby26",
+        "//builders/gcf/ruby27",
         "//builders/gcp/base",
     ],
 )
@@ -88,5 +89,6 @@ package_group(
         "//builders/gcf/php74",
         "//builders/gcf/python38",
         "//builders/gcf/ruby26",
+        "//builders/gcf/ruby27",
     ],
 )
