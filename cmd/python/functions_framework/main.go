@@ -57,7 +57,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Check for syntax errors.
-	ctx.Exec([]string{"python3", "-m", "compileall", "-q", "."}, gcp.WithStdoutTail, gcp.WithUserAttribution)
+	ctx.Exec([]string{"python3", "-m", "compileall", "-f", "-q", "."}, gcp.WithStdoutTail, gcp.WithUserAttribution)
 
 	// Determine if the function has dependency on functions-framework.
 	hasFrameworkDependency := false
