@@ -22,9 +22,7 @@ go_binary(
         "-s",
         "-w",
     ],
-    visibility = [
-        "//cmd/go/clear_source:__pkg__",
-    ],
+    visibility = ["//visibility:private"],
     deps = [
         "//pkg/clearsource",
         "//pkg/gcpbuildpack",
