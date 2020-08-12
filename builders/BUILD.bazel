@@ -40,6 +40,7 @@ package_group(
         "//builders/gae/nodejs14",
         "//builders/gcf/nodejs10",
         "//builders/gcf/nodejs12",
+        "//builders/gcf/nodejs14",
         "//builders/gcp/base",
     ],
 )
@@ -86,6 +87,7 @@ package_group(
         "//builders/gcf/java11",
         "//builders/gcf/nodejs10",
         "//builders/gcf/nodejs12",
+        "//builders/gcf/nodejs14",
         "//builders/gcf/php74",
         "//builders/gcf/python38",
         "//builders/gcf/ruby26",
