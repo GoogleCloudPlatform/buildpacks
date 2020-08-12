@@ -18,6 +18,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -110,7 +111,7 @@ func TestWithFiles(t *testing.T) {
 				fname := writeFile(t, temp, name, contents)
 				names = append(names, fname)
 			}
-
+			sort.Strings(names)
 			ctx := gcp.NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
 
 			option := WithFiles(names...)
