@@ -34,23 +34,20 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) error {
-	return nil
-}
-
-func buildFn(ctx *gcp.Context) error {
 	// Fail archiving source when users want to clear source from the final container.
-	// TODO(https://github.com/buildpacks/lifecycle/issues/306): Move this logic to the detect phase when we can attribute failures to users.
 	if cs, ok := os.LookupEnv(env.ClearSource); ok {
 		c, err := strconv.ParseBool(cs)
 		if err != nil {
 			ctx.Warnf("Failed to parse %q: %v", env.ClearSource, err)
 		} else if c {
-			return gcp.UserErrorf("%s is not allowed in this environment", env.ClearSource)
+			ctx.OptOut("%s is incompatible with archive source", env.ClearSource)
 		}
 	}
+	return nil
+}
 
+func buildFn(ctx *gcp.Context) error {
 	sl := ctx.Layer("src", gcp.LaunchLayer)
-
 	sp := filepath.Join(sl.Path, archiveName)
 	archiveSource(ctx, sp, ctx.ApplicationRoot())
 

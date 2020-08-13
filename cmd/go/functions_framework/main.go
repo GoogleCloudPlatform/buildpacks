@@ -64,14 +64,9 @@ func detectFn(ctx *gcp.Context) error {
 func buildFn(ctx *gcp.Context) error {
 	l := ctx.Layer(layerName)
 	ctx.Setenv("GOPATH", l.Path)
-
 	ctx.SetFunctionsEnvVars(l)
 
 	fnTarget := os.Getenv(env.FunctionTarget)
-	// TODO(b/154846199): For compatibility with GCF; this will be removed later.
-	if fnTarget == "" {
-		fnTarget = os.Getenv(env.FunctionTargetLaunch)
-	}
 
 	// Move the function source code into a subdirectory in order to construct the app in the main application root.
 	ctx.RemoveAll(fnSourceDir)

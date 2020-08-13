@@ -25,11 +25,6 @@ func init() {
 }
 
 func TestAcceptance(t *testing.T) {
-	// TODO(b/161842563): Remove after publishing images.
-	if acceptance.PullImages() {
-		t.Skip("Tests are skipped until stack images are published to gcr.io")
-	}
-
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
