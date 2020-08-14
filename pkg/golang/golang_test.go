@@ -25,6 +25,41 @@ import (
 	"github.com/buildpacks/libcnb"
 )
 
+func TestGoVersion(t *testing.T) {
+	testCases := []struct {
+		goVersion string
+		want      string
+	}{
+		{
+			goVersion: "go version go1.13 darwin/amd64",
+			want:      "1.13",
+		},
+		{
+			goVersion: "go version go1.14.7 darwin/amd64",
+			want:      "1.14.7",
+		},
+		{
+			goVersion: "go version go1.15beta2 darwin/amd64",
+			want:      "1.15",
+		},
+		{
+			goVersion: "go version go1.15rc1 darwin/amd64",
+			want:      "1.15",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.goVersion, func(t *testing.T) {
+			defer func(fn func(*gcp.Context) string) { readGoVersion = fn }(readGoVersion)
+			readGoVersion = func(*gcp.Context) string { return tc.goVersion }
+
+			if got := GoVersion(nil); got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestGoModVersion(t *testing.T) {
 	testCases := []struct {
 		name  string
@@ -301,6 +336,10 @@ func TestSupportsNoGoMod(t *testing.T) {
 			goVersion: "go version go1.14 darwin/amd64",
 			want:      false,
 		},
+		{
+			goVersion: "go version go1.15rc1 darwin/amd64",
+			want:      false,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -397,6 +436,12 @@ func TestVersionMatches(t *testing.T) {
 		},
 		{
 			goVersion:    "go version go1.15 darwin/amd64",
+			goMod:        "module dir\ngo 1.15",
+			versionCheck: ">=1.15.0",
+			want:         true,
+		},
+		{
+			goVersion:    "go version go1.15rc1 darwin/amd64",
 			goMod:        "module dir\ngo 1.15",
 			versionCheck: ">=1.15.0",
 			want:         true,

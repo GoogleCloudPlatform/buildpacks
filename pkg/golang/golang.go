@@ -30,7 +30,7 @@ const (
 
 var (
 	// goVersionRegexp is used to parse `go version`'s output.
-	goVersionRegexp = regexp.MustCompile(`^go version go(.*) .*$`)
+	goVersionRegexp = regexp.MustCompile(`^go version go(\d+(\.\d+){1,2})([a-z]+\d+)? .*$`)
 
 	// goModVersionRegexp is used to get correct declaration of Go version from go.mod file.
 	goModVersionRegexp = regexp.MustCompile(`(?m)^\s*go\s+(\d+(\.\d+){1,2})\s*$`)
