@@ -116,7 +116,7 @@ func classpath(ctx *gcp.Context) (string, error) {
 // from the pom.xml itself, plus all jar files that are dependencies mentioned in the pom.xml.
 func mavenClasspath(ctx *gcp.Context) (string, error) {
 	// Copy the dependencies of the function (`<dependencies>` in pom.xml) into target/dependency.
-	ctx.Exec([]string{"mvn", "dependency:copy-dependencies"}, gcp.WithUserAttribution)
+	ctx.Exec([]string{"mvn", "--batch-mode", "dependency:copy-dependencies"}, gcp.WithUserAttribution)
 
 	// Extract the artifact/version coordinates from the user's pom.xml definitions.
 	// mvn help:evaluate is quite slow so we do it this way rather than calling it twice.
