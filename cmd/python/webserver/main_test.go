@@ -20,40 +20,6 @@ import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
-func TestExtractVersion(t *testing.T) {
-	testCases := []struct {
-		name string
-		str  string
-		want string
-	}{
-		{
-			name: "gunicorn_ver",
-			str:  "gunicorn-websocket (0.0.3) - Websocket handler\ngunicorn (19.9.0) - WSGI HTTP Server for UNIX\n",
-			want: "19.9.0",
-		},
-		{
-			name: "no_gunicorn_present",
-			str:  "gunicorn-websocket (0.0.3) - Websocket handler\n",
-			want: "",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			match := versionRegexp.FindStringSubmatch(tc.str)
-			if len(match) < 2 {
-				if tc.want != "" {
-					t.Errorf("too few matches, did not capture version")
-				}
-			} else {
-				if match[1] != tc.want {
-					t.Errorf("ExtractVersion() got %q, want %q", match[1], tc.want)
-				}
-			}
-		})
-	}
-}
-
 func TestDetect(t *testing.T) {
 	testCases := []struct {
 		name  string
