@@ -18,26 +18,27 @@ import (
 	"strings"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/blang/semver"
 )
 
 const (
 	// PackageLock is the name of the npm lock file.
 	PackageLock = "package-lock.json"
+	// NPMShrinkwrap is the name of the npm shrinkwrap file.
+	NPMShrinkwrap = "npm-shrinkwrap.json"
 )
 
-var (
-	// minCIVersion is the minimium npm version where `ci` does not delete the node_modules directory.
-	minCIVersion = semver.MustParse("6.12.1")
-)
-
-// EnsurePackageLock generates a package-lock.json if necessary.
-func EnsurePackageLock(ctx *gcp.Context) {
+// EnsureLockfile returns the name of the lockfile, generating a package-lock.json if necessary.
+func EnsureLockfile(ctx *gcp.Context) string {
+	// npm prefers npm-shrinkwrap.json, see https://docs.npmjs.com/cli/shrinkwrap.
+	if ctx.FileExists(NPMShrinkwrap) {
+		return NPMShrinkwrap
+	}
 	if !ctx.FileExists(PackageLock) {
 		ctx.Logf("Generating %s.", PackageLock)
 		ctx.Warnf("*** Improve build performance by generating and committing %s.", PackageLock)
 		ctx.Exec([]string{"npm", "install", "--package-lock-only", "--quiet"}, gcp.WithUserAttribution)
 	}
+	return PackageLock
 }
 
 // NPMInstallCommand returns the correct install commmand based on the version of Node.js.
@@ -46,6 +47,5 @@ func NPMInstallCommand(ctx *gcp.Context) string {
 	if strings.HasPrefix(strings.TrimSpace(NodeVersion(ctx)), "v10.") {
 		return "install"
 	}
-
 	return "ci"
 }

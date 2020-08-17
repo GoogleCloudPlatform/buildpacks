@@ -57,6 +57,11 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{yarn},
 		},
 		{
+			App:        "npm_shrinkwrap",
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
+		},
+		{
 			Name:       "yarn.lock respected",
 			App:        "yarn_lock",
 			MustUse:    []string{yarn},
