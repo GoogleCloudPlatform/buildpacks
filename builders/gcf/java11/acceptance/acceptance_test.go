@@ -48,6 +48,8 @@ func TestAcceptance(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		tc := tc
+		tc.FlakyBuildAttempts = 3
+
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 

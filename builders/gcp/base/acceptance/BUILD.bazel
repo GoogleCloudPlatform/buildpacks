@@ -69,7 +69,6 @@ go_test(
         "//builders/gcp/base:builder.tar",
         "//builders/testdata:generic",
     ],
-    flaky = 1,
     embed = [":acceptance"],
     rundir = ".",
     tags = [

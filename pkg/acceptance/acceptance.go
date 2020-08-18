@@ -145,6 +145,8 @@ type Test struct {
 	MustNotOutputCached []string
 	// MustRebuildOnChange specifies a file that, when changed in Dev Mode, triggers a rebuild.
 	MustRebuildOnChange string
+	// FlakyBuildAttempts specifies the number of times a failing build shouldbe retried.
+	FlakyBuildAttempts int
 }
 
 // TestApp builds and a single application and verifies that it runs and handles requests.
@@ -443,7 +445,7 @@ func CreateBuilder(t *testing.T) (string, func()) {
 	start := time.Now()
 	t.Logf("Creating builder (logs %s)", filepath.Dir(outFile.Name()))
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("Error creating builder: %v (%v)", err, errb.String())
+		t.Fatalf("Error creating builder: %v, logs:\n%s", err, errb.String())
 	}
 	t.Logf("Successfully created builder: %s (in %s)", name, time.Since(start))
 
@@ -573,20 +575,40 @@ func buildCommand(app, image, builder string, env map[string]string, cache bool)
 func buildApp(t *testing.T, app, image, builder string, env map[string]string, cache bool, cfg Test) {
 	t.Helper()
 
-	bcmd := buildCommand(app, image, builder, env, cache)
-	cmd := exec.Command(bcmd[0], bcmd[1:]...)
-
-	outFile, errFile, cleanup := outFiles(t, builder, "pack-build", fmt.Sprintf("%s-cache-%t", image, cache))
-	defer cleanup()
-
-	var errb bytes.Buffer
-	cmd.Stdout = outFile
-	cmd.Stderr = io.MultiWriter(errFile, &errb) // pack emits buildpack output to stderr.
+	attempts := cfg.FlakyBuildAttempts
+	if attempts < 1 {
+		attempts = 1
+	}
 
 	start := time.Now()
-	t.Logf("Building application (logs %s)", filepath.Dir(outFile.Name()))
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Error building application: %v (%v)", err, errb.String())
+	var errb bytes.Buffer
+
+	for attempt := 1; attempt <= attempts; attempt++ {
+
+		filename := fmt.Sprintf("%s-cache-%t", image, cache)
+		if attempt > 1 {
+			filename = fmt.Sprintf("%s-attempt-%d", filename, attempt)
+		}
+		outFile, errFile, cleanup := outFiles(t, builder, "pack-build", filename)
+		defer cleanup()
+
+		bcmd := buildCommand(app, image, builder, env, cache)
+		cmd := exec.Command(bcmd[0], bcmd[1:]...)
+		cmd.Stdout = outFile
+		cmd.Stderr = io.MultiWriter(errFile, &errb) // pack emits buildpack output to stderr.
+
+		t.Logf("Building application %s (logs %s)", image, filepath.Dir(outFile.Name()))
+		if err := cmd.Run(); err != nil {
+			if attempt < attempts {
+				t.Logf("Error building application %s, attempt %d of %d: %v, logs:\n%s", image, attempt, attempts, err, errb.String())
+				errb.Reset()
+			} else {
+				t.Fatalf("Error building application %s: %v, logs:\n%s", image, err, errb.String())
+			}
+		} else {
+			// The application built successfully.
+			break
+		}
 	}
 
 	// Check that expected output is found in the logs.
@@ -707,7 +729,7 @@ func verifyStructure(t *testing.T, app, image, builder string, cache bool, check
 
 	t.Logf("Running structure tests (logs %s)", filepath.Dir(outFile.Name()))
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("Error running structure tests: %v (%v)", err, outb.String())
+		t.Fatalf("Error running structure tests: %v, logs:\n%s", err, outb.String())
 	}
 	t.Logf("Successfully ran structure tests on %s (in %s)", image, time.Since(start))
 }
