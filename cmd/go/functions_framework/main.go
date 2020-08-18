@@ -140,22 +140,31 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 func createMainVendored(ctx *gcp.Context, l *libcnb.Layer, fn fnInfo) error {
 	l.Build = true
 	l.BuildEnvironment.Override("GOPATH", ctx.ApplicationRoot())
-	gopath := filepath.Join(ctx.ApplicationRoot(), "src")
-	ctx.MkdirAll(gopath, 0755)
+	gopathSrc := filepath.Join(ctx.ApplicationRoot(), "src")
+	ctx.MkdirAll(gopathSrc, 0755)
 	l.BuildEnvironment.Override(env.Buildable, appName+"/main")
 
-	appPath := filepath.Join(gopath, appName, "main")
+	appPath := filepath.Join(gopathSrc, appName, "main")
 	ctx.MkdirAll(appPath, 0755)
 
-	// We move the function source (including any vendored deps) into the app's vendor directory, so that GOPATH can find it.
-	ctx.Rename(fn.Source, filepath.Join(gopath, fn.Package))
+	// We move the function source (including any vendored deps) into GOPATH.
+	ctx.Rename(fn.Source, filepath.Join(gopathSrc, fn.Package))
 
-	fnVendoredPath := filepath.Join(gopath, fn.Package, "vendor")
+	fnVendoredPath := filepath.Join(gopathSrc, fn.Package, "vendor")
 
-	fnFrameworkVendoredPath := filepath.Join(fnVendoredPath, functionsFrameworkPackage)
-	if ctx.FileExists(fnFrameworkVendoredPath) {
-		ctx.Exec([]string{"cp", "-r", fnVendoredPath, appPath}, gcp.WithUserTimingAttribution)
-	} else {
+	// Move any vendored deps directly into GOPATH to prevent conflicts between the user-provided
+	// deps and any framework-provided deps. In other words, if the user has provided e.g.
+	// github.com/GoogleCloudPlatform/functions-framework-go, we want to ensure that we use the
+	// provided version only.
+	if ctx.FileExists(fnVendoredPath) {
+		files := ctx.ReadDir(fnVendoredPath)
+		for _, file := range files {
+			ctx.Rename(filepath.Join(fnVendoredPath, file.Name()), filepath.Join(gopathSrc, file.Name()))
+		}
+	}
+
+	fnFrameworkVendoredPath := filepath.Join(gopathSrc, functionsFrameworkPackage)
+	if !ctx.FileExists(fnFrameworkVendoredPath) {
 		// If the framework isn't in the user-provided vendor directory, we need to fetch it ourselves.
 		// Create a temporary GOCACHE directory so GOPATH go get works.
 		cache := ctx.TempDir("", appName)
@@ -164,7 +173,7 @@ func createMainVendored(ctx *gcp.Context, l *libcnb.Layer, fn fnInfo) error {
 		// The gopath version of `go get` doesn't allow tags, but does checkout the whole repo so we
 		// can checkout the appropriate tag ourselves.
 		ctx.Exec([]string{"go", "get", functionsFrameworkPackage}, gcp.WithEnv("GOPATH="+ctx.ApplicationRoot(), "GOCACHE="+cache), gcp.WithUserAttribution)
-		ctx.Exec([]string{"git", "checkout", functionsFrameworkVersion}, gcp.WithWorkDir(filepath.Join(gopath, functionsFrameworkModule)), gcp.WithUserAttribution)
+		ctx.Exec([]string{"git", "checkout", functionsFrameworkVersion}, gcp.WithWorkDir(filepath.Join(gopathSrc, functionsFrameworkModule)), gcp.WithUserAttribution)
 	}
 
 	return createMainGoFile(ctx, fn, filepath.Join(appPath, "main.go"))
