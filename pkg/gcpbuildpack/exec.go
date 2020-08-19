@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	divider = strings.Repeat("—", 80)
+	divider = strings.Repeat("-", 80)
 )
 
 // ExecResult bundles exec results.
