@@ -121,13 +121,13 @@ func GoModVersion(ctx *gcp.Context) string {
 }
 
 // readGoVersion returns the output of `go version`.
-// It can be overriden for testing.
+// It can be overridden for testing.
 var readGoVersion = func(ctx *gcp.Context) string {
 	return ctx.Exec([]string{"go", "version"}).Stdout
 }
 
 // readGoMod reads the go.mod file if present. If not present, returns an empty string.
-// It can be overriden for testing.
+// It can be overridden for testing.
 var readGoMod = func(ctx *gcp.Context) string {
 	goModPath := filepath.Join(ctx.ApplicationRoot(), "go.mod")
 	if !ctx.FileExists(goModPath) {

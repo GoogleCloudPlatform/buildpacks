@@ -123,7 +123,7 @@ type javaRelease struct {
 	Binaries    []binary    `json:"binaries"`
 }
 
-// parseVersionJSON parses a JSON array of version infomation
+// parseVersionJSON parses a JSON array of version information
 func parseVersionJSON(jsonStr string) (javaRelease, error) {
 	var releases []javaRelease
 	if err := json.Unmarshal([]byte(jsonStr), &releases); err != nil {

@@ -32,7 +32,7 @@ const (
 	// Example: `13.7.0` for Node.js, `1.14.1` for Go.
 	RuntimeVersion = "GOOGLE_RUNTIME_VERSION"
 
-	// DebugMode enables more verbose logging. The value is unused; only the presense of the env var is required to enable.
+	// DebugMode enables more verbose logging. The value is unused; only the presence of the env var is required to enable.
 	DebugMode = "GOOGLE_DEBUG"
 
 	// DevMode is an env var used to enable development mode in buildpacks.
