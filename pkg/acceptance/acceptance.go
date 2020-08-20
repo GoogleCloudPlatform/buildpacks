@@ -147,6 +147,9 @@ type Test struct {
 	MustRebuildOnChange string
 	// FlakyBuildAttempts specifies the number of times a failing build shouldbe retried.
 	FlakyBuildAttempts int
+	// Setup is a function that is called before the test starts and can be used to modify the test source.
+	// The function has access to the builder image name and a directory with a modifiable copy of the source
+	Setup func(builder, srcDir string) error
 }
 
 // TestApp builds and a single application and verifies that it runs and handles requests.
@@ -171,6 +174,24 @@ func TestApp(t *testing.T, builder string, cfg Test) {
 	// Create a configuration for container-structure-tests.
 	checks := NewStructureTest(cfg.FilesMustExist, cfg.FilesMustNotExist)
 
+	// Run Setup function if provided.
+	src := filepath.Join(testData, cfg.App)
+	if cfg.Setup != nil {
+		temp, err := ioutil.TempDir("", cfg.App)
+		defer os.RemoveAll(temp)
+		if err != nil {
+			t.Fatalf("Error creating temporary directory: %v", err)
+		}
+		sep := string(filepath.Separator)
+		if _, err := runOutput("cp", "-R", src+sep+".", temp); err != nil {
+			t.Fatalf("Error copying app files: %v", err)
+		}
+		if err := cfg.Setup(builder, temp); err != nil {
+			t.Fatalf("Error running test setup: %v", err)
+		}
+		src = temp
+	}
+
 	// Run a no-cache build, followed by a cache build, unless caching is disabled for the app.
 	cacheOptions := []bool{false}
 	if !cfg.SkipCacheTest {
@@ -178,9 +199,9 @@ func TestApp(t *testing.T, builder string, cfg Test) {
 	}
 	for _, cache := range cacheOptions {
 		t.Run(fmt.Sprintf("cache %t", cache), func(t *testing.T) {
-			buildApp(t, cfg.App, image, builder, env, cache, cfg)
+			buildApp(t, src, image, builder, env, cache, cfg)
 			verifyBuildMetadata(t, image, cfg.MustUse, cfg.MustNotUse)
-			verifyStructure(t, cfg.App, image, builder, cache, checks)
+			verifyStructure(t, image, builder, cache, checks)
 			invokeApp(t, cfg, image, cache)
 		})
 	}
@@ -221,7 +242,8 @@ func TestBuildFailure(t *testing.T, builder string, cfg FailureTest) {
 		defer cleanUpVolumes(t, image)
 	}
 
-	outb, errb, cleanup := buildFailingApp(t, cfg.App, image, builder, env)
+	src := filepath.Join(testData, cfg.App)
+	outb, errb, cleanup := buildFailingApp(t, src, image, builder, env)
 	defer cleanup()
 
 	r, err := regexp.Compile(cfg.MustMatch)
@@ -552,10 +574,9 @@ func stackImagesFromConfig(path string) (string, string, error) {
 	return config.Stack.RunImage, config.Stack.BuildImage, nil
 }
 
-func buildCommand(app, image, builder string, env map[string]string, cache bool) []string {
-	src := filepath.Join(testData, app)
+func buildCommand(srcDir, image, builder string, env map[string]string, cache bool) []string {
 	// Pack command to build app.
-	args := strings.Fields(fmt.Sprintf("%s build %s --builder %s --path %s --no-pull --verbose --no-color --trust-builder", packBin, image, builder, src))
+	args := strings.Fields(fmt.Sprintf("%s build %s --builder %s --path %s --no-pull --verbose --no-color --trust-builder", packBin, image, builder, srcDir))
 	if !cache {
 		args = append(args, "--clear-cache")
 	}
@@ -572,7 +593,7 @@ func buildCommand(app, image, builder string, env map[string]string, cache bool)
 }
 
 // buildApp builds an application image from source.
-func buildApp(t *testing.T, app, image, builder string, env map[string]string, cache bool, cfg Test) {
+func buildApp(t *testing.T, srcDir, image, builder string, env map[string]string, cache bool, cfg Test) {
 	t.Helper()
 
 	attempts := cfg.FlakyBuildAttempts
@@ -592,7 +613,7 @@ func buildApp(t *testing.T, app, image, builder string, env map[string]string, c
 		outFile, errFile, cleanup := outFiles(t, builder, "pack-build", filename)
 		defer cleanup()
 
-		bcmd := buildCommand(app, image, builder, env, cache)
+		bcmd := buildCommand(srcDir, image, builder, env, cache)
 		cmd := exec.Command(bcmd[0], bcmd[1:]...)
 		cmd.Stdout = outFile
 		cmd.Stderr = io.MultiWriter(errFile, &errb) // pack emits buildpack output to stderr.
@@ -646,10 +667,10 @@ func buildApp(t *testing.T, app, image, builder string, env map[string]string, c
 
 // buildFailingApp attempts to build an app and ensures that it failues (non-zero exit code).
 // It returns the build's stdout, stderr and a cleanup function.
-func buildFailingApp(t *testing.T, app, image, builder string, env map[string]string) ([]byte, []byte, func()) {
+func buildFailingApp(t *testing.T, srcDir, image, builder string, env map[string]string) ([]byte, []byte, func()) {
 	t.Helper()
 
-	bcmd := buildCommand(app, image, builder, env, false)
+	bcmd := buildCommand(srcDir, image, builder, env, false)
 	cmd := exec.Command(bcmd[0], bcmd[1:]...)
 
 	outFile, errFile, cleanup := outFiles(t, builder, "pack-build-failing", image)
@@ -679,7 +700,7 @@ func buildFailingApp(t *testing.T, app, image, builder string, env map[string]st
 }
 
 // verifyStructure verifies the structure of the image.
-func verifyStructure(t *testing.T, app, image, builder string, cache bool, checks *StructureTest) {
+func verifyStructure(t *testing.T, image, builder string, cache bool, checks *StructureTest) {
 	t.Helper()
 
 	start := time.Now()

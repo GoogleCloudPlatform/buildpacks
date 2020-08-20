@@ -14,6 +14,11 @@
 package acceptance
 
 import (
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/acceptance"
@@ -51,13 +56,28 @@ func TestAcceptance(t *testing.T) {
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			MustNotUse: []string{gomod},
 			Path:       "/Func",
+			MustOutput: []string{"Found function with vendored dependencies excluding functions-framework"},
 		},
 		{
-			Name:    "function with framework",
-			App:     "with_framework",
-			Env:     []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			MustUse: []string{gomod},
-			Path:    "/Func",
+			Name:       "vendored function with framework",
+			App:        "with_framework",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			MustNotUse: []string{gomod},
+			MustOutput: []string{"Found function with vendored dependencies including functions-framework"},
+			Path:       "/Func",
+			Setup: func(builder, src string) error {
+				// The setup function runs `go mod vendor` to vendor dependencies specified in go.mod.
+				args := strings.Fields(fmt.Sprintf("docker run --rm -v %s:/workspace -w /workspace -u root %s go mod vendor", src, builder))
+				cmd := exec.Command(args[0], args[1:]...)
+				if out, err := cmd.CombinedOutput(); err != nil {
+					return fmt.Errorf("vendoring dependencies: %v, output:\n%s", err, out)
+				}
+				// Vendored functions in Go 1.13 cannot contain go.mod.
+				if err := os.Remove(filepath.Join(src, "go.mod")); err != nil {
+					return fmt.Errorf("removing go.mod: %v", err)
+				}
+				return nil
+			},
 		},
 		{
 			Name: "function at /*",

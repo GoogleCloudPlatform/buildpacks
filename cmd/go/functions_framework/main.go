@@ -157,6 +157,7 @@ func createMainVendored(ctx *gcp.Context, l *libcnb.Layer, fn fnInfo) error {
 	// github.com/GoogleCloudPlatform/functions-framework-go, we want to ensure that we use the
 	// provided version only.
 	if ctx.FileExists(fnVendoredPath) {
+		ctx.Logf("Found function with vendored dependencies including functions-framework")
 		files := ctx.ReadDir(fnVendoredPath)
 		for _, file := range files {
 			ctx.Rename(filepath.Join(fnVendoredPath, file.Name()), filepath.Join(gopathSrc, file.Name()))
@@ -166,6 +167,7 @@ func createMainVendored(ctx *gcp.Context, l *libcnb.Layer, fn fnInfo) error {
 	fnFrameworkVendoredPath := filepath.Join(gopathSrc, functionsFrameworkPackage)
 	if !ctx.FileExists(fnFrameworkVendoredPath) {
 		// If the framework isn't in the user-provided vendor directory, we need to fetch it ourselves.
+		ctx.Logf("Found function with vendored dependencies excluding functions-framework")
 		// Create a temporary GOCACHE directory so GOPATH go get works.
 		cache := ctx.TempDir("", appName)
 		defer ctx.RemoveAll(cache)
