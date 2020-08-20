@@ -124,7 +124,7 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 // getEntrypoint retrieves the appropriate entrypoint for this build.
-// * Check the output directory for a binary or a libary with the same name as the project file (e.g. app.csproj --> app or app.dll).
+// * Check the output directory for a binary or a library with the same name as the project file (e.g. app.csproj --> app or app.dll).
 // * If not found, parse the project file for an AssemblyName field and check for the associated binary or library file in the output directory.
 // * If not found, return user error.
 func getEntrypoint(ctx *gcp.Context, bin, proj string) ([]string, error) {

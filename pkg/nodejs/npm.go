@@ -41,7 +41,7 @@ func EnsureLockfile(ctx *gcp.Context) string {
 	return PackageLock
 }
 
-// NPMInstallCommand returns the correct install commmand based on the version of Node.js.
+// NPMInstallCommand returns the correct install command based on the version of Node.js.
 func NPMInstallCommand(ctx *gcp.Context) string {
 	// HACK: For backwards compatibility on App Engine Node.js 10, always use `npm install`.
 	if strings.HasPrefix(strings.TrimSpace(NodeVersion(ctx)), "v10.") {

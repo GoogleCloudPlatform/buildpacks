@@ -54,7 +54,7 @@ var (
 	testData            string // Path to directory or archive containing source test data.
 	structureTestConfig string // Path to container test configuration file.
 	builderSource       string // Path to directory or archive containing builder source.
-	builderImage        string // Name of the builder image to test; takes precendence over builderSource.
+	builderImage        string // Name of the builder image to test; takes precedence over builderSource.
 	builderPrefix       string // Prefix for created builder image.
 	keepArtifacts       bool   // If true, keeps intermediate artifacts such as application images.
 	packBin             string // Path to pack binary.
