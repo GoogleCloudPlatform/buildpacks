@@ -74,8 +74,9 @@ func TestFailures(t *testing.T) {
 
 	testCases := []acceptance.FailureTest{
 		{
-			App:       "pip_check",
-			MustMatch: `sub-dependency-\w 1\.0\.0 has requirement sub-dependency-\w.*1\.0\.0, but you.* have sub-dependency-\w 1\.0\.0`,
+			App: "pip_check",
+			// The warning message is cut short because it's not deterministic.
+			MustMatch: `found incompatible dependencies: "sub-dependency-`,
 		},
 	}
 
