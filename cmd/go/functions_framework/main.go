@@ -83,7 +83,8 @@ func buildFn(ctx *gcp.Context) error {
 		Package: extractPackageNameInDir(ctx, fnSource),
 	}
 
-	if !ctx.FileExists(fn.Source, "go.mod") {
+	goMod := filepath.Join(fn.Source, "go.mod")
+	if !ctx.FileExists(goMod) {
 		// We require a go.mod file in all versions 1.14+.
 		if !golang.SupportsNoGoMod(ctx) {
 			return gcp.UserErrorf("function build requires go.mod file")
@@ -91,6 +92,10 @@ func buildFn(ctx *gcp.Context) error {
 		if err := createMainVendored(ctx, l, fn); err != nil {
 			return err
 		}
+	} else if info, err := os.Stat(goMod); err == nil && info.Mode().Perm()&0200 == 0 {
+		// Preempt an obscure failure mode: if go.mod is not writable then `go list -m` can fail saying:
+		//     go: updates to go.sum needed, disabled by -mod=readonly
+		return gcp.UserErrorf("go.mod exists but is not writable")
 	} else {
 		if err := createMainGoMod(ctx, fn); err != nil {
 			return err

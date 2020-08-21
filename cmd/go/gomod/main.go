@@ -17,6 +17,8 @@
 package main
 
 import (
+	"os"
+
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 )
@@ -53,6 +55,9 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Logf("Ignoring `vendor` directory: the Go runtime must be 1.14+ and go.mod should contain a `go 1.14`+ entry")
 	}
 
+	if info, err := os.Stat("go.mod"); err == nil && info.Mode().Perm()&0200 == 0 {
+		return gcp.UserErrorf("go.mod exists but is not writable")
+	}
 	env := []string{"GOPATH=" + l.Path, "GO111MODULE=on"}
 	if golang.VersionMatches(ctx, ">=1.15.0") {
 		env = append(env, "GOPROXY=https://proxy.golang.org|direct")
