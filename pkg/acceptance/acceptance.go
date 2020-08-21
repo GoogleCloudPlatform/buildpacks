@@ -295,7 +295,7 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 		}
 
 		// Check that the application responds with `UPDATED`.
-		tries := 10
+		tries := 30
 		for try := tries; try >= 1; try-- {
 			time.Sleep(1 * time.Second)
 
