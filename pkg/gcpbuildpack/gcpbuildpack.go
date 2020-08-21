@@ -264,7 +264,7 @@ func (ctx *Context) Debugf(format string, args ...interface{}) {
 
 // Warnf emits a structured logging line for warnings.
 func (ctx *Context) Warnf(format string, args ...interface{}) {
-	ctx.Logf("Warning: "+format, args...)
+	ctx.Logf("WARNING: "+format, args...)
 }
 
 // Tipf emits a structured logging line for usage tips.
@@ -295,7 +295,7 @@ func (ctx *Context) Span(label string, start time.Time, status Status) {
 	}
 	si, err := newSpanInfo(label, start, now, attributes, status)
 	if err != nil {
-		ctx.Logf("Warning: invalid span dropped: %v", err)
+		ctx.Warnf("Invalid span dropped: %v", err)
 	}
 	ctx.stats.spans = append(ctx.stats.spans, si)
 }
@@ -333,7 +333,7 @@ func (ctx *Context) AddWebProcess(cmd []string) {
 	ctx.buildResult.Processes = []libcnb.Process{}
 	for _, p := range current {
 		if p.Type == "web" {
-			ctx.Logf("Warning: overwriting existing web process %q.", p.Command)
+			ctx.Debugf("Overwriting existing web process %q.", p.Command)
 			continue // Do not add this item back to the ctx.processes; we are overwriting it.
 		}
 		ctx.buildResult.Processes = append(ctx.buildResult.Processes, p)
