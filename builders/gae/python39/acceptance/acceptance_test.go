@@ -71,3 +71,26 @@ func TestAcceptance(t *testing.T) {
 		})
 	}
 }
+
+func TestFailures(t *testing.T) {
+	builder, cleanup := acceptance.CreateBuilder(t)
+	t.Cleanup(cleanup)
+
+	testCases := []acceptance.FailureTest{
+		{
+			App:       "pip_check",
+			MustMatch: `sub-dependency-\w 1\.0\.0 has requirement sub-dependency-\w.*1\.0\.0, but you.* have sub-dependency-\w 1\.0\.0`,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.App, func(t *testing.T) {
+			t.Parallel()
+
+			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=python39")
+
+			acceptance.TestBuildFailure(t, builder, tc)
+		})
+	}
+}

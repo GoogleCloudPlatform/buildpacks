@@ -1,0 +1,2 @@
+flask==1.1.1
+diamond-dependency==1.0.0  # This package will fail a build with pip check.

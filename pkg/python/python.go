@@ -38,7 +38,7 @@ const (
 // Version returns the installed version of Python.
 func Version(ctx *gcp.Context) string {
 	result := ctx.Exec([]string{"python3", "--version"})
-	return strings.TrimSpace(result.Stderr)
+	return strings.TrimSpace(result.Stdout)
 }
 
 // CheckCache checks whether cached dependencies exist and match.

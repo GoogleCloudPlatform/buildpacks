@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -68,11 +69,19 @@ func buildFn(ctx *gcp.Context) error {
 
 	l.SharedEnvironment.PrependPath("PYTHONPATH", l.Path)
 
-	// Check for broken dependencies.
 	ctx.Logf("Checking for incompatible dependencies.")
-	checkDeps := ctx.Exec([]string{"python3", "-m", "pip", "check"}, gcp.WithEnv("PYTHONPATH="+l.Path+":"+os.Getenv("PYTHONPATH")), gcp.WithUserAttribution)
-	if checkDeps.ExitCode != 0 {
-		return fmt.Errorf("incompatible dependencies installed: %q", checkDeps.Stdout)
+	result, err := ctx.ExecWithErr([]string{"python3", "-m", "pip", "check"}, gcp.WithEnv("PYTHONPATH="+l.Path+":"+os.Getenv("PYTHONPATH")), gcp.WithUserAttribution)
+	if result == nil {
+		return fmt.Errorf("pip check: %w", err)
 	}
-	return nil
+	if result.ExitCode == 0 {
+		return nil
+	}
+	// HACK: For backwards compatibility on App Engine and Cloud Functions Python 3.7 only report a warning.
+	if strings.HasPrefix(python.Version(ctx), "Python 3.7") {
+		ctx.Warnf("Found incompatible dependencies: %q", result.Stdout)
+		return nil
+	}
+	return fmt.Errorf("found incompatible dependencies: %q", result.Stdout)
+
 }
