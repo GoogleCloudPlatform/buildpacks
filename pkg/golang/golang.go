@@ -26,6 +26,8 @@ import (
 const (
 	// OutBin is the name of the final compiled binary produced by Go buildpacks.
 	OutBin = "main"
+	// BuildDirEnv is an environment variable that buildpacks can use to communicate the working directory to `go build`.
+	BuildDirEnv = "GOOGLE_INTERNAL_BUILD_DIR"
 )
 
 var (

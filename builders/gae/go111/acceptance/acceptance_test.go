@@ -66,7 +66,6 @@ func TestAcceptance(t *testing.T) {
 			Name: "gopath no dependencies",
 			App:  "gopath",
 		},
-
 		// Test that GOOGLE_BUILDABLE takes precedence over app.yaml and go-app-stager.
 		{
 			Name: "gomod GOOGLE_BUILDABLE vs go-app-stager vs app.yaml main package",
@@ -106,6 +105,10 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name: "gomod no dependencies",
 			App:  "gomod",
+		},
+		{
+			Name: "gomod appengine",
+			App:  "gomod_appengine",
 		},
 	}
 	for _, tc := range testCases {

@@ -67,9 +67,14 @@ func buildFn(ctx *gcp.Context) error {
 	bld = append(bld, goBuildFlags()...)
 	bld = append(bld, "-o", outBin)
 	bld = append(bld, buildable)
-	ctx.Exec(bld, gcp.WithEnv("GOCACHE="+cl.Path), gcp.WithMessageProducer(printTipsAndKeepStderrTail(ctx)), gcp.WithUserAttribution)
+	// BuildDirEnv should only be set by App Engine buildpacks.
+	workdir := os.Getenv(golang.BuildDirEnv)
+	if workdir == "" {
+		workdir = ctx.ApplicationRoot()
+	}
+	ctx.Exec(bld, gcp.WithEnv("GOCACHE="+cl.Path), gcp.WithWorkDir(workdir), gcp.WithMessageProducer(printTipsAndKeepStderrTail(ctx)), gcp.WithUserAttribution)
 
-	// Configure the entrypoint for production.  Use the full path to save `skaffold debug`
+	// Configure the entrypoint for production. Use the full path to save `skaffold debug`
 	// from fetching the remote container image (tens to hundreds of megabytes), which is slow.
 	if !devmode.Enabled(ctx) {
 		ctx.AddWebProcess([]string{outBin})

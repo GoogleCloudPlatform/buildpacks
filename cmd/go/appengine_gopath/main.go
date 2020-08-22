@@ -84,13 +84,17 @@ func buildFn(ctx *gcp.Context) error {
 		l.BuildEnvironment.Override(env.Buildable, buildMainPath)
 	}
 
+	// Unlike in the appengine_gomod buildpack, we do not have to compile gopath apps from a path that ends in /srv/. There are two cases:
+	//  * _gopath/main-package-path exists and app source is put on GOPATH, which is handled by:
+	//			https://github.com/golang/appengine/blob/553959209a20f3be281c16dd5be5c740a893978f/delay/delay.go#L136.
+	//  * _gopath/main-package-path does not exist and the app is built from the current directory, which is handled by:
+	//			https://github.com/golang/appengine/blob/553959209a20f3be281c16dd5be5c740a893978f/delay/delay.go#L125-L127
+
 	// TODO(b/145608768): Investigate creating and caching a GOCACHE layer.
 	return nil
 }
 
 func copyDir(ctx *gcp.Context, src, dst string) {
-	ctx.Debugf("copying %q to %q", src, dst)
-
 	// Trailing "/." copies the contents of src directory, but not src itself.
 	src = filepath.Clean(src) + string(filepath.Separator) + "."
 	ctx.Exec([]string{"cp", "--dereference", "-R", src, dst}, gcp.WithUserTimingAttribution)
