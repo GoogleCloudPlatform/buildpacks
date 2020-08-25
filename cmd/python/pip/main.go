@@ -62,10 +62,14 @@ func buildFn(ctx *gcp.Context) error {
 		return nil
 	}
 	ctx.CacheMiss(layerName)
+	// pip install --target does no override existing dependencies, so remove everything.
+	// We cannot use --upgrade due to a bug in pip: https://github.com/pypa/pip/issues/8799.
+	// Any cached dependencies will be restored from PIP_CACHE_DIR.
+	ctx.ClearLayer(l)
 
 	// Install modules in requirements.txt.
 	ctx.Logf("Running pip install.")
-	ctx.Exec([]string{"python3", "-m", "pip", "install", "--upgrade", "-r", "requirements.txt", "-t", l.Path}, gcp.WithEnv("PIP_CACHE_DIR="+cl.Path), gcp.WithUserAttribution)
+	ctx.Exec([]string{"python3", "-m", "pip", "install", "-r", "requirements.txt", "--target", l.Path}, gcp.WithEnv("PIP_CACHE_DIR="+cl.Path), gcp.WithUserAttribution)
 
 	l.SharedEnvironment.PrependPath("PYTHONPATH", l.Path)
 

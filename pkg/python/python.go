@@ -103,7 +103,10 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, req string) error {
 		ctx.CacheHit(l.Name)
 	} else {
 		ctx.CacheMiss(l.Name)
-		ctx.Exec([]string{"python3", "-m", "pip", "install", "-t", l.Path, "-r", req}, gcp.WithUserAttribution)
+		// pip install --target does no override existing dependencies, so remove everything.
+		// We cannot use --upgrade due to a bug in pip: https://github.com/pypa/pip/issues/8799.
+		ctx.ClearLayer(l)
+		ctx.Exec([]string{"python3", "-m", "pip", "install", "-r", req, "--target", l.Path}, gcp.WithUserAttribution)
 	}
 	l.SharedEnvironment.PrependPath("PYTHONPATH", l.Path)
 	return nil
