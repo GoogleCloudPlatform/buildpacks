@@ -79,7 +79,7 @@ func TestFailures(t *testing.T) {
 		{
 			App:       "fail_broken_dependencies",
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=python38"},
-			MustMatch: `functions-framework .* has requirement flask<2\.0,>=1\.0, but you have flask 0\.1\.`,
+			MustMatch: `functions-framework .* has requirement flask<2\.0,>=1\.0, but you have flask 0\.12\.5`,
 		},
 	}
 

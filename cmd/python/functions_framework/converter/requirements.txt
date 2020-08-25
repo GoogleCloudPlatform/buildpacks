@@ -1,1 +1,1 @@
-functions-framework==1.5.0
+functions-framework==1.6.0

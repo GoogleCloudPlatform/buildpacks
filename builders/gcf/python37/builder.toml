@@ -1,0 +1,40 @@
+description = "Builder for the GCF Python 3.7 runtime"
+
+[[buildpacks]]
+  id = "google.python.pip"
+  uri = "pip.tgz"
+
+[[buildpacks]]
+  id = "google.python.functions-framework-compat"
+  uri = "functions_framework_compat.tgz"
+
+[[buildpacks]]
+  id = "google.python.functions-framework"
+  uri = "functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source.tgz"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+
+  [[order.group]]
+    id = "google.python.functions-framework-compat"
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+[stack]
+  id = "google.python37"
+  build-image = "gcr.io/gae-runtimes/buildpacks/python37/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/python37/run"
+
+[lifecycle]
+  version = "0.9.1"

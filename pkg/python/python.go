@@ -90,3 +90,21 @@ func checkCacheExpiration(ctx *gcp.Context, l *libcnb.Layer) bool {
 
 	return !t.After(time.Now())
 }
+
+// InstallRequirements installs requirements.txt in the provided layer.
+func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, req string) error {
+	l.Build = true
+	l.Cache = true
+	cached, err := CheckCache(ctx, l, cache.WithFiles(req))
+	if err != nil {
+		return fmt.Errorf("checking cache: %w", err)
+	}
+	if cached {
+		ctx.CacheHit(l.Name)
+	} else {
+		ctx.CacheMiss(l.Name)
+		ctx.Exec([]string{"python3", "-m", "pip", "install", "-t", l.Path, "-r", req}, gcp.WithUserAttribution)
+	}
+	l.SharedEnvironment.PrependPath("PYTHONPATH", l.Path)
+	return nil
+}

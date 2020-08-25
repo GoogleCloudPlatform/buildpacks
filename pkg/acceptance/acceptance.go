@@ -123,6 +123,8 @@ type Test struct {
 	Path string
 	// Env specifies build environment variables as KEY=VALUE strings.
 	Env []string
+	// MustMatch specifies the expected response, if not provided "PASS" will be used.
+	MustMatch string
 	// RunEnv specifies run environment variables as KEY=VALUE strings.
 	RunEnv []string
 	// SkipCacheTest skips testing of cached builds for this test case.
@@ -283,7 +285,10 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 	if want := http.StatusOK; statusCode != want {
 		t.Errorf("Unexpected status code: got %d, want %d", statusCode, want)
 	}
-	if want := "PASS"; !strings.HasSuffix(body, want) {
+	if cfg.MustMatch == "" {
+		cfg.MustMatch = "PASS"
+	}
+	if want := cfg.MustMatch; !strings.HasSuffix(body, want) {
 		t.Errorf("Response body does not contain suffix: got %q, want %q", body, want)
 	}
 

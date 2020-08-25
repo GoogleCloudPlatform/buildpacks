@@ -1,0 +1,16 @@
+load("//tools:defs.bzl", "builder")
+
+package(default_visibility = ["//builders/gcf/python37/acceptance:__pkg__"])
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/python/functions_framework:functions_framework.tgz",
+        "//cmd/python/functions_framework_compat:functions_framework_compat.tgz",
+        "//cmd/python/pip:pip.tgz",
+        "//cmd/utils/archive_source:archive_source.tgz",
+    ],
+    image = "gcf/python37",
+)

@@ -22,11 +22,9 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
-	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -73,7 +71,9 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.ClearLayer(l)
 	} else {
 		ctx.Logf("Handling functions without dependency on functions-framework.")
-		if err := installFramework(ctx, l); err != nil {
+		cvt := filepath.Join(ctx.BuildpackRoot(), "converter")
+		req := filepath.Join(cvt, "requirements.txt")
+		if err := python.InstallRequirements(ctx, l, req); err != nil {
 			return fmt.Errorf("installing framework: %v", err)
 		}
 	}
@@ -98,23 +98,4 @@ func validateSource(ctx *gcp.Context) error {
 
 func containsFF(s string) bool {
 	return ffRegexp.MatchString(s) || eggRegexp.MatchString(s)
-}
-
-func installFramework(ctx *gcp.Context, l *libcnb.Layer) error {
-	l.Build = true
-	l.Cache = true
-	cvt := filepath.Join(ctx.BuildpackRoot(), "converter")
-	req := filepath.Join(cvt, "requirements.txt")
-	cached, err := python.CheckCache(ctx, l, cache.WithFiles(req))
-	if err != nil {
-		return fmt.Errorf("checking cache: %w", err)
-	}
-	if cached {
-		ctx.CacheHit(layerName)
-	} else {
-		ctx.CacheMiss(layerName)
-		ctx.Exec([]string{"python3", "-m", "pip", "install", "--upgrade", "-t", l.Path, "-r", req}, gcp.WithUserAttribution)
-	}
-	l.SharedEnvironment.PrependPath("PYTHONPATH", l.Path)
-	return nil
 }
