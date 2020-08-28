@@ -22,7 +22,8 @@ go_binary(
     name = "main",
     srcs = [
         "main.go",
-        "template.go",
+        "template_v0.go",
+        "template_v1_1.go",
     ],
     # Strip debugging information to reduce binary size.
     gc_linkopts = [
@@ -33,6 +34,7 @@ go_binary(
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/golang",
+        "@com_github_blang_semver//:go_default_library",
         "@com_github_buildpacks_libcnb//:go_default_library",
     ],
 )

@@ -27,20 +27,22 @@ import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 	"github.com/buildpacks/libcnb"
+	"github.com/blang/semver"
 )
 
 const (
 	layerName                 = "functions-framework"
 	functionsFrameworkModule  = "github.com/GoogleCloudPlatform/functions-framework-go"
 	functionsFrameworkPackage = functionsFrameworkModule + "/funcframework"
-	functionsFrameworkVersion = "v1.0.1"
+	functionsFrameworkVersion = "v1.1.0"
 	appName                   = "serverless_function_app"
 	fnSourceDir               = "serverless_function_source_code"
 )
 
 var (
-	tmpl       = template.Must(template.New("main").Parse(mainTextTemplate))
 	googleDirs = []string{fnSourceDir, ".googlebuild", ".googleconfig"}
+	tmplV0     = template.Must(template.New("mainV0").Parse(mainTextTemplateV0))
+	tmplV1_1   = template.Must(template.New("mainV1_1").Parse(mainTextTemplateV1_1))
 )
 
 type fnInfo struct {
@@ -126,13 +128,16 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	ctx.Exec([]string{"go", "mod", "edit", "-replace", fmt.Sprintf("%s@v0.0.0=%s", fnMod, fn.Source)})
 
 	// If the framework is not present in the function's go.mod, we require the current version.
-	if specified, err := frameworkSpecified(ctx, fn.Source); err != nil {
+	version, err := frameworkSpecifiedVersion(ctx, fn.Source)
+	if err != nil {
 		return fmt.Errorf("checking for functions framework dependency in go.mod: %w", err)
-	} else if !specified {
+	}
+	if version == "" {
 		ctx.Exec([]string{"go", "get", fmt.Sprintf("%s@%s", functionsFrameworkModule, functionsFrameworkVersion)}, gcp.WithUserAttribution)
+		version = functionsFrameworkVersion
 	}
 
-	return createMainGoFile(ctx, fn, filepath.Join(ctx.ApplicationRoot(), "main.go"))
+	return createMainGoFile(ctx, fn, filepath.Join(ctx.ApplicationRoot(), "main.go"), version)
 }
 
 // createMainVendored creates the main.go file for vendored functions.
@@ -170,6 +175,10 @@ func createMainVendored(ctx *gcp.Context, l *libcnb.Layer, fn fnInfo) error {
 	}
 
 	fnFrameworkVendoredPath := filepath.Join(gopathSrc, functionsFrameworkPackage)
+	// Use v0.0.0 as the requested version for go.mod-less vendored builds, since we don't know and
+	// can't really tell. This won't matter for Go 1.14+, since for those we'll have a go.mod file
+	// regardless.
+	requestedFrameworkVersion := "v0.0.0"
 	if !ctx.FileExists(fnFrameworkVendoredPath) {
 		// If the framework isn't in the user-provided vendor directory, we need to fetch it ourselves.
 		ctx.Logf("Found function with vendored dependencies excluding functions-framework")
@@ -181,14 +190,32 @@ func createMainVendored(ctx *gcp.Context, l *libcnb.Layer, fn fnInfo) error {
 		// can checkout the appropriate tag ourselves.
 		ctx.Exec([]string{"go", "get", functionsFrameworkPackage}, gcp.WithEnv("GOPATH="+ctx.ApplicationRoot(), "GOCACHE="+cache), gcp.WithUserAttribution)
 		ctx.Exec([]string{"git", "checkout", functionsFrameworkVersion}, gcp.WithWorkDir(filepath.Join(gopathSrc, functionsFrameworkModule)), gcp.WithUserAttribution)
+		// Since the user didn't pin it, we want the current version of the framework.
+		requestedFrameworkVersion = functionsFrameworkVersion
 	}
 
-	return createMainGoFile(ctx, fn, filepath.Join(appPath, "main.go"))
+	return createMainGoFile(ctx, fn, filepath.Join(appPath, "main.go"), requestedFrameworkVersion)
 }
 
-func createMainGoFile(ctx *gcp.Context, fn fnInfo, main string) error {
+func createMainGoFile(ctx *gcp.Context, fn fnInfo, main, version string) error {
 	f := ctx.CreateFile(main)
 	defer f.Close()
+
+	requestedVersion, err := semver.ParseTolerant(version)
+	if err != nil {
+		return fmt.Errorf("unable to parse framework version string %s: %w", version, err)
+	}
+
+	// By default, use the v0 template.
+	// For framework versions greater than or equal to v1.1.0, use the v1_1 template.
+	tmpl := tmplV0
+	v1_1, err := semver.ParseTolerant("v1.1.0")
+	if err != nil {
+		return fmt.Errorf("unable to parse framework version string v1.1.0: %v", err)
+	}
+	if requestedVersion.GE(v1_1) {
+		tmpl = tmplV1_1
+	}
 
 	if err := tmpl.Execute(f, fn); err != nil {
 		return fmt.Errorf("executing template: %v", err)
@@ -196,15 +223,19 @@ func createMainGoFile(ctx *gcp.Context, fn fnInfo, main string) error {
 	return nil
 }
 
-func frameworkSpecified(ctx *gcp.Context, fnSource string) (bool, error) {
-	res, err := ctx.ExecWithErr([]string{"go", "list", "-m", functionsFrameworkModule}, gcp.WithWorkDir(fnSource))
+// If a framework is specified, return the version. If unspecified, return an empty string.
+func frameworkSpecifiedVersion(ctx *gcp.Context, fnSource string) (string, error) {
+	res, err := ctx.ExecWithErr([]string{"go", "list", "-m", "-f", "{{.Version}}", functionsFrameworkModule}, gcp.WithWorkDir(fnSource))
 	if err == nil {
-		return true, nil
+		v := strings.TrimSpace(res.Stdout)
+		ctx.Logf("Found framework version %s", v)
+		return v, nil
 	}
 	if res != nil && strings.Contains(res.Stderr, "not a known dependency") {
-		return false, nil
+		ctx.Logf("No framework version specified, using default")
+		return "", nil
 	}
-	return false, err
+	return "", err
 }
 
 // extractPackageNameInDir builds the script that does the extraction, and then runs it with the

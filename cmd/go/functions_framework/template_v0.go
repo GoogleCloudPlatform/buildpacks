@@ -14,7 +14,7 @@
 
 package main
 
-const mainTextTemplate = `// Binary main file implements an HTTP server that loads and runs user's code
+const mainTextTemplateV0 = `// Binary main file implements an HTTP server that loads and runs user's code
 // on incoming HTTP requests.
 // As this file must compile statically alongside the user code, this file
 // will be copied into the function image and the 'FUNCTION_TARGET' and
@@ -34,12 +34,19 @@ import (
 	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
 )
 
-func main() {
-	sigType := os.Getenv("FUNCTION_SIGNATURE_TYPE")
-	if sigType == "" || sigType == "http" {
-		funcframework.RegisterHTTPFunction("/", userfunction.{{.Target}})
+func register(fn interface{}) error {
+	if fnHTTP, ok := fn.(func (http.ResponseWriter, *http.Request)); ok {
+		funcframework.RegisterHTTPFunction("/", fnHTTP)
 	} else {
-		funcframework.RegisterEventFunction("/", userfunction.{{.Target}})
+		funcframework.RegisterEventFunction("/", fn)
+	}
+	return nil
+}
+
+
+func main() {
+	if err := register(userfunction.{{.Target}}); err != nil {
+			log.Fatalf("Function failed to register: %v\n", err)
 	}
 
 	// Don't invoke the function for reserved URLs.

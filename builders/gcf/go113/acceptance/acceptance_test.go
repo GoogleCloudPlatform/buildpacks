@@ -32,6 +32,20 @@ const (
 	gomod = "google.go.gomod"
 )
 
+func vendorSetup(builder, src string) error {
+	// The setup function runs `go mod vendor` to vendor dependencies specified in go.mod.
+	args := strings.Fields(fmt.Sprintf("docker run --rm -v %s:/workspace -w /workspace -u root %s go mod vendor", src, builder))
+	cmd := exec.Command(args[0], args[1:]...)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("vendoring dependencies: %v, output:\n%s", err, out)
+	}
+	// Vendored functions in Go 1.13 cannot contain go.mod.
+	if err := os.Remove(filepath.Join(src, "go.mod")); err != nil {
+		return fmt.Errorf("removing go.mod: %v", err)
+	}
+	return nil
+}
+
 func TestAcceptance(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
@@ -65,19 +79,23 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{gomod},
 			MustOutput: []string{"Found function with vendored dependencies including functions-framework"},
 			Path:       "/Func",
-			Setup: func(builder, src string) error {
-				// The setup function runs `go mod vendor` to vendor dependencies specified in go.mod.
-				args := strings.Fields(fmt.Sprintf("docker run --rm -v %s:/workspace -w /workspace -u root %s go mod vendor", src, builder))
-				cmd := exec.Command(args[0], args[1:]...)
-				if out, err := cmd.CombinedOutput(); err != nil {
-					return fmt.Errorf("vendoring dependencies: %v, output:\n%s", err, out)
-				}
-				// Vendored functions in Go 1.13 cannot contain go.mod.
-				if err := os.Remove(filepath.Join(src, "go.mod")); err != nil {
-					return fmt.Errorf("removing go.mod: %v", err)
-				}
-				return nil
-			},
+			Setup:      vendorSetup,
+		},
+		{
+			Name:    "function with old framework",
+			App:     "with_framework_old_version",
+			Env:     []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			MustUse: []string{gomod},
+			Path:    "/Func",
+		},
+		{
+			Name:       "vendored function with old framework",
+			App:        "with_framework_old_version",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			MustNotUse: []string{gomod},
+			MustOutput: []string{"Found function with vendored dependencies including functions-framework"},
+			Path:       "/Func",
+			Setup:      vendorSetup,
 		},
 		{
 			Name: "function at /*",

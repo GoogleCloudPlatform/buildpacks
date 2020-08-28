@@ -1,3 +1,3 @@
 module example.com/myfunc
 
-require github.com/GoogleCloudPlatform/functions-framework-go v1.0.0
+require github.com/GoogleCloudPlatform/functions-framework-go v1.1.0
