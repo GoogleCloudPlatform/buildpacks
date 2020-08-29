@@ -161,6 +161,20 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{yarn},
 			MustNotUse: []string{npm},
 		},
+		{
+			Name:       "firebase multiple functions",
+			App:        "firebase_multiple_functions",
+			RunEnv:     []string{gcloudProject, firebaseConfig, "FUNCTION_TARGET=otherTestFunction"},
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
+		},
+		{
+			Name:       "firebase multiple functions yarn",
+			App:        "firebase_multiple_functions_yarn",
+			RunEnv:     []string{gcloudProject, firebaseConfig, "FUNCTION_TARGET=otherTestFunction"},
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
+		},
 	}
 
 	for _, tc := range testCases {
