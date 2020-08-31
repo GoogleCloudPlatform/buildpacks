@@ -45,8 +45,8 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	// Create a cached layer for the GOCACHE.
-	cl := ctx.Layer("gocache", gcp.CacheLayer, gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
+	// Keep GOCACHE in Devmode for faster rebuilds.
+	cl := ctx.Layer("gocache", gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
 	if devmode.Enabled(ctx) {
 		cl.LaunchEnvironment.Override("GOCACHE", cl.Path)
 	}
