@@ -64,6 +64,7 @@ package_group(
         "//builders/gae/python39",
         "//builders/gcf/python37",
         "//builders/gcf/python38",
+        "//builders/gcf/python39",
         "//builders/gcp/base",
     ],
 )
@@ -92,6 +93,7 @@ package_group(
         "//builders/gcf/php74",
         "//builders/gcf/python37",
         "//builders/gcf/python38",
+        "//builders/gcf/python39",
         "//builders/gcf/ruby26",
         "//builders/gcf/ruby27",
     ],
