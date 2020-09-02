@@ -21,7 +21,7 @@ package main
 import (
 	"testing"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/checktools"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/checktools"
 )
 
 func TestInstalled(t *testing.T) {

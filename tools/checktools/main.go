@@ -18,7 +18,7 @@ package main
 import (
 	"log"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/checktools"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/checktools"
 )
 
 func main() {

@@ -13,7 +13,7 @@ go_library(
         "//builders:__subpackages__",
     ],
     deps = [
-        "//pkg/checktools",
+        "//internal/checktools",
         "@com_github_burntsushi_toml//:go_default_library",
     ],
 )

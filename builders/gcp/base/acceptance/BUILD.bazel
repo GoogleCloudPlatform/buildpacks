@@ -28,7 +28,7 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -51,7 +51,7 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -74,7 +74,7 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -97,7 +97,7 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -120,7 +120,7 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -143,7 +143,7 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -166,7 +166,7 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -189,7 +189,7 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -212,7 +212,7 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -235,5 +235,5 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )

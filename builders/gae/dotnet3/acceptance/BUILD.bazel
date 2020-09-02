@@ -31,5 +31,5 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )

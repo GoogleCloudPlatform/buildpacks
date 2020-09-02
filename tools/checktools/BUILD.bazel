@@ -9,7 +9,7 @@ package(
 go_binary(
     name = "main",
     srcs = ["main.go"],
-    deps = ["//pkg/checktools"],
+    deps = ["//internal/checktools"],
 )
 
 go_test(
@@ -19,5 +19,5 @@ go_test(
     embed = [":main"],
     local = 1,
     rundir = ".",
-    deps = ["//pkg/checktools"],
+    deps = ["//internal/checktools"],
 )
