@@ -40,12 +40,13 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/checktools"
 )
 
 const (
 	// cacheHitMessage is emitted by ctx.CacheHit(). Must match gcpbuildpack value.
 	cacheHitMessage = "***** CACHE HIT:"
-
 	// cacheMissMessage is emitted by ctx.CacheMiss(). Must match gcpbuildpack value.
 	cacheMissMessage = "***** CACHE MISS:"
 )
@@ -407,6 +408,13 @@ func cleanUpImage(t *testing.T, name string) {
 func CreateBuilder(t *testing.T) (string, func()) {
 	t.Helper()
 
+	if err := checktools.Installed(); err != nil {
+		t.Fatalf("Error checking tools: %v", err)
+	}
+	if err := checktools.PackVersion(); err != nil {
+		t.Fatalf("Error checking pack version: %v", err)
+	}
+
 	name := builderPrefix + randString(10)
 
 	if builderImage != "" {
@@ -465,14 +473,14 @@ func CreateBuilder(t *testing.T) (string, func()) {
 
 	outFile, errFile, cleanup := outFiles(t, name, "pack", "create-builder")
 	defer cleanup()
-	var errb bytes.Buffer
-	cmd.Stdout = outFile
+	var outb, errb bytes.Buffer
+	cmd.Stdout = io.MultiWriter(outFile, &outb) // pack emits some errors to stdout.
 	cmd.Stderr = io.MultiWriter(errFile, &errb) // pack emits buildpack output to stderr.
 
 	start := time.Now()
 	t.Logf("Creating builder (logs %s)", filepath.Dir(outFile.Name()))
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("Error creating builder: %v, logs:\n%s", err, errb.String())
+		t.Fatalf("Error creating builder: %v, logs:\nstdout: %s\nstderr:%s", err, outb.String(), errb.String())
 	}
 	t.Logf("Successfully created builder: %s (in %s)", name, time.Since(start))
 
@@ -945,6 +953,7 @@ func envSliceAsMap(t *testing.T, env []string) map[string]string {
 	return result
 }
 
+// PullImages returns the value of the -pull-images flag.
 func PullImages() bool {
 	return pullImages
 }

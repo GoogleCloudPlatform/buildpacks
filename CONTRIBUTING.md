@@ -51,7 +51,7 @@ The following command verifies that all dependencies are installed correctly
 or prints further instructions:
 
 ```bash
-bazel test --test_output=errors tools:check_dependencies_test
+bazel test --test_output=errors tools/checktools:main_test
 ```
 
 ### Builder overview
