@@ -22,5 +22,5 @@ metadataTest:
   env:
     - key: PORT
       value: 8080
-  entrypoint: ['/cnb/lifecycle/launcher']
+  entrypoint: ['/cnb/process/web']
   cmd: []

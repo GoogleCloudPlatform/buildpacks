@@ -468,7 +468,7 @@ func CreateBuilder(t *testing.T) (string, func()) {
 	}
 
 	// Pack command to create the builder.
-	args := strings.Fields(fmt.Sprintf("create-builder %s --builder-config %s --no-pull --verbose --no-color", name, config))
+	args := strings.Fields(fmt.Sprintf("create-builder %s --config %s --pull-policy never --verbose --no-color", name, config))
 	cmd := exec.Command(packBin, args...)
 
 	outFile, errFile, cleanup := outFiles(t, name, "pack", "create-builder")
@@ -589,7 +589,7 @@ func stackImagesFromConfig(path string) (string, string, error) {
 
 func buildCommand(srcDir, image, builder string, env map[string]string, cache bool) []string {
 	// Pack command to build app.
-	args := strings.Fields(fmt.Sprintf("%s build %s --builder %s --path %s --no-pull --verbose --no-color --trust-builder", packBin, image, builder, srcDir))
+	args := strings.Fields(fmt.Sprintf("%s build %s --builder %s --path %s --pull-policy never --verbose --no-color --trust-builder", packBin, image, builder, srcDir))
 	if !cache {
 		args = append(args, "--clear-cache")
 	}
