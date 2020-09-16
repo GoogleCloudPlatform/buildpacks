@@ -86,6 +86,6 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Warnf("Found incompatible dependencies: %q", result.Stdout)
 		return nil
 	}
-	return fmt.Errorf("found incompatible dependencies: %q", result.Stdout)
+	return gcp.UserErrorf("found incompatible dependencies: %q", result.Stdout)
 
 }
