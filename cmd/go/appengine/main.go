@@ -18,7 +18,6 @@ package main
 
 import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 )
@@ -37,10 +36,6 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 func entrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
-	cmd := golang.OutBin
-	if devmode.Enabled(ctx) {
-		cmd = devmode.WatchAndRun
-	}
-	ctx.Logf("No user entrypoint specified. Using the generated entrypoint %q", cmd)
-	return &appengine.Entrypoint{Type: appengine.EntrypointGenerated.String(), Command: cmd}, nil
+	ctx.Logf("No user entrypoint specified. Using the generated entrypoint %q", golang.OutBin)
+	return &appengine.Entrypoint{Type: appengine.EntrypointGenerated.String(), Command: golang.OutBin}, nil
 }
