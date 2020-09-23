@@ -40,6 +40,11 @@ func TestAcceptance(t *testing.T) {
 			Name: "function with framework",
 			App:  "with_framework",
 		},
+		// TODO(b/169244442): Re-enable when spacy supports Python 3.9.
+		// {
+		// 	Name: "function with framework and dependency bin",
+		// 	App:  "with_framework_bin_conflict",
+		// },
 		{
 			Name:   "function with runtime env var",
 			App:    "with_env_var",

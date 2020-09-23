@@ -34,6 +34,10 @@ func TestAcceptance(t *testing.T) {
 		{
 			App: "requirements_txt",
 		},
+		// TODO(b/169244442): Re-enable when spacy supports Python 3.9.
+		// {
+		// 	App: "requirements_bin_conflict",
+		// },
 		{
 			App: "pip_dependency",
 		},

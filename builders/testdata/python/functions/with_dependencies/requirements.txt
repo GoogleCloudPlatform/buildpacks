@@ -1,1 +1,2 @@
 hatch
+importlib-metadata==1.7.0  # version incorrectly resolved by pip

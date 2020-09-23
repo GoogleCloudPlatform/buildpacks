@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -42,15 +43,15 @@ func detectFn(ctx *gcp.Context) error {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	// Install Python 3.7 default dependencies for compatibility with GCF.
-	lc := ctx.Layer(layerName, gcp.LaunchLayer)
-	cvt := filepath.Join(ctx.BuildpackRoot(), "converter")
-	req := filepath.Join(cvt, "requirements.txt")
-	if err := python.InstallRequirements(ctx, lc, req); err != nil {
-		return err
+	// Always install Python 3.7 default dependencies for backwards compatibility with GCF.
+	l := ctx.Layer(layerName, gcp.LaunchLayer, gcp.BuildLayer)
+	req := filepath.Join(ctx.BuildpackRoot(), "converter", "requirements.txt")
+	if _, err := python.InstallRequirements(ctx, l, req); err != nil {
+		return fmt.Errorf("installing dependencies: %w", err)
 	}
+
 	// Set additional Python 3.7 env var.
-	lc.LaunchEnvironment.Default("ENTRY_POINT", os.Getenv(env.FunctionTarget))
+	l.LaunchEnvironment.Default("ENTRY_POINT", os.Getenv(env.FunctionTarget))
 
 	return nil
 }

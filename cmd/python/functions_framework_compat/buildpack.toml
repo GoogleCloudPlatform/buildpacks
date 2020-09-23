@@ -2,7 +2,7 @@ api = "0.2"
 
 [buildpack]
 id = "google.python.functions-framework-compat"
-version = "0.9.0"
+version = "0.9.1"
 name = "Python - Functions Framework (compatibility)"
 
 [[stacks]]

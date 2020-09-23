@@ -24,7 +24,6 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/cache",
         "//pkg/gcpbuildpack",
         "//pkg/python",
     ],

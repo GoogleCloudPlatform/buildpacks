@@ -41,6 +41,10 @@ func TestAcceptance(t *testing.T) {
 			App:  "with_framework",
 		},
 		{
+			Name: "function with framework and dependency bin",
+			App:  "with_framework_bin_conflict",
+		},
+		{
 			Name:   "function with runtime env var",
 			App:    "with_env_var",
 			RunEnv: []string{"FOO=foo"},

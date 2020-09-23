@@ -33,6 +33,8 @@ const (
 	pythonVersionKey   = "python_version"
 	dependencyHashKey  = "dependency_hash"
 	expiryTimestampKey = "expiry_timestamp"
+
+	cacheName = "pipcache"
 )
 
 // Version returns the installed version of Python.
@@ -41,8 +43,57 @@ func Version(ctx *gcp.Context) string {
 	return strings.TrimSpace(result.Stdout)
 }
 
-// CheckCache checks whether cached dependencies exist and match.
-func CheckCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
+// InstallRequirements installs dependencies from the given requirements file.
+// The function creates a layer for pip cache and returns a path to the site-packages
+// directory that is added to PYTHONPATH by lifecycle for subsequent buildpacks and att
+// launch time.
+func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, req string) (string, error) {
+	l.Cache = true // The layer always needs to be cache=true for the logic below to work.
+	cl := ctx.Layer(cacheName, gcp.CacheLayer)
+
+	// Use the `site` package to get version-specific path to site-packages.
+	result := ctx.Exec([]string{"python3", "-m", "site", "--user-site"}, gcp.WithEnv("PYTHONUSERBASE="+l.Path))
+	path := strings.TrimSpace(result.Stdout)
+	l.SharedEnvironment.PrependPath("PYTHONPATH", path)
+
+	// Check if we can use the cached-layer as is without reinstalling dependencies.
+	cached, err := checkCache(ctx, l, cache.WithFiles(req))
+	if err != nil {
+		return "", fmt.Errorf("checking cache: %w", err)
+	}
+	if cached {
+		ctx.CacheHit(l.Name)
+		return path, nil
+	}
+	ctx.CacheMiss(l.Name)
+
+	// pip install --target has several subtle issues:
+	// We cannot use --upgrade: https://github.com/pypa/pip/issues/8799.
+	// We also cannot _not_ use --upgrade, see the requirements_bin_conflict acceptance test.
+	//
+	// Instead, we use Python per-user site-packages (https://www.python.org/dev/peps/pep-0370/)
+	// to generate the version-specific path where package are installed combined with --prefix.
+	//
+	// For backwards compatibility with base image updates, we cannot use --user because the
+	// base image activates a virtual environment which is not compatible with the --user flag.
+
+	ctx.Exec([]string{
+		"python3", "-m", "pip", "install",
+		"--requirement", req,
+		"--upgrade",
+		"--upgrade-strategy", "only-if-needed",
+		"--no-warn-script-location", // bin is added at run time by lifecycle.
+		"--ignore-installed",        // Some dependencies may be in the build image but not run image.
+		"--prefix", l.Path,
+	},
+		gcp.WithEnv("PIP_CACHE_DIR="+cl.Path),
+		gcp.WithUserAttribution)
+
+	return path, nil
+}
+
+// checkCache checks whether cached dependencies exist, match, and have not expired.
+func checkCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
 	currentPythonVersion := Version(ctx)
 	opts = append(opts, cache.WithStrings(currentPythonVersion))
 	currentDependencyHash, err := cache.Hash(ctx, opts...)
@@ -51,7 +102,8 @@ func CheckCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, 
 	}
 
 	metaDependencyHash := ctx.GetMetadata(l, dependencyHashKey)
-	expired := checkCacheExpiration(ctx, l)
+	// Check cache expiration to pick up new versions of dependencies that are not pinned.
+	expired := cacheExpired(ctx, l)
 
 	// Perform install, skipping if the dependency hash matches existing metadata.
 	ctx.Debugf("Current dependency hash: %q", currentDependencyHash)
@@ -76,8 +128,8 @@ func CheckCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, 
 	return false, nil
 }
 
-// checkCacheExpiration returns true when the cache is past expiration.
-func checkCacheExpiration(ctx *gcp.Context, l *libcnb.Layer) bool {
+// cacheExpired returns true when the cache is past expiration.
+func cacheExpired(ctx *gcp.Context, l *libcnb.Layer) bool {
 	t := time.Now()
 	expiry := ctx.GetMetadata(l, expiryTimestampKey)
 	if expiry != "" {
@@ -87,27 +139,5 @@ func checkCacheExpiration(ctx *gcp.Context, l *libcnb.Layer) bool {
 			ctx.Debugf("Could not parse expiration date %q, assuming now: %v", expiry, err)
 		}
 	}
-
 	return !t.After(time.Now())
-}
-
-// InstallRequirements installs requirements.txt in the provided layer.
-func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, req string) error {
-	l.Build = true
-	l.Cache = true
-	cached, err := CheckCache(ctx, l, cache.WithFiles(req))
-	if err != nil {
-		return fmt.Errorf("checking cache: %w", err)
-	}
-	if cached {
-		ctx.CacheHit(l.Name)
-	} else {
-		ctx.CacheMiss(l.Name)
-		// pip install --target does no override existing dependencies, so remove everything.
-		// We cannot use --upgrade due to a bug in pip: https://github.com/pypa/pip/issues/8799.
-		ctx.ClearLayer(l)
-		ctx.Exec([]string{"python3", "-m", "pip", "install", "-r", req, "--target", l.Path}, gcp.WithUserAttribution)
-	}
-	l.SharedEnvironment.PrependPath("PYTHONPATH", l.Path)
-	return nil
 }

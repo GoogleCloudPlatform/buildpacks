@@ -65,7 +65,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Install functions-framework.
-	l := ctx.Layer(layerName, gcp.LaunchLayer)
+	l := ctx.Layer(layerName, gcp.LaunchLayer, gcp.BuildLayer)
 	if hasFrameworkDependency {
 		ctx.Logf("Handling functions with dependency on functions-framework.")
 		ctx.ClearLayer(l)
@@ -73,8 +73,8 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Logf("Handling functions without dependency on functions-framework.")
 		cvt := filepath.Join(ctx.BuildpackRoot(), "converter")
 		req := filepath.Join(cvt, "requirements.txt")
-		if err := python.InstallRequirements(ctx, l, req); err != nil {
-			return fmt.Errorf("installing framework: %v", err)
+		if _, err := python.InstallRequirements(ctx, l, req); err != nil {
+			return fmt.Errorf("installing framework: %w", err)
 		}
 	}
 
