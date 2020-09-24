@@ -180,7 +180,13 @@ func TestApp(t *testing.T, builder string, cfg Test) {
 	// Run Setup function if provided.
 	src := filepath.Join(testData, cfg.App)
 	if cfg.Setup != nil {
-		temp, err := ioutil.TempDir("", cfg.App)
+		root := ""
+		// Cloud Build runs in docker-in-docker mode where directories are mounted from the host daemon.
+		// Therefore, we need to put the temporary directory in the shared /workspace volume.
+		if cloudbuild {
+			root = "/workspace"
+		}
+		temp, err := ioutil.TempDir(root, cfg.App)
 		defer os.RemoveAll(temp)
 		if err != nil {
 			t.Fatalf("Error creating temporary directory: %v", err)
