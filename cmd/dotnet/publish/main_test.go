@@ -258,6 +258,14 @@ func TestDetect(t *testing.T) {
 			want: 100,
 		},
 		{
+			name: "unsupported partly matching",
+			files: map[string]string{
+				"Program.cs":   "",
+				"app.mycsproj": "",
+			},
+			want: 100,
+		},
+		{
 			name: "without project file or build env",
 			files: map[string]string{
 				"Program.cs": "",
