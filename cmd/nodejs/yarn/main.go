@@ -29,9 +29,10 @@ import (
 )
 
 const (
-	cacheTag   = "prod dependencies"
-	yarnURL    = "https://github.com/yarnpkg/yarn/releases/download/v%[1]s/yarn-v%[1]s.tar.gz"
-	versionKey = "version"
+	cacheTag    = "prod dependencies"
+	yarnVersion = "1.22.5"
+	yarnURL     = "https://github.com/yarnpkg/yarn/releases/download/v%[1]s/yarn-v%[1]s.tar.gz"
+	versionKey  = "version"
 )
 
 func main() {
@@ -115,18 +116,12 @@ func installYarn(ctx *gcp.Context) error {
 		return nil
 	}
 
-	// Use semver.io to determine the latest available version of Yarn.
-	ctx.Logf("Finding latest stable version of Yarn.")
-	result := ctx.Exec([]string{"curl", "--silent", "--get", "http://semver.io/yarn/stable"}, gcp.WithUserAttribution)
-	version := result.Stdout
-	ctx.Logf("The latest stable version of Yarn is v%s", version)
-
 	yarnLayer := "yarn_install"
 	yrl := ctx.Layer(yarnLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 
 	// Check the metadata in the cache layer to determine if we need to proceed.
 	metaVersion := ctx.GetMetadata(yrl, versionKey)
-	if version == metaVersion {
+	if yarnVersion == metaVersion {
 		ctx.CacheHit(yarnLayer)
 		ctx.Logf("Yarn cache hit, skipping installation.")
 	} else {
@@ -134,18 +129,18 @@ func installYarn(ctx *gcp.Context) error {
 		ctx.ClearLayer(yrl)
 
 		// Download and install yarn in layer.
-		ctx.Logf("Installing Yarn v%s", version)
-		archiveURL := fmt.Sprintf(yarnURL, version)
+		ctx.Logf("Installing Yarn v%s", yarnVersion)
+		archiveURL := fmt.Sprintf(yarnURL, yarnVersion)
 		command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, yrl.Path)
 		ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 	}
 
 	// Store layer flags and metadata.
-	ctx.SetMetadata(yrl, versionKey, version)
+	ctx.SetMetadata(yrl, versionKey, yarnVersion)
 	ctx.Setenv("PATH", filepath.Join(yrl.Path, "bin")+":"+os.Getenv("PATH"))
 	ctx.AddBuildpackPlanEntry(libcnb.BuildpackPlanEntry{
 		Name:     yarnLayer,
-		Metadata: map[string]interface{}{"version": version},
+		Metadata: map[string]interface{}{"version": yarnVersion},
 	})
 	return nil
 }
