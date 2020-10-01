@@ -104,7 +104,7 @@ type goReleases []struct {
 
 // latestGoVersion returns the latest version of Go
 func latestGoVersion(ctx *gcp.Context) (string, error) {
-	result := ctx.Exec([]string{"curl", "--silent", goVersionURL}, gcp.WithUserAttribution)
+	result := ctx.Exec([]string{"curl", "--fail", "--show-error", "--silent", "--location", goVersionURL}, gcp.WithUserAttribution)
 	return parseVersionJSON(result.Stdout)
 }
 

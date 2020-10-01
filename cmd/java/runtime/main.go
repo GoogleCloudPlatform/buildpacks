@@ -68,7 +68,7 @@ func buildFn(ctx *gcp.Context) error {
 		return gcp.UserErrorf("Java feature version %s does not exist at %s (status %d). You can specify the feature version with %s. See available feature runtime versions at https://api.adoptopenjdk.net/v3/info/available_releases", featureVersion, releaseURL, code, env.RuntimeVersion)
 	}
 
-	result := ctx.Exec([]string{"curl", "--silent", releaseURL}, gcp.WithUserAttribution)
+	result := ctx.Exec([]string{"curl", "--fail", "--show-error", "--silent", "--location", releaseURL}, gcp.WithUserAttribution)
 	release, err := parseVersionJSON(result.Stdout)
 	if err != nil {
 		return fmt.Errorf("parsing JSON returned by %s: %w", releaseURL, err)

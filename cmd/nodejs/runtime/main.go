@@ -105,7 +105,7 @@ func runtimeVersion(ctx *gcp.Context) (string, error) {
 	}
 	// Use package.json and semver.io to determine best-fit Node.js version.
 	ctx.Logf("Resolving Node.js version based on semver %q", versionRange)
-	result := ctx.Exec([]string{"curl", "--silent", "--get", "--data-urlencode", fmt.Sprintf("range=%s", versionRange), "http://semver.io/node/resolve"}, gcp.WithUserAttribution)
+	result := ctx.Exec([]string{"curl", "--fail", "--show-error", "--silent", "--location", "--get", "--data-urlencode", fmt.Sprintf("range=%s", versionRange), "http://semver.io/node/resolve"}, gcp.WithUserAttribution)
 	version := result.Stdout
 	ctx.Logf("Using resolved runtime version from package.json: %s", version)
 	return version, nil

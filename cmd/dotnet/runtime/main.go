@@ -145,7 +145,7 @@ func runtimeVersion(ctx *gcp.Context) (string, error) {
 	}
 
 	// Use the latest LTS version.
-	command := fmt.Sprintf("curl --silent %s | tail -n 1", versionURL)
+	command := fmt.Sprintf("curl --fail --show-error --silent --location %s | tail -n 1", versionURL)
 	result := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 	version = result.Stdout
 	ctx.Logf("Using the latest LTS version of .NET Core SDK: %s", version)

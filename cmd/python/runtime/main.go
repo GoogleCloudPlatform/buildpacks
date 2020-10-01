@@ -107,7 +107,8 @@ func runtimeVersion(ctx *gcp.Context) (string, error) {
 		}
 		return "", gcp.UserErrorf("%s exists but does not specify a version", versionFile)
 	}
-	v := ctx.Exec([]string{"curl", "--silent", versionURL}).Stdout
+	// Intentionally no user-attributed becase the URL is provided by Google.
+	v := ctx.Exec([]string{"curl", "--fail", "--show-error", "--silent", "--location", versionURL}).Stdout
 	ctx.Logf("Using latest runtime version: %s", v)
 	return v, nil
 }
