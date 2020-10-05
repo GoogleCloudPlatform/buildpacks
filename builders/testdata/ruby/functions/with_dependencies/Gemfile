@@ -13,5 +13,5 @@
 # limitations under the License.
 
 source "https://rubygems.org"
-gem "functions_framework", "~> 0.1"
-gem "grpc", "~> 1.28"
+gem "functions_framework", "~> 0.7"
+gem "grpc", "~> 1.32"
