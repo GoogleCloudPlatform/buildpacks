@@ -42,6 +42,10 @@ func TestAcceptance(t *testing.T) {
 			App:  "with_fn_source",
 			Env:  []string{"GOOGLE_FUNCTION_SOURCE=sub_dir/custom_file.rb"},
 		},
+		{
+			Name: "function using framework older than 0.7",
+			App:  "with_legacy_framework",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -75,13 +79,31 @@ func TestFailures(t *testing.T) {
 		},
 		{
 			App:       "fail_framework_missing",
-			MustMatch: "unable to execute functions-framework",
+			MustMatch: "unable to execute functions-framework-ruby",
 		},
 		{
 			Name:      "must fail due to missing source file",
 			App:       "with_dependencies",
 			Env:       []string{"GOOGLE_FUNCTION_SOURCE=missing_file.rb"},
-			MustMatch: "GOOGLE_FUNCTION_SOURCE specified file 'missing_file.rb' but it does not exist",
+			MustMatch: `GOOGLE_FUNCTION_SOURCE specified file "missing_file.rb" but it does not exist`,
+		},
+		{
+			Name:      "must fail due to incorrect signature",
+			App:       "with_dependencies",
+			Env:       []string{"GOOGLE_FUNCTION_SIGNATURE_TYPE=cloudevent"},
+			MustMatch: `failed to verify function target "testFunction" in source "app.rb": Function "testFunction" does not match type cloudevent`,
+		},
+		{
+			App:       "fail_syntax_error",
+			MustMatch: "syntax error, unexpected end-of-input",
+		},
+		{
+			App:       "fail_source_missing",
+			MustMatch: `expected source file "app.rb" does not exist`,
+		},
+		{
+			App:       "fail_target_missing",
+			MustMatch: `failed to verify function target "testFunction" in source "app.rb": Undefined function`,
 		},
 	}
 
