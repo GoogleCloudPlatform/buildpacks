@@ -30,8 +30,7 @@ import (
 const (
 	layerName                     = "functions-framework"
 	javaFunctionInvokerURLBase    = "https://maven-central.storage-download.googleapis.com/maven2/com/google/cloud/functions/invoker/java-function-invoker/"
-	defaultFrameworkVersion       = "1.0.0-beta2"
-	functionsFrameworkMetadataURL = javaFunctionInvokerURLBase + "maven-metadata.xml"
+	defaultFrameworkVersion       = "1.0.0"
 	functionsFrameworkURLTemplate = javaFunctionInvokerURLBase + "%[1]s/java-function-invoker-%[1]s.jar"
 	versionKey                    = "version"
 )
