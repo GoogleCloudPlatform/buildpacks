@@ -150,7 +150,8 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 func createMainVendored(ctx *gcp.Context, l *libcnb.Layer, fn fnInfo) error {
 	l.Build = true
 	l.BuildEnvironment.Override("GOPATH", ctx.ApplicationRoot())
-	gopathSrc := filepath.Join(ctx.ApplicationRoot(), "src")
+	gopath := ctx.ApplicationRoot()
+	gopathSrc := filepath.Join(gopath, "src")
 	ctx.MkdirAll(gopathSrc, 0755)
 	l.BuildEnvironment.Override(env.Buildable, appName+"/main")
 
@@ -161,34 +162,27 @@ func createMainVendored(ctx *gcp.Context, l *libcnb.Layer, fn fnInfo) error {
 	ctx.Rename(fn.Source, filepath.Join(gopathSrc, fn.Package))
 
 	fnVendoredPath := filepath.Join(gopathSrc, fn.Package, "vendor")
+	fnFrameworkVendoredPath := filepath.Join(fnVendoredPath, functionsFrameworkPackage)
 
-	// Move any vendored deps directly into GOPATH to prevent conflicts between the user-provided
-	// deps and any framework-provided deps. In other words, if the user has provided e.g.
-	// github.com/GoogleCloudPlatform/functions-framework-go, we want to ensure that we use the
-	// provided version only.
-	if ctx.FileExists(fnVendoredPath) {
-		ctx.Logf("Found function with vendored dependencies including functions-framework")
-		files := ctx.ReadDir(fnVendoredPath)
-		for _, file := range files {
-			ctx.Rename(filepath.Join(fnVendoredPath, file.Name()), filepath.Join(gopathSrc, file.Name()))
-		}
-	}
-
-	fnFrameworkVendoredPath := filepath.Join(gopathSrc, functionsFrameworkPackage)
 	// Use v0.0.0 as the requested version for go.mod-less vendored builds, since we don't know and
 	// can't really tell. This won't matter for Go 1.14+, since for those we'll have a go.mod file
 	// regardless.
 	requestedFrameworkVersion := "v0.0.0"
-	if !ctx.FileExists(fnFrameworkVendoredPath) {
+	if ctx.FileExists(fnFrameworkVendoredPath) {
+		ctx.Logf("Found function with vendored dependencies including functions-framework")
+		ctx.Exec([]string{"cp", "-r", fnVendoredPath, appPath}, gcp.WithUserTimingAttribution)
+	} else {
 		// If the framework isn't in the user-provided vendor directory, we need to fetch it ourselves.
 		ctx.Logf("Found function with vendored dependencies excluding functions-framework")
+		ctx.Warnf("Your vendored dependencies do not contain the functions framework (%s). If there are conflicts between the vendored packages and the dependencies of the framework, you may see encounter unexpected issues.", functionsFrameworkPackage)
+
 		// Create a temporary GOCACHE directory so GOPATH go get works.
 		cache := ctx.TempDir("", appName)
 		defer ctx.RemoveAll(cache)
 
 		// The gopath version of `go get` doesn't allow tags, but does checkout the whole repo so we
 		// can checkout the appropriate tag ourselves.
-		ctx.Exec([]string{"go", "get", functionsFrameworkPackage}, gcp.WithEnv("GOPATH="+ctx.ApplicationRoot(), "GOCACHE="+cache), gcp.WithUserAttribution)
+		ctx.Exec([]string{"go", "get", functionsFrameworkPackage}, gcp.WithEnv("GOPATH="+gopath, "GOCACHE="+cache), gcp.WithUserAttribution)
 		ctx.Exec([]string{"git", "checkout", functionsFrameworkVersion}, gcp.WithWorkDir(filepath.Join(gopathSrc, functionsFrameworkModule)), gcp.WithUserAttribution)
 		// Since the user didn't pin it, we want the current version of the framework.
 		requestedFrameworkVersion = functionsFrameworkVersion
