@@ -60,7 +60,11 @@ func PackVersion() error {
 	}
 	defer os.RemoveAll(home)
 
-	cmd := exec.Command("pack", "--version")
+	path, err := exec.LookPath("pack")
+	if err != nil {
+		return fmt.Errorf("finding pack on PATH: %w", err)
+	}
+	cmd := exec.Command(path, "--version")
 	cmd.Env = append(os.Environ(), "HOME="+home)
 	out, err := cmd.Output()
 	if err != nil {
@@ -71,8 +75,11 @@ func PackVersion() error {
 	if err != nil {
 		return fmt.Errorf("parsing semver from %s: %v", out, err)
 	}
+	// Remove the build suffix so that the error message is less confusing.
+	// For example, instead of `0.13.1+git-4134cc6.build-1135` print `0.13.1`.
+	version.Build = nil
 	if version.LT(minPackVersion) {
-		return fmt.Errorf("outdated pack binary: want %s, got %s; to update please follow https://buildpacks.io/docs/install-pack/", minPackVersion, version)
+		return fmt.Errorf("outdated pack binary (%s): want %s, got %s; to update please follow https://buildpacks.io/docs/install-pack/", path, minPackVersion, version)
 	}
 	return nil
 }
