@@ -76,9 +76,9 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput: []string{"WARNING: Found incompatible dependencies"},
 		},
 		{
-			Name:          "function with conflicting dependencies",
-			App:           "conflicting_dependencies",
-			MustNotOutput: []string{"WARNING: Found incompatible dependencies"},
+			Name: "function with conflicting dependencies",
+			App:  "conflicting_dependencies",
+			// No MustNotOutput WARNING because transitive dependencies in the test function are not pinned.
 		},
 		{
 			Name:       "allow broken dependencies",
