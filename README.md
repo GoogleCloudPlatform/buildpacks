@@ -223,7 +223,7 @@ See the [contract](https://github.com/GoogleCloudPlatform/functions-framework) f
   * **Example:** `myFunction` will cause the Functions Framework to invoke the function of the same name.
 * `GOOGLE_FUNCTION_SIGNATURE_TYPE`
   * Specifies the signature used by the function.
-  * **Example:** `http` or `event`.
+  * **Example:** `http`, `event`, or `cloudevent`.
 * `GOOGLE_FUNCTION_SOURCE`
   * Specifies the name of the directory or file containing the function source, depending on the language.
   * *(Only applicable to some languages, please see the language-specific [documentation](https://github.com/GoogleCloudPlatform/functions-framework#languages).)*
