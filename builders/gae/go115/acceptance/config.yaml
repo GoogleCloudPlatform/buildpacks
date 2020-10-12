@@ -25,5 +25,4 @@ metadataTest:
   exposedPorts: ['8080']
   entrypoint: ['/cnb/process/web']
   cmd: []
-  workdir: '/srv'
 
