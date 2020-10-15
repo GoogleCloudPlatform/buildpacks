@@ -181,7 +181,15 @@ pack build my-app --builder my-builder-image
 ### Configuration
 
 Google Cloud Buildpacks support configuration using a set of **environment
-variables** that are supported across runtimes.
+variables** that are set at build time. For example, when using `pack`:
+
+```bash
+pack build my-app --builder gcr.io/buildpacks/builder:v1 --env GOOGLE_ENTRYPOINT="gunicorn -p :8080 main:app"
+```
+
+#### Common options
+
+The following confguration options are supported across runtimes:
 
 * `GOOGLE_ENTRYPOINT`
   * Specifies the command which is run when the container is executed; equivalent to [entrypoint](https://docs.docker.com/engine/reference/builder/#entrypoint) in a Dockerfile.
