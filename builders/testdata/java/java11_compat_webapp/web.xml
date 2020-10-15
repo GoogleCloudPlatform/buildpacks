@@ -1,0 +1,13 @@
+<web-app xmlns="http://java.sun.com/xml/ns/javaee" version="2.5">
+  <!-- Define a "hello" servlet implemented by the HelloServlet class. -->
+  <servlet>
+    <servlet-name>hello</servlet-name>
+    <servlet-class>java11_compat_webapp.HelloServlet</servlet-class>
+  </servlet>
+
+  <!-- Route all URLs to the "hello" servlet. -->
+  <servlet-mapping>
+    <servlet-name>hello</servlet-name>
+    <url-pattern>/*</url-pattern>
+  </servlet-mapping>
+</web-app>

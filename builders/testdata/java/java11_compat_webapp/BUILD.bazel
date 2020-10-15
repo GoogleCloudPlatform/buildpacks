@@ -1,0 +1,23 @@
+licenses(["notice"])
+
+package(
+    default_visibility = ["//builders:__subpackages__"],
+)
+
+exports_files([
+    "appengine-web.xml",
+    "compiledjar",
+    "web.xml",
+])
+
+# TODO: fix this build rule so that it can be built dynamically.
+# To get compiledjar, use:
+#java_library(
+#    name = "helloservlet.jar",
+#    srcs = [
+#        "HelloServlet.java",
+#    ],
+#    deps = [
+#        # "@io_bazel_rules_appengine//appengine:javax.servlet.api",
+#    ],
+#)

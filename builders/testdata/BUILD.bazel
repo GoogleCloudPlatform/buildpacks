@@ -32,6 +32,9 @@ pkg_tar(
     files = {
         "//builders/testdata/java/custom_entrypoint:Main.java": "custom_entrypoint/Main.java",
         "//builders/testdata/java/custom_entrypoint:runnablejar": "single_jar/fatjar.jar",
+        "//builders/testdata/java/java11_compat_webapp:appengine-web.xml": "java11_compat_webapp/WEB-INF/appengine-web.xml",
+        "//builders/testdata/java/java11_compat_webapp:web.xml": "java11_compat_webapp/WEB-INF/web.xml",
+        "//builders/testdata/java/java11_compat_webapp:compiledjar": "java11_compat_webapp/WEB-INF/lib/helloservlet.jar",
     },
     strip_prefix = "java",
 )

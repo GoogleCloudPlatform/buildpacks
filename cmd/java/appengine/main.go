@@ -39,7 +39,10 @@ func buildFn(ctx *gcp.Context) error {
 
 func entrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
 	if ctx.FileExists("WEB-INF", "appengine-web.xml") {
-		return nil, gcp.UserErrorf("appengine-web.xml found, GAE Java compat apps are not supported on Java 11")
+		return &appengine.Entrypoint{
+			Type:    appengine.EntrypointGenerated.String(),
+			Command: "serve WEB-INF/appengine-web.xml",
+		}, nil
 	}
 
 	executable, err := java.ExecutableJar(ctx)
@@ -49,6 +52,6 @@ func entrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
 
 	return &appengine.Entrypoint{
 		Type:    appengine.EntrypointGenerated.String(),
-		Command: "/serve " + executable,
+		Command: "serve " + executable,
 	}, nil
 }

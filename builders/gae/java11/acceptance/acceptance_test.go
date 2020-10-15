@@ -44,6 +44,11 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput: []string{"WARNING"},
 		},
 		{
+			Name:          "Java11 compat web app",
+			App:           "java11_compat_webapp",
+			MustNotOutput: []string{"WARNING"},
+		},
+		{
 			Name:          "hello quarkus maven",
 			App:           "hello_quarkus_maven",
 			MustNotOutput: []string{"WARNING"},
