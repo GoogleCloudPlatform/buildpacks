@@ -43,8 +43,9 @@ var (
 type ErrorID string
 
 type builderOutput struct {
-	Error Error         `json:"error"`
-	Stats []builderStat `json:"stats"`
+	Error    Error         `json:"error"`
+	Stats    []builderStat `json:"stats"`
+	Warnings []string      `json:"warnings"`
 }
 
 // Error is a gcpbuildpack structured error.
@@ -195,6 +196,7 @@ func generateErrorID(parts ...string) ErrorID {
 	return ErrorID(strings.ToLower(result[:errorIDLength]))
 }
 
+// saveSuccessOutput saves information from the context into BUILDER_OUTPUT.
 func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 	outputDir := os.Getenv(builderOutputEnv)
 	if outputDir == "" {
@@ -204,6 +206,7 @@ func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 	var bo builderOutput
 	fname := filepath.Join(outputDir, builderOutputFilename)
 
+	// Previous buildpacks may have already written to the builder output file.
 	if ctx.FileExists(fname) {
 		content, err := ioutil.ReadFile(fname)
 		if err != nil {
@@ -222,11 +225,35 @@ func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 		DurationMs:       duration.Milliseconds(),
 		UserDurationMs:   ctx.stats.user.Milliseconds(),
 	})
+	bo.Warnings = append(bo.Warnings, ctx.warnings...)
 
-	content, err := json.Marshal(&bo)
-	if err != nil {
-		ctx.Warnf("Failed to marshal stats, skipping statistics: %v", err)
-		return
+	var content []byte
+	// Make sure the message is smaller than the maximum allowed size.
+	for {
+		var err error
+		content, err = json.Marshal(&bo)
+		if err != nil {
+			ctx.Warnf("Failed to marshal stats, skipping statistics: %v", err)
+			return
+		}
+		if len(content) <= maxMessageBytes {
+			break
+		}
+		// This is a defensive check; if there are no warnings, the message should be small enough.
+		// In either case, skip this stat.
+		if len(bo.Warnings) == 0 {
+			ctx.Warnf("The builder output is too large and there are no warnings, skipping statistics")
+			return
+		}
+		diff := len(content) - maxMessageBytes
+		last := len(bo.Warnings) - 1
+		// If the last warning is too long, only trim it. Otherwise, drop it.
+		// Also drop the last warning if it is shorter than three characters.
+		if len(bo.Warnings[last]) > diff+3 {
+			bo.Warnings[last] = bo.Warnings[last][:len(bo.Warnings[last])-diff-3] + "..."
+		} else {
+			bo.Warnings = bo.Warnings[:last]
+		}
 	}
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		ctx.Warnf("Failed to create dir %s, skipping statistics: %v", outputDir, err)

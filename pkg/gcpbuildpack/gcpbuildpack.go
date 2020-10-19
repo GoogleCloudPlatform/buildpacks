@@ -74,6 +74,7 @@ type Context struct {
 	debug           bool
 	stats           stats
 	exiter          Exiter
+	warnings        []string
 
 	// detect items
 	detectContext libcnb.DetectContext
@@ -264,6 +265,7 @@ func (ctx *Context) Debugf(format string, args ...interface{}) {
 
 // Warnf emits a structured logging line for warnings.
 func (ctx *Context) Warnf(format string, args ...interface{}) {
+	ctx.warnings = append(ctx.warnings, fmt.Sprintf(format, args...))
 	ctx.Logf("WARNING: "+format, args...)
 }
 

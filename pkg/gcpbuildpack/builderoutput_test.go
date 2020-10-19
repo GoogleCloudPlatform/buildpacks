@@ -264,26 +264,148 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 	buildpackID, buildpackVersion := "my-id", "my-version"
 
 	testCases := []struct {
-		name    string
-		initial []builderStat
-		want    []builderStat
+		name     string
+		initial  *builderOutput
+		warnings []string
+		want     builderOutput
 	}{
 		{
 			name: "no file",
-			want: []builderStat{
-				{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
+			want: builderOutput{
+				Stats: []builderStat{
+					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
+				},
+			},
+		},
+		{
+			name:     "no file warnings",
+			warnings: []string{"Test warning about a conflicting file."},
+			want: builderOutput{
+				Stats: []builderStat{
+					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
+				},
+				Warnings: []string{"Test warning about a conflicting file."},
 			},
 		},
 		{
 			name: "existing file",
-			initial: []builderStat{
-				{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
-				{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
+			initial: &builderOutput{
+				Stats: []builderStat{
+					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
+					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
+				},
 			},
-			want: []builderStat{
-				{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
-				{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
-				{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
+			want: builderOutput{
+				Stats: []builderStat{
+					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
+					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
+					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
+				},
+			},
+		},
+		{
+			name: "existing file new warnings",
+			initial: &builderOutput{
+				Stats: []builderStat{
+					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
+					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
+				},
+			},
+			warnings: []string{"Test warning about a conflicting file."},
+			want: builderOutput{
+				Stats: []builderStat{
+					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
+					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
+					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
+				},
+				Warnings: []string{"Test warning about a conflicting file."},
+			},
+		},
+		{
+			name: "existing file existing warnings",
+			initial: &builderOutput{
+				Stats: []builderStat{
+					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
+					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
+				},
+				Warnings: []string{"Test warning from a previous buildpack."},
+			},
+			warnings: []string{"Test warning about a conflicting file."},
+			want: builderOutput{
+				Stats: []builderStat{
+					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
+					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
+					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
+				},
+				Warnings: []string{
+					"Test warning from a previous buildpack.",
+					"Test warning about a conflicting file.",
+				},
+			},
+		},
+		{
+			name: "warnings trim last",
+			warnings: []string{
+				"Test warning about a conflicting file.",
+				strings.Repeat("x", maxMessageBytes),
+			},
+			want: builderOutput{
+				Stats: []builderStat{
+					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
+				},
+				Warnings: []string{
+					"Test warning about a conflicting file.",
+					strings.Repeat("x", 2709) + "...",
+				},
+			},
+		},
+		{
+			name: "warnings trim last short",
+			warnings: []string{"Test warning about a conflicting file.",
+				strings.Repeat("x", 2709-4), // Four bytes shorter than the maximum which should leave exactly one character for the second warning.
+				strings.Repeat("y", maxMessageBytes),
+			},
+			want: builderOutput{
+				Stats: []builderStat{
+					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
+				},
+				Warnings: []string{
+					"Test warning about a conflicting file.",
+					strings.Repeat("x", 2705),
+					"y...",
+				},
+			},
+		},
+		{
+			name: "warnings drop last short",
+			warnings: []string{"Test warning about a conflicting file.",
+				strings.Repeat("x", 2709-3), // Three bytes shorter than the maximum, which would leave 3 characters for the last warning so we drop it.
+				strings.Repeat("y", maxMessageBytes),
+			},
+			want: builderOutput{
+				Stats: []builderStat{
+					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
+				},
+				Warnings: []string{
+					"Test warning about a conflicting file.",
+					strings.Repeat("x", 2706),
+				},
+			},
+		},
+		{
+			name: "warnings drop last and trim",
+			warnings: []string{"Test warning about a conflicting file.",
+				strings.Repeat("x", maxMessageBytes),
+				strings.Repeat("y", maxMessageBytes),
+			},
+			want: builderOutput{
+				Stats: []builderStat{
+					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
+				},
+				Warnings: []string{
+					"Test warning about a conflicting file.",
+					strings.Repeat("x", 2709) + "...",
+				},
 			},
 		},
 	}
@@ -301,11 +423,8 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 			}()
 
 			fname := filepath.Join(tempDir, builderOutputFilename)
-			if len(tc.initial) > 0 {
-				bo := builderOutput{
-					Stats: tc.initial,
-				}
-				content, err := json.Marshal(&bo)
+			if tc.initial != nil {
+				content, err := json.Marshal(tc.initial)
 				if err != nil {
 					t.Fatalf("Failed to marshal stats: %v", err)
 				}
@@ -315,6 +434,7 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 			}
 			ctx := NewContext(libcnb.BuildpackInfo{ID: buildpackID, Version: buildpackVersion, Name: "name"})
 			ctx.stats.user = userDur
+			ctx.warnings = tc.warnings
 
 			ctx.saveSuccessOutput(dur)
 
@@ -327,8 +447,8 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 				t.Fatalf("Failed to unmarshal: %v", err)
 			}
 
-			if !reflect.DeepEqual(got.Stats, tc.want) {
-				t.Errorf("Expected stats do not match got %#v, want %#v", got.Stats, tc.want)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("Expected stats do not match got %#v, want %#v", got, tc.want)
 			}
 		})
 	}
