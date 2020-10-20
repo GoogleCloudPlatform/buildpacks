@@ -355,7 +355,7 @@ func (ctx *Context) AddWebProcess(cmd []string) {
 func (ctx *Context) HTTPStatus(url string) int {
 	res, err := http.Head(url)
 	if err != nil {
-		ctx.Exit(1, UserErrorf("making a request to %s", url))
+		ctx.Exit(1, UserErrorf("getting status code for %s: %v", url, err))
 	}
 	return res.StatusCode
 }
