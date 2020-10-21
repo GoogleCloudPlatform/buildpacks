@@ -59,7 +59,7 @@ func buildFn(ctx *gcp.Context) error {
 		return gcp.UserErrorf("go.mod exists but is not writable")
 	}
 	env := []string{"GOPATH=" + l.Path, "GO111MODULE=on"}
-	if golang.VersionMatches(ctx, ">=1.15.0") {
+	if golang.SupportsGoProxyFallback(ctx) {
 		env = append(env, "GOPROXY=https://proxy.golang.org|direct")
 		ctx.Exec([]string{"go", "mod", "download"}, gcp.WithEnv(env...), gcp.WithUserAttribution)
 	} else {
