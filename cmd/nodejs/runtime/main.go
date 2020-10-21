@@ -32,6 +32,8 @@ const (
 	nodeLayer  = "node"
 	nodeURL    = "https://nodejs.org/dist/v%[1]s/node-v%[1]s-linux-x64.tar.xz"
 	versionKey = "version"
+	// TODO(b/171347385): Remove after resolving incompatibilities in Node.js 15.
+	defaultRange = "14.x.x"
 )
 
 func main() {
@@ -102,6 +104,9 @@ func runtimeVersion(ctx *gcp.Context) (string, error) {
 			return "", fmt.Errorf("reading package.json: %w", err)
 		}
 		versionRange = pjs.Engines.Node
+	}
+	if versionRange == "" {
+		versionRange = defaultRange
 	}
 	// Use package.json and semver.io to determine best-fit Node.js version.
 	ctx.Logf("Resolving Node.js version based on semver %q", versionRange)
