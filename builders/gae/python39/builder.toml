@@ -37,4 +37,4 @@ description = "Builder for the GAE Python 3.9 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/python39/run"
 
 [lifecycle]
-  version = "0.9.1"
+  version = "0.9.2"

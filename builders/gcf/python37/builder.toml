@@ -37,4 +37,4 @@ description = "Builder for the GCF Python 3.7 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/python37/run"
 
 [lifecycle]
-  version = "0.9.1"
+  version = "0.9.2"
