@@ -29,9 +29,16 @@ func TestAcceptancePython(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:    "entrypoint from procfile",
+			Name:    "entrypoint from procfile web",
 			App:     "python/simple",
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+		},
+		{
+			Name:       "entrypoint from procfile custom",
+			App:        "python/simple",
+			Path:       "/custom",
+			Entrypoint: "custom", // Must match the non-web process in Procfile.
+			MustUse:    []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		{
 			Name:    "entrypoint from env",

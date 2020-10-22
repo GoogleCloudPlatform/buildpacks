@@ -124,10 +124,13 @@ type Test struct {
 	Path string
 	// Env specifies build environment variables as KEY=VALUE strings.
 	Env []string
-	// MustMatch specifies the expected response, if not provided "PASS" will be used.
-	MustMatch string
 	// RunEnv specifies run environment variables as KEY=VALUE strings.
 	RunEnv []string
+	// Entrypoint specifies the Docker image entrypoint to invoke.
+	// All processes are added to PATH so --entrypoint=<process> will start <process>.
+	Entrypoint string
+	// MustMatch specifies the expected response, if not provided "PASS" will be used.
+	MustMatch string
 	// SkipCacheTest skips testing of cached builds for this test case.
 	SkipCacheTest bool
 	// MustUse specifies the IDs of the buildpacks that must be used during the build.
@@ -276,7 +279,7 @@ func TestBuildFailure(t *testing.T, builder string, cfg FailureTest) {
 func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 	t.Helper()
 
-	containerID, host, port, cleanup := startContainer(t, image, cfg.RunEnv, cache)
+	containerID, host, port, cleanup := startContainer(t, image, cfg.Entrypoint, cfg.RunEnv, cache)
 	defer cleanup()
 
 	// Check that the application responds with `PASS`.
@@ -816,7 +819,7 @@ func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []strin
 
 // startContainer starts a container for the given app and exposes port 8080.
 // The function returns the containerID, the host and port at which the app is reachable and a cleanup function.
-func startContainer(t *testing.T, image string, env []string, cache bool) (string, string, int, func()) {
+func startContainer(t *testing.T, image, entrypoint string, env []string, cache bool) (string, string, int, func()) {
 	t.Helper()
 
 	// Start docker container and get its id.
@@ -826,6 +829,9 @@ func startContainer(t *testing.T, image string, env []string, cache bool) (strin
 	}
 	if cloudbuild {
 		command = append(command, "--network=cloudbuild")
+	}
+	if entrypoint != "" {
+		command = append(command, "--entrypoint="+entrypoint)
 	}
 	command = append(command, image)
 

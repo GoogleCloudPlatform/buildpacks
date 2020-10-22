@@ -48,6 +48,9 @@ const (
 	// allowable as env vars - for example, it does not allow "." even though the label
 	// specification does.
 	labelKeyRegexpStr = `\A[A-Za-z][A-Za-z0-9-_]*\z`
+
+	// WebProcess is the name of the default web process.
+	WebProcess = "web"
 )
 
 var (
@@ -152,6 +155,11 @@ func (ctx *Context) BuildpackRoot() string {
 // Debug returns whether debug mode is enabled.
 func (ctx *Context) Debug() bool {
 	return ctx.debug
+}
+
+// Processes returns the list of processes added by buildpacks.
+func (ctx *Context) Processes() []libcnb.Process {
+	return ctx.buildResult.Processes
 }
 
 // Main is the main entrypoint to a buildpack's detect and build functions.
@@ -331,19 +339,24 @@ func (ctx *Context) AddBuildpackPlanEntry(entry libcnb.BuildpackPlanEntry) {
 
 // AddWebProcess adds the given command as the web start process, overwriting any previous web start process.
 func (ctx *Context) AddWebProcess(cmd []string) {
+	ctx.AddProcess(WebProcess, cmd, true) // true causes direct execution without a shell.
+}
+
+// AddProcess adds the given command as named process, overwriting any previous process with the same name.
+func (ctx *Context) AddProcess(name string, cmd []string, direct bool) {
 	current := ctx.buildResult.Processes
 	ctx.buildResult.Processes = []libcnb.Process{}
 	for _, p := range current {
-		if p.Type == "web" {
-			ctx.Debugf("Overwriting existing web process %q.", p.Command)
+		if p.Type == name {
+			ctx.Debugf("Overwriting existing %s process %q.", name, p.Command)
 			continue // Do not add this item back to the ctx.processes; we are overwriting it.
 		}
 		ctx.buildResult.Processes = append(ctx.buildResult.Processes, p)
 	}
 	p := libcnb.Process{
-		Type:    "web",
+		Type:    name,
 		Command: cmd[0],
-		Direct:  true, // Uses Exec (no shell).
+		Direct:  direct,
 	}
 	if len(cmd) > 1 {
 		p.Arguments = cmd[1:]

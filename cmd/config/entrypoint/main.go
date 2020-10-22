@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	webRegexp = regexp.MustCompile(`(?m)^web:(.+)$`)
+	processRe = regexp.MustCompile(`(?m)^(\w+):\s*(.+)$`)
 )
 
 func main() {
@@ -44,24 +44,42 @@ func buildFn(ctx *gcp.Context) error {
 	entrypoint := os.Getenv(env.Entrypoint)
 	if entrypoint != "" {
 		ctx.Logf("Using entrypoint from %s: %s", env.Entrypoint, entrypoint)
-	} else {
-		b := ctx.ReadFile("Procfile")
-		var err error
-		entrypoint, err = procfileWebProcess(string(b))
-		if err != nil {
-			return err
-		}
-		ctx.Logf("Using entrypoint from Procfile: %s", entrypoint)
+		ctx.AddProcess(gcp.WebProcess, []string{entrypoint}, false)
+		return nil
 	}
-	// Use /bin/bash because lifecycle/launcher will assume the whole command is a single executable.
-	ctx.AddWebProcess([]string{"/bin/bash", "-c", entrypoint})
-	return nil
+	b := ctx.ReadFile("Procfile")
+	return addProcfileProcesses(ctx, string(b))
 }
 
-func procfileWebProcess(content string) (string, error) {
-	matches := webRegexp.FindStringSubmatch(content)
-	if len(matches) != 2 {
-		return "", gcp.UserErrorf("could not find web process in Procfile: %v", matches)
+// addProcfileProcesses adds all processes from the given Procfile contents.
+func addProcfileProcesses(ctx *gcp.Context, content string) error {
+	matches := processRe.FindAllStringSubmatch(content, -1)
+	if len(matches) == 0 {
+		return gcp.UserErrorf("did not find any processes in Procfile")
 	}
-	return strings.TrimSpace(matches[1]), nil
+
+	found := make(map[string]bool, len(matches))
+	for _, match := range matches {
+		// Sanity check, if this fails there is a mistake in the regex.
+		// One group for overall match and two subgroups.
+		if len(match) != 3 {
+			return gcp.InternalErrorf("invalid process match, want slice of two strings, got: %v", match)
+		}
+		name, command := match[1], strings.TrimSpace(match[2])
+		if found[name] {
+			ctx.Warnf("Skipping duplicate %s process: %s", gcp.WebProcess, command)
+			continue
+		}
+		found[name] = true
+		ctx.AddProcess(name, []string{command}, false)
+
+		if name == gcp.WebProcess {
+			ctx.Logf("Using entrypoint from Procfile: %s", command)
+		}
+	}
+
+	if !found[gcp.WebProcess] {
+		return gcp.UserErrorf("web process not found in Procfile: %#v", matches)
+	}
+	return nil
 }

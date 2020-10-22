@@ -15,110 +15,125 @@
 package main
 
 import (
+	"os"
+	"reflect"
 	"testing"
+
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/buildpacks/libcnb"
 )
 
-func TestProcfileWebProcess(t *testing.T) {
+func TestProcfileProcesses(t *testing.T) {
 	testCases := []struct {
 		name    string
 		content string
-		want    string
+		want    []libcnb.Process
 	}{
 		{
 			name:    "simple",
 			content: "web: foo bar baz",
-			want:    "foo bar baz",
+			want: []libcnb.Process{
+				{Type: "web", Command: "foo bar baz"},
+			},
 		},
 		{
 			name:    "dollar sign",
 			content: "web: foo $bar baz",
-			want:    "foo $bar baz",
+			want: []libcnb.Process{
+				{Type: "web", Command: "foo $bar baz"},
+			},
 		},
 		{
 			name:    "whitespace start",
 			content: "web:  foo bar baz",
-			want:    "foo bar baz",
+			want: []libcnb.Process{
+				{Type: "web", Command: "foo bar baz"},
+			},
 		},
 		{
 			name:    "whitespace end",
 			content: "web:  foo bar baz  ",
-			want:    "foo bar baz",
+			want: []libcnb.Process{
+				{Type: "web", Command: "foo bar baz"},
+			},
 		},
 		{
 			name:    "carriage return",
 			content: "web: foo bar baz\r\n",
-			want:    "foo bar baz",
+			want: []libcnb.Process{
+				{Type: "web", Command: "foo bar baz"},
+			},
 		},
 		{
 			name:    "no space",
 			content: "web:foo",
-			want:    "foo",
+			want: []libcnb.Process{
+				{Type: "web", Command: "foo"},
+			},
 		},
 		{
-			name: "with web in command",
+			name: "multiple with web in Command",
 			content: `dev: java --foo=web:something
 web: bar baz
 `,
-			want: "bar baz",
+			want: []libcnb.Process{
+				{Type: "dev", Command: "java --foo=web:something"},
+				{Type: "web", Command: "bar baz"},
+			},
 		},
 		{
 			name: "multiple web use first",
 			content: `web: foo
 web: bar
 `,
-			want: "foo",
+			want: []libcnb.Process{
+				{Type: "web", Command: "foo"},
+			},
 		},
 		{
 			name: "multiple web one commented-out",
 			content: `# web: foo
 web: bar
 `,
-			want: "bar",
+			want: []libcnb.Process{
+				{Type: "web", Command: "bar"},
+			},
 		},
 		{
 			name:    "trailing newline",
 			content: "web: foo bar baz\n",
-			want:    "foo bar baz",
+			want: []libcnb.Process{
+				{Type: "web", Command: "foo bar baz"},
+			},
 		},
 		{
-			name: "multiple first",
+			name: "multiple",
 			content: `web:     foo bar
 release: baz
 dev:     foo
 `,
-			want: "foo bar",
-		},
-		{
-			name: "multiple middle",
-			content: `dev:     foo
-web:     bar
-release: baz
-`,
-			want: "bar",
-		},
-		{
-			name: "multiple last",
-			content: `dev:     foo
-release: bar
-web:     baz
-`,
-			want: "baz",
+			want: []libcnb.Process{
+				{Type: "web", Command: "foo bar"},
+				{Type: "release", Command: "baz"},
+				{Type: "dev", Command: "foo"},
+			},
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := procfileWebProcess(tc.content)
+			ctx := gcp.NewContextForTests(libcnb.BuildpackInfo{}, os.TempDir())
+			err := addProcfileProcesses(ctx, tc.content)
 			if err != nil {
-				t.Fatalf("procfileWebProcess(%s) got error: %v", tc.content, err)
+				t.Fatalf("addProcfileProcesses(%s) got error: %v", tc.content, err)
 			}
-			if got != tc.want {
-				t.Errorf("procfileWebProcess(%s) = %q, want %q", tc.content, got, tc.want)
+			if got := ctx.Processes(); !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("addProcfileProcesses(%s) = %#v, want %#v", tc.content, got, tc.want)
 			}
 		})
 	}
 }
 
-func TestProcfileWebProcessError(t *testing.T) {
+func TestAddProcfileWebProcessesError(t *testing.T) {
 	testCases := []struct {
 		name    string
 		content string
@@ -142,8 +157,9 @@ func TestProcfileWebProcessError(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got, err := procfileWebProcess(tc.content); err == nil {
-				t.Errorf("procfileWebProcess(%s) = %q, want error", tc.content, got)
+			ctx := gcp.NewContextForTests(libcnb.BuildpackInfo{}, os.TempDir())
+			if err := addProcfileProcesses(ctx, tc.content); err == nil {
+				t.Errorf("procfileWebProcess(%s) = nil, want error", tc.content)
 			}
 		})
 	}
