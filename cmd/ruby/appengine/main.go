@@ -17,7 +17,6 @@
 package main
 
 import (
-	"errors"
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
@@ -65,7 +64,7 @@ func entrypoint(ctx *gcp.Context, srcDir string) (*appengine.Entrypoint, error) 
 	} else if ctx.FileExists(srcDir, rackIndicator) {
 		ep = maybeBundle(ctx, srcDir, rackCommand)
 	} else {
-		return nil, errors.New("unable to infer entrypoint, please set the `entrypoint` field in app.yaml: https://cloud.google.com/appengine/docs/standard/ruby/runtime#application_startup")
+		return nil, gcp.UserErrorf("unable to infer entrypoint, please set the `entrypoint` field in app.yaml: https://cloud.google.com/appengine/docs/standard/ruby/runtime#application_startup")
 	}
 	ctx.Logf("Using inferred entrypoint: %q", ep)
 	return &appengine.Entrypoint{
