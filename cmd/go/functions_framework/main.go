@@ -176,14 +176,24 @@ func createMainVendored(ctx *gcp.Context, l *libcnb.Layer, fn fnInfo) error {
 		ctx.Logf("Found function with vendored dependencies excluding functions-framework")
 		ctx.Warnf("Your vendored dependencies do not contain the functions framework (%s). If there are conflicts between the vendored packages and the dependencies of the framework, you may see encounter unexpected issues.", functionsFrameworkPackage)
 
-		// Create a temporary GOCACHE directory so GOPATH go get works.
-		cache := ctx.TempDir("", appName)
-		defer ctx.RemoveAll(cache)
+		// Install the functions framework. Use `go mod vendor` to do this because that allows the
+		// versions of all of the framework's dependencies to be pinned as specified in the framework's
+		// go.mod. Using `go get` -- the usual way to install packages in GOPATH -- downloads each
+		// repository at HEAD, which can lead to breakages.
+		ffDepsDir := ctx.TempDir("", "ffdeps")
+		defer ctx.RemoveAll(ffDepsDir)
+		cvt := filepath.Join(ctx.BuildpackRoot(), "converter", "without-framework")
+		cmd := []string{
+			fmt.Sprintf("cp --archive %s/. %s", cvt, ffDepsDir),
+			// The only dependency is the functions framework.
+			fmt.Sprintf("go mod edit -require %s@%s", functionsFrameworkModule, functionsFrameworkVersion),
+			// Download the FF and its dependencies at the versions specified in the FF's go.mod.
+			"go mod vendor",
+			// Copy the contents of the vendor dir into GOPATH/src.
+			fmt.Sprintf("cp --archive vendor/. %s", gopathSrc),
+		}
+		ctx.Exec([]string{"/bin/bash", "-c", strings.Join(cmd, " && ")}, gcp.WithWorkDir(ffDepsDir), gcp.WithUserAttribution)
 
-		// The gopath version of `go get` doesn't allow tags, but does checkout the whole repo so we
-		// can checkout the appropriate tag ourselves.
-		ctx.Exec([]string{"go", "get", functionsFrameworkPackage}, gcp.WithEnv("GOPATH="+gopath, "GOCACHE="+cache), gcp.WithUserAttribution)
-		ctx.Exec([]string{"git", "checkout", functionsFrameworkVersion}, gcp.WithWorkDir(filepath.Join(gopathSrc, functionsFrameworkModule)), gcp.WithUserAttribution)
 		// Since the user didn't pin it, we want the current version of the framework.
 		requestedFrameworkVersion = functionsFrameworkVersion
 	}

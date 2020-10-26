@@ -9,6 +9,8 @@ buildpack(
     name = "functions_framework",
     srcs = [
         "converter/get_package/src/main/main.go",
+        "converter/without-framework/go.mod",
+        "converter/without-framework/main.go",
     ],
     executables = [
         ":main",

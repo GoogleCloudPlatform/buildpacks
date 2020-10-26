@@ -2,7 +2,7 @@ api = "0.2"
 
 [buildpack]
 id = "google.go.functions-framework"
-version = "0.9.1"
+version = "0.9.2"
 name = "Go - Functions Framework"
 
 [[stacks]]
