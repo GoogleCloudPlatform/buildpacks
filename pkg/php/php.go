@@ -129,7 +129,7 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 		return l, nil
 	}
 
-	cached, err := checkCache(ctx, l, cache.WithStrings(composerLock))
+	cached, err := checkCache(ctx, l, cache.WithFiles(composerJSON, composerLock))
 	if err != nil {
 		return l, fmt.Errorf("checking cache: %w", err)
 	}
