@@ -16,6 +16,7 @@
 package runtime
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -24,14 +25,15 @@ import (
 )
 
 // CheckOverride checks GOOGLE_RUNTIME and opts in or opts out as appropriate. If GOOGLE_RUNTIME is not set, or invalid, no action is taken.
-func CheckOverride(ctx *gcp.Context, wantRuntime string) {
+// The functions returns a boolean indicating whether the detect function should exit.
+func CheckOverride(ctx *gcp.Context, wantRuntime string) gcp.DetectResult {
 	er := strings.ToLower(strings.TrimSpace(os.Getenv(env.Runtime)))
 	if er == "" {
-		return
+		return nil
 	}
 
 	if er != wantRuntime {
-		ctx.OptOut("Opting out: %s not set to %q.", env.Runtime, wantRuntime)
+		return gcp.OptOut(fmt.Sprintf("%s not set to %q", env.Runtime, wantRuntime))
 	}
-	ctx.OptIn("Opting in: %s set to %q.", env.Runtime, wantRuntime)
+	return gcp.OptIn(fmt.Sprintf("%s set to %q", env.Runtime, wantRuntime))
 }

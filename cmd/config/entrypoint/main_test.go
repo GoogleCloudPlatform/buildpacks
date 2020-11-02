@@ -23,6 +23,37 @@ import (
 	"github.com/buildpacks/libcnb"
 )
 
+func TestDetect(t *testing.T) {
+	testCases := []struct {
+		name  string
+		env   []string
+		files map[string]string
+		want  int
+	}{
+		{
+			name: "with GOOGLE_ENTRYPOINT",
+			env:  []string{"GOOGLE_ENTRYPOINT=my entrypoint"},
+			want: 0,
+		},
+		{
+			name: "with Procfile",
+			files: map[string]string{
+				"Procfile": "web: my entrypoint",
+			},
+			want: 0,
+		},
+		{
+			name: "without GOOGLE_ENTRYPOINT or Procfile",
+			want: 100,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			gcp.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
+		})
+	}
+}
+
 func TestProcfileProcesses(t *testing.T) {
 	testCases := []struct {
 		name    string

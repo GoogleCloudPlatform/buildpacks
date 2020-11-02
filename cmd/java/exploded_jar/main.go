@@ -26,11 +26,11 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
-	if !ctx.FileExists(java.ManifestPath) {
-		ctx.OptOut("%s not found.", java.ManifestPath)
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if ctx.FileExists(java.ManifestPath) {
+		return gcp.OptInFileFound(java.ManifestPath), nil
 	}
-	return nil
+	return gcp.OptOutFileNotFound(java.ManifestPath), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

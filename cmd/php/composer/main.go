@@ -31,11 +31,11 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !ctx.FileExists("composer.json") {
-		ctx.OptOut("composer.json not found.")
+		return gcp.OptOutFileNotFound("composer.json"), nil
 	}
-	return nil
+	return gcp.OptInFileFound("composer.json"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

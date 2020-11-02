@@ -33,20 +33,20 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !ctx.FileExists("package.json") {
-		ctx.OptOut("package.json not found.")
+		return gcp.OptOutFileNotFound("package.json"), nil
 	}
 
 	p, err := nodejs.ReadPackageJSON(ctx.ApplicationRoot())
 	if err != nil {
-		return fmt.Errorf("reading package.json: %w", err)
+		return nil, fmt.Errorf("reading package.json: %w", err)
 	}
 	if p.Scripts.GCPBuild == "" {
-		ctx.OptOut("gcp-build script not found in package.json.")
+		return gcp.OptOut("gcp-build script not found in package.json"), nil
 	}
 
-	return nil
+	return gcp.OptIn("found package.json with a gcp-build script"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

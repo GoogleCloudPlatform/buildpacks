@@ -37,16 +37,16 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !ctx.FileExists("go.mod") {
-		ctx.OptOut("go.mod file not found")
+		return gcp.OptOutFileNotFound("go.mod"), nil
 	}
 
 	if path, exists := os.LookupEnv(env.Buildable); exists {
-		ctx.OptOut("%s already defined as %q", env.Buildable, path)
+		return gcp.OptOut(fmt.Sprintf("%s already defined as %q", env.Buildable, path)), nil
 	}
 
-	return nil
+	return gcp.OptIn(fmt.Sprintf("found go.mod and %s is not set", env.Buildable)), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

@@ -28,9 +28,8 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
-	// Always opt-in.
-	return nil
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	return gcp.OptInAlways(), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

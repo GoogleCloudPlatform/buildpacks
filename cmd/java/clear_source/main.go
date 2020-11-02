@@ -17,6 +17,9 @@
 package main
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/clearsource"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
@@ -25,14 +28,22 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
-	if err := clearsource.DetectFn(ctx); err != nil {
-		return err
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if result, err := clearsource.DetectFn(ctx); result != nil || err != nil {
+		return result, err
 	}
-	if !ctx.FileExists("pom.xml") && !ctx.FileExists("build.gradle") && !ctx.FileExists("build.gradle.kts") {
-		ctx.OptOut("None of pom.xml, build.gradle, nor build.gradle.kts found. Clearing souce only supported on maven and gradle projects.")
+
+	files := []string{
+		"pom.xml",
+		"build.gradle",
+		"build.gradle.kts",
 	}
-	return nil
+	for _, f := range files {
+		if ctx.FileExists(f) {
+			return gcp.OptInFileFound(f), nil
+		}
+	}
+	return gcp.OptOut(fmt.Sprintf("none of %s found. Clearing souce only supported on maven and gradle projects.", strings.Join(files, ", "))), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

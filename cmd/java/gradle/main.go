@@ -42,11 +42,14 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
-	if !ctx.FileExists("build.gradle") && !ctx.FileExists("build.gradle.kts") {
-		ctx.OptOut("Neither build.gradle nor build.gradle.kts found.")
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if ctx.FileExists("build.gradle") {
+		return gcp.OptInFileFound("build.gradle"), nil
 	}
-	return nil
+	if ctx.FileExists("build.gradle.kts") {
+		return gcp.OptInFileFound("build.gradle.kts"), nil
+	}
+	return gcp.OptOut("neither build.gradle nor build.gradle.kts found"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

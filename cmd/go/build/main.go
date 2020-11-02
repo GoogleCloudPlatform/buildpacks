@@ -37,11 +37,11 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !ctx.HasAtLeastOne("*.go") {
-		ctx.OptOut("No *.go files found")
+		return gcp.OptOut("no .go files found"), nil
 	}
-	return nil
+	return gcp.OptIn("found .go files"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

@@ -78,8 +78,10 @@ Each buildpack has a single `main.go` file that implements a `detectFn` and
 a `buildFn`:
 
 * `detectFn` is invoked through `/bin/detect`.
-  A buildpack signals that it can participate in the build unless it explicitly
-  opts out using `ctx.OptOut` or returns an error.
+  A buildpack must choose to participate in a build by returning a
+  `detect.OptIn` or one if its variants opt-out of the build by returning
+  `detect.OptOut` or one of its variants. If needed, it may also return an
+  error. See `pkg/gcpbuildpack/detect.go` for the full list of `Opt*` functions.
 
 * `buildFn` is invoked through `/bin/build`.
   The responsibility of the build function is to create layers and populate them

@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -33,17 +34,17 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	// Fail archiving source when users want to clear source from the final container.
 	if cs, ok := os.LookupEnv(env.ClearSource); ok {
 		c, err := strconv.ParseBool(cs)
 		if err != nil {
-			ctx.Warnf("Failed to parse %q: %v", env.ClearSource, err)
+			return nil, gcp.UserErrorf("failed to parse %s to determine compatibility with this buildpack: %v", env.ClearSource, err)
 		} else if c {
-			ctx.OptOut("%s is incompatible with archive source", env.ClearSource)
+			return gcp.OptOut(fmt.Sprintf("%s is incompatible with archive source", env.ClearSource)), nil
 		}
 	}
-	return nil
+	return gcp.OptInAlways(), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

@@ -42,7 +42,7 @@ func TestDetect(t *testing.T) {
 		{
 			name: "clear source invalid",
 			env:  []string{"GOOGLE_CLEAR_SOURCE=giraffe"},
-			want: 0,
+			want: 1,
 		},
 		{
 			name: "clear source false",

@@ -15,7 +15,7 @@
 // Implements go/appengine_gopath buildpack.
 // The appengine_gopath buildpack sets $GOPATH and moves all gopath dependencies from _gopath/src/* to $GOPATH/src/*. The _gopath directory is created by go-app-stager during deployment.
 // It then checks for _gopath/main-package-path which exists if the user's main package was originally on $GOPATH/src locally.
-// If this file exists, the buiuldpack moves the main package to $GOPATH/src and sets the path to build $GOPATH/src/<path-to-main-package> where <path-to-main-package> is read from _gopath/main-package-path.
+// If this file exists, the buildpack moves the main package to $GOPATH/src and sets the path to build $GOPATH/src/<path-to-main-package> where <path-to-main-package> is read from _gopath/main-package-path.
 // If this file doesn't exist, the buildpack sets the path to build to "./..." and removes the _gopath directory because the build will fail if there's more than one go package in application root.
 package main
 
@@ -32,14 +32,14 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if ctx.FileExists("go.mod") {
-		ctx.OptOut("go.mod file found")
+		return gcp.OptOut("go.mod found"), nil
 	}
 	if !ctx.HasAtLeastOne("*.go") {
-		ctx.OptOut("No *.go files found")
+		return gcp.OptOut("no .go files found"), nil
 	}
-	return nil
+	return gcp.OptIn("go.mod file not found, assuming GOPATH build"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

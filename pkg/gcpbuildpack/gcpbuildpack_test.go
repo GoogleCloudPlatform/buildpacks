@@ -85,10 +85,10 @@ func TestDetectContextInitialized(t *testing.T) {
 	version := "my-version"
 	name := "my-name"
 	var ctx *Context
-	detect(func(c *Context) error {
+	detect(func(c *Context) (DetectResult, error) {
 		ctx = c
-		return nil
-	}, libcnb.WithExitHandler(fakeExitHandler{}))
+		return OptIn("some reason"), nil
+	}, libcnb.WithExitHandler(&fakeExitHandler{}))
 
 	if ctx.BuildpackID() != id {
 		t.Errorf("Unexpected id got=%q want=%q", ctx.BuildpackID(), id)
@@ -106,10 +106,10 @@ func TestDetectEmitsSpan(t *testing.T) {
 	defer cleanUp()
 
 	var ctx *Context
-	detect(func(c *Context) error {
+	detect(func(c *Context) (DetectResult, error) {
 		ctx = c
-		return nil
-	}, libcnb.WithExitHandler(fakeExitHandler{}))
+		return OptIn("some reason"), nil
+	}, libcnb.WithExitHandler(&fakeExitHandler{}))
 
 	if len(ctx.stats.spans) != 1 {
 		t.Fatalf("len(spans)=%d want=1", len(ctx.stats.spans))
@@ -127,6 +127,22 @@ func TestDetectEmitsSpan(t *testing.T) {
 	}
 	if got.status != StatusOk {
 		t.Errorf("Unexpected status got=%s want=%s", got.status, StatusOk)
+	}
+}
+
+func TestDetectNilResult(t *testing.T) {
+	_, cleanUp := setUpDetectEnvironment(t)
+	defer cleanUp()
+
+	handler := &fakeExitHandler{}
+	// Tests that the function does not panic when both result and error are nil.
+	detect(func(c *Context) (DetectResult, error) {
+		return nil, nil
+	}, libcnb.WithExitHandler(handler))
+
+	// Tests that the function does not panic when both result and error are nil.
+	if want, got := "detect did not return a result or an error", handler.err.Error(); !strings.HasPrefix(got, want) {
+		t.Errorf("ExitHandler.err = %q, want prefix %q", got, want)
 	}
 }
 

@@ -41,13 +41,15 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
-	runtime.CheckOverride(ctx, "go")
-
-	if !ctx.HasAtLeastOne("*.go") {
-		ctx.OptOut("No *.go files found.")
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if result := runtime.CheckOverride(ctx, "go"); result != nil {
+		return result, nil
 	}
-	return nil
+
+	if ctx.HasAtLeastOne("*.go") {
+		return gcp.OptIn("found .go files"), nil
+	}
+	return gcp.OptOut("no .go files found"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

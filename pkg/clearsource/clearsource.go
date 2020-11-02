@@ -32,24 +32,27 @@ var (
 	defaultExclusions = []string{appengine.ConfigDir}
 )
 
-// DetectFn detemines if clear source buildpacks should opt in.
-func DetectFn(ctx *gcp.Context) error {
+// DetectFn detemines if clear source buildpacks should opt out.
+// In case the buildpack shouldn't opt out, the function does not make a
+// determination and instead returns a nil result.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if devmode.Enabled(ctx) {
-		ctx.OptOut("Development mode enabled")
+		return gcp.OptOut("development mode enabled"), nil
 	}
 
 	if clearSource, ok := os.LookupEnv(env.ClearSource); ok {
 		clear, err := strconv.ParseBool(clearSource)
 		if err != nil {
-			return fmt.Errorf("parsing %q: %v", env.ClearSource, err)
+			return nil, gcp.UserErrorf("parsing %q: %v", env.ClearSource, err)
 		}
 
 		if clear {
-			return nil
+			// It is up to the buildpack to determine if clear source has any effect
+			// and if it should opt in, e.g. Java only opts in for Gradle/Maven builds.
+			return nil, nil
 		}
 	}
-	ctx.OptOut("%s not set", env.ClearSource)
-	return nil
+	return gcp.OptOutEnvNotSet(env.ClearSource), nil
 }
 
 // BuildFn clears the workspace while leaving exclusion patterns untouched.

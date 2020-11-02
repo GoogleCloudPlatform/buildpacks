@@ -12,34 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements dotnet/functions_framework buildpack.
-// The functions_framework buildpack sets up the execution environment for functions.
 package main
 
 import (
-	"os"
+	"testing"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
-const (
-	layerName = "functions-framework"
-)
-
-func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
-		return gcp.OptInEnvSet(env.FunctionTarget), nil
+func TestDetect(t *testing.T) {
+	testCases := []struct {
+		name string
+		env  []string
+		want int
+	}{
+		{
+			name: "env var set",
+			env:  []string{"GOOGLE_CLEAR_SOURCE=true"},
+			want: 0,
+		},
+		{
+			name: "GOOGLE_CLEAR_SOURCE not set",
+			want: 100,
+		},
+		{
+			name: "GOOGLE_CLEAR_SOURCE set and devmode enabled",
+			env: []string{
+				"GOOGLE_CLEAR_SOURCE=true",
+				"GOOGLE_DEVMODE=true",
+			},
+			want: 100,
+		},
 	}
-	return gcp.OptOutEnvNotSet(env.FunctionTarget), nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer(layerName, gcp.BuildLayer, gcp.LaunchLayer)
-	ctx.SetFunctionsEnvVars(l)
-	return nil
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			gcp.TestDetect(t, detectFn, tc.name, map[string]string{}, tc.env, tc.want)
+		})
+	}
 }

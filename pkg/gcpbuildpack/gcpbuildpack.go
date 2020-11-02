@@ -59,7 +59,7 @@ var (
 )
 
 // DetectFn is the callback signature for Detect()
-type DetectFn func(*Context) error
+type DetectFn func(*Context) (DetectResult, error)
 
 // BuildFn is the callback signature for Build()
 type BuildFn func(*Context) error
@@ -81,7 +81,6 @@ type Context struct {
 
 	// detect items
 	detectContext libcnb.DetectContext
-	detectResult  libcnb.DetectResult
 
 	// build items
 	buildContext libcnb.BuildContext
@@ -186,19 +185,24 @@ func (gcpd gcpdetector) Detect(ldctx libcnb.DetectContext) (libcnb.DetectResult,
 		ctx.Span(fmt.Sprintf("Buildpack Detect %s", ctx.info.ID), now, status)
 	}(time.Now())
 
-	if err := gcpd.detectFn(ctx); err != nil {
+	result, err := gcpd.detectFn(ctx)
+	if err != nil {
 		msg := fmt.Sprintf("Failed to run /bin/detect: %v", err)
 		var be *Error
 		if errors.As(err, &be) {
 			status = be.Status
-			return ctx.detectResult, be
+			return libcnb.DetectResult{}, be
 		}
-		return ctx.detectResult, Errorf(status, msg)
+		return libcnb.DetectResult{}, Errorf(status, msg)
 	}
-	ctx.detectResult.Pass = true
+	// detectFn has an interface return type so result may be nil.
+	if result == nil {
+		return libcnb.DetectResult{}, InternalErrorf("detect did not return a result or an error")
+	}
 
 	status = StatusOk
-	return ctx.detectResult, nil
+	ctx.Logf(result.Reason())
+	return result.Result(), nil
 }
 
 // detect implements the /bin/detect phase of the buildpack.
@@ -244,18 +248,6 @@ func build(buildFn BuildFn) {
 // Exit causes the buildpack to exit with the given exit code and message.
 func (ctx *Context) Exit(exitCode int, be *Error) {
 	ctx.exiter.Exit(exitCode, be)
-}
-
-// OptOut is used during the detect phase to opt out of the build process.
-func (ctx *Context) OptOut(format string, args ...interface{}) {
-	ctx.Logf(format, args...)
-	os.Exit(failStatusCode)
-}
-
-// OptIn is used during the detect phase to opt in to the build process.
-func (ctx *Context) OptIn(format string, args ...interface{}) {
-	ctx.Logf(format, args...)
-	os.Exit(passStatusCode)
 }
 
 // Logf emits a structured logging line.
@@ -308,25 +300,6 @@ func (ctx *Context) Span(label string, start time.Time, status Status) {
 		ctx.Warnf("Invalid span dropped: %v", err)
 	}
 	ctx.stats.spans = append(ctx.stats.spans, si)
-}
-
-// AddBuildPlanProvides adds a provided dependency to the build plan.
-func (ctx *Context) AddBuildPlanProvides(provides libcnb.BuildPlanProvide) {
-	if len(ctx.detectResult.Plans) == 0 {
-		ctx.detectResult.Plans = []libcnb.BuildPlan{libcnb.BuildPlan{}}
-	}
-	// TODO: Figure when/why there would be multiple plans and how that will affect this interface.
-	plan := ctx.detectResult.Plans[0]
-	plan.Provides = append(plan.Provides, provides)
-}
-
-// AddBuildPlanRequires adds a required dependency to the build plan.
-func (ctx *Context) AddBuildPlanRequires(requires libcnb.BuildPlanRequire) {
-	if len(ctx.detectResult.Plans) == 0 {
-		ctx.detectResult.Plans = []libcnb.BuildPlan{libcnb.BuildPlan{}}
-	}
-	plan := ctx.detectResult.Plans[0]
-	plan.Requires = append(plan.Requires, requires)
 }
 
 // AddBuildpackPlanEntry adds an entry to the build plan.

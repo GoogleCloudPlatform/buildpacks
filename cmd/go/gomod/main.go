@@ -27,11 +27,11 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
-	if !ctx.FileExists("go.mod") {
-		ctx.OptOut("go.mod file not found")
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if ctx.FileExists("go.mod") {
+		return gcp.OptInFileFound("go.mod"), nil
 	}
-	return nil
+	return gcp.OptOutFileNotFound("go.mod"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

@@ -40,18 +40,19 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
-	runtime.CheckOverride(ctx, "nodejs")
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if result := runtime.CheckOverride(ctx, "nodejs"); result != nil {
+		return result, nil
+	}
 
 	if ctx.FileExists("package.json") {
-		return nil
+		return gcp.OptInFileFound("package.json"), nil
 	}
 	if len(ctx.Glob("*.js")) > 0 {
-		return nil
+		return gcp.OptIn("found .js files"), nil
 	}
 
-	ctx.OptOut("package.json not found and no *.js files found")
-	return nil // OptOut() above exits early.
+	return gcp.OptOut("neither package.json nor any .js files found"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

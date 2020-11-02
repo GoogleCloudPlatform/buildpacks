@@ -40,11 +40,11 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !ctx.FileExists("requirements.txt") {
-		ctx.OptOut("requirements.txt not found")
+		return gcp.OptOutFileNotFound("requirements.txt"), nil
 	}
-	return nil
+	return gcp.OptInFileFound("requirements.txt"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

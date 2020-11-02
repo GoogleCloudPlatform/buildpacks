@@ -39,14 +39,15 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !ctx.FileExists(nodejs.YarnLock) {
-		ctx.OptOut("yarn.lock not found.")
+		return gcp.OptOutFileNotFound("yarn.lock"), nil
 	}
 	if !ctx.FileExists("package.json") {
-		ctx.OptOut("package.json not found.")
+		return gcp.OptOutFileNotFound("package.json"), nil
 	}
-	return nil
+
+	return gcp.OptIn("found yarn.lock and package.json"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

@@ -31,20 +31,20 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !ctx.FileExists("composer.json") {
-		ctx.OptOut("composer.json not found.")
+		return gcp.OptOutFileNotFound("composer.json"), nil
 	}
 
 	p, err := php.ReadComposerJSON(ctx.ApplicationRoot())
 	if err != nil {
-		return fmt.Errorf("reading composer.json: %w", err)
+		return nil, fmt.Errorf("reading composer.json: %w", err)
 	}
 	if p.Scripts.GCPBuild == "" {
-		ctx.OptOut("gcp-build script not found in composer.json.")
+		return gcp.OptOut("gcp-build script not found in composer.json"), nil
 	}
 
-	return nil
+	return gcp.OptIn("found composer.json with a gcp-build script"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

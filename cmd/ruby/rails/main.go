@@ -24,14 +24,14 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !ctx.FileExists("bin", "rails") {
-		ctx.OptOut("bin/rails not found.")
+		return gcp.OptOutFileNotFound("bin/rails"), nil
 	}
 	if !needsRailsAssetPrecompile(ctx) {
-		ctx.OptOut("Rails assets do not need precompilation.")
+		return gcp.OptOut("Rails assets do not need precompilation"), nil
 	}
-	return nil
+	return gcp.OptIn("found Rails assets to precompile"), nil
 }
 
 func needsRailsAssetPrecompile(ctx *gcp.Context) bool {

@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -33,11 +34,14 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
-	if os.Getenv(env.Entrypoint) == "" && !ctx.FileExists("Procfile") {
-		ctx.OptOut("%s not set and Procfile not found", env.Entrypoint)
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if os.Getenv(env.Entrypoint) != "" {
+		return gcp.OptInEnvSet(env.Entrypoint), nil
 	}
-	return nil
+	if ctx.FileExists("Procfile") {
+		return gcp.OptInFileFound("Procfile"), nil
+	}
+	return gcp.OptOut(fmt.Sprintf("%s not set and Procfile not found", env.Entrypoint)), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

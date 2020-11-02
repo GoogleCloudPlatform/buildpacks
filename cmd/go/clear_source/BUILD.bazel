@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
 load("//tools:defs.bzl", "buildpack")
 
 licenses(["notice"])
@@ -25,6 +25,16 @@ go_binary(
     visibility = ["//visibility:private"],
     deps = [
         "//pkg/clearsource",
+        "//pkg/env",
         "//pkg/gcpbuildpack",
     ],
+)
+
+go_test(
+    name = "main_test",
+    size = "small",
+    srcs = ["main_test.go"],
+    embed = [":main"],
+    rundir = ".",
+    deps = ["//pkg/gcpbuildpack"],
 )

@@ -8,6 +8,7 @@ go_library(
     name = "gcpbuildpack",
     srcs = [
         "builderoutput.go",
+        "detect.go",
         "env.go",
         "exec.go",
         "exit.go",
@@ -31,6 +32,7 @@ go_test(
     size = "small",
     srcs = [
         "builderoutput_test.go",
+        "detect_test.go",
         "exec_test.go",
         "gcpbuildpack_test.go",
         "span_test.go",

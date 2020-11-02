@@ -37,14 +37,17 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if os.Getenv(env.Entrypoint) != "" {
-		ctx.OptOut("custom entrypoint present")
+		return gcp.OptOut("custom entrypoint present"), nil
 	}
 	if ctx.FileExists("requirements.txt") && gunicornPresentInRequirements(ctx, "requirements.txt") {
-		ctx.OptOut("gunicorn present in requirements.txt")
+		return gcp.OptOut("gunicorn present in requirements.txt"), nil
 	}
-	return nil
+	if ctx.FileExists("requirements.txt") {
+		return gcp.OptIn("gunicorn missing from requirements.txt"), nil
+	}
+	return gcp.OptIn("requirements.txt with gunicorn not found"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

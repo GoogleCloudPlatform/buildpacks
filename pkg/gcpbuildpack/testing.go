@@ -266,17 +266,17 @@ type fakeExitHandler struct {
 }
 
 // Error is called when an error is encountered.
-func (eh fakeExitHandler) Error(err error) {
+func (eh *fakeExitHandler) Error(err error) {
 	eh.errCalled = true
 	eh.err = err
 }
 
 // Fail is called when a buildpack fails.
-func (eh fakeExitHandler) Fail() {
+func (eh *fakeExitHandler) Fail() {
 	eh.failCalled = true
 }
 
 // Pass is called when a buildpack passes.
-func (eh fakeExitHandler) Pass() {
+func (eh *fakeExitHandler) Pass() {
 	eh.passCalled = true
 }

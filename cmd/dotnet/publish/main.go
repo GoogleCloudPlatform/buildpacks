@@ -40,11 +40,15 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
-	if _, exists := os.LookupEnv(env.Buildable); !exists && len(dotnet.ProjectFiles(ctx, ".")) == 0 {
-		ctx.OptOut("no project file found and %s not set.", env.Buildable)
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if _, exists := os.LookupEnv(env.Buildable); exists {
+		return gcp.OptInEnvSet(env.Buildable), nil
 	}
-	return nil
+	if files := dotnet.ProjectFiles(ctx, "."); len(files) != 0 {
+		return gcp.OptIn("found project files: " + strings.Join(files, ", ")), nil
+	}
+
+	return gcp.OptOut(fmt.Sprintf("no project files found and %s not set", env.Buildable)), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

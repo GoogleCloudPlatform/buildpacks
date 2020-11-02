@@ -34,11 +34,11 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !ctx.FileExists("package.json") {
-		ctx.OptOut("package.json not found.")
+		return gcp.OptOutFileNotFound("package.json"), nil
 	}
-	return nil
+	return gcp.OptInFileFound("package.json"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

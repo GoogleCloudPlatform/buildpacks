@@ -42,13 +42,15 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
-	runtime.CheckOverride(ctx, "python")
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if result := runtime.CheckOverride(ctx, "python"); result != nil {
+		return result, nil
+	}
 
 	if !ctx.HasAtLeastOne("*.py") {
-		ctx.OptOut("No *.py files found.")
+		return gcp.OptOut("no .py files found"), nil
 	}
-	return nil
+	return gcp.OptIn("found .py files"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

@@ -26,12 +26,14 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
-	if ctx.FileExists("Gemfile") || ctx.FileExists("gems.rb") {
-		return nil
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if ctx.FileExists("Gemfile") {
+		return gcp.OptInFileFound("Gemfile"), nil
 	}
-	ctx.OptOut("No Gemfile nor gems.rb found.")
-	return nil
+	if ctx.FileExists("gems.rb") {
+		return gcp.OptInFileFound("gems.rb"), nil
+	}
+	return gcp.OptOut("no Gemfile or gems.rb found"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

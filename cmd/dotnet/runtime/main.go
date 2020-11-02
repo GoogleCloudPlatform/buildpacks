@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/dotnet"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -44,14 +45,19 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
-	runtime.CheckOverride(ctx, "dotnet")
-
-	if len(dotnet.ProjectFiles(ctx, ".")) == 0 && !ctx.HasAtLeastOne("*.dll") {
-		ctx.OptOut("No project files nor .dll files found.")
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if result := runtime.CheckOverride(ctx, "dotnet"); result != nil {
+		return result, nil
 	}
 
-	return nil
+	if files := dotnet.ProjectFiles(ctx, "."); len(files) != 0 {
+		return gcp.OptIn("found project files: " + strings.Join(files, ", ")), nil
+	}
+	if ctx.HasAtLeastOne("*.dll") {
+		return gcp.OptIn("found .dll files"), nil
+	}
+
+	return gcp.OptOut("no project files or .dll files found"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

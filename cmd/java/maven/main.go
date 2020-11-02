@@ -44,11 +44,14 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
-	if !ctx.FileExists("pom.xml") && !ctx.FileExists(".mvn/extensions.xml") {
-		ctx.OptOut("None of the following found: pom.xml or .mvn/extensions.xml.")
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if ctx.FileExists("pom.xml") {
+		return gcp.OptInFileFound("pom.xml"), nil
 	}
-	return nil
+	if ctx.FileExists(".mvn/extensions.xml") {
+		return gcp.OptInFileFound(".mvn/extensions.xml"), nil
+	}
+	return gcp.OptOut("none of the following found: pom.xml or .mvn/extensions.xml."), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

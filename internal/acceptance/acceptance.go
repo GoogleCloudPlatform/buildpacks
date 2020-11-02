@@ -609,7 +609,7 @@ func buildCommand(srcDir, image, builder string, env map[string]string, cache bo
 	// Pack generates an "emphemeral builder" that contains env vars, adding an env var with a random
 	// value ensures that the generated builder sha is unique and removing it after one build will
 	// not affect other builds running concurrently.
-	args = append(args, "--env", "GOOGLE_RANDOM="+randString(8))
+	args = append(args, "--env", "GOOGLE_RANDOM="+randString(8), "--env", "GOOGLE_DEBUG=true")
 	log.Printf("Running %v\n", args)
 	return args
 }
@@ -624,7 +624,7 @@ func buildApp(t *testing.T, srcDir, image, builder string, env map[string]string
 	}
 
 	start := time.Now()
-	var errb bytes.Buffer
+	var outb, errb bytes.Buffer
 
 	for attempt := 1; attempt <= attempts; attempt++ {
 
@@ -637,16 +637,17 @@ func buildApp(t *testing.T, srcDir, image, builder string, env map[string]string
 
 		bcmd := buildCommand(srcDir, image, builder, env, cache)
 		cmd := exec.Command(bcmd[0], bcmd[1:]...)
-		cmd.Stdout = outFile
-		cmd.Stderr = io.MultiWriter(errFile, &errb) // pack emits buildpack output to stderr.
+		cmd.Stdout = io.MultiWriter(outFile, &outb) // pack emits detect output to stdout.
+		cmd.Stderr = io.MultiWriter(errFile, &errb) // pack emits build output to stderr.
 
 		t.Logf("Building application %s (logs %s)", image, filepath.Dir(outFile.Name()))
 		if err := cmd.Run(); err != nil {
 			if attempt < attempts {
-				t.Logf("Error building application %s, attempt %d of %d: %v, logs:\n%s", image, attempt, attempts, err, errb.String())
+				t.Logf("Error building application %s, attempt %d of %d: %v, logs:\n%s\n%s", image, attempt, attempts, err, outb.String(), errb.String())
+				outb.Reset()
 				errb.Reset()
 			} else {
-				t.Fatalf("Error building application %s: %v, logs:\n%s", image, err, errb.String())
+				t.Fatalf("Error building application %s: %v, logs:\n%s\n%s", image, err, outb.String(), errb.String())
 			}
 		} else {
 			// The application built successfully.

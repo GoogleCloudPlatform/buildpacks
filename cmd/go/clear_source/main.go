@@ -18,6 +18,7 @@ package main
 
 import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/clearsource"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -25,8 +26,11 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func detectFn(ctx *gcp.Context) error {
-	return clearsource.DetectFn(ctx)
+func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if result, err := clearsource.DetectFn(ctx); result != nil || err != nil {
+		return result, err
+	}
+	return gcp.OptInEnvSet(env.ClearSource), nil
 }
 
 func buildFn(ctx *gcp.Context) error {
