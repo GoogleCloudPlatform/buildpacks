@@ -45,8 +45,8 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) error {
-	if !ctx.FileExists("pom.xml") {
-		ctx.OptOut("pom.xml not found.")
+	if !ctx.FileExists("pom.xml") && !ctx.FileExists(".mvn/extensions.xml") {
+		ctx.OptOut("None of the following found: pom.xml or .mvn/extensions.xml.")
 	}
 	return nil
 }

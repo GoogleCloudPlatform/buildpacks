@@ -43,6 +43,7 @@ func detectFn(ctx *gcp.Context) error {
 	runtime.CheckOverride(ctx, "java")
 
 	if ctx.FileExists("pom.xml") ||
+		ctx.FileExists(".mvn/extensions.xml") ||
 		ctx.FileExists("build.gradle") ||
 		ctx.FileExists("build.gradle.kts") ||
 		ctx.FileExists("META-INF/MANIFEST.MF") ||
@@ -50,7 +51,7 @@ func detectFn(ctx *gcp.Context) error {
 		len(ctx.Glob("*.jar")) > 0 {
 		return nil
 	}
-	ctx.OptOut("None of the following found: pom.xml, build.gradle, build.gradle.kts, META-INF/MANIFEST.MF, *.java, *.jar.")
+	ctx.OptOut("None of the following found: pom.xml, .mvn/extensions.xml, build.gradle, build.gradle.kts, META-INF/MANIFEST.MF, *.java, *.jar.")
 	return nil
 }
 
