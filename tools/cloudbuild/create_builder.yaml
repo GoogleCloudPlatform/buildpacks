@@ -40,26 +40,26 @@ steps:
     args:
       - -c
       - >
-        docker tag gcr.io/buildpacks/gcp/run:v1 gcr.io/$PROJECT_ID/gcp/run
+        docker tag gcr.io/buildpacks/gcp/run:v1 gcr.io/$PROJECT_ID/gcp/run:latest
         && docker tag gcr.io/buildpacks/gcp/run:v1 gcr.io/$PROJECT_ID/gcp/run:v1
         && docker tag gcr.io/buildpacks/gcp/run:v1 gcr.io/$PROJECT_ID/gcp/run:$COMMIT_SHA
-        && docker tag gcr.io/buildpacks/gcp/build:v1 gcr.io/$PROJECT_ID/gcp/build
+        && docker tag gcr.io/buildpacks/gcp/build:v1 gcr.io/$PROJECT_ID/gcp/build:latest
         && docker tag gcr.io/buildpacks/gcp/build:v1 gcr.io/$PROJECT_ID/gcp/build:v1
         && docker tag gcr.io/buildpacks/gcp/build:v1 gcr.io/$PROJECT_ID/gcp/build:$COMMIT_SHA
-        && docker tag gcp/base gcr.io/$PROJECT_ID/builder
+        && docker tag gcp/base gcr.io/$PROJECT_ID/builder:latest
         && docker tag gcp/base gcr.io/$PROJECT_ID/builder:v1
         && docker tag gcp/base gcr.io/$PROJECT_ID/builder:$COMMIT_SHA
 
 # Even though a :latest tag is published, it may be unstable and may be phased out eventually.
 # We recommend using the :v1 tag.
 images:
-  - 'gcr.io/$PROJECT_ID/builder'
+  - 'gcr.io/$PROJECT_ID/builder:latest'
   - 'gcr.io/$PROJECT_ID/builder:v1'
   - 'gcr.io/$PROJECT_ID/builder:$COMMIT_SHA'
-  - 'gcr.io/$PROJECT_ID/gcp/run'
+  - 'gcr.io/$PROJECT_ID/gcp/run:latest'
   - 'gcr.io/$PROJECT_ID/gcp/run:v1'
   - 'gcr.io/$PROJECT_ID/gcp/run:$COMMIT_SHA'
-  - 'gcr.io/$PROJECT_ID/gcp/build'
+  - 'gcr.io/$PROJECT_ID/gcp/build:latest'
   - 'gcr.io/$PROJECT_ID/gcp/build:v1'
   - 'gcr.io/$PROJECT_ID/gcp/build:$COMMIT_SHA'
 
