@@ -20,18 +20,24 @@ package main
 
 import (
 	"os"
-	"strconv"
-	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/blang/semver"
 )
 
 const (
-	defaultSource  = "app.rb"
-	layerName      = "functions-framework"
-	recommendMajor = 0
-	recommendMinor = 7
+	defaultSource = "app.rb"
+	layerName     = "functions-framework"
+)
+
+var (
+	// assumedVersion is the version of the framework used when we cannot determine a version.
+	assumedVersion = semver.MustParse("0.2.0")
+	// recommendedVersion is the lowest version for which a deprecation warning will be hidden.
+	recommendedVersion = semver.MustParse("0.7.0")
+	// validateTargetVersion is the minimum version that supports validating FUNCTION_TARGET.
+	validateTargetVersion = semver.MustParse("0.7.0")
 )
 
 func main() {
@@ -55,18 +61,17 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
-	major, minor, err := frameworkVersion(ctx)
+	version, err := frameworkVersion(ctx)
 	if err != nil {
 		return err
 	}
-	// Target validation is available in framework 0.7 or later.
-	if major > 0 || minor >= 7 {
+	if version.GTE(validateTargetVersion) {
 		if err := validateTarget(ctx, source); err != nil {
 			return err
 		}
 	}
-	if major < recommendMajor || major == recommendMajor && minor < recommendMinor {
-		ctx.Warnf("a deprecated version of functions_framework is in use; consider updating your Gemfile to use functions_framework %d.%d or later.", recommendMajor, recommendMinor)
+	if version.LT(recommendedVersion) {
+		ctx.Warnf("Found a deprecated version of functions-framework (%s); consider updating your Gemfile to use functions_framework %s or later.", version, recommendedVersion)
 	}
 
 	ctx.AddWebProcess([]string{"bundle", "exec", "functions-framework-ruby"})
@@ -91,28 +96,24 @@ func validateSource(ctx *gcp.Context) (string, error) {
 }
 
 // frameworkVersion validates framework installation and returns the major and minor components of its version
-func frameworkVersion(ctx *gcp.Context) (int, int, error) {
+func frameworkVersion(ctx *gcp.Context) (*semver.Version, error) {
 	cmd := []string{"bundle", "exec", "functions-framework-ruby", "--version"}
 	result, err := ctx.ExecWithErr(cmd)
 	// Failure to execute the binary at all implies the functions_framework is
 	// not properly installed in the user's Gemfile.
 	if result == nil || result.ExitCode == 127 {
-		return 0, 0, gcp.UserErrorf("unable to execute functions-framework-ruby; please ensure a recent version of the functions_framework gem is in your Gemfile")
+		return nil, gcp.UserErrorf("unable to execute functions-framework-ruby; please ensure a recent version of the functions_framework gem is in your Gemfile")
 	}
 	// Frameworks older than 0.6 do not support the --version flag, signaled by a
 	// nonzero error code. Respond with a pessimistic guess of the version.
 	if err != nil {
-		return 0, 2, nil
+		return &assumedVersion, nil
 	}
-	vsegs := strings.Split(result.Stdout, ".")
-	if len(vsegs) == 3 {
-		if major, err := strconv.Atoi(vsegs[0]); err == nil {
-			if minor, err := strconv.Atoi(vsegs[1]); err == nil {
-				return major, minor, nil
-			}
-		}
+	version, perr := semver.ParseTolerant(result.Stdout)
+	if perr != nil {
+		return nil, gcp.UserErrorf(`failed to parse %q from "functions-framework-ruby --version": %v; please ensure a recent version of the functions_framework gem is in your Gemfile`, result.Stdout, perr)
 	}
-	return 0, 0, gcp.UserErrorf("unexpected output %q from \"functions-framework-ruby --version\"; please ensure a recent version of the functions_framework gem is in your Gemfile", result.Stdout)
+	return &version, nil
 }
 
 // validateTarget validates that the given target is defined and can be executed
