@@ -290,6 +290,9 @@ variables. These environment variables should be specified without a
                   }
               }
               ```
+  * The Maven buildpack supports the [Polyglot extensions for Maven](https://github.com/takari/polyglot-maven#overview).
+    The Polyglot extensions are enabled by placing a suitably-configured
+    `.mvn/extensions.xml` in your application source directory.
 * **Node.js**
   * `NPM_CONFIG_<key>`, see [documentation](https://docs.npmjs.com/misc/config#environment-variables).
       * **Example:** `NPM_CONFIG_FLAG=value` passes `-flag=value` to `npm` commands.

@@ -89,13 +89,6 @@ func TestAcceptanceJava(t *testing.T) {
 			MustNotUse: []string{javaEntrypoint},
 		},
 		{
-			Name:       "Java gradle",
-			App:        "java/gradle_micronaut",
-			Env:        []string{"GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
-			MustUse:    []string{javaGradle, javaRuntime, entrypoint},
-			MustNotUse: []string{javaEntrypoint},
-		},
-		{
 			Name:                "Java gradle (Dev Mode)",
 			App:                 "java/gradle_micronaut",
 			Env:                 []string{"GOOGLE_DEVMODE=1"},
