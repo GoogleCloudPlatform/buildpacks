@@ -8,8 +8,6 @@ licenses(["notice"])
 buildpack(
     name = "functions_framework",
     srcs = [
-        "converter/with-framework/package.json",
-        "converter/with-framework/package-lock.json",
         "converter/without-framework/package.json",
         "converter/without-framework/package-lock.json",
     ],
@@ -34,6 +32,7 @@ go_binary(
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/nodejs",
+        "@com_github_buildpacks_libcnb//:go_default_library",
     ],
 )
 
