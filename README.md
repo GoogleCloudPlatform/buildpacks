@@ -387,10 +387,10 @@ steps:
   args: ['build', '--builder=gcr.io/buildpacks/builder', '--publish', 'gcr.io/$PROJECT_ID/sample-go:$COMMIT_SHA']
 ```
 
-There is also alpha support for invoking this builder directly [using `gcloud`](https://cloud.google.com/sdk/gcloud/reference/alpha/builds/submit):
+There is also support for invoking this builder directly [using `gcloud`](https://cloud.google.com/sdk/gcloud/reference/builds/submit):
 
 ```
-gcloud alpha builds submit --pack image=gcr.io/my-project/imageg
+gcloud builds submit --pack image=gcr.io/my-project/imageg
 ```
 
 This command will send the local source directory to Cloud Build, invoke this buildpack builder on it, and publish the resulting image to Google Container Registry.
