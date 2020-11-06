@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ace5f06977331f2293cf28f3b3f5f8cf",
+    "content-hash": "e680210862f6c43b76dbee71624aa13f",
     "packages": [
         {
             "name": "google/cloud-functions-framework",
-            "version": "v0.6.0",
+            "version": "v0.7.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/GoogleCloudPlatform/functions-framework-php.git",
-                "reference": "dba0a47f0fe0f2563d5475194108ec1bf1f4918a"
+                "reference": "86cdeadd9dbe6d1f31c9a1961221c83f0330e14a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/GoogleCloudPlatform/functions-framework-php/zipball/dba0a47f0fe0f2563d5475194108ec1bf1f4918a",
-                "reference": "dba0a47f0fe0f2563d5475194108ec1bf1f4918a",
+                "url": "https://api.github.com/repos/GoogleCloudPlatform/functions-framework-php/zipball/86cdeadd9dbe6d1f31c9a1961221c83f0330e14a",
+                "reference": "86cdeadd9dbe6d1f31c9a1961221c83f0330e14a",
                 "shasum": ""
             },
             "require": {
@@ -26,6 +26,7 @@
                 "psr/http-message": "^1.0"
             },
             "require-dev": {
+                "guzzlehttp/guzzle": "^7.2",
                 "phpunit/phpunit": "^7.0|^8.0"
             },
             "bin": [
@@ -42,7 +43,7 @@
                 "Apache-2.0"
             ],
             "description": "Google Cloud Functions Framework for PHP",
-            "time": "2020-10-14T21:02:48+00:00"
+            "time": "2020-11-06T21:00:46+00:00"
         },
         {
             "name": "guzzlehttp/psr7",
