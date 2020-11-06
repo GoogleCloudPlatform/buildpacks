@@ -11,6 +11,7 @@ builder(
         "//cmd/python/functions_framework_compat:functions_framework_compat.tgz",
         "//cmd/python/pip:pip.tgz",
         "//cmd/utils/archive_source:archive_source.tgz",
+        "//cmd/utils/label:label.tgz",
     ],
     image = "gcf/python37",
 )
