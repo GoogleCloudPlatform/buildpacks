@@ -34,7 +34,7 @@ const (
 	layerName                 = "functions-framework"
 	functionsFrameworkModule  = "github.com/GoogleCloudPlatform/functions-framework-go"
 	functionsFrameworkPackage = functionsFrameworkModule + "/funcframework"
-	functionsFrameworkVersion = "v1.1.0"
+	functionsFrameworkVersion = "v1.2.0"
 	appName                   = "serverless_function_app"
 	fnSourceDir               = "serverless_function_source_code"
 )
