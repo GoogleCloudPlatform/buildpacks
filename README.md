@@ -218,6 +218,10 @@ The following confguration options are supported across runtimes:
   * Clears source after the application is built. If the application depends on static files, such as Go templates, setting this variable may cause the application to misbehave.
   * *(Only applicable to Go apps and Java apps & functions.)*
   * **Example:** `true`, `True`, `1` will clear the source.
+* `GOOGLE_CLEAR_SOURCE_EXCLUDE`
+  * Specifies colon separated glob patterns to be excluded from being cleared when `GOOGLE_CLEAR_SOURCE` is specified.
+  * *(Only applicable to Go apps and Java apps & functions.)*
+  * **Example:** `templates`, `templates:migrations`   
 
 Certain buildpacks support other environment variables:
 

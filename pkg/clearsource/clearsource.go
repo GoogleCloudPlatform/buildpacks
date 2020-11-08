@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
@@ -64,7 +65,11 @@ func BuildFn(ctx *gcp.Context, exclusions []string) error {
 		ctx.Span("Clear source", now, gcp.StatusOk)
 	}(time.Now())
 
+	userExclusions := strings.Split(strings.TrimSpace(os.Getenv(env.ClearSourceExclude)), ":")
+
 	exclusions = append(exclusions, defaultExclusions...)
+	exclusions = append(exclusions, userExclusions...)
+
 	paths, err := pathsToRemove(ctx, ctx.ApplicationRoot(), exclusions)
 	if err != nil {
 		return fmt.Errorf("filtering paths: %w", err)
