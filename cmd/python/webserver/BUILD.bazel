@@ -7,6 +7,9 @@ licenses(["notice"])
 
 buildpack(
     name = "webserver",
+    srcs = [
+        "requirements.txt",
+    ],
     executables = [
         ":main",
     ],

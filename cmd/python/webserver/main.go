@@ -18,6 +18,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -54,7 +55,12 @@ func buildFn(ctx *gcp.Context) error {
 	l := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 
 	ctx.Logf("Installing gunicorn.")
-	ctx.Exec([]string{"python3", "-m", "pip", "install", "--upgrade", "gunicorn", "-t", l.Path}, gcp.WithUserAttribution)
+	ctx.Exec([]string{
+		"python3", "-m", "pip", "install",
+		"--upgrade",
+		"--requirement", filepath.Join(ctx.BuildpackRoot(), "requirements.txt"),
+		"--target", l.Path},
+		gcp.WithUserAttribution)
 
 	l.SharedEnvironment.PrependPath("PYTHONPATH", l.Path)
 	return nil
