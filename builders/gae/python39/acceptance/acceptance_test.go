@@ -39,6 +39,9 @@ func TestAcceptance(t *testing.T) {
 		// 	App: "requirements_bin_conflict",
 		// },
 		{
+			App: "requirements_builtin_conflict",
+		},
+		{
 			App: "pip_dependency",
 		},
 		{

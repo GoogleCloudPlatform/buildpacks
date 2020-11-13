@@ -23,6 +23,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
 )
 
 const (
@@ -46,23 +47,18 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return gcp.OptOut("gunicorn present in requirements.txt"), nil
 	}
 	if ctx.FileExists("requirements.txt") {
-		return gcp.OptIn("gunicorn missing from requirements.txt"), nil
+		return gcp.OptIn("gunicorn missing from requirements.txt", gcp.WithBuildPlans(python.RequirementsProvidesPlan)), nil
 	}
-	return gcp.OptIn("requirements.txt with gunicorn not found"), nil
+	return gcp.OptIn("requirements.txt with gunicorn not found", gcp.WithBuildPlans(python.RequirementsProvidesPlan)), nil
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	l := ctx.Layer(layerName, gcp.BuildLayer)
 
-	ctx.Logf("Installing gunicorn.")
-	ctx.Exec([]string{
-		"python3", "-m", "pip", "install",
-		"--upgrade",
-		"--requirement", filepath.Join(ctx.BuildpackRoot(), "requirements.txt"),
-		"--target", l.Path},
-		gcp.WithUserAttribution)
-
-	l.SharedEnvironment.PrependPath("PYTHONPATH", l.Path)
+	// The pip install is performed by the pip buildpack; see python.InstallRequirements.
+	ctx.Debugf("Adding webserver requirements.txt to the list of requirements files to install.")
+	r := filepath.Join(ctx.BuildpackRoot(), "requirements.txt")
+	l.BuildEnvironment.Append(python.RequirementsFilesEnv, string(os.PathListSeparator)+r)
 	return nil
 }
 

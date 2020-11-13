@@ -17,7 +17,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -42,18 +41,17 @@ func main() {
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
-		return gcp.OptInEnvSet(env.FunctionTarget), nil
+		return gcp.OptInEnvSet(env.FunctionTarget, gcp.WithBuildPlans(python.RequirementsProvidesPlan)), nil
 	}
 	return gcp.OptOutEnvNotSet(env.FunctionTarget), nil
 }
 
 func buildFn(ctx *gcp.Context) error {
-
 	if err := validateSource(ctx); err != nil {
 		return err
 	}
 
-	// Check for syntax errors.
+	// Check for syntax errors to prevent failures that would only manifest at run time.
 	ctx.Exec([]string{"python3", "-m", "compileall", "-f", "-q", "."}, gcp.WithStdoutTail, gcp.WithUserAttribution)
 
 	// Determine if the function has dependency on functions-framework.
@@ -63,18 +61,18 @@ func buildFn(ctx *gcp.Context) error {
 		hasFrameworkDependency = containsFF(string(content))
 	}
 
-	// Install functions-framework.
+	// Install functions-framework if necessary.
 	l := ctx.Layer(layerName, gcp.LaunchLayer, gcp.BuildLayer)
 	if hasFrameworkDependency {
 		ctx.Logf("Handling functions with dependency on functions-framework.")
 		ctx.ClearLayer(l)
 	} else {
 		ctx.Logf("Handling functions without dependency on functions-framework.")
-		cvt := filepath.Join(ctx.BuildpackRoot(), "converter")
-		req := filepath.Join(cvt, "requirements.txt")
-		if _, err := python.InstallRequirements(ctx, l, req); err != nil {
-			return fmt.Errorf("installing framework: %w", err)
-		}
+
+		// The pip install is performed by the pip buildpack; see python.InstallRequirements.
+		ctx.Debugf("Adding functions-framework requirements.txt to the list of requirements files to install.")
+		r := filepath.Join(ctx.BuildpackRoot(), "converter", "requirements.txt")
+		l.BuildEnvironment.Append(python.RequirementsFilesEnv, string(os.PathListSeparator)+r)
 	}
 
 	ctx.SetFunctionsEnvVars(l)
@@ -90,7 +88,7 @@ func validateSource(ctx *gcp.Context) error {
 			return gcp.UserErrorf("missing main.py and %s not specified. Either create the function in main.py or specify %s to point to the file that contains the function", env.FunctionSource, env.FunctionSource)
 		}
 	} else if !ctx.FileExists(fnSource) {
-		return gcp.UserErrorf("%s specified file '%s' but it does not exist", env.FunctionSource, fnSource)
+		return gcp.UserErrorf("%s specified file %q but it does not exist", env.FunctionSource, fnSource)
 	}
 	return nil
 }

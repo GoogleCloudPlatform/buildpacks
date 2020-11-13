@@ -17,10 +17,13 @@ package python
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
 )
@@ -35,6 +38,21 @@ const (
 	expiryTimestampKey = "expiry_timestamp"
 
 	cacheName = "pipcache"
+
+	// RequirementsFilesEnv is an environment variable containg os-path-separator-separated list of paths to pip requirements files.
+	// The requirements files are processed from left to right, with requirements from the next overriding any conflicts from the previous.
+	RequirementsFilesEnv = "GOOGLE_INTERNAL_REQUIREMENTS_FILES"
+)
+
+var (
+	// RequirementsProvides denotes that the buildpack provides requirements.txt in the environment.
+	RequirementsProvides = []libcnb.BuildPlanProvide{{Name: "requirements.txt"}}
+	// RequirementsRequires denotes that the buildpack consumes requirements.txt from the environment.
+	RequirementsRequires = []libcnb.BuildPlanRequire{{Name: "requirements.txt"}}
+	// RequirementsProvidesPlan is a build plan returned by buildpacks that provide requirements.txt.
+	RequirementsProvidesPlan = libcnb.BuildPlan{Provides: RequirementsProvides}
+	// RequirementsProvidesRequiresPlan is a build plan returned by buildpacks that consume requirements.txt.
+	RequirementsProvidesRequiresPlan = libcnb.BuildPlan{Provides: RequirementsProvides, Requires: RequirementsRequires}
 )
 
 // Version returns the installed version of Python.
@@ -43,53 +61,88 @@ func Version(ctx *gcp.Context) string {
 	return strings.TrimSpace(result.Stdout)
 }
 
-// InstallRequirements installs dependencies from the given requirements file.
-// The function creates a layer for pip cache and returns a path to the site-packages
-// directory that is added to PYTHONPATH by lifecycle for subsequent buildpacks and att
-// launch time.
-func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, req string) (string, error) {
-	l.Cache = true // The layer always needs to be cache=true for the logic below to work.
-	cl := ctx.Layer(cacheName, gcp.CacheLayer)
-
-	// Use the `site` package to get version-specific path to site-packages.
-	result := ctx.Exec([]string{"python3", "-m", "site", "--user-site"}, gcp.WithEnv("PYTHONUSERBASE="+l.Path))
-	path := strings.TrimSpace(result.Stdout)
-	l.SharedEnvironment.PrependPath("PYTHONPATH", path)
+// InstallRequirements installs dependencies from the given requirements files in a virtual env.
+// It will install the files in order in which they are specified, so that dependencies specified
+// in later requirements files can override later ones.
+//
+// This function is responsible for installing requirements files for all buildpacks that require
+// it. The buildpacks used to install requirements into separate layers and add the layer path to
+// PYTHONPATH. However, this caused issues with some packages as it would allow users to
+// accidentally override some builtin stdlib modules, e.g. typing, enum, etc., and cause both
+// build-time and run-time failures.
+func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
+	// Defensive check, this should not happen in practice.
+	if len(reqs) == 0 {
+		ctx.Debugf("No requirements.txt to install, clearing layer.")
+		ctx.ClearLayer(l)
+		return nil
+	}
 
 	// Check if we can use the cached-layer as is without reinstalling dependencies.
-	cached, err := checkCache(ctx, l, cache.WithFiles(req))
+	cached, err := checkCache(ctx, l, cache.WithFiles(reqs...))
 	if err != nil {
-		return "", fmt.Errorf("checking cache: %w", err)
+		return fmt.Errorf("checking cache: %w", err)
 	}
 	if cached {
 		ctx.CacheHit(l.Name)
-		return path, nil
+		return nil
 	}
 	ctx.CacheMiss(l.Name)
 
+	// The cache layer is used as PIP_CACHE_DIR to keep the cache directory across builds in case
+	// we do not get a full cache hit.
+	cl := ctx.Layer(cacheName, gcp.CacheLayer)
+
+	// History of the logic below:
+	//
 	// pip install --target has several subtle issues:
 	// We cannot use --upgrade: https://github.com/pypa/pip/issues/8799.
 	// We also cannot _not_ use --upgrade, see the requirements_bin_conflict acceptance test.
 	//
 	// Instead, we use Python per-user site-packages (https://www.python.org/dev/peps/pep-0370/)
-	// to generate the version-specific path where package are installed combined with --prefix.
+	// where we can and virtualenv where we cannot.
 	//
-	// For backwards compatibility with base image updates, we cannot use --user because the
-	// base image activates a virtual environment which is not compatible with the --user flag.
+	// Each requirements file is installed separately to allow the requirements.txt files
+	// to specify conflicting dependencies (e.g. functions-framework pins package A at 1.2.0 but
+	// the user's requirements.txt file pins A at 1.4.0. The user should be able to override
+	// the functions-framework-pinned package).
 
-	ctx.Exec([]string{
-		"python3", "-m", "pip", "install",
-		"--requirement", req,
-		"--upgrade",
-		"--upgrade-strategy", "only-if-needed",
-		"--no-warn-script-location", // bin is added at run time by lifecycle.
-		"--ignore-installed",        // Some dependencies may be in the build image but not run image.
-		"--prefix", l.Path,
-	},
-		gcp.WithEnv("PIP_CACHE_DIR="+cl.Path),
-		gcp.WithUserAttribution)
+	// HACK: For backwards compatibility with Python 3.7 and 3.8 on App Engine and Cloud Functions.
+	virtualEnv := requiresVirtualEnv()
+	if virtualEnv {
+		// --without-pip and --system-site-packages allow us to use `pip` and other packages from the
+		// build image and avoid reinstalling them, saving about 10MB.
+		// TODO(b/140775593): Use virtualenv pip after FTL is no longer used and remove from build image.
+		ctx.Exec([]string{"python3", "-m", "venv", "--without-pip", "--system-site-packages", l.Path})
+		// The VIRTUAL_ENV variable is usually set by the virtual environment's activate script.
+		l.SharedEnvironment.Override("VIRTUAL_ENV", l.Path)
+		// Use the virtual environment python3 for all subsequent commands in this buildpack, for
+		// subsequent buildpacks, l.Path/bin will be added by lifecycle.
+		ctx.Setenv("PATH", filepath.Join(l.Path, "bin")+string(os.PathListSeparator)+os.Getenv("PATH"))
+		ctx.Setenv("VIRTUAL_ENV", l.Path)
+	} else {
+		l.SharedEnvironment.Default("PYTHONUSERBASE", l.Path)
+		ctx.Setenv("PYTHONUSERBASE", l.Path)
+	}
 
-	return path, nil
+	for _, req := range reqs {
+		cmd := []string{
+			"python3", "-m", "pip", "install",
+			"--requirement", req,
+			"--upgrade",
+			"--upgrade-strategy", "only-if-needed",
+			"--no-warn-script-location", // bin is added at run time by lifecycle.
+			"--no-warn-conflicts",       // Needed for python37 which allowed users to override dependencies. For newer versions, we do a separate `pip check`.
+			"--force-reinstall",         // Some dependencies may be in the build image but not run image. Later requirements.txt should override earlier.
+		}
+		if !virtualEnv {
+			cmd = append(cmd, "--user") // Install into user site-packages directory.
+		}
+		ctx.Exec(cmd,
+			gcp.WithEnv("PIP_CACHE_DIR="+cl.Path),
+			gcp.WithUserAttribution)
+	}
+	return nil
 }
 
 // checkCache checks whether cached dependencies exist, match, and have not expired.
@@ -140,4 +193,15 @@ func cacheExpired(ctx *gcp.Context, l *libcnb.Layer) bool {
 		}
 	}
 	return !t.After(time.Now())
+}
+
+// requiresVirtualEnv returns true for runtimes that require a virtual environment to be created before pip install.
+// We cannot use Python per-user site-packages (https://www.python.org/dev/peps/pep-0370/),
+// because Python 3.7 and 3.8 on App Engine and Cloud Functions have a virtualenv set up
+// that disables user site-packages. The base images include a virtual environment pointing to
+// a directory that is not writeable in the buildpacks world (/env). In order to keep
+// compatiblity with base image updates, we replace the virtual environment with a writeable one.
+func requiresVirtualEnv() bool {
+	runtime := os.Getenv(env.Runtime)
+	return runtime == "python37" || runtime == "python38"
 }

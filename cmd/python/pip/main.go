@@ -19,10 +19,12 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
+	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -41,22 +43,34 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !ctx.FileExists("requirements.txt") {
-		return gcp.OptOutFileNotFound("requirements.txt"), nil
+	plan := libcnb.BuildPlan{Requires: python.RequirementsRequires}
+	// If a requirement.txt file exists, the buildpack needs to provide the Requirements dependency.
+	// If the dependency is not provided by any buildpacks, lifecycle will exclude the pip
+	// buildpack from the build.
+	if ctx.FileExists("requirements.txt") {
+		plan.Provides = python.RequirementsProvides
 	}
-	return gcp.OptInFileFound("requirements.txt"), nil
+	return gcp.OptInAlways(gcp.WithBuildPlans(plan)), nil
 }
 
 func buildFn(ctx *gcp.Context) error {
+	// Remove leading and trailing : because otherwise SplitList will add empty strings.
+	reqs := filepath.SplitList(strings.Trim(os.Getenv(python.RequirementsFilesEnv), string(os.PathListSeparator)))
+
+	// The workspace requirements.txt file should be installed last.
+	if ctx.FileExists("requirements.txt") {
+		reqs = append(reqs, "requirements.txt")
+	}
+
 	l := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 
-	path, err := python.InstallRequirements(ctx, l, "requirements.txt")
+	err := python.InstallRequirements(ctx, l, reqs...)
 	if err != nil {
 		return fmt.Errorf("installing dependencies: %w", err)
 	}
 
 	ctx.Logf("Checking for incompatible dependencies.")
-	result, err := ctx.ExecWithErr([]string{"python3", "-m", "pip", "check"}, gcp.WithEnv("PYTHONPATH="+path+":"+os.Getenv("PYTHONPATH")), gcp.WithUserAttribution)
+	result, err := ctx.ExecWithErr([]string{"python3", "-m", "pip", "check"}, gcp.WithUserAttribution)
 	if result == nil {
 		return fmt.Errorf("pip check: %w", err)
 	}

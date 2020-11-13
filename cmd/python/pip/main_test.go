@@ -27,13 +27,6 @@ func TestDetect(t *testing.T) {
 		want  int
 	}{
 		{
-			name: "no py files",
-			files: map[string]string{
-				"index.js": "",
-			},
-			want: 100,
-		},
-		{
 			name: "requirements file",
 			files: map[string]string{
 				"main.py":          "",
@@ -42,11 +35,12 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
+			// Opt-in with no requirements in case there's a build plan.
 			name: "no requirements",
 			files: map[string]string{
 				"main.py": "",
 			},
-			want: 100,
+			want: 0,
 		},
 	}
 	for _, tc := range testCases {

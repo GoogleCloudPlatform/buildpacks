@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements python/functions_framework buildpack.
-// The functions_framework buildpack converts a functionn into an application and sets up the execution environment.
+// Implements python/functions_framework_compat buildpack.
+// The functions_framework buildpack installs dependencies that were included with the python37 runtime.
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -36,20 +35,20 @@ func main() {
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
-		return gcp.OptInEnvSet(env.FunctionTarget), nil
+		return gcp.OptInEnvSet(env.FunctionTarget, gcp.WithBuildPlans(python.RequirementsProvidesPlan)), nil
 	}
 	return gcp.OptOutEnvNotSet(env.FunctionTarget), nil
 }
 
 func buildFn(ctx *gcp.Context) error {
-	// Always install Python 3.7 default dependencies for backwards compatibility with GCF.
 	l := ctx.Layer(layerName, gcp.LaunchLayer, gcp.BuildLayer)
-	req := filepath.Join(ctx.BuildpackRoot(), "converter", "requirements.txt")
-	if _, err := python.InstallRequirements(ctx, l, req); err != nil {
-		return fmt.Errorf("installing dependencies: %w", err)
-	}
 
-	// Set additional Python 3.7 env var.
+	// The pip install is performed by the pip buildpack; see python.InstallRequirements.
+	ctx.Debugf("Adding functions-framework requirements.txt to the list of requirements files to install.")
+	r := filepath.Join(ctx.BuildpackRoot(), "converter", "requirements.txt")
+	l.BuildEnvironment.Append(python.RequirementsFilesEnv, string(os.PathListSeparator)+r)
+
+	// Set additional Python 3.7 env var for backwards compatibility.
 	l.LaunchEnvironment.Default("ENTRY_POINT", os.Getenv(env.FunctionTarget))
 
 	return nil

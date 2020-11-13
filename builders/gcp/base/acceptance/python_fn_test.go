@@ -33,16 +33,16 @@ func TestAcceptancePythonFn(t *testing.T) {
 			App:        "without_framework",
 			Path:       "/testFunction",
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction"},
-			MustUse:    []string{pythonRuntime, pythonFF},
-			MustNotUse: []string{pythonPIP, entrypoint},
+			MustUse:    []string{pythonRuntime, pythonFF, pythonPIP},
+			MustNotUse: []string{entrypoint},
 		},
 		{
 			Name:       "function with custom source file",
 			App:        "custom_file",
 			Path:       "/testFunction",
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_FUNCTION_SOURCE=func.py"},
-			MustUse:    []string{pythonRuntime, pythonFF},
-			MustNotUse: []string{pythonPIP, entrypoint},
+			MustUse:    []string{pythonRuntime, pythonFF, pythonPIP},
+			MustNotUse: []string{entrypoint},
 		},
 		{
 			Name:       "function with dependencies",
@@ -66,8 +66,8 @@ func TestAcceptancePythonFn(t *testing.T) {
 			Path:       "/testFunction",
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction"},
 			RunEnv:     []string{"FOO=foo"},
-			MustUse:    []string{pythonRuntime, pythonFF},
-			MustNotUse: []string{pythonPIP, entrypoint},
+			MustUse:    []string{pythonRuntime, pythonFF, pythonPIP},
+			MustNotUse: []string{entrypoint},
 		},
 	}
 	for _, tc := range testCases {
@@ -89,7 +89,7 @@ func TestFailuresPythonFn(t *testing.T) {
 			Name:      "missing framework file",
 			App:       "with_framework",
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_FUNCTION_SOURCE=func.py"},
-			MustMatch: "GOOGLE_FUNCTION_SOURCE specified file 'func.py' but it does not exist",
+			MustMatch: `GOOGLE_FUNCTION_SOURCE specified file "func.py" but it does not exist`,
 		},
 		{
 			Name:      "missing main.py",

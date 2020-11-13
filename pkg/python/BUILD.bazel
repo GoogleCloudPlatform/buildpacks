@@ -13,6 +13,7 @@ go_library(
     ],
     deps = [
         "//pkg/cache",
+        "//pkg/env",
         "//pkg/gcpbuildpack",
         "@com_github_buildpacks_libcnb//:go_default_library",
     ],
