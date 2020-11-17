@@ -134,6 +134,7 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 			"--no-warn-script-location", // bin is added at run time by lifecycle.
 			"--no-warn-conflicts",       // Needed for python37 which allowed users to override dependencies. For newer versions, we do a separate `pip check`.
 			"--force-reinstall",         // Some dependencies may be in the build image but not run image. Later requirements.txt should override earlier.
+			"--no-compile",              // Prevent default timestamp-based bytecode compilation. Deterministic pycs are generated in a second step below.
 		}
 		if !virtualEnv {
 			cmd = append(cmd, "--user") // Install into user site-packages directory.
@@ -142,6 +143,27 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 			gcp.WithEnv("PIP_CACHE_DIR="+cl.Path),
 			gcp.WithUserAttribution)
 	}
+
+	// Generate deterministic hash-based pycs (https://www.python.org/dev/peps/pep-0552/).
+	// Use the unchecked version to skip hash validation at run time (for faster startup).
+	result, cerr := ctx.ExecWithErr([]string{
+		"python3", "-m", "compileall",
+		"--invalidation-mode", "unchecked-hash",
+		"-qq", // Do not print any message (matches `pip install` behavior).
+		l.Path,
+	},
+		gcp.WithUserAttribution)
+	if cerr != nil {
+		if result != nil {
+			if result.ExitCode == 1 {
+				// Ignore file compilation errors (matches `pip install` behavior).
+				return nil
+			}
+			return fmt.Errorf("compileall: %s", result.Combined)
+		}
+		return fmt.Errorf("compileall: %v", cerr)
+	}
+
 	return nil
 }
 
