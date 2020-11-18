@@ -37,4 +37,4 @@ description = "Builder for the GAE .NET 3 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/dotnet3/run"
 
 [lifecycle]
-  version = "0.9.2"
+  version = "0.9.3"
