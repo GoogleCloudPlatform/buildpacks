@@ -65,7 +65,7 @@ func BuildFn(ctx *gcp.Context, exclusions []string) error {
 		ctx.Span("Clear source", now, gcp.StatusOk)
 	}(time.Now())
 
-	userExclusions := strings.Split(strings.TrimSpace(os.Getenv(env.ClearSourceExclude)), ":")
+	userExclusions := strings.Split(os.Getenv(env.ClearSourceExclude), ":")
 
 	exclusions = append(exclusions, defaultExclusions...)
 	exclusions = append(exclusions, userExclusions...)

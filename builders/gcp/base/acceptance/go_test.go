@@ -90,6 +90,14 @@ func TestAcceptanceGo(t *testing.T) {
 			FilesMustExist:    []string{"/layers/google.go.build/bin/main"},
 			FilesMustNotExist: []string{"/layers/google.go.runtime", "/workspace/main.go"},
 		},
+		{
+			Name:              "clear source with excludes",
+			App:               "go/simple",
+			Env:               []string{"GOOGLE_CLEAR_SOURCE=true", "GOOGLE_CLEAR_SOURCE_EXCLUDE=main.*"},
+			MustUse:           []string{goClearSource},
+			FilesMustExist:    []string{"/layers/google.go.build/bin/main"},
+			FilesMustNotExist: []string{"/layers/google.go.runtime"},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

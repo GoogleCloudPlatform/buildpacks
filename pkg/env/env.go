@@ -52,7 +52,7 @@ const (
 	// ClearSourceExclude is an env var used to specify glob patterns to be excluded from clear source files from the final image.
 	// Mulitple patters can be specified by separating them by ':'.
 	// Buildpacks for Go and Java support clearing the source.
-	// Example: 'templates'
+	// Example: 'templates' or 'templates:migrations'
 	ClearSourceExclude = "GOOGLE_CLEAR_SOURCE_EXCLUDE"
 
 	// Buildable is an env var used to specify the buildable unit to build.
