@@ -135,7 +135,7 @@ func TestAcceptanceJava(t *testing.T) {
 			Env:               []string{"GOOGLE_CLEAR_SOURCE=true", "GOOGLE_CLEAR_SOURCE_EXLCUDE=pom.xml"},
 			MustUse:           []string{javaMaven, javaRuntime, javaEntrypoint, javaClearSource},
 			MustNotUse:        []string{entrypoint},
-			FilesMustExist:    []string{"/workspace/target/hello-1-runner.jar"},
+			FilesMustExist:    []string{"/workspace/target/hello-1-runner.jar", "/workspace/pom.xml"},
 			FilesMustNotExist: []string{"/workspace/src/main/java/hello/Hello.java"},
 		},
 		{

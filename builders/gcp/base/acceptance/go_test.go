@@ -95,7 +95,7 @@ func TestAcceptanceGo(t *testing.T) {
 			App:               "go/simple",
 			Env:               []string{"GOOGLE_CLEAR_SOURCE=true", "GOOGLE_CLEAR_SOURCE_EXCLUDE=main.*"},
 			MustUse:           []string{goClearSource},
-			FilesMustExist:    []string{"/layers/google.go.build/bin/main"},
+			FilesMustExist:    []string{"/layers/google.go.build/bin/main", "/workspace/main.go"},
 			FilesMustNotExist: []string{"/layers/google.go.runtime"},
 		},
 	}
