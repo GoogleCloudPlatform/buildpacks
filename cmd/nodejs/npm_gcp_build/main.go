@@ -54,9 +54,9 @@ func buildFn(ctx *gcp.Context) error {
 	nm := filepath.Join(l.Path, "node_modules")
 	ctx.RemoveAll("node_modules")
 
-	lockfile := nodejs.EnsureLockfile(ctx)
-
 	nodeEnv := nodejs.EnvDevelopment
+	lockfile := nodejs.EnsureLockfile(ctx, nodeEnv)
+
 	cached, err := nodejs.CheckCache(ctx, l, cache.WithStrings(nodeEnv), cache.WithFiles("package.json", lockfile))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)

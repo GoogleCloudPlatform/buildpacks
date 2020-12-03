@@ -28,7 +28,7 @@ const (
 )
 
 // EnsureLockfile returns the name of the lockfile, generating a package-lock.json if necessary.
-func EnsureLockfile(ctx *gcp.Context) string {
+func EnsureLockfile(ctx *gcp.Context, nodeEnv string) string {
 	// npm prefers npm-shrinkwrap.json, see https://docs.npmjs.com/cli/shrinkwrap.
 	if ctx.FileExists(NPMShrinkwrap) {
 		return NPMShrinkwrap
@@ -36,7 +36,7 @@ func EnsureLockfile(ctx *gcp.Context) string {
 	if !ctx.FileExists(PackageLock) {
 		ctx.Logf("Generating %s.", PackageLock)
 		ctx.Warnf("*** Improve build performance by generating and committing %s.", PackageLock)
-		ctx.Exec([]string{"npm", "install", "--package-lock-only", "--quiet"}, gcp.WithUserAttribution)
+		ctx.Exec([]string{"npm", "install", "--package-lock-only", "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution)
 	}
 	return PackageLock
 }
