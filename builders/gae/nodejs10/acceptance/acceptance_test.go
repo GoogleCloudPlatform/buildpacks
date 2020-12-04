@@ -170,6 +170,11 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{yarn},
 			MustNotUse: []string{npm},
 		},
+		{
+			App:        "private_dev_dependency_npm",
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc
