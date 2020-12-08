@@ -80,9 +80,10 @@ func TestFailures(t *testing.T) {
 
 	testCases := []acceptance.FailureTest{
 		{
-			App: "pip_check",
-			// The warning message is cut short because it's not deterministic.
-			MustMatch: `found incompatible dependencies: "sub-dependency-`,
+			Name: "conflicting dependencies",
+			App:  "pip_check",
+			// The second warning message is cut short because it's not deterministic.
+			MustMatch: `(Cannot install diamond-dependency because these package versions have conflicting dependencies.|found incompatible dependencies: "sub-dependency-)`,
 		},
 	}
 

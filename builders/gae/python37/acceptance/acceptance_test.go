@@ -44,7 +44,8 @@ func TestAcceptance(t *testing.T) {
 			App: "pip_dependency",
 		},
 		{
-			App: "pip_check",
+			Name: "conflicting dependencies",
+			App:  "pip_check",
 			// The warning message is cut short because it's not deterministic.
 			MustOutput: []string{`WARNING: Found incompatible dependencies: "sub-dependency-`},
 		},

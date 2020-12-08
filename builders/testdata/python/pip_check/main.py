@@ -12,16 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from flask import Flask
-import os
 
-app = Flask(__name__)
-
-
-@app.route('/')
-def hello():
-  return 'PASS'
-
-
-if __name__ == '__main__':
-  app.run(port=os.environ['PORT'], debug=True)
+def app(environ, start_response):
+  data = b"PASS\n"
+  start_response("200 OK", [("Content-Type", "text/plain"),
+                            ("Content-Length", str(len(data)))])
+  return iter([data])
