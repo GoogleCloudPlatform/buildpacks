@@ -44,9 +44,9 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput: []string{"WARNING: Found incompatible dependencies"},
 		},
 		{
-			Name:          "function with framework and dependency bin",
-			App:           "with_framework_bin_conflict",
-			MustNotOutput: []string{"WARNING: Found incompatible dependencies"},
+			Name: "function with framework and dependency bin",
+			App:  "with_framework_bin_conflict",
+			// No MustNotOutput WARNING because spacy non-deterministically produces an incompatible dependency tree.
 		},
 		{
 			Name:          "function with runtime env var",
