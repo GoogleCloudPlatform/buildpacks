@@ -18,15 +18,12 @@ ARG cnb_uid=1000
 ARG cnb_gid=1000
 ARG stack_id="google"
 
-# Required by python/runtime.
+# Required by python/runtime: libexpat1, libffi6, libmpdecc2.
+# Required by dotnet/runtime: libicu60
 RUN apt-get update && apt-get install -y --no-install-recommends \
   libexpat1 \
   libffi6 \
   libmpdec2 \
-  && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Required by dotnet/runtime.
-RUN apt-get update && apt-get install -y --no-install-recommends \
   libicu60 \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
