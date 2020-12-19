@@ -102,6 +102,19 @@ func TestAcceptanceJava(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 		{
+			Name:       "Java 8 leiningen",
+			App:        "java/leiningen",
+			Env:        []string{"GOOGLE_RUNTIME_VERSION=8"},
+			MustUse:    []string{javaLeiningen, javaRuntime, javaEntrypoint},
+			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:       "Java 11 leiningen",
+			App:        "java/leiningen",
+			MustUse:    []string{javaLeiningen, javaRuntime, javaEntrypoint},
+			MustNotUse: []string{entrypoint},
+		},
+		{
 			Name:       "Maven build args",
 			App:        "java/maven_testing_profile",
 			Env:        []string{"GOOGLE_BUILD_ARGS=-Dnative=false"},
@@ -137,6 +150,15 @@ func TestAcceptanceJava(t *testing.T) {
 			MustNotUse:        []string{javaEntrypoint},
 			FilesMustExist:    []string{"/workspace/build/libs/helloworld-0.1-all.jar"},
 			FilesMustNotExist: []string{"/workspace/src/main/java/example/Application.java", "/workspace/build.gradle"},
+		},
+		{
+			Name:              "Leiningen with source clearing",
+			App:               "java/leiningen",
+			Env:               []string{"GOOGLE_CLEAR_SOURCE=true", "GOOGLE_ENTRYPOINT=java -jar target/demo-0.0.1-SNAPSHOT-standalone.jar"},
+			MustUse:           []string{javaLeiningen, javaRuntime, entrypoint, javaClearSource},
+			MustNotUse:        []string{javaEntrypoint},
+			FilesMustExist:    []string{"/workspace/target/demo-0.0.1-SNAPSHOT-standalone.jar"},
+			FilesMustNotExist: []string{"/workspace/src/lein_source/server.clj", "/workspace/project.clj"},
 		},
 	}
 	for _, tc := range testCases {

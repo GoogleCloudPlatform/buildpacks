@@ -118,6 +118,18 @@ func TestAcceptance(t *testing.T) {
 			App:           "gradle_quarkus",
 			MustNotOutput: []string{"WARNING"},
 		},
+		{
+			Name:          "leiningen",
+			App:           "leiningen",
+			MustNotOutput: []string{"WARNING"},
+		},
+		{
+			Name:              "Leiningen with source clearing",
+			App:               "leiningen",
+			Env:               []string{"GOOGLE_CLEAR_SOURCE=true", "GOOGLE_ENTRYPOINT=java -jar target/demo-0.0.1-SNAPSHOT-standalone.jar"},
+			MustNotOutput:     []string{"WARNING"},
+			FilesMustNotExist: []string{"/workspace/src/lein_source/server.clj", "/workspace/project.clj"},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

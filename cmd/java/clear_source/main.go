@@ -37,13 +37,14 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		"pom.xml",
 		"build.gradle",
 		"build.gradle.kts",
+		"project.clj",
 	}
 	for _, f := range files {
 		if ctx.FileExists(f) {
 			return gcp.OptInFileFound(f), nil
 		}
 	}
-	return gcp.OptOut(fmt.Sprintf("none of %s found. Clearing souce only supported on maven and gradle projects.", strings.Join(files, ", "))), nil
+	return gcp.OptOut(fmt.Sprintf("none of %s found. Clearing souce only supported on leiningen, maven and gradle projects.", strings.Join(files, ", "))), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

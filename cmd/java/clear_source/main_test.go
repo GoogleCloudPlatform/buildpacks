@@ -52,7 +52,15 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
-			name:  "none of pom.xml, build.gradle, build.gradle.kts",
+			name: "project.clj",
+			files: map[string]string{
+				"project.clj": "",
+			},
+			env:  []string{"GOOGLE_CLEAR_SOURCE=true"},
+			want: 0,
+		},
+		{
+			name:  "none of pom.xml, build.gradle, build.gradle.kts, project.clj",
 			files: map[string]string{},
 			env:   []string{"GOOGLE_CLEAR_SOURCE=true"},
 			want:  100,
@@ -79,7 +87,14 @@ func TestDetect(t *testing.T) {
 			want: 100,
 		},
 		{
-			name:  "none of pom.xml, build.gradle, build.gradle.kts exist and env var not set",
+			name: "project.clj exists but env var not set",
+			files: map[string]string{
+				"project.clj": "",
+			},
+			want: 100,
+		},
+		{
+			name:  "none of pom.xml, build.gradle, build.gradle.kts, project.clj exist and env var not set",
 			files: map[string]string{},
 			want:  100,
 		},

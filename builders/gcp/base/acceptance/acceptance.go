@@ -30,6 +30,7 @@ const (
 	javaEntrypoint  = "google.java.entrypoint"
 	javaExplodedJar = "google.java.exploded-jar"
 	javaGradle      = "google.java.gradle"
+	javaLeiningen   = "google.java.leiningen"
 	javaMaven       = "google.java.maven"
 	javaRuntime     = "google.java.runtime"
 	nodeFF          = "google.nodejs.functions-framework"

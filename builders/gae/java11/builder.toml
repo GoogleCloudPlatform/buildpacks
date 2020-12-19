@@ -13,6 +13,10 @@ description = "Builder for the GAE Java 11 runtime"
   uri = "gradle.tgz"
 
 [[buildpacks]]
+  id = "google.java.leiningen"
+  uri = "leiningen.tgz"
+
+[[buildpacks]]
   id = "google.java.maven"
   uri = "maven.tgz"
 
@@ -23,6 +27,21 @@ description = "Builder for the GAE Java 11 runtime"
 [[order]]
   [[order.group]]
     id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.appengine"
+
+  [[order.group]]
+    id = "google.java.clear_source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+[[order]]
+  [[order.group]]
+    id = "google.java.leiningen"
+    optional = true
 
   [[order.group]]
     id = "google.java.appengine"

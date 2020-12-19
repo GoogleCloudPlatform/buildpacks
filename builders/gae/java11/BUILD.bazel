@@ -11,6 +11,7 @@ builder(
         "//cmd/java/clear_source:clear_source.tgz",
         "//cmd/java/maven:maven.tgz",
         "//cmd/java/gradle:gradle.tgz",
+        "//cmd/java/leiningen:leiningen.tgz",
         "//cmd/utils/label:label.tgz",
     ],
     image = "gae/java11",

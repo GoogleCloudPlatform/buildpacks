@@ -53,6 +53,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "java/gradle.tgz"
 
 [[buildpacks]]
+  id = "google.java.leiningen"
+  uri = "java/leiningen.tgz"
+
+[[buildpacks]]
   id = "google.java.maven"
   uri = "java/maven.tgz"
 
@@ -269,6 +273,43 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.utils.label"
+
+# Leiningen & Jar-based applications.
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.leiningen"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.java.clear_source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.leiningen"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.entrypoint"
+
+  [[order.group]]
+    id = "google.java.clear_source"
+    optional = true
+
+  [[order.group]]
+  id = "google.utils.label"
 
 # Gradle & Jar-based applications.
 [[order]]

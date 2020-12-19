@@ -28,6 +28,13 @@ func TestDetect(t *testing.T) {
 		want  int
 	}{
 		{
+			name: "project.clj",
+			files: map[string]string{
+				"project.clj": "",
+			},
+			want: 0,
+		},
+		{
 			name: "pom.xml",
 			files: map[string]string{
 				"pom.xml": "",
