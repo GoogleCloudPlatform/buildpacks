@@ -45,9 +45,10 @@ var (
 	re = regexp.MustCompile("(?m)^Main-Class: [^\r\n\t\f\v ]+")
 	// jarPaths contains the paths that we search for executable jar files. Order of paths decides precedence.
 	jarPaths = [][]string{
-		[]string{"target"},
-		[]string{"build"},
-		[]string{"build", "libs"},
+		[]string{"target", "*-standalone.jar"},
+		[]string{"target", "*.jar"},
+		[]string{"build", "*.jar"},
+		[]string{"build", "libs", "*.jar"},
 		// An empty file path searches the application root for jars.
 		[]string{},
 	}
@@ -57,7 +58,6 @@ var (
 func ExecutableJar(ctx *gcp.Context) (string, error) {
 	for i, path := range jarPaths {
 		path = append([]string{ctx.ApplicationRoot()}, path...)
-		path = append(path, "*.jar")
 		jars := ctx.Glob(filepath.Join(path...))
 		// There may be multiple jars due to some frameworks like Quarkus creating multiple jars,
 		// so we look for the jar that contains a Main-Class entry in its manifest.
