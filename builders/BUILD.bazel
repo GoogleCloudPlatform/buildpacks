@@ -1,6 +1,10 @@
 # Defines a set of groups for builders that support particular language runtimes
 licenses(["notice"])
 
+exports_files(
+    ["testdata"],
+)
+
 package_group(
     name = "dotnet_builders",
     packages = [
