@@ -51,8 +51,8 @@ description = "Builder for the GAE Java 11 runtime"
 
 [stack]
   id = "google.java11"
-  build-image = "gcr.io/gae-runtimes/buildpacks/java11/build:java11_20201014_11_0_RC00"
-  run-image = "gcr.io/gae-runtimes/buildpacks/java11/run:java11_20201014_11_0_RC00"
+  build-image = "gcr.io/gae-runtimes/buildpacks/java11/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/java11/run"
 
 [lifecycle]
   version = "0.9.3"
