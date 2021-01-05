@@ -350,6 +350,7 @@ variables. These environment variables should be specified without a
 
 * **General**:
   * Caching is project-specific, not cross-project. Dependencies, such as the JDK, cannot be shared across projects and need to be redownloaded on first build.
+  * Built images have their creation time set to 40 years in the past. See [reproducible builds](https://buildpacks.io/docs/reference/reproducibility/).
 * **Node**:
   * Custom build steps (e.g. executing the "build" script of package.json) are not supported.
   * Existing `node_modules` directory is deleted and dependencies reinstalled using package.json and a lockfile if present.
