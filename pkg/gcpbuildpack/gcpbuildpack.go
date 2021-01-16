@@ -161,6 +161,11 @@ func (ctx *Context) Processes() []libcnb.Process {
 	return ctx.buildResult.Processes
 }
 
+// WithApplicationRoot set applicationRoot.
+func (ctx *Context) WithApplicationRoot(applicationRoot string) {
+	ctx.applicationRoot = applicationRoot
+}
+
 // Main is the main entrypoint to a buildpack's detect and build functions.
 func Main(d DetectFn, b BuildFn) {
 	switch filepath.Base(os.Args[0]) {
