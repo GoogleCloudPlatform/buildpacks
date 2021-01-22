@@ -76,6 +76,11 @@ func TestAcceptance(t *testing.T) {
 			App:  "prebuilt",
 			Env:  []string{"GOOGLE_ENTRYPOINT=./cs_no_deps"},
 		},
+		{
+			Name: "build args",
+			App:  "cs_properties",
+			Env:  []string{"GOOGLE_BUILD_ARGS=-p:Version=1.0.1.0 -p:FileVersion=1.0.1.0"},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

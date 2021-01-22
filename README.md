@@ -209,7 +209,7 @@ The following confguration options are supported across runtimes:
   * **Example:** `./maindir` for Go will build the package rooted at maindir.
 * `GOOGLE_BUILD_ARGS`
   * Appends arguments to build command.
-  * *(Currently only applicable to Java Maven and Gradle.)*
+  * *(Currently only applicable to Java Maven and Gradle and .NET)*
   * **Example:** `-Pprod` for a Java will run `mvn clean package ... -Pprod`.
 * `GOOGLE_DEVMODE`
   * Enables the development mode buildpacks. This is used by [Skaffold](https://skaffold.dev) to enable live local development where changes to your source code trigger automatic container rebuilds. To use, install Skaffold and run `skaffold dev`.
