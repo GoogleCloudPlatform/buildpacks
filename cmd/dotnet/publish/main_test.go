@@ -19,7 +19,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"text/template"
 
@@ -120,13 +119,13 @@ func TestGetEntrypoint(t *testing.T) {
 			name: "dll from project file",
 			exe:  "myapp.dll",
 			proj: "myapp.proj",
-			want: "dotnet {{.Tmp}}/myapp.dll",
+			want: "cd {{.Tmp}} && exec dotnet myapp.dll",
 		},
 		{
 			name: "dll from project file with dots",
 			exe:  "my.app.dll",
 			proj: "my.app.proj",
-			want: "dotnet {{.Tmp}}/my.app.dll",
+			want: "cd {{.Tmp}} && exec dotnet my.app.dll",
 		},
 		{
 			name: "exe from assembly name",
@@ -139,7 +138,7 @@ func TestGetEntrypoint(t *testing.T) {
 		</PropertyGroup>
 
 	</Project>`,
-			want: "dotnet {{.Tmp}}/customapp.dll",
+			want: "cd {{.Tmp}} && exec dotnet customapp.dll",
 		},
 		{
 			name: "dll from assembly name",
@@ -152,7 +151,7 @@ func TestGetEntrypoint(t *testing.T) {
 		</PropertyGroup>
 
 	</Project>`,
-			want: "dotnet {{.Tmp}}/customapp.dll",
+			want: "cd {{.Tmp}} && exec dotnet customapp.dll",
 		},
 	}
 
@@ -197,7 +196,7 @@ func TestGetEntrypoint(t *testing.T) {
 				t.Fatalf("executing template: %v", err)
 			}
 
-			if want := buf.String(); strings.Join(ep, " ") != want {
+			if want := buf.String(); ep != want {
 				t.Errorf("got %s, want %s", ep, want)
 			}
 		})

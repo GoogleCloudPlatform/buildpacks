@@ -41,6 +41,12 @@ func TestAcceptance(t *testing.T) {
 			Path: "/function",
 		},
 		{
+			Name: "cs nested configuration",
+			App:  "cs_nested_configuration",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=TestFunction.Function"},
+			Path: "/function",
+		},
+		{
 			Name: "fs function",
 			App:  "fs_function",
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=fs_function.Function"},

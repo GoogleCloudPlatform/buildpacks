@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -34,6 +35,7 @@ const (
 	cacheTag          = "prod dependencies"
 	dependencyHashKey = "dependency_hash"
 	versionKey        = "version"
+	outputDirectory   = "bin"
 )
 
 func main() {
@@ -95,7 +97,7 @@ func buildFn(ctx *gcp.Context) error {
 		"-nologo",
 		"--verbosity", "minimal",
 		"--configuration", "Release",
-		"--output", "bin",
+		"--output", outputDirectory,
 		"--no-restore",
 		"--packages", pkgLayer.Path,
 		proj,
@@ -111,19 +113,21 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Infer the entrypoint in case an explicit override was not provided.
 	entrypoint := os.Getenv(env.Entrypoint)
-	if entrypoint == "" {
-		ep, err := getEntrypoint(ctx, "bin", proj)
+	if entrypoint != "" {
+		entrypoint = "exec " + entrypoint
+	} else {
+		ep, err := getEntrypoint(ctx, outputDirectory, proj)
 		if err != nil {
 			return fmt.Errorf("getting entrypoint: %w", err)
 		}
-		entrypoint = strings.Join(ep, " ")
+		entrypoint = ep
 		binLayer.BuildEnvironment.Default(env.Entrypoint, entrypoint)
 	}
 	binLayer.LaunchEnvironment.Default("DOTNET_RUNNING_IN_CONTAINER", "true")
 
 	// Configure the entrypoint for production.
 	if !devmode.Enabled(ctx) {
-		ctx.AddWebProcess([]string{"/bin/bash", "-c", "exec " + entrypoint})
+		ctx.AddWebProcess([]string{"/bin/bash", "-c", entrypoint})
 		return nil
 	}
 
@@ -137,33 +141,32 @@ func buildFn(ctx *gcp.Context) error {
 // * Check the output directory for a binary or a library with the same name as the project file (e.g. app.csproj --> app or app.dll).
 // * If not found, parse the project file for an AssemblyName field and check for the associated binary or library file in the output directory.
 // * If not found, return user error.
-func getEntrypoint(ctx *gcp.Context, bin, proj string) ([]string, error) {
+func getEntrypoint(ctx *gcp.Context, bin, proj string) (string, error) {
 	ctx.Logf("Determining entrypoint from output directory %s and project file %s", bin, proj)
 	p := strings.TrimSuffix(filepath.Base(proj), filepath.Ext(proj))
-	ep := getEntrypointCmd(ctx, filepath.Join(bin, p))
-	if ep != nil {
+
+	if ep := getEntrypointCmd(ctx, filepath.Join(bin, p)); ep != "" {
 		return ep, nil
 	}
 
 	// If we didn't get anything from the default project file name, try to extract the output name from the project file.
 	an, err := getAssemblyName(ctx, proj)
 	if err != nil {
-		return nil, fmt.Errorf("getting assembly name: %w", err)
+		return "", fmt.Errorf("getting assembly name: %w", err)
 	}
-	ep = getEntrypointCmd(ctx, filepath.Join(bin, an))
-	if ep != nil {
+	if ep := getEntrypointCmd(ctx, filepath.Join(bin, an)); ep != "" {
 		return ep, nil
 	}
 
 	// If we didn't get anything from that, something went wrong.
-	return nil, gcp.UserErrorf("unable to find executable produced from %s, try setting the AssemblyName property", proj)
+	return "", gcp.UserErrorf("unable to find executable produced from %s, try setting the AssemblyName property", proj)
 }
 
-func getEntrypointCmd(ctx *gcp.Context, ep string) []string {
-	if ctx.FileExists(ep + ".dll") {
-		return []string{"dotnet", fmt.Sprintf("%s.dll", ep)}
+func getEntrypointCmd(ctx *gcp.Context, ep string) string {
+	if dll := ep + ".dll"; ctx.FileExists(dll) {
+		return fmt.Sprintf("cd %s && exec dotnet %s", path.Dir(dll), path.Base(dll))
 	}
-	return nil
+	return ""
 }
 
 func checkCache(ctx *gcp.Context, l *libcnb.Layer) (bool, error) {
