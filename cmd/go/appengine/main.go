@@ -17,6 +17,8 @@
 package main
 
 import (
+	"strings"
+
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
@@ -31,10 +33,56 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	if err := validateAppEngineAPIs(ctx); err != nil {
+		return err
+	}
 	return appengine.Build(ctx, "go", entrypoint)
+}
+
+func validateAppEngineAPIs(ctx *gcp.Context) error {
+	supportsApis, err := golang.SupportsAppEngineApis(ctx)
+	if err != nil {
+		return err
+	}
+
+	if !supportsApis && appEngineInDeps(directDeps(ctx)) {
+		return gcp.UserErrorf("there is a direct dependency on App Engine APIs, but they are not enabled in your app's yaml config file (set the app_engine_apis property)")
+	}
+
+	usingAppEngine := appEngineInDeps(allDeps(ctx))
+	if supportsApis && !usingAppEngine {
+		ctx.Warnf("App Engine APIs are enabled, but don't appear to be used, causing a possible performance penalty. Delete app_engine_apis from your app's yaml config file.")
+	}
+
+	if !supportsApis && usingAppEngine {
+		ctx.Warnf("There is an indirect dependency on App Engine APIs, but they are not enabled in your app's yaml config file. You may see runtime errors trying to access these APIs. Set the app_engine_apis property.")
+	}
+
+	return nil
 }
 
 func entrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
 	ctx.Logf("No user entrypoint specified. Using the generated entrypoint %q", golang.OutBin)
 	return &appengine.Entrypoint{Type: appengine.EntrypointGenerated.String(), Command: golang.OutBin}, nil
+}
+
+func appEngineInDeps(deps []string) bool {
+	for _, s := range deps {
+		if strings.HasPrefix(s, "google.golang.org/appengine") {
+			return true
+		}
+	}
+	return false
+}
+
+func allDeps(ctx *gcp.Context) []string {
+	result := ctx.Exec([]string{"go", "list", "-f", `{{join .Deps "\n"}}`, "./..."}, gcp.WithUserAttribution)
+
+	return strings.Fields(result.Stdout)
+}
+
+func directDeps(ctx *gcp.Context) []string {
+	result := ctx.Exec([]string{"go", "list", "-f", `{{join .Imports "\n" }}`, "./..."}, gcp.WithUserAttribution)
+
+	return strings.Fields(result.Stdout)
 }

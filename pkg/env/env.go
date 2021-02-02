@@ -22,6 +22,7 @@ import (
 )
 
 const (
+
 	// Runtime is an env var used constrain autodetection in runtime buildpacks or to set runtime name in App Engine buildpacks.
 	// Runtime must be respected by each runtime buildpack.
 	// Example: `nodejs` will cause the nodejs/runtime buildpack to opt-in.
@@ -61,6 +62,10 @@ const (
 	// GAEMain is an env var used to specify path or fully qualified package name of the main package in App Engine buildpacks.
 	// Behavior: In Go, the value is cleaned up and passed on to subsequent buildpacks as GOOGLE_BUILDABLE.
 	GAEMain = "GAE_YAML_MAIN"
+
+	// AppEngineAPIs is an env var that enables access to App Engine APIs. Set to TRUE to enable.
+	// Example: `true`, `True`, `1` will enable API access.
+	AppEngineAPIs = "GAE_APP_ENGINE_APIS"
 
 	// FunctionTarget is an env var used to specify function name.
 	// FunctionTarget must be respected by all functions-framework buildpacks.
