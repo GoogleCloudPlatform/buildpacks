@@ -169,7 +169,12 @@ func createMainVendored(ctx *gcp.Context, l *libcnb.Layer, fn fnInfo) error {
 	requestedFrameworkVersion := "v0.0.0"
 	if ctx.FileExists(fnFrameworkVendoredPath) {
 		ctx.Logf("Found function with vendored dependencies including functions-framework")
-		ctx.Exec([]string{"cp", "-r", fnVendoredPath, appPath}, gcp.WithUserTimingAttribution)
+
+		// The fact that the functions framework is included in the vendor dir means we have a vendor
+		// dir with everything required to build. Move it from the function source package to the dir
+		// that contains both the function package and the generated main package. This allows both
+		// packages to use the same vendor dir.
+		ctx.Rename(fnVendoredPath, filepath.Join(gopathSrc, "vendor"))
 	} else {
 		// If the framework isn't in the user-provided vendor directory, we need to fetch it ourselves.
 		ctx.Logf("Found function with vendored dependencies excluding functions-framework")
