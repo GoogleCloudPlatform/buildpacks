@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -126,17 +125,4 @@ func Build(ctx *gcp.Context, runtime string, eg entrypointGenerator) error {
 
 	ctx.AddWebProcess([]string{"/start"})
 	return nil
-}
-
-// ApisEnabled returns true if the application has AppEngine API support enabled in app.yaml
-func ApisEnabled(ctx *gcp.Context) (bool, error) {
-	val, found := os.LookupEnv(env.AppEngineAPIs)
-	if !found {
-		return false, nil
-	}
-	parsed, err := strconv.ParseBool(val)
-	if err != nil {
-		return false, gcp.UserErrorf("parsing %q from %s: %v", val, env.AppEngineAPIs, err)
-	}
-	return parsed, nil
 }
