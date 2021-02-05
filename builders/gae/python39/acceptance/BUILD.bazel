@@ -30,5 +30,8 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//internal/acceptance"],
+    deps = [
+        "//internal/acceptance",
+        "//pkg/appengine",
+    ],
 )

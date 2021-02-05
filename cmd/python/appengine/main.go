@@ -40,7 +40,32 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	if err := validateAppEngineAPIs(ctx); err != nil {
+		return err
+	}
 	return appengine.Build(ctx, "python", entrypoint)
+}
+
+func validateAppEngineAPIs(ctx *gcp.Context) error {
+	supportsApis, err := appengine.ApisEnabled(ctx)
+	if err != nil {
+		return err
+	}
+
+	usingAppEngine, err := appEngineInDeps(ctx)
+	if err != nil {
+		return err
+	}
+
+	if supportsApis && !usingAppEngine {
+		ctx.Warnf(appengine.UnusedAPIWarning)
+	}
+
+	if !supportsApis && usingAppEngine {
+		ctx.Warnf(appengine.DepWarning)
+	}
+
+	return nil
 }
 
 func entrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
@@ -72,4 +97,16 @@ func entrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
 		Type:    appengine.EntrypointDefault.String(),
 		Command: appengine.DefaultCommand,
 	}, nil
+}
+
+func appEngineInDeps(ctx *gcp.Context) (bool, error) {
+	// Check if appengine-python-standard is installed
+	result, err := ctx.ExecWithErr([]string{"python3", "-m", "pip", "show", "appengine-python-standard"}, gcp.WithUserTimingAttribution)
+	if err != nil {
+		if result != nil && result.ExitCode == 1 {
+			return false, nil
+		}
+		return false, fmt.Errorf("pip show appengine-python-standard: %v", err)
+	}
+	return true, nil
 }

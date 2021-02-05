@@ -62,6 +62,10 @@ const (
 	// Behavior: In Go, the value is cleaned up and passed on to subsequent buildpacks as GOOGLE_BUILDABLE.
 	GAEMain = "GAE_YAML_MAIN"
 
+	// AppEngineAPIs is an env var that enables access to App Engine APIs. Set to TRUE to enable.
+	// Example: `true`, `True`, `1` will enable API access.
+	AppEngineAPIs = "GAE_APP_ENGINE_APIS"
+
 	// FunctionTarget is an env var used to specify function name.
 	// FunctionTarget must be respected by all functions-framework buildpacks.
 	// Example: `helloWorld` or any exported function name.

@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -30,6 +31,12 @@ const (
 	// ConfigDir is the location relative to the user's application where the configFile lives.
 	ConfigDir  = ".googleconfig"
 	configFile = ConfigDir + "/app_start.json"
+	// DepWarning is the warning message when an app does not enable the API flag but has App Engine API dependencies.
+	DepWarning = "There is a dependency on App Engine APIs, but they are not enabled in your app.yaml. Set the app_engine_apis property."
+	// IndirectDepWarning is the warning message when an app does not enable the API flag but has indirect App Engine API dependencies. This is used for runtimes that can determine indirect dependencies.
+	IndirectDepWarning = "There is an indirect dependency on App Engine APIs, but they are not enabled in your app.yaml. You may see runtime errors trying to access these APIs. Set the app_engine_apis property."
+	// UnusedAPIWarning is the warning message when the API flag is enabled but no API package is included.
+	UnusedAPIWarning = "App Engine APIs are enabled, but don't appear to be used, causing a possible performance penalty. Delete app_engine_apis from your app.yaml."
 )
 
 // Config holds the parameters to pass into app_start.json
@@ -125,4 +132,17 @@ func Build(ctx *gcp.Context, runtime string, eg entrypointGenerator) error {
 
 	ctx.AddWebProcess([]string{"/start"})
 	return nil
+}
+
+// ApisEnabled returns true if the application has AppEngine API support enabled in app.yaml
+func ApisEnabled(ctx *gcp.Context) (bool, error) {
+	val, found := os.LookupEnv(env.AppEngineAPIs)
+	if !found {
+		return false, nil
+	}
+	parsed, err := strconv.ParseBool(val)
+	if err != nil {
+		return false, gcp.UserErrorf("parsing %q from %s: %v", val, env.AppEngineAPIs, err)
+	}
+	return parsed, nil
 }
