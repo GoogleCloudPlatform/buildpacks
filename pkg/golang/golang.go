@@ -16,9 +16,12 @@
 package golang
 
 import (
+	"os"
 	"path/filepath"
 	"regexp"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/blang/semver"
 )
@@ -37,6 +40,15 @@ var (
 	// goModVersionRegexp is used to get correct declaration of Go version from go.mod file.
 	goModVersionRegexp = regexp.MustCompile(`(?m)^\s*go\s+(\d+(\.\d+){1,2})\s*$`)
 )
+
+// SupportsAppEngineApis is a Go buildpack specific function that returns true if App Engine API access is enabled
+func SupportsAppEngineApis(ctx *gcp.Context) (bool, error) {
+	if os.Getenv(env.Runtime) == "go111" {
+		return true, nil
+	}
+
+	return appengine.ApisEnabled(ctx)
+}
 
 // SupportsNoGoMod returns true if the Go version supports deployments without a go.mod file.
 // This feature is supported by Go 1.11 and 1.13 in GCF.

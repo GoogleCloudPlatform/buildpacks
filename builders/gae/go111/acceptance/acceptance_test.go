@@ -110,6 +110,11 @@ func TestAcceptance(t *testing.T) {
 			Name: "gomod appengine",
 			App:  "gomod_appengine",
 		},
+		// Test that we can build an app with SDK dependencies *without* the GOOGLE_APP_ENGINE_APIS flag set.
+		{
+			Name: "appengine_sdk dependencies",
+			App:  "appengine_sdk",
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

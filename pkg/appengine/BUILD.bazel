@@ -17,7 +17,7 @@ go_library(
         "//cmd/php:__subpackages__",
         "//cmd/python:__subpackages__",
         "//cmd/ruby:__subpackages__",
-        "//pkg/clearsource:__subpackages__",
+        "//pkg:__subpackages__",
     ],
     deps = [
         "//pkg/env",
