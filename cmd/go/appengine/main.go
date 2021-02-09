@@ -47,17 +47,17 @@ func validateAppEngineAPIs(ctx *gcp.Context) error {
 
 	if !supportsApis && appEngineInDeps(directDeps(ctx)) {
 		// TODO(b/179431689) Change to error.
-		ctx.Warnf("There is a direct dependency on App Engine APIs, but they are not enabled in your app's yaml config file. Set the app_engine_apis property.")
+		ctx.Warnf(appengine.DepWarning)
 		return nil
 	}
 
 	usingAppEngine := appEngineInDeps(allDeps(ctx))
 	if supportsApis && !usingAppEngine {
-		ctx.Warnf("App Engine APIs are enabled, but don't appear to be used, causing a possible performance penalty. Delete app_engine_apis from your app's yaml config file.")
+		ctx.Warnf(appengine.UnusedAPIWarning)
 	}
 
 	if !supportsApis && usingAppEngine {
-		ctx.Warnf("There is an indirect dependency on App Engine APIs, but they are not enabled in your app's yaml config file. You may see runtime errors trying to access these APIs. Set the app_engine_apis property.")
+		ctx.Warnf(appengine.IndirectDepWarning)
 	}
 
 	return nil
