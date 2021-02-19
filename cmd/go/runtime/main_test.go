@@ -93,11 +93,16 @@ func TestJSONVersionParse(t *testing.T) {
 	}{
 		{
 			name: "all_stable",
-			want: "1.13.3",
+			// TODO(b/180650476): Change to 1.16.
+			want: "1.15.3",
 			json: `
 [
  {
-  "version": "go1.13.3",
+  "version": "go1.16",
+  "stable": true
+ },
+ {
+  "version": "go1.15.3",
   "stable": true
  },
  {
@@ -108,12 +113,16 @@ func TestJSONVersionParse(t *testing.T) {
 		},
 		{
 			name: "recent_unstable",
-			want: "1.12.12",
+			want: "1.15.3",
 			json: `
 [
  {
-  "version": "go1.13.3",
+  "version": "go1.15.4",
   "stable": false
+ },
+ {
+  "version": "go1.15.3",
+  "stable": true
  },
  {
   "version": "go1.12.12",
