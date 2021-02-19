@@ -67,10 +67,6 @@ func buildFn(ctx *gcp.Context) error {
 	// Remove any user-provided local bundle config and cache that can interfere with the build process.
 	ctx.RemoveAll(".bundle")
 
-	// Ensure the GCP runtime platform is present in the lockfile. This is needed for Bundler >= 2.2, in case the user's lockfile is specific to a different platform.
-	ctx.Exec([]string{"bundle", "lock", "--add-platform", "x86_64-linux"}, gcp.WithUserAttribution)
-	ctx.Exec([]string{"bundle", "lock", "--add-platform", "ruby"}, gcp.WithUserAttribution)
-
 	deps := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 
 	// This layer directory contains the files installed by bundler into the application .bundle directory
@@ -80,6 +76,11 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
+
+	// Ensure the GCP runtime platform is present in the lockfile. This is needed for Bundler >= 2.2, in case the user's lockfile is specific to a different platform.
+	ctx.Exec([]string{"bundle", "lock", "--add-platform", "x86_64-linux"}, gcp.WithUserAttribution)
+	ctx.Exec([]string{"bundle", "lock", "--add-platform", "ruby"}, gcp.WithUserAttribution)
+
 	if cached {
 		ctx.CacheHit(layerName)
 	} else {
@@ -110,6 +111,14 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Always link local .bundle directory to the actual installation stored in the layer.
 	ctx.Symlink(bundleOutput, ".bundle")
+
+	// Update the bundler version in the lockfile. This avoids use of bundler 1.x at runtime, preventing incompatibilities with newer rubygems.
+	// This must be done after bundle install (or cache invocation), otherwise it will try to perform an install itself which will blow the cache.
+	ctx.Exec([]string{"bundle", "config", "--local", "deployment", "false"}, gcp.WithUserAttribution)
+	ctx.Exec([]string{"bundle", "config", "--local", "frozen", "false"}, gcp.WithUserAttribution)
+	ctx.Exec([]string{"bundle", "update", "--local", "--bundler"}, gcp.WithUserAttribution)
+	ctx.Exec([]string{"bundle", "config", "--local", "deployment", "true"}, gcp.WithUserAttribution)
+	ctx.Exec([]string{"bundle", "config", "--local", "frozen", "true"}, gcp.WithUserAttribution)
 
 	return nil
 }
