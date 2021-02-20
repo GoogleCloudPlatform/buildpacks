@@ -95,9 +95,8 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput: []string{"WARNING"},
 		},
 		{
-			Name:          "gradle kotlin",
-			App:           "gradle-kotlin",
-			MustNotOutput: []string{"WARNING"},
+			Name: "gradle kotlin",
+			App:  "gradle-kotlin",
 		},
 		{
 			Name:              "hello quarkus maven with source clearing",
