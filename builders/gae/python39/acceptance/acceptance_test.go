@@ -33,7 +33,8 @@ func TestAcceptance(t *testing.T) {
 			App: "no_requirements_txt",
 		},
 		{
-			App: "requirements_txt",
+			App:           "requirements_txt",
+			MustNotOutput: []string{`WARNING: You are using pip version`},
 		},
 		{
 			App: "requirements_bin_conflict",

@@ -140,7 +140,7 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 			cmd = append(cmd, "--user") // Install into user site-packages directory.
 		}
 		ctx.Exec(cmd,
-			gcp.WithEnv("PIP_CACHE_DIR="+cl.Path),
+			gcp.WithEnv("PIP_CACHE_DIR="+cl.Path, "PIP_DISABLE_PIP_VERSION_CHECK=1"),
 			gcp.WithUserAttribution)
 	}
 

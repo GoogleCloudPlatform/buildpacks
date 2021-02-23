@@ -29,8 +29,9 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name: "function without framework",
-			App:  "without_framework",
+			Name:          "function without framework",
+			App:           "without_framework",
+			MustNotOutput: []string{`WARNING: You are using pip version`},
 		},
 		{
 			Name: "function with dependencies",

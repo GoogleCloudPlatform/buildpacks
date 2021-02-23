@@ -31,7 +31,7 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:          "function without framework",
 			App:           "without_framework",
-			MustNotOutput: []string{"WARNING: Found incompatible dependencies"},
+			MustNotOutput: []string{"WARNING: Found incompatible dependencies", "WARNING: You are using pip version"},
 		},
 		{
 			Name: "function with dependencies",
