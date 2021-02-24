@@ -93,8 +93,7 @@ func TestJSONVersionParse(t *testing.T) {
 	}{
 		{
 			name: "all_stable",
-			// TODO(b/180650476): Change to 1.16.
-			want: "1.15.3",
+			want: "1.16",
 			json: `
 [
  {

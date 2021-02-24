@@ -32,11 +32,9 @@ import (
 const (
 	// goVersionURL is a URL to a JSON file that contains the latest Go version names.
 	goVersionURL = "https://golang.org/dl/?mode=json"
-	// goVersionDefault is the highest version to use if no version is specified.
-	goVersionDefault = "1.15"
-	goURL            = "https://dl.google.com/go/go%s.linux-amd64.tar.gz"
-	goLayer          = "go"
-	versionKey       = "version"
+	goURL        = "https://dl.google.com/go/go%s.linux-amd64.tar.gz"
+	goLayer      = "go"
+	versionKey   = "version"
 )
 
 func main() {
@@ -122,8 +120,7 @@ func parseVersionJSON(jsonStr string) (string, error) {
 		if !release.Stable {
 			continue
 		}
-		// TODO(b/180650476): Replace HasPrefix with `v != ""` when fixed.
-		if v := strings.TrimPrefix(release.Version, "go"); strings.HasPrefix(v, goVersionDefault) {
+		if v := strings.TrimPrefix(release.Version, "go"); v != "" {
 			return v, nil
 		}
 	}

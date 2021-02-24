@@ -136,7 +136,12 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 		version = functionsFrameworkVersion
 	}
 
-	return createMainGoFile(ctx, fn, filepath.Join(ctx.ApplicationRoot(), "main.go"), version)
+	if err := createMainGoFile(ctx, fn, filepath.Join(ctx.ApplicationRoot(), "main.go"), version); err != nil {
+		return err
+	}
+	// Generate a go.sum entry which is required starting with Go 1.16.
+	ctx.Exec([]string{"go", "mod", "tidy"})
+	return nil
 }
 
 // createMainVendored creates the main.go file for vendored functions.
@@ -247,8 +252,8 @@ func frameworkSpecifiedVersion(ctx *gcp.Context, fnSource string) (string, error
 // will be built with a different version of the language than the function deployment. Building this script ensures
 // that the version of Go used to build the function app will be the same as the version used to parse it.
 func extractPackageNameInDir(ctx *gcp.Context, source string) string {
-	scriptDir := filepath.Join(ctx.BuildpackRoot(), "converter", "get_package")
+	script := filepath.Join(ctx.BuildpackRoot(), "converter", "get_package", "main.go")
 	cacheDir := ctx.TempDir("", appName)
 	defer ctx.RemoveAll(cacheDir)
-	return ctx.Exec([]string{"go", "run", "main", "-dir", source}, gcp.WithEnv("GOPATH="+scriptDir, "GOCACHE="+cacheDir), gcp.WithWorkDir(scriptDir), gcp.WithUserAttribution).Stdout
+	return ctx.Exec([]string{"go", "run", script, "-dir", source}, gcp.WithEnv("GOCACHE="+cacheDir), gcp.WithUserAttribution).Stdout
 }

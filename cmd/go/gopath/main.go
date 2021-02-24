@@ -32,9 +32,9 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer("gopath", gcp.BuildLayer)
-	l.BuildEnvironment.Override("GOPATH", l.Path)
-	l.BuildEnvironment.Override("GO111MODULE", "off")
+	l := ctx.Layer("gopath", gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
+	l.SharedEnvironment.Override("GOPATH", l.Path)
+	l.SharedEnvironment.Override("GO111MODULE", "off")
 
 	// TODO(b/145604612): Investigate caching the modules layer.
 
