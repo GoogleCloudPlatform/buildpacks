@@ -59,6 +59,15 @@ func buildFn(ctx *gcp.Context) error {
 		return gcp.UserErrorf("go.mod exists but is not writable")
 	}
 	env := []string{"GOPATH=" + l.Path, "GO111MODULE=on"}
+
+	// BuildDirEnv should only be set by App Engine buildpacks.
+	workdir := os.Getenv(golang.BuildDirEnv)
+	if workdir == "" {
+		workdir = ctx.ApplicationRoot()
+	}
+	// go build -mod=readonly requires a complete graph of modules which `go mod download` does not produce in all cases (https://golang.org/issue/35832).
+	ctx.Exec([]string{"go", "mod", "tidy"}, gcp.WithEnv(env...), gcp.WithWorkDir(workdir), gcp.WithUserAttribution)
+
 	if golang.SupportsGoProxyFallback(ctx) {
 		env = append(env, "GOPROXY=https://proxy.golang.org|direct")
 		ctx.Exec([]string{"go", "mod", "download"}, gcp.WithEnv(env...), gcp.WithUserAttribution)
@@ -69,9 +78,6 @@ func buildFn(ctx *gcp.Context) error {
 			ctx.Exec([]string{"go", "mod", "download"}, gcp.WithEnv(append(env, "GOSUMDB=off", "GOPROXY=direct")...), gcp.WithUserAttribution)
 		}
 	}
-
-	// go build -mod=readonly requires a complete graph of modules which `go mod download` does not produce in all cases (https://golang.org/issue/35832).
-	ctx.Exec([]string{"go", "mod", "tidy"}, gcp.WithEnv(env...), gcp.WithUserAttribution)
 
 	return nil
 }
