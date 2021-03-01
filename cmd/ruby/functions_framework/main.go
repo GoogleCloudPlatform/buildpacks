@@ -123,7 +123,7 @@ func validateTarget(ctx *gcp.Context, source string) error {
 	if fnSig, ok := os.LookupEnv(env.FunctionSignatureType); ok {
 		cmd = append(cmd, "--signature-type", fnSig)
 	}
-	if result, err := ctx.ExecWithErr(cmd, gcp.WithUserAttribution); err != nil {
+	if result, err := ctx.ExecWithErr(cmd, gcp.WithEnv("MALLOC_ARENA_MAX=2", "LANG=C.utf8", "RACK_ENV=production"), gcp.WithUserAttribution); err != nil {
 		return gcp.UserErrorf("failed to verify function target %q in source %q: %s", target, source, result.Stderr)
 	}
 	return nil

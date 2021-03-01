@@ -94,7 +94,8 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Exec([]string{"bundle", "config", "--local", "frozen", "true"}, gcp.WithUserAttribution)
 		ctx.Exec([]string{"bundle", "config", "--local", "without", "development test"}, gcp.WithUserAttribution)
 		ctx.Exec([]string{"bundle", "config", "--local", "path", localGemsDir}, gcp.WithUserAttribution)
-		ctx.Exec([]string{"bundle", "install"}, gcp.WithUserAttribution)
+		ctx.Exec([]string{"bundle", "install"},
+			gcp.WithEnv("NOKOGIRI_USE_SYSTEM_LIBRARIES=1", "MALLOC_ARENA_MAX=2", "LANG=C.utf8"), gcp.WithUserAttribution)
 
 		// Find any gem-installed binary directory and symlink as a static path
 		foundBinDirs := ctx.Glob(".bundle/gems/ruby/*/bin")
