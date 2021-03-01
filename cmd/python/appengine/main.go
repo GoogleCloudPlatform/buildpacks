@@ -21,6 +21,7 @@ import (
 	"regexp"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/blang/semver"
 )
@@ -68,7 +69,7 @@ func validateAppEngineAPIs(ctx *gcp.Context) error {
 	return nil
 }
 
-func entrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
+func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
 	// Check installed gunicorn version and warn if version is lower than supported
 	result, err := ctx.ExecWithErr([]string{"python3", "-m", "pip", "show", "gunicorn"}, gcp.WithUserTimingAttribution)
 	if err != nil {
@@ -93,8 +94,8 @@ func entrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
 		ctx.Warnf("Installed gunicorn version %q is less than supported version %q.", version, minVersion)
 	}
 
-	return &appengine.Entrypoint{
-		Type:    appengine.EntrypointDefault.String(),
+	return &appstart.Entrypoint{
+		Type:    appstart.EntrypointDefault.String(),
 		Command: appengine.DefaultCommand,
 	}, nil
 }

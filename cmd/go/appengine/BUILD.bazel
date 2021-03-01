@@ -25,6 +25,7 @@ go_binary(
     ],
     deps = [
         "//pkg/appengine",
+        "//pkg/appstart",
         "//pkg/gcpbuildpack",
         "//pkg/golang",
     ],

@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2021 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package appengine
+package cloudfunctions
 
 import (
 	"os"
@@ -24,24 +24,20 @@ import (
 	"github.com/buildpacks/libcnb"
 )
 
-func TestConfig(t *testing.T) {
+func TestGetConfig(t *testing.T) {
 	testCases := []struct {
-		name          string
-		entrypointEnv string
-		runtimeEnv    string
-		mainEnv       string
-		want          appstart.Config
+		name       string
+		runtimeEnv string
+		want       appstart.Config
 	}{
 		{
-			name:          "entrypoint from env",
-			entrypointEnv: "custom entrypoint",
+			name: "default",
 			want: appstart.Config{
 				Runtime: "runtime",
 				Entrypoint: appstart.Entrypoint{
-					Type:    appstart.EntrypointUser.String(),
-					Command: "custom entrypoint",
+					Type:    appstart.EntrypointGenerated.String(),
+					Command: "generated",
 				},
-				MainExecutable: "",
 			},
 		},
 		{
@@ -53,20 +49,6 @@ func TestConfig(t *testing.T) {
 					Type:    appstart.EntrypointGenerated.String(),
 					Command: "generated",
 				},
-				MainExecutable: "",
-			},
-		},
-
-		{
-			name:    "main from env",
-			mainEnv: "custom main",
-			want: appstart.Config{
-				Runtime: "runtime",
-				Entrypoint: appstart.Entrypoint{
-					Type:    appstart.EntrypointGenerated.String(),
-					Command: "generated",
-				},
-				MainExecutable: "custom main",
 			},
 		},
 	}
@@ -78,18 +60,17 @@ func TestConfig(t *testing.T) {
 			Command: "generated",
 		}, nil
 	}
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			setEnv(t, "GOOGLE_ENTRYPOINT", tc.entrypointEnv)
 			setEnv(t, "GOOGLE_RUNTIME", tc.runtimeEnv)
-			setEnv(t, "GAE_YAML_MAIN", tc.mainEnv)
 
 			got, err := getConfig(ctx, "runtime", eg)
 			if err != nil {
-				t.Errorf("getConfig() got error: %v", err)
+				t.Errorf("unexpected error: %v", err)
 			}
 			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("getConfig() got=%#v, want=%#v", got, tc.want)
+				t.Errorf("got %#v, want %#v", got, tc.want)
 			}
 		})
 	}

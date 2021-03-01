@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2021 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements java/appengine buildpack.
-// The appengine buildpack sets the image entrypoint.
+// Implements php/cloudfunctions buildpack.
+// The cloudfunctions buildpack sets the image entrypoint.
 package main
 
 import (
-	"fmt"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cloudfunctions"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
+)
+
+const (
+	// routerScript is the path to the functions framework invoker script.
+	routerScript = "vendor/bin/router.php"
 )
 
 func main() {
@@ -30,28 +32,17 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	// Always opt in.
 	return gcp.OptInAlways(), nil
 }
 
 func buildFn(ctx *gcp.Context) error {
-	return appengine.Build(ctx, "java", entrypoint)
+	return cloudfunctions.Build(ctx, "php", entrypoint)
 }
 
-func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
-	if ctx.FileExists("WEB-INF", "appengine-web.xml") {
-		return &appstart.Entrypoint{
-			Type:    appstart.EntrypointGenerated.String(),
-			Command: "serve WEB-INF/appengine-web.xml",
-		}, nil
-	}
-
-	executable, err := java.ExecutableJar(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("finding executable jar: %w", err)
-	}
-
+func entrypoint(*gcp.Context) (*appstart.Entrypoint, error) {
 	return &appstart.Entrypoint{
 		Type:    appstart.EntrypointGenerated.String(),
-		Command: "serve " + executable,
+		Command: "serve " + routerScript,
 	}, nil
 }

@@ -13,6 +13,10 @@ description = "Builder for the GCF PHP 7.4 runtime"
   uri = "functions_framework.tgz"
 
 [[buildpacks]]
+  id = "google.php.cloudfunctions"
+  uri = "cloudfunctions.tgz"
+
+[[buildpacks]]
   id = "google.utils.archive-source"
   uri = "archive_source.tgz"
 
@@ -37,12 +41,16 @@ description = "Builder for the GCF PHP 7.4 runtime"
     id = "google.php.functions-framework"
 
   [[order.group]]
+    id = "google.php.cloudfunctions"
+
+  [[order.group]]
     id = "google.utils.label"
 
 [stack]
   id = "google.php74"
-  build-image = "gcr.io/gae-runtimes/buildpacks/php74/build"
-  run-image = "gcr.io/gae-runtimes/buildpacks/php74/run"
+  # TODO(mtraver) Remove tags once php74_20210225_7_4_15_RC00 or later is rolled out
+  build-image = "gcr.io/gae-runtimes/buildpacks/php74/build:php74_20210225_7_4_15_RC00"
+  run-image = "gcr.io/gae-runtimes/buildpacks/php74/run:php74_20210225_7_4_15_RC00"
 
 [lifecycle]
   version = "0.10.2"

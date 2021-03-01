@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
 )
@@ -133,8 +133,8 @@ func TestEntrypoint(t *testing.T) {
 				return
 			}
 
-			want := appengine.Entrypoint{
-				Type:    appengine.EntrypointGenerated.String(),
+			want := appstart.Entrypoint{
+				Type:    appstart.EntrypointGenerated.String(),
 				Command: tc.want,
 			}
 			if !reflect.DeepEqual(*got, want) {

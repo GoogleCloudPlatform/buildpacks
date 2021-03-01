@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 )
@@ -63,9 +64,9 @@ func validateAppEngineAPIs(ctx *gcp.Context) error {
 	return nil
 }
 
-func entrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
+func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
 	ctx.Logf("No user entrypoint specified. Using the generated entrypoint %q", golang.OutBin)
-	return &appengine.Entrypoint{Type: appengine.EntrypointGenerated.String(), Command: golang.OutBin}, nil
+	return &appstart.Entrypoint{Type: appstart.EntrypointGenerated.String(), Command: golang.OutBin}, nil
 }
 
 func appEngineInDeps(deps []string) bool {

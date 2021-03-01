@@ -12,7 +12,7 @@ go_library(
         "//cmd/java:__subpackages__",
     ],
     deps = [
-        "//pkg/appengine",
+        "//pkg/appstart",
         "//pkg/devmode",
         "//pkg/env",
         "//pkg/gcpbuildpack",

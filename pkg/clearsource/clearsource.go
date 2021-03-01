@@ -22,14 +22,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 var (
-	defaultExclusions = []string{appengine.ConfigDir}
+	defaultExclusions = []string{appstart.ConfigDir}
 )
 
 // DetectFn detemines if clear source buildpacks should opt out.

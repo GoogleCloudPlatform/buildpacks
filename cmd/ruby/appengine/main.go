@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -50,12 +51,12 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.Symlink("/var/log", localLog)
 
 	return appengine.Build(ctx, "ruby",
-		func(ctx *gcp.Context) (*appengine.Entrypoint, error) {
+		func(ctx *gcp.Context) (*appstart.Entrypoint, error) {
 			return entrypoint(ctx, ctx.ApplicationRoot())
 		})
 }
 
-func entrypoint(ctx *gcp.Context, srcDir string) (*appengine.Entrypoint, error) {
+func entrypoint(ctx *gcp.Context, srcDir string) (*appstart.Entrypoint, error) {
 	var ep string
 	ctx.Logf("WARNING: No entrypoint specified. Attempting to infer entrypoint, but it is recommended to set an explicit `entrypoint` in app.yaml.")
 	if ctx.FileExists(srcDir, railsIndicator) {
@@ -66,8 +67,8 @@ func entrypoint(ctx *gcp.Context, srcDir string) (*appengine.Entrypoint, error) 
 		return nil, gcp.UserErrorf("unable to infer entrypoint, please set the `entrypoint` field in app.yaml: https://cloud.google.com/appengine/docs/standard/ruby/runtime#application_startup")
 	}
 	ctx.Logf("Using inferred entrypoint: %q", ep)
-	return &appengine.Entrypoint{
-		Type:    appengine.EntrypointGenerated.String(),
+	return &appstart.Entrypoint{
+		Type:    appstart.EntrypointGenerated.String(),
 		Command: ep,
 	}, nil
 }
