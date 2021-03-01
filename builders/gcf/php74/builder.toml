@@ -45,4 +45,4 @@ description = "Builder for the GCF PHP 7.4 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/php74/run"
 
 [lifecycle]
-  version = "0.9.3"
+  version = "0.10.2"

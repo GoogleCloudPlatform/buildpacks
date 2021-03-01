@@ -33,8 +33,9 @@ description = "Builder for the GAE Python 3.9 runtime"
 
 [stack]
   id = "google.python39"
-  build-image = "gcr.io/gae-runtimes/buildpacks/python39/build"
-  run-image = "gcr.io/gae-runtimes/buildpacks/python39/run"
+  # TODO(b/181579214): Revert to :latest.
+  build-image = "gcr.io/gae-runtimes/buildpacks/python39/build:python39_20210224c_3_9_2_RC00"
+  run-image = "gcr.io/gae-runtimes/buildpacks/python39/run:python39_20210224c_3_9_2_RC00"
 
 [lifecycle]
-  version = "0.9.3"
+  version = "0.10.2"
