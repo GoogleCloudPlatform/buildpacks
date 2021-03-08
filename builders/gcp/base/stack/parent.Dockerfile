@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libffi6 \
   libmpdec2 \
   libicu60 \
+  libc++1-9 \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 LABEL io.buildpacks.stack.id=${stack_id}

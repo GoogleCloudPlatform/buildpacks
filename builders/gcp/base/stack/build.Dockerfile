@@ -25,8 +25,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
   git \
   python3 \
+  tar \
+  zip \
   unzip \
   xz-utils \
+  g++-8 \
+  gcc-8 \
+  libstdc++-8-dev \
+  pkg-config \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 USER cnb
