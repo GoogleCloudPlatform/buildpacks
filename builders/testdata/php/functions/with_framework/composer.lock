@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "google/cloud-functions-framework",
-            "version": "v0.7.1",
+            "version": "v0.7.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/GoogleCloudPlatform/functions-framework-php.git",
-                "reference": "010835c5c893c1b8fa4b5d326e2b7106f8aa2af7"
+                "reference": "1bf9f428d54d383da8c203f89ad6b186ba5c3d9e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/GoogleCloudPlatform/functions-framework-php/zipball/010835c5c893c1b8fa4b5d326e2b7106f8aa2af7",
-                "reference": "010835c5c893c1b8fa4b5d326e2b7106f8aa2af7",
+                "url": "https://api.github.com/repos/GoogleCloudPlatform/functions-framework-php/zipball/1bf9f428d54d383da8c203f89ad6b186ba5c3d9e",
+                "reference": "1bf9f428d54d383da8c203f89ad6b186ba5c3d9e",
                 "shasum": ""
             },
             "require": {
@@ -43,7 +43,7 @@
                 "Apache-2.0"
             ],
             "description": "Google Cloud Functions Framework for PHP",
-            "time": "2020-11-10T16:45:17+00:00"
+            "time": "2021-03-09T22:23:34+00:00"
         },
         {
             "name": "guzzlehttp/psr7",
