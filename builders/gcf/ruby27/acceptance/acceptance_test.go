@@ -33,10 +33,6 @@ func TestAcceptance(t *testing.T) {
 			App:  "with_dependencies",
 		},
 		{
-			Name: "function with platform-specific dependencies",
-			App:  "with_platform_dependencies",
-		},
-		{
 			Name:   "function with runtime env var",
 			App:    "with_env_var",
 			RunEnv: []string{"FOO=foo"},
@@ -79,7 +75,7 @@ func TestFailures(t *testing.T) {
 	testCases := []acceptance.FailureTest{
 		{
 			App:       "fail_ruby_version",
-			MustMatch: "Could not find gem",
+			MustMatch: "but your Gemfile specified",
 		},
 		{
 			App:       "fail_framework_missing",
