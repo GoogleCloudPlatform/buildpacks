@@ -64,6 +64,9 @@ func buildFn(ctx *gcp.Context) error {
 		lockFile = "gems.locked"
 	}
 
+	// Remove any user-provided local bundle config and cache that can interfere with the build process.
+	ctx.RemoveAll(".bundle")
+
 	deps := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 
 	// This layer directory contains the files installed by bundler into the application .bundle directory
@@ -73,6 +76,11 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
+
+	// Ensure the GCP runtime platform is present in the lockfile. This is needed for Bundler >= 2.2, in case the user's lockfile is specific to a different platform.
+	ctx.Exec([]string{"bundle", "lock", "--add-platform", "x86_64-linux"}, gcp.WithUserAttribution)
+	ctx.Exec([]string{"bundle", "lock", "--add-platform", "ruby"}, gcp.WithUserAttribution)
+
 	if cached {
 		ctx.CacheHit(layerName)
 	} else {
@@ -82,7 +90,6 @@ func buildFn(ctx *gcp.Context) error {
 		localBinDir := filepath.Join(".bundle", "bin")
 
 		// Install the bundle locally into .bundle/gems
-		ctx.RemoveAll(localGemsDir, localBinDir)
 		ctx.Exec([]string{"bundle", "config", "--local", "deployment", "true"}, gcp.WithUserAttribution)
 		ctx.Exec([]string{"bundle", "config", "--local", "frozen", "true"}, gcp.WithUserAttribution)
 		ctx.Exec([]string{"bundle", "config", "--local", "without", "development test"}, gcp.WithUserAttribution)
@@ -104,7 +111,6 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Always link local .bundle directory to the actual installation stored in the layer.
-	ctx.RemoveAll(".bundle")
 	ctx.Symlink(bundleOutput, ".bundle")
 
 	return nil
