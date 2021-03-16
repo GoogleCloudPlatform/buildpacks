@@ -18,6 +18,7 @@ package acceptance
 const (
 	// Buildpack identifiers used to verify that buildpacks were or were not used.
 	entrypoint      = "google.config.entrypoint"
+	cppFF           = "google.cpp.functions-framework"
 	dotnetFF        = "google.dotnet.functions-framework"
 	dotnetPublish   = "google.dotnet.publish"
 	dotnetRuntime   = "google.dotnet.runtime"

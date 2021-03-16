@@ -6,6 +6,13 @@ exports_files(
 )
 
 package_group(
+    name = "cpp_builders",
+    packages = [
+        "//builders/gcp/base",
+    ],
+)
+
+package_group(
     name = "dotnet_builders",
     packages = [
         "//builders/gae/dotnet3",

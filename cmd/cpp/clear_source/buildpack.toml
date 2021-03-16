@@ -1,0 +1,9 @@
+api = "0.2"
+
+[buildpack]
+id = "google.cpp.clear_source"
+version = "0.1.0"
+name = "C++ - Clear Source"
+
+[[stacks]]
+id = "google"

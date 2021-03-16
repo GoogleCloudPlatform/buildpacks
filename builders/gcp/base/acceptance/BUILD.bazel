@@ -124,6 +124,29 @@ go_test(
 )
 
 go_test(
+    name = "cpp_fn_test",
+    size = "enormous",
+    srcs = ["cpp_fn_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata/cpp:functions)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-prefix=gcpbase-cpp-fn-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gcp/base:builder.tar",
+        "//builders/testdata/cpp:functions",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//internal/acceptance"],
+)
+
+go_test(
     name = "dotnet_fn_test",
     size = "enormous",
     srcs = ["dotnet_fn_test.go"],

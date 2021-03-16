@@ -9,6 +9,10 @@ builder(
         "//cmd/utils/label:label.tgz",
     ],
     groups = {
+        "cpp": [
+            "//cmd/cpp/clear_source:clear_source.tgz",
+            "//cmd/cpp/functions_framework:functions_framework.tgz",
+        ],
         "dotnet": [
             "//cmd/dotnet/functions_framework:functions_framework.tgz",
             "//cmd/dotnet/publish:publish.tgz",

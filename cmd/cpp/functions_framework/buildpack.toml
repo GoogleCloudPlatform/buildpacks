@@ -1,0 +1,12 @@
+api = "0.2"
+
+[buildpack]
+id = "google.cpp.functions-framework"
+version = "0.1.0"
+name = "C++ - Functions Framework"
+
+[[stacks]]
+id = "google"
+
+[[stacks]]
+id = "google.cpp8"

@@ -8,6 +8,7 @@ go_library(
     srcs = ["clearsource.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
+        "//cmd/cpp:__subpackages__",
         "//cmd/go:__subpackages__",
         "//cmd/java:__subpackages__",
     ],

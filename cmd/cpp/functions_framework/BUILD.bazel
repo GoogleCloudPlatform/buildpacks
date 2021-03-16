@@ -1,0 +1,42 @@
+# Buildpack for the C++ functions framework
+
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("//tools:defs.bzl", "buildpack")
+
+licenses(["notice"])
+
+buildpack(
+    name = "functions_framework",
+    srcs = [
+        "converter/CMakeLists.txt",
+        "converter/vcpkg.json",
+        "converter/x64-linux-nodebug.cmake",
+    ],
+    executables = [
+        ":main",
+    ],
+    visibility = [
+        "//builders:cpp_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = [
+        "main.go",
+        "template_v0.go",
+    ],
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+    ],
+)
+
+go_test(
+    name = "main_test",
+    size = "small",
+    srcs = ["main_test.go"],
+    embed = [":main"],
+    rundir = ".",
+    deps = ["//pkg/gcpbuildpack"],
+)
