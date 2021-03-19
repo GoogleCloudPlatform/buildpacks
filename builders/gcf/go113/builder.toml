@@ -5,10 +5,6 @@ description = "Builder for the GCF Go 1.13 runtime"
   uri = "build.tgz"
 
 [[buildpacks]]
-  id = "google.go.gomod"
-  uri = "gomod.tgz"
-
-[[buildpacks]]
   id = "google.go.functions-framework"
   uri = "functions_framework.tgz"
 
@@ -27,10 +23,6 @@ description = "Builder for the GCF Go 1.13 runtime"
 
   [[order.group]]
     id = "google.go.functions-framework"
-
-  [[order.group]]
-    id = "google.go.gomod"
-    optional = true
 
   [[order.group]]
     id = "google.go.build"

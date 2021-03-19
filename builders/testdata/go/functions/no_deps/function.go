@@ -18,9 +18,14 @@ package function
 import (
 	"fmt"
 	"net/http"
+	"os"
 )
 
 // Func is a test function.
 func Func(w http.ResponseWriter, r *http.Request) {
+	if got, want := os.Getenv("FUNCTION_TARGET"), "Func"; got != want {
+		fmt.Fprintf(w, "FAIL: $FUNCTION_TARGET = %q, want %q", got, want)
+		return
+	}
 	fmt.Fprintf(w, "PASS")
 }

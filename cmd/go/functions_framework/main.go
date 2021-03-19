@@ -26,12 +26,12 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
-	"github.com/buildpacks/libcnb"
 	"github.com/blang/semver"
 )
 
 const (
 	layerName                 = "functions-framework"
+	gopathLayerName           = "gopath"
 	functionsFrameworkModule  = "github.com/GoogleCloudPlatform/functions-framework-go"
 	functionsFrameworkPackage = functionsFrameworkModule + "/funcframework"
 	functionsFrameworkVersion = "v1.2.0"
@@ -63,8 +63,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer(layerName)
-	ctx.Setenv("GOPATH", l.Path)
+	l := ctx.Layer(layerName, gcp.LaunchLayer)
 	ctx.SetFunctionsEnvVars(l)
 
 	fnTarget := os.Getenv(env.FunctionTarget)
@@ -90,7 +89,7 @@ func buildFn(ctx *gcp.Context) error {
 		if !golang.SupportsNoGoMod(ctx) {
 			return gcp.UserErrorf("function build requires go.mod file")
 		}
-		if err := createMainVendored(ctx, l, fn); err != nil {
+		if err := createMainVendored(ctx, fn); err != nil {
 			return err
 		}
 	} else if info, err := os.Stat(goMod); err == nil && info.Mode().Perm()&0200 == 0 {
@@ -108,6 +107,10 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
+	l := ctx.Layer(gopathLayerName, gcp.BuildLayer)
+	l.BuildEnvironment.Override("GOPATH", l.Path)
+	ctx.Setenv("GOPATH", l.Path)
+
 	ctx.Exec([]string{"go", "mod", "init", appName})
 
 	fnMod := ctx.Exec([]string{"go", "list", "-m"}, gcp.WithWorkDir(fn.Source)).Stdout
@@ -151,13 +154,14 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 // These deployments were created by running `go mod vendor` and then .gcloudignoring the go.mod file,
 // so that Go versions that don't natively handle gomod vendoring would be able to pick up the vendored deps.
 // n.b. later versions of Go (1.14+) handle vendored go.mod files natively, and so we just use the go.mod route there.
-func createMainVendored(ctx *gcp.Context, l *libcnb.Layer, fn fnInfo) error {
-	l.Build = true
-	l.BuildEnvironment.Override("GOPATH", ctx.ApplicationRoot())
+func createMainVendored(ctx *gcp.Context, fn fnInfo) error {
+	l := ctx.Layer(gopathLayerName, gcp.BuildLayer)
 	gopath := ctx.ApplicationRoot()
 	gopathSrc := filepath.Join(gopath, "src")
 	ctx.MkdirAll(gopathSrc, 0755)
 	l.BuildEnvironment.Override(env.Buildable, appName+"/main")
+	l.BuildEnvironment.Override("GOPATH", gopath)
+	ctx.Setenv("GOPATH", gopath)
 
 	appPath := filepath.Join(gopathSrc, appName, "main")
 	ctx.MkdirAll(appPath, 0755)

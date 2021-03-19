@@ -37,7 +37,6 @@ go_binary(
         "//pkg/gcpbuildpack",
         "//pkg/golang",
         "@com_github_blang_semver//:go_default_library",
-        "@com_github_buildpacks_libcnb//:go_default_library",
     ],
 )
 
