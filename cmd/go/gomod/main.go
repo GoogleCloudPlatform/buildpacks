@@ -52,7 +52,7 @@ func buildFn(ctx *gcp.Context) error {
 			return nil
 		}
 
-		ctx.Logf("Ignoring `vendor` directory: the Go runtime must be 1.14+ and go.mod should contain a `go 1.14`+ entry")
+		ctx.Warnf("Ignoring `vendor` directory: the Go runtime must be 1.14+ and go.mod should contain a `go 1.14`+ entry")
 	}
 
 	if info, err := os.Stat("go.mod"); err == nil && info.Mode().Perm()&0200 == 0 {
@@ -65,19 +65,14 @@ func buildFn(ctx *gcp.Context) error {
 	if workdir == "" {
 		workdir = ctx.ApplicationRoot()
 	}
-	// go build -mod=readonly requires a complete graph of modules which `go mod download` does not produce in all cases (https://golang.org/issue/35832).
-	ctx.Exec([]string{"go", "mod", "tidy"}, gcp.WithEnv(env...), gcp.WithWorkDir(workdir), gcp.WithUserAttribution)
 
-	if golang.SupportsGoProxyFallback(ctx) {
-		env = append(env, "GOPROXY=https://proxy.golang.org|direct")
-		ctx.Exec([]string{"go", "mod", "download"}, gcp.WithEnv(env...), gcp.WithUserAttribution)
-	} else {
-		_, err := ctx.ExecWithErr([]string{"go", "mod", "download"}, gcp.WithEnv(env...), gcp.WithUserAttribution)
-		if err != nil {
-			ctx.Warnf("go mod download failed. Retrying with GOSUMDB=off GOPROXY=direct. Error: %v", err)
-			ctx.Exec([]string{"go", "mod", "download"}, gcp.WithEnv(append(env, "GOSUMDB=off", "GOPROXY=direct")...), gcp.WithUserAttribution)
-		}
+	// Go 1.16+ requires a go.sum file. If one does not exist, generate it.
+	// go build -mod=readonly requires a complete graph of modules which `go mod download` does not produce in all cases (https://golang.org/issue/35832).
+	if !ctx.FileExists("go.sum") {
+		golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "tidy"}, gcp.WithEnv(env...), gcp.WithWorkDir(workdir), gcp.WithUserAttribution)
 	}
+
+	golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "download"}, gcp.WithEnv(env...), gcp.WithUserAttribution)
 
 	return nil
 }

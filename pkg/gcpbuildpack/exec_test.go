@@ -207,7 +207,7 @@ func TestExecAsDefaultDoesNotUpdateDuration(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cleanUp := simpleContext(t)
 			defer cleanUp()
-			opts := []execOption{}
+			opts := []ExecOption{}
 			if tc.opt != nil {
 				opts = append(opts, tc.opt)
 			}
@@ -262,7 +262,7 @@ func TestExecAsDefaultReturnsStatusInternal(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cleanUp := simpleContext(t)
 			defer cleanUp()
-			opts := []execOption{}
+			opts := []ExecOption{}
 			if tc.opt != nil {
 				opts = append(opts, tc.opt)
 			}
@@ -286,6 +286,17 @@ func TestExecWithEnv(t *testing.T) {
 	result := ctx.Exec([]string{"/bin/bash", "-c", "echo $FOO"}, WithEnv("A=B", "FOO=bar"))
 
 	if got, want := strings.TrimSpace(result.Stdout), "bar"; got != want {
+		t.Errorf("incorrect output got=%q want=%q", got, want)
+	}
+}
+
+func TestExecWithEnvMultiple(t *testing.T) {
+	ctx, cleanUp := simpleContext(t)
+	defer cleanUp()
+
+	result := ctx.Exec([]string{"/bin/bash", "-c", "echo $A $FOO"}, WithEnv("A=B", "FOO=bar"), WithEnv("FOO=baz"))
+
+	if got, want := strings.TrimSpace(result.Stdout), "B baz"; got != want {
 		t.Errorf("incorrect output got=%q want=%q", got, want)
 	}
 }
@@ -320,7 +331,7 @@ func TestExecWithMessageProducer(t *testing.T) {
 func TestMessageProducerHelpers(t *testing.T) {
 	testCases := []struct {
 		name     string
-		opt      execOption
+		opt      ExecOption
 		stdout   string
 		stderr   string
 		combined string
@@ -448,7 +459,7 @@ func TestExecWithErr(t *testing.T) {
 	testCases := []struct {
 		name            string
 		cmd             []string
-		opts            []execOption
+		opts            []ExecOption
 		wantResult      *ExecResult
 		wantErr         bool
 		wantErrMessage  string
@@ -476,7 +487,7 @@ func TestExecWithErr(t *testing.T) {
 		{
 			name:           "successful cmd with user attribution",
 			cmd:            []string{"sleep", ".5"},
-			opts:           []execOption{WithUserAttribution},
+			opts:           []ExecOption{WithUserAttribution},
 			wantResult:     &ExecResult{},
 			wantUserTiming: true,
 			wantMinUserDur: 500 * time.Millisecond,
@@ -484,7 +495,7 @@ func TestExecWithErr(t *testing.T) {
 		{
 			name:           "successful cmd with user timing attribution",
 			cmd:            []string{"sleep", ".5"},
-			opts:           []execOption{WithUserTimingAttribution},
+			opts:           []ExecOption{WithUserTimingAttribution},
 			wantResult:     &ExecResult{},
 			wantUserTiming: true,
 			wantMinUserDur: 500 * time.Millisecond,
@@ -492,14 +503,14 @@ func TestExecWithErr(t *testing.T) {
 		{
 			name:           "successful cmd with user failure attribution",
 			cmd:            []string{"sleep", ".5"},
-			opts:           []execOption{WithUserFailureAttribution},
+			opts:           []ExecOption{WithUserFailureAttribution},
 			wantResult:     &ExecResult{},
 			wantUserTiming: false,
 		},
 		{
 			name:            "failing cmd with user attribution",
 			cmd:             []string{"bash", "-c", "sleep .5; exit 99"},
-			opts:            []execOption{WithUserAttribution},
+			opts:            []ExecOption{WithUserAttribution},
 			wantResult:      &ExecResult{ExitCode: 99},
 			wantErr:         true,
 			wantUserTiming:  true,
@@ -509,7 +520,7 @@ func TestExecWithErr(t *testing.T) {
 		{
 			name:           "failing cmd with user timing attribution",
 			cmd:            []string{"bash", "-c", "sleep .5; exit 99"},
-			opts:           []execOption{WithUserTimingAttribution},
+			opts:           []ExecOption{WithUserTimingAttribution},
 			wantResult:     &ExecResult{ExitCode: 99},
 			wantErr:        true,
 			wantUserTiming: true,
@@ -518,7 +529,7 @@ func TestExecWithErr(t *testing.T) {
 		{
 			name:            "failing cmd with user failure attribution",
 			cmd:             []string{"bash", "-c", "sleep .5; exit 99"},
-			opts:            []execOption{WithUserFailureAttribution},
+			opts:            []ExecOption{WithUserFailureAttribution},
 			wantResult:      &ExecResult{ExitCode: 99},
 			wantErr:         true,
 			wantUserTiming:  false,
@@ -527,19 +538,19 @@ func TestExecWithErr(t *testing.T) {
 		{
 			name:       "WithEnv",
 			cmd:        []string{"bash", "-c", "echo $FOO"},
-			opts:       []execOption{WithEnv("FOO=bar")},
+			opts:       []ExecOption{WithEnv("FOO=bar")},
 			wantResult: &ExecResult{Stdout: "bar", Combined: "bar"},
 		},
 		{
 			name:       "WithWorkDir",
 			cmd:        []string{"bash", "-c", "echo $PWD"},
-			opts:       []execOption{WithWorkDir(os.TempDir())},
+			opts:       []ExecOption{WithWorkDir(os.TempDir())},
 			wantResult: &ExecResult{Stdout: os.TempDir(), Combined: os.TempDir()},
 		},
 		{
 			name:           "WithMessageProducer",
 			cmd:            []string{"bash", "-c", "exit 99"},
-			opts:           []execOption{WithMessageProducer(func(result *ExecResult) string { return "foo" })},
+			opts:           []ExecOption{WithMessageProducer(func(result *ExecResult) string { return "foo" })},
 			wantErr:        true,
 			wantErrMessage: "foo",
 			wantResult:     &ExecResult{ExitCode: 99},
@@ -547,7 +558,7 @@ func TestExecWithErr(t *testing.T) {
 		{
 			name:           "WithStdoutTail",
 			cmd:            []string{"bash", "-c", "echo ------foo; exit 99"},
-			opts:           []execOption{WithStdoutTail},
+			opts:           []ExecOption{WithStdoutTail},
 			wantErr:        true,
 			wantErrMessage: "...foo",
 			wantResult:     &ExecResult{ExitCode: 99, Stdout: "------foo", Combined: "------foo"},
@@ -555,7 +566,7 @@ func TestExecWithErr(t *testing.T) {
 		{
 			name:           "WithStdoutHead",
 			cmd:            []string{"bash", "-c", "echo foo------; exit 99"},
-			opts:           []execOption{WithStdoutHead},
+			opts:           []ExecOption{WithStdoutHead},
 			wantErr:        true,
 			wantErrMessage: "foo...",
 			wantResult:     &ExecResult{ExitCode: 99, Stdout: "foo------", Combined: "foo------"},
@@ -563,7 +574,7 @@ func TestExecWithErr(t *testing.T) {
 		{
 			name:           "WithStderrTail",
 			cmd:            []string{"bash", "-c", "echo ------foo >&2; exit 99"},
-			opts:           []execOption{WithStderrTail},
+			opts:           []ExecOption{WithStderrTail},
 			wantErr:        true,
 			wantErrMessage: "...foo",
 			wantResult:     &ExecResult{ExitCode: 99, Stderr: "------foo", Combined: "------foo"},
@@ -571,7 +582,7 @@ func TestExecWithErr(t *testing.T) {
 		{
 			name:           "WithStderrHead",
 			cmd:            []string{"bash", "-c", "echo foo------ >&2; exit 99"},
-			opts:           []execOption{WithStderrHead},
+			opts:           []ExecOption{WithStderrHead},
 			wantErr:        true,
 			wantErrMessage: "foo...",
 			wantResult:     &ExecResult{ExitCode: 99, Stderr: "foo------", Combined: "foo------"},

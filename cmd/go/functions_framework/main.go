@@ -111,7 +111,10 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	l.BuildEnvironment.Override("GOPATH", l.Path)
 	ctx.Setenv("GOPATH", l.Path)
 
-	ctx.Exec([]string{"go", "mod", "init", appName})
+	// If the function source does not include a go.sum, `go list` will fail under Go 1.16+.
+	if !ctx.FileExists(fn.Source, "go.sum") {
+		golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "tidy"}, gcp.WithWorkDir(fn.Source))
+	}
 
 	fnMod := ctx.Exec([]string{"go", "list", "-m"}, gcp.WithWorkDir(fn.Source)).Stdout
 	// golang.org/ref/mod requires that package names in a replace contains at least one dot.
@@ -126,6 +129,7 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 		fn.Package = fnMod
 	}
 
+	ctx.Exec([]string{"go", "mod", "init", appName})
 	ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@v0.0.0", fnMod)})
 	ctx.Exec([]string{"go", "mod", "edit", "-replace", fmt.Sprintf("%s@v0.0.0=%s", fnMod, fn.Source)})
 
@@ -135,15 +139,19 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 		return fmt.Errorf("checking for functions framework dependency in go.mod: %w", err)
 	}
 	if version == "" {
-		ctx.Exec([]string{"go", "get", fmt.Sprintf("%s@%s", functionsFrameworkModule, functionsFrameworkVersion)}, gcp.WithUserAttribution)
+		golang.ExecWithGoproxyFallback(ctx, []string{"go", "get", fmt.Sprintf("%s@%s", functionsFrameworkModule, functionsFrameworkVersion)}, gcp.WithUserAttribution)
 		version = functionsFrameworkVersion
 	}
 
 	if err := createMainGoFile(ctx, fn, filepath.Join(ctx.ApplicationRoot(), "main.go"), version); err != nil {
 		return err
 	}
+
 	// Generate a go.sum entry which is required starting with Go 1.16.
-	ctx.Exec([]string{"go", "mod", "tidy"})
+	// We generate a go.mod file dynamically since the function may request a specific version of
+	// the framework, in which case we want to import that version. For that reason we cannot
+	// include a pre-generated go.sum file.
+	golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "tidy"})
 	return nil
 }
 
@@ -200,7 +208,7 @@ func createMainVendored(ctx *gcp.Context, fn fnInfo) error {
 			// Copy the contents of the vendor dir into GOPATH/src.
 			fmt.Sprintf("cp --archive vendor/. %s", gopathSrc),
 		}
-		ctx.Exec([]string{"/bin/bash", "-c", strings.Join(cmd, " && ")}, gcp.WithWorkDir(ffDepsDir), gcp.WithUserAttribution)
+		golang.ExecWithGoproxyFallback(ctx, []string{"/bin/bash", "-c", strings.Join(cmd, " && ")}, gcp.WithWorkDir(ffDepsDir), gcp.WithUserAttribution)
 
 		// Since the user didn't pin it, we want the current version of the framework.
 		requestedFrameworkVersion = functionsFrameworkVersion

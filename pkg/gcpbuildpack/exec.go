@@ -47,17 +47,18 @@ type execParams struct {
 	messageProducer MessageProducer
 }
 
-type execOption func(o *execParams)
+// ExecOption configures Exec functions.
+type ExecOption func(o *execParams)
 
 // WithEnv sets environment variables (of the form "KEY=value").
-func WithEnv(env ...string) execOption {
+func WithEnv(env ...string) ExecOption {
 	return func(o *execParams) {
-		o.env = env
+		o.env = append(o.env, env...)
 	}
 }
 
 // WithWorkDir sets a specific working directory.
-func WithWorkDir(dir string) execOption {
+func WithWorkDir(dir string) ExecOption {
 	return func(o *execParams) {
 		o.dir = dir
 	}
@@ -80,7 +81,7 @@ var WithUserFailureAttribution = func(o *execParams) {
 }
 
 // WithMessageProducer sets a custom MessageProducer to produce the error message.
-func WithMessageProducer(mp MessageProducer) execOption {
+func WithMessageProducer(mp MessageProducer) ExecOption {
 	return func(o *execParams) {
 		o.messageProducer = mp
 	}
@@ -105,7 +106,7 @@ var WithStdoutTail = WithMessageProducer(KeepStdoutTail)
 var WithStdoutHead = WithMessageProducer(KeepStdoutHead)
 
 // Exec runs the given command under the default configuration, handling error if present.
-func (ctx *Context) Exec(cmd []string, opts ...execOption) *ExecResult {
+func (ctx *Context) Exec(cmd []string, opts ...ExecOption) *ExecResult {
 	result, err := ctx.ExecWithErr(cmd, opts...)
 	if err == nil {
 		return result
@@ -120,7 +121,7 @@ func (ctx *Context) Exec(cmd []string, opts ...execOption) *ExecResult {
 }
 
 // ExecWithErr runs the given command (with args) under the default configuration, allowing the caller to handle the error.
-func (ctx *Context) ExecWithErr(cmd []string, opts ...execOption) (*ExecResult, *Error) {
+func (ctx *Context) ExecWithErr(cmd []string, opts ...ExecOption) (*ExecResult, *Error) {
 	params := execParams{cmd: cmd, messageProducer: KeepCombinedTail}
 	for _, o := range opts {
 		o(&params)

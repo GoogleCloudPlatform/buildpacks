@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -151,4 +152,24 @@ var readGoMod = func(ctx *gcp.Context) string {
 	}
 
 	return string(ctx.ReadFile(goModPath))
+}
+
+// ExecWithGoproxyFallback runs the given command with a GOPROXY fallback.
+// Before Go 1.14, Go would fall back to direct only if a 404 or 410 error ocurred, for those
+// versions, we explictly disable GOPROXY and try again on any error.
+// For newer versions of Go, we take advantage of the "pipe" character which has the same effect.
+func ExecWithGoproxyFallback(ctx *gcp.Context, cmd []string, opts ...gcp.ExecOption) *gcp.ExecResult {
+	if SupportsGoProxyFallback(ctx) {
+		opts = append(opts, gcp.WithEnv("GOPROXY=https://proxy.golang.org|direct"))
+		return ctx.Exec(cmd, opts...)
+	}
+
+	result, err := ctx.ExecWithErr(cmd, opts...)
+	if err == nil {
+		return result
+	}
+	ctx.Warnf("%q failed. Retrying with GOSUMDB=off GOPROXY=direct. Error: %v", strings.Join(cmd, " "), err)
+
+	opts = append(opts, gcp.WithEnv("GOSUMDB=off", "GOPROXY=direct"))
+	return ctx.Exec(cmd, opts...)
 }
