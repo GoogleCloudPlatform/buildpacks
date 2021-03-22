@@ -113,6 +113,7 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 
 	// If the function source does not include a go.sum, `go list` will fail under Go 1.16+.
 	if !ctx.FileExists(fn.Source, "go.sum") {
+		ctx.Logf(`go.sum not found, generating using "go mod tidy"`)
 		golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "tidy"}, gcp.WithWorkDir(fn.Source))
 	}
 
@@ -251,8 +252,12 @@ func frameworkSpecifiedVersion(ctx *gcp.Context, fnSource string) (string, error
 		ctx.Logf("Found framework version %s", v)
 		return v, nil
 	}
-	if res != nil && strings.Contains(res.Stderr, "not a known dependency") {
-		ctx.Logf("No framework version specified, using default")
+	if res != nil {
+		if strings.Contains(res.Stderr, "not a known dependency") {
+			ctx.Logf("functions-framework not specified in go.mod, using default")
+		} else if strings.Contains(res.Stderr, "can't resolve module using the vendor directory") {
+			ctx.Logf("functions-framework not found in vendor directory, using default")
+		}
 		return "", nil
 	}
 	return "", err

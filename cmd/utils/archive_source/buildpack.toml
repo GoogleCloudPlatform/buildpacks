@@ -12,6 +12,9 @@ id = "google.dotnet3"
 id = "google.go113"
 
 [[stacks]]
+id = "google.go116"
+
+[[stacks]]
 id = "google.java11"
 
 [[stacks]]
