@@ -29,6 +29,7 @@ package_group(
         "//builders/gae/go113",
         "//builders/gae/go114",
         "//builders/gae/go115",
+        "//builders/gae/go116",
         "//builders/gcf/go113",
         "//builders/gcf/go116",
         "//builders/gcp/base",

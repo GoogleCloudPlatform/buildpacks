@@ -69,6 +69,7 @@ func buildFn(ctx *gcp.Context) error {
 	// Go 1.16+ requires a go.sum file. If one does not exist, generate it.
 	// go build -mod=readonly requires a complete graph of modules which `go mod download` does not produce in all cases (https://golang.org/issue/35832).
 	if !ctx.FileExists("go.sum") {
+		ctx.Logf(`go.sum not found, generating using "go mod tidy"`)
 		golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "tidy"}, gcp.WithEnv(env...), gcp.WithWorkDir(workdir), gcp.WithUserAttribution)
 	}
 
