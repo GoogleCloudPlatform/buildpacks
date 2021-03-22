@@ -52,7 +52,7 @@ func buildFn(ctx *gcp.Context) error {
 			return nil
 		}
 
-		ctx.Warnf("Ignoring `vendor` directory: the Go runtime must be 1.14+ and go.mod should contain a `go 1.14`+ entry")
+		ctx.Warnf(`Ignoring "vendor" directory: To use vendor directory, the Go runtime must be 1.14+ and go.mod must contain a "go 1.14"+ entry. See https://cloud.google.com/appengine/docs/standard/go/specifying-dependencies#vendoring_dependencies.`)
 	}
 
 	if info, err := os.Stat("go.mod"); err == nil && info.Mode().Perm()&0200 == 0 {
