@@ -55,8 +55,6 @@ func TestAcceptanceCppFn(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		tc := tc
-		// TODO(b/183222659): Re-enable when fixed.
-		tc.SkipCacheTest = true
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 

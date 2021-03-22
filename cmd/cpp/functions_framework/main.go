@@ -17,7 +17,9 @@
 package main
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,7 +36,8 @@ const (
 	vcpkgCacheLayerName         = "vcpkg-binary-cache"
 	vcpkgLayerName              = "vcpkg"
 	vcpkgVersion                = "9b9a6680b25872989c8eb0303d670f32e5cfe6a4"
-	vcpkgToolVersion            = "2021-02-24-d67989bce1043b98092ac45996a8230a059a2d7e"
+	vcpkgBaselineSha256         = "5fc2baed6f79c4c27c630bbe51df23c98053181297aeecc0b6b236f2f408956d"
+	vcpkgToolVersion            = "2021-01-13-unknownhash"
 	vcpkgVersionPrefix          = "Vcpkg package management program version "
 	vcpkgTripletName            = "x64-linux-nodebug"
 	installLayerName            = "cpp"
@@ -192,15 +195,10 @@ func installVcpkg(ctx *gcp.Context) (string, error) {
 	vcpkg := ctx.Layer(vcpkgLayerName, gcp.BuildLayer, gcp.CacheLayer)
 	customTripletPath := filepath.Join(vcpkg.Path, "triplets", vcpkgTripletName+".cmake")
 	vcpkgExePath := filepath.Join(vcpkg.Path, "vcpkg")
-	// If the cache layer already has the right version, just reuse it.
-	if ctx.FileExists(vcpkgExePath) && ctx.FileExists(customTripletPath) {
-		version, err := getVcpkgVersion(ctx, vcpkgExePath)
-		if err != nil {
-			ctx.Debugf("getting vcpkg version %v", err)
-		} else if version >= vcpkgToolVersion {
-			ctx.CacheHit(vcpkgLayerName)
-			return vcpkg.Path, nil
-		}
+	vcpkgBaselinePath := filepath.Join(vcpkg.Path, "versions", "baseline.json")
+	if validateVcpkgCache(ctx, customTripletPath, vcpkgExePath, vcpkgBaselinePath) {
+		ctx.CacheHit(vcpkgLayerName)
+		return vcpkg.Path, nil
 	}
 	ctx.CacheMiss(vcpkgLayerName)
 	ctx.Logf("Installing vcpkg %s", vcpkgVersion)
@@ -213,7 +211,41 @@ func installVcpkg(ctx *gcp.Context) (string, error) {
 	return vcpkg.Path, nil
 }
 
-func getVcpkgVersion(ctx *gcp.Context, vcpkgExePath string) (string, error) {
+func validateVcpkgCache(ctx *gcp.Context, customTripletPath string, vcpkgExePath string, vcpkgBaselinePath string) bool {
+	if !ctx.FileExists(customTripletPath) {
+		ctx.Debugf("Missing vcpkg custom triplet (%s)", customTripletPath)
+		return false
+	}
+	if !ctx.FileExists(vcpkgBaselinePath) {
+		ctx.Debugf("Missing vcpkg baseline file (%s)", vcpkgBaselinePath)
+		return false
+	}
+	if !ctx.FileExists(vcpkgExePath) {
+		ctx.Debugf("Missing vcpkg tool (%s)", vcpkgExePath)
+		return false
+	}
+	actualVcpkgToolVersion, err := getVcpkgToolVersion(ctx, vcpkgExePath)
+	if err != nil {
+		ctx.Debugf("Getting vcpkg version %v", err)
+		return false
+	}
+	if actualVcpkgToolVersion != vcpkgToolVersion {
+		ctx.Debugf("Mismatched vcpkg tool version, got=%s, want=%s", actualVcpkgToolVersion, actualVcpkgToolVersion)
+		return false
+	}
+	actualVcpkgBaselineSha256, err := getVcpkgBaselineSha256(ctx, vcpkgBaselinePath)
+	if err != nil {
+		ctx.Debugf("Getting vcpkg baseline hash %v", err)
+		return false
+	}
+	if actualVcpkgBaselineSha256 != vcpkgBaselineSha256 {
+		ctx.Debugf("Mismatched vcpkg baseline SHA256, got=%s, want=%s", actualVcpkgBaselineSha256, vcpkgBaselineSha256)
+		return false
+	}
+	return true
+}
+
+func getVcpkgToolVersion(ctx *gcp.Context, vcpkgExePath string) (string, error) {
 	exec, err := ctx.ExecWithErr([]string{vcpkgExePath, "version", "--feature-flags=-manifests"}, gcp.WithUserAttribution)
 	if err != nil {
 		return "", fmt.Errorf("fetching vcpkg version path (exit code %d, output %q): %v", exec.ExitCode, exec.Combined, err)
@@ -224,6 +256,18 @@ func getVcpkgVersion(ctx *gcp.Context, vcpkgExePath string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("cannot find version line in vcpkg version output: %s", exec.Combined)
+}
+
+func getVcpkgBaselineSha256(ctx *gcp.Context, vcpkgBaselinePath string) (string, error) {
+	f, err := os.Open(vcpkgBaselinePath)
+	if err != nil {
+		return "", err
+	}
+	sha := sha256.New()
+	if _, err := io.Copy(sha, f); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", sha.Sum(nil)), nil
 }
 
 func createMainCppFile(ctx *gcp.Context, fn fnInfo, main string) error {
