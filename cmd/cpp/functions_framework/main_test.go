@@ -15,6 +15,7 @@
 package main
 
 import (
+	"reflect"
 	"testing"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -81,5 +82,76 @@ func TestDetect(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			gcp.TestDetectWithStack(t, detectFn, tc.name, tc.files, tc.env, tc.stack, tc.want)
 		})
+	}
+}
+
+func TestExtractFnInfo(t *testing.T) {
+	testCases := []struct {
+		fnTarget        string
+		fnSignatureType string
+		want            fnInfo
+	}{
+		{fnTarget: "HelloWorld", fnSignatureType: "",
+			want: fnInfo{
+				Target:    "HelloWorld",
+				Namespace: "",
+				ShortName: "HelloWorld",
+				Signature: httpSignature,
+			},
+		},
+		{fnTarget: "HelloWorld", fnSignatureType: "http",
+			want: fnInfo{
+				Target:    "HelloWorld",
+				Namespace: "",
+				ShortName: "HelloWorld",
+				Signature: httpSignature,
+			},
+		},
+		{fnTarget: "HelloWorld", fnSignatureType: "cloudevent",
+			want: fnInfo{
+				Target:    "HelloWorld",
+				Namespace: "",
+				ShortName: "HelloWorld",
+				Signature: cloudEventSignature,
+			},
+		},
+		{fnTarget: "ns0::HelloWorld", fnSignatureType: "cloudevent",
+			want: fnInfo{
+				Target:    "ns0::HelloWorld",
+				Namespace: "ns0",
+				ShortName: "HelloWorld",
+				Signature: cloudEventSignature,
+			},
+		},
+		{fnTarget: "ns0::ns1::ns2::HelloWorld", fnSignatureType: "cloudevent",
+			want: fnInfo{
+				Target:    "ns0::ns1::ns2::HelloWorld",
+				Namespace: "ns0::ns1::ns2",
+				ShortName: "HelloWorld",
+				Signature: cloudEventSignature,
+			},
+		},
+		{fnTarget: "::HelloWorld", fnSignatureType: "http",
+			want: fnInfo{
+				Target:    "::HelloWorld",
+				Namespace: "",
+				ShortName: "HelloWorld",
+				Signature: httpSignature,
+			},
+		},
+		{fnTarget: "::ns0::HelloWorld", fnSignatureType: "http",
+			want: fnInfo{
+				Target:    "::ns0::HelloWorld",
+				Namespace: "::ns0",
+				ShortName: "HelloWorld",
+				Signature: httpSignature,
+			},
+		},
+	}
+	for _, tc := range testCases {
+		got := extractFnInfo(tc.fnTarget, tc.fnSignatureType)
+		if !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("unexpected output from extractFnInfo(%s, %s), got=%v, want=%v", tc.fnTarget, tc.fnSignatureType, got, tc.want)
+		}
 	}
 }

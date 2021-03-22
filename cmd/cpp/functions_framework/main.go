@@ -112,7 +112,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	buildLayer := ctx.Layer(buildLayerName, gcp.BuildLayer, gcp.CacheLayer)
 
-	fn := extractFnInfo(ctx)
+	fn := extractFnInfo(os.Getenv(env.FunctionTarget), os.Getenv(env.FunctionSignatureType))
 	if err := createMainCppFile(ctx, fn, filepath.Join(mainLayer.Path, "main.cc")); err != nil {
 		return err
 	}
@@ -237,10 +237,7 @@ func createMainCppFile(ctx *gcp.Context, fn fnInfo, main string) error {
 	return nil
 }
 
-func extractFnInfo(ctx *gcp.Context) fnInfo {
-	fnTarget := os.Getenv(env.FunctionTarget)
-	fnSignature := os.Getenv(env.FunctionSignatureType)
-
+func extractFnInfo(fnTarget string, fnSignature string) fnInfo {
 	info := fnInfo{
 		Target:    fnTarget,
 		Namespace: "",

@@ -37,14 +37,6 @@ func TestAcceptanceCppFn(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 		{
-			Name:       "function in a namespace",
-			App:        "with_namespace",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=test::ns0::ns1::test_function"},
-			Path:       "/test_function",
-			MustUse:    []string{cppFF},
-			MustNotUse: []string{entrypoint},
-		},
-		{
 			Name:       "function with its own CMake file",
 			App:        "with_cmakelist",
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=test_function"},
