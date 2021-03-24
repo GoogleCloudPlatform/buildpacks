@@ -35,7 +35,7 @@ var (
 	// assumedVersion is the version of the framework used when we cannot determine a version.
 	assumedVersion = semver.MustParse("0.2.0")
 	// recommendedVersion is the lowest version for which a deprecation warning will be hidden.
-	recommendedVersion = semver.MustParse("0.7.0")
+	recommendedVersion = semver.MustParse("0.9.0")
 	// validateTargetVersion is the minimum version that supports validating FUNCTION_TARGET.
 	validateTargetVersion = semver.MustParse("0.7.0")
 )
