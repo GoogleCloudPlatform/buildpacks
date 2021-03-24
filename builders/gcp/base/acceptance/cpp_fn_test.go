@@ -29,24 +29,8 @@ func TestAcceptanceCppFn(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:       "function without a namespace",
-			App:        "no_namespace",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=test_function"},
-			Path:       "/test_function",
-			MustUse:    []string{cppFF},
-			MustNotUse: []string{entrypoint},
-		},
-		{
-			Name:       "function with its own CMake file",
-			App:        "with_cmakelist",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=test_function"},
-			Path:       "/test_function",
-			MustUse:    []string{cppFF},
-			MustNotUse: []string{entrypoint},
-		},
-		{
-			Name:       "function with its own CMake file and vcpkg manifest",
-			App:        "with_manifest",
+			Name:       "function with additional dependencies",
+			App:        "test_function",
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=test_function"},
 			Path:       "/test_function",
 			MustUse:    []string{cppFF},

@@ -15,8 +15,13 @@
 package main
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/buildpacks/libcnb"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
@@ -153,5 +158,90 @@ func TestExtractFnInfo(t *testing.T) {
 		if !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("unexpected output from extractFnInfo(%s, %s), got=%v, want=%v", tc.fnTarget, tc.fnSignatureType, got, tc.want)
 		}
+	}
+}
+
+func TestPopulateMainLayer(t *testing.T) {
+	const generatedFileContents = "// test-only: generated"
+	const converterFileContents = "// test-only: converter"
+	testCases := []struct {
+		name              string
+		sourceFiles       []string
+		vcpkgJSONContents string
+	}{
+		{
+			name:              "cpp-test-both",
+			sourceFiles:       []string{"CMakeLists.txt", "vcpkg.json"},
+			vcpkgJSONContents: generatedFileContents,
+		},
+		{
+			name:              "cpp-test-no-vcpkg-json",
+			sourceFiles:       []string{"CMakeLists.txt"},
+			vcpkgJSONContents: converterFileContents,
+		},
+		{
+			name:              "cpp-test-no-CMakeLists-txt",
+			sourceFiles:       []string{"vcpkg.json"},
+			vcpkgJSONContents: generatedFileContents,
+		},
+		{
+			name:              "cpp-test-no-support-files",
+			sourceFiles:       []string{},
+			vcpkgJSONContents: converterFileContents,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpDir, err := ioutil.TempDir("", tc.name)
+			if err != nil {
+				t.Fatalf("creating temp dir: %v", err)
+			}
+			defer os.RemoveAll(tmpDir)
+
+			fakeBuildpackRoot := filepath.Join(tmpDir, "fake-buildpack-root")
+			fakeMain := filepath.Join(tmpDir, "fake-main")
+			fakeApp := filepath.Join(tmpDir, "fake-app")
+			for _, p := range []string{fakeBuildpackRoot, fakeMain, fakeApp} {
+				if err := os.Mkdir(p, 0755); err != nil {
+					t.Fatalf("creating directory structure (path=%s): %v", p, err)
+				}
+			}
+			converter := filepath.Join(fakeBuildpackRoot, "converter")
+			if err := os.Mkdir(converter, 0755); err != nil {
+				t.Fatalf("creating directory structure (path=%s): %v", converter, err)
+			}
+			ctx := gcp.NewContextForTests(libcnb.BuildpackInfo{}, fakeApp)
+
+			for _, name := range []string{"CMakeLists.txt", "vcpkg.json"} {
+				path := filepath.Join(converter, name)
+				if ioutil.WriteFile(path, []byte(converterFileContents), 0644); err != nil {
+					t.Fatalf("writing fake C++ support file (path=%s): %v", path, err)
+				}
+			}
+			for _, name := range tc.sourceFiles {
+				path := filepath.Join(fakeApp, name)
+				if ioutil.WriteFile(path, []byte(generatedFileContents), 0644); err != nil {
+					t.Fatalf("writing test C++ build file (name=%s): %v", name, err)
+				}
+			}
+			if err := createMainCppSupportFiles(ctx, fakeMain, fakeBuildpackRoot); err != nil {
+				t.Fatalf("creating support files in main layer: %v", err)
+			}
+			vcpkgContents, err := ioutil.ReadFile(filepath.Join(fakeMain, "vcpkg.json"))
+			if err != nil {
+				t.Fatalf("reading vcpkg.json from main layer: %v", err)
+			}
+			if string(vcpkgContents) != tc.vcpkgJSONContents {
+				t.Errorf("mismatched contents in vcpkg.json, got=%s, want=%s", string(vcpkgContents), tc.vcpkgJSONContents)
+			}
+
+			cmakeContents, err := ioutil.ReadFile(filepath.Join(fakeMain, "CMakeLists.txt"))
+			if err != nil {
+				t.Fatalf("reading CMakeLists.txt from main layer: %v", err)
+			}
+			if string(cmakeContents) != converterFileContents {
+				t.Errorf("mismatched contents in CMakeLists.txt, got=%s, want=%s", string(cmakeContents), converterFileContents)
+			}
+		})
 	}
 }

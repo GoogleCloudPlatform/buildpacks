@@ -119,16 +119,9 @@ func buildFn(ctx *gcp.Context) error {
 	if err := createMainCppFile(ctx, fn, filepath.Join(mainLayer.Path, "main.cc")); err != nil {
 		return err
 	}
-
-	ctx.Exec([]string{"cp", filepath.Join(ctx.BuildpackRoot(), "converter", "CMakeLists.txt"), filepath.Join(mainLayer.Path, "CMakeLists.txt")})
-
-	vcpkgJSONDestinationFilename := filepath.Join(mainLayer.Path, "vcpkg.json")
-	vcpkgJSONSourceFilename := filepath.Join(ctx.ApplicationRoot(), "vcpkg.json")
-
-	if !ctx.FileExists(vcpkgJSONSourceFilename) {
-		vcpkgJSONSourceFilename = filepath.Join(ctx.BuildpackRoot(), "converter", "vcpkg.json")
+	if err := createMainCppSupportFiles(ctx, mainLayer.Path, ctx.BuildpackRoot()); err != nil {
+		return err
 	}
-	ctx.Exec([]string{"cp", vcpkgJSONSourceFilename, vcpkgJSONDestinationFilename})
 
 	installLayer := ctx.Layer(installLayerName, gcp.LaunchLayer)
 
@@ -299,4 +292,18 @@ func extractFnInfo(fnTarget string, fnSignature string) fnInfo {
 	}
 
 	return info
+}
+
+func createMainCppSupportFiles(ctx *gcp.Context, main string, buildpackRoot string) error {
+	ctx.Exec([]string{"cp", filepath.Join(buildpackRoot, "converter", "CMakeLists.txt"), filepath.Join(main, "CMakeLists.txt")})
+
+	vcpkgJSONDestinationFilename := filepath.Join(main, "vcpkg.json")
+	vcpkgJSONSourceFilename := filepath.Join(ctx.ApplicationRoot(), "vcpkg.json")
+
+	if !ctx.FileExists(vcpkgJSONSourceFilename) {
+		vcpkgJSONSourceFilename = filepath.Join(buildpackRoot, "converter", "vcpkg.json")
+	}
+	ctx.Exec([]string{"cp", vcpkgJSONSourceFilename, vcpkgJSONDestinationFilename})
+
+	return nil
 }
