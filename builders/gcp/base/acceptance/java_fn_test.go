@@ -57,6 +57,11 @@ func TestAcceptance(t *testing.T) {
 			App:  "jar",
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=functions.jar.HelloWorld"},
 		},
+		{
+			Name: "function with maven wrapper",
+			App:  "mvnw",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc
