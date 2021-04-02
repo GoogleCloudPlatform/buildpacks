@@ -17,8 +17,11 @@
 package main
 
 import (
+	"strings"
+
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
 )
 
 func main() {
@@ -31,5 +34,57 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	if err := validateAppEngineAPIs(ctx); err != nil {
+		return err
+	}
 	return appengine.Build(ctx, "php", nil)
+}
+
+func validateAppEngineAPIs(ctx *gcp.Context) error {
+	if !ctx.FileExists("composer.json") {
+		return nil
+	}
+
+	supportsApis, err := php.SupportsAppEngineApis(ctx)
+	if err != nil {
+		return err
+	}
+
+	if !supportsApis && appEngineInDeps(directDeps(ctx)) {
+		ctx.Warnf("There is a direct dependency on App Engine APIs, but they are not enabled in app.yaml (set the app_engine_apis property)")
+		return nil
+	}
+
+	usingAppEngine := appEngineInDeps(allDeps(ctx))
+	if supportsApis && !usingAppEngine {
+		ctx.Warnf("App Engine APIs are enabled, but don't appear to be used, causing a possible performance penalty. Delete app_engine_apis from your app's yaml config file.")
+		return nil
+	}
+
+	if !supportsApis && usingAppEngine {
+		ctx.Warnf("There is an indirect dependency on App Engine APIs, but they are not enabled in app.yaml. You may see runtime errors trying to access these APIs. Set the app_engine_apis property.")
+	}
+
+	return nil
+}
+
+func appEngineInDeps(deps []string) bool {
+	for _, s := range deps {
+		if strings.HasPrefix(s, "google/appengine-php-sdk") {
+			return true
+		}
+	}
+	return false
+}
+
+func allDeps(ctx *gcp.Context) []string {
+	result := ctx.Exec([]string{"composer", "show", "-N"}, gcp.WithUserAttribution)
+
+	return strings.Fields(result.Stdout)
+}
+
+func directDeps(ctx *gcp.Context) []string {
+	result := ctx.Exec([]string{"composer", "show", "--direct", "-N"}, gcp.WithUserAttribution)
+
+	return strings.Fields(result.Stdout)
 }

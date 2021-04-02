@@ -19,9 +19,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
 )
@@ -46,6 +49,15 @@ type composerScriptsJSON struct {
 type ComposerJSON struct {
 	Require map[string]string   `json:"require"`
 	Scripts composerScriptsJSON `json:"scripts"`
+}
+
+// SupportsAppEngineApis is a function that returns true if App Engine API access is enabled
+func SupportsAppEngineApis(ctx *gcp.Context) (bool, error) {
+	if os.Getenv(env.Runtime) == "php55" {
+		return true, nil
+	}
+
+	return appengine.ApisEnabled(ctx)
 }
 
 // ReadComposerJSON returns the deserialized composer.json from the given dir. Empty dir uses the current working directory.

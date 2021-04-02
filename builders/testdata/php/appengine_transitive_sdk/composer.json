@@ -1,0 +1,12 @@
+{
+  "require": {
+    "local/lib": "*"
+  },
+  "repositories": [
+    {
+      "name": "local/lib",
+      "type": "path",
+      "url": "./appengine_lib"
+    }
+  ]
+}

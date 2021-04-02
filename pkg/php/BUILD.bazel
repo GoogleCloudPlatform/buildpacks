@@ -12,7 +12,9 @@ go_library(
         "//cmd/php:__subpackages__",
     ],
     deps = [
+        "//pkg/appengine",
         "//pkg/cache",
+        "//pkg/env",
         "//pkg/gcpbuildpack",
         "@com_github_buildpacks_libcnb//:go_default_library",
     ],
