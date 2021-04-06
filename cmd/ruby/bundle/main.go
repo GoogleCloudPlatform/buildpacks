@@ -77,17 +77,20 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("checking cache: %w", err)
 	}
 
+	localGemsDir := filepath.Join(".bundle", "gems")
+	localBinDir := filepath.Join(".bundle", "bin")
+
 	// Ensure the GCP runtime platform is present in the lockfile. This is needed for Bundler >= 2.2, in case the user's lockfile is specific to a different platform.
+	ctx.Exec([]string{"bundle", "config", "--local", "without", "development test"}, gcp.WithUserAttribution)
+	ctx.Exec([]string{"bundle", "config", "--local", "path", localGemsDir}, gcp.WithUserAttribution)
 	ctx.Exec([]string{"bundle", "lock", "--add-platform", "x86_64-linux"}, gcp.WithUserAttribution)
 	ctx.Exec([]string{"bundle", "lock", "--add-platform", "ruby"}, gcp.WithUserAttribution)
+	ctx.RemoveAll(".bundle")
 
 	if cached {
 		ctx.CacheHit(layerName)
 	} else {
 		ctx.CacheMiss(layerName)
-
-		localGemsDir := filepath.Join(".bundle", "gems")
-		localBinDir := filepath.Join(".bundle", "bin")
 
 		// Install the bundle locally into .bundle/gems
 		ctx.Exec([]string{"bundle", "config", "--local", "deployment", "true"}, gcp.WithUserAttribution)

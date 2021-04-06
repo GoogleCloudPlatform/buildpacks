@@ -1,22 +1,32 @@
+GIT
+  remote: https://github.com/dazuma/toys
+  revision: 16a06e5e1bb394c89dbc23c70f628532e7a8fcb9
+  ref: 16a06e5e1bb394c89dbc23c70f628532e7a8fcb9
+  specs:
+    toys-core (0.11.5)
+
 GEM
   remote: https://rubygems.org/
   specs:
-    mustermann (1.0.3)
-    rack (2.0.6)
-    rack-protection (2.0.4)
+    mustermann (1.1.1)
+      ruby2_keywords (~> 0.0.1)
+    rack (2.2.3)
+    rack-protection (2.1.0)
       rack
-    sinatra (2.0.4)
+    ruby2_keywords (0.0.4)
+    sinatra (2.1.0)
       mustermann (~> 1.0)
-      rack (~> 2.0)
-      rack-protection (= 2.0.4)
+      rack (~> 2.2)
+      rack-protection (= 2.1.0)
       tilt (~> 2.0)
-    tilt (2.0.8)
+    tilt (2.0.10)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
   sinatra (~> 2.0)
+  toys-core!
 
 BUNDLED WITH
-   1.17.1
+   2.1.4
