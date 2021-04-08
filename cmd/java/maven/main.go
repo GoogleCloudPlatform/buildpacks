@@ -85,7 +85,7 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	}
 
-	command := []string{mvn, "clean", "package", "--batch-mode", "-DskipTests"}
+	command := []string{mvn, "clean", "package", "--batch-mode", "-DskipTests", "-Dhttp.keepAlive=false"}
 
 	if buildArgs := os.Getenv(env.BuildArgs); buildArgs != "" {
 		if strings.Contains(buildArgs, "maven.repo.local") {
