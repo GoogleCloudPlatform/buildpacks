@@ -3,10 +3,7 @@ load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 
 licenses(["notice"])
 
-package(default_visibility = [
-    "//cloud/serverless/boq/runtime/config/tests:__subpackages__",
-    "//builders:__subpackages__",
-])
+package(default_visibility = ["//builders:__subpackages__"])
 
 exports_files(
     [
