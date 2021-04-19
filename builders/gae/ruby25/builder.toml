@@ -44,4 +44,4 @@ description = "Builder for the GAE Ruby 2.5 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/ruby25/run"
 
 [lifecycle]
-  version = "0.10.2"
+  version = "0.11.1"

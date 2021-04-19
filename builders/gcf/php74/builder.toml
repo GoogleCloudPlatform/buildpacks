@@ -48,9 +48,8 @@ description = "Builder for the GCF PHP 7.4 runtime"
 
 [stack]
   id = "google.php74"
-  # TODO(mtraver) Remove tags once php74_20210225_7_4_15_RC00 or later is rolled out
-  build-image = "gcr.io/gae-runtimes/buildpacks/php74/build:php74_20210225_7_4_15_RC00"
-  run-image = "gcr.io/gae-runtimes/buildpacks/php74/run:php74_20210225_7_4_15_RC00"
+  build-image = "gcr.io/gae-runtimes/buildpacks/php74/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/php74/run"
 
 [lifecycle]
-  version = "0.10.2"
+  version = "0.11.1"
