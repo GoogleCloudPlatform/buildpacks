@@ -21,7 +21,6 @@ go_binary(
         "-s",
         "-w",
     ],
-    visibility = ["//visibility:private"],
     deps = [
         "//pkg/clearsource",
         "//pkg/env",

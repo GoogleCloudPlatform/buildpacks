@@ -26,6 +26,11 @@ go_binary(
         "main.go",
         "template_v0.go",
     ],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
     deps = [
         "//pkg/env",
         "//pkg/gcpbuildpack",
