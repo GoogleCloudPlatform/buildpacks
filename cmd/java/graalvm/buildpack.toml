@@ -1,0 +1,12 @@
+api = "0.2"
+
+[buildpack]
+id = "google.java.graalvm"
+version = "0.1.0"
+name = "Java - GraalVM"
+
+[[stacks]]
+id = "google"
+
+[[stacks]]
+id = "google.java11"

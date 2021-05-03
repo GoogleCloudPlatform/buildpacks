@@ -95,6 +95,10 @@ const (
 	// Example: `-s -w` is sometimes used to strip and reduce binary size.
 	GoLDFlags = "GOOGLE_GOLDFLAGS"
 
+	// UseNativeImage is used to enable the GraalVM Java buildpack for native image compilation.
+	// Example: `true`, `True`, `1` will enable development mode.
+	UseNativeImage = "GOOGLE_JAVA_USE_NATIVE_IMAGE"
+
 	// LabelPrefix is a prefix for values that will be added to the final
 	// built user container. The prefix is stripped and the remainder forms the
 	// label key. For example, "GOOGLE_LABEL_ABC=Some-Value" will result in a
@@ -105,27 +109,29 @@ const (
 
 // IsDebugMode returns true if the buildpack debug mode is enabled.
 func IsDebugMode() (bool, error) {
-	val, found := os.LookupEnv(DebugMode)
-	if !found {
-		return false, nil
-	}
-	parsed, err := strconv.ParseBool(val)
-	if err != nil {
-		return false, fmt.Errorf("parsing %s: %v", DebugMode, err)
-	}
-	return parsed, nil
+	return isPresentAndTrue(DebugMode)
 }
 
 // IsDevMode indicates that the builder is running in Development mode.
 func IsDevMode() (bool, error) {
-	devMode, present := os.LookupEnv(DevMode)
+	return isPresentAndTrue(DevMode)
+}
+
+// IsUsingNativeImage returns true if the Java application should be built as a native image.
+func IsUsingNativeImage() (bool, error) {
+	return isPresentAndTrue(UseNativeImage)
+}
+
+// Returns true if the environment variable evaluates to True.
+func isPresentAndTrue(varName string) (bool, error) {
+	varValue, present := os.LookupEnv(varName)
 	if !present {
 		return false, nil
 	}
 
-	parsed, err := strconv.ParseBool(devMode)
+	parsed, err := strconv.ParseBool(varValue)
 	if err != nil {
-		return false, fmt.Errorf("parsing %s: %v", DevMode, err)
+		return false, fmt.Errorf("parsing %s: %v", varName, err)
 	}
 
 	return parsed, nil
