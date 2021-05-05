@@ -27,6 +27,9 @@ id = "google.nodejs12"
 id = "google.nodejs14"
 
 [[stacks]]
+id = "google.nodejs16"
+
+[[stacks]]
 id = "google.php74"
 
 [[stacks]]

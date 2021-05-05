@@ -51,6 +51,7 @@ package_group(
         "//builders/gae/nodejs10",
         "//builders/gae/nodejs12",
         "//builders/gae/nodejs14",
+        "//builders/gae/nodejs16",
         "//builders/gcf/nodejs10",
         "//builders/gcf/nodejs12",
         "//builders/gcf/nodejs14",

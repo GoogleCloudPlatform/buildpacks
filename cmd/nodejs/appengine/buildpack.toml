@@ -13,3 +13,6 @@ id = "google.nodejs12"
 
 [[stacks]]
 id = "google.nodejs14"
+
+[[stacks]]
+id = "google.nodejs16"
