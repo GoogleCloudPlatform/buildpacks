@@ -31,6 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils \
   g++-8 \
   gcc-8 \
+  zlib1g-dev \
   libstdc++-8-dev \
   pkg-config \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
