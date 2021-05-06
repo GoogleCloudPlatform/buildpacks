@@ -55,6 +55,7 @@ package_group(
         "//builders/gcf/nodejs10",
         "//builders/gcf/nodejs12",
         "//builders/gcf/nodejs14",
+        "//builders/gcf/nodejs16",
         "//builders/gcp/base",
     ],
 )
@@ -105,6 +106,7 @@ package_group(
         "//builders/gcf/nodejs10",
         "//builders/gcf/nodejs12",
         "//builders/gcf/nodejs14",
+        "//builders/gcf/nodejs16",
         "//builders/gcf/php74",
         "//builders/gcf/python37",
         "//builders/gcf/python38",
