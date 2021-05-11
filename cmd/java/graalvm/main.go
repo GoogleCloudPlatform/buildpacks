@@ -22,6 +22,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -29,6 +30,11 @@ const (
 	graalvmURL     = "https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-%[1]s/graalvm-ce-java11-linux-amd64-%[1]s.tar.gz"
 	layerName      = "java-graalvm"
 	versionKey     = "version"
+)
+
+var (
+	providesGraalvm = []libcnb.BuildPlanProvide{{Name: "graalvm"}}
+	planProvides    = libcnb.BuildPlan{Provides: providesGraalvm}
 )
 
 func main() {
@@ -43,7 +49,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 	if useNativeImage {
 		ctx.Warnf("The GraalVM Native Image buildpack is enabled. Note: This is under development and not ready for use.")
-		return gcp.OptInEnvSet(env.UseNativeImage), nil
+		return gcp.OptInEnvSet(env.UseNativeImage, gcp.WithBuildPlans(planProvides)), nil
 	}
 
 	return gcp.OptOutEnvNotSet(env.UseNativeImage), nil
@@ -87,7 +93,6 @@ func installGraalVM(ctx *gcp.Context) error {
 		return err
 	}
 
-	ctx.Setenv("JAVA_HOME", graalLayer.Path)
 	ctx.SetMetadata(graalLayer, versionKey, graalvmVersion)
 	return nil
 }

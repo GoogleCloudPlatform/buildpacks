@@ -1,0 +1,12 @@
+api = "0.2"
+
+[buildpack]
+id = "google.java.native-image"
+version = "0.1.0"
+name = "Java - Native Image"
+
+[[stacks]]
+id = "google"
+
+[[stacks]]
+id = "google.java11"

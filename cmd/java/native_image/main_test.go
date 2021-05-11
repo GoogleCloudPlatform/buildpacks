@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2021 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,28 +28,8 @@ func TestDetect(t *testing.T) {
 		want  int
 	}{
 		{
-			name: "GraalVM env var set to True",
-			env:  []string{"GOOGLE_JAVA_USE_NATIVE_IMAGE=True"},
+			name: "always opting in",
 			want: 0,
-		},
-		{
-			name: "GraalVM env var set to true (lower-cased)",
-			env:  []string{"GOOGLE_JAVA_USE_NATIVE_IMAGE=true"},
-			want: 0,
-		},
-		{
-			name: "GraalVM env var set to true (number)",
-			env:  []string{"GOOGLE_JAVA_USE_NATIVE_IMAGE=1"},
-			want: 0,
-		},
-		{
-			name: "GraalVM env var set to False",
-			env:  []string{"GOOGLE_JAVA_USE_NATIVE_IMAGE=False"},
-			want: 100,
-		},
-		{
-			name: "Without env var",
-			want: 100,
 		},
 	}
 	for _, tc := range testCases {

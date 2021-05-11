@@ -33,7 +33,7 @@ var BuildLayer = func(ctx *Context, l *libcnb.Layer) { l.Build = true }
 // CacheLayer specifies a Cache layer.
 var CacheLayer = func(ctx *Context, l *libcnb.Layer) { l.Cache = true }
 
-// LaunchLayer specifies a Cache layer.
+// LaunchLayer specifies a Launch layer.
 var LaunchLayer = func(ctx *Context, l *libcnb.Layer) { l.Launch = true }
 
 // LaunchLayerIfDevMode specifies a Launch layer, but only if dev mode is enabled.
