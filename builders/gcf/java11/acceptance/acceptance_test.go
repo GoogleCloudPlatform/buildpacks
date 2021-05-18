@@ -36,6 +36,11 @@ func TestAcceptance(t *testing.T) {
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
 		},
 		{
+			Name: "function with build.finalName setting in pom.xml",
+			App:  "maven_custom_name",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
+		},
+		{
 			Name: "function with gradle",
 			App:  "gradle",
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},

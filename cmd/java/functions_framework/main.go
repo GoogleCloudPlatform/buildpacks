@@ -124,17 +124,13 @@ func mavenClasspath(ctx *gcp.Context) (string, error) {
 	// Copy the dependencies of the function (`<dependencies>` in pom.xml) into target/dependency.
 	ctx.Exec([]string{mvn, "--batch-mode", "dependency:copy-dependencies"}, gcp.WithUserAttribution)
 
-	// Extract the artifact/version coordinates from the user's pom.xml definitions.
-	// mvn help:evaluate is quite slow so we do it this way rather than calling it twice.
-	// The name of the built jar file will be <artifact>-<version>.jar, for example myfunction-0.9.jar.
-	execResult := ctx.Exec([]string{mvn, "help:evaluate", "-q", "-DforceStdout", "-Dexpression=project.artifactId/${project.version}"}, gcp.WithUserAttribution)
-	groupArtifactVersion := execResult.Stdout
-	components := strings.Split(groupArtifactVersion, "/")
-	if len(components) != 2 {
-		return "", gcp.UserErrorf("could not parse query output into artifact/version: %s", groupArtifactVersion)
+	// Extract the final jar name from the user's pom.xml definitions.
+	execResult := ctx.Exec([]string{mvn, "help:evaluate", "-q", "-DforceStdout", "-Dexpression=project.build.finalName"}, gcp.WithUserAttribution)
+	artifactName := strings.TrimSpace(execResult.Stdout)
+	if len(artifactName) == 0 {
+		return "", gcp.UserErrorf("invalid project.build.finalName configured in pom.xml")
 	}
-	artifact, version := components[0], components[1]
-	jarName := fmt.Sprintf("target/%s-%s.jar", artifact, version)
+	jarName := fmt.Sprintf("target/%s.jar", artifactName)
 	if !ctx.FileExists(jarName) {
 		return "", gcp.UserErrorf("expected output jar %s does not exist", jarName)
 	}
