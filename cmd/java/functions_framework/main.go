@@ -24,6 +24,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 	"github.com/buildpacks/libcnb"
 )
 
@@ -33,6 +34,7 @@ const (
 	defaultFrameworkVersion       = "1.0.2"
 	functionsFrameworkURLTemplate = javaFunctionInvokerURLBase + "%[1]s/java-function-invoker-%[1]s.jar"
 	versionKey                    = "version"
+	invokerMain                   = "com.google.cloud.functions.invoker.runner.Invoker"
 )
 
 func main() {
@@ -47,13 +49,13 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	layer := ctx.Layer(layerName)
-
-	if err := installFunctionsFramework(ctx, layer); err != nil {
+	classpath, err := classpath(ctx)
+	if err != nil {
 		return err
 	}
 
-	classpath, err := classpath(ctx)
+	layer := ctx.Layer(layerName)
+	ffPath, err := installFunctionsFramework(ctx, layer)
 	if err != nil {
 		return err
 	}
@@ -75,7 +77,7 @@ func buildFn(ctx *gcp.Context) error {
 	launcherSource := filepath.Join(ctx.BuildpackRoot(), "launch.sh")
 	launcherTarget := filepath.Join(layer.Path, "launch.sh")
 	createLauncher(ctx, launcherSource, launcherTarget)
-	ctx.AddWebProcess([]string{launcherTarget, "java", "-jar", filepath.Join(layer.Path, "functions-framework.jar"), "--classpath", classpath})
+	ctx.AddWebProcess([]string{launcherTarget, "java", "-jar", ffPath, "--classpath", classpath})
 
 	return nil
 }
@@ -114,15 +116,10 @@ func classpath(ctx *gcp.Context) (string, error) {
 // from the pom.xml itself, plus all jar files that are dependencies mentioned in the pom.xml.
 func mavenClasspath(ctx *gcp.Context) (string, error) {
 
-	mvn := "mvn"
-
-	// If this project has the Maven Wrapper, we should use it
-	if ctx.FileExists("mvnw") {
-		mvn = "./mvnw"
-	}
+	mvn := mvnCmd(ctx)
 
 	// Copy the dependencies of the function (`<dependencies>` in pom.xml) into target/dependency.
-	ctx.Exec([]string{mvn, "--batch-mode", "dependency:copy-dependencies"}, gcp.WithUserAttribution)
+	ctx.Exec([]string{mvn, "--batch-mode", "dependency:copy-dependencies", "-Dmdep.prependGroupId", "-DincludeScope=runtime"}, gcp.WithUserAttribution)
 
 	// Extract the final jar name from the user's pom.xml definitions.
 	execResult := ctx.Exec([]string{mvn, "help:evaluate", "-q", "-DforceStdout", "-Dexpression=project.build.finalName"}, gcp.WithUserAttribution)
@@ -176,11 +173,35 @@ func gradleClasspath(ctx *gcp.Context) (string, error) {
 	return fmt.Sprintf("%s:build/_javaFunctionDependencies/*", jarName), nil
 }
 
-func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) error {
+func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) (string, error) {
 	layer.Launch = true
 	layer.Cache = true
+
+	jars := []string{}
+	if ctx.FileExists("pom.xml") {
+		mvn := mvnCmd(ctx)
+		// If the invoker was listed as a dependency in the pom.xml, copy it into target/_javaInvokerDependency.
+		ctx.Exec([]string{
+			mvn,
+			"--batch-mode",
+			"dependency:copy-dependencies",
+			"-DoutputDirectory=target/_javaInvokerDependency",
+			"-DincludeGroupIds=com.google.cloud.functions",
+			"-DincludeArtifactIds=java-function-invoker",
+		}, gcp.WithUserAttribution)
+		jars = ctx.Glob("target/_javaInvokerDependency/java-function-invoker-*.jar")
+	} else if ctx.FileExists("build.gradle") {
+		// If the invoker was listed as an implementation dependency it will have been copied to build/_javaFunctionDependencies.
+		jars = ctx.Glob("build/_javaFunctionDependencies/java-function-invoker-*.jar")
+	}
+	if len(jars) == 1 && isInvokerJar(ctx, jars[0]) {
+		ctx.ClearLayer(layer)
+		// No need to cache the layer because we aren't downloading the framework.
+		layer.Cache = false
+		return jars[0], nil
+	}
+
 	frameworkVersion := defaultFrameworkVersion
-	// TODO(emcmanus): extract framework version from pom.xml if present
 
 	// Install functions-framework.
 	metaVersion := ctx.GetMetadata(layer, versionKey)
@@ -190,13 +211,22 @@ func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) error {
 		ctx.CacheMiss(layerName)
 		ctx.ClearLayer(layer)
 		if err := installFramework(ctx, layer, frameworkVersion); err != nil {
-			return err
+			return "", err
 		}
 		ctx.SetMetadata(layer, versionKey, frameworkVersion)
 	}
-	return nil
+	return filepath.Join(layer.Path, "functions-framework.jar"), nil
 }
 
+// isInvokerjar checks if the .jar at the given filepath is the functions framework invoker by checking
+// that the manifest's Main-Class matches an expected value.
+func isInvokerJar(ctx *gcp.Context, jar string) bool {
+	main, err := java.MainManifestEntry(jar)
+	ctx.Warnf("Failed to identify functions framework invoker dependency. Installing version %s:\n%v", defaultFrameworkVersion, err)
+	return err == nil && main == invokerMain
+}
+
+// installFramework downloads the functions framework invoker jar and saves it in the provided layer.
 func installFramework(ctx *gcp.Context, layer *libcnb.Layer, version string) error {
 	url := fmt.Sprintf(functionsFrameworkURLTemplate, version)
 	ffName := filepath.Join(layer.Path, "functions-framework.jar")
@@ -208,4 +238,13 @@ func installFramework(ctx *gcp.Context, layer *libcnb.Layer, version string) err
 		return gcp.InternalErrorf("fetching functions framework jar: %v\n%s", err, result.Stderr)
 	}
 	return nil
+}
+
+// mvnCmd returns the command that should be used to invoke maven for this build.
+func mvnCmd(ctx *gcp.Context) string {
+	// If this project has the Maven Wrapper, we should use it
+	if ctx.FileExists("mvnw") {
+		return "./mvnw"
+	}
+	return "mvn"
 }

@@ -83,6 +83,12 @@ func filterExecutables(ctx *gcp.Context, jars []string) []string {
 	return executables
 }
 
+// MainManifestEntry returns the Main-Class manifest entry of the jar at the given filepath,
+// or an empty string if the entry does not exist.
+func MainManifestEntry(jar string) (string, error) {
+	return FindManifestValueFromJar(jar, mainClassKey)
+}
+
 // FindManifestValueFromJar returns a manifest entry value from a JAR if found, or empty otherwise.
 func FindManifestValueFromJar(jarPath, key string) (string, error) {
 	r, err := zip.OpenReader(jarPath)
