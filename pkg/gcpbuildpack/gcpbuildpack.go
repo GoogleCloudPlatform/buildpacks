@@ -357,5 +357,6 @@ func (ctx *Context) AddLabel(key, value string) {
 		return
 	}
 	key = "google." + strings.ToLower(strings.ReplaceAll(key, "_", "-"))
+	ctx.Logf("Adding image label %s: %s", key, value)
 	ctx.buildResult.Labels = append(ctx.buildResult.Labels, libcnb.Label{Key: key, Value: value})
 }
