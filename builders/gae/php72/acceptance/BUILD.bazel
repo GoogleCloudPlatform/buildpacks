@@ -12,7 +12,7 @@ go_library(
 
 go_test(
     name = "acceptance_test",
-    size = "large",
+    size = "enormous",
     srcs = ["acceptance_test.go"],
     args = [
         "-test-data=$(location //builders/testdata:php)",
