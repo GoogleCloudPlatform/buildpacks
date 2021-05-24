@@ -18,7 +18,6 @@ package java
 import (
 	"archive/zip"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"path/filepath"
 	"regexp"
@@ -36,13 +35,13 @@ const (
 	repoExpiration = time.Duration(time.Hour * 24 * 7 * 10)
 	// ManifestPath specifies the path of MANIFEST.MF relative to the working directory.
 	ManifestPath = "META-INF/MANIFEST.MF"
-
-	expiryTimestampKey = "expiry_timestamp"
+	mainClassKey = "Main-Class"
+	// manifestRegexTemplate is a regexp template that matches lines in the manifest for a given entry.
+	manifestRegexTemplate = `(?m)^%s: \S+`
+	expiryTimestampKey    = "expiry_timestamp"
 )
 
 var (
-	// re matches lines in the manifest for a Main-Class entry to detect which jar is appropriate for execution. For some reason, it does not like `(?m)^Main-Class: [^\s]+`.
-	re = regexp.MustCompile("(?m)^Main-Class: [^\r\n\t\f\v ]+")
 	// jarPaths contains the paths that we search for executable jar files. Order of paths decides precedence.
 	jarPaths = [][]string{
 		[]string{"target"},
@@ -75,19 +74,20 @@ func ExecutableJar(ctx *gcp.Context) (string, error) {
 func filterExecutables(ctx *gcp.Context, jars []string) []string {
 	var executables []string
 	for _, jar := range jars {
-		if hasMain, err := hasMainManifestEntry(jar); err != nil {
+		if main, err := FindManifestValueFromJar(jar, mainClassKey); err != nil {
 			ctx.Warnf("Failed to inspect %s, skipping: %v.", jar, err)
-		} else if hasMain {
+		} else if main != "" {
 			executables = append(executables, jar)
 		}
 	}
 	return executables
 }
 
-func hasMainManifestEntry(jar string) (bool, error) {
-	r, err := zip.OpenReader(jar)
+// FindManifestValueFromJar returns a manifest entry value from a JAR if found, or empty otherwise.
+func FindManifestValueFromJar(jarPath, key string) (string, error) {
+	r, err := zip.OpenReader(jarPath)
 	if err != nil {
-		return false, gcp.UserErrorf("unzipping jar %s: %v", jar, err)
+		return "", gcp.UserErrorf("unzipping jar %s: %v", jarPath, err)
 	}
 	defer r.Close()
 	for _, f := range r.File {
@@ -96,29 +96,41 @@ func hasMainManifestEntry(jar string) (bool, error) {
 		}
 		rc, err := f.Open()
 		if err != nil {
-			return false, fmt.Errorf("opening file %s in jar %s: %v", f.FileInfo().Name(), jar, err)
+			return "", fmt.Errorf("opening file %s in jar %s: %v", f.FileInfo().Name(), jarPath, err)
 		}
-		return hasMain(rc), nil
+		content, err := ioutil.ReadAll(rc)
+		if err != nil {
+			return "", err
+		}
+		return findValueFromManifest(content, key)
 	}
-	return false, nil
-}
-
-func hasMain(r io.Reader) bool {
-	content, err := ioutil.ReadAll(r)
-	if err != nil {
-		return false
-	}
-	return re.Match(content)
+	return "", nil
 }
 
 // MainFromManifest returns the main class specified in the manifest at the input path.
 func MainFromManifest(ctx *gcp.Context, manifestPath string) (string, error) {
 	content := ctx.ReadFile(manifestPath)
-	match := re.Find(content)
-	if len(match) != 0 {
-		return strings.TrimPrefix(string(match), "Main-Class: "), nil
+	main, err := findValueFromManifest(content, mainClassKey)
+	if err != nil {
+		return "", err
 	}
-	return "", gcp.UserErrorf("no Main-Class manifest entry found in %s", manifestPath)
+	if main == "" {
+		return "", gcp.UserErrorf("no Main-Class manifest entry found in the manifest:\n%s", content)
+	}
+	return main, nil
+}
+
+func findValueFromManifest(manifestContent []byte, key string) (string, error) {
+	reRaw := fmt.Sprintf(manifestRegexTemplate, key)
+	re, err := regexp.Compile(reRaw)
+	if err != nil {
+		return "", fmt.Errorf("invalid manifest key unsuitable for regexp: %q, %w", key, err)
+	}
+	match := re.Find(manifestContent)
+	if len(match) != 0 {
+		return strings.TrimPrefix(string(match), key+": "), nil
+	}
+	return "", nil
 }
 
 // CheckCacheExpiration clears the m2 layer and sets a new expiry timestamp when the cache is past expiration.

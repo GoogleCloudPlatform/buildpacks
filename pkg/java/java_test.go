@@ -15,9 +15,10 @@
 package java
 
 import (
+	"archive/zip"
+	"bytes"
 	"io/ioutil"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -25,72 +26,72 @@ import (
 	"github.com/buildpacks/libcnb"
 )
 
-func TestHasMainTrue(t *testing.T) {
+func TestFindManifestValueFromJar(t *testing.T) {
 	testCases := []struct {
 		name             string
+		key              string
 		manifestContents string
+		want             string
 	}{
 		{
 			name: "simple case",
+			key:  "Main-Class",
 			manifestContents: `Main-Class: test
 another: example`,
+			want: "test",
 		},
 		{
 			name: "with line continuation",
+			key:  "Start-Class",
 			// The manifest spec states that a continuation line must end with a trailing space.
 			manifestContents: `simple: example 
  wrapping
-Main-Class: example`,
+Start-Class: example`,
+			want: "example",
 		},
 		{
 			name: "main-class with line continuation",
+			key:  "Main-Class",
 			manifestContents: `simple: example 
  wrapping
 Main-Class: example 
  line wrap
 New-Entry: example`,
+			want: "example",
 		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			r := strings.NewReader(tc.manifestContents)
-
-			if !hasMain(r) {
-				t.Errorf("hasMain() returned false, wanted true")
-			}
-		})
-	}
-}
-
-func TestHasMainFalse(t *testing.T) {
-	testCases := []struct {
-		name             string
-		manifestContents string
-	}{
 		{
-			name: "no main class entry",
-			manifestContents: `Not-Main-Class: test
+			name: "no start class entry",
+			key:  "Start-Class",
+			manifestContents: `Not-Start-Class: test
 another: example`,
+			want: "",
 		},
 		{
 			name: "main class with preceding space",
+			key:  "Main-Class",
 			manifestContents: `simple: example
  wrapping
  Main-Class: example`,
+			want: "",
 		},
 		{
-			name:             "main class with no entry",
-			manifestContents: `Main-Class: `,
+			name:             "start class with no entry",
+			key:              "Start-Class",
+			manifestContents: `Start-Class: `,
+			want:             "",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			r := strings.NewReader(tc.manifestContents)
+			jarPath := setupTestJar(t, []byte(tc.manifestContents))
+			got, err := FindManifestValueFromJar(jarPath, tc.key)
+			if err != nil {
+				t.Errorf("FindManifestValueFromJar() errored: %v", err)
+			}
 
-			if hasMain(r) {
-				t.Errorf("hasMain() returned true, wanted false")
+			if got != tc.want {
+				t.Errorf("FindManifestValueFromJar()=%q want %q", got, tc.want)
 			}
 		})
 	}
@@ -139,7 +140,7 @@ another: example`,
 			}
 
 			if got != tc.want {
-				t.Errorf("MainFromMainfest() returned %s, wanted %s", got, tc.want)
+				t.Errorf("MainFromMainfest()=%q want %q", got, tc.want)
 			}
 		})
 	}
@@ -242,10 +243,8 @@ func TestCheckCacheNewDateHit(t *testing.T) {
 }
 
 func setupTestLayer(t *testing.T, ctx *gcp.Context) (string, *libcnb.Layer) {
-	testLayerRoot, err := ioutil.TempDir("", "test-layer-")
-	if err != nil {
-		t.Fatalf("Creating temp directory: %v", err)
-	}
+	t.Helper()
+	testLayerRoot := t.TempDir()
 	testFilePath := filepath.Join(testLayerRoot, "testfile")
 	ctx.CreateFile(testFilePath)
 	m2CachedRepo := &libcnb.Layer{
@@ -257,14 +256,36 @@ func setupTestLayer(t *testing.T, ctx *gcp.Context) (string, *libcnb.Layer) {
 
 func setupTestManifest(t *testing.T, mfContent []byte) string {
 	t.Helper()
-	tDir, err := ioutil.TempDir("", "")
-	if err != nil {
-		t.Fatalf("creating temp dir: %v", err)
-	}
-	mfPath := filepath.Join(tDir, "TEST.MF")
-	err = ioutil.WriteFile(mfPath, mfContent, 0644)
-	if err != nil {
+	mfPath := filepath.Join(t.TempDir(), "TEST.MF")
+	if err := ioutil.WriteFile(mfPath, mfContent, 0644); err != nil {
 		t.Fatalf("writing to file %s: %v", mfPath, err)
 	}
 	return mfPath
+}
+
+func setupTestJar(t *testing.T, mfContent []byte) string {
+	t.Helper()
+	var buff bytes.Buffer
+	w := zip.NewWriter(&buff)
+	defer w.Close()
+	f, err := w.Create(filepath.Join("META-INF", "MANIFEST.MF"))
+	if err != nil {
+		t.Fatalf("creating zip entry: %v", err)
+	}
+	for i := 0; i < len(mfContent); {
+		n, err := f.Write(mfContent)
+		if err != nil {
+			t.Fatalf("writing bytes: %v", err)
+		}
+		i += n
+	}
+	if err := w.Close(); err != nil {
+		t.Fatalf("closing zip writer: %v", err)
+	}
+
+	jarPath := filepath.Join(t.TempDir(), "test.jar")
+	if err := ioutil.WriteFile(jarPath, buff.Bytes(), 0644); err != nil {
+		t.Fatalf("writing to file %s: %v", jarPath, err)
+	}
+	return jarPath
 }
