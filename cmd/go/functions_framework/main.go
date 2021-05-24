@@ -197,8 +197,8 @@ func createMainVendored(ctx *gcp.Context, fn fnInfo) error {
 		// versions of all of the framework's dependencies to be pinned as specified in the framework's
 		// go.mod. Using `go get` -- the usual way to install packages in GOPATH -- downloads each
 		// repository at HEAD, which can lead to breakages.
-		ffDepsDir := ctx.TempDir("", "ffdeps")
-		defer ctx.RemoveAll(ffDepsDir)
+		ffDepsDir := ctx.TempDir("ffdeps")
+
 		cvt := filepath.Join(ctx.BuildpackRoot(), "converter", "without-framework")
 		cmd := []string{
 			fmt.Sprintf("cp --archive %s/. %s", cvt, ffDepsDir),
@@ -270,7 +270,6 @@ func frameworkSpecifiedVersion(ctx *gcp.Context, fnSource string) (string, error
 // that the version of Go used to build the function app will be the same as the version used to parse it.
 func extractPackageNameInDir(ctx *gcp.Context, source string) string {
 	script := filepath.Join(ctx.BuildpackRoot(), "converter", "get_package", "main.go")
-	cacheDir := ctx.TempDir("", appName)
-	defer ctx.RemoveAll(cacheDir)
+	cacheDir := ctx.TempDir(appName)
 	return ctx.Exec([]string{"go", "run", script, "-dir", source}, gcp.WithEnv("GOCACHE="+cacheDir), gcp.WithUserAttribution).Stdout
 }

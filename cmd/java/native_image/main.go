@@ -45,10 +45,7 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("finding executable jar: %w", err)
 	}
 
-	nativeLayer := ctx.Layer("native-image", gcp.LaunchLayer)
-	// Not using ctx.TempDir(), as moving files from /tmp to a different volume will fail.
-	tempLayer := ctx.Layer("temp")
-	imagePath := filepath.Join(tempLayer.Path, "native-app")
+	imagePath := filepath.Join(ctx.TempDir("native-image"), "native-app")
 
 	// This may generate extra files (*.o and *.build_artifacts.txt) alongside.
 	command := []string{
@@ -61,6 +58,7 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
+	nativeLayer := ctx.Layer("native-image", gcp.LaunchLayer)
 	finalImage := filepath.Join(nativeLayer.Path, "bin", "native-app")
 	ctx.MkdirAll(path.Dir(finalImage), 0744)
 	ctx.Rename(imagePath, finalImage)

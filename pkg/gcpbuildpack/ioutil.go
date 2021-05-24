@@ -20,13 +20,12 @@ import (
 	"path/filepath"
 )
 
-// TempDir creates a temp directory, returning the directory name. exiting on any error. It is the caller's responsibility to remove the created directory.
-func (ctx *Context) TempDir(dir, prefix string) string {
-	tmp, err := ioutil.TempDir(dir, prefix)
-	if err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, "creating temp dir: %v", err))
-	}
-	return tmp
+// TempDir creates a directory with the provided name in the buildpack temp layer and returns its path. Exits on any error.
+func (ctx *Context) TempDir(name string) string {
+	tmpLayer := ctx.Layer("gcpbuildpack-tmp")
+	directory := filepath.Join(tmpLayer.Path, name)
+	ctx.MkdirAll(directory, 0755)
+	return directory
 }
 
 // WriteFile invokes ioutil.WriteFile, exiting on any error.
