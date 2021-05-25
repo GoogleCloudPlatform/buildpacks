@@ -58,7 +58,7 @@ func buildFn(ctx *gcp.Context) error {
 	// The pip install is performed by the pip buildpack; see python.InstallRequirements.
 	ctx.Debugf("Adding webserver requirements.txt to the list of requirements files to install.")
 	r := filepath.Join(ctx.BuildpackRoot(), "requirements.txt")
-	l.BuildEnvironment.Append(python.RequirementsFilesEnv, string(os.PathListSeparator)+r)
+	l.BuildEnvironment.Append(python.RequirementsFilesEnv, string(os.PathListSeparator), r)
 	return nil
 }
 

@@ -83,7 +83,7 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 
 	ctx.SetMetadata(nrl, versionKey, version)
-	ctx.AddBuildpackPlanEntry(libcnb.BuildpackPlanEntry{
+	ctx.AddBOMEntry(libcnb.BOMEntry{
 		Name:     nodeLayer,
 		Metadata: map[string]interface{}{"version": version},
 	})

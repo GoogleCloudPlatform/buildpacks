@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
@@ -74,7 +75,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	el := ctx.Layer("env", gcp.BuildLayer, gcp.LaunchLayer)
-	el.SharedEnvironment.PrependPath("PATH", filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
+	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
 	el.SharedEnvironment.Default("NODE_ENV", nodeEnv)
 
 	// Configure the entrypoint for production.

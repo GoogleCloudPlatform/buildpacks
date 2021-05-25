@@ -54,7 +54,7 @@ func buildFn(ctx *gcp.Context) error {
 	// Create a layer for the compiled binary.  Add it to PATH in case
 	// users wish to invoke the binary manually.
 	bl := ctx.Layer("bin", gcp.LaunchLayer)
-	bl.LaunchEnvironment.PrependPath("PATH", bl.Path)
+	bl.LaunchEnvironment.Prepend("PATH", string(os.PathListSeparator), bl.Path)
 	outBin := filepath.Join(bl.Path, golang.OutBin)
 
 	buildable, err := goBuildable(ctx)

@@ -89,7 +89,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	el := ctx.Layer("env", gcp.BuildLayer, gcp.LaunchLayer)
-	el.SharedEnvironment.PrependPath("PATH", filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
+	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
 	el.SharedEnvironment.Default("NODE_ENV", nodeEnv)
 
 	// Configure the entrypoint for production.
@@ -139,7 +139,7 @@ func installYarn(ctx *gcp.Context) error {
 	// Store layer flags and metadata.
 	ctx.SetMetadata(yrl, versionKey, yarnVersion)
 	ctx.Setenv("PATH", filepath.Join(yrl.Path, "bin")+":"+os.Getenv("PATH"))
-	ctx.AddBuildpackPlanEntry(libcnb.BuildpackPlanEntry{
+	ctx.AddBOMEntry(libcnb.BOMEntry{
 		Name:     yarnLayer,
 		Metadata: map[string]interface{}{"version": yarnVersion},
 	})

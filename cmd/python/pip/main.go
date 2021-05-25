@@ -56,6 +56,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 func buildFn(ctx *gcp.Context) error {
 	// Remove leading and trailing : because otherwise SplitList will add empty strings.
 	reqs := filepath.SplitList(strings.Trim(os.Getenv(python.RequirementsFilesEnv), string(os.PathListSeparator)))
+	ctx.Debugf("Found requirements.txt files provided by other buildpacks: %s", reqs)
 
 	// The workspace requirements.txt file should be installed last.
 	if ctx.FileExists("requirements.txt") {

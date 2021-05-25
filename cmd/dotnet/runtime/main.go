@@ -107,10 +107,10 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.SetMetadata(sdkl, versionKey, version)
 	ctx.SetMetadata(rtl, versionKey, version)
 	rtl.SharedEnvironment.Default("DOTNET_ROOT", rtl.Path)
-	rtl.SharedEnvironment.PrependPath("PATH", rtl.Path)
+	rtl.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), rtl.Path)
 	rtl.LaunchEnvironment.Default("DOTNET_RUNNING_IN_CONTAINER", "true")
 
-	ctx.AddBuildpackPlanEntry(libcnb.BuildpackPlanEntry{
+	ctx.AddBOMEntry(libcnb.BOMEntry{
 		Name:     runtimeLayer,
 		Metadata: map[string]interface{}{"version": version},
 	})

@@ -302,12 +302,12 @@ func (ctx *Context) Span(label string, start time.Time, status Status) {
 	ctx.stats.spans = append(ctx.stats.spans, si)
 }
 
-// AddBuildpackPlanEntry adds an entry to the build plan.
-func (ctx *Context) AddBuildpackPlanEntry(entry libcnb.BuildpackPlanEntry) {
-	if ctx.buildResult.Plan == nil {
-		ctx.buildResult.Plan = &libcnb.BuildpackPlan{}
+// AddBOMEntry adds an entry to the bill of materials.
+func (ctx *Context) AddBOMEntry(entry libcnb.BOMEntry) {
+	if ctx.buildResult.BOM == nil {
+		ctx.buildResult.BOM = &libcnb.BOM{}
 	}
-	ctx.buildResult.Plan.Entries = append(ctx.buildResult.Plan.Entries, entry)
+	ctx.buildResult.BOM.Entries = append(ctx.buildResult.BOM.Entries, entry)
 }
 
 // AddWebProcess adds the given command as the web start process, overwriting any previous web start process.

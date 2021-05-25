@@ -173,6 +173,8 @@ func setUpTempDirs(t *testing.T, stack string) (tempDirs, func()) {
 	}
 
 	buildpackTOML := fmt.Sprintf(`
+api = "0.5"
+
 [buildpack]
 id = "my-id"
 version = "my-version"

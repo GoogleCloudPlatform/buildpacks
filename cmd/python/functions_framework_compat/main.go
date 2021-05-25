@@ -46,7 +46,7 @@ func buildFn(ctx *gcp.Context) error {
 	// The pip install is performed by the pip buildpack; see python.InstallRequirements.
 	ctx.Debugf("Adding functions-framework requirements.txt to the list of requirements files to install.")
 	r := filepath.Join(ctx.BuildpackRoot(), "converter", "requirements.txt")
-	l.BuildEnvironment.Append(python.RequirementsFilesEnv, string(os.PathListSeparator)+r)
+	l.BuildEnvironment.Append(python.RequirementsFilesEnv, string(os.PathListSeparator), r)
 
 	// Set additional Python 3.7 env var for backwards compatibility.
 	l.LaunchEnvironment.Default("ENTRY_POINT", os.Getenv(env.FunctionTarget))

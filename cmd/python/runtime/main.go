@@ -87,7 +87,7 @@ func buildFn(ctx *gcp.Context) error {
 	l.LaunchEnvironment.Default("PYTHONUNBUFFERED", "TRUE")
 
 	ctx.SetMetadata(l, versionKey, version)
-	ctx.AddBuildpackPlanEntry(libcnb.BuildpackPlanEntry{
+	ctx.AddBOMEntry(libcnb.BOMEntry{
 		Name:     pythonLayer,
 		Metadata: map[string]interface{}{"version": version},
 	})
