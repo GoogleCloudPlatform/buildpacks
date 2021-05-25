@@ -312,11 +312,24 @@ func (ctx *Context) AddBOMEntry(entry libcnb.BOMEntry) {
 
 // AddWebProcess adds the given command as the web start process, overwriting any previous web start process.
 func (ctx *Context) AddWebProcess(cmd []string) {
-	ctx.AddProcess(WebProcess, cmd, true) // true causes direct execution without a shell.
+	ctx.AddProcess(WebProcess, cmd, AsDirectProcess(), AsDefaultProcess())
+}
+
+// processOption configures the AddProcess function.
+type processOption func(o *libcnb.Process)
+
+// AsDirectProcess causes the process to be executed directly, i.e. without a shell.
+func AsDirectProcess() processOption {
+	return func(o *libcnb.Process) { o.Direct = true }
+}
+
+// AsDefaultProcess marks the process as the default one for when launcher is invoked without arguments.
+func AsDefaultProcess() processOption {
+	return func(o *libcnb.Process) { o.Default = true }
 }
 
 // AddProcess adds the given command as named process, overwriting any previous process with the same name.
-func (ctx *Context) AddProcess(name string, cmd []string, direct bool) {
+func (ctx *Context) AddProcess(name string, cmd []string, opts ...processOption) {
 	current := ctx.buildResult.Processes
 	ctx.buildResult.Processes = []libcnb.Process{}
 	for _, p := range current {
@@ -329,10 +342,12 @@ func (ctx *Context) AddProcess(name string, cmd []string, direct bool) {
 	p := libcnb.Process{
 		Type:    name,
 		Command: cmd[0],
-		Direct:  direct,
 	}
 	if len(cmd) > 1 {
 		p.Arguments = cmd[1:]
+	}
+	for _, opt := range opts {
+		opt(&p)
 	}
 	ctx.buildResult.Processes = append(ctx.buildResult.Processes, p)
 }

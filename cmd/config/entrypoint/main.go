@@ -48,7 +48,7 @@ func buildFn(ctx *gcp.Context) error {
 	entrypoint := os.Getenv(env.Entrypoint)
 	if entrypoint != "" {
 		ctx.Logf("Using entrypoint from %s: %s", env.Entrypoint, entrypoint)
-		ctx.AddProcess(gcp.WebProcess, []string{entrypoint}, false)
+		ctx.AddProcess(gcp.WebProcess, []string{entrypoint}, gcp.AsDefaultProcess())
 		return nil
 	}
 	b := ctx.ReadFile("Procfile")
@@ -75,10 +75,12 @@ func addProcfileProcesses(ctx *gcp.Context, content string) error {
 			continue
 		}
 		found[name] = true
-		ctx.AddProcess(name, []string{command}, false)
 
 		if name == gcp.WebProcess {
 			ctx.Logf("Using entrypoint from Procfile: %s", command)
+			ctx.AddProcess(name, []string{command}, gcp.AsDefaultProcess())
+		} else {
+			ctx.AddProcess(name, []string{command})
 		}
 	}
 

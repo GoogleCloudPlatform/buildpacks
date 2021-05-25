@@ -64,42 +64,42 @@ func TestProcfileProcesses(t *testing.T) {
 			name:    "simple",
 			content: "web: foo bar baz",
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo bar baz"},
+				{Type: "web", Command: "foo bar baz", Default: true},
 			},
 		},
 		{
 			name:    "dollar sign",
 			content: "web: foo $bar baz",
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo $bar baz"},
+				{Type: "web", Command: "foo $bar baz", Default: true},
 			},
 		},
 		{
 			name:    "whitespace start",
 			content: "web:  foo bar baz",
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo bar baz"},
+				{Type: "web", Command: "foo bar baz", Default: true},
 			},
 		},
 		{
 			name:    "whitespace end",
 			content: "web:  foo bar baz  ",
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo bar baz"},
+				{Type: "web", Command: "foo bar baz", Default: true},
 			},
 		},
 		{
 			name:    "carriage return",
 			content: "web: foo bar baz\r\n",
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo bar baz"},
+				{Type: "web", Command: "foo bar baz", Default: true},
 			},
 		},
 		{
 			name:    "no space",
 			content: "web:foo",
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo"},
+				{Type: "web", Command: "foo", Default: true},
 			},
 		},
 		{
@@ -109,7 +109,7 @@ web: bar baz
 `,
 			want: []libcnb.Process{
 				{Type: "dev", Command: "java --foo=web:something"},
-				{Type: "web", Command: "bar baz"},
+				{Type: "web", Command: "bar baz", Default: true},
 			},
 		},
 		{
@@ -118,7 +118,7 @@ web: bar baz
 web: bar
 `,
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo"},
+				{Type: "web", Command: "foo", Default: true},
 			},
 		},
 		{
@@ -127,14 +127,14 @@ web: bar
 web: bar
 `,
 			want: []libcnb.Process{
-				{Type: "web", Command: "bar"},
+				{Type: "web", Command: "bar", Default: true},
 			},
 		},
 		{
 			name:    "trailing newline",
 			content: "web: foo bar baz\n",
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo bar baz"},
+				{Type: "web", Command: "foo bar baz", Default: true},
 			},
 		},
 		{
@@ -144,7 +144,7 @@ release: baz
 dev:     foo
 `,
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo bar"},
+				{Type: "web", Command: "foo bar", Default: true},
 				{Type: "release", Command: "baz"},
 				{Type: "dev", Command: "foo"},
 			},

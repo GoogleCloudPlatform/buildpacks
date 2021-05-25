@@ -237,38 +237,112 @@ func TestBuildEmitsSuccessOutput(t *testing.T) {
 }
 
 func TestAddWebProcess(t *testing.T) {
+	ctx := NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+	ctx.AddWebProcess([]string{"/start"})
+	want := []libcnb.Process{proc("/start", "web")}
+
+	if !reflect.DeepEqual(ctx.buildResult.Processes, want) {
+		t.Errorf("Processes not equal got %#v, want %#v", ctx.buildResult.Processes, want)
+	}
+}
+
+func TestAddProcess(t *testing.T) {
 	testCases := []struct {
+		desc    string
 		name    string
-		initial []libcnb.Process
 		cmd     []string
+		opts    []processOption
+		initial []libcnb.Process
 		want    []libcnb.Process
 	}{
 		{
-			name:    "empty processes",
-			initial: []libcnb.Process{},
-			cmd:     []string{"/web"},
-			want:    []libcnb.Process{proc("/web", "web")},
+			desc: "no args, no processes",
+			name: "web",
+			cmd:  []string{"/web"},
+			want: []libcnb.Process{
+				libcnb.Process{Command: "/web", Type: "web"},
+			},
 		},
 		{
-			name:    "existing web",
-			initial: []libcnb.Process{proc("/dev", "dev"), proc("/web", "web"), proc("/cli", "cli")},
-			cmd:     []string{"/OVERRIDE"},
-			want:    []libcnb.Process{proc("/dev", "dev"), proc("/cli", "cli"), proc("/OVERRIDE", "web")},
+			desc: "add to existing",
+			name: "web",
+			cmd:  []string{"/web"},
+			initial: []libcnb.Process{
+				libcnb.Process{Command: "/dev", Type: "dev"},
+				libcnb.Process{Command: "/cli", Type: "cli"},
+			},
+			want: []libcnb.Process{
+				libcnb.Process{Command: "/dev", Type: "dev"},
+				libcnb.Process{Command: "/cli", Type: "cli"},
+				libcnb.Process{Command: "/web", Type: "web"},
+			},
 		},
 		{
-			name:    "no web",
-			initial: []libcnb.Process{proc("/dev", "dev"), proc("/cli", "cli")},
-			cmd:     []string{"/web"},
-			want:    []libcnb.Process{proc("/dev", "dev"), proc("/cli", "cli"), proc("/web", "web")},
+			desc: "override existing",
+			name: "web",
+			cmd:  []string{"/OVERRIDE"},
+			initial: []libcnb.Process{
+				libcnb.Process{Command: "/dev", Type: "dev"},
+				libcnb.Process{Command: "/web", Type: "web"},
+				libcnb.Process{Command: "/cli", Type: "cli"},
+			},
+			want: []libcnb.Process{
+				libcnb.Process{Command: "/dev", Type: "dev"},
+				libcnb.Process{Command: "/cli", Type: "cli"},
+				libcnb.Process{Command: "/OVERRIDE", Type: "web"},
+			},
+		},
+		{
+			desc: "no args",
+			name: "foo",
+			cmd:  []string{"/start"},
+			want: []libcnb.Process{
+				libcnb.Process{Command: "/start", Type: "foo"},
+			},
+		},
+		{
+			desc: "with args",
+			name: "foo",
+			cmd:  []string{"/start", "arg1", "arg2"},
+			want: []libcnb.Process{
+				libcnb.Process{Command: "/start", Arguments: []string{"arg1", "arg2"}, Type: "foo"},
+			},
+		},
+		{
+			desc: "with opts, direct",
+			name: "foo",
+			cmd:  []string{"/start", "arg1", "arg2"},
+			opts: []processOption{AsDirectProcess()},
+			want: []libcnb.Process{
+				libcnb.Process{Command: "/start", Arguments: []string{"arg1", "arg2"}, Type: "foo", Direct: true},
+			},
+		},
+		{
+			desc: "with opts, default",
+			name: "foo",
+			cmd:  []string{"/start", "arg1", "arg2"},
+			opts: []processOption{AsDefaultProcess()},
+			want: []libcnb.Process{
+				libcnb.Process{Command: "/start", Arguments: []string{"arg1", "arg2"}, Type: "foo", Default: true},
+			},
+		},
+		{
+			desc: "with opts, direct default",
+			name: "foo",
+			cmd:  []string{"/start", "arg1", "arg2"},
+			opts: []processOption{AsDirectProcess(), AsDefaultProcess()},
+			want: []libcnb.Process{
+				libcnb.Process{Command: "/start", Arguments: []string{"arg1", "arg2"}, Type: "foo", Direct: true, Default: true},
+			},
 		},
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.desc, func(t *testing.T) {
 			ctx := NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
 			ctx.buildResult.Processes = tc.initial
 
-			ctx.AddWebProcess(tc.cmd)
+			ctx.AddProcess(tc.name, tc.cmd, tc.opts...)
 
 			if !reflect.DeepEqual(ctx.buildResult.Processes, tc.want) {
 				t.Errorf("Processes not equal got %#v, want %#v", ctx.buildResult.Processes, tc.want)
@@ -414,5 +488,5 @@ func TestHasAtLeastOne(t *testing.T) {
 }
 
 func proc(command, commandType string) libcnb.Process {
-	return libcnb.Process{Command: command, Type: commandType, Direct: true}
+	return libcnb.Process{Command: command, Type: commandType, Default: true, Direct: true}
 }
