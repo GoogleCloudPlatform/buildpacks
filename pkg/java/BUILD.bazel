@@ -5,7 +5,10 @@ licenses(["notice"])
 
 go_library(
     name = "java",
-    srcs = ["java.go"],
+    srcs = [
+        "java.go",
+        "maven.go",
+    ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
         "//cmd/java:__subpackages__",
@@ -19,7 +22,16 @@ go_library(
 go_test(
     name = "java_test",
     size = "small",
-    srcs = ["java_test.go"],
+    srcs = [
+        "java_test.go",
+        "maven_test.go",
+    ],
+    embedsrcs = [
+        "testdata/empty_file.xml",  # keep
+        "testdata/empty_project.xml",  # keep
+        "testdata/invalid_project.xml",  # keep
+        "testdata/simple_project.xml",  # keep
+    ],
     embed = [":java"],
     rundir = ".",
     deps = [
