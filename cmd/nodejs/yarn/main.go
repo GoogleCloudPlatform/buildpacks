@@ -142,6 +142,8 @@ func installYarn(ctx *gcp.Context) error {
 	ctx.AddBOMEntry(libcnb.BOMEntry{
 		Name:     yarnLayer,
 		Metadata: map[string]interface{}{"version": yarnVersion},
+		Launch:   true,
+		Build:    true,
 	})
 	return nil
 }

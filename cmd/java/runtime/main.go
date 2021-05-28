@@ -92,6 +92,13 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("extracting release returned by %s: %w", releaseURL, err)
 	}
 
+	ctx.AddBOMEntry(libcnb.BOMEntry{
+		Name:     javaLayer,
+		Metadata: map[string]interface{}{"version": version},
+		Build:    true,
+		Launch:   true,
+	})
+
 	// Check the metadata in the cache layer to determine if we need to proceed.
 	l := ctx.Layer(javaLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 	metaVersion := ctx.GetMetadata(l, versionKey)
@@ -109,10 +116,6 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 
 	ctx.SetMetadata(l, versionKey, version)
-	ctx.AddBOMEntry(libcnb.BOMEntry{
-		Name:     javaLayer,
-		Metadata: map[string]interface{}{"version": version},
-	})
 	return nil
 }
 

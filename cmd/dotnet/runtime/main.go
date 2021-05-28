@@ -66,6 +66,13 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
+	ctx.AddBOMEntry(libcnb.BOMEntry{
+		Name:     runtimeLayer,
+		Metadata: map[string]interface{}{"version": version},
+		Launch:   true,
+		Build:    true,
+	})
+
 	sdkl := ctx.Layer(sdkLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
 	rtl := ctx.Layer(runtimeLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 
@@ -109,11 +116,6 @@ func buildFn(ctx *gcp.Context) error {
 	rtl.SharedEnvironment.Default("DOTNET_ROOT", rtl.Path)
 	rtl.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), rtl.Path)
 	rtl.LaunchEnvironment.Default("DOTNET_RUNNING_IN_CONTAINER", "true")
-
-	ctx.AddBOMEntry(libcnb.BOMEntry{
-		Name:     runtimeLayer,
-		Metadata: map[string]interface{}{"version": version},
-	})
 
 	return nil
 }

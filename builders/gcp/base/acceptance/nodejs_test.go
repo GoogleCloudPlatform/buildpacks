@@ -34,12 +34,41 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			MustUse: []string{nodeRuntime, nodeNPM},
 		},
 		{
-			Name:                "simple application (Dev Mode)",
+			Name:                "Dev mode",
 			App:                 "nodejs/simple",
 			Env:                 []string{"GOOGLE_DEVMODE=1"},
 			MustUse:             []string{nodeRuntime, nodeNPM},
 			FilesMustExist:      []string{"/workspace/server.js"},
 			MustRebuildOnChange: "/workspace/server.js",
+		},
+		{
+			// This is a separate test case from Dev mode above because it has a fixed runtime version.
+			// Its only purpose is to test that the metadata is set correctly.
+			Name:    "Dev mode metadata",
+			App:     "nodejs/simple",
+			Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=14.17.0"},
+			MustUse: []string{nodeRuntime, nodeNPM},
+			BOM: []acceptance.BOMEntry{
+				{
+					Name: "node",
+					Metadata: map[string]interface{}{
+						"version": "14.17.0",
+					},
+				},
+				{
+					Name: "devmode",
+					Metadata: map[string]interface{}{
+						"devmode.sync": []interface{}{
+							map[string]interface{}{"dest": "/workspace", "src": "**/*.js"},
+							map[string]interface{}{"dest": "/workspace", "src": "**/*.mjs"},
+							map[string]interface{}{"dest": "/workspace", "src": "**/*.coffee"},
+							map[string]interface{}{"dest": "/workspace", "src": "**/*.litcoffee"},
+							map[string]interface{}{"dest": "/workspace", "src": "**/*.json"},
+							map[string]interface{}{"dest": "/workspace", "src": "public/**"},
+						},
+					},
+				},
+			},
 		},
 		{
 			Name:    "simple application (custom entrypoint)",

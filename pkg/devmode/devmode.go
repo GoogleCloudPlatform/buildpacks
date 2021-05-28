@@ -83,9 +83,12 @@ func AddFileWatcherProcess(ctx *gcp.Context, cfg Config) {
 // AddSyncMetadata adds sync metadata to the final image.
 func AddSyncMetadata(ctx *gcp.Context, syncRulesFn func(string) []SyncRule) {
 	ctx.AddBOMEntry(libcnb.BOMEntry{
+		Name: "devmode",
 		Metadata: map[string]interface{}{
 			"devmode.sync": syncRulesFn(ctx.ApplicationRoot()),
 		},
+		Launch: true,
+		Build:  true,
 	})
 }
 

@@ -61,12 +61,36 @@ func TestAcceptanceGo(t *testing.T) {
 			MustNotUse: []string{goPath},
 		},
 		{
-			Name:                "simple Go application (Dev Mode)",
+			Name:                "Dev mode",
 			App:                 "go/simple",
 			Env:                 []string{"GOOGLE_DEVMODE=1"},
 			MustUse:             []string{goRuntime, goBuild, goPath},
 			FilesMustExist:      []string{"/layers/google.go.runtime/go/bin/go", "/workspace/main.go"},
 			MustRebuildOnChange: "/workspace/main.go",
+		},
+		{
+			// This is a separate test case from Dev mode above because it has a fixed runtime version.
+			// Its only purpose is to test that the metadata is set correctly.
+			Name:    "Dev mode metadata",
+			App:     "go/simple",
+			Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=1.16.4"},
+			MustUse: []string{goRuntime, goBuild, goPath},
+			BOM: []acceptance.BOMEntry{
+				{
+					Name: "go",
+					Metadata: map[string]interface{}{
+						"version": "1.16.4",
+					},
+				},
+				{
+					Name: "devmode",
+					Metadata: map[string]interface{}{
+						"devmode.sync": []interface{}{
+							map[string]interface{}{"dest": "/workspace", "src": "**/*.go"},
+						},
+					},
+				},
+			},
 		},
 		{
 			Name:    "Go runtime version respected",

@@ -61,6 +61,13 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
+	ctx.AddBOMEntry(libcnb.BOMEntry{
+		Name:     nodeLayer,
+		Metadata: map[string]interface{}{"version": version},
+		Launch:   true,
+		Build:    true,
+	})
+
 	// Check the metadata in the cache layer to determine if we need to proceed.
 	nrl := ctx.Layer(nodeLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 	metaVersion := ctx.GetMetadata(nrl, versionKey)
@@ -83,10 +90,6 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 
 	ctx.SetMetadata(nrl, versionKey, version)
-	ctx.AddBOMEntry(libcnb.BOMEntry{
-		Name:     nodeLayer,
-		Metadata: map[string]interface{}{"version": version},
-	})
 	return nil
 }
 

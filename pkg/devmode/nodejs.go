@@ -21,12 +21,13 @@ var (
 
 // NodeSyncRules is the list of SyncRules to be configured in Dev Mode for NodeJS.
 func NodeSyncRules(dest string) []SyncRule {
-	return []SyncRule{
-		{Src: "**/*.js", Dest: dest},
-		{Src: "**/*.mjs", Dest: dest},
-		{Src: "**/*.coffee", Dest: dest},
-		{Src: "**/*.litcoffee", Dest: dest},
-		{Src: "**/*.json", Dest: dest},
-		{Src: "public/**", Dest: dest},
+	var rules []SyncRule
+	for _, ext := range NodeWatchedExtensions {
+		rules = append(rules, SyncRule{
+			Src:  "**/*." + ext,
+			Dest: dest,
+		})
 	}
+
+	return append(rules, SyncRule{Src: "public/**", Dest: dest})
 }

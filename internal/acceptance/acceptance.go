@@ -33,6 +33,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -153,9 +154,17 @@ type Test struct {
 	MustRebuildOnChange string
 	// FlakyBuildAttempts specifies the number of times a failing build shouldbe retried.
 	FlakyBuildAttempts int
+	// BOM specifies the list of bill-of-material entries expected in the built image metadata.
+	BOM []BOMEntry
 	// Setup is a function that is called before the test starts and can be used to modify the test source.
 	// The function has access to the builder image name and a directory with a modifiable copy of the source
 	Setup func(builder, srcDir string) error
+}
+
+// BOMEntry represents a bill-of-materials entry in the image metadata.
+type BOMEntry struct {
+	Name     string                 `json:"name"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // TestApp builds and a single application and verifies that it runs and handles requests.
@@ -212,7 +221,7 @@ func TestApp(t *testing.T, builder string, cfg Test) {
 	for _, cache := range cacheOptions {
 		t.Run(fmt.Sprintf("cache %t", cache), func(t *testing.T) {
 			buildApp(t, src, image, builder, env, cache, cfg)
-			verifyBuildMetadata(t, image, cfg.MustUse, cfg.MustNotUse)
+			verifyBuildMetadata(t, image, cfg.MustUse, cfg.MustNotUse, cfg.BOM)
 			verifyStructure(t, image, builder, cache, checks)
 			invokeApp(t, cfg, image, cache)
 		})
@@ -779,7 +788,7 @@ func verifyStructure(t *testing.T, image, builder string, cache bool, checks *St
 }
 
 // verifyBuildMetadata verifies the image was built with correct buildpacks.
-func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []string) {
+func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []string, bom []BOMEntry) {
 	t.Helper()
 
 	start := time.Now()
@@ -789,13 +798,14 @@ func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []strin
 	}
 
 	var metadata struct {
+		BOM        []BOMEntry `json:"bom"`
 		Buildpacks []struct {
 			ID string `json:"id"`
 		} `json:"buildpacks"`
 	}
 
 	if err := json.Unmarshal([]byte(out), &metadata); err != nil {
-		t.Errorf("Error unmarshalling build metadata: %v", err)
+		t.Fatalf("Error unmarshalling build metadata: %v", err)
 	}
 
 	usedBuildpacks := map[string]bool{}
@@ -805,17 +815,23 @@ func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []strin
 
 	for _, id := range mustUse {
 		if _, used := usedBuildpacks[id]; !used {
-			t.Fatalf("Must use buildpack %s was not used.", id)
+			t.Errorf("Must use buildpack %s was not used.", id)
 		}
 	}
 
 	for _, id := range mustNotUse {
 		if _, used := usedBuildpacks[id]; used {
-			t.Fatalf("Must not use buildpack %s was used.", id)
+			t.Errorf("Must not use buildpack %s was used.", id)
 		}
 	}
 
-	t.Logf("Successfully verified build metadata (in %s)", time.Since(start))
+	if len(bom) != 0 {
+		if got, want := metadata.BOM, bom; !reflect.DeepEqual(got, want) {
+			t.Errorf("Unexpected BOM on image metadata\ngot: %v\nwant %v", got, want)
+		}
+	}
+
+	t.Logf("Finished verifying build metadata (in %s)", time.Since(start))
 }
 
 // startContainer starts a container for the given app and exposes port 8080.

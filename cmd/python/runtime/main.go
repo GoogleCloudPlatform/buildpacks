@@ -59,6 +59,13 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("determining runtime version: %w", err)
 	}
 
+	ctx.AddBOMEntry(libcnb.BOMEntry{
+		Name:     pythonLayer,
+		Metadata: map[string]interface{}{"version": version},
+		Launch:   true,
+		Build:    true,
+	})
+
 	l := ctx.Layer(pythonLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 
 	// Check the metadata in the cache layer to determine if we need to proceed.
@@ -87,11 +94,6 @@ func buildFn(ctx *gcp.Context) error {
 	l.LaunchEnvironment.Default("PYTHONUNBUFFERED", "TRUE")
 
 	ctx.SetMetadata(l, versionKey, version)
-	ctx.AddBOMEntry(libcnb.BOMEntry{
-		Name:     pythonLayer,
-		Metadata: map[string]interface{}{"version": version},
-	})
-
 	return nil
 }
 

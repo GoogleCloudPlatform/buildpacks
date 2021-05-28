@@ -61,12 +61,42 @@ func TestAcceptanceDotNet(t *testing.T) {
 			FilesMustNotExist: []string{sdk},
 		},
 		{
-			Name:                "simple dotnet app (Dev Mode)",
+			Name:                "Dev mode",
 			App:                 "dotnet/simple",
 			Env:                 []string{"GOOGLE_DEVMODE=1"},
 			MustUse:             []string{dotnetRuntime, dotnetPublish},
 			FilesMustExist:      []string{sdk, "/workspace/Startup.cs"},
 			MustRebuildOnChange: "/workspace/Startup.cs",
+		},
+		{
+			// This is a separate test case from Dev mode above because it has a fixed runtime version.
+			// Its only purpose is to test that the metadata is set correctly.
+			Name:    "Dev mode metadata",
+			App:     "dotnet/simple",
+			Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=3.1.409"},
+			MustUse: []string{dotnetRuntime, dotnetPublish},
+			BOM: []acceptance.BOMEntry{
+				{
+					Name: "runtime",
+					Metadata: map[string]interface{}{
+						"version": "3.1.409",
+					},
+				},
+				{
+					Name: "devmode",
+					Metadata: map[string]interface{}{
+						"devmode.sync": []interface{}{
+							map[string]interface{}{"dest": "/workspace", "src": "**/*.cs"},
+							map[string]interface{}{"dest": "/workspace", "src": "*.csproj"},
+							map[string]interface{}{"dest": "/workspace", "src": "**/*.fs"},
+							map[string]interface{}{"dest": "/workspace", "src": "*.fsproj"},
+							map[string]interface{}{"dest": "/workspace", "src": "**/*.vb"},
+							map[string]interface{}{"dest": "/workspace", "src": "*.vbproj"},
+							map[string]interface{}{"dest": "/workspace", "src": "**/*.resx"},
+						},
+					},
+				},
+			},
 		},
 		{
 			Name:       "dotnet selected via GOOGLE_RUNTIME",

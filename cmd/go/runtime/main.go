@@ -27,6 +27,7 @@ import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -78,6 +79,13 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 		ctx.SetMetadata(grl, versionKey, version)
 	}
+
+	ctx.AddBOMEntry(libcnb.BOMEntry{
+		Name:     goLayer,
+		Metadata: map[string]interface{}{"version": version},
+		Launch:   true,
+		Build:    true,
+	})
 
 	return nil
 }
