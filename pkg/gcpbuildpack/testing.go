@@ -131,7 +131,7 @@ func tempWorkingDir(t *testing.T) (string, func()) {
 func simpleContext(t *testing.T) (*Context, func()) {
 	t.Helper()
 	_, cleanUp := setUpDetectEnvironment(t)
-	c := NewContext(libcnb.BuildpackInfo{ID: "my-id", Version: "my-version", Name: "my-name"})
+	c := NewContext()
 	return c, cleanUp
 }
 

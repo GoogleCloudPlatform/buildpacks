@@ -67,7 +67,7 @@ func TestWriteAndRunScripts(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Creating temp directory: %v", err)
 			}
-			ctx := gcp.NewContextForTests(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"}, tc.layerRoot)
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(tc.layerRoot))
 			l := &libcnb.Layer{Path: tc.layerRoot}
 
 			writeBuildAndRunScript(ctx, l, tc.config)

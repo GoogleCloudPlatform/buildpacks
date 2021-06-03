@@ -39,6 +39,5 @@ go_test(
     deps = [
         "//pkg/appstart",
         "//pkg/gcpbuildpack",
-        "@com_github_buildpacks_libcnb//:go_default_library",
     ],
 )

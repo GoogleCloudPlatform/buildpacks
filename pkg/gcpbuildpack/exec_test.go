@@ -22,8 +22,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/buildpacks/libcnb"
 )
 
 func TestExecEmitsSpan(t *testing.T) {
@@ -427,7 +425,7 @@ func TestExec(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := NewContext(libcnb.BuildpackInfo{})
+			ctx := NewContext()
 			exiter := &fakeExiter{}
 			ctx.exiter = exiter
 
@@ -596,7 +594,7 @@ func TestExecWithErr(t *testing.T) {
 			defer func() {
 				maxMessageBytes = oldMaxMessageBytes
 			}()
-			ctx := NewContext(libcnb.BuildpackInfo{})
+			ctx := NewContext()
 
 			result, err := ctx.ExecWithErr(tc.cmd, tc.opts...)
 

@@ -21,8 +21,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/buildpacks/libcnb"
-
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -210,7 +208,7 @@ func TestPopulateMainLayer(t *testing.T) {
 			if err := os.Mkdir(converter, 0755); err != nil {
 				t.Fatalf("creating directory structure (path=%s): %v", converter, err)
 			}
-			ctx := gcp.NewContextForTests(libcnb.BuildpackInfo{}, fakeApp)
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(fakeApp))
 
 			for _, name := range []string{"CMakeLists.txt", "vcpkg.json"} {
 				path := filepath.Join(converter, name)

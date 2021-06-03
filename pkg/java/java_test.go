@@ -133,7 +133,7 @@ another: example`,
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mfPath := setupTestManifest(t, []byte(tc.manifestContents))
-			ctx := gcp.NewContextForTests(libcnb.BuildpackInfo{}, "")
+			ctx := gcp.NewContext()
 			got, err := MainFromManifest(ctx, mfPath)
 			if err != nil {
 				t.Errorf("MainFromMainfest() errored: %v", err)
@@ -164,7 +164,7 @@ func TestMainFromManifestFail(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mfPath := setupTestManifest(t, []byte(tc.manifestContents))
-			ctx := gcp.NewContextForTests(libcnb.BuildpackInfo{}, "")
+			ctx := gcp.NewContext()
 			_, err := MainFromManifest(ctx, mfPath)
 			if err == nil {
 				t.Error("MainFromMainfest() did not error as expected")
@@ -194,7 +194,7 @@ func TestCheckCacheNewDateMiss(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := gcp.NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+			ctx := gcp.NewContext()
 
 			testFilePath, m2CachedRepo := setupTestLayer(t, ctx)
 			ctx.SetMetadata(m2CachedRepo, "expiry_timestamp", tc.expiryTimestamp)
@@ -225,7 +225,7 @@ func TestCheckCacheNewDateHit(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := gcp.NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+			ctx := gcp.NewContext()
 			testFilePath, m2CachedRepo := setupTestLayer(t, ctx)
 			ctx.SetMetadata(m2CachedRepo, "expiry_timestamp", tc.expiryTimestamp)
 

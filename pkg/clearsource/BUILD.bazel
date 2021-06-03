@@ -26,8 +26,5 @@ go_test(
     srcs = ["clearsource_test.go"],
     embed = [":clearsource"],
     rundir = ".",
-    deps = [
-        "//pkg/gcpbuildpack",
-        "@com_github_buildpacks_libcnb//:go_default_library",
-    ],
+    deps = ["//pkg/gcpbuildpack"],
 )

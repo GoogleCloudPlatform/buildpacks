@@ -87,30 +87,47 @@ type Context struct {
 	buildResult  libcnb.BuildResult
 }
 
+// ContextOption configures NewContext functions.
+type ContextOption func(ctx *Context)
+
+// WithApplicationRoot sets the application root in Context.
+func WithApplicationRoot(root string) ContextOption {
+	return func(ctx *Context) {
+		ctx.applicationRoot = root
+	}
+}
+
+// WithBuildpackInfo sets the buildpack info in Context.
+func WithBuildpackInfo(info libcnb.BuildpackInfo) ContextOption {
+	return func(ctx *Context) {
+		ctx.info = info
+	}
+}
+
+// WithBuildContext sets the buildContext in Context.
+func WithBuildContext(buildCtx libcnb.BuildContext) ContextOption {
+	return func(ctx *Context) {
+		ctx.buildContext = buildCtx
+	}
+}
+
 // NewContext creates a context.
-func NewContext(info libcnb.BuildpackInfo) *Context {
+func NewContext(opts ...ContextOption) *Context {
 	debug, err := env.IsDebugMode()
 	if err != nil {
 		logger.Printf("Failed to parse debug mode: %v", err)
 		os.Exit(1)
 	}
-	ctx := &Context{
-		debug: debug,
-		info:  info,
-	}
+	ctx := &Context{debug: debug}
 	ctx.exiter = defaultExiter{ctx: ctx}
-	return ctx
-}
-
-// NewContextForTests creates a context to be used for tests.
-func NewContextForTests(info libcnb.BuildpackInfo, root string) *Context {
-	ctx := NewContext(info)
-	ctx.applicationRoot = root
+	for _, o := range opts {
+		o(ctx)
+	}
 	return ctx
 }
 
 func newDetectContext(detectContext libcnb.DetectContext) *Context {
-	ctx := NewContext(detectContext.Buildpack.Info)
+	ctx := NewContext(WithBuildpackInfo(detectContext.Buildpack.Info))
 	ctx.detectContext = detectContext
 	ctx.applicationRoot = ctx.detectContext.Application.Path
 	ctx.buildpackRoot = ctx.detectContext.Buildpack.Path
@@ -118,7 +135,7 @@ func newDetectContext(detectContext libcnb.DetectContext) *Context {
 }
 
 func newBuildContext(buildContext libcnb.BuildContext) *Context {
-	ctx := NewContext(buildContext.Buildpack.Info)
+	ctx := NewContext(WithBuildpackInfo(buildContext.Buildpack.Info))
 	ctx.buildContext = buildContext
 	ctx.applicationRoot = ctx.buildContext.Application.Path
 	ctx.buildpackRoot = ctx.buildContext.Buildpack.Path

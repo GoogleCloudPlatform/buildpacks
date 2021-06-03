@@ -23,7 +23,6 @@ import (
 	"text/template"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpacks/libcnb"
 )
 
 func TestGetAssemblyName(t *testing.T) {
@@ -80,7 +79,7 @@ func TestGetAssemblyName(t *testing.T) {
 		},
 	}
 	for _, tc := range tcs {
-		ctx := gcp.NewContext(libcnb.BuildpackInfo{})
+		ctx := gcp.NewContext()
 		t.Run(tc.name, func(t *testing.T) {
 			tmpDir, err := ioutil.TempDir("", "dotnettest")
 			if err != nil {
@@ -157,7 +156,7 @@ func TestGetEntrypoint(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := gcp.NewContext(libcnb.BuildpackInfo{})
+			ctx := gcp.NewContext()
 
 			tmpDir, err := ioutil.TempDir("", "dotnettest")
 			if err != nil {

@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpacks/libcnb"
 )
 
 func TestPathsToRemove(t *testing.T) {
@@ -69,18 +68,14 @@ func TestPathsToRemove(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tDir, err := ioutil.TempDir("", "")
-			if err != nil {
-				t.Fatalf("creating temp dir: %v", err)
-			}
+			tDir := t.TempDir()
 			for _, file := range tc.files {
 				path := filepath.Join(tDir, file)
-				err = ioutil.WriteFile(path, []byte{}, 0644)
-				if err != nil {
+				if err := ioutil.WriteFile(path, []byte{}, 0644); err != nil {
 					t.Fatalf("writing to file %s: %v", path, err)
 				}
 			}
-			ctx := gcp.NewContextForTests(libcnb.BuildpackInfo{}, "")
+			ctx := gcp.NewContext()
 
 			got, err := pathsToRemove(ctx, tDir, tc.exclusions)
 			if err != nil {

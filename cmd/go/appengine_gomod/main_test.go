@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpacks/libcnb"
 )
 
 func TestDetect(t *testing.T) {
@@ -106,7 +105,7 @@ func TestMainPath(t *testing.T) {
 				}
 			}()
 
-			ctx := gcp.NewContextForTests(libcnb.BuildpackInfo{}, dir)
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(dir))
 
 			if tc.stagerFileContents != "" {
 				if err = ioutil.WriteFile(filepath.Join(dir, "_main-package-path"), []byte(tc.stagerFileContents), 0755); err != nil {

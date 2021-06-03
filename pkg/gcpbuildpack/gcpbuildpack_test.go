@@ -66,7 +66,7 @@ func TestDebugModeInitialized(t *testing.T) {
 				}
 			}
 
-			ctx := NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+			ctx := NewContext()
 			if ctx.debug != tc.want {
 				t.Errorf("ctx.debug=%t, want %t", ctx.debug, tc.want)
 			}
@@ -74,6 +74,30 @@ func TestDebugModeInitialized(t *testing.T) {
 				t.Errorf("ctx.Debug()=%t, want %t", ctx.debug, tc.want)
 			}
 		})
+	}
+}
+
+func TestNewContextWithApplicationRoot(t *testing.T) {
+	want := "myroot"
+	got := NewContext(WithApplicationRoot(want)).applicationRoot
+	if got != want {
+		t.Errorf("NewContext().applicationRoot=%q want %q", got, want)
+	}
+}
+
+func TestNewContextWithBuidpackInfo(t *testing.T) {
+	want := libcnb.BuildpackInfo{Name: "myname"}
+	got := NewContext(WithBuildpackInfo(want)).info
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("NewContext().info\ngot %#v\nwant %#v", got, want)
+	}
+}
+
+func TestNewContextWithBuildContext(t *testing.T) {
+	want := libcnb.BuildContext{StackID: "mystack"}
+	got := NewContext(WithBuildContext(want)).buildContext
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("NewContext().buildContext\ngot %#v\nwant %#v", got, want)
 	}
 }
 
@@ -112,7 +136,7 @@ func TestDetectEmitsSpan(t *testing.T) {
 	}, libcnb.WithExitHandler(&fakeExitHandler{}))
 
 	if len(ctx.stats.spans) != 1 {
-		t.Fatalf("len(spans)=%d want=1", len(ctx.stats.spans))
+		t.Errorf("len(spans)=%d want=1", len(ctx.stats.spans))
 	}
 	got := ctx.stats.spans[0]
 	wantName := "Buildpack Detect"
@@ -120,7 +144,7 @@ func TestDetectEmitsSpan(t *testing.T) {
 		t.Errorf("Unexpected span name got %q want prefix %q", got.name, wantName)
 	}
 	if got.start.IsZero() {
-		t.Error("Start time not set")
+		t.Errorf("Start time not set")
 	}
 	if !got.end.After(got.start) {
 		t.Errorf("End %v not after start %v", got.end, got.start)
@@ -182,7 +206,7 @@ func TestBuildEmitsSpan(t *testing.T) {
 	})
 
 	if len(ctx.stats.spans) != 1 {
-		t.Fatalf("len(spans)=%d want=1", len(ctx.stats.spans))
+		t.Errorf("len(spans)=%d want=1", len(ctx.stats.spans))
 	}
 	got := ctx.stats.spans[0]
 	wantName := "Buildpack Build"
@@ -190,7 +214,7 @@ func TestBuildEmitsSpan(t *testing.T) {
 		t.Errorf("Unexpected span name got %q want prefix %q", got.name, wantName)
 	}
 	if got.start.IsZero() {
-		t.Error("Start time not set")
+		t.Errorf("Start time not set")
 	}
 	if !got.end.After(got.start) {
 		t.Errorf("End %v not after start %v", got.end, got.start)
@@ -229,7 +253,7 @@ func TestBuildEmitsSuccessOutput(t *testing.T) {
 		t.Fatalf("Failed to unmarshal: %v", err)
 	}
 	if len(got.Stats) != 1 {
-		t.Fatalf("Incorrect length of stats, got %d, want %d", len(got.Stats), 1)
+		t.Errorf("Incorrect length of stats, got %d, want %d", len(got.Stats), 1)
 	}
 	if got.Stats[0].DurationMs < 100 {
 		t.Errorf("Duration is too short, got %d, want >= %d", got.Stats[0].DurationMs, 100)
@@ -237,7 +261,7 @@ func TestBuildEmitsSuccessOutput(t *testing.T) {
 }
 
 func TestAddWebProcess(t *testing.T) {
-	ctx := NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+	ctx := NewContext()
 	ctx.AddWebProcess([]string{"/start"})
 	want := []libcnb.Process{proc("/start", "web")}
 
@@ -339,7 +363,7 @@ func TestAddProcess(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			ctx := NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+			ctx := NewContext()
 			ctx.buildResult.Processes = tc.initial
 
 			ctx.AddProcess(tc.name, tc.cmd, tc.opts...)
@@ -390,7 +414,7 @@ func TestAddLabel(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+			ctx := NewContext()
 
 			for _, kv := range tc.keyvalues {
 				parts := strings.SplitN(kv, "=", 2)
@@ -411,7 +435,7 @@ func TestAddLabelErrors(t *testing.T) {
 	invalids := []string{"", "0", "00invalid", "abc def", "abd@def", "  abc", "def  ", "a__b"}
 
 	for _, invalid := range invalids {
-		ctx := NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+		ctx := NewContext()
 		ctx.AddLabel(invalid, "some-value")
 
 		if len(ctx.buildResult.Labels) > 0 {
@@ -470,7 +494,7 @@ func TestHasAtLeastOne(t *testing.T) {
 			dir, cleanup := tempWorkingDir(t)
 			defer cleanup()
 
-			ctx := NewContextForTests(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"}, dir)
+			ctx := NewContext(WithApplicationRoot(dir))
 			for _, f := range tc.files {
 				ctx.MkdirAll(tc.prefix, 0777)
 				_, err := ioutil.TempFile(tc.prefix, f)

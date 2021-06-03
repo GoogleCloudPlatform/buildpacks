@@ -15,7 +15,6 @@
 package main
 
 import (
-	"os"
 	"reflect"
 	"testing"
 
@@ -152,7 +151,7 @@ dev:     foo
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := gcp.NewContextForTests(libcnb.BuildpackInfo{}, os.TempDir())
+			ctx := gcp.NewContext()
 			err := addProcfileProcesses(ctx, tc.content)
 			if err != nil {
 				t.Fatalf("addProcfileProcesses(%s) got error: %v", tc.content, err)
@@ -188,7 +187,7 @@ func TestAddProcfileWebProcessesError(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := gcp.NewContextForTests(libcnb.BuildpackInfo{}, os.TempDir())
+			ctx := gcp.NewContext()
 			if err := addProcfileProcesses(ctx, tc.content); err == nil {
 				t.Errorf("procfileWebProcess(%s) = nil, want error", tc.content)
 			}

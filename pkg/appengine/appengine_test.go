@@ -21,7 +21,6 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpacks/libcnb"
 )
 
 func TestConfig(t *testing.T) {
@@ -71,7 +70,7 @@ func TestConfig(t *testing.T) {
 		},
 	}
 
-	ctx := gcp.NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+	ctx := gcp.NewContext()
 	eg := func(*gcp.Context) (*appstart.Entrypoint, error) {
 		return &appstart.Entrypoint{
 			Type:    appstart.EntrypointGenerated.String(),

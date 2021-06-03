@@ -49,7 +49,7 @@ func TestWithStrings(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := gcp.NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+			ctx := gcp.NewContext(gcp.WithBuildpackInfo(libcnb.BuildpackInfo{ID: "id", Version: "version"}))
 
 			option := WithStrings(tc.strings...)
 			got, err := Hash(ctx, option)
@@ -112,7 +112,7 @@ func TestWithFiles(t *testing.T) {
 				names = append(names, fname)
 			}
 			sort.Strings(names)
-			ctx := gcp.NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+			ctx := gcp.NewContext(gcp.WithBuildpackInfo(libcnb.BuildpackInfo{ID: "id", Version: "version"}))
 
 			option := WithFiles(names...)
 			got, err := Hash(ctx, option)
@@ -127,7 +127,7 @@ func TestWithFiles(t *testing.T) {
 }
 
 func TestWithFilesError(t *testing.T) {
-	ctx := gcp.NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+	ctx := gcp.NewContext()
 
 	option := WithFiles("/does/not/exist")
 	_, err := Hash(ctx, option)
@@ -151,7 +151,7 @@ func TestHash_SameFileContentsYieldsSameHash(t *testing.T) {
 	fname1 := writeFile(t, temp, "file1", contents)
 	fname2 := writeFile(t, temp, "file2", contents)
 
-	ctx := gcp.NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+	ctx := gcp.NewContext()
 	f1 := computeHash(t, ctx, WithFiles(fname1))
 	f2 := computeHash(t, ctx, WithFiles(fname2))
 	if f1 != f2 {
@@ -185,7 +185,7 @@ func TestHash_Uniqueness(t *testing.T) {
 	}
 
 	// Compute hash for each, remove duplicates, result must be same length as original (i.e., all unique).
-	ctx := gcp.NewContext(libcnb.BuildpackInfo{ID: "id", Version: "version", Name: "name"})
+	ctx := gcp.NewContext()
 	var hashes []string
 	for _, tc := range testCases {
 		hashes = append(hashes, computeHash(t, ctx, tc...))
