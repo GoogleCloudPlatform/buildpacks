@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"strings"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
@@ -50,31 +51,46 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 func createImage(ctx *gcp.Context) (string, error) {
-	if buildProfile, ok := findNativeBuildProfile(ctx); ok {
+	pom := parsePomFile(ctx)
+	if pom == nil {
+		return buildDefault(ctx)
+	}
+
+	if buildProfile, ok := findNativeBuildProfile(ctx, pom); ok {
 		return buildMaven(ctx, buildProfile)
 	}
 
-	return buildCommandLine(ctx)
+	if springBootPluginDefined(ctx, pom) {
+		if image, err := buildSpringBoot(ctx); err != nil {
+			return "", err
+		} else if image != "" {
+			return image, nil
+		}
+	}
+
+	return buildDefault(ctx)
 }
 
-// buildCommandLine runs the native-image build via command line and returns the image path.
-func buildCommandLine(ctx *gcp.Context) (string, error) {
+// buildDefault builds a native-image in the basic and non-specialized way that can work on any normal
+// Java apps and returns the image path. Currently, only supported is an executable JAR in the context.
+func buildDefault(ctx *gcp.Context) (string, error) {
 	jar, err := java.ExecutableJar(ctx)
 	if err != nil {
 		return "", fmt.Errorf("finding executable jar: %w", err)
 	}
+	return buildCommandLine(ctx, []string{"-jar", jar})
+}
 
+// buildCommandLine runs the native-image build via command line and returns the image path.
+func buildCommandLine(ctx *gcp.Context, buildArgs []string) (string, error) {
 	tempImagePath := filepath.Join(ctx.TempDir("native-image"), "native-app")
 
-	// This may generate extra files (*.o and *.build_artifacts.txt)
-	// alongside the binary in the temp layer.
 	command := []string{
-		"native-image",
-		"--no-fallback", "--no-server",
-		"-H:+StaticExecutableWithDynamicLibC",
-		"-jar", jar,
-		tempImagePath,
+		"native-image", "--no-fallback", "--no-server", "-H:+StaticExecutableWithDynamicLibC",
 	}
+	// Use a temporary image path because this command may generate extra files
+	// (*.o and *.build_artifacts.txt) alongside the binary in the temp dir.
+	command = append(append(command, buildArgs...), tempImagePath)
 
 	ctx.Exec(command, gcp.WithUserAttribution)
 
@@ -100,11 +116,10 @@ func buildMaven(ctx *gcp.Context, buildProfile string) (string, error) {
 	return findNativeExecutable(ctx)
 }
 
-// findNativeBuildProfile returns the profile in which the native-image-plugin is defined
-// and a bool which returns true if the plugin is found, false if not.
-func findNativeBuildProfile(ctx *gcp.Context) (string, bool) {
+// parsePomFile returns a parsed pom.xml if it exists.
+func parsePomFile(ctx *gcp.Context) *java.MavenProject {
 	if !ctx.FileExists("pom.xml") {
-		return "", false
+		return nil
 	}
 
 	tmpDir := ctx.TempDir("native-image-maven")
@@ -123,9 +138,14 @@ func findNativeBuildProfile(ctx *gcp.Context) (string, bool) {
 	project, err := java.ParsePomFile(effectivePom)
 	if err != nil {
 		ctx.Warnf("A pom.xml was found but unable to be parsed: %v\n", err)
-		return "", false
+		return nil
 	}
+	return project
+}
 
+// findNativeBuildProfile returns the profile in which the native-image-plugin is defined
+// and a bool which returns true if the plugin is found, false if not.
+func findNativeBuildProfile(ctx *gcp.Context, project *java.MavenProject) (string, bool) {
 	for _, profile := range project.Profiles {
 		for _, plugin := range profile.Plugins {
 			if plugin.GroupID == "org.graalvm.nativeimage" &&
@@ -137,6 +157,19 @@ func findNativeBuildProfile(ctx *gcp.Context) (string, bool) {
 
 	ctx.Logf("Did not find a native-image-plugin defined in the pom.xml")
 	return "", false
+}
+
+// springBootPluginDefined checks if the spring-boot-maven-plugin is defined.
+func springBootPluginDefined(ctx *gcp.Context, project *java.MavenProject) bool {
+	for _, plugin := range project.Plugins {
+		if plugin.GroupID == "org.springframework.boot" &&
+			plugin.ArtifactID == "spring-boot-maven-plugin" {
+			return true
+		}
+	}
+
+	ctx.Logf("Did not find a spring-boot-maven-plugin defined in the pom.xml")
+	return false
 }
 
 // findNativeExecutable returns the path to the executable from the target/ folder
@@ -158,4 +191,47 @@ func findNativeExecutable(ctx *gcp.Context) (string, error) {
 	}
 
 	return allExecutables[0], nil
+}
+
+// buildSpringBoot attempts to build a native image from a Spring Boot fat JAR and returns the image path.
+// It may return empty if, for example, no Spring Boot fat JAR is found.
+func buildSpringBoot(ctx *gcp.Context) (string, error) {
+	classpath, main, err := classpathAndMainFromSpringBoot(ctx)
+	if err != nil {
+		return "", err
+	} else if classpath == "" || main == "" {
+		return "", nil
+	}
+	return buildCommandLine(ctx, []string{"--class-path", classpath, main})
+}
+
+// classpathAndMainFromSpringBoot returns classpath and main class of an exploded Spring Boot fat JAR
+// that is suitable for the application exeuction on a JVM. It may return empty strings if, for example,
+// no Spring Boot fat JAR is found.
+func classpathAndMainFromSpringBoot(ctx *gcp.Context) (string, string, error) {
+	jar, err := java.ExecutableJar(ctx)
+	if err != nil {
+		ctx.Warnf("Spring Boot project assumed but no main executable JAR found: %v\n", err)
+		return "", "", nil
+	}
+	startClass, err := java.FindManifestValueFromJar(jar, "Start-Class")
+	if err != nil {
+		return "", "", fmt.Errorf("fetching manifest value from JAR: %q", jar)
+	}
+	if startClass == "" {
+		ctx.Warnf("Spring Boot project assumed but Start-Class undefined in executable JAR: %q", jar)
+		return "", "", nil
+	}
+
+	explodedJarDir := ctx.TempDir("exploded-jar")
+	ctx.Exec([]string{"unzip", "-q", jar, "-d", explodedJarDir}, gcp.WithUserAttribution)
+
+	classes := filepath.Join(explodedJarDir, "BOOT-INF", "classes")
+	// TODO(chanseok): using '*' gives a different dependency order than the one computed by Maven.
+	// If a Spring Boot fat JAR contain classpath.idx, use it for the exact classpath.
+	// https://docs.spring.io/spring-boot/docs/current/reference/html/deployment.html#deployment.containers
+	libs := filepath.Join(explodedJarDir, "BOOT-INF", "lib", "*")
+	classpath := strings.Join([]string{explodedJarDir, classes, libs}, string(filepath.ListSeparator))
+
+	return classpath, startClass, nil
 }
