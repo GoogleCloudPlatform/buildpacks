@@ -114,10 +114,10 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	// If the function source does not include a go.sum, `go list` will fail under Go 1.16+.
 	if !ctx.FileExists(fn.Source, "go.sum") {
 		ctx.Logf(`go.sum not found, generating using "go mod tidy"`)
-		golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "tidy"}, gcp.WithWorkDir(fn.Source))
+		golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "tidy"}, gcp.WithWorkDir(fn.Source), gcp.WithUserAttribution)
 	}
 
-	fnMod := ctx.Exec([]string{"go", "list", "-m"}, gcp.WithWorkDir(fn.Source)).Stdout
+	fnMod := ctx.Exec([]string{"go", "list", "-m"}, gcp.WithWorkDir(fn.Source), gcp.WithUserAttribution).Stdout
 	// golang.org/ref/mod requires that package names in a replace contains at least one dot.
 	if parts := strings.Split(fnMod, "/"); len(parts) > 0 && !strings.Contains(parts[0], ".") {
 		return gcp.UserErrorf("the module path in the function's go.mod must contain a dot in the first path element before a slash, e.g. example.com/module, found: %s", fnMod)
@@ -152,7 +152,7 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	// We generate a go.mod file dynamically since the function may request a specific version of
 	// the framework, in which case we want to import that version. For that reason we cannot
 	// include a pre-generated go.sum file.
-	golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "tidy"})
+	golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "tidy"}, gcp.WithUserAttribution)
 	return nil
 }
 
@@ -246,7 +246,7 @@ func createMainGoFile(ctx *gcp.Context, fn fnInfo, main, version string) error {
 
 // If a framework is specified, return the version. If unspecified, return an empty string.
 func frameworkSpecifiedVersion(ctx *gcp.Context, fnSource string) (string, error) {
-	res, err := ctx.ExecWithErr([]string{"go", "list", "-m", "-f", "{{.Version}}", functionsFrameworkModule}, gcp.WithWorkDir(fnSource))
+	res, err := ctx.ExecWithErr([]string{"go", "list", "-m", "-f", "{{.Version}}", functionsFrameworkModule}, gcp.WithWorkDir(fnSource), gcp.WithUserAttribution)
 	if err == nil {
 		v := strings.TrimSpace(res.Stdout)
 		ctx.Logf("Found framework version %s", v)
