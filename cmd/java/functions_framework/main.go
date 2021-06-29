@@ -54,8 +54,9 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	layer := ctx.Layer(layerName)
+	layer := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 	ffPath, err := installFunctionsFramework(ctx, layer)
+	layer.BuildEnvironment.Override(java.FFJarPathEnv, ffPath)
 	if err != nil {
 		return err
 	}
@@ -116,7 +117,7 @@ func classpath(ctx *gcp.Context) (string, error) {
 // from the pom.xml itself, plus all jar files that are dependencies mentioned in the pom.xml.
 func mavenClasspath(ctx *gcp.Context) (string, error) {
 
-	mvn := mvnCmd(ctx)
+	mvn := java.MvnCmd(ctx)
 
 	// Copy the dependencies of the function (`<dependencies>` in pom.xml) into target/dependency.
 	ctx.Exec([]string{mvn, "--batch-mode", "dependency:copy-dependencies", "-Dmdep.prependGroupId", "-DincludeScope=runtime"}, gcp.WithUserAttribution)
@@ -174,12 +175,10 @@ func gradleClasspath(ctx *gcp.Context) (string, error) {
 }
 
 func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) (string, error) {
-	layer.Launch = true
-	layer.Cache = true
 
 	jars := []string{}
 	if ctx.FileExists("pom.xml") {
-		mvn := mvnCmd(ctx)
+		mvn := java.MvnCmd(ctx)
 		// If the invoker was listed as a dependency in the pom.xml, copy it into target/_javaInvokerDependency.
 		ctx.Exec([]string{
 			mvn,
@@ -238,13 +237,4 @@ func installFramework(ctx *gcp.Context, layer *libcnb.Layer, version string) err
 		return gcp.InternalErrorf("fetching functions framework jar: %v\n%s", err, result.Stderr)
 	}
 	return nil
-}
-
-// mvnCmd returns the command that should be used to invoke maven for this build.
-func mvnCmd(ctx *gcp.Context) string {
-	// If this project has the Maven Wrapper, we should use it
-	if ctx.FileExists("mvnw") {
-		return "./mvnw"
-	}
-	return "mvn"
 }

@@ -29,6 +29,10 @@ import (
 	"github.com/buildpacks/libcnb"
 )
 
+const (
+	invokerMain = "com.google.cloud.functions.invoker.runner.Invoker"
+)
+
 var (
 	requiresGraalvm = []libcnb.BuildPlanRequire{{Name: "graalvm"}}
 	planRequires    = libcnb.BuildPlan{Requires: requiresGraalvm}
@@ -43,30 +47,40 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	imagePath, err := createImage(ctx)
+	entrypoint, err := createImage(ctx)
 	if err != nil {
 		return err
 	}
 
-	ctx.AddWebProcess([]string{imagePath})
+	ctx.AddWebProcess(entrypoint)
 	return nil
 }
 
-func createImage(ctx *gcp.Context) (string, error) {
+// createImage builds a native-image and returns an image entrypoint. It handles
+// all the logic for which workflow to use (e.g native-image build via command
+// line or maven profile) based on the project setup.
+func createImage(ctx *gcp.Context) ([]string, error) {
 	pom := parsePomFile(ctx)
 	if pom == nil {
 		return buildDefault(ctx)
+	}
+	if functionTarget, ok := os.LookupEnv(env.FunctionTarget); ok {
+		return buildFunctionsFramework(ctx, functionTarget, pom)
 	}
 
 	if buildProfile, ok := findNativeBuildProfile(ctx, pom); ok {
 		return buildMaven(ctx, buildProfile)
 	}
 
+	// The presence of the `spring-boot-maven-plugin` may not always guarantee that
+	// the project will generate a Spring-Boot fat JAR. In the case where a Spring
+	// Boot fat JAR is not found, we fall through to the default mode of building a
+	// native image for standard Java apps.
 	if springBootPluginDefined(ctx, pom) {
-		if image, err := buildSpringBoot(ctx); err != nil {
-			return "", err
-		} else if image != "" {
-			return image, nil
+		if entrypoint, err := buildSpringBoot(ctx); err != nil {
+			return nil, err
+		} else if entrypoint != nil {
+			return entrypoint, nil
 		}
 	}
 
@@ -74,17 +88,17 @@ func createImage(ctx *gcp.Context) (string, error) {
 }
 
 // buildDefault builds a native-image in the basic and non-specialized way that can work on any normal
-// Java apps and returns the image path. Currently, only supported is an executable JAR in the context.
-func buildDefault(ctx *gcp.Context) (string, error) {
+// Java apps and returns the image entrypoint. Currently, only supported is an executable JAR in the context.
+func buildDefault(ctx *gcp.Context) ([]string, error) {
 	jar, err := java.ExecutableJar(ctx)
 	if err != nil {
-		return "", fmt.Errorf("finding executable jar: %w", err)
+		return nil, fmt.Errorf("finding executable jar: %w", err)
 	}
 	return buildCommandLine(ctx, []string{"-jar", jar})
 }
 
-// buildCommandLine runs the native-image build via command line and returns the image path.
-func buildCommandLine(ctx *gcp.Context, buildArgs []string) (string, error) {
+// buildCommandLine runs the native-image build via command line and returns the image entrypoint.
+func buildCommandLine(ctx *gcp.Context, buildArgs []string) ([]string, error) {
 	tempImagePath := filepath.Join(ctx.TempDir("native-image"), "native-app")
 
 	// Use a temporary image path because this command may generate extra files
@@ -101,12 +115,13 @@ func buildCommandLine(ctx *gcp.Context, buildArgs []string) (string, error) {
 	ctx.MkdirAll(path.Dir(finalImage), 0755)
 	ctx.Rename(tempImagePath, finalImage)
 
-	return finalImage, nil
+	return []string{finalImage}, nil
 }
 
-// buildMaven runs the Maven native-image build and returns the image path.
-func buildMaven(ctx *gcp.Context, buildProfile string) (string, error) {
-	command := []string{"mvn", "package", "-DskipTests", "--batch-mode", "-Dhttp.keepAlive=false"}
+// buildMaven runs the Maven native-image build and returns the image entrypoint.
+func buildMaven(ctx *gcp.Context, buildProfile string) ([]string, error) {
+	mvn := java.MvnCmd(ctx)
+	command := []string{mvn, "package", "-DskipTests", "--batch-mode", "-Dhttp.keepAlive=false"}
 
 	if buildProfile != "" {
 		command = append(command, "-P"+buildProfile)
@@ -114,7 +129,11 @@ func buildMaven(ctx *gcp.Context, buildProfile string) (string, error) {
 
 	ctx.Exec(command, gcp.WithUserAttribution)
 
-	return findNativeExecutable(ctx)
+	imagePath, err := findNativeExecutable(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return []string{imagePath}, nil
 }
 
 // parsePomFile returns a parsed pom.xml if it exists.
@@ -127,8 +146,9 @@ func parsePomFile(ctx *gcp.Context) *java.MavenProject {
 
 	// Write the effective Maven pom.xml to file.
 	effectivePomPath := filepath.Join(tmpDir, "project_effective_pom.xml")
+	mvn := java.MvnCmd(ctx)
 	ctx.Exec([]string{
-		"mvn",
+		mvn,
 		"help:effective-pom",
 		"--batch-mode",
 		"-Dhttp.keepAlive=false",
@@ -194,14 +214,14 @@ func findNativeExecutable(ctx *gcp.Context) (string, error) {
 	return allExecutables[0], nil
 }
 
-// buildSpringBoot attempts to build a native image from a Spring Boot fat JAR and returns the image path.
+// buildSpringBoot attempts to build a native image from a Spring Boot fat JAR and returns the image entrypoint.
 // It may return empty if, for example, no Spring Boot fat JAR is found.
-func buildSpringBoot(ctx *gcp.Context) (string, error) {
+func buildSpringBoot(ctx *gcp.Context) ([]string, error) {
 	classpath, main, err := classpathAndMainFromSpringBoot(ctx)
 	if err != nil {
-		return "", err
+		return nil, err
 	} else if classpath == "" || main == "" {
-		return "", nil
+		return nil, nil
 	}
 	return buildCommandLine(ctx, []string{"--class-path", classpath, main})
 }
@@ -235,4 +255,32 @@ func classpathAndMainFromSpringBoot(ctx *gcp.Context) (string, string, error) {
 	classpath := strings.Join([]string{explodedJarDir, classes, libs}, string(filepath.ListSeparator))
 
 	return classpath, startClass, nil
+}
+
+// buildFunctionsFramework runs the native-image build for the standard GCF workflow and returns the image entrypoint.
+func buildFunctionsFramework(ctx *gcp.Context, functionTarget string, project *java.MavenProject) ([]string, error) {
+	classpath, err := createFunctionsClasspath(ctx, project)
+	if err != nil {
+		return nil, err
+	}
+
+	entrypoint, err := buildCommandLine(ctx, []string{"-cp", classpath, invokerMain})
+	if err != nil {
+		return nil, err
+	}
+	functionsFrameworkEntrypoint := append(entrypoint, "--target", functionTarget)
+	return functionsFrameworkEntrypoint, nil
+}
+
+// createFunctionsClasspath generates the full classpath to be used with native-image command line for GCF workflow
+func createFunctionsClasspath(ctx *gcp.Context, project *java.MavenProject) (string, error) {
+	jarName := fmt.Sprintf("%s-%s.jar", project.ArtifactID, project.Version)
+	applicationJar := filepath.Join("target", jarName)
+	if !ctx.FileExists(applicationJar) {
+		return "", gcp.UserErrorf("finding application JAR: %s", applicationJar)
+	}
+	dependencies := filepath.Join("target", "dependency", "*")
+	classpath := strings.Join([]string{os.Getenv(java.FFJarPathEnv), applicationJar, dependencies}, string(filepath.ListSeparator))
+
+	return classpath, nil
 }

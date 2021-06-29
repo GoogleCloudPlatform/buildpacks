@@ -65,6 +65,14 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "java/maven.tgz"
 
 [[buildpacks]]
+  id = "google.java.graalvm"
+  uri = "java/graalvm.tgz"
+
+[[buildpacks]]
+  id = "google.java.native-image"
+  uri = "java/native_image.tgz"
+
+[[buildpacks]]
   id = "google.java.runtime"
   uri = "java/runtime.tgz"
 
@@ -195,6 +203,32 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 ########
 # Java #
 ########
+
+[[order]]
+  [[order.group]]
+    id = "google.java.graalvm"
+
+  [[order.group]]
+    id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.native-image"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.clear_source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
 
 # Functions have separate groups because entrypoint not supported.
 [[order]]

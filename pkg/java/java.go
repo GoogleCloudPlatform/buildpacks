@@ -39,6 +39,9 @@ const (
 	// manifestRegexTemplate is a regexp template that matches lines in the manifest for a given entry.
 	manifestRegexTemplate = `(?m)^%s: \S+`
 	expiryTimestampKey    = "expiry_timestamp"
+
+	// FFJarPathEnv is an environment variable which is used to store the path to the functions framework invoker jar.
+	FFJarPathEnv = "GOOGLE_INTERNAL_FUNCTIONS_FRAMEWORK_JAR"
 )
 
 var (
@@ -157,4 +160,13 @@ func CheckCacheExpiration(ctx *gcp.Context, m2CachedRepo *libcnb.Layer) {
 	ctx.Debugf("Cache expired on %v, clearing", t)
 	ctx.ClearLayer(m2CachedRepo)
 	ctx.SetMetadata(m2CachedRepo, expiryTimestampKey, time.Now().Add(repoExpiration).Format(dateFormat))
+}
+
+// MvnCmd returns the command that should be used to invoke maven for this build.
+func MvnCmd(ctx *gcp.Context) string {
+	// If this project has the Maven Wrapper, we should use it
+	if ctx.FileExists("mvnw") {
+		return "./mvnw"
+	}
+	return "mvn"
 }

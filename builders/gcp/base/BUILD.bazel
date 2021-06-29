@@ -33,6 +33,8 @@ builder(
             "//cmd/java/gradle:gradle.tgz",
             "//cmd/java/maven:maven.tgz",
             "//cmd/java/runtime:runtime.tgz",
+            "//cmd/java/graalvm:graalvm.tgz",
+            "//cmd/java/native_image:native_image.tgz",
         ],
         "nodejs": [
             "//cmd/nodejs/functions_framework:functions_framework.tgz",

@@ -26,7 +26,10 @@ import (
 )
 
 const (
-	graalvmVersion = "21.1.0"
+	// TODO(mpeddada): Upgrade the GraalVM version. The version has currently been
+	// downgraded from 21.1.0 as building a native image for a standard GCF
+	// workflow by calling `native-image -cp ...` was resulting in a parsing error.
+	graalvmVersion = "21.0.0"
 	graalvmURL     = "https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-%[1]s/graalvm-ce-java11-linux-amd64-%[1]s.tar.gz"
 	layerName      = "java-graalvm"
 	versionKey     = "version"

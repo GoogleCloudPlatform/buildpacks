@@ -22,8 +22,10 @@ import (
 
 // MavenProject is the root struct that contains the unmarshalled pom.xml.
 type MavenProject struct {
-	Plugins  []MavenPlugin  `xml:"build>plugins>plugin"`
-	Profiles []MavenProfile `xml:"profiles>profile"`
+	Plugins    []MavenPlugin  `xml:"build>plugins>plugin"`
+	Profiles   []MavenProfile `xml:"profiles>profile"`
+	ArtifactID string         `xml:"artifactId"`
+	Version    string         `xml:"version"`
 }
 
 // MavenProfile describes a profile defined in the pom.xml.

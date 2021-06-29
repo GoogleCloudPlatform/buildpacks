@@ -52,6 +52,8 @@ func TestParseValidPom(t *testing.T) {
 						},
 					},
 				},
+				ArtifactID: "firestore-sample",
+				Version:    "",
 			},
 		},
 		{
