@@ -33,7 +33,8 @@ const (
 	// Example: `13.7.0` for Node.js, `1.14.1` for Go.
 	RuntimeVersion = "GOOGLE_RUNTIME_VERSION"
 
-	// DebugMode enables more verbose logging. The value is unused; only the presence of the env var is required to enable.
+	// DebugMode enables more verbose logging.
+	// Example: `true`, `True`, `1` will enable development mode.
 	DebugMode = "GOOGLE_DEBUG"
 
 	// DevMode is an env var used to enable development mode in buildpacks.
@@ -98,6 +99,10 @@ const (
 	// UseNativeImage is used to enable the GraalVM Java buildpack for native image compilation.
 	// Example: `true`, `True`, `1` will enable development mode.
 	UseNativeImage = "GOOGLE_JAVA_USE_NATIVE_IMAGE"
+
+	// NativeImageBuildArgs is for additional build arguments to `native-image` when generating a GraalVM native image.
+	// Example: `--enable-http --enable-https -H:ReflectionConfigurationFiles=native-image-config/picocli-reflect.json`
+	NativeImageBuildArgs = "GOOGLE_JAVA_NATIVE_IMAGE_ARGS"
 
 	// LabelPrefix is a prefix for values that will be added to the final
 	// built user container. The prefix is stripped and the remainder forms the

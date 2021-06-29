@@ -18,10 +18,12 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 	"github.com/buildpacks/libcnb"
@@ -85,14 +87,13 @@ func buildDefault(ctx *gcp.Context) (string, error) {
 func buildCommandLine(ctx *gcp.Context, buildArgs []string) (string, error) {
 	tempImagePath := filepath.Join(ctx.TempDir("native-image"), "native-app")
 
-	command := []string{
-		"native-image", "--no-fallback", "--no-server", "-H:+StaticExecutableWithDynamicLibC",
-	}
 	// Use a temporary image path because this command may generate extra files
 	// (*.o and *.build_artifacts.txt) alongside the binary in the temp dir.
-	command = append(append(command, buildArgs...), tempImagePath)
+	userArgs := os.Getenv(env.NativeImageBuildArgs)
+	command := fmt.Sprintf("native-image --no-fallback --no-server -H:+StaticExecutableWithDynamicLibC %s %s %s",
+		userArgs, strings.Join(buildArgs, " "), tempImagePath)
 
-	ctx.Exec(command, gcp.WithUserAttribution)
+	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 
 	nativeLayer := ctx.Layer("native-image", gcp.LaunchLayer)
 	finalImage := filepath.Join(nativeLayer.Path, "bin", "native-app")
