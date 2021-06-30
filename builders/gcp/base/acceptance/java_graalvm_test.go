@@ -23,22 +23,46 @@ func init() {
 	acceptance.DefineFlags()
 }
 
-func TestAcceptanceFFJavaGraalVM(t *testing.T) {
+func TestAcceptance(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
 		{
+			Name:           "GraalVM native-image-maven-plugin",
+			App:            "java/graalvm/native_image_maven_plugin",
+			Env:            []string{"GOOGLE_JAVA_USE_NATIVE_IMAGE=true"},
+			MustUse:        []string{javaGraalVM, javaMaven, javaNativeImage},
+			FilesMustExist: []string{"/workspace/target/com.example.demo.main"},
+		},
+		{
+			Name:           "Maven executable JAR with dependencies",
+			App:            "java/graalvm/maven_executable_jar",
+			Env:            []string{"GOOGLE_JAVA_USE_NATIVE_IMAGE=true"},
+			MustUse:        []string{javaGraalVM, javaMaven, javaNativeImage},
+			FilesMustExist: []string{"/layers/google.java.native-image/native-image/bin/native-app"},
+		},
+		{
+			Name:           "Spring Boot application with extra build args",
+			App:            "java/graalvm/spring_boot",
+			Env:            []string{"GOOGLE_JAVA_USE_NATIVE_IMAGE=true", "GOOGLE_JAVA_NATIVE_IMAGE_ARGS=--enable-http --enable-https"},
+			MustUse:        []string{javaGraalVM, javaMaven, javaNativeImage},
+			MustOutput:     []string{"--enable-http --enable-https"},
+			FilesMustExist: []string{"/layers/google.java.native-image/native-image/bin/native-app"},
+		},
+		{
 			Name:           "Standard GCF application",
 			App:            "java/graalvm/functions_framework",
 			Env:            []string{"GOOGLE_JAVA_USE_NATIVE_IMAGE=true", "GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
 			MustUse:        []string{javaGraalVM, javaMaven, javaFF, javaNativeImage},
-			FilesMustExist: []string{"/layers/google.java.native-image/native-image/bin/native-app"}},
+			FilesMustExist: []string{"/layers/google.java.native-image/native-image/bin/native-app"},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc
 
 		t.Run(tc.Name, func(t *testing.T) {
+			// May need to remove if system resources are not enough for concurrent GraalVM builds.
 			t.Parallel()
 
 			acceptance.TestApp(t, builder, tc)
