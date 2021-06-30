@@ -40,7 +40,7 @@ Error: Image building with exit status 137
 
 If you want to specify more than 14GB of memory, you may need to pass, say, [`-J-Xmx32G`](https://github.com/oracle/graal/issues/2130#issuecomment-593513004) to `native-image` (combined with [`--no-server`](https://github.com/oracle/graal/issues/2598) if you are on an old GraalVM version). See [Buildpacks Environment Variables](#buildpacks-environment-variables) for providing additional build arguments for Google Cloud Buildpacks.
 
-If you run Buildpacks inside a Docker or a CI/CD environment, you may also need extra configuration for the platform to ensure sufficient memory. For example, to increase memory for Docker on Windows or Mac, see this [Stack Overflow answer](https://stackoverflow.com/questions/44533319/how-to-assign-more-memory-to-docker-container/44533437#44533437). For Google Cloud Build (`gcloud builds submit --pack ...`), you may want to add `--machine-type=e2-highcpu-32` ([32GB-RAM machine](https://cloud.google.com/build/pricing)).
+If you run Buildpacks inside a Docker or a CI/CD environment, you may also need extra configuration for the platform to ensure sufficient memory. For example, to increase memory for Docker on Windows or Mac, see this [Stack Overflow answer](https://stackoverflow.com/questions/44533319/how-to-assign-more-memory-to-docker-container/44533437#44533437). For [Google Cloud Build](README.md#using-with-google-cloud-build) (`gcloud builds submit --pack ...`), you may want to add `--machine-type=e2-highcpu-32` ([32GB-RAM machine](https://cloud.google.com/build/pricing)).
 
 ## Supported Project Types
 
@@ -52,6 +52,21 @@ If you run Buildpacks inside a Docker or a CI/CD environment, you may also need 
    <build>
      <plugins>
        <plugin>
+         <plugin>
+           <groupId>org.apache.maven.plugins</groupId>
+           <artifactId>maven-jar-plugin</artifactId>
+           <version>3.2.0</version>
+           <configuration>
+             <archive>
+               <manifest>
+                 <mainClass>com.example.demo.Main</mainClass>
+                 <addClasspath>true</addClasspath>
+                 <classpathPrefix>lib/</classpathPrefix>
+               </manifest>
+             </archive>
+           </configuration>
+         </plugin>
+
          <groupId>org.apache.maven.plugins</groupId>
          <artifactId>maven-dependency-plugin</artifactId>
          <version>3.2.0</version>
@@ -76,7 +91,7 @@ If you run Buildpacks inside a Docker or a CI/CD environment, you may also need 
 
 * <a name="maven-plugin-profile"/>Maven Projects that define a GraalVM [`native-image-maven-plugin`](https://www.graalvm.org/reference-manual/native-image/NativeImageMavenPlugin/) under a [Maven profile](https://maven.apache.org/guides/introduction/introduction-to-profiles.html).
 
-   Note that GraalVM [`native-maven-plugin`](https://github.com/graalvm/native-build-tools/blob/master/native-maven-plugin/README.md) is a successor to `native-image-maven-plugin`, which is not yet supported. Also, don't be confused with another [`native-maven-plugin`](https://www.mojohaus.org/maven-native/native-maven-plugin/) for compiling C/C++.)
+   Note that GraalVM [`native-maven-plugin`](https://github.com/graalvm/native-build-tools/blob/master/native-maven-plugin/README.md) is a successor to `native-image-maven-plugin`, which is not yet supported. (Also, don't be confused with another [`native-maven-plugin`](https://www.mojohaus.org/maven-native/native-maven-plugin/) for compiling C/C++.)
 
    Buildpacks simply trigger the first profile where the plugin is configured while running the `package` goal (for example, `./mvnw -Pnative package`). This assumes that the `native-image` goal of the plugin is bound to the [`package` Maven phase](https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html#a-build-lifecycle-is-made-up-of-phases). For example,
 
@@ -135,7 +150,7 @@ If you run Buildpacks inside a Docker or a CI/CD environment, you may also need 
 
 ## Buildpacks Environment Variables
 
-* `GOOGLE_JAVA_USE_NATIVE_IMAGE`: `true` to enable experimental GraalVM native image compilation. Currently, only supported are Maven projects with the following project setups:
+* `GOOGLE_JAVA_USE_NATIVE_IMAGE`: `true` to enable experimental GraalVM native image compilation. Currently, only supported are Maven projects.
 
 * `GOOGLE_JAVA_NATIVE_IMAGE_ARGS`: Additional build arguments to pass to the [`native-image`](https://www.graalvm.org/reference-manual/native-image/Options/#options-to-native-image-builder) generation tool.
 
