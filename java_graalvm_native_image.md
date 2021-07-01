@@ -52,21 +52,21 @@ If you run Buildpacks inside a Docker or a CI/CD environment, you may also need 
    <build>
      <plugins>
        <plugin>
-         <plugin>
-           <groupId>org.apache.maven.plugins</groupId>
-           <artifactId>maven-jar-plugin</artifactId>
-           <version>3.2.0</version>
-           <configuration>
-             <archive>
-               <manifest>
-                 <mainClass>com.example.demo.Main</mainClass>
-                 <addClasspath>true</addClasspath>
-                 <classpathPrefix>lib/</classpathPrefix>
-               </manifest>
-             </archive>
-           </configuration>
-         </plugin>
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-jar-plugin</artifactId>
+         <version>3.2.0</version>
+         <configuration>
+           <archive>
+             <manifest>
+               <mainClass>com.example.demo.Main</mainClass>
+               <addClasspath>true</addClasspath>
+               <classpathPrefix>lib/</classpathPrefix>
+             </manifest>
+           </archive>
+         </configuration>
+       </plugin>
 
+       <plugin>
          <groupId>org.apache.maven.plugins</groupId>
          <artifactId>maven-dependency-plugin</artifactId>
          <version>3.2.0</version>
@@ -161,6 +161,7 @@ If you run Buildpacks inside a Docker or a CI/CD environment, you may also need 
      <groupId>org.graalvm.nativeimage</groupId>
      <artifactId>native-image-maven-plugin</artifactId>
      <version>${graalvm.version}</version>
+     ...
      <configuration>
        <buildArgs>
          --no-fallback --no-server
