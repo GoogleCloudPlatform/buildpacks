@@ -10,7 +10,6 @@ go_library(
         "//cmd/dotnet:__subpackages__",
         "//cmd/go:__subpackages__",
         "//cmd/java:__subpackages__",
-        "//cmd/nodejs:__subpackages__",
         "//cmd/php:__subpackages__",
         "//cmd/python:__subpackages__",
         "//cmd/ruby:__subpackages__",
