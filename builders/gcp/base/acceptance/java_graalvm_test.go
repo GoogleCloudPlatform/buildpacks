@@ -62,9 +62,6 @@ func TestAcceptance(t *testing.T) {
 		tc := tc
 
 		t.Run(tc.Name, func(t *testing.T) {
-			// May need to remove if system resources are not enough for concurrent GraalVM builds.
-			t.Parallel()
-
 			acceptance.TestApp(t, builder, tc)
 		})
 	}
