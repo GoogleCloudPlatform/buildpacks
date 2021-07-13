@@ -9,6 +9,9 @@ name = "Node.js - Yarn"
 id = "google"
 
 [[stacks]]
+id = "google.nodejs8"
+
+[[stacks]]
 id = "google.nodejs10"
 
 [[stacks]]

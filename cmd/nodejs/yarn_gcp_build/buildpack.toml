@@ -6,6 +6,9 @@ version = "0.9.0"
 name = "Node.js - Yarn gcp-build"
 
 [[stacks]]
+id = "google.nodejs8"
+
+[[stacks]]
 id = "google.nodejs10"
 
 [[stacks]]

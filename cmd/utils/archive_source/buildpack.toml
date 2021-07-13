@@ -18,6 +18,9 @@ id = "google.go116"
 id = "google.java11"
 
 [[stacks]]
+id = "google.nodejs8"
+
+[[stacks]]
 id = "google.nodejs10"
 
 [[stacks]]

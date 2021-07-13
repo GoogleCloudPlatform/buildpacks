@@ -1,0 +1,10 @@
+api = "0.5"
+
+[buildpack]
+id = "google.nodejs.legacy-worker"
+version = "0.1.0"
+name = "Node.js - Cloud Functions Legacy Worker"
+
+
+[[stacks]]
+id = "google.nodejs8"

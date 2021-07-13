@@ -1,0 +1,14 @@
+{
+  "name": "worker",
+  "version": "0.0.1",
+  "scripts": {
+    "start": "node worker.js"
+  },
+  "main": "worker.js",
+  "dependencies": {
+    "express": "4.16.3",
+    "body-parser": "1.18.2",
+    "on-finished": "2.3.0"
+  },
+  "private": true
+}
