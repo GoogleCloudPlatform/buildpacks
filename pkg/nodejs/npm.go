@@ -15,8 +15,6 @@
 package nodejs
 
 import (
-	"strings"
-
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -42,10 +40,14 @@ func EnsureLockfile(ctx *gcp.Context) string {
 }
 
 // NPMInstallCommand returns the correct install command based on the version of Node.js.
-func NPMInstallCommand(ctx *gcp.Context) string {
-	// HACK: For backwards compatibility on App Engine Node.js 10, always use `npm install`.
-	if strings.HasPrefix(strings.TrimSpace(NodeVersion(ctx)), "v10.") {
-		return "install"
+func NPMInstallCommand(ctx *gcp.Context) (string, error) {
+	// HACK: For backwards compatibility on App Engine Node.js 10 and older, always use `npm install`.
+	isOldNode, err := isPreNode11(ctx)
+	if err != nil {
+		return "", err
 	}
-	return "ci"
+	if isOldNode {
+		return "install", nil
+	}
+	return "ci", nil
 }

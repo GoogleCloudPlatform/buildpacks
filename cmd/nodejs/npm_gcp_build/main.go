@@ -66,10 +66,14 @@ func buildFn(ctx *gcp.Context) error {
 		// Restore cached node_modules.
 		ctx.Exec([]string{"cp", "--archive", nm, "node_modules"}, gcp.WithUserTimingAttribution)
 	} else {
+		installCmd, err := nodejs.NPMInstallCommand(ctx)
+		if err != nil {
+			return err
+		}
 		ctx.CacheMiss(cacheTag)
 		// Clear cached node_modules to ensure we don't end up with outdated dependencies.
 		ctx.ClearLayer(l)
-		ctx.Exec([]string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution)
+		ctx.Exec([]string{"npm", installCmd, "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution)
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)
 		ctx.Exec([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution)

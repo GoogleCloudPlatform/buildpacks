@@ -16,6 +16,7 @@ go_library(
     deps = [
         "//pkg/cache",
         "//pkg/gcpbuildpack",
+        "@com_github_blang_semver//:go_default_library",
         "@com_github_buildpacks_libcnb//:go_default_library",
     ],
 )
@@ -24,7 +25,10 @@ go_test(
     name = "nodejs_test",
     srcs = [
         "nodejs_test.go",
+        "npm_test.go",
+        "yarn_test.go",
     ],
     embed = [":nodejs"],
     rundir = ".",
+    deps = ["//pkg/gcpbuildpack"],
 )

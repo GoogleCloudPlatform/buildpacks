@@ -63,11 +63,15 @@ func buildFn(ctx *gcp.Context) error {
 		// Otherwise it should be a no-op because the lockfile is unchanged.
 		ctx.Exec([]string{"npm", "install", "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution)
 	} else {
+		installCmd, err := nodejs.NPMInstallCommand(ctx)
+		if err != nil {
+			return err
+		}
 		ctx.CacheMiss(cacheTag)
 		// Clear cached node_modules to ensure we don't end up with outdated dependencies after copying.
 		ctx.ClearLayer(ml)
 
-		ctx.Exec([]string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution)
+		ctx.Exec([]string{"npm", installCmd, "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution)
 
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)

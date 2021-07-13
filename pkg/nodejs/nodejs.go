@@ -25,6 +25,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
+	"github.com/blang/semver"
 )
 
 const (
@@ -36,6 +37,9 @@ const (
 	nodeVersionKey    = "node_version"
 	dependencyHashKey = "dependency_hash"
 )
+
+// semVer11 is the smallest possible semantic version with major version 11.
+var semVer11 = semver.MustParse("11.0.0")
 
 type packageEnginesJSON struct {
 	Node string `json:"node"`
@@ -70,10 +74,21 @@ func ReadPackageJSON(dir string) (*PackageJSON, error) {
 	return &pjs, nil
 }
 
-// NodeVersion returns the installed version of Node.js.
-func NodeVersion(ctx *gcp.Context) string {
+// nodeVersion returns the installed version of Node.js.
+// It can be overridden for testing.
+var nodeVersion = func(ctx *gcp.Context) string {
 	result := ctx.Exec([]string{"node", "-v"})
 	return result.Stdout
+}
+
+// isPreNode11 returns true if the installed version of Node.js is
+// v10.x.x or older.
+func isPreNode11(ctx *gcp.Context) (bool, error) {
+	version, err := semver.ParseTolerant(nodeVersion(ctx))
+	if err != nil {
+		return false, gcp.InternalErrorf("failed to detect valid Node.js version %s: %v", version, err)
+	}
+	return version.LT(semVer11), nil
 }
 
 // NodeEnv returns the value of NODE_ENV or `production`.
@@ -87,7 +102,7 @@ func NodeEnv() string {
 
 // CheckCache checks whether cached dependencies exist and match.
 func CheckCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
-	currentNodeVersion := NodeVersion(ctx)
+	currentNodeVersion := nodeVersion(ctx)
 	opts = append(opts, cache.WithStrings(currentNodeVersion))
 	currentDependencyHash, err := cache.Hash(ctx, opts...)
 	if err != nil {

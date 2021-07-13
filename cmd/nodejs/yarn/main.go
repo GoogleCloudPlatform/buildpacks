@@ -77,7 +77,11 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Always run yarn install to run preinstall/postinstall scripts.
 	cmd := []string{"yarn", "install", "--non-interactive"}
-	if lf := nodejs.LockfileFlag(ctx); lf != "" {
+	lf, err := nodejs.LockfileFlag(ctx)
+	if err != nil {
+		return err
+	}
+	if lf != "" {
 		cmd = append(cmd, lf)
 	}
 	ctx.Exec(cmd, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution)

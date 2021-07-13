@@ -15,8 +15,6 @@
 package nodejs
 
 import (
-	"strings"
-
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -26,11 +24,10 @@ const (
 )
 
 // LockfileFlag returns an appropriate lockfile handling flag, including empty string.
-func LockfileFlag(ctx *gcp.Context) string {
-	// HACK: For backwards compatibility on App Engine Node.js 10, skip using `--frozen-lockfile`.
-	if strings.HasPrefix(strings.TrimSpace(NodeVersion(ctx)), "v10.") {
-		return ""
+func LockfileFlag(ctx *gcp.Context) (string, error) {
+	// HACK: For backwards compatibility on App Engine Node.js 10 and older, skip using `--frozen-lockfile`.
+	if isOldNode, err := isPreNode11(ctx); err != nil || isOldNode {
+		return "", err
 	}
-
-	return "--frozen-lockfile"
+	return "--frozen-lockfile", nil
 }

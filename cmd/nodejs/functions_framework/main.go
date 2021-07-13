@@ -131,11 +131,15 @@ func installFunctionsFramework(ctx *gcp.Context, l *libcnb.Layer) error {
 		ctx.CacheHit(layerName)
 		return nil
 	}
+	installCmd, err := nodejs.NPMInstallCommand(ctx)
+	if err != nil {
+		return err
+	}
 
 	ctx.CacheMiss(layerName)
 	ctx.ClearLayer(l)
 	// NPM expects package.json and the lock file in the prefix directory.
 	ctx.Exec([]string{"cp", "-t", l.Path, pjs, pljs}, gcp.WithUserTimingAttribution)
-	ctx.Exec([]string{"npm", nodejs.NPMInstallCommand(ctx), "--quiet", "--production", "--prefix", l.Path}, gcp.WithUserAttribution)
+	ctx.Exec([]string{"npm", installCmd, "--quiet", "--production", "--prefix", l.Path}, gcp.WithUserAttribution)
 	return nil
 }
