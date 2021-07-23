@@ -94,6 +94,7 @@ func TestAcceptancePython(t *testing.T) {
 		"3.7.7",
 		"3.7.8",
 		"3.7.9",
+		"3.7.10",
 		"3.8.0",
 		"3.8.1",
 		"3.8.2",
@@ -101,6 +102,16 @@ func TestAcceptancePython(t *testing.T) {
 		"3.8.4",
 		"3.8.5",
 		"3.8.6",
+		"3.8.7",
+		"3.8.8",
+		"3.8.9",
+		"3.8.10",
+		"3.9.0",
+		"3.9.1",
+		"3.9.2",
+		// 3.9.3 is not currently available.
+		"3.9.4",
+		"3.9.5",
 	} {
 		testCases = append(testCases, acceptance.Test{
 			Name:    "runtime version " + v,
