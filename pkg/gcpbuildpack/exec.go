@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"golang.org/x/sys/unix"
 	"time"
 )
 
@@ -213,6 +214,8 @@ func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
 		if ee, ok := err.(*exec.ExitError); ok {
 			// The command returned a non-zero result.
 			exitCode = ee.ExitCode()
+		} else if pe, ok := err.(*os.PathError); ok && pe.Err == unix.ENOENT {
+			return nil, fmt.Errorf("executing command %q: %v: ensure script does not have CR-LF line endings", readableCmd, err)
 		} else {
 			return nil, fmt.Errorf("executing command %q: %v", readableCmd, err)
 		}
