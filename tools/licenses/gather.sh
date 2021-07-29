@@ -73,6 +73,7 @@ function licenses() {
 
   mkdir -p "$LICENSE_DIR/$component"
   pushd "$source_dir"
+  go mod tidy
   go-licenses check "./..."
   go-licenses save "./..."  --force --save_path "$LICENSE_FILES_DIR/$component"
   go-licenses csv "./..." | to_yaml "$image_dir" "$LICENSE_FILES_DIR/$component" > "$LICENSE_DIR/$component/licenses.yaml"
