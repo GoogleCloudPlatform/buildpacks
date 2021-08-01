@@ -33,7 +33,6 @@
 #   gather.sh <directory>
 
 set -euo pipefail
-shopt -s globstar  # Required for **.
 
 DIR="$(dirname "${BASH_SOURCE[0]}")"
 PROJECT_DIR="$(cd "${DIR}/../.." && pwd)"
@@ -57,7 +56,7 @@ mkdir -p "${LICENSE_FILES_DIR}"
 if ! type -P go-licenses; then
   echo "Installing go-licenses"
   bin="$(mktemp -d)"
-  GOBIN="$bin" go install github.com/google/go-licenses
+  GO111MODULE=off GOBIN="$bin" go install github.com/google/go-licenses
   PATH="$bin:$PATH"
   echo
 fi
@@ -88,7 +87,7 @@ LIFECYCLE_DIR="$(mktemp -d)"
 trap "rm -rf $LIFECYCLE_DIR" EXIT
 
 # Find all versions of lifecycle refereced in builder.toml files.
-versions="$(grep "version = " builders/**/builder.toml | sed -r 's|.*"(.*)".*|\1|' | sort | uniq)"
+versions="$(grep "version = " $(find builders -name builder.toml) | sed -r 's|.*"(.*)".*|\1|' | sort | uniq)"
 if [[ -z "$versions" ]]; then
   echo "No lifecycle versions found in builder.toml files"
   exit 1
