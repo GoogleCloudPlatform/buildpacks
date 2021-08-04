@@ -124,11 +124,6 @@ func TestAcceptance(t *testing.T) {
 }
 
 func TestFailures(t *testing.T) {
-	// TODO(b/181910032): Remove when stack images are published.
-	if acceptance.PullImages() {
-		t.Skip("Disabled for continuous builds")
-	}
-
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
