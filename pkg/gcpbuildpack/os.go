@@ -68,6 +68,16 @@ func (ctx *Context) FileExists(elem ...string) bool {
 	return true
 }
 
+// IsWritable returns true if the file at the path constructed by joining elem is writable by the owner, exiting on any error.
+func (ctx *Context) IsWritable(elem ...string) bool {
+	path := filepath.Join(elem...)
+	info, err := os.Stat(path)
+	if err != nil {
+		ctx.Exit(1, Errorf(StatusInternal, "stat %q: %v", path, err))
+	}
+	return info.Mode().Perm()&0200 != 0
+}
+
 // Setenv immediately sets an environment variable, exiting on any error.
 // Note: this only sets an env var for the current script invocation. If you need an env var that
 // persists through the build environment or the launch environment, use ctx.PrependBuildEnv,...

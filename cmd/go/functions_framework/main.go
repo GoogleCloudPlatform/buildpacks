@@ -92,7 +92,7 @@ func buildFn(ctx *gcp.Context) error {
 		if err := createMainVendored(ctx, fn); err != nil {
 			return err
 		}
-	} else if info, err := os.Stat(goMod); err == nil && info.Mode().Perm()&0200 == 0 {
+	} else if !ctx.IsWritable(goMod) {
 		// Preempt an obscure failure mode: if go.mod is not writable then `go list -m` can fail saying:
 		//     go: updates to go.sum needed, disabled by -mod=readonly
 		return gcp.UserErrorf("go.mod exists but is not writable")
