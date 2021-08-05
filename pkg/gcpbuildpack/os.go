@@ -21,6 +21,7 @@ import (
 
 // Rename renames the old path to the new path, exiting on any error.
 func (ctx *Context) Rename(old, new string) {
+	ctx.Debugf("Renaming %q to %q", old, new)
 	if err := os.Rename(old, new); err != nil {
 		ctx.Exit(1, Errorf(StatusInternal, "renaming %s to %s: %v", old, new, err))
 	}

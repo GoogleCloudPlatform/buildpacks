@@ -156,10 +156,13 @@ type Test struct {
 	FlakyBuildAttempts int
 	// BOM specifies the list of bill-of-material entries expected in the built image metadata.
 	BOM []BOMEntry
-	// Setup is a function that is called before the test starts and can be used to modify the test source.
-	// The function has access to the builder image name and a directory with a modifiable copy of the source
-	Setup func(builder, srcDir string) error
+	// Setup is a function that sets up the source directory before test.
+	Setup setupFunc
 }
+
+// setupFunch is a function that is called before the test starts and can be used to modify the test source.
+// The function has access to the builder image name and a directory with a modifiable copy of the source
+type setupFunc func(builder, srcDir string) error
 
 // BOMEntry represents a bill-of-materials entry in the image metadata.
 type BOMEntry struct {
@@ -192,25 +195,7 @@ func TestApp(t *testing.T, builder string, cfg Test) {
 	// Run Setup function if provided.
 	src := filepath.Join(testData, cfg.App)
 	if cfg.Setup != nil {
-		root := ""
-		// Cloud Build runs in docker-in-docker mode where directories are mounted from the host daemon.
-		// Therefore, we need to put the temporary directory in the shared /workspace volume.
-		if cloudbuild {
-			root = "/workspace"
-		}
-		temp, err := ioutil.TempDir(root, cfg.App)
-		defer os.RemoveAll(temp)
-		if err != nil {
-			t.Fatalf("Error creating temporary directory: %v", err)
-		}
-		sep := string(filepath.Separator)
-		if _, err := runOutput("cp", "-R", src+sep+".", temp); err != nil {
-			t.Fatalf("Error copying app files: %v", err)
-		}
-		if err := cfg.Setup(builder, temp); err != nil {
-			t.Fatalf("Error running test setup: %v", err)
-		}
-		src = temp
+		src = setupSource(t, cfg.Setup, builder, src, cfg.App)
 	}
 
 	// Run a no-cache build, followed by a cache build, unless caching is disabled for the app.
@@ -240,6 +225,8 @@ type FailureTest struct {
 	MustMatch string
 	// SkipBuilderOutputMatch is true if the MustMatch string is not expected in $BUILDER_OUTPUT.
 	SkipBuilderOutputMatch bool
+	// Setup is a function that sets up the source directory before test.
+	Setup setupFunc
 }
 
 // TestBuildFailure runs a build and ensures that it fails. Additionally, it ensures the emitted logs match mustMatch regexps.
@@ -264,6 +251,10 @@ func TestBuildFailure(t *testing.T, builder string, cfg FailureTest) {
 	}
 
 	src := filepath.Join(testData, cfg.App)
+	if cfg.Setup != nil {
+		src = setupSource(t, cfg.Setup, builder, src, cfg.App)
+	}
+
 	outb, errb, cleanup := buildFailingApp(t, src, image, builder, env)
 	defer cleanup()
 
@@ -585,6 +576,31 @@ func runImageFromMetadata(image string) (string, error) {
 		return "", fmt.Errorf("error unmarshalling build metadata: %v", err)
 	}
 	return metadata.Stack.RunImage.Image, nil
+}
+
+// setupSource runs the given setup function to set up the source directory before a test.
+func setupSource(t *testing.T, setup setupFunc, builder, src, app string) string {
+	t.Helper()
+	root := ""
+	// Cloud Build runs in docker-in-docker mode where directories are mounted from the host daemon.
+	// Therefore, we need to put the temporary directory in the shared /workspace volume.
+	if cloudbuild {
+		root = "/workspace"
+	}
+	temp := t.TempDir()
+	temp, err := ioutil.TempDir(root, app)
+	if err != nil {
+		t.Fatalf("Error creating temporary directory: %v", err)
+	}
+	t.Cleanup(func() { os.RemoveAll(temp) })
+	sep := string(filepath.Separator)
+	if _, err := runOutput("cp", "-R", src+sep+".", temp); err != nil {
+		t.Fatalf("Error copying app files: %v", err)
+	}
+	if err := setup(builder, temp); err != nil {
+		t.Fatalf("Error running test setup: %v", err)
+	}
+	return temp
 }
 
 // stackImagesFromConfig returns the run images specified by the given builder.toml.

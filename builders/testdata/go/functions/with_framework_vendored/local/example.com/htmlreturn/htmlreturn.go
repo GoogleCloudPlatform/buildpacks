@@ -12,27 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package myfunc contains a test function.
-package myfunc
+// Package htmlreturn has a function that returns a string "PASS"
+package htmlreturn
 
-import (
-	"fmt"
-	"net/http"
-
-	// Blank-import the framework so that it doesn't get removed by go mod.
-	_ "github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
-
-	// Import from a require/replace directive in go.mod.
-	"example.com/htmlreturn"
-	// Import from a subdirectory.
-	"example.com/myfunc/subdir"
-)
-
-// Func is a test function.
-func Func(w http.ResponseWriter, r *http.Request) {
-	if subdir.Pass == "PASS" && htmlreturn.GetReturn() == "PASS" {
-		fmt.Fprintf(w, "PASS")
-		return
-	}
-	fmt.Fprintf(w, "FAIL")
+// GetReturn returns a string "PASS"
+func GetReturn() string {
+	return "PASS"
 }

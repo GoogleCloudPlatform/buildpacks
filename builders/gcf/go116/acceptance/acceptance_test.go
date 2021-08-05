@@ -67,13 +67,6 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput: []string{"go.sum not found, generating"},
 		},
 		{
-			Name:  "vendored function without framework",
-			App:   "no_framework",
-			Env:   []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			Path:  "/Func",
-			Setup: vendorSetup,
-		},
-		{
 			Name:  "vendored function with framework",
 			App:   "with_framework",
 			Env:   []string{"GOOGLE_FUNCTION_TARGET=Func"},
@@ -137,6 +130,12 @@ func TestFailures(t *testing.T) {
 			App:       "no_deps",
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			MustMatch: "function build requires go.mod file",
+		},
+		{
+			App:       "no_framework",
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			Setup:     vendorSetup,
+			MustMatch: "vendored dependencies must include \"github.com/GoogleCloudPlatform/functions-framework-go\"; if your function does not depend on the module, please add a blank import: `_ \"github.com/GoogleCloudPlatform/functions-framework-go\"`",
 		},
 	}
 
