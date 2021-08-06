@@ -587,7 +587,6 @@ func setupSource(t *testing.T, setup setupFunc, builder, src, app string) string
 	if cloudbuild {
 		root = "/workspace"
 	}
-	temp := t.TempDir()
 	temp, err := ioutil.TempDir(root, app)
 	if err != nil {
 		t.Fatalf("Error creating temporary directory: %v", err)

@@ -52,6 +52,19 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
+			Name: "function without deps",
+			App:  "no_deps",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			Path: "/Func",
+		},
+		{
+			Name:       "vendored function without dependencies",
+			App:        "no_framework_vendored",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			Path:       "/Func",
+			MustOutput: []string{"Found function with vendored dependencies excluding functions-framework"},
+		},
+		{
 			Name:       "function without framework",
 			App:        "no_framework",
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func"},
@@ -125,11 +138,6 @@ func TestFailures(t *testing.T) {
 			App:       "no_framework_relative",
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			MustMatch: "the module path in the function's go.mod must contain a dot in the first path element before a slash, e.g. example.com/module, found: func",
-		},
-		{
-			App:       "no_deps",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			MustMatch: "function build requires go.mod file",
 		},
 		{
 			App:       "no_framework",

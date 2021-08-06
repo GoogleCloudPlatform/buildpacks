@@ -86,10 +86,6 @@ func buildFn(ctx *gcp.Context) error {
 
 	goMod := filepath.Join(fn.Source, "go.mod")
 	if !ctx.FileExists(goMod) {
-		// We require a go.mod file in all versions 1.14+.
-		if !golang.SupportsNoGoMod(ctx) {
-			return gcp.UserErrorf("function build requires go.mod file")
-		}
 		return createMainVendored(ctx, fn)
 	} else if !ctx.IsWritable(goMod) {
 		// Preempt an obscure failure mode: if go.mod is not writable then `go list -m` can fail saying:
@@ -210,6 +206,7 @@ func createMainVendored(ctx *gcp.Context, fn fnInfo) error {
 	ctx.MkdirAll(gopathSrc, 0755)
 	l.BuildEnvironment.Override(env.Buildable, appModule+"/main")
 	l.BuildEnvironment.Override("GOPATH", gopath)
+	l.BuildEnvironment.Override("GO111MODULE", "auto")
 	ctx.Setenv("GOPATH", gopath)
 
 	appPath := filepath.Join(gopathSrc, appModule, "main")
