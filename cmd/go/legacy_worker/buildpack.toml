@@ -1,0 +1,12 @@
+api = "0.5"
+
+[buildpack]
+id = "google.go.legacy-worker"
+version = "0.1.0"
+name = "Go - Cloud Functions Legacy Worker"
+
+[[stacks]]
+id = "google"
+
+[[stacks]]
+id = "google.go111"

@@ -97,14 +97,13 @@ func buildFn(ctx *gcp.Context) error {
 		// This should never happen because this env var is used by the detect phase.
 		ctx.Exit(1, gcp.InternalErrorf("required env var %s not found", env.FunctionTarget))
 	}
-	if signature, ok := os.LookupEnv(env.FunctionSignatureType); ok {
-		if signature == "http" {
-			// The name of the HTTP signature type is slightly different for worker.js
-			// than that of Functions Frameworks.
-			signature = "HTTP_TRIGGER"
-		}
-		l.LaunchEnvironment.Default("X_GOOGLE_FUNCTION_TRIGGER_TYPE", signature)
+	signature := os.Getenv(env.FunctionSignatureType)
+	if signature == "http" || signature == "" {
+		// The name of the HTTP signature type is slightly different for worker.js
+		// than that of Functions Frameworks.
+		signature = "HTTP_TRIGGER"
 	}
+	l.LaunchEnvironment.Default("X_GOOGLE_FUNCTION_TRIGGER_TYPE", signature)
 	l.LaunchEnvironment.Default("X_GOOGLE_CODE_LOCATION", ctx.ApplicationRoot())
 
 	// TODO(b/184077805) this can be removed after the corresponding code from worker.js is removed

@@ -1,0 +1,49 @@
+# Buildpack for the Go functions framework
+
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("//tools:defs.bzl", "buildpack")
+
+licenses(["notice"])
+
+buildpack(
+    name = "legacy_worker",
+    srcs = [
+        "converter/get_package/main.go",
+    ],
+    executables = [
+        ":main",
+    ],
+    visibility = [
+        "//builders:go_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = [
+        "main.go",
+    ],
+    embedsrcs = ["converter/worker/main.tmpl"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+        "//pkg/golang",
+    ],
+)
+
+go_test(
+    name = "main_test",
+    size = "small",
+    srcs = ["main_test.go"],
+    embed = [":main"],
+    rundir = ".",
+    deps = [
+        "//pkg/gcpbuildpack",
+        "//third_party/golang/cmp",
+    ],
+)
