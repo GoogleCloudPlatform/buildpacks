@@ -12,5 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package acceptance implements acceptance tests for a buildpack builder.
-package acceptance
+// Package function contains a test function.
+package function
+
+import (
+	"net/http"
+)
+
+// Func is a test function with an invalid function signature.
+func Func(w http.ResponseWriter, s string) {}

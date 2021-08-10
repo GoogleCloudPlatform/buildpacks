@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2021 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,9 +15,8 @@ package acceptance
 
 import (
 	"fmt"
-	"os"
+	"net/http"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -28,20 +27,12 @@ func init() {
 	acceptance.DefineFlags()
 }
 
-const (
-	gomod = "google.go.gomod"
-)
-
 func vendorSetup(builder, src string) error {
 	// The setup function runs `go mod vendor` to vendor dependencies specified in go.mod.
 	args := strings.Fields(fmt.Sprintf("docker run --rm -v %s:/workspace -w /workspace -u root %s go mod vendor", src, builder))
 	cmd := exec.Command(args[0], args[1:]...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("vendoring dependencies: %v, output:\n%s", err, out)
-	}
-	// Vendored functions in Go 1.13 cannot contain go.mod.
-	if err := os.Remove(filepath.Join(src, "go.mod")); err != nil {
-		return fmt.Errorf("removing go.mod: %v", err)
 	}
 	return nil
 }
@@ -58,17 +49,16 @@ func TestAcceptance(t *testing.T) {
 			Path: "/Func",
 		},
 		{
-			Name: "function without framework",
-			App:  "no_framework",
+			Name: "vendored function without dependencies",
+			App:  "no_framework_vendored",
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			Path: "/Func",
 		},
 		{
-			Name:       "vendored function without framwork",
-			App:        "no_framework_vendored",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			Path:       "/Func",
-			MustOutput: []string{"Found function with vendored dependencies excluding functions-framework"},
+			Name: "function without framework",
+			App:  "no_framework",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			Path: "/Func",
 		},
 		{
 			Name: "function with go.sum",
@@ -77,12 +67,11 @@ func TestAcceptance(t *testing.T) {
 			Path: "/Func",
 		},
 		{
-			Name:       "vendored function with framework",
-			App:        "with_framework",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			MustOutput: []string{"Found function with vendored dependencies including functions-framework"},
-			Path:       "/Func",
-			Setup:      vendorSetup,
+			Name:  "vendored function without framework",
+			App:   "no_framework",
+			Env:   []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			Path:  "/Func",
+			Setup: vendorSetup,
 		},
 		{
 			Name: "function with old framework",
@@ -91,16 +80,15 @@ func TestAcceptance(t *testing.T) {
 			Path: "/Func",
 		},
 		{
-			Name:       "vendored function with old framework",
-			App:        "with_framework_old_version",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			MustOutput: []string{"Found function with vendored dependencies including functions-framework"},
-			Path:       "/Func",
-			Setup:      vendorSetup,
+			Name:  "vendored function with old framework",
+			App:   "with_framework_old_version",
+			Env:   []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			Path:  "/Func",
+			Setup: vendorSetup,
 		},
 		{
 			Name: "function at /*",
-			App:  "no_deps",
+			App:  "no_framework",
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			Path: "/",
 		},
@@ -109,6 +97,32 @@ func TestAcceptance(t *testing.T) {
 			App:  "with_subdir",
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
 		},
+		{
+			Name:  "set GOPATH incorrectly",
+			App:   "no_framework",
+			Env:   []string{"GOOGLE_FUNCTION_TARGET=Func", "GOPATH=/tmp"},
+			Path:  "/Func",
+			Setup: vendorSetup,
+		},
+		{
+			Name: "X_GOOGLE_ENTRY_POINT ignored",
+			App:  "invalid_signature",
+			// "Func" is the correct name of target function.
+			// X_GOOGLE_ENTRY_POINT is irrelevant for function execution (only
+			// used for logging an error message when there's an invalid
+			// signature).
+			Env:                 []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			RunEnv:              []string{"X_GOOGLE_ENTRY_POINT=EntryPoint"},
+			MustMatchStatusCode: http.StatusInternalServerError,
+			MustMatch:           "func EntryPoint is of the type func(http.ResponseWriter, string), expected func(http.ResponseWriter, *http.Request)",
+		},
+		{
+			Name: "X_GOOGLE_WORKER_PORT used over PORT",
+			App:  "no_deps",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			// "8080" is the correct port to serve on.
+			RunEnv: []string{"PORT=1234", "X_GOOGLE_WORKER_PORT=8080"},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -116,7 +130,7 @@ func TestAcceptance(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 
-			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=go113")
+			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=go111")
 
 			tc.FilesMustExist = append(tc.FilesMustExist,
 				"/layers/google.utils.archive-source/src/source-code.tar.gz",
@@ -138,6 +152,13 @@ func TestFailures(t *testing.T) {
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			MustMatch: "the module path in the function's go.mod must contain a dot in the first path element before a slash, e.g. example.com/module, found: func",
 		},
+		{
+			App: "with_framework",
+			Env: []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			// Functions Framework v1.1.0+ supports CloudEvents functions,
+			// which requires the cloudevents SDK v2.2.0 which requires Go 1.13+
+			MustMatch: "module requires Go 1.13",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -145,7 +166,7 @@ func TestFailures(t *testing.T) {
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
 
-			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=go113")
+			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=go111")
 
 			acceptance.TestBuildFailure(t, builder, tc)
 		})

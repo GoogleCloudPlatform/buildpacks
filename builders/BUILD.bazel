@@ -30,6 +30,7 @@ package_group(
         "//builders/gae/go114",
         "//builders/gae/go115",
         "//builders/gae/go116",
+        "//builders/gcf/go111",
         "//builders/gcf/go113",
         "//builders/gcf/go116",
         "//builders/gcp/base",
@@ -101,6 +102,7 @@ package_group(
     name = "function_builders",
     packages = [
         "//builders/gcf/dotnet3",
+        "//builders/gcf/go111",
         "//builders/gcf/go113",
         "//builders/gcf/go116",
         "//builders/gcf/java11",

@@ -1,0 +1,16 @@
+load("//tools:defs.bzl", "builder")
+
+package(default_visibility = ["//builders/gcf/go111/acceptance:__pkg__"])
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/go/build:build.tgz",
+        "//cmd/go/legacy_worker:legacy_worker.tgz",
+        "//cmd/utils/archive_source:archive_source.tgz",
+        "//cmd/utils/label:label.tgz",
+    ],
+    image = "gcf/go111",
+)

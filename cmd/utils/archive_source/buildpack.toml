@@ -9,6 +9,9 @@ name = "Utils - Archive Source"
 id = "google.dotnet3"
 
 [[stacks]]
+id = "google.go111"
+
+[[stacks]]
 id = "google.go113"
 
 [[stacks]]

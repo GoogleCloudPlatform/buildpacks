@@ -81,6 +81,13 @@ func buildFn(ctx *gcp.Context) error {
 		Package: extractPackageNameInDir(ctx, fnSource),
 	}
 
+	l.LaunchEnvironment.Default("X_GOOGLE_ENTRY_POINT", os.Getenv(env.FunctionTarget))
+	triggerType := os.Getenv(env.FunctionSignatureType)
+	if triggerType == "http" || triggerType == "" {
+		triggerType = "HTTP_TRIGGER"
+	}
+	l.LaunchEnvironment.Default("X_GOOGLE_FUNCTION_TRIGGER_TYPE", triggerType)
+
 	goMod := filepath.Join(fn.Source, "go.mod")
 	if !ctx.FileExists(goMod) {
 		return createMainVendored(ctx, fn)
@@ -89,17 +96,6 @@ func buildFn(ctx *gcp.Context) error {
 		//     go: updates to go.sum needed, disabled by -mod=readonly
 		return gcp.UserErrorf("go.mod exists but is not writable")
 	}
-	if ctx.FileExists(fn.Source, "vendor") {
-		return createMainGoModVendored(ctx, fn)
-	}
-
-	l.LaunchEnvironment.Default("X_GOOGLE_ENTRY_POINT", os.Getenv(env.FunctionTarget))
-	triggerType := os.Getenv(env.FunctionSignatureType)
-	if triggerType == "http" || triggerType == "" {
-		triggerType = "HTTP_TRIGGER"
-	}
-	l.LaunchEnvironment.Default("X_GOOGLE_FUNCTION_TRIGGER_TYPE", triggerType)
-
 	return createMainGoMod(ctx, fn)
 }
 
@@ -107,12 +103,6 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	l := ctx.Layer(gopathLayerName, gcp.BuildLayer)
 	l.BuildEnvironment.Override("GOPATH", l.Path)
 	ctx.Setenv("GOPATH", l.Path)
-
-	// If the function source does not include a go.sum, `go list` will fail under Go 1.16+.
-	if !ctx.FileExists(fn.Source, "go.sum") {
-		ctx.Logf(`go.sum not found, generating using "go mod tidy"`)
-		golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "tidy"}, gcp.WithWorkDir(fn.Source), gcp.WithUserAttribution)
-	}
 
 	fnMod, fnPackage, err := moduleAndPackageNames(ctx, fn)
 	if err != nil {
@@ -125,28 +115,6 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	ctx.Exec([]string{"go", "mod", "edit", "-replace", fmt.Sprintf("%s@v0.0.0=%s", fnMod, fn.Source)})
 
 	return createMainGoFile(ctx, fn, filepath.Join(ctx.ApplicationRoot(), "main.go"))
-}
-
-func createMainGoModVendored(ctx *gcp.Context, fn fnInfo) error {
-	l := ctx.Layer(gopathLayerName, gcp.BuildLayer)
-	l.BuildEnvironment.Override("GOPATH", l.Path)
-	ctx.Setenv("GOPATH", l.Path)
-
-	fnMod, fnPackage, err := moduleAndPackageNames(ctx, fn)
-	if err != nil {
-		return fmt.Errorf("extracting module and package names: %w", err)
-	}
-	fn.Package = fnPackage
-
-	appVendorDir := filepath.Join(fn.Source, "vendor", appModule)
-	ctx.MkdirAll(appVendorDir, 0755)
-	ctx.Exec([]string{"go", "mod", "init", appModule}, gcp.WithWorkDir(appVendorDir))
-	ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@v0.0.0", fnMod)}, gcp.WithWorkDir(appVendorDir))
-
-	l.BuildEnvironment.Override(env.Buildable, appModule)
-	l.BuildEnvironment.Override(golang.BuildDirEnv, fn.Source)
-
-	return createMainGoFile(ctx, fn, filepath.Join(appVendorDir, "main.go"))
 }
 
 // moduleAndPackageNames extracts the module name and package name of the function.
@@ -187,12 +155,6 @@ func createMainVendored(ctx *gcp.Context, fn fnInfo) error {
 
 	// We move the function source (including any vendored deps) into GOPATH.
 	ctx.Rename(fn.Source, filepath.Join(gopathSrc, fn.Package))
-
-	fnVendoredPath := filepath.Join(gopathSrc, fn.Package, "vendor")
-	if ctx.FileExists(fnVendoredPath) {
-		ctx.Exec([]string{"mv", fnVendoredPath, appPath}, gcp.WithUserTimingAttribution)
-	}
-
 	return createMainGoFile(ctx, fn, filepath.Join(appPath, "main.go"))
 }
 

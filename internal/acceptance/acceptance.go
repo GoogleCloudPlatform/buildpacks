@@ -152,7 +152,9 @@ type Test struct {
 	MustNotOutputCached []string
 	// MustRebuildOnChange specifies a file that, when changed in Dev Mode, triggers a rebuild.
 	MustRebuildOnChange string
-	// FlakyBuildAttempts specifies the number of times a failing build shouldbe retried.
+	// MustMatchStatusCode specifies the HTTP status code hitting the function endpoint should return.
+	MustMatchStatusCode int
+	// FlakyBuildAttempts specifies the number of times a failing build should be retried.
 	FlakyBuildAttempts int
 	// BOM specifies the list of bill-of-material entries expected in the built image metadata.
 	BOM []BOMEntry
@@ -292,8 +294,12 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 
 	t.Logf("Got response: status %v, body %q (in %s)", status, body, time.Since(start))
 
-	if want := http.StatusOK; statusCode != want {
-		t.Errorf("Unexpected status code: got %d, want %d", statusCode, want)
+	wantCode := http.StatusOK
+	if cfg.MustMatchStatusCode != 0 {
+		wantCode = cfg.MustMatchStatusCode
+	}
+	if statusCode != wantCode {
+		t.Errorf("Unexpected status code: got %d, want %d", statusCode, wantCode)
 	}
 	if cfg.MustMatch == "" {
 		cfg.MustMatch = "PASS"
