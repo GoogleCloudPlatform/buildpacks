@@ -17,8 +17,10 @@ package gcpbuildpack
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -630,6 +632,26 @@ func TestExecWithErr(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestExecWithCRLF(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("only applicable for Linux")
+	}
+
+	f := filepath.Join(t.TempDir(), "script")
+	// must be executable
+	if err := ioutil.WriteFile(f, []byte("#!/bin/sh\r\necho NO\r\n"), 0555); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := NewContext()
+	_, gotErr := ctx.ExecWithErr([]string{f})
+	if gotErr == nil {
+		t.Errorf("expected error: %v", gotErr)
+	} else if !strings.Contains(gotErr.Message, "Unix-style LF") {
+		t.Errorf("should have mentioned Unix line-endings: %v", gotErr)
 	}
 }
 

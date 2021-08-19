@@ -28,3 +28,7 @@
 - package: github.com/onsi/gomega/types
   license_name: MIT
   license_path: /usr/local/share/licenses/buildpacks/github.com/onsi/gomega/types/LICENSE
+
+- package: golang.org/x/sys
+  license_name: BSD-3-Clause
+  license_path: /usr/local/share/licenses/buildpacks/golang.org/x/sys/LICENSE

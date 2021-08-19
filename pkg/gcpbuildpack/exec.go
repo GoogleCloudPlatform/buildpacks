@@ -23,6 +23,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 var (
@@ -213,6 +215,16 @@ func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
 		if ee, ok := err.(*exec.ExitError); ok {
 			// The command returned a non-zero result.
 			exitCode = ee.ExitCode()
+		} else if pe, ok := err.(*os.PathError); ok && pe.Err == unix.ENOENT {
+			// ENOENT normally occurs if the command cannot
+			// be found, but also occurs with scripts using
+			// CR-LF line endings.  Unix uses LF as its line
+			// ending, so a script with a shebang using CR-LF
+			// will result in the kernel attempting to
+			// resolve an executable name with the trailing
+			// CR. This search will almost certainly fail and
+			// otherwise results in an confusing ENOENT.
+			return nil, fmt.Errorf("executing command %q: %v: if %q is a script, ensure that it has Unix-style LF line endings", readableCmd, err, params.cmd[0])
 		} else {
 			return nil, fmt.Errorf("executing command %q: %v", readableCmd, err)
 		}
