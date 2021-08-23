@@ -141,17 +141,18 @@ func (ctx *Context) ExecWithErr(cmd []string, opts ...ExecOption) (*ExecResult, 
 		return result, nil
 	}
 
-	var be *Error
-	if result == nil {
-		be = Errorf(StatusInternal, err.Error())
-	} else {
-		message := params.messageProducer(result)
-		if params.userFailure {
-			be = UserErrorf(message)
-		} else {
-			be = Errorf(StatusInternal, message)
-		}
+	message := err.Error()
+	if result != nil {
+		message = params.messageProducer(result)
 	}
+
+	var be *Error
+	if params.userFailure {
+		be = UserErrorf(message)
+	} else {
+		be = Errorf(StatusInternal, message)
+	}
+
 	be.ID = generateErrorID(params.cmd...)
 	return result, be
 }

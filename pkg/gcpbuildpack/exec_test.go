@@ -536,6 +536,20 @@ func TestExecWithErr(t *testing.T) {
 			wantUserFailure: true,
 		},
 		{
+			name:           "enoent cmd with user failure attribution",
+			cmd:            []string{"cat", "/tmp/does-not-exist-123456"},
+			opts:           []ExecOption{WithUserAttribution},
+			wantErrMessage: "...ory", // Last few characters of message below due to maxMessageBytes setting in main test below.
+			wantResult: &ExecResult{
+				ExitCode: 1,
+				Stderr:   "cat: /tmp/does-not-exist-123456: No such file or directory",
+				Combined: "cat: /tmp/does-not-exist-123456: No such file or directory",
+			},
+			wantErr:         true,
+			wantUserTiming:  true,
+			wantUserFailure: true,
+		},
+		{
 			name:       "WithEnv",
 			cmd:        []string{"bash", "-c", "echo $FOO"},
 			opts:       []ExecOption{WithEnv("FOO=bar")},
