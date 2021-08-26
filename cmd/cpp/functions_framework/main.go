@@ -157,9 +157,8 @@ func buildFn(ctx *gcp.Context) error {
 		fmt.Sprintf("-DCMAKE_INSTALL_PREFIX=%s", installLayer.Path),
 		fmt.Sprintf("-DVCPKG_TARGET_TRIPLET=%s", vcpkgTripletName),
 		fmt.Sprintf("-DCMAKE_TOOLCHAIN_FILE=%s/scripts/buildsystems/vcpkg.cmake", vcpkgPath),
-		fmt.Sprintf("-DVCPKG_DEFAULT_BINARY_CACHE=%s", vcpkgCache.Path),
 	}
-	ctx.Exec(args, gcp.WithUserAttribution)
+	ctx.Exec(args, gcp.WithUserAttribution, gcp.WithEnv(fmt.Sprintf("VCPKG_DEFAULT_BINARY_CACHE=%s", vcpkgCache.Path)))
 
 	ctx.Exec([]string{cmakeExePath, "--build", buildLayer.Path, "--target", "install"}, gcp.WithUserAttribution)
 
