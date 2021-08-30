@@ -35,9 +35,9 @@ const (
 	buildLayerName              = "build"
 	vcpkgCacheLayerName         = "vcpkg-binary-cache"
 	vcpkgLayerName              = "vcpkg"
-	vcpkgVersion                = "9b9a6680b25872989c8eb0303d670f32e5cfe6a4"
-	vcpkgBaselineSha256         = "5fc2baed6f79c4c27c630bbe51df23c98053181297aeecc0b6b236f2f408956d"
-	vcpkgToolVersion            = "2021-01-13-unknownhash"
+	vcpkgVersion                = "69670b0a4a61c85d7f9e75951de046f59016120c"
+	vcpkgBaselineSha256         = "f67e89129102782122bdd4fa74d863bb354bf65a77a719260f3790e0ceef98ad"
+	vcpkgToolVersion            = "2021-08-12-unknownhash"
 	vcpkgVersionPrefix          = "Vcpkg package management program version "
 	vcpkgTripletName            = "x64-linux-nodebug"
 	installLayerName            = "cpp"
@@ -167,7 +167,7 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 func warmupVcpkg(ctx *gcp.Context, vcpkgExePath string) error {
-	exec, err := ctx.ExecWithErr([]string{vcpkgExePath, "install", "--only-downloads", "functions-framework-cpp"}, gcp.WithUserAttribution)
+	exec, err := ctx.ExecWithErr([]string{vcpkgExePath, "install", "--feature-flags=-manifests", "--only-downloads", "functions-framework-cpp"}, gcp.WithUserAttribution)
 	if err != nil {
 		return fmt.Errorf("downloading sources (exit code %d): %v", exec.ExitCode, exec.Combined)
 	}
