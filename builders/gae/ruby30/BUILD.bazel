@@ -1,0 +1,18 @@
+load("//tools:defs.bzl", "builder")
+
+package(default_visibility = ["//builders/gae/ruby30/acceptance:__pkg__"])
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/ruby/appengine:appengine.tgz",
+        "//cmd/ruby/appengine_validation:appengine_validation.tgz",
+        "//cmd/ruby/bundle:bundle.tgz",
+        "//cmd/ruby/rails:rails.tgz",
+        # "runtime.tgz",
+        "//cmd/utils/label:label.tgz",
+    ],
+    image = "gae/ruby30",
+)
