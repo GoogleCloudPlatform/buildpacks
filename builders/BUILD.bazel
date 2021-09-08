@@ -95,6 +95,7 @@ package_group(
         "//builders/gae/ruby30",
         "//builders/gcf/ruby26",
         "//builders/gcf/ruby27",
+        "//builders/gcf/ruby30",
         "//builders/gcp/base",
     ],
 )
@@ -118,5 +119,6 @@ package_group(
         "//builders/gcf/python39",
         "//builders/gcf/ruby26",
         "//builders/gcf/ruby27",
+        "//builders/gcf/ruby30",
     ],
 )

@@ -1,0 +1,16 @@
+load("//tools:defs.bzl", "builder")
+
+package(default_visibility = ["//builders/gcf/ruby30/acceptance:__pkg__"])
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/ruby/functions_framework:functions_framework.tgz",
+        "//cmd/ruby/bundle:bundle.tgz",
+        "//cmd/utils/archive_source:archive_source.tgz",
+        "//cmd/utils/label:label.tgz",
+    ],
+    image = "gcf/ruby30",
+)
