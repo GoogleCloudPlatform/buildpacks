@@ -10,3 +10,6 @@ id = "google"
 
 [[stacks]]
 id = "google.java11"
+
+[[stacks]]
+id = "google.java17"

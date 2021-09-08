@@ -42,6 +42,7 @@ package_group(
     packages = [
         "//builders/gae/java11",
         "//builders/gcf/java11",
+        "//builders/gcf/java17",
         "//builders/gcp/base",
     ],
 )
@@ -108,6 +109,7 @@ package_group(
         "//builders/gcf/go113",
         "//builders/gcf/go116",
         "//builders/gcf/java11",
+        "//builders/gcf/java17",
         "//builders/gcf/nodejs10",
         "//builders/gcf/nodejs12",
         "//builders/gcf/nodejs14",
