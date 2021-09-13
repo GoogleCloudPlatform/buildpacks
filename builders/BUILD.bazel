@@ -41,6 +41,7 @@ package_group(
     name = "java_builders",
     packages = [
         "//builders/gae/java11",
+        "//builders/gae/java17",
         "//builders/gcf/java11",
         "//builders/gcf/java17",
         "//builders/gcp/base",
