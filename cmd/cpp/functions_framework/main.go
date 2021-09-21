@@ -158,8 +158,9 @@ func buildFn(ctx *gcp.Context) error {
 		fmt.Sprintf("-DVCPKG_TARGET_TRIPLET=%s", vcpkgTripletName),
 		fmt.Sprintf("-DCMAKE_TOOLCHAIN_FILE=%s/scripts/buildsystems/vcpkg.cmake", vcpkgPath),
 	}
-	ctx.Exec(args, gcp.WithUserAttribution, gcp.WithEnv(fmt.Sprintf("VCPKG_DEFAULT_BINARY_CACHE=%s", vcpkgCache.Path)))
-
+	ctx.Exec(args, gcp.WithUserAttribution, gcp.WithEnv(
+		fmt.Sprintf("VCPKG_DEFAULT_BINARY_CACHE=%s", vcpkgCache.Path),
+		fmt.Sprintf("VCPKG_DEFAULT_HOST_TRIPLET=%s", vcpkgTripletName)))
 	ctx.Exec([]string{cmakeExePath, "--build", buildLayer.Path, "--target", "install"}, gcp.WithUserAttribution)
 
 	ctx.AddWebProcess([]string{filepath.Join(installLayer.Path, "bin", "function")})
