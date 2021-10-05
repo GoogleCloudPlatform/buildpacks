@@ -162,7 +162,7 @@ func createMainGoModVendored(ctx *gcp.Context, fn fnInfo) error {
 		// Vendored dependencies must include the functions framework. Modifying vendored dependencies
 		// and adding the framework ourselves by merging two vendor directories is brittle and likely
 		// to cause conflicts among the function's and the framework's dependencies.
-		return gcp.UserErrorf("vendored dependencies must include %[1]q; if your function does not depend on the module, please add a blank import: `_ %[1]q`", functionsFrameworkModule)
+		return gcp.UserErrorf("vendored dependencies must include %[1]q; if your function does not depend on the module, please add a blank import: `_ %[1]q`", functionsFrameworkPackage)
 	}
 
 	appVendorDir := filepath.Join(fn.Source, "vendor", appModule)
