@@ -123,6 +123,11 @@ func TestAcceptance(t *testing.T) {
 			// "8080" is the correct port to serve on.
 			RunEnv: []string{"PORT=1234", "X_GOOGLE_WORKER_PORT=8080"},
 		},
+		{
+			Name: "user module name without dot in path",
+			App:  "no_framework_relative",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -147,11 +152,6 @@ func TestFailures(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.FailureTest{
-		{
-			App:       "no_framework_relative",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			MustMatch: "the module path in the function's go.mod must contain a dot in the first path element before a slash, e.g. example.com/module, found: func",
-		},
 		{
 			App: "with_framework",
 			Env: []string{"GOOGLE_FUNCTION_TARGET=Func"},

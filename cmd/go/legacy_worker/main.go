@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"text/template"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -40,6 +39,8 @@ var (
 	googleDirs = []string{fnSourceDir, ".googlebuild", ".googleconfig"}
 	//go:embed converter/worker/main.tmpl
 	workerTmplFile string
+	//go:embed converter/worker/gomod.tmpl
+	goModTmplFile string
 )
 
 type fnInfo struct {
@@ -99,6 +100,20 @@ func buildFn(ctx *gcp.Context) error {
 	return createMainGoMod(ctx, fn)
 }
 
+/*
+createMainGoMod creates the `main.go` and `go.mod` required to form a
+module-based Go application that wraps the user function into a server.
+The main application's Go module depends on the user function's Go module,
+which is assumed to be a subdirectory of the main application's source code.
+
+ctx.ApplicationRoot()
+├── go.mod // `module functions.local/app`
+├── main.go
+└── serverless_function_source_code // assumed to aleady exist
+	├── go.mod // `module <user's module name>`
+	├── fn.go
+	└── ...
+*/
 func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	l := ctx.Layer(gopathLayerName, gcp.BuildLayer)
 	l.BuildEnvironment.Override("GOPATH", l.Path)
@@ -110,20 +125,38 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	}
 	fn.Package = fnPackage
 
-	ctx.Exec([]string{"go", "mod", "init", appModule})
-	ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@v0.0.0", fnMod)})
-	ctx.Exec([]string{"go", "mod", "edit", "-replace", fmt.Sprintf("%s@v0.0.0=%s", fnMod, fn.Source)})
+	if err := createMainGoModFile(ctx, fnMod, filepath.Join(ctx.ApplicationRoot(), "go.mod")); err != nil {
+		return fmt.Errorf("error creating `go.mod` for function application: %w", err)
+	}
 
 	return createMainGoFile(ctx, fn, filepath.Join(ctx.ApplicationRoot(), "main.go"))
+}
+
+func createMainGoModFile(ctx *gcp.Context, fnMod string, goModPath string) error {
+	f := ctx.CreateFile(goModPath)
+	defer f.Close()
+
+	tmpl, err := template.New("worker_gomod").Parse(goModTmplFile)
+	if err != nil {
+		return err
+	}
+
+	tmplSubs := struct {
+		AppModule string
+		FnModule  string
+		FnSource  string
+	}{
+		AppModule: appModule,
+		FnModule:  fnMod,
+		FnSource:  fnSourceDir,
+	}
+
+	return tmpl.Execute(f, tmplSubs)
 }
 
 // moduleAndPackageNames extracts the module name and package name of the function.
 func moduleAndPackageNames(ctx *gcp.Context, fn fnInfo) (string, string, error) {
 	fnMod := ctx.Exec([]string{"go", "list", "-m"}, gcp.WithWorkDir(fn.Source), gcp.WithUserAttribution).Stdout
-	// golang.org/ref/mod requires that package names in a replace contains at least one dot.
-	if parts := strings.Split(fnMod, "/"); len(parts) > 0 && !strings.Contains(parts[0], ".") {
-		return "", "", gcp.UserErrorf("the module path in the function's go.mod must contain a dot in the first path element before a slash, e.g. example.com/module, found: %s", fnMod)
-	}
 	// Add the module name to the the package name, such that go build will be able to find it,
 	// if a directory with the package name is not at the app root. Otherwise, assume the package is at the module root.
 	fnPackage := fnMod
