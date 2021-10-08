@@ -143,7 +143,7 @@ func TestFailures(t *testing.T) {
 			App:       "no_framework",
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			Setup:     vendorSetup,
-			MustMatch: "vendored dependencies must include \"github.com/GoogleCloudPlatform/functions-framework-go\"; if your function does not depend on the module, please add a blank import: `_ \"github.com/GoogleCloudPlatform/functions-framework-go\"`",
+			MustMatch: "vendored dependencies must include \"github.com/GoogleCloudPlatform/functions-framework-go\"; if your function does not depend on the module, please add a blank import: `_ \"github.com/GoogleCloudPlatform/functions-framework-go/funcframework\"`",
 		},
 	}
 
