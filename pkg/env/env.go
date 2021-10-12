@@ -110,6 +110,9 @@ const (
 	// label on the final container of "abc=Some-Value". The label key itself is
 	// lowercased, underscores changed to dashes, and is prefixed with "google.".
 	LabelPrefix = "GOOGLE_LABEL_"
+
+	// ContainerMemoryHintMB is used to specify the amount of memory that will be allocated when running the container.
+	ContainerMemoryHintMB = "GOOGLE_CONTAINER_MEMORY_HINT_MB"
 )
 
 // IsDebugMode returns true if the buildpack debug mode is enabled.

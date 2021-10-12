@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -31,6 +32,9 @@ import (
 const (
 	layerName                 = "functions-framework"
 	functionsFrameworkPackage = "@google-cloud/functions-framework"
+
+	// nodeJSHeadroomMB is the amount of memory we'll set aside before computing the max memory size.
+	nodeJSHeadroomMB int = 64
 )
 
 func main() {
@@ -112,6 +116,14 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	}
 
+	// Get and set the valid value for --max-old-space-size node_options.
+	// Keep the existing behaviour if the value is not provided or invalid
+	if size, err := getMaxOldSpaceSize(); err != nil {
+		return err
+	} else if size > 0 {
+		l.LaunchEnvironment.Prepend("NODE_OPTIONS", " ", fmt.Sprintf("--max-old-space-size=%d", size))
+	}
+
 	ctx.SetFunctionsEnvVars(l)
 	ctx.AddWebProcess([]string{"/bin/bash", "-c", ff})
 	return nil
@@ -142,4 +154,24 @@ func installFunctionsFramework(ctx *gcp.Context, l *libcnb.Layer) error {
 	ctx.Exec([]string{"cp", "-t", l.Path, pjs, pljs}, gcp.WithUserTimingAttribution)
 	ctx.Exec([]string{"npm", installCmd, "--quiet", "--production", "--prefix", l.Path}, gcp.WithUserAttribution)
 	return nil
+}
+
+// getMaxOldSpaceSize returns the memory size specified by (GOOGLE_CONTAINER_MEMORY_HINT_MB - nodeJSHeadroomMB),
+// or 0 if env var is not specified.
+func getMaxOldSpaceSize() (int, error) {
+	memHintStr, exist := os.LookupEnv(env.ContainerMemoryHintMB)
+	if !exist {
+		return 0, nil
+	}
+
+	memHint, err := strconv.Atoi(memHintStr)
+	if err != nil {
+		return 0, fmt.Errorf("%s=%q must be an integer: %v", env.ContainerMemoryHintMB, memHintStr, err)
+	}
+
+	if memHint <= nodeJSHeadroomMB {
+		return 0, fmt.Errorf("%s=%q must be greater than %d", env.ContainerMemoryHintMB, memHintStr, nodeJSHeadroomMB)
+	}
+
+	return memHint - nodeJSHeadroomMB, nil
 }
