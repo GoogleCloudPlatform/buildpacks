@@ -2,7 +2,7 @@ click==7.1.2
 cloudevents==1.2.0
 deprecation==2.1.0
 Flask==1.1.2
-functions-framework==2.2.1
+functions-framework==2.3.0
 gunicorn==20.0.4
 itsdangerous==1.1.0
 Jinja2==2.11.2
