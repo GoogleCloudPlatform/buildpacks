@@ -1,4 +1,4 @@
-aiohttp==3.6.2
+aiohttp==3.7.4
 async-timeout==3.0.1
 attrs==19.3.0
 cachetools==4.1.1
@@ -17,7 +17,7 @@ grpcio==1.30.0
 httplib2==0.19.0
 idna==2.9
 itsdangerous==1.1.0
-Jinja2==2.11.2
+Jinja2==2.11.3
 MarkupSafe==1.1.1
 multidict==4.7.6
 opencensus==0.7.9
@@ -26,12 +26,12 @@ protobuf==3.12.2
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pytz==2020.1
-PyYAML==5.3.1
-requests==2.24.0
-rsa==4.6
+PyYAML==5.4
+requests==2.26.0
+rsa==4.7
 six==1.15.0
 uritemplate==3.0.1
-urllib3==1.25.9
+urllib3==1.26.5
 Werkzeug==1.0.1
 wrapt==1.12.1
 yarl==1.5.1
