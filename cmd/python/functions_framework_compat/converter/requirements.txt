@@ -25,6 +25,7 @@ opencensus-context==0.1.1
 protobuf==3.12.2
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
+pyparsing==2.4.7
 pytz==2020.1
 PyYAML==5.4
 requests==2.26.0

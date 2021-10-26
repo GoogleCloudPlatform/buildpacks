@@ -8,5 +8,6 @@ itsdangerous==1.1.0
 Jinja2==2.11.3
 MarkupSafe==1.1.1
 pathtools==0.1.2
+pyparsing==2.4.7
 watchdog==1.0.2
 Werkzeug==1.0.1
