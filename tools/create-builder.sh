@@ -38,5 +38,5 @@ mkdir "$HOME"
 echo "Extracting builder tar:"
 tar xvf "$tar" -C "$temp"
 
-pack create-builder "$name" --config="${temp}/builder.toml" --pull-policy=never
+pack builder create "$name" --config="${temp}/builder.toml" --pull-policy=never
 docker inspect --format='{{index .Id}}' "$name" > "$sha"
