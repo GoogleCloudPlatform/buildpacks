@@ -44,6 +44,19 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput: []string{"WARNING: Found incompatible dependencies"},
 		},
 		{
+			Name:          "function using http declarative function signatures",
+			App:           "use_declarative",
+			MustNotOutput: []string{"WARNING"},
+		},
+		{
+			Name:          "function using CloudEvent declarative function signatures",
+			App:           "use_cloud_event_declarative",
+			MustMatch:     "OK",
+			MustNotOutput: []string{"WARNING"},
+			FunctionType:  acceptance.CloudEventType,
+			SkipCacheTest: true,
+		},
+		{
 			Name: "function with framework and dependency bin",
 			App:  "with_framework_bin_conflict",
 			// No MustNotOutput WARNING because spacy non-deterministically produces an incompatible dependency tree.
