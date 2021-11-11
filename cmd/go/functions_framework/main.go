@@ -17,6 +17,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -78,10 +79,14 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserTimingAttribution)
 
 	fnSource := filepath.Join(ctx.ApplicationRoot(), fnSourceDir)
+	pkgName, err := extractPackageNameInDir(ctx, fnSource)
+	if err != nil {
+		return gcp.UserErrorf("error extracting package name: %v", err)
+	}
 	fn := fnInfo{
 		Source:  fnSource,
 		Target:  fnTarget,
-		Package: extractPackageNameInDir(ctx, fnSource),
+		Package: pkgName,
 	}
 
 	goMod := filepath.Join(fn.Source, "go.mod")
@@ -305,8 +310,20 @@ func frameworkSpecifiedVersion(ctx *gcp.Context, fnSource string) (string, error
 // The parser is dependent on the language version being used, and it's highly likely that the buildpack binary
 // will be built with a different version of the language than the function deployment. Building this script ensures
 // that the version of Go used to build the function app will be the same as the version used to parse it.
-func extractPackageNameInDir(ctx *gcp.Context, source string) string {
+func extractPackageNameInDir(ctx *gcp.Context, source string) (string, error) {
 	script := filepath.Join(ctx.BuildpackRoot(), "converter", "get_package", "main.go")
 	cacheDir := ctx.TempDir("app")
-	return ctx.Exec([]string{"go", "run", script, "-dir", source}, gcp.WithEnv("GOCACHE="+cacheDir), gcp.WithUserAttribution).Stdout
+	stdout := ctx.Exec([]string{"go", "run", script, "-dir", source}, gcp.WithEnv("GOCACHE="+cacheDir), gcp.WithUserAttribution).Stdout
+
+	type parsedPackage struct {
+		Name    string              `json:"name"`
+		Imports map[string]struct{} `json:"imports"`
+	}
+
+	var pkg parsedPackage
+	if err := json.Unmarshal([]byte(stdout), &pkg); err != nil {
+		return "", fmt.Errorf("unable to parse function package: %v", err)
+	}
+
+	return pkg.Name, nil
 }

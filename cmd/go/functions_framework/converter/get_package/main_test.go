@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2021 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,30 +15,95 @@
 package main
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"google3/third_party/golang/cmp/cmp"
 )
 
-func TestExtractPackageNameFromDir(t *testing.T) {
+func TestExtract(t *testing.T) {
 	tcs := []struct {
 		name  string
 		files map[string]string
-		want  string
+		want  *parsedPackage
 	}{
 		{
-			name:  "one package",
-			files: map[string]string{"foo.go": "package foo"},
-			want:  "foo",
-		},
-		{
+			name: "one package",
+			files: map[string]string{
+				"fn.go": `package cloudeventfunction
+
+import (
+	"context"
+	"log"
+
+	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
+)
+
+func init() {
+	functions.CloudEvent("HelloStorage", HelloStorage)
+}
+
+func HelloStorage(ctx context.Context, e cloudevents.Event) error {
+	log.Printf("Storage trigger in Go in GCF Gen 2!, %v!", e)
+	return nil
+}`,
+				"go.mod": `module example.com/cloudeventfunction
+
+go 1.13
+
+require (
+	github.com/GoogleCloudPlatform/functions-framework-go v1.4.1
+	github.com/cloudevents/sdk-go/v2 v2.2.0
+)`,
+			},
+			want: &parsedPackage{
+				Name: "cloudeventfunction",
+				Imports: map[string]struct{}{
+					"context": struct{}{},
+					"github.com/GoogleCloudPlatform/functions-framework-go/functions": struct{}{},
+					"github.com/cloudevents/sdk-go/v2":                                struct{}{},
+					"log":                                                             struct{}{},
+				},
+			},
+		}, {
 			name: "one package with two files",
 			files: map[string]string{
-				"foo.go":  "package foo",
-				"foo2.go": "package foo",
+				"fn.go": `package cloudeventfunction
+
+import (
+	"context"
+	"log"
+
+	cloudevents "github.com/cloudevents/sdk-go/v2"
+)
+
+func HelloStorage(ctx context.Context, e cloudevents.Event) error {
+	log.Printf("Storage trigger in Go in GCF Gen 2!, %v!", e)
+	return nil
+}`,
+				"init.go": `package cloudeventfunction
+
+import (
+	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
+)
+
+func init() {
+	functions.CloudEvent("HelloStorage", HelloStorage)
+}`,
 			},
-			want: "foo",
+			want: &parsedPackage{
+				Name: "cloudeventfunction",
+				Imports: map[string]struct{}{
+					"context": struct{}{},
+					"github.com/GoogleCloudPlatform/functions-framework-go/functions": struct{}{},
+					"github.com/cloudevents/sdk-go/v2":                                struct{}{},
+					"log":                                                             struct{}{},
+				},
+			},
 		},
 	}
 
@@ -61,19 +126,19 @@ func TestExtractPackageNameFromDir(t *testing.T) {
 				}
 			}
 
-			pkg, err := extract(dir)
+			got, err := extract(dir)
 			if err != nil {
-				t.Errorf("unexpected error %v", err)
-				return
+				t.Fatalf("error extracting package data from Go application: %v", err)
 			}
-			if pkg != tc.want {
-				t.Errorf("incorrect package: got %v, want %v", pkg, tc.want)
+
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("Extract() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
 }
 
-func TestExtractPackageNameFromDirErrors(t *testing.T) {
+func TestExtractFailures(t *testing.T) {
 	tcs := []struct {
 		name  string
 		files map[string]string
@@ -81,17 +146,13 @@ func TestExtractPackageNameFromDirErrors(t *testing.T) {
 		{
 			name: "two packages",
 			files: map[string]string{
-				"foo.go": "package foo",
-				"bar.go": "package bar",
+				"foo.go": `package foo`,
+				"bar.go": `package bar`,
 			},
-		},
-		{
-			name: "no packages",
-		},
-		{
+		}, {
 			name: "bad file",
 			files: map[string]string{
-				"foo.go": "not a go file",
+				"foo.go": `not a go file`,
 			},
 		},
 	}
@@ -115,10 +176,40 @@ func TestExtractPackageNameFromDirErrors(t *testing.T) {
 				}
 			}
 
-			_, err = extract(dir)
-			if err == nil {
-				t.Errorf("expected error, got nil")
+			if _, err := extract(dir); err == nil {
+				t.Fatalf("expected Extract() error, got nil")
 			}
 		})
+	}
+}
+
+func TestMarshalUnmarshalPackage(t *testing.T) {
+	pkgObj := &parsedPackage{
+		Name: "httpfunction",
+		Imports: map[string]struct{}{
+			"fmt":      struct{}{},
+			"net/http": struct{}{},
+		},
+	}
+
+	pkgJSON := `{"name":"httpfunction","imports":{"fmt":{},"net/http":{}}}`
+
+	b, err := json.Marshal(pkgObj)
+	if err != nil {
+		t.Fatalf("error marshaling Package to JSON, Package: %v, error: %v", pkgObj, err)
+	}
+
+	gotJSON := string(b)
+	if gotJSON != pkgJSON {
+		t.Errorf("JSON mismatch, got: %q, want: %q", gotJSON, pkgJSON)
+	}
+
+	var gotPkg *parsedPackage
+	if err := json.Unmarshal([]byte(gotJSON), &gotPkg); err != nil {
+		t.Errorf("error unmarshaling Package from JSON, JSON: %q, error: %v", gotJSON, err)
+	}
+
+	if diff := cmp.Diff(pkgObj, gotPkg); diff != "" {
+		t.Errorf("Package{} mismatch (-want +got):\n%s", diff)
 	}
 }

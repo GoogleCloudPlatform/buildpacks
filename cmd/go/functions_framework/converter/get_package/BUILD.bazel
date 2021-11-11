@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+
+licenses(["notice"])
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+)
+
+go_test(
+    name = "main_test",
+    size = "small",
+    srcs = ["main_test.go"],
+    embed = [":main"],
+    rundir = ".",
+    deps = ["//third_party/golang/cmp"],
+)
+
+exports_files(["main.go"])

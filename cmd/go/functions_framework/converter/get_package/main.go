@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2021 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,26 +16,34 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"go/parser"
 	"go/token"
 	"log"
+	"strings"
 )
 
 var (
 	dir = flag.String("dir", "", "Directory containing *.go files from which to extract a package name.")
 )
 
+// parsedPackage represents a parsed package.
+type parsedPackage struct {
+	Name    string              `json:"name"`
+	Imports map[string]struct{} `json:"imports"`
+}
+
 // extract extracts the name of the package in the specified directory.
 // Expects that the specified directory contains one and only one Go package.
-func extract(source string) (string, error) {
+func extract(source string) (*parsedPackage, error) {
 	fset := token.NewFileSet() // positions are relative to fset
 
 	// Parse all .go files in dir but stop after processing the package.
-	pkgs, err := parser.ParseDir(fset, source, nil, parser.PackageClauseOnly)
+	pkgs, err := parser.ParseDir(fset, source, nil, parser.ImportsOnly)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse source in %s: %v", source, err)
+		return nil, fmt.Errorf("failed to parse source in %s: %v", source, err)
 	}
 
 	// Check if all files belong to the same package
@@ -47,14 +55,25 @@ func extract(source string) (string, error) {
 		}
 
 		if k != packageName {
-			return "", fmt.Errorf("multiple packages in user code directory: %s != %s", packageName, k)
+			return nil, fmt.Errorf("multiple packages in user code directory: %s != %s", packageName, k)
 		}
 	}
 
 	if packageName == "" {
-		return "", fmt.Errorf("unable to find Go package in %s", source)
+		return nil, fmt.Errorf("unable to find Go package in %s", source)
 	}
-	return packageName, nil
+
+	packageImports := map[string]struct{}{}
+	for _, fi := range pkgs[packageName].Files {
+		for _, im := range fi.Imports {
+			packageImports[strings.Trim(im.Path.Value, `"`)] = struct{}{}
+		}
+	}
+
+	return &parsedPackage{
+		Name:    packageName,
+		Imports: packageImports,
+	}, nil
 }
 
 func main() {
@@ -66,7 +85,12 @@ func main() {
 
 	pkg, err := extract(*dir)
 	if err != nil {
-		log.Fatalf("Unable to extract package name: %v.", err)
+		log.Fatalf("Unable to extract package name and imports: %v.", err)
 	}
-	fmt.Print(pkg)
+
+	b, err := json.Marshal(pkg)
+	if err != nil {
+		log.Fatalf("Unable to marshal extracted package name and imports: %v.", err)
+	}
+	fmt.Print(string(b))
 }

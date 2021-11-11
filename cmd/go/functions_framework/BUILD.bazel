@@ -8,9 +8,9 @@ licenses(["notice"])
 buildpack(
     name = "functions_framework",
     srcs = [
-        "converter/get_package/main.go",
         "converter/without-framework/go.mod",
         "converter/without-framework/main.go",
+        "//cmd/go/functions_framework/converter/get_package:main.go",
     ],
     executables = [
         ":main",
