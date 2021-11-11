@@ -15,43 +15,13 @@
 package nodejs
 
 import (
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 )
 
 func TestReadPackageJSON(t *testing.T) {
-	d, err := ioutil.TempDir("/tmp", "test-read-package-")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(d)
-
-	contents := strings.TrimSpace(`
-{
-  "engines": {
-    "node": "my-node"
-  },
-  "scripts": {
-    "start": "my-start"
-  },
-	"dependencies": {
-	  "a": "1.0",
-		"b": "2.0"
-	},
-	"devDependencies": {
-	  "c": "3.0"
-	}
-}
-`)
-
-	if err := ioutil.WriteFile(filepath.Join(d, "package.json"), []byte(contents), 0644); err != nil {
-		t.Fatalf("Failed to write package.json: %v", err)
-	}
-
 	want := PackageJSON{
 		Engines: packageEnginesJSON{
 			Node: "my-node",
@@ -67,9 +37,10 @@ func TestReadPackageJSON(t *testing.T) {
 			"c": "3.0",
 		},
 	}
-	got, err := ReadPackageJSON(d)
+
+	got, err := ReadPackageJSON(testdata.MustGetPath("testdata/test-read-package/"))
 	if err != nil {
-		t.Errorf("ReadPackageJSON got error: %v", err)
+		t.Fatalf("ReadPackageJSON got error: %v", err)
 	}
 	if !reflect.DeepEqual(*got, want) {
 		t.Errorf("ReadPackageJSON\ngot %#v\nwant %#v", *got, want)

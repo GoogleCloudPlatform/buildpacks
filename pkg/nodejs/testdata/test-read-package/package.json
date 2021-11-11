@@ -1,0 +1,15 @@
+{
+  "engines": {
+    "node": "my-node"
+  },
+  "scripts": {
+    "start": "my-start"
+  },
+	"dependencies": {
+	  "a": "1.0",
+		"b": "2.0"
+	},
+	"devDependencies": {
+	  "c": "3.0"
+	}
+}

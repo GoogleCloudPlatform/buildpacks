@@ -28,7 +28,11 @@ go_test(
         "npm_test.go",
         "yarn_test.go",
     ],
+    data = glob(["testdata/**"]),
     embed = [":nodejs"],
     rundir = ".",
-    deps = ["//pkg/gcpbuildpack"],
+    deps = [
+        "//pkg/gcpbuildpack",
+        "//pkg/testdata",
+    ],
 )
