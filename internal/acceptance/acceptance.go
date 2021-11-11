@@ -68,6 +68,34 @@ var (
 	specialChars = regexp.MustCompile("[^a-zA-Z0-9]+")
 )
 
+// cloudEvent is a representation of the CloudEvents spec
+// (https://github.com/cloudevents/spec/blob/v1.0/spec.md).
+type cloudEvent struct {
+	// ID is the event's required "id" attribute.
+	ID string `json:"id"`
+
+	// Source is the event's required "source" attribute.
+	Source string `json:"source"`
+
+	// SpecVersion is the event's required "specversion" attribute.
+	SpecVersion string `json:"specversion"`
+
+	// Type is the event's required "type" attribute.
+	Type string `json:"type"`
+
+	// Data is the event's payload.
+	Data []byte `json:"data"`
+}
+
+type functionSignatureType string
+
+// Different function signature types.
+const (
+	HTTPType            functionSignatureType = "http"
+	CloudEventType      functionSignatureType = "cloudevent"
+	BackgroundEventType functionSignatureType = "event"
+)
+
 func init() {
 	// HOME may be unset with Bazel (https://github.com/bazelbuild/bazel/issues/10652)
 	// but `pack` requires that it should be set.
@@ -156,13 +184,15 @@ type Test struct {
 	MustMatchStatusCode int
 	// FlakyBuildAttempts specifies the number of times a failing build should be retried.
 	FlakyBuildAttempts int
+	// FunctionType specifies the signature type of the test function.
+	FunctionType functionSignatureType
 	// BOM specifies the list of bill-of-material entries expected in the built image metadata.
 	BOM []BOMEntry
 	// Setup is a function that sets up the source directory before test.
 	Setup setupFunc
 }
 
-// setupFunch is a function that is called before the test starts and can be used to modify the test source.
+// setupFunc is a function that is called before the test starts and can be used to modify the test source.
 // The function has access to the builder image name and a directory with a modifiable copy of the source
 type setupFunc func(builder, srcDir string) error
 
@@ -277,7 +307,7 @@ func TestBuildFailure(t *testing.T, builder string, cfg FailureTest) {
 	}
 }
 
-// invokeApp performs an HTTP GET on the app.
+// invokeApp performs an HTTP GET or sends a Cloud Event payload to the app.
 func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 	t.Helper()
 
@@ -287,7 +317,8 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 	// Check that the application responds with `PASS`.
 	start := time.Now()
 
-	body, status, statusCode, err := invokeHTTP(host, port, cfg.Path)
+	body, status, statusCode, err := sendRequest(host, port, cfg.Path, cfg.FunctionType)
+
 	if err != nil {
 		t.Fatalf("Unable to invoke app: %v", err)
 	}
@@ -320,7 +351,7 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 		for try := tries; try >= 1; try-- {
 			time.Sleep(1 * time.Second)
 
-			body, status, _, err := invokeHTTPWithTimeout(host, port, cfg.Path, 10*time.Second)
+			body, status, _, err := sendRequestWithTimeout(host, port, cfg.Path, 10*time.Second, cfg.FunctionType)
 			// An app that is rebuilding can be unresponsive.
 			if err != nil {
 				if try == 1 {
@@ -341,15 +372,17 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 	}
 }
 
-// invokeHTTP makes an http call to a given host:port/path.
+// sendRequest makes an http call to a given host:port/path
+// or send a cloud event payload to host:port if sendCloudEvents is true.
 // Returns the body, status and statusCode of the response.
-func invokeHTTP(host string, port int, path string) (string, string, int, error) {
-	return invokeHTTPWithTimeout(host, port, path, 120*time.Second)
+func sendRequest(host string, port int, path string, functionType functionSignatureType) (string, string, int, error) {
+	return sendRequestWithTimeout(host, port, path, 120*time.Second, functionType)
 }
 
-// invokeHTTPWithTimeout makes an http call to a given host:port/path with the specified timeout.
-//Returns the body, status and statusCode of the response.
-func invokeHTTPWithTimeout(host string, port int, path string, timeout time.Duration) (string, string, int, error) {
+// sendRequestWithTimeout makes an http call to a given host:port/path with the specified timeout
+// or send a cloud event payload with timeout to host:port if sendCloudEvents is true.
+// Returns the body, status and statusCode of the response.
+func sendRequestWithTimeout(host string, port int, path string, timeout time.Duration, functionType functionSignatureType) (string, string, int, error) {
 	var res *http.Response
 	var err error
 
@@ -357,7 +390,22 @@ func invokeHTTPWithTimeout(host string, port int, path string, timeout time.Dura
 	sleep := 100 * time.Millisecond
 	attempts := int(timeout / sleep)
 	for attempt := 0; attempt < attempts; attempt++ {
-		res, err = http.Get(fmt.Sprintf("http://%s:%d%s", host, port, path))
+		if functionType == CloudEventType {
+			event := &cloudEvent{
+				ID:          "ce",
+				SpecVersion: "1.0",
+				Source:      "example.com/source",
+				Type:        "com.example.type",
+				Data:        []byte("some-data"),
+			}
+			data, jsonErr := json.Marshal(event)
+			if jsonErr != nil {
+				return "", "", 0, fmt.Errorf("error making post request: %w", err)
+			}
+			res, err = http.Post(fmt.Sprintf("http://%s:%d/", host, port), "application/json", bytes.NewReader(data))
+		} else {
+			res, err = http.Get(fmt.Sprintf("http://%s:%d%s", host, port, path))
+		}
 		if err == nil {
 			break
 		}
