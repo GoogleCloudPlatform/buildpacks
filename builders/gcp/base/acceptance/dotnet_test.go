@@ -32,8 +32,10 @@ func TestAcceptanceDotNet(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:              "simple dotnet app",
-			App:               "dotnet/simple",
+			Name: "simple dotnet app",
+			App:  "dotnet/simple",
+			// TODO (b/205901771) remove GOOGLE_RUNTIME_VERSION when samples work with .NET6
+			Env:               []string{"GOOGLE_RUNTIME_VERSION=3.1.101"},
 			MustUse:           []string{dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 		},
@@ -53,17 +55,19 @@ func TestAcceptanceDotNet(t *testing.T) {
 			FilesMustNotExist: []string{sdk},
 		},
 		{
-			Name:              "simple prebuilt dotnet app",
-			App:               "dotnet/simple_prebuilt",
-			Env:               []string{"GOOGLE_ENTRYPOINT=./simple"},
+			Name: "simple prebuilt dotnet app",
+			App:  "dotnet/simple_prebuilt",
+			// TODO (b/205901771) remove GOOGLE_RUNTIME_VERSION when samples work with .NET6
+			Env:               []string{"GOOGLE_ENTRYPOINT=./simple", "GOOGLE_RUNTIME_VERSION=3.1.101"},
 			MustUse:           []string{dotnetRuntime},
 			MustNotUse:        []string{dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 		},
 		{
-			Name:                "Dev mode",
-			App:                 "dotnet/simple",
-			Env:                 []string{"GOOGLE_DEVMODE=1"},
+			Name: "Dev mode",
+			App:  "dotnet/simple",
+			// TODO (b/205901771) remove GOOGLE_RUNTIME_VERSION when samples work with .NET6
+			Env:                 []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=3.1.101"},
 			MustUse:             []string{dotnetRuntime, dotnetPublish},
 			FilesMustExist:      []string{sdk, "/workspace/Startup.cs"},
 			MustRebuildOnChange: "/workspace/Startup.cs",
@@ -99,9 +103,10 @@ func TestAcceptanceDotNet(t *testing.T) {
 			},
 		},
 		{
-			Name:       "dotnet selected via GOOGLE_RUNTIME",
-			App:        "override",
-			Env:        []string{"GOOGLE_RUNTIME=dotnet"},
+			Name: "dotnet selected via GOOGLE_RUNTIME",
+			App:  "override",
+			// TODO (b/205901771) remove GOOGLE_RUNTIME_VERSION when samples work with .NET6
+			Env:        []string{"GOOGLE_RUNTIME=dotnet", "GOOGLE_RUNTIME_VERSION=3.1.101"},
 			MustUse:    []string{dotnetRuntime},
 			MustNotUse: []string{nodeRuntime, pythonRuntime, goRuntime},
 		},
