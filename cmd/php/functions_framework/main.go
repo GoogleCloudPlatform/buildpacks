@@ -33,7 +33,7 @@ const (
 
 	// ffPackageWithVersion is the package that we `composer require` when adding the functions
 	// framework to an existing vendor directory.
-	ffPackageWithVersion = ffPackage + ":^1.0"
+	ffPackageWithVersion = ffPackage + ":^1.1"
 
 	ffGitHubURL    = "https://github.com/GoogleCloudPlatform/functions-framework-php"
 	ffPackagistURL = "https://packagist.org/packages/google/cloud-functions-framework"
