@@ -332,7 +332,7 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 	if statusCode != wantCode {
 		t.Errorf("Unexpected status code: got %d, want %d", statusCode, wantCode)
 	}
-	if cfg.MustMatch == "" {
+	if cfg.MustMatch == "" && wantCode != http.StatusNoContent {
 		cfg.MustMatch = "PASS"
 	}
 	if want := cfg.MustMatch; !strings.HasSuffix(body, want) {

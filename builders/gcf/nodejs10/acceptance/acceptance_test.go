@@ -14,6 +14,7 @@
 package acceptance
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
@@ -47,6 +48,16 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name: "function without package and with yarn",
 			App:  "no_package_yarn",
+		},
+		{
+			Name: "declarative http function",
+			App:  "declarative_http",
+		},
+		{
+			Name:                "declarative CloudEvent function",
+			App:                 "declarative_cloud_event",
+			FunctionType:        acceptance.CloudEventType,
+			MustMatchStatusCode: http.StatusNoContent,
 		},
 		{
 			Name:       "function without framework",

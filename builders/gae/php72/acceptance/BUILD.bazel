@@ -25,6 +25,7 @@ go_test(
         "//builders/gae/php72:builder.tar",
         "//builders/testdata:php",
     ],
+    flaky = True,
     embed = [":acceptance"],
     rundir = ".",
     tags = [
