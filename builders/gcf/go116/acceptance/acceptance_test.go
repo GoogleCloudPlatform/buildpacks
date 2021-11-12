@@ -110,6 +110,28 @@ func TestAcceptance(t *testing.T) {
 			App:  "with_subdir",
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
 		},
+		{
+			Name: "declarative http function",
+			App:  "declarative_http",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
+		},
+		{
+			Name: "declarative http anonymous function",
+			App:  "declarative_anonymous",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
+		},
+		{
+			Name: "declarative and non declarative registration",
+			App:  "declarative_old_and_new",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
+		},
+		{
+			Name:                "declarative function signature but wrong target",
+			App:                 "declarative_http",
+			Env:                 []string{"GOOGLE_FUNCTION_TARGET=ThisDoesntExist"},
+			MustMatchStatusCode: 404,
+			MustMatch:           "404 page not found",
+		},
 	}
 
 	for _, tc := range testCases {

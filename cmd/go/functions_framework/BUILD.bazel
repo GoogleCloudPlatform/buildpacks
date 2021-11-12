@@ -24,6 +24,7 @@ go_binary(
     name = "main",
     srcs = [
         "main.go",
+        "template_declarative.go",
         "template_v0.go",
         "template_v1_1.go",
     ],

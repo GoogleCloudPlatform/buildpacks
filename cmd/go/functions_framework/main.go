@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2021 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,25 +31,33 @@ import (
 )
 
 const (
-	layerName                 = "functions-framework"
-	gopathLayerName           = "gopath"
-	functionsFrameworkModule  = "github.com/GoogleCloudPlatform/functions-framework-go"
-	functionsFrameworkPackage = functionsFrameworkModule + "/funcframework"
-	functionsFrameworkVersion = "v1.2.0"
-	appModule                 = "functions.local/app"
-	fnSourceDir               = "serverless_function_source_code"
+	layerName                          = "functions-framework"
+	gopathLayerName                    = "gopath"
+	functionsFrameworkModule           = "github.com/GoogleCloudPlatform/functions-framework-go"
+	functionsFrameworkPackage          = functionsFrameworkModule + "/funcframework"
+	functionsFrameworkFunctionsPackage = functionsFrameworkModule + "/functions"
+	functionsFrameworkVersion          = "v1.5.0"
+	appModule                          = "functions.local/app"
+	fnSourceDir                        = "serverless_function_source_code"
 )
 
 var (
-	googleDirs = []string{fnSourceDir, ".googlebuild", ".googleconfig"}
-	tmplV0     = template.Must(template.New("mainV0").Parse(mainTextTemplateV0))
-	tmplV1_1   = template.Must(template.New("mainV1_1").Parse(mainTextTemplateV1_1))
+	googleDirs      = []string{fnSourceDir, ".googlebuild", ".googleconfig"}
+	tmplV0          = template.Must(template.New("mainV0").Parse(mainTextTemplateV0))
+	tmplV1_1        = template.Must(template.New("mainV1_1").Parse(mainTextTemplateV1_1))
+	tmplDeclarative = template.Must(template.New("main_declarative").Parse(mainTextTemplateDeclarative))
 )
 
 type fnInfo struct {
 	Source  string
 	Target  string
 	Package string
+	Imports map[string]struct{}
+}
+
+type parsedPackage struct {
+	Name    string              `json:"name"`
+	Imports map[string]struct{} `json:"imports"`
 }
 
 func main() {
@@ -79,14 +87,15 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserTimingAttribution)
 
 	fnSource := filepath.Join(ctx.ApplicationRoot(), fnSourceDir)
-	pkgName, err := extractPackageNameInDir(ctx, fnSource)
+	pkg, err := extractPackageNameInDir(ctx, fnSource)
 	if err != nil {
 		return gcp.UserErrorf("error extracting package name: %v", err)
 	}
 	fn := fnInfo{
 		Source:  fnSource,
 		Target:  fnTarget,
-		Package: pkgName,
+		Package: pkg.Name,
+		Imports: pkg.Imports,
 	}
 
 	goMod := filepath.Join(fn.Source, "go.mod")
@@ -269,15 +278,18 @@ func createMainGoFile(ctx *gcp.Context, fn fnInfo, main, version string) error {
 		return fmt.Errorf("unable to parse framework version string %s: %w", version, err)
 	}
 
-	// By default, use the v0 template.
-	// For framework versions greater than or equal to v1.1.0, use the v1_1 template.
-	tmpl := tmplV0
-	v1_1, err := semver.ParseTolerant("v1.1.0")
-	if err != nil {
-		return fmt.Errorf("unable to parse framework version string v1.1.0: %v", err)
-	}
-	if requestedVersion.GE(v1_1) {
-		tmpl = tmplV1_1
+	tmpl := tmplDeclarative
+	if _, ok := fn.Imports[functionsFrameworkFunctionsPackage]; !ok {
+		// By default, use the v0 template.
+		// For framework versions greater than or equal to v1.1.0, use the v1_1 template.
+		tmpl = tmplV0
+		v1_1, err := semver.ParseTolerant("v1.1.0")
+		if err != nil {
+			return fmt.Errorf("unable to parse framework version string v1.1.0: %v", err)
+		}
+		if requestedVersion.GE(v1_1) {
+			tmpl = tmplV1_1
+		}
 	}
 
 	if err := tmpl.Execute(f, fn); err != nil {
@@ -310,20 +322,15 @@ func frameworkSpecifiedVersion(ctx *gcp.Context, fnSource string) (string, error
 // The parser is dependent on the language version being used, and it's highly likely that the buildpack binary
 // will be built with a different version of the language than the function deployment. Building this script ensures
 // that the version of Go used to build the function app will be the same as the version used to parse it.
-func extractPackageNameInDir(ctx *gcp.Context, source string) (string, error) {
+func extractPackageNameInDir(ctx *gcp.Context, source string) (*parsedPackage, error) {
 	script := filepath.Join(ctx.BuildpackRoot(), "converter", "get_package", "main.go")
 	cacheDir := ctx.TempDir("app")
 	stdout := ctx.Exec([]string{"go", "run", script, "-dir", source}, gcp.WithEnv("GOCACHE="+cacheDir), gcp.WithUserAttribution).Stdout
 
-	type parsedPackage struct {
-		Name    string              `json:"name"`
-		Imports map[string]struct{} `json:"imports"`
-	}
-
 	var pkg parsedPackage
 	if err := json.Unmarshal([]byte(stdout), &pkg); err != nil {
-		return "", fmt.Errorf("unable to parse function package: %v", err)
+		return nil, fmt.Errorf("unable to parse function package: %v", err)
 	}
 
-	return pkg.Name, nil
+	return &pkg, nil
 }
