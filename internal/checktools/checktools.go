@@ -27,7 +27,7 @@ import (
 
 var (
 	// minPackVersion is the minimum required version of pack.
-	minPackVersion = semver.MustParse("0.13.1")
+	minPackVersion = semver.MustParse("0.16.0")
 )
 
 // Installed checks that all required tools are on PATH.

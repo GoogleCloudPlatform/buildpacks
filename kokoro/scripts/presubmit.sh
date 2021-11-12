@@ -38,7 +38,7 @@ if [[ ! -v FILTER ]]; then
   exit 1
 fi
 
-readonly PACK_VERSION="0.13.1"
+readonly PACK_VERSION="0.16.0"
 
 temp="$(mktemp -d)"
 curl -fsSL "https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64" -o "$temp/container-structure-test" && chmod +x "$temp/container-structure-test"
