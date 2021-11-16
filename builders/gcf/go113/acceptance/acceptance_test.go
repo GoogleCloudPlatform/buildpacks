@@ -120,9 +120,35 @@ func TestAcceptance(t *testing.T) {
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
 		},
 		{
+			Name:        "declarative cloudevent function",
+			App:         "declarative_cloud_event",
+			RequestType: acceptance.CloudEventType,
+			MustMatch:   "",
+			Env:         []string{"GOOGLE_FUNCTION_TARGET=Func"},
+		},
+		{
+			Name:        "non declarative cloudevent function",
+			App:         "non_declarative_cloud_event",
+			RequestType: acceptance.CloudEventType,
+			MustMatch:   "",
+			Env:         []string{"GOOGLE_FUNCTION_TARGET=Func", "GOOGLE_FUNCTION_SIGNATURE_TYPE=cloudevent"},
+		},
+		{
 			Name: "declarative and non declarative registration",
 			App:  "declarative_old_and_new",
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
+		},
+		{
+			Name:                "no auto registration in main.go if declarative detected",
+			App:                 "declarative_cloud_event",
+			RequestType:         acceptance.CloudEventType,
+			MustMatchStatusCode: 404,
+			MustMatch:           "404 page not found",
+			// If the buildpack detects the declarative functions package, then
+			// functions must be explicitly registered. The main.go written out
+			// by the buildpack will NOT use the GOOGLE_FUNCTION_TARGET env var
+			// to register a non-declarative function.
+			Env: []string{"GOOGLE_FUNCTION_TARGET=NonDeclarativeFunc", "GOOGLE_FUNCTION_SIGNATURE_TYPE=cloudevent"},
 		},
 		{
 			Name:                "declarative function signature but wrong target",

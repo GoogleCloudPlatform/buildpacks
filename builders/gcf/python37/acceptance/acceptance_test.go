@@ -53,7 +53,7 @@ func TestAcceptance(t *testing.T) {
 			App:           "use_cloud_event_declarative",
 			MustMatch:     "OK",
 			MustNotOutput: []string{"WARNING"},
-			FunctionType:  acceptance.CloudEventType,
+			RequestType:   acceptance.CloudEventType,
 			SkipCacheTest: true,
 		},
 		{

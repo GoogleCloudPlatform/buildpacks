@@ -68,32 +68,13 @@ var (
 	specialChars = regexp.MustCompile("[^a-zA-Z0-9]+")
 )
 
-// cloudEvent is a representation of the CloudEvents spec
-// (https://github.com/cloudevents/spec/blob/v1.0/spec.md).
-type cloudEvent struct {
-	// ID is the event's required "id" attribute.
-	ID string `json:"id"`
-
-	// Source is the event's required "source" attribute.
-	Source string `json:"source"`
-
-	// SpecVersion is the event's required "specversion" attribute.
-	SpecVersion string `json:"specversion"`
-
-	// Type is the event's required "type" attribute.
-	Type string `json:"type"`
-
-	// Data is the event's payload.
-	Data []byte `json:"data"`
-}
-
-type functionSignatureType string
+type requestType string
 
 // Different function signature types.
 const (
-	HTTPType            functionSignatureType = "http"
-	CloudEventType      functionSignatureType = "cloudevent"
-	BackgroundEventType functionSignatureType = "event"
+	HTTPType            requestType = "http"
+	CloudEventType      requestType = "cloudevent"
+	BackgroundEventType requestType = "event"
 )
 
 func init() {
@@ -184,8 +165,8 @@ type Test struct {
 	MustMatchStatusCode int
 	// FlakyBuildAttempts specifies the number of times a failing build should be retried.
 	FlakyBuildAttempts int
-	// FunctionType specifies the signature type of the test function.
-	FunctionType functionSignatureType
+	// RequestType specifies the payload of the request used to test the function.
+	RequestType requestType
 	// BOM specifies the list of bill-of-material entries expected in the built image metadata.
 	BOM []BOMEntry
 	// Setup is a function that sets up the source directory before test.
@@ -317,7 +298,7 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 	// Check that the application responds with `PASS`.
 	start := time.Now()
 
-	body, status, statusCode, err := sendRequest(host, port, cfg.Path, cfg.FunctionType)
+	body, status, statusCode, err := sendRequest(host, port, cfg.Path, cfg.RequestType)
 
 	if err != nil {
 		t.Fatalf("Unable to invoke app: %v", err)
@@ -332,11 +313,11 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 	if statusCode != wantCode {
 		t.Errorf("Unexpected status code: got %d, want %d", statusCode, wantCode)
 	}
-	if cfg.MustMatch == "" && wantCode != http.StatusNoContent {
+	if cfg.RequestType == HTTPType && cfg.MustMatch == "" {
 		cfg.MustMatch = "PASS"
 	}
-	if want := cfg.MustMatch; !strings.HasSuffix(body, want) {
-		t.Errorf("Response body does not contain suffix: got %q, want %q", body, want)
+	if !strings.HasSuffix(body, cfg.MustMatch) {
+		t.Errorf("Response body does not contain suffix: got %q, want %q", body, cfg.MustMatch)
 	}
 
 	if cfg.MustRebuildOnChange != "" {
@@ -351,7 +332,7 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 		for try := tries; try >= 1; try-- {
 			time.Sleep(1 * time.Second)
 
-			body, status, _, err := sendRequestWithTimeout(host, port, cfg.Path, 10*time.Second, cfg.FunctionType)
+			body, status, _, err := sendRequestWithTimeout(host, port, cfg.Path, 10*time.Second, cfg.RequestType)
 			// An app that is rebuilding can be unresponsive.
 			if err != nil {
 				if try == 1 {
@@ -375,38 +356,51 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 // sendRequest makes an http call to a given host:port/path
 // or send a cloud event payload to host:port if sendCloudEvents is true.
 // Returns the body, status and statusCode of the response.
-func sendRequest(host string, port int, path string, functionType functionSignatureType) (string, string, int, error) {
+func sendRequest(host string, port int, path string, functionType requestType) (string, string, int, error) {
 	return sendRequestWithTimeout(host, port, path, 120*time.Second, functionType)
 }
 
 // sendRequestWithTimeout makes an http call to a given host:port/path with the specified timeout
 // or send a cloud event payload with timeout to host:port if sendCloudEvents is true.
 // Returns the body, status and statusCode of the response.
-func sendRequestWithTimeout(host string, port int, path string, timeout time.Duration, functionType functionSignatureType) (string, string, int, error) {
+func sendRequestWithTimeout(host string, port int, path string, timeout time.Duration, functionType requestType) (string, string, int, error) {
 	var res *http.Response
-	var err error
+	var loopErr error
 
 	// Try to connect the the container until it succeeds up to the timeout.
 	sleep := 100 * time.Millisecond
 	attempts := int(timeout / sleep)
 	for attempt := 0; attempt < attempts; attempt++ {
-		if functionType == CloudEventType {
-			event := &cloudEvent{
-				ID:          "ce",
-				SpecVersion: "1.0",
-				Source:      "example.com/source",
-				Type:        "com.example.type",
-				Data:        []byte("some-data"),
+		switch functionType {
+		case CloudEventType:
+			ceHeaders := map[string]string{
+				"Content-Type": "application/cloudevents+json",
 			}
-			data, jsonErr := json.Marshal(event)
-			if jsonErr != nil {
-				return "", "", 0, fmt.Errorf("error making post request: %w", err)
+			ceJSON := []byte(`{
+				"specversion" : "1.0",
+				"type" : "com.example.type",
+				"source" : "https://github.com/cloudevents/spec/pull",
+				"subject" : "123",
+				"id" : "A234-1234-1234",
+				"time" : "2018-04-05T17:31:00Z",
+				"comexampleextension1" : "value",
+				"data" : "hello"
+			}`)
+
+			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s:%d%s", host, port, path), bytes.NewBuffer(ceJSON))
+			if err != nil {
+				return "", "", 0, fmt.Errorf("error creating CloudEvent HTTP request: %w", loopErr)
 			}
-			res, err = http.Post(fmt.Sprintf("http://%s:%d/", host, port), "application/json", bytes.NewReader(data))
-		} else {
-			res, err = http.Get(fmt.Sprintf("http://%s:%d%s", host, port, path))
+
+			for k, v := range ceHeaders {
+				req.Header.Add(k, v)
+			}
+			client := &http.Client{}
+			res, loopErr = client.Do(req)
+		default:
+			res, loopErr = http.Get(fmt.Sprintf("http://%s:%d%s", host, port, path))
 		}
-		if err == nil {
+		if loopErr == nil {
 			break
 		}
 
@@ -414,8 +408,8 @@ func sendRequestWithTimeout(host string, port int, path string, timeout time.Dur
 	}
 
 	// The connection never succeeded.
-	if err != nil {
-		return "", "", 0, fmt.Errorf("error making request: %w", err)
+	if loopErr != nil {
+		return "", "", 0, fmt.Errorf("error making request: %w", loopErr)
 	}
 
 	// The connection was a success.

@@ -51,7 +51,7 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:                "declarative CloudEvent function",
 			App:                 "declarative_cloud_event",
-			FunctionType:        acceptance.CloudEventType,
+			RequestType:         acceptance.CloudEventType,
 			MustMatchStatusCode: http.StatusNoContent,
 		},
 		{
