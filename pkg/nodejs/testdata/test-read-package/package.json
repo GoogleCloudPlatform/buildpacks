@@ -1,6 +1,7 @@
 {
   "engines": {
-    "node": "my-node"
+    "node": "my-node",
+    "npm": "my-npm"
   },
   "scripts": {
     "start": "my-start"

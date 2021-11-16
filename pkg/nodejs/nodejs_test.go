@@ -25,6 +25,7 @@ func TestReadPackageJSON(t *testing.T) {
 	want := PackageJSON{
 		Engines: packageEnginesJSON{
 			Node: "my-node",
+			NPM:  "my-npm",
 		},
 		Scripts: packageScriptsJSON{
 			Start: "my-start",

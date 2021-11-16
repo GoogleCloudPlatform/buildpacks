@@ -43,6 +43,7 @@ var semVer11 = semver.MustParse("11.0.0")
 
 type packageEnginesJSON struct {
 	Node string `json:"node"`
+	NPM  string `json:"npm"`
 }
 
 type packageScriptsJSON struct {

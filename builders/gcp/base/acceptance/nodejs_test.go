@@ -117,6 +117,13 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			MustUse:    []string{nodeRuntime},
 			MustNotUse: []string{goRuntime, javaRuntime, pythonRuntime},
 		},
+		{
+			Name:          "NPM version specified",
+			App:           "nodejs/npm_version_specified",
+			MustMatch:     "hello, world",
+			MustOutput:    []string{"npm --version\n\n7.24.1"},
+			SkipCacheTest: true,
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc
