@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2021 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -91,6 +91,21 @@ func TestAcceptance(t *testing.T) {
 				// Omitting it here so we don't fail when it's upgraded.
 				"Installing functions framework google/cloud-functions-framework:",
 			},
+		},
+		{
+			Name: "declarative http function",
+			App:  "declarative_http",
+		},
+		{
+			Name:        "declarative cloudevent function",
+			App:         "declarative_cloud_event",
+			RequestType: acceptance.CloudEventType,
+		},
+		{
+			Name:        "non declarative cloudevent function",
+			Env:         []string{"GOOGLE_FUNCTION_SIGNATURE_TYPE=cloudevent"},
+			App:         "non_declarative_cloud_event",
+			RequestType: acceptance.CloudEventType,
 		},
 	}
 
