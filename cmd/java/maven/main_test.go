@@ -15,6 +15,9 @@
 package main
 
 import (
+	"io/ioutil"
+	"os"
+	"strconv"
 	"testing"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -49,6 +52,57 @@ func TestDetect(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			gcp.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+		})
+	}
+}
+
+func TestCrLfRewrite(t *testing.T) {
+	testCases := []struct {
+		name          string
+		inputContent  string
+		expectContent string
+	}{
+		{
+			name:          "windows-style replaced",
+			inputContent:  "#!/bin/sh\r\n\r\necho Windows\r\n",
+			expectContent: "#!/bin/sh\n\necho Windows\n",
+		},
+		{
+			name:          "unix-style unmodified",
+			inputContent:  "#!/bin/sh\n\necho Unix\n",
+			expectContent: "#!/bin/sh\n\necho Unix\n",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpFile, err := os.CreateTemp(os.TempDir(), "prefix-")
+			if err != nil {
+				t.Fatal("Cannot create temporary file", err)
+			}
+			defer os.Remove(tmpFile.Name())
+
+			_, err = tmpFile.Write([]byte(tc.inputContent))
+			if err != nil {
+				t.Fatal("Error writing temporary file", err)
+			}
+			err = tmpFile.Close()
+			if err != nil {
+				t.Fatal("Error closing temporary file", err)
+			}
+
+			ensureUnixLineEndings(gcp.NewContext(), tmpFile.Name())
+
+			newContent, err := ioutil.ReadFile(tmpFile.Name())
+			if err != nil {
+				t.Fatal("Error reading updated temporary file", err)
+			}
+
+			if string(newContent) != tc.expectContent {
+				t.Fatal("Unexpected content '%s', want '%s'",
+					strconv.QuoteToASCII(string(newContent)),
+					strconv.QuoteToASCII(tc.expectContent))
+			}
+
 		})
 	}
 }

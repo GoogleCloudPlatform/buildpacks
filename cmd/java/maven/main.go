@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -75,6 +76,8 @@ func buildFn(ctx *gcp.Context) error {
 
 	var mvn string
 	if ctx.FileExists("mvnw") {
+		// With CRLF endings, the "\r" gets seen as part of the shebang target, which doesn't exist.
+		ensureUnixLineEndings(ctx, "mvnw")
 		mvn = "./mvnw"
 	} else if mvnInstalled(ctx) {
 		mvn = "mvn"
@@ -162,4 +165,19 @@ func installMaven(ctx *gcp.Context) (string, error) {
 
 	ctx.SetMetadata(mvnl, versionKey, mavenVersion)
 	return filepath.Join(mvnl.Path, "bin", "mvn"), nil
+}
+
+// Replace CRLF with LF
+func ensureUnixLineEndings(ctx *gcp.Context, file ...string) {
+
+	if !ctx.IsWritable(file...) {
+		return
+	}
+
+	path := filepath.Join(file...)
+	data := ctx.ReadFile(path)
+
+	data = bytes.ReplaceAll(data, []byte{'\r', '\n'}, []byte{'\n'})
+
+	ctx.WriteFile(path, data, 0755)
 }
