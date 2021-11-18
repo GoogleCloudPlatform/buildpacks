@@ -20,6 +20,10 @@ import (
 	"net/http"
 
 	"example.com/htmlreturn"
+	// trace package registers the endpoint `/debug/request` on init()
+	// blank import it to make sure that does not interfere with functions
+	// framework
+	_ "golang.org/x/net/trace"
 )
 
 // Func is a test function.
