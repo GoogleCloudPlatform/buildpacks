@@ -37,8 +37,9 @@ const (
 	runtimeLayer   = "runtime"
 	sdkURL         = "https://dotnetcli.azureedge.net/dotnet/Sdk/%[1]s/dotnet-sdk-%[1]s-linux-x64.tar.gz"
 	uncachedSdkURL = "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/%[1]s/dotnet-sdk-%[1]s-linux-x64.tar.gz"
-	versionURL     = "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/LTS/latest.version"
-	versionKey     = "version"
+	// the .NET 6.0 SDK broke our .NET buildpack so temporarily pin the version to 3.1.x
+	versionURL = "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/3.1/latest.version"
+	versionKey = "version"
 )
 
 func main() {

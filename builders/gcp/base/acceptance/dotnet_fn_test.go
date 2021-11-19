@@ -63,8 +63,6 @@ func TestAcceptanceDotNetFn(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		tc := tc
-		// TODO (b/205901771) remove when samples work with .NET6
-		tc.Env = append(tc.Env, "GOOGLE_RUNTIME_VERSION=3.1.101")
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 
