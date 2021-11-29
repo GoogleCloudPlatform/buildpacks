@@ -17,9 +17,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -37,9 +35,7 @@ const (
 	runtimeLayer   = "runtime"
 	sdkURL         = "https://dotnetcli.azureedge.net/dotnet/Sdk/%[1]s/dotnet-sdk-%[1]s-linux-x64.tar.gz"
 	uncachedSdkURL = "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/%[1]s/dotnet-sdk-%[1]s-linux-x64.tar.gz"
-	// the .NET 6.0 SDK broke our .NET buildpack so temporarily pin the version to 3.1.x
-	versionURL = "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/3.1/latest.version"
-	versionKey = "version"
+	versionKey     = "version"
 )
 
 func main() {
@@ -62,7 +58,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	version, err := runtimeVersion(ctx)
+	version, err := dotnet.GetSDKVersion(ctx)
 	if err != nil {
 		return err
 	}
@@ -119,46 +115,6 @@ func buildFn(ctx *gcp.Context) error {
 	rtl.LaunchEnvironment.Default("DOTNET_RUNNING_IN_CONTAINER", "true")
 
 	return nil
-}
-
-// globalJSON represents the contents of a global.json file.
-type globalJSON struct {
-	Sdk struct {
-		Version string `json:"version"`
-	} `json:"sdk"`
-}
-
-// runtimeVersion returns the version of the .NET Core SDK to install.
-func runtimeVersion(ctx *gcp.Context) (string, error) {
-	version := os.Getenv(env.RuntimeVersion)
-	if version != "" {
-		ctx.Logf("Using .NET Core SDK version from env: %s", version)
-		return version, nil
-	}
-
-	if ctx.FileExists("global.json") {
-		rawgjs, err := ioutil.ReadFile(filepath.Join(ctx.ApplicationRoot(), "global.json"))
-		if err != nil {
-			return "", fmt.Errorf("reading global.json: %v", err)
-		}
-
-		var gjs globalJSON
-		if err := json.Unmarshal(rawgjs, &gjs); err != nil {
-			return "", gcp.UserErrorf("unmarshalling global.json: %v", err)
-		}
-
-		if gjs.Sdk.Version != "" {
-			ctx.Logf("Using .NET Core SDK version from global.json: %s", version)
-			return gjs.Sdk.Version, nil
-		}
-	}
-
-	// Use the latest LTS version.
-	command := fmt.Sprintf("curl --fail --show-error --silent --location %s | tail -n 1", versionURL)
-	result := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
-	version = result.Stdout
-	ctx.Logf("Using the latest LTS version of .NET Core SDK: %s", version)
-	return version, nil
 }
 
 // archiveURL returns the URL to fetch the .NET SDK.

@@ -21,6 +21,9 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 )
 
 func TestReadProjectFile(t *testing.T) {
@@ -75,5 +78,55 @@ func TestReadProjectFile(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("ReadProjectFile\ngot %#v\nwant %#v", got, want)
+	}
+}
+
+func TestGetSDKorRuntimeVersion(t *testing.T) {
+	testCases := []struct {
+		Name                 string
+		RuntimeVersionEnvVar string
+		ApplicationRoot      string
+		ExpectedResult       string
+	}{
+		{
+			Name:                 "Should read from env var",
+			RuntimeVersionEnvVar: "2.1.100",
+			ApplicationRoot:      "",
+			ExpectedResult:       "2.1.100",
+		},
+		{
+			Name:                 "Env var should take precedence over global.json",
+			RuntimeVersionEnvVar: "2.1.100",
+			ApplicationRoot:      testdata.MustGetPath("testdata/"),
+			ExpectedResult:       "2.1.100",
+		},
+		{
+			Name:                 "Should read from global.json",
+			RuntimeVersionEnvVar: "",
+			ApplicationRoot:      testdata.MustGetPath("testdata/"),
+			ExpectedResult:       "3.1.100",
+		},
+		{
+			Name:                 "Should read from global.json",
+			RuntimeVersionEnvVar: "",
+			ApplicationRoot:      testdata.MustGetPath("testdata/"),
+			ExpectedResult:       "3.1.100",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(tc.ApplicationRoot))
+			os.Setenv("GOOGLE_RUNTIME_VERSION", tc.RuntimeVersionEnvVar)
+
+			result, err := GetSDKVersion(ctx)
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if tc.ExpectedResult != result {
+				t.Fatalf("result mismatch: got %q, want %q", result, tc.ExpectedResult)
+			}
+		})
 	}
 }

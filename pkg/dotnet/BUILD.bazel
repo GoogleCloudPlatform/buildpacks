@@ -11,13 +11,21 @@ go_library(
     visibility = [
         "//cmd/dotnet:__subpackages__",
     ],
-    deps = ["//pkg/gcpbuildpack"],
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+    ],
 )
 
 go_test(
     name = "dotnet_test",
     size = "small",
     srcs = ["dotnet_test.go"],
+    data = glob(["testdata/**"]),
     embed = [":dotnet"],
     rundir = ".",
+    deps = [
+        "//pkg/gcpbuildpack",
+        "//pkg/testdata",
+    ],
 )

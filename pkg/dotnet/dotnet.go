@@ -16,10 +16,22 @@
 package dotnet
 
 import (
+	"encoding/json"
 	"encoding/xml"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+)
+
+const (
+	// sdkVersionURL responds with the latest version of .NET for a given release channel. The .NET 6.0 SDK
+	// broke our .NET buildpack so temporarily pin the version to 3.1.x.
+	sdkVersionURL = "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/3.1/latest.version"
 )
 
 // ProjectFiles finds all project files supported by dotnet.
@@ -70,4 +82,66 @@ func readProjectFile(data []byte, proj string) (Project, error) {
 		return p, gcp.UserErrorf("unmarshalling %s: %v", proj, err)
 	}
 	return p, nil
+}
+
+// globalJSON represents the contents of a global.json file.
+type globalJSON struct {
+	Sdk struct {
+		Version string `json:"version"`
+	} `json:"sdk"`
+}
+
+// GetSDKVersion returns the appropriate .NET SDK version to use, with the following heuristic:
+// 1. Return value of env variable GOOGLE_RUNTIME_VERSION if present
+// 2. Return SDK.Version from the .NET global.json file if present
+// 3. Query web service at `versionURL` and return result
+func GetSDKVersion(ctx *gcp.Context) (string, error) {
+	version, ok, err := lookupSpecifiedSDKVersion(ctx)
+	if err != nil {
+		return "", fmt.Errorf("looking up runtime version: %w", err)
+	}
+	if ok {
+		return version, nil
+	}
+	// Use the latest LTS version.
+	command := fmt.Sprintf("curl --fail --show-error --silent --location %s | tail -n 1", sdkVersionURL)
+	result := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
+	version = result.Stdout
+	ctx.Logf("Using the latest LTS version of .NET SDK: %s", version)
+	return version, nil
+}
+
+// lookupSpecifiedSDKVersion returns the SDK version specified in the env var GOOGLE_RUNTIME_VERSION *or*
+// the .NET global.json file. If no such version is specified, then the second return value is false.
+func lookupSpecifiedSDKVersion(ctx *gcp.Context) (string, bool, error) {
+	version := os.Getenv(env.RuntimeVersion)
+	if version != "" {
+		ctx.Logf("Using .NET Core SDK version from env: %s", version)
+		return version, true, nil
+	}
+	ctx.Logf("Looking for global.json in %v", ctx.ApplicationRoot())
+	gjs, err := getGlobalJSONOrNil(ctx.ApplicationRoot())
+	if err != nil || gjs == nil {
+		return "", false, err
+	}
+	if gjs.Sdk.Version == "" {
+		return "", false, nil
+	}
+	ctx.Logf("Using .NET Core SDK version from global.json: %s", version)
+	return gjs.Sdk.Version, true, nil
+}
+
+func getGlobalJSONOrNil(applicationRoot string) (*globalJSON, error) {
+	bytes, err := os.ReadFile(filepath.Join(applicationRoot, "global.json"))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("reading global.json: %w", err)
+	}
+	var gjs globalJSON
+	if err := json.Unmarshal(bytes, &gjs); err != nil {
+		return nil, gcp.UserErrorf("unmarshalling global.json: %v", err)
+	}
+	return &gjs, nil
 }
