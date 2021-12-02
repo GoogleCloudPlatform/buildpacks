@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2021 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -370,8 +370,44 @@ func sendRequestWithTimeout(host string, port int, path string, timeout time.Dur
 	// Try to connect the the container until it succeeds up to the timeout.
 	sleep := 100 * time.Millisecond
 	attempts := int(timeout / sleep)
+	url := fmt.Sprintf("http://%s:%d%s", host, port, path)
 	for attempt := 0; attempt < attempts; attempt++ {
 		switch functionType {
+		case BackgroundEventType:
+			// GCS event example
+			beJSON := []byte(`{
+				"context": {
+				   "eventId": "aaaaaa-1111-bbbb-2222-cccccccccccc",
+				   "timestamp": "2020-09-29T11:32:00.000Z",
+				   "eventType": "google.storage.object.finalize",
+				   "resource": {
+					  "service": "storage.googleapis.com",
+					  "name": "projects/_/buckets/some-bucket/objects/folder/Test.cs",
+					  "type": "storage#object"
+				   }
+				},
+				"data": {
+				   "bucket": "some-bucket",
+				   "contentType": "text/plain",
+				   "crc32c": "rTVTeQ==",
+				   "etag": "CNHZkbuF/ugCEAE=",
+				   "generation": "1587627537231057",
+				   "id": "some-bucket/folder/Test.cs/1587627537231057",
+				   "kind": "storage#object",
+				   "md5Hash": "kF8MuJ5+CTJxvyhHS1xzRg==",
+				   "mediaLink": "https://www.googleapis.com/download/storage/v1/b/some-bucket/o/folder%2FTest.cs?generation=1587627537231057\u0026alt=media",
+				   "metageneration": "1",
+				   "name": "folder/Test.cs",
+				   "selfLink": "https://www.googleapis.com/storage/v1/b/some-bucket/o/folder/Test.cs",
+				   "size": "352",
+				   "storageClass": "MULTI_REGIONAL",
+				   "timeCreated": "2020-04-23T07:38:57.230Z",
+				   "timeStorageClassUpdated": "2020-04-23T07:38:57.230Z",
+				   "updated": "2020-04-23T07:38:57.230Z"
+				}
+			  }`)
+
+			res, loopErr = http.Post(url, "application/json", bytes.NewBuffer(beJSON))
 		case CloudEventType:
 			ceHeaders := map[string]string{
 				"Content-Type": "application/cloudevents+json",
@@ -387,7 +423,7 @@ func sendRequestWithTimeout(host string, port int, path string, timeout time.Dur
 				"data" : "hello"
 			}`)
 
-			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://%s:%d%s", host, port, path), bytes.NewBuffer(ceJSON))
+			req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(ceJSON))
 			if err != nil {
 				return "", "", 0, fmt.Errorf("error creating CloudEvent HTTP request: %w", loopErr)
 			}
@@ -398,7 +434,7 @@ func sendRequestWithTimeout(host string, port int, path string, timeout time.Dur
 			client := &http.Client{}
 			res, loopErr = client.Do(req)
 		default:
-			res, loopErr = http.Get(fmt.Sprintf("http://%s:%d%s", host, port, path))
+			res, loopErr = http.Get(url)
 		}
 		if loopErr == nil {
 			break

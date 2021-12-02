@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2021 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -157,6 +157,12 @@ func TestAcceptance(t *testing.T) {
 			Env:                 []string{"GOOGLE_FUNCTION_TARGET=ThisDoesntExist"},
 			MustMatchStatusCode: 404,
 			MustMatch:           "404 page not found",
+		},
+		{
+			Name:        "background function",
+			App:         "background_function",
+			RequestType: acceptance.BackgroundEventType,
+			Env:         []string{"GOOGLE_FUNCTION_TARGET=Func", "GOOGLE_FUNCTION_SIGNATURE_TYPE=event"},
 		},
 	}
 
