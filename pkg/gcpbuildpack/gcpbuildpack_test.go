@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/builderoutput"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/buildpacks/libcnb"
 )
@@ -149,8 +151,8 @@ func TestDetectEmitsSpan(t *testing.T) {
 	if !got.end.After(got.start) {
 		t.Errorf("End %v not after start %v", got.end, got.start)
 	}
-	if got.status != StatusOk {
-		t.Errorf("Unexpected status got=%s want=%s", got.status, StatusOk)
+	if got.status != buildererror.StatusOk {
+		t.Errorf("Unexpected status got=%s want=%s", got.status, buildererror.StatusOk)
 	}
 }
 
@@ -219,8 +221,8 @@ func TestBuildEmitsSpan(t *testing.T) {
 	if !got.end.After(got.start) {
 		t.Errorf("End %v not after start %v", got.end, got.start)
 	}
-	if got.status != StatusOk {
-		t.Errorf("Unexpected status got=%s want=%s", got.status, StatusOk)
+	if got.status != buildererror.StatusOk {
+		t.Errorf("Unexpected status got=%s want=%s", got.status, buildererror.StatusOk)
 	}
 }
 
@@ -244,7 +246,7 @@ func TestBuildEmitsSuccessOutput(t *testing.T) {
 	})
 
 	fname := filepath.Join(tempDir, builderOutputFilename)
-	var got builderOutput
+	var got builderoutput.BuilderOutput
 	content, err := ioutil.ReadFile(fname)
 	if err != nil {
 		t.Fatalf("Failed to read %s: %v", fname, err)

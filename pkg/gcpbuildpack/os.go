@@ -17,13 +17,15 @@ package gcpbuildpack
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 )
 
 // Rename renames the old path to the new path, exiting on any error.
 func (ctx *Context) Rename(old, new string) {
 	ctx.Debugf("Renaming %q to %q", old, new)
 	if err := os.Rename(old, new); err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, "renaming %s to %s: %v", old, new, err))
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "renaming %s to %s: %v", old, new, err))
 	}
 }
 
@@ -31,7 +33,7 @@ func (ctx *Context) Rename(old, new string) {
 func (ctx *Context) CreateFile(file string) *os.File {
 	f, err := os.Create(file)
 	if err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, "creating %s: %v", file, err))
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "creating %s: %v", file, err))
 	}
 	return f
 }
@@ -39,7 +41,7 @@ func (ctx *Context) CreateFile(file string) *os.File {
 // MkdirAll creates all necessary directories for the given path, exiting on any error.
 func (ctx *Context) MkdirAll(path string, perm os.FileMode) {
 	if err := os.MkdirAll(path, perm); err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, "creating %s: %v", path, err))
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "creating %s: %v", path, err))
 	}
 }
 
@@ -47,14 +49,14 @@ func (ctx *Context) MkdirAll(path string, perm os.FileMode) {
 func (ctx *Context) RemoveAll(elem ...string) {
 	path := filepath.Join(elem...)
 	if err := os.RemoveAll(path); err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, "removing %s: %v", path, err))
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "removing %s: %v", path, err))
 	}
 }
 
 // Symlink creates newname as a symbolic name to oldname, exiting on any error.
 func (ctx *Context) Symlink(oldname string, newname string) {
 	if err := os.Symlink(oldname, newname); err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, "symlinking from %q to %q: %v", oldname, newname, err))
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "symlinking from %q to %q: %v", oldname, newname, err))
 	}
 }
 
@@ -64,7 +66,7 @@ func (ctx *Context) FileExists(elem ...string) bool {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return false
 	} else if err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, "stat %q: %v", path, err))
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "stat %q: %v", path, err))
 	}
 	return true
 }
@@ -74,7 +76,7 @@ func (ctx *Context) IsWritable(elem ...string) bool {
 	path := filepath.Join(elem...)
 	info, err := os.Stat(path)
 	if err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, "stat %q: %v", path, err))
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "stat %q: %v", path, err))
 	}
 	return info.Mode().Perm()&0200 != 0
 }
@@ -85,6 +87,6 @@ func (ctx *Context) IsWritable(elem ...string) bool {
 func (ctx *Context) Setenv(key, value string) {
 	ctx.Debugf("Setting environment variable %s=%s", key, value)
 	if err := os.Setenv(key, value); err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, "setting env var %s: %v", key, err))
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "setting env var %s: %v", key, err))
 	}
 }

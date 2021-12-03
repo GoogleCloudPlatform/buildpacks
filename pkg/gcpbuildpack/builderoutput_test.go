@@ -24,6 +24,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/builderoutput"
+
 	"github.com/buildpacks/libcnb"
 )
 
@@ -46,24 +49,24 @@ func TestSaveErrorOutput(t *testing.T) {
 	ctx := NewContext(WithBuildpackInfo(libcnb.BuildpackInfo{ID: "id", Version: "version"}))
 	msg := "This is a long message that will be truncated."
 
-	ctx.saveErrorOutput(Errorf(StatusInternal, msg))
+	ctx.saveErrorOutput(buildererror.Errorf(buildererror.StatusInternal, msg))
 
 	data, err := ioutil.ReadFile(filepath.Join(tempDir, "output"))
 	if err != nil {
 		t.Fatalf("failed to read expected file $BUILDER_OUTPUT/output: %v", err)
 	}
-	var got builderOutput
+	var got builderoutput.BuilderOutput
 	if err := json.Unmarshal(data, &got); err != nil {
 		t.Fatalf("failed to unmarshal json: %v", err)
 	}
 
-	want := builderOutput{
-		Error: Error{
+	want := builderoutput.BuilderOutput{
+		Error: buildererror.Error{
 			BuildpackID:      "id",
 			BuildpackVersion: "version",
-			Type:             StatusInternal,
-			Status:           StatusInternal,
-			ID:               generateErrorID(msg),
+			Type:             buildererror.StatusInternal,
+			Status:           buildererror.StatusInternal,
+			ID:               buildererror.GenerateErrorID(msg),
 			Message:          "...ated.",
 		},
 	}
@@ -246,18 +249,6 @@ func TestKeepHead(t *testing.T) {
 	}
 }
 
-func TestGenerateErrorId(t *testing.T) {
-	result1 := generateErrorID("abc", "def")
-	if len(result1) != errorIDLength {
-		t.Fatalf("len errorId got %d, want %d", len(result1), errorIDLength)
-	}
-
-	result2 := generateErrorID("abc")
-	if result2 == result1 {
-		t.Errorf("error IDs are not unique to different inputs")
-	}
-}
-
 func TestSaveBuilderSuccessOutput(t *testing.T) {
 	dur := 30 * time.Second
 	userDur := 5 * time.Second
@@ -265,14 +256,14 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		initial  *builderOutput
+		initial  *builderoutput.BuilderOutput
 		warnings []string
-		want     builderOutput
+		want     builderoutput.BuilderOutput
 	}{
 		{
 			name: "no file",
-			want: builderOutput{
-				Stats: []builderStat{
+			want: builderoutput.BuilderOutput{
+				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
 			},
@@ -280,8 +271,8 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 		{
 			name:     "no file warnings",
 			warnings: []string{"Test warning about a conflicting file."},
-			want: builderOutput{
-				Stats: []builderStat{
+			want: builderoutput.BuilderOutput{
+				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
 				Warnings: []string{"Test warning about a conflicting file."},
@@ -289,50 +280,52 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 		},
 		{
 			name: "existing file",
-			initial: &builderOutput{
-				Stats: []builderStat{
+			initial: &builderoutput.BuilderOutput{
+				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
 					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
 				},
 			},
-			want: builderOutput{
-				Stats: []builderStat{
+			want: builderoutput.BuilderOutput{
+				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
 					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
+				CustomImage: false,
 			},
 		},
 		{
 			name: "existing file new warnings",
-			initial: &builderOutput{
-				Stats: []builderStat{
+			initial: &builderoutput.BuilderOutput{
+				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
 					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
 				},
 			},
 			warnings: []string{"Test warning about a conflicting file."},
-			want: builderOutput{
-				Stats: []builderStat{
+			want: builderoutput.BuilderOutput{
+				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
 					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
-				Warnings: []string{"Test warning about a conflicting file."},
+				Warnings:    []string{"Test warning about a conflicting file."},
+				CustomImage: false,
 			},
 		},
 		{
 			name: "existing file existing warnings",
-			initial: &builderOutput{
-				Stats: []builderStat{
+			initial: &builderoutput.BuilderOutput{
+				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
 					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
 				},
 				Warnings: []string{"Test warning from a previous buildpack."},
 			},
 			warnings: []string{"Test warning about a conflicting file."},
-			want: builderOutput{
-				Stats: []builderStat{
+			want: builderoutput.BuilderOutput{
+				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
 					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
@@ -341,6 +334,7 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 					"Test warning from a previous buildpack.",
 					"Test warning about a conflicting file.",
 				},
+				CustomImage: false,
 			},
 		},
 		{
@@ -349,47 +343,50 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 				"Test warning about a conflicting file.",
 				strings.Repeat("x", maxMessageBytes),
 			},
-			want: builderOutput{
-				Stats: []builderStat{
+			want: builderoutput.BuilderOutput{
+				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
 				Warnings: []string{
 					"Test warning about a conflicting file.",
-					strings.Repeat("x", 2709) + "...",
+					strings.Repeat("x", 2695) + "...",
 				},
+				CustomImage: false,
 			},
 		},
 		{
 			name: "warnings trim last short",
 			warnings: []string{"Test warning about a conflicting file.",
-				strings.Repeat("x", 2709-4), // Four bytes shorter than the maximum which should leave exactly one character for the second warning.
+				strings.Repeat("x", 2695-4), // Four bytes shorter than the maximum which should leave exactly one character for the second warning.
 				strings.Repeat("y", maxMessageBytes),
 			},
-			want: builderOutput{
-				Stats: []builderStat{
+			want: builderoutput.BuilderOutput{
+				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
 				Warnings: []string{
 					"Test warning about a conflicting file.",
-					strings.Repeat("x", 2705),
+					strings.Repeat("x", 2691),
 					"y...",
 				},
+				CustomImage: false,
 			},
 		},
 		{
 			name: "warnings drop last short",
 			warnings: []string{"Test warning about a conflicting file.",
-				strings.Repeat("x", 2709-3), // Three bytes shorter than the maximum, which would leave 3 characters for the last warning so we drop it.
+				strings.Repeat("x", 2695-3), // Three bytes shorter than the maximum, which would leave 3 characters for the last warning so we drop it.
 				strings.Repeat("y", maxMessageBytes),
 			},
-			want: builderOutput{
-				Stats: []builderStat{
+			want: builderoutput.BuilderOutput{
+				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
 				Warnings: []string{
 					"Test warning about a conflicting file.",
-					strings.Repeat("x", 2706),
+					strings.Repeat("x", 2692),
 				},
+				CustomImage: false,
 			},
 		},
 		{
@@ -398,14 +395,15 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 				strings.Repeat("x", maxMessageBytes),
 				strings.Repeat("y", maxMessageBytes),
 			},
-			want: builderOutput{
-				Stats: []builderStat{
+			want: builderoutput.BuilderOutput{
+				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
 				Warnings: []string{
 					"Test warning about a conflicting file.",
-					strings.Repeat("x", 2709) + "...",
+					strings.Repeat("x", 2695) + "...",
 				},
+				CustomImage: false,
 			},
 		},
 	}
@@ -438,31 +436,19 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 
 			ctx.saveSuccessOutput(dur)
 
-			var got builderOutput
+			var got builderoutput.BuilderOutput
 			content, err := ioutil.ReadFile(fname)
 			if err != nil {
 				t.Fatalf("Failed to read %s: %v", fname, err)
 			}
-			if err := json.Unmarshal(content, &got); err != nil {
+			got, err = builderoutput.FromJSON(content)
+			if err != nil {
 				t.Fatalf("Failed to unmarshal: %v", err)
 			}
 
 			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("Expected stats do not match got %#v, want %#v", got, tc.want)
+				t.Errorf("%v: Expected stats do not match got %#v, want %#v", tc.name, got, tc.want)
 			}
 		})
-	}
-}
-
-func TestMarshalJSON(t *testing.T) {
-	b := builderOutput{Error: Error{Status: StatusInternal}}
-
-	s, err := json.Marshal(b)
-
-	if err != nil {
-		t.Fatalf("Failed to marshal %v: %v", b, err)
-	}
-	if !strings.Contains(string(s), "INTERNAL") {
-		t.Errorf("Expected string 'INTERNAL' not found in %s", s)
 	}
 }

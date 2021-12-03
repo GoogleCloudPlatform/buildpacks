@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -61,7 +62,7 @@ func BuildFn(ctx *gcp.Context, exclusions []string) error {
 	ctx.Logf("Clearing source")
 
 	defer func(now time.Time) {
-		ctx.Span("Clear source", now, gcp.StatusOk)
+		ctx.Span("Clear source", now, buildererror.StatusOk)
 	}(time.Now())
 
 	exclusions = append(exclusions, defaultExclusions...)

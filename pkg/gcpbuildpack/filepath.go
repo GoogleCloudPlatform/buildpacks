@@ -18,13 +18,15 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 )
 
 // Glob returns the names of all files matching pattern or nil if there is no matching file, exiting on any error.
 func (ctx *Context) Glob(pattern string) []string {
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, "globbing %s: %v", pattern, err))
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "globbing %s: %v", pattern, err))
 	}
 	return matches
 }
@@ -40,11 +42,11 @@ func (ctx *Context) HasAtLeastOne(pattern string) bool {
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			ctx.Exit(1, Errorf(StatusInternal, "walking through %s within %s: %v", path, dir, err))
+			ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "walking through %s within %s: %v", path, dir, err))
 		}
 		match, err := filepath.Match(pattern, info.Name())
 		if err != nil {
-			ctx.Exit(1, Errorf(StatusInternal, "matching %s with pattern %s: %v", path, pattern, err))
+			ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "matching %s with pattern %s: %v", path, pattern, err))
 		}
 		if match {
 			return errFileMatch
@@ -55,7 +57,7 @@ func (ctx *Context) HasAtLeastOne(pattern string) bool {
 		return true
 	}
 	if err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, "walking through %s: %v", dir, err))
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "walking through %s: %v", dir, err))
 	}
 	return false
 }

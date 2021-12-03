@@ -1,0 +1,24 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+package(default_visibility = ["//:__subpackages__"])
+
+go_library(
+    name = "builderoutput",
+    srcs = ["builderoutput.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = ["//visibility:public"],
+    deps = ["//pkg/buildererror"],
+)
+
+go_test(
+    name = "builderoutput_test",
+    size = "small",
+    srcs = [
+        "builderoutput_test.go",
+    ],
+    embed = [":builderoutput"],
+    rundir = ".",
+    deps = ["//pkg/buildererror"],
+)

@@ -17,18 +17,20 @@ package gcpbuildpack
 import (
 	"fmt"
 	"os"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 )
 
 // Exiter is responsible to exit the program appropriately; useful for unit tests.
 type Exiter interface {
-	Exit(exitCode int, be *Error)
+	Exit(exitCode int, be *buildererror.Error)
 }
 
 type defaultExiter struct {
 	ctx *Context
 }
 
-func (e defaultExiter) Exit(exitCode int, be *Error) {
+func (e defaultExiter) Exit(exitCode int, be *buildererror.Error) {
 	if be != nil {
 		msg := "Failure: "
 		if be.ID != "" {

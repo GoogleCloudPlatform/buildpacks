@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"golang.org/x/sys/unix"
 )
 
@@ -123,7 +124,7 @@ func (ctx *Context) Exec(cmd []string, opts ...ExecOption) *ExecResult {
 }
 
 // ExecWithErr runs the given command (with args) under the default configuration, allowing the caller to handle the error.
-func (ctx *Context) ExecWithErr(cmd []string, opts ...ExecOption) (*ExecResult, *Error) {
+func (ctx *Context) ExecWithErr(cmd []string, opts ...ExecOption) (*ExecResult, *buildererror.Error) {
 	params := execParams{cmd: cmd, messageProducer: KeepCombinedTail}
 	for _, o := range opts {
 		o(&params)
@@ -146,14 +147,14 @@ func (ctx *Context) ExecWithErr(cmd []string, opts ...ExecOption) (*ExecResult, 
 		message = params.messageProducer(result)
 	}
 
-	var be *Error
+	var be *buildererror.Error
 	if params.userFailure {
 		be = UserErrorf(message)
 	} else {
-		be = Errorf(StatusInternal, message)
+		be = buildererror.Errorf(buildererror.StatusInternal, message)
 	}
 
-	be.ID = generateErrorID(params.cmd...)
+	be.ID = buildererror.GenerateErrorID(params.cmd...)
 	return result, be
 }
 
@@ -186,7 +187,7 @@ func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
 	optionalLogf(divider)
 	optionalLogf("Running %q", readableCmd)
 
-	status := StatusInternal
+	status := buildererror.StatusInternal
 	defer func(start time.Time) {
 		truncated := readableCmd
 		if len(truncated) > 60 {
@@ -242,7 +243,7 @@ func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
 		return result, fmt.Errorf("executing command %q: exit code %d", readableCmd, exitCode)
 	}
 
-	status = StatusOk
+	status = buildererror.StatusOk
 	return result, nil
 }
 

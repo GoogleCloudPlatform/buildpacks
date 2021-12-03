@@ -15,10 +15,7 @@
 package gcpbuildpack
 
 import (
-	"crypto/sha256"
-	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -26,10 +23,12 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/builderoutput"
 )
 
 const (
-	errorIDLength            = 8
 	builderOutputEnv         = "BUILDER_OUTPUT"
 	builderOutputFilename    = "output"
 	expectedBuilderOutputEnv = "EXPECTED_BUILDER_OUTPUT"
@@ -37,61 +36,11 @@ const (
 
 var (
 	maxMessageBytes = 3000
+	// InternalErrorf constructs an Error with status StatusInternal (Google-attributed SLO).
+	InternalErrorf = buildererror.InternalErrorf
+	// UserErrorf constructs an Error with status StatusUnknown (user-attributed SLO).
+	UserErrorf = buildererror.UserErrorf
 )
-
-// ErrorID is a short error code passed to the user for supportability.
-type ErrorID string
-
-type builderOutput struct {
-	Error    Error         `json:"error"`
-	Stats    []builderStat `json:"stats"`
-	Warnings []string      `json:"warnings"`
-}
-
-// Error is a gcpbuildpack structured error.
-type Error struct {
-	BuildpackID      string  `json:"buildpackId"`
-	BuildpackVersion string  `json:"buildpackVersion"`
-	Type             Status  `json:"errorType"`
-	Status           Status  `json:"canonicalCode"`
-	ID               ErrorID `json:"errorId"`
-	Message          string  `json:"errorMessage"`
-}
-
-type builderStat struct {
-	BuildpackID      string `json:"buildpackId"`
-	BuildpackVersion string `json:"buildpackVersion"`
-	DurationMs       int64  `json:"totalDurationMs"`
-	UserDurationMs   int64  `json:"userDurationMs"`
-}
-
-func (e *Error) Error() string {
-	if e.ID == "" {
-		return e.Message
-	}
-	return fmt.Sprintf("%s [id:%s]", e.Message, e.ID)
-}
-
-// Errorf constructs an Error.
-func Errorf(status Status, format string, args ...interface{}) *Error {
-	msg := fmt.Sprintf(format, args...)
-	return &Error{
-		Type:    status,
-		Status:  status,
-		ID:      generateErrorID(msg),
-		Message: msg,
-	}
-}
-
-// InternalErrorf constructs an Error with status StatusInternal (Google-attributed SLO).
-func InternalErrorf(format string, args ...interface{}) *Error {
-	return Errorf(StatusInternal, format, args...)
-}
-
-// UserErrorf constructs an Error with status StatusUnknown (user-attributed SLO).
-func UserErrorf(format string, args ...interface{}) *Error {
-	return Errorf(StatusUnknown, format, args...)
-}
 
 // MessageProducer is a function that produces a useful message from the result.
 type MessageProducer func(result *ExecResult) string
@@ -115,7 +64,7 @@ var KeepStdoutTail = func(result *ExecResult) string { return keepTail(result.St
 var KeepStdoutHead = func(result *ExecResult) string { return keepHead(result.Stdout) }
 
 // saveErrorOutput saves to the builder output file, if appropriate.
-func (ctx *Context) saveErrorOutput(be *Error) {
+func (ctx *Context) saveErrorOutput(be *buildererror.Error) {
 	outputDir := os.Getenv(builderOutputEnv)
 	if outputDir == "" {
 		return
@@ -126,8 +75,8 @@ func (ctx *Context) saveErrorOutput(be *Error) {
 	}
 
 	be.BuildpackID, be.BuildpackVersion = ctx.BuildpackID(), ctx.BuildpackVersion()
-	bo := builderOutput{Error: *be}
-	data, err := json.Marshal(&bo)
+	bo := builderoutput.BuilderOutput{Error: *be}
+	data, err := bo.JSON()
 	if err != nil {
 		ctx.Warnf("Failed to marshal, skipping structured error output: %v", err)
 		return
@@ -184,18 +133,6 @@ func keepHead(message string) string {
 	return message[:maxMessageBytes-3] + "..."
 }
 
-// generateErrorID creates a short hash from the provided parts.
-func generateErrorID(parts ...string) ErrorID {
-	h := sha256.New()
-	for _, p := range parts {
-		io.WriteString(h, p)
-	}
-	result := fmt.Sprintf("%x", h.Sum(nil))
-
-	// Since this is only a reporting aid for support, we truncate the hash to make it more human friendly.
-	return ErrorID(strings.ToLower(result[:errorIDLength]))
-}
-
 // saveSuccessOutput saves information from the context into BUILDER_OUTPUT.
 func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 	outputDir := os.Getenv(builderOutputEnv)
@@ -203,7 +140,7 @@ func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 		return
 	}
 
-	var bo builderOutput
+	var bo builderoutput.BuilderOutput
 	fname := filepath.Join(outputDir, builderOutputFilename)
 
 	// Previous buildpacks may have already written to the builder output file.
@@ -213,13 +150,14 @@ func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 			ctx.Warnf("Failed to read %s, skipping statistics: %v", fname, err)
 			return
 		}
-		if err := json.Unmarshal(content, &bo); err != nil {
+		bo, err = builderoutput.FromJSON(content)
+		if err != nil {
 			ctx.Warnf("Failed to unmarshal %s, skipping statistics: %v", fname, err)
 			return
 		}
 	}
 
-	bo.Stats = append(bo.Stats, builderStat{
+	bo.Stats = append(bo.Stats, builderoutput.BuilderStat{
 		BuildpackID:      ctx.BuildpackID(),
 		BuildpackVersion: ctx.BuildpackVersion(),
 		DurationMs:       duration.Milliseconds(),
@@ -231,7 +169,7 @@ func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 	// Make sure the message is smaller than the maximum allowed size.
 	for {
 		var err error
-		content, err = json.Marshal(&bo)
+		content, err = bo.JSON()
 		if err != nil {
 			ctx.Warnf("Failed to marshal stats, skipping statistics: %v", err)
 			return

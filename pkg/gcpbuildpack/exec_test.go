@@ -24,6 +24,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 )
 
 func TestExecEmitsSpan(t *testing.T) {
@@ -40,8 +42,8 @@ func TestExecEmitsSpan(t *testing.T) {
 	if span.name != wantSpanName {
 		t.Errorf("Unexpected span name got %q want %q", span.name, wantSpanName)
 	}
-	if span.status != StatusOk {
-		t.Errorf("Unexpected span status got %d want %d", span.status, StatusOk)
+	if span.status != buildererror.StatusOk {
+		t.Errorf("Unexpected span status got %d want %d", span.status, buildererror.StatusOk)
 	}
 }
 
@@ -240,7 +242,7 @@ func TestExecAsUserDoesNotReturnStatusInternal(t *testing.T) {
 
 			result, err := ctx.ExecWithErr([]string{"/bin/bash", "-c", "exit 99"}, tc.opt)
 
-			if err.Status == StatusInternal {
+			if err.Status == buildererror.StatusInternal {
 				t.Error("unexpected error status StatusInternal")
 			}
 			if got, want := result.ExitCode, 99; got != want {
@@ -269,7 +271,7 @@ func TestExecAsDefaultReturnsStatusInternal(t *testing.T) {
 
 			result, err := ctx.ExecWithErr([]string{"/bin/bash", "-c", "exit 99"}, opts...)
 
-			if got, want := err.Status, StatusInternal; got != want {
+			if got, want := err.Status, buildererror.StatusInternal; got != want {
 				t.Errorf("incorrect error status got %v want %v", got, want)
 			}
 			if got, want := result.ExitCode, 99; got != want {
@@ -630,11 +632,11 @@ func TestExecWithErr(t *testing.T) {
 
 			if tc.wantErr {
 				if tc.wantUserFailure {
-					if err.Status == StatusInternal {
+					if err.Status == buildererror.StatusInternal {
 						t.Error("got error status internal (i.e., system attribution), want something else")
 					}
 				} else {
-					if err.Status != StatusInternal {
+					if err.Status != buildererror.StatusInternal {
 						t.Errorf("got error status %s, want status internal", err.Status)
 					}
 				}
@@ -672,10 +674,10 @@ func TestExecWithCRLF(t *testing.T) {
 type fakeExiter struct {
 	called bool
 	code   int
-	err    *Error
+	err    *buildererror.Error
 }
 
-func (e *fakeExiter) Exit(exitCode int, be *Error) {
+func (e *fakeExiter) Exit(exitCode int, be *buildererror.Error) {
 	e.called = true
 	e.code = exitCode
 	e.err = be

@@ -18,6 +18,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 )
 
 // TempDir creates a directory with the provided name in the buildpack temp layer and returns its path. Exits on any error.
@@ -31,7 +33,7 @@ func (ctx *Context) TempDir(name string) string {
 // WriteFile invokes ioutil.WriteFile, exiting on any error.
 func (ctx *Context) WriteFile(filename string, data []byte, perm os.FileMode) {
 	if err := ioutil.WriteFile(filename, data, perm); err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, "writing file %q: %v", filename, err))
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "writing file %q: %v", filename, err))
 	}
 }
 
@@ -39,7 +41,7 @@ func (ctx *Context) WriteFile(filename string, data []byte, perm os.FileMode) {
 func (ctx *Context) ReadFile(filename string) []byte {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, "reading file %q: %v", filename, err))
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "reading file %q: %v", filename, err))
 	}
 	return data
 }
@@ -49,7 +51,7 @@ func (ctx *Context) ReadDir(elem ...string) []os.FileInfo {
 	n := filepath.Join(elem...)
 	files, err := ioutil.ReadDir(n)
 	if err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, "reading directory %q: %v", n, err))
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "reading directory %q: %v", n, err))
 	}
 	return files
 }

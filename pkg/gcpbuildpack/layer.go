@@ -17,6 +17,7 @@ package gcpbuildpack
 import (
 	"os"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/buildpacks/libcnb"
 )
@@ -52,7 +53,7 @@ var LaunchLayerIfDevMode = func(ctx *Context, l *libcnb.Layer) {
 func (ctx *Context) Layer(name string, opts ...layerOption) *libcnb.Layer {
 	l, err := ctx.buildContext.Layers.Layer(name)
 	if err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, err.Error()))
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, err.Error()))
 	}
 	ctx.MkdirAll(l.Path, layerMode)
 	for _, o := range opts {
@@ -98,7 +99,7 @@ func (ctx *Context) GetMetadata(l *libcnb.Layer, key string) string {
 	}
 	s, ok := v.(string)
 	if !ok {
-		ctx.Exit(1, Errorf(StatusInternal, "could not cast metadata %v to string", v))
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "could not cast metadata %v to string", v))
 	}
 	return s
 }

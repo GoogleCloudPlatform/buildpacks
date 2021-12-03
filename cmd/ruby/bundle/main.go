@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
@@ -54,12 +55,12 @@ func buildFn(ctx *gcp.Context) error {
 			ctx.Warnf("Gemfile and gems.rb both exist. Using Gemfile.")
 		}
 		if !ctx.FileExists("Gemfile.lock") {
-			return gcp.Errorf(gcp.StatusFailedPrecondition, "Could not find Gemfile.lock file in your app. Please make sure your bundle is up to date before deploying.")
+			return buildererror.Errorf(buildererror.StatusFailedPrecondition, "Could not find Gemfile.lock file in your app. Please make sure your bundle is up to date before deploying.")
 		}
 		lockFile = "Gemfile.lock"
 	} else if hasGemsRB {
 		if !ctx.FileExists("gems.locked") {
-			return gcp.Errorf(gcp.StatusFailedPrecondition, "Could not find gems.locked file in your app. Please make sure your bundle is up to date before deploying.")
+			return buildererror.Errorf(buildererror.StatusFailedPrecondition, "Could not find gems.locked file in your app. Please make sure your bundle is up to date before deploying.")
 		}
 		lockFile = "gems.locked"
 	}

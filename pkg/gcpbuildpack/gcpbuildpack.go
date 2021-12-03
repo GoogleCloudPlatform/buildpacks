@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/buildpacks/libcnb"
 )
@@ -197,7 +198,7 @@ type gcpdetector struct {
 
 func (gcpd gcpdetector) Detect(ldctx libcnb.DetectContext) (libcnb.DetectResult, error) {
 	ctx := newDetectContext(ldctx)
-	status := StatusInternal
+	status := buildererror.StatusInternal
 	defer func(now time.Time) {
 		ctx.Span(fmt.Sprintf("Buildpack Detect %s", ctx.info.ID), now, status)
 	}(time.Now())
@@ -205,19 +206,19 @@ func (gcpd gcpdetector) Detect(ldctx libcnb.DetectContext) (libcnb.DetectResult,
 	result, err := gcpd.detectFn(ctx)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to run /bin/detect: %v", err)
-		var be *Error
+		var be *buildererror.Error
 		if errors.As(err, &be) {
 			status = be.Status
 			return libcnb.DetectResult{}, be
 		}
-		return libcnb.DetectResult{}, Errorf(status, msg)
+		return libcnb.DetectResult{}, buildererror.Errorf(status, msg)
 	}
 	// detectFn has an interface return type so result may be nil.
 	if result == nil {
 		return libcnb.DetectResult{}, InternalErrorf("detect did not return a result or an error")
 	}
 
-	status = StatusOk
+	status = buildererror.StatusOk
 	ctx.Logf(result.Reason())
 	return result.Result(), nil
 }
@@ -237,22 +238,22 @@ func (gcpb gcpbuilder) Build(lbctx libcnb.BuildContext) (libcnb.BuildResult, err
 	ctx := newBuildContext(lbctx)
 	ctx.Logf("=== %s (%s@%s) ===", ctx.BuildpackName(), ctx.BuildpackID(), ctx.BuildpackVersion())
 
-	status := StatusInternal
+	status := buildererror.StatusInternal
 	defer func(now time.Time) {
 		ctx.Span(fmt.Sprintf("Buildpack Build %s", ctx.BuildpackID()), now, status)
 	}(time.Now())
 
 	if err := gcpb.buildFn(ctx); err != nil {
 		msg := fmt.Sprintf("Failed to run /bin/build: %v", err)
-		var be *Error
+		var be *buildererror.Error
 		if errors.As(err, &be) {
 			status = be.Status
 			ctx.Exit(1, be)
 		}
-		ctx.Exit(1, Errorf(status, msg))
+		ctx.Exit(1, buildererror.Errorf(status, msg))
 	}
 
-	status = StatusOk
+	status = buildererror.StatusOk
 	ctx.saveSuccessOutput(time.Since(start))
 	return ctx.buildResult, nil
 }
@@ -263,7 +264,7 @@ func build(buildFn BuildFn) {
 }
 
 // Exit causes the buildpack to exit with the given exit code and message.
-func (ctx *Context) Exit(exitCode int, be *Error) {
+func (ctx *Context) Exit(exitCode int, be *buildererror.Error) {
 	ctx.exiter.Exit(exitCode, be)
 }
 
@@ -305,7 +306,7 @@ func (ctx *Context) CacheMiss(tag string) {
 }
 
 // Span emits a structured Stackdriver span.
-func (ctx *Context) Span(label string, start time.Time, status Status) {
+func (ctx *Context) Span(label string, start time.Time, status buildererror.Status) {
 	now := time.Now()
 	attributes := map[string]interface{}{
 		"/buildpack_id":      ctx.BuildpackID(),

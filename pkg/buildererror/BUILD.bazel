@@ -1,0 +1,26 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+package(default_visibility = ["//:__subpackages__"])
+
+go_library(
+    name = "buildererror",
+    srcs = [
+        "error.go",
+        "status.go",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "buildererror_test",
+    size = "small",
+    srcs = [
+        "error_test.go",
+        "status_test.go",
+    ],
+    embed = [":buildererror"],
+    rundir = ".",
+)
