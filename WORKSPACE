@@ -67,6 +67,20 @@ go_repository(
 )
 
 go_repository(
+    name = "com_github_hashicorp_go_cleanhttp",
+    importpath = "github.com/hashicorp/go-cleanhttp",
+    sum = "h1:7grUmExFpuImbExUwBHg1rGb3KOIk0eDA8AKtOT0s78=",
+    version = "v0.5.2-0.20190406162018-d3fcbee8e181",
+)
+
+go_repository(
+    name = "com_github_hashicorp_go_retryablehttp",
+    importpath = "github.com/hashicorp/go-retryablehttp",
+    sum = "h1:8/CAEZt/+F7kR7GevNHulKkUjLht3CPmn7egmhieNKo=",
+    version = "v0.6.7",
+)
+
+go_repository(
     name = "com_github_hpcloud_tail",
     importpath = "github.com/hpcloud/tail",
     sum = "h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=",

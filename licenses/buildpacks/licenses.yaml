@@ -25,6 +25,14 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/buildpacks/github.com/GoogleCloudPlatform/buildpacks/LICENSE
 
+- package: github.com/hashicorp/go-cleanhttp
+  license_name: MPL-2.0
+  license_path: /usr/local/share/licenses/buildpacks/github.com/hashicorp/go-cleanhttp/LICENSE
+
+- package: github.com/hashicorp/go-retryablehttp
+  license_name: MPL-2.0
+  license_path: /usr/local/share/licenses/buildpacks/github.com/hashicorp/go-retryablehttp/LICENSE
+
 - package: github.com/onsi/gomega/types
   license_name: MIT
   license_path: /usr/local/share/licenses/buildpacks/github.com/onsi/gomega/types/LICENSE

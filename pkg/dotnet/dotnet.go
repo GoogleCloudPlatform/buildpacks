@@ -24,14 +24,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/dotnet/release/client"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
-
-const (
-	// sdkVersionURL responds with the latest version of .NET for a given release channel. The .NET 6.0 SDK
-	// broke our .NET buildpack so temporarily pin the version to 3.1.x.
-	sdkVersionURL = "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/3.1/latest.version"
 )
 
 // ProjectFiles finds all project files supported by dotnet.
@@ -104,9 +99,10 @@ func GetSDKVersion(ctx *gcp.Context) (string, error) {
 		return version, nil
 	}
 	// Use the latest LTS version.
-	command := fmt.Sprintf("curl --fail --show-error --silent --location %s | tail -n 1", sdkVersionURL)
-	result := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
-	version = result.Stdout
+	version, err = client.GetLatestSDKVersion()
+	if err != nil {
+		return "", gcp.UserErrorf("getting latest version: %v", err)
+	}
 	ctx.Logf("Using the latest LTS version of .NET SDK: %s", version)
 	return version, nil
 }
