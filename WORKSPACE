@@ -130,6 +130,13 @@ go_repository(
 )
 
 go_repository(
+    name = "com_google_cloud_go",
+    importpath = "cloud.google.com/go",
+    sum = "h1:y/cM2iqGgGi5D5DQZl6D9STN/3dR/Vx5Mp8s752oJTY=",
+    version = "v0.99.0",
+)
+
+go_repository(
     name = "in_gopkg_check_v1",
     importpath = "gopkg.in/check.v1",
     sum = "h1:BLraFXnmrev5lT+xlilqcH8XK9/i0At2xKjWk4p6zsU=",
@@ -162,6 +169,13 @@ go_repository(
     importpath = "golang.org/x/crypto",
     sum = "h1:VklqNMn3ovrHsnt90PveolxSbWFaJdECFbxSq0Mqo2M=",
     version = "v0.0.0-20190308221718-c2843e01d9a2",
+)
+
+go_repository(
+    name = "org_golang_x_oauth2",
+    importpath = "golang.org/x/oauth2",
+    sum = "h1:RerP+noqYHUQ8CMRcPlC2nvTa4dcBIjegkuWdcUDuqg=",
+    version = "v0.0.0-20211104180415-d3ed0bb246c8",
 )
 
 go_repository(

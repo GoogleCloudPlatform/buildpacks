@@ -1,0 +1,28 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+package(default_visibility = ["//:__subpackages__"])
+
+go_library(
+    name = "ar",
+    srcs = ["ar.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+        "@org_golang_x_oauth2//google:go_default_library",
+    ],
+)
+
+go_test(
+    name = "ar_test",
+    size = "small",
+    srcs = ["ar_test.go"],
+    embed = [":ar"],
+    rundir = ".",
+    deps = [
+        "//pkg/gcpbuildpack",
+        "//third_party/golang/cmp",
+    ],
+)

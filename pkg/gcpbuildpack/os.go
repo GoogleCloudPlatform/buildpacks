@@ -90,3 +90,8 @@ func (ctx *Context) Setenv(key, value string) {
 		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "setting env var %s: %v", key, err))
 	}
 }
+
+// HomeDir returns the path of the $USER's $HOME directory.
+func (ctx *Context) HomeDir() string {
+	return os.Getenv("HOME")
+}

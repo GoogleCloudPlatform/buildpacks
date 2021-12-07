@@ -113,6 +113,10 @@ const (
 
 	// ContainerMemoryHintMB is used to specify the amount of memory that will be allocated when running the container.
 	ContainerMemoryHintMB = "GOOGLE_CONTAINER_MEMORY_HINT_MB"
+
+	// ARAuthEnabledEnv is used to enable an experimental feature in which we automatically generate
+	// credentials to download language packages from private Artifact Registry repositories.
+	ARAuthEnabledEnv = "GOOGLE_EXPERIMENTAL_AR_AUTH_ENABLED"
 )
 
 // IsDebugMode returns true if the buildpack debug mode is enabled.
@@ -128,6 +132,12 @@ func IsDevMode() (bool, error) {
 // IsUsingNativeImage returns true if the Java application should be built as a native image.
 func IsUsingNativeImage() (bool, error) {
 	return isPresentAndTrue(UseNativeImage)
+}
+
+// IsARAuthEnabled returns true if we should automatically generate an Artifact Registry access
+// token from Application Default Credentails before we run pip install.
+func IsARAuthEnabled() (bool, error) {
+	return isPresentAndTrue(ARAuthEnabledEnv)
 }
 
 // Returns true if the environment variable evaluates to True.

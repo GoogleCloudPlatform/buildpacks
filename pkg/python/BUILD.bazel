@@ -12,6 +12,7 @@ go_library(
         "//cmd/python:__subpackages__",
     ],
     deps = [
+        "//pkg/ar",
         "//pkg/cache",
         "//pkg/env",
         "//pkg/gcpbuildpack",

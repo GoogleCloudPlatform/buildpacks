@@ -9,6 +9,10 @@
 #   source_path: Absolute path to the source on the image.
 #
 
+- package: cloud.google.com/go/compute/metadata
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/cloud.google.com/go/compute/metadata/LICENSE
+
 - package: github.com/blang/semver
   license_name: MIT
   license_path: /usr/local/share/licenses/buildpacks/github.com/blang/semver/LICENSE
@@ -36,6 +40,14 @@
 - package: github.com/onsi/gomega/types
   license_name: MIT
   license_path: /usr/local/share/licenses/buildpacks/github.com/onsi/gomega/types/LICENSE
+
+- package: golang.org/x/net/context/ctxhttp
+  license_name: BSD-3-Clause
+  license_path: /usr/local/share/licenses/buildpacks/golang.org/x/net/context/ctxhttp/LICENSE
+
+- package: golang.org/x/oauth2
+  license_name: BSD-3-Clause
+  license_path: /usr/local/share/licenses/buildpacks/golang.org/x/oauth2/LICENSE
 
 - package: golang.org/x/sys
   license_name: BSD-3-Clause

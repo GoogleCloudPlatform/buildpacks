@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -92,6 +93,10 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 	// The cache layer is used as PIP_CACHE_DIR to keep the cache directory across builds in case
 	// we do not get a full cache hit.
 	cl := ctx.Layer(cacheName, gcp.CacheLayer)
+
+	if err := ar.GeneratePythonConfig(ctx); err != nil {
+		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
+	}
 
 	// History of the logic below:
 	//
