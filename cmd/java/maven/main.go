@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -59,12 +58,7 @@ func buildFn(ctx *gcp.Context) error {
 	m2CachedRepo := ctx.Layer(m2Layer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
 	java.CheckCacheExpiration(ctx, m2CachedRepo)
 
-	usr, err := user.Current()
-	if err != nil {
-		return fmt.Errorf("getting current user: %v", err)
-	}
-	// TODO(b/157297290): just use os.Getenv("HOME") when that is consistent with /etc/passwd.
-	homeM2 := filepath.Join(usr.HomeDir, ".m2")
+	homeM2 := filepath.Join(ctx.HomeDir(), ".m2")
 	// Symlink the m2 layer into ~/.m2. If ~/.m2 already exists, delete it first.
 	// If it exists as a symlink, RemoveAll will remove the link, not anything it's linked to.
 	// We can't just use `-Dmaven.repo.local`. It does set the path to `m2/repo` but it fails
@@ -82,6 +76,7 @@ func buildFn(ctx *gcp.Context) error {
 	} else if mvnInstalled(ctx) {
 		mvn = "mvn"
 	} else {
+		var err error
 		mvn, err = installMaven(ctx)
 		if err != nil {
 			return fmt.Errorf("installing Maven: %w", err)

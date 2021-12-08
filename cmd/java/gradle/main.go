@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -57,12 +56,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	java.CheckCacheExpiration(ctx, gradleCachedRepo)
 
-	usr, err := user.Current()
-	if err != nil {
-		return fmt.Errorf("getting current user: %v", err)
-	}
-	// TODO(b/157297290): just use os.Getenv("HOME") when that is consistent with /etc/passwd.
-	homeGradle := filepath.Join(usr.HomeDir, ".gradle")
+	homeGradle := filepath.Join(ctx.HomeDir(), ".gradle")
 	// Symlink the gradle-cache layer into ~/.gradle. If ~/.gradle already exists, delete it first.
 	// If it exists as a symlink, RemoveAll will remove the link, not anything it's linked to.
 	ctx.RemoveAll(homeGradle)
@@ -74,6 +68,7 @@ func buildFn(ctx *gcp.Context) error {
 	} else if gradleInstalled(ctx) {
 		gradle = "gradle"
 	} else {
+		var err error
 		gradle, err = installGradle(ctx)
 		if err != nil {
 			return fmt.Errorf("installing Gradle: %w", err)
