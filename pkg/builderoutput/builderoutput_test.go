@@ -109,3 +109,32 @@ func TestJSON(t *testing.T) {
 		t.Errorf(`Expected string '"canonicalCode":13,' not found in %s`, s)
 	}
 }
+
+func TestIsSystemError(t *testing.T) {
+	testCases := []struct {
+		name      string
+		errorType buildererror.Status
+		want      bool
+	}{
+		{
+			name:      "no match",
+			errorType: buildererror.StatusInvalidArgument,
+			want:      false,
+		},
+		{
+			name:      "exact",
+			errorType: buildererror.StatusInternal,
+			want:      true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			bo := BuilderOutput{Error: buildererror.Error{Type: tc.errorType}}
+
+			if got, want := bo.IsSystemError(), tc.want; got != want {
+				t.Errorf("incorrect result for %q got=%t want=%t", tc.errorType, got, want)
+			}
+		})
+	}
+}

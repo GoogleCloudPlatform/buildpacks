@@ -18,7 +18,6 @@ package builderoutput
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 )
@@ -51,7 +50,7 @@ type BuilderOutput struct {
 
 // IsSystemError determines if the error type is a SYSTEM-attributed error
 func (bo BuilderOutput) IsSystemError() bool {
-	return strings.TrimSpace(strings.ToUpper(bo.Error.Type.String())) == "INTERNAL"
+	return bo.Error.Type == buildererror.StatusInternal
 }
 
 // BuilderStat contains statistics about a build step
