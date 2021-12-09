@@ -1,0 +1,40 @@
+description = "Builder for the GCF Python 3.9 runtime"
+
+[[buildpacks]]
+  id = "google.python.pip"
+  uri = "pip.tgz"
+
+[[buildpacks]]
+  id = "google.python.functions-framework"
+  uri = "functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source.tgz"
+
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+[stack]
+  id = "google.python310"
+  build-image = "gcr.io/gae-runtimes/buildpacks/python310/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/python310/run"
+
+[lifecycle]
+  version = "0.11.1"
