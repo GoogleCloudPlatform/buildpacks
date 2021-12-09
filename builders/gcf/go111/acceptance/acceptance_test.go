@@ -109,8 +109,7 @@ func TestAcceptance(t *testing.T) {
 			App:  "invalid_signature",
 			// "Func" is the correct name of target function.
 			// X_GOOGLE_ENTRY_POINT is irrelevant for function execution (only
-			// used for logging an error message when there's an invalid
-			// signature).
+			// used for logging an error message when there's an invalid signature).
 			Env:                 []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			RunEnv:              []string{"X_GOOGLE_ENTRY_POINT=EntryPoint"},
 			MustMatchStatusCode: http.StatusInternalServerError,

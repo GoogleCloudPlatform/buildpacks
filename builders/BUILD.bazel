@@ -78,6 +78,7 @@ package_group(
 package_group(
     name = "python_builders",
     packages = [
+        "//builders/gae/python310",
         "//builders/gae/python37",
         "//builders/gae/python38",
         "//builders/gae/python39",
