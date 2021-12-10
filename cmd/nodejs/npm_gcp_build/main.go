@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
@@ -73,6 +74,11 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.CacheMiss(cacheTag)
 		// Clear cached node_modules to ensure we don't end up with outdated dependencies.
 		ctx.ClearLayer(l)
+
+		if err := ar.GenerateNPMConfig(ctx); err != nil {
+			return fmt.Errorf("generating Artifact Registry credentials: %w", err)
+		}
+
 		ctx.Exec([]string{"npm", installCmd, "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution)
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)

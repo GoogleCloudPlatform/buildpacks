@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"text/template"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -29,6 +31,11 @@ import (
 
 const (
 	pythonConfigName = ".netrc"
+	npmConfigName    = ".npmrc"
+)
+
+var (
+	npmRegistryRegexp = regexp.MustCompile(`(@[a-zA-Z0-9-]+:)?registry=https:(//[a-zA-Z0-9-]+[-]npm[.]pkg[.]dev/.*/)`)
 )
 
 // locations is a list of AR regional endpoints.
@@ -138,6 +145,90 @@ machine {{$entry}} login oauth2accesstoken password {{$.Token}}
 		return fmt.Errorf("creating python netrc template: %w", err)
 	}
 
+	return nil
+}
+
+// GenerateNPMConfig generates an .npmrc file in the user's HOME directory with the credentials
+// necessary for NPM to make authenticated requests to Artifact Registry (see
+// https://cloud.google.com/artifact-registry/docs/nodejs/authentication).
+func GenerateNPMConfig(ctx *gcp.Context) error {
+	enabled, err := env.IsARAuthEnabled()
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return nil
+	}
+
+	userConfig := filepath.Join(ctx.HomeDir(), npmConfigName)
+	if ctx.FileExists(userConfig) {
+		ctx.Debugf("Found an existing user-level .npmrc file. Skipping .npmrc creation.")
+		return nil
+	}
+
+	projectConfig := filepath.Join(ctx.ApplicationRoot(), npmConfigName)
+	if !ctx.FileExists(projectConfig) {
+		// Unlike Python, NPM credentials must configured per repo. If the devoloper has not included
+		// a project-level npmrc, there are no AR repos to set credentials for, so there is nothing
+		// more to do.
+		return nil
+	}
+	content := ctx.ReadFile(projectConfig)
+
+	matches := npmRegistryRegexp.FindAllStringSubmatch(string(content), -1)
+	var repos []string
+
+	for _, m := range matches {
+		repos = append(repos, m[2])
+	}
+
+	if len(repos) < 1 {
+		return nil
+	}
+
+	tok, err := findDefaultCredentials()
+	if err != nil {
+		// findDefaultCredentials will return an error any time Application Default Credentials are
+		// missing (e.g. running the buildpacks locally outside of GCB). Credentials might not
+		// be required for the npm install to succeed so we should not fail the build here.
+		ctx.Warnf("Skipping .npmrc creation. Unable to find Application Default Credentials: %v", err)
+		return nil
+	}
+
+	ctx.Debugf("Configuring NPM credentials for: %s", strings.Join(repos, ", "))
+
+	f := ctx.CreateFile(userConfig)
+	defer f.Close()
+
+	return writeNpmConfig(f, repos, tok)
+}
+
+// writeNpmConfig writes the .npmrc contents for authenticating to AR.
+func writeNpmConfig(wr io.Writer, repos []string, tok string) error {
+	// npmConfig is the template for user level .npmrc that configures repository access tokens.
+	const npmConfig = `
+{{- range $repo := .Repos}}
+{{$repo}}:_authToken={{$.Token}}
+{{- end}}
+`
+	type authEntry struct {
+		Token string
+		Repos []string
+	}
+
+	t, err := template.New("npmrc").Parse(npmConfig)
+	if err != nil {
+		return err
+	}
+
+	cfg := authEntry{
+		Token: tok,
+		Repos: repos,
+	}
+
+	if err := t.Execute(wr, cfg); err != nil {
+		return fmt.Errorf("creating NPM .npmrc template: %w", err)
+	}
 	return nil
 }
 

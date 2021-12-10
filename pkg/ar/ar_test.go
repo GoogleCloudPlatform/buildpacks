@@ -16,7 +16,7 @@ package ar
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -120,12 +120,170 @@ machine us-west4-python.pkg.dev login oauth2accesstoken password token
 				t.Fatalf("Generating config: %v", err)
 			}
 
-			config, err := ioutil.ReadFile(filepath)
+			config, err := os.ReadFile(filepath)
 			if err != nil && tc.wantConfig != "" {
 				t.Fatalf("Reading file %s: %v", filepath, err)
 			}
 
 			if diff := cmp.Diff(tc.wantConfig, string(config)); diff != "" {
+				t.Errorf("unexpected config (+got, -want):\n %v", diff)
+			}
+		})
+	}
+}
+
+func TestGenerateNPMConfig(t *testing.T) {
+	testCases := []struct {
+		name          string
+		arAuthEnabled string
+		fileExists    bool
+		tokenError    error
+		projectNpmrc  string
+		wantConfig    string
+	}{
+		{
+			name:          "Feature Disabled",
+			arAuthEnabled: "False",
+		},
+		{
+			name:          "user .npmrc already exists",
+			arAuthEnabled: "True",
+			fileExists:    true,
+		},
+		{
+			name:          "credential error",
+			arAuthEnabled: "True",
+			tokenError:    fmt.Errorf("Error fetching token"),
+		},
+		{
+			name:          "project .npmrc with npmjs.org config",
+			arAuthEnabled: "True",
+			projectNpmrc: fmt.Sprint(`
+//registry.npmjs.org/:_authToken=${NPM_TOKEN}
+`),
+		},
+		{
+			name:          "project .npmrc with AR repo",
+			arAuthEnabled: "True",
+			projectNpmrc: fmt.Sprint(`
+registry=https://us-west1-npm.pkg.dev/my-project/my-repo/
+//us-west1-npm.pkg.dev/my-project/my-repo/:always-auth=true
+`),
+			wantConfig: fmt.Sprint(`
+//us-west1-npm.pkg.dev/my-project/my-repo/:_authToken=token
+`),
+		},
+		{
+			name:          "project .npmrc with scoped AR repo",
+			arAuthEnabled: "True",
+			projectNpmrc: fmt.Sprint(`
+@myscope:registry=https://us-west1-npm.pkg.dev/my-project/my-repo/
+//us-west1-npm.pkg.dev/my-project/my-repo/:always-auth=true
+`),
+			wantConfig: fmt.Sprint(`
+//us-west1-npm.pkg.dev/my-project/my-repo/:_authToken=token
+`),
+		},
+		{
+			name:          "project .npmrc with multiple repos",
+			arAuthEnabled: "True",
+			projectNpmrc: fmt.Sprint(`
+registry=https://us-west1-npm.pkg.dev/my-project/my-repo/
+//us-west1-npm.pkg.dev/my-project/my-repo/:always-auth=true
+@myscope:registry=https://us-central1-npm.pkg.dev/my-other-project/my-other-repo/
+//us-central1-npm.pkg.dev/my-other-project/my-other-repo/:always-auth=true
+registry=https://my-site/my-organization/_packaging/my-project/npm/registry/
+always-auth=true
+//registry.npmjs.org/:_authToken=${NPM_TOKEN}
+`),
+			wantConfig: fmt.Sprint(`
+//us-west1-npm.pkg.dev/my-project/my-repo/:_authToken=token
+//us-central1-npm.pkg.dev/my-other-project/my-other-repo/:_authToken=token
+`),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// stub out the logic for fetching Application Default Credentials
+			origFindDefaultCredentials := findDefaultCredentials
+			findDefaultCredentials = func() (string, error) {
+				return "token", tc.tokenError
+			}
+			defer func() {
+				findDefaultCredentials = origFindDefaultCredentials
+			}()
+
+			t.Setenv("GOOGLE_EXPERIMENTAL_AR_AUTH_ENABLED", tc.arAuthEnabled)
+
+			// set up the application root dir
+			tempRoot := t.TempDir()
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(tempRoot))
+			if tc.projectNpmrc != "" {
+				filepath := filepath.Join(tempRoot, ".npmrc")
+				os.WriteFile(filepath, []byte(tc.projectNpmrc), 0664)
+			}
+
+			// set up the $HOME dir
+			t.Setenv("HOME", t.TempDir())
+			filepath := filepath.Join(ctx.HomeDir(), ".npmrc")
+			if tc.fileExists {
+				os.WriteFile(filepath, []byte{}, 0664)
+			}
+
+			if err := GenerateNPMConfig(ctx); err != nil {
+				t.Fatalf("Error generating config: %v", err)
+			}
+
+			config, err := os.ReadFile(filepath)
+			if err != nil && tc.wantConfig != "" {
+				t.Fatalf("Error reading file %s: %v", filepath, err)
+			}
+
+			if diff := cmp.Diff(tc.wantConfig, string(config)); diff != "" {
+				t.Errorf("unexpected config (+got, -want):\n %v", diff)
+			}
+		})
+	}
+}
+
+func TestNpmRegistryRegexp(t *testing.T) {
+	testCases := []struct {
+		name  string
+		npmrc string
+		want  []string
+	}{
+		{
+			name: "empty string",
+		},
+		{
+			name:  "npm.org repo",
+			npmrc: "//registry.npmjs.org/:_authToken=${NPM_TOKEN}",
+		},
+		{
+			name:  "unscoped AR repo",
+			npmrc: "registry=https://us-west1-npm.pkg.dev/my-project/my-repo/",
+			want: []string{
+				"registry=https://us-west1-npm.pkg.dev/my-project/my-repo/",
+				"",
+				"//us-west1-npm.pkg.dev/my-project/my-repo/",
+			},
+		},
+		{
+			name:  "scoped AR repo",
+			npmrc: "@myscope:registry=https://us-central1-npm.pkg.dev/my-other-project/my-other-repo/",
+			want: []string{
+				"@myscope:registry=https://us-central1-npm.pkg.dev/my-other-project/my-other-repo/",
+				"@myscope:",
+				"//us-central1-npm.pkg.dev/my-other-project/my-other-repo/",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			matches := npmRegistryRegexp.FindStringSubmatch(tc.npmrc)
+			if diff := cmp.Diff(tc.want, matches); diff != "" {
 				t.Errorf("unexpected config (+got, -want):\n %v", diff)
 			}
 		})

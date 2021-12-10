@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -152,6 +153,9 @@ func installFunctionsFramework(ctx *gcp.Context, l *libcnb.Layer) error {
 	ctx.ClearLayer(l)
 	// NPM expects package.json and the lock file in the prefix directory.
 	ctx.Exec([]string{"cp", "-t", l.Path, pjs, pljs}, gcp.WithUserTimingAttribution)
+	if err := ar.GenerateNPMConfig(ctx); err != nil {
+		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
+	}
 	ctx.Exec([]string{"npm", installCmd, "--quiet", "--production", "--prefix", l.Path}, gcp.WithUserAttribution)
 	return nil
 }

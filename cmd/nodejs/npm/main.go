@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -47,6 +48,9 @@ func buildFn(ctx *gcp.Context) error {
 	nm := filepath.Join(ml.Path, "node_modules")
 	ctx.RemoveAll("node_modules")
 
+	if err := ar.GenerateNPMConfig(ctx); err != nil {
+		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
+	}
 	lockfile := nodejs.EnsureLockfile(ctx)
 
 	nodeEnv := nodejs.NodeEnv()
