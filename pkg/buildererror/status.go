@@ -66,6 +66,7 @@ func (s Status) String() string {
 	}[s]
 }
 
+// FromStatusString is a map from a Status string to a Status
 var fromStatusString = map[string]Status{
 	"OK":                  StatusOk,
 	"CANCELLED":           StatusCancelled,
@@ -86,22 +87,24 @@ var fromStatusString = map[string]Status{
 	"UNAUTHENTICATED":     StatusUnauthenticated,
 }
 
-// JSON marshals the enum as a quoted json string.
-func (s Status) JSON() ([]byte, error) {
+var _ json.Marshaler = (*Status)(nil)
+var _ json.Unmarshaler = (*Status)(nil)
+
+// MarshalJSON marshals the enum as a quoted json string.
+func (s Status) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("%q", s)), nil
 }
 
-// FromJSON unmashals a quoted json string to the enum value.
-func FromJSON(b []byte) (Status, error) {
+// UnmarshalJSON unmashals a quoted json string to the enum value
+func (s *Status) UnmarshalJSON(b []byte) error {
 	var val string
-	var s Status
 	if err := json.Unmarshal(b, &val); err != nil {
-		return Status(0), err
+		return err
 	}
-	s, ok := fromStatusString[strings.ToUpper(val)]
+	st, ok := fromStatusString[strings.ToUpper(val)]
 	if !ok {
-		return Status(0), fmt.Errorf("unknown value %q", val)
+		return fmt.Errorf("unknown value %q", val)
 	}
-
-	return s, nil
+	*s = st
+	return nil
 }

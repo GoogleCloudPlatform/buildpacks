@@ -28,8 +28,8 @@ func TestFromJSON(t *testing.T) {
 	"error": {
 		"buildpackId": "bad-buildpack",
 		"buildpackVersion": "vbad",
-		"errorType": 13,
-		"canonicalCode": 13,
+		"errorType": "INTERNAL",
+		"canonicalCode": "INTERNAL",
 		"errorId": "abc123",
 		"errorMessage": "error-message",
 		"anotherThing": 123
@@ -105,8 +105,8 @@ func TestJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to marshal %v: %v", b, err)
 	}
-	if !strings.Contains(string(s), `"canonicalCode":13,`) {
-		t.Errorf(`Expected string '"canonicalCode":13,' not found in %s`, s)
+	if !strings.Contains(string(s), "INTERNAL") {
+		t.Errorf("Expected string 'INTERNAL' not found in %s", s)
 	}
 }
 

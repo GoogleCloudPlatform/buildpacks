@@ -20,9 +20,9 @@ import (
 	"testing"
 )
 
-func TestFromJSON(t *testing.T) {
-	j := `"PERMISSION_DENIED"`
-	s, err := FromJSON([]byte(j))
+func TestUnmarshalJSON(t *testing.T) {
+	var s Status
+	err := s.UnmarshalJSON([]byte(`"PERMISSION_DENIED"`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,10 +34,10 @@ func TestFromJSON(t *testing.T) {
 	}
 }
 
-func TestJSON(t *testing.T) {
+func TestMarshalJSON(t *testing.T) {
 	s := StatusResourceExhausted
 
-	j, err := s.JSON()
+	j, err := s.MarshalJSON()
 
 	if err != nil {
 		t.Fatalf("Failed to marshal %v: %v", s, err)
