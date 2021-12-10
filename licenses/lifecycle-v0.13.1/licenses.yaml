@@ -25,9 +25,9 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/BurntSushi/toml/COPYING
 
-- package: github.com/containerd/containerd/errdefs
+- package: github.com/containerd/containerd
   license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/containerd/errdefs/LICENSE
+  license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/containerd/LICENSE
 
 - package: github.com/containerd/stargz-snapshotter/estargz
   license_name: Apache-2.0
@@ -73,13 +73,25 @@
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/github.com/google/go-cmp/cmp/LICENSE
 
-- package: github.com/google/go-containerregistry/pkg
+- package: github.com/google/go-containerregistry
   license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/google/go-containerregistry/pkg/LICENSE
+  license_path: /usr/local/share/licenses/lifecycle/github.com/google/go-containerregistry/LICENSE
 
 - package: github.com/heroku/color
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/heroku/color/LICENSE
+
+- package: github.com/klauspost/compress
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/klauspost/compress/LICENSE
+
+- package: github.com/klauspost/compress/internal/snapref
+  license_name: BSD-3-Clause
+  license_path: /usr/local/share/licenses/lifecycle/github.com/klauspost/compress/internal/snapref/LICENSE
+
+- package: github.com/klauspost/compress/zstd/internal/xxhash
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/klauspost/compress/zstd/internal/xxhash/LICENSE.txt
 
 - package: github.com/mattn/go-colorable
   license_name: MIT
@@ -88,6 +100,10 @@
 - package: github.com/mattn/go-isatty
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/mattn/go-isatty/LICENSE
+
+- package: github.com/moby/term
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/moby/term/LICENSE
 
 - package: github.com/morikuni/aec
   license_name: MIT
@@ -109,6 +125,10 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/sirupsen/logrus/LICENSE
 
+- package: github.com/vbatts/tar-split/archive/tar
+  license_name: BSD-3-Clause
+  license_path: /usr/local/share/licenses/lifecycle/github.com/vbatts/tar-split/archive/tar/LICENSE
+
 - package: golang.org/x/net
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/golang.org/x/net/LICENSE
@@ -127,7 +147,7 @@
 
 - package: google.golang.org/grpc
   license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/google.golang.org/grpc/LICENSE
+  license_path: /usr/local/share/licenses/lifecycle/google.golang.org/grpc/NOTICE.txt
 
 - package: google.golang.org/protobuf
   license_name: BSD-3-Clause
