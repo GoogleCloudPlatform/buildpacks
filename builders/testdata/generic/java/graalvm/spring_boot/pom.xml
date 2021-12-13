@@ -19,6 +19,18 @@
     <spring-native.version>0.10.0</spring-native.version>
   </properties>
   <dependencies>
+    <!-- due to CVE-2021-44228 we must update log4j-api to 2.15. or greater. Spring does not yet
+         have a version with the log4j dependency upgraded to 2.15.0 so explicitly override it here -->
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-api</artifactId>
+      <version>2.15.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-to-slf4j</artifactId>
+      <version>2.15.0</version>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
