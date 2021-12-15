@@ -38,7 +38,3 @@ RUN groupadd cnb --gid ${cnb_gid} && \
 ENV CNB_USER_ID=${cnb_uid}
 ENV CNB_GROUP_ID=${cnb_gid}
 ENV CNB_STACK_ID=${stack_id}
-
-# Mitigates https://nvd.nist.gov/vuln/detail/CVE-2021-44228 for customers using
-# log4j >= 2.10 and < 2.15
-ENV LOG4J_FORMAT_MSG_NO_LOOKUPS true
