@@ -81,37 +81,16 @@ func TestAcceptancePython(t *testing.T) {
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 	}
-	// Tests for all published versions of Python.
+	// Tests for two most recent published patch versions of Python.
 	// Unlike with the other languages, we control the versions published to GCS.
 	for _, v := range []string{
-		"3.7.0",
-		"3.7.1",
-		"3.7.2",
-		"3.7.3",
-		"3.7.4",
-		"3.7.5",
-		"3.7.6",
-		"3.7.7",
-		"3.7.8",
-		"3.7.9",
-		"3.7.10",
-		"3.8.0",
-		"3.8.1",
-		"3.8.2",
-		"3.8.3",
-		"3.8.4",
-		"3.8.5",
-		"3.8.6",
-		"3.8.7",
-		"3.8.8",
-		"3.8.9",
-		"3.8.10",
-		"3.9.0",
-		"3.9.1",
-		"3.9.2",
-		// 3.9.3 is not currently available.
-		"3.9.4",
-		"3.9.5",
+		"3.7.11",
+		"3.7.12",
+		"3.8.11",
+		"3.8.12",
+		"3.9.6",
+		"3.9.7",
+		"3.9.8",
 	} {
 		testCases = append(testCases, acceptance.Test{
 			Name:    "runtime version " + v,
