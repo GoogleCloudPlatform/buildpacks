@@ -1,4 +1,4 @@
-description = "Builder for the GAE Node.js 14 runtime"
+description = "Builder for the GAE Node.js 16 runtime"
 
 [[buildpacks]]
   id = "google.nodejs.npm"

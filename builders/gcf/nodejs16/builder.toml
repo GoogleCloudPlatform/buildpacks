@@ -1,4 +1,4 @@
-description = "Builder for the GCF Node.js 12 runtime"
+description = "Builder for the GCF Node.js 16 runtime"
 
 [[buildpacks]]
   id = "google.nodejs.functions-framework"

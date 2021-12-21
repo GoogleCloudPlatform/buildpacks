@@ -1,4 +1,4 @@
-description = "Builder for the GCF Go 1.13 runtime"
+description = "Builder for the GCF Go 1.16 runtime"
 
 [[buildpacks]]
   id = "google.go.build"

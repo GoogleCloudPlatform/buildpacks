@@ -1,4 +1,4 @@
-description = "Builder for the GAE Go 1.12 runtime"
+description = "Builder for the GAE Go 1.11 runtime"
 
 [[buildpacks]]
   id = "google.go.appengine"

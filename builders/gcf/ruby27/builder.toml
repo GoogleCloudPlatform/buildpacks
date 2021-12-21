@@ -1,4 +1,4 @@
-description = "Builder for the GCF Ruby 2.6 runtime"
+description = "Builder for the GCF Ruby 2.7 runtime"
 
 [[buildpacks]]
   id = "google.ruby.bundle"

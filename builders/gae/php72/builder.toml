@@ -1,4 +1,4 @@
-description = "Builder for the GAE PHP 7.3 runtime"
+description = "Builder for the GAE PHP 7.2 runtime"
 
 [[buildpacks]]
   id = "google.php.composer"

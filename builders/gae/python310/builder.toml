@@ -1,4 +1,4 @@
-description = "Builder for the GAE Python 3.9 runtime"
+description = "Builder for the GAE Python 3.10 runtime"
 
 [[buildpacks]]
   id = "google.python.webserver"
