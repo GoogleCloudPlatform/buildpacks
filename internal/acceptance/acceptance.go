@@ -561,10 +561,10 @@ func CreateBuilder(t *testing.T) (string, func()) {
 	}
 
 	// Pack command to create the builder.
-	args := strings.Fields(fmt.Sprintf("builder create %s --config %s --pull-policy never --verbose --no-color", name, config))
+	args := strings.Fields(fmt.Sprintf("create-builder %s --config %s --pull-policy never --verbose --no-color", name, config))
 	cmd := exec.Command(packBin, args...)
 
-	outFile, errFile, cleanup := outFiles(t, name, "pack", "builder-create")
+	outFile, errFile, cleanup := outFiles(t, name, "pack", "create-builder")
 	defer cleanup()
 	var outb, errb bytes.Buffer
 	cmd.Stdout = io.MultiWriter(outFile, &outb) // pack emits some errors to stdout.
