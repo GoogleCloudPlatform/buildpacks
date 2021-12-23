@@ -16,21 +16,22 @@
   <properties>
     <java.version>11</java.version>
     <repackage.classifier/>
+    <log4j.version>2.17.0</log4j.version>
     <spring-native.version>0.10.5</spring-native.version>
   </properties>
   <dependencies>
-    <!-- due to CVE-2021-44228 and CVE-2021-45046 we must update log4j-api to 2.16. or greater.
-         Spring 0.10.5 is the latest version of Spring and contains log4j-api 2.14.1. So explicitly
-         override the log4j version here -->
+    <!-- due to CVE-2021-44228, CVE-2021-45046, and CVE-2021-45105 we must update log4j-api to 2.17
+         or greater. Spring 0.10.5 is the latest version of Spring and contains log4j-api 2.14.1. So
+         explicitly override the log4j version here -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-api</artifactId>
-      <version>2.16.0</version>
+      <version>${log4j.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-to-slf4j</artifactId>
-      <version>2.16.0</version>
+      <version>${log4j.version}</version>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
