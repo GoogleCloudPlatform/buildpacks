@@ -1,3 +1,1 @@
-hatch
-click<8.0.0  # TODO(b/187935788): auto-resolved to >8.0.0, which is incompatible with the functions-framework.
-importlib-metadata==1.7.0  # version incorrectly resolved by pip
+hatch==0.23.1
