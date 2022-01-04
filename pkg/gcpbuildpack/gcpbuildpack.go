@@ -98,6 +98,13 @@ func WithApplicationRoot(root string) ContextOption {
 	}
 }
 
+// WithBuildpackRoot sets the buildpack root in Context.
+func WithBuildpackRoot(root string) ContextOption {
+	return func(ctx *Context) {
+		ctx.buildpackRoot = root
+	}
+}
+
 // WithBuildpackInfo sets the buildpack info in Context.
 func WithBuildpackInfo(info libcnb.BuildpackInfo) ContextOption {
 	return func(ctx *Context) {

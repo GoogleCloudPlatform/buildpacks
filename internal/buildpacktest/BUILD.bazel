@@ -1,0 +1,17 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+licenses(["notice"])
+
+package(default_visibility = ["//:__subpackages__"])
+
+go_library(
+    name = "buildpacktest",
+    srcs = [
+        "buildpacktest.go",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    deps = [
+        "//pkg/gcpbuildpack",
+        "@com_github_buildpacks_libcnb//:go_default_library",
+    ],
+)

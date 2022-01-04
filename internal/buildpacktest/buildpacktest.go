@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2021 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gcpbuildpack
+// Package buildpacktest contains utilities for testing buildpacks.
+package buildpacktest
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -25,6 +27,7 @@ import (
 	"strings"
 	"testing"
 
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
 )
 
@@ -36,15 +39,28 @@ type tempDirs struct {
 	planFile     string
 }
 
+type fakeDetector struct {
+	detectFn gcp.DetectFn
+}
+
+func (fd *fakeDetector) Detect(ldctx libcnb.DetectContext) (libcnb.DetectResult, error) {
+	ctx := gcp.NewContext(gcp.WithApplicationRoot(ldctx.Application.Path), gcp.WithBuildpackRoot(ldctx.Buildpack.Path))
+	result, err := fd.detectFn(ctx)
+	// detectFn has an interface return type so result may be nil.
+	if result == nil {
+		return libcnb.DetectResult{}, errors.New("detect did not return a result or an error")
+	}
+	return result.Result(), err
+}
+
 // TestDetect is a helper for testing a buildpack's implementation of /bin/detect.
-// Deprecated: Use buildpacktest.TestDetect instead.
-func TestDetect(t *testing.T, detectFn DetectFn, testName string, files map[string]string, env []string, want int) {
+func TestDetect(t *testing.T, detectFn gcp.DetectFn, testName string, files map[string]string, env []string, want int) {
 	TestDetectWithStack(t, detectFn, testName, files, env, "com.stack", want)
 }
 
 // TestDetectWithStack is a helper for testing a buildpack's implementation of /bin/detect which allows setting a custom stack name.
-// Deprecated: Use buildpacktest.TestDetectWithStack instead.
-func TestDetectWithStack(t *testing.T, detectFn DetectFn, testName string, files map[string]string, env []string, stack string, want int) {
+func TestDetectWithStack(t *testing.T, detectFn gcp.DetectFn, testName string, files map[string]string, env []string, stack string, want int) {
+
 	testDir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("getting working directory: %v", err)
@@ -68,18 +84,16 @@ func TestDetectWithStack(t *testing.T, detectFn DetectFn, testName string, files
 		}
 	}
 
-	ctx := newDetectContext(libcnb.DetectContext{})
-	ctx.applicationRoot = temps.codeDir
-	ctx.buildpackRoot = temps.buildpackDir
+	ctx := gcp.NewContext(gcp.WithApplicationRoot(temps.codeDir), gcp.WithBuildpackRoot(temps.buildpackDir))
 
 	// Invoke detect in a separate process.
 	// Otherwise, detect could exit and stop the test.
 	if os.Getenv("TEST_DETECT_EXITING") == "1" {
-		detect(detectFn)
+		libcnb.Detect(&fakeDetector{detectFn: detectFn})
 	} else {
 		cmd := exec.Command(filepath.Join(testDir, testArgs[0]), fmt.Sprintf("-test.run=TestDetect/^%s$", strings.ReplaceAll(testName, " ", "_")))
 		cmd.Env = append(os.Environ(), "TEST_DETECT_EXITING=1")
-		cmd.Dir = ctx.applicationRoot
+		cmd.Dir = ctx.ApplicationRoot()
 
 		for _, e := range env {
 			cmd.Env = append(cmd.Env, e)
@@ -129,10 +143,10 @@ func tempWorkingDir(t *testing.T) (string, func()) {
 	}
 }
 
-func simpleContext(t *testing.T) (*Context, func()) {
+func simpleContext(t *testing.T) (*gcp.Context, func()) {
 	t.Helper()
 	_, cleanUp := setUpDetectEnvironment(t)
-	c := NewContext()
+	c := gcp.NewContext()
 	return c, cleanUp
 }
 

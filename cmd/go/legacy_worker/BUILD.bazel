@@ -46,6 +46,7 @@ go_test(
     embed = [":main"],
     rundir = ".",
     deps = [
+        "//internal/buildpacktest",
         "//pkg/gcpbuildpack",
         "//third_party/golang/cmp",
     ],

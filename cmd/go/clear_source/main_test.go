@@ -17,7 +17,7 @@ package main
 import (
 	"testing"
 
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 )
 
 func TestDetect(t *testing.T) {
@@ -46,7 +46,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			gcp.TestDetect(t, detectFn, tc.name, map[string]string{}, tc.env, tc.want)
+			buildpacktest.TestDetect(t, detectFn, tc.name, map[string]string{}, tc.env, tc.want)
 		})
 	}
 }
