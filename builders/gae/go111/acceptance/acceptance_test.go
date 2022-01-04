@@ -122,6 +122,7 @@ func TestAcceptance(t *testing.T) {
 			t.Parallel()
 
 			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=go111")
+			tc.Env = append(tc.Env, "GOPROXY=https://proxy.golang.org")
 
 			acceptance.TestApp(t, builder, tc)
 		})
