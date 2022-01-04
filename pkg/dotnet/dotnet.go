@@ -141,3 +141,24 @@ func getGlobalJSONOrNil(applicationRoot string) (*globalJSON, error) {
 	}
 	return &gjs, nil
 }
+
+// FindProjectFile finds the csproj file using the 'GOOGLE_BUILDABLE' env var and falling back with a search of the current directory.
+func FindProjectFile(ctx *gcp.Context) (string, error) {
+	proj := os.Getenv(env.Buildable)
+	if proj == "" {
+		proj = "."
+	}
+	// Find the project file if proj is a directory.
+	if fi, err := os.Stat(proj); os.IsNotExist(err) {
+		return "", gcp.UserErrorf("%s does not exist", proj)
+	} else if err != nil {
+		return "", fmt.Errorf("stating %s: %v", proj, err)
+	} else if fi.IsDir() {
+		projFiles := ProjectFiles(ctx, proj)
+		if len(projFiles) != 1 {
+			return "", gcp.UserErrorf("expected to find exactly one project file in directory %s, found %v", proj, projFiles)
+		}
+		proj = projFiles[0]
+	}
+	return proj, nil
+}

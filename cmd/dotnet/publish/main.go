@@ -54,23 +54,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	proj := os.Getenv(env.Buildable)
-	if proj == "" {
-		proj = "."
+	proj, err := dotnet.FindProjectFile(ctx)
+	if err != nil {
+		return fmt.Errorf("finding project: %w", err)
 	}
-	// Find the project file if proj is a directory.
-	if fi, err := os.Stat(proj); os.IsNotExist(err) {
-		return gcp.UserErrorf("%s does not exist", proj)
-	} else if err != nil {
-		return fmt.Errorf("stating %s: %v", proj, err)
-	} else if fi.IsDir() {
-		projFiles := dotnet.ProjectFiles(ctx, proj)
-		if len(projFiles) != 1 {
-			return gcp.UserErrorf("expected to find exactly one project file in directory %s, found %v", proj, projFiles)
-		}
-		proj = projFiles[0]
-	}
-
 	ctx.Logf("Installing application dependencies.")
 	pkgLayer := ctx.Layer("packages", gcp.BuildLayer, gcp.CacheLayer)
 
