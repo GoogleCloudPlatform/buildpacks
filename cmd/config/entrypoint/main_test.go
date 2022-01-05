@@ -18,6 +18,7 @@ import (
 	"reflect"
 	"testing"
 
+	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
 )
@@ -48,7 +49,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			gcp.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
+			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
 		})
 	}
 }

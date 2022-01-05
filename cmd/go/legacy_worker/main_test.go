@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"google3/third_party/golang/cmp/cmp"
 )

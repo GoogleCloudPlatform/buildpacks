@@ -5,13 +5,8 @@ licenses(["notice"])
 package(default_visibility = ["//:__subpackages__"])
 
 go_library(
-    name = "buildpacktest",
+    name = "buildpacktestenv",
     testonly = 1,
-    srcs = ["buildpacktest.go"],
+    srcs = ["buildpacktestenv.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    deps = [
-        "//internal/buildpacktestenv",
-        "//pkg/gcpbuildpack",
-        "@com_github_buildpacks_libcnb//:go_default_library",
-    ],
 )

@@ -18,7 +18,6 @@ go_library(
         "layer.go",
         "os.go",
         "span.go",
-        "testing.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     deps = [
@@ -44,6 +43,7 @@ go_test(
     embed = [":gcpbuildpack"],
     rundir = ".",
     deps = [
+        "//internal/buildpacktestenv",
         "//pkg/buildererror",
         "//pkg/builderoutput",
         "//pkg/env",

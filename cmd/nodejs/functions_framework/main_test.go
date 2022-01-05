@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 )
 
 func TestDetect(t *testing.T) {
@@ -43,7 +43,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			gcp.TestDetectWithStack(t, detectFn, tc.name, tc.files, tc.env, tc.stack, tc.want)
+			buildpacktest.TestDetectWithStack(t, detectFn, tc.name, tc.files, tc.env, tc.stack, tc.want)
 		})
 	}
 }

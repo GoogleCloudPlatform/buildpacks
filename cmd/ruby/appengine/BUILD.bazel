@@ -37,6 +37,7 @@ go_test(
     embed = [":main"],
     rundir = ".",
     deps = [
+        "//internal/buildpacktest",
         "//pkg/appstart",
         "//pkg/gcpbuildpack",
     ],

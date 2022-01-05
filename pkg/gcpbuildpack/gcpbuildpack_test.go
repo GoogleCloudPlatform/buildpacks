@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktestenv"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/builderoutput"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -104,7 +105,7 @@ func TestNewContextWithBuildContext(t *testing.T) {
 }
 
 func TestDetectContextInitialized(t *testing.T) {
-	_, cleanUp := setUpDetectEnvironment(t)
+	_, cleanUp := buildpacktestenv.SetUpDetectEnvironment(t)
 	defer cleanUp()
 
 	id := "my-id"
@@ -128,7 +129,7 @@ func TestDetectContextInitialized(t *testing.T) {
 }
 
 func TestDetectEmitsSpan(t *testing.T) {
-	_, cleanUp := setUpDetectEnvironment(t)
+	_, cleanUp := buildpacktestenv.SetUpDetectEnvironment(t)
 	defer cleanUp()
 
 	var ctx *Context
@@ -157,7 +158,7 @@ func TestDetectEmitsSpan(t *testing.T) {
 }
 
 func TestDetectNilResult(t *testing.T) {
-	_, cleanUp := setUpDetectEnvironment(t)
+	_, cleanUp := buildpacktestenv.SetUpDetectEnvironment(t)
 	defer cleanUp()
 
 	handler := &fakeExitHandler{}
@@ -173,7 +174,7 @@ func TestDetectNilResult(t *testing.T) {
 }
 
 func TestBuildContextInitialized(t *testing.T) {
-	_, cleanUp := setUpBuildEnvironment(t)
+	_, cleanUp := buildpacktestenv.SetUpBuildEnvironment(t)
 	defer cleanUp()
 
 	id := "my-id"
@@ -198,7 +199,7 @@ func TestBuildContextInitialized(t *testing.T) {
 }
 
 func TestBuildEmitsSpan(t *testing.T) {
-	_, cleanUp := setUpBuildEnvironment(t)
+	_, cleanUp := buildpacktestenv.SetUpBuildEnvironment(t)
 	defer cleanUp()
 
 	var ctx *Context
@@ -237,7 +238,7 @@ func TestBuildEmitsSuccessOutput(t *testing.T) {
 		os.Unsetenv("BUILDER_OUTPUT")
 	}()
 
-	_, cleanUp := setUpBuildEnvironment(t)
+	_, cleanUp := buildpacktestenv.SetUpBuildEnvironment(t)
 	defer cleanUp()
 
 	build(func(c *Context) error {
@@ -493,7 +494,7 @@ func TestHasAtLeastOne(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			dir, cleanup := tempWorkingDir(t)
+			dir, cleanup := buildpacktestenv.TempWorkingDir(t)
 			defer cleanup()
 
 			ctx := NewContext(WithApplicationRoot(dir))
@@ -515,4 +516,35 @@ func TestHasAtLeastOne(t *testing.T) {
 
 func proc(command, commandType string) libcnb.Process {
 	return libcnb.Process{Command: command, Type: commandType, Default: true, Direct: true}
+}
+
+// fakeExitHandler allows libcnb's Detect() function to be called without causing an os.Exit().
+type fakeExitHandler struct {
+	err        error
+	errCalled  bool
+	passCalled bool
+	failCalled bool
+}
+
+// Error is called when an error is encountered.
+func (eh *fakeExitHandler) Error(err error) {
+	eh.errCalled = true
+	eh.err = err
+}
+
+// Fail is called when a buildpack fails.
+func (eh *fakeExitHandler) Fail() {
+	eh.failCalled = true
+}
+
+// Pass is called when a buildpack passes.
+func (eh *fakeExitHandler) Pass() {
+	eh.passCalled = true
+}
+
+func simpleContext(t *testing.T) (*Context, func()) {
+	t.Helper()
+	_, cleanUp := buildpacktestenv.SetUpDetectEnvironment(t)
+	c := NewContext()
+	return c, cleanUp
 }

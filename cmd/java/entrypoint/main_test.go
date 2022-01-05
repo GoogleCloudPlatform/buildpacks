@@ -17,10 +17,10 @@ package main
 import (
 	"testing"
 
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 )
 
 func TestDetect(t *testing.T) {
 	// The buildpack always opts in.
-	gcp.TestDetect(t, detectFn, "no files", map[string]string{}, []string{}, 0)
+	buildpacktest.TestDetect(t, detectFn, "no files", map[string]string{}, []string{}, 0)
 }
