@@ -67,6 +67,10 @@ func TestAcceptance(t *testing.T) {
 			App:    "with_env_var",
 			RunEnv: []string{"FOO=foo"},
 		},
+		{
+			Name: "function has right number of dependencies",
+			App:  "list_dependencies",
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc
