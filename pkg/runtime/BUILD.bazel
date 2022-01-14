@@ -1,10 +1,13 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 licenses(["notice"])
 
 go_library(
     name = "runtime",
-    srcs = ["runtime.go"],
+    srcs = [
+        "install.go",
+        "runtime.go",
+    ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
         "//cmd:__subpackages__",
@@ -12,5 +15,22 @@ go_library(
     deps = [
         "//pkg/env",
         "//pkg/gcpbuildpack",
+        "@com_github_buildpacks_libcnb//:go_default_library",
+        "@com_github_hashicorp_go_retryablehttp//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "runtime_test",
+    srcs = [
+        "install_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    embed = [":runtime"],
+    rundir = ".",
+    deps = [
+        "//pkg/gcpbuildpack",
+        "//pkg/testdata",
+        "@com_github_buildpacks_libcnb//:go_default_library",
     ],
 )

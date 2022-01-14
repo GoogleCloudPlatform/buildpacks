@@ -1,0 +1,9 @@
+api = "0.5"
+
+[buildpack]
+id = "google.dart.sdk"
+version = "0.1.0"
+name = "Dart - SDK"
+
+[[stacks]]
+id = "google"
