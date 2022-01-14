@@ -24,8 +24,15 @@ func init() {
 }
 
 func TestAcceptance(t *testing.T) {
+	t.Skip("Disabled")
+
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
+
+	// TODO(b/193272221): Remove when stack images are published.
+	//if acceptance.PullImages() {
+	//t.Skip("Disabled for continuous builds")
+	//}
 
 	testCases := []acceptance.Test{
 		{
@@ -76,6 +83,9 @@ func TestAcceptance(t *testing.T) {
 }
 
 func TestFailures(t *testing.T) {
+	// TODO(b/193272221): Remove when stack images are published.
+	t.Skip("Disabled")
+
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
