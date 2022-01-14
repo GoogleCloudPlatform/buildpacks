@@ -462,23 +462,6 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   [[order.group]]
     id = "google.utils.label"
 
-##############
-# Python 2/2 #
-##############
-
-# This buildpack group will always fail but with a clear message that the
-# entrypoint is missing. It must be the last group otherwise projects with
-# a single .py file and no entrypoint will fail
-[[order]]
-  [[order.group]]
-    id = "google.python.runtime"
-
-  [[order.group]]
-    id = "google.python.missing-entrypoint"
-
-  [[order.group]]
-    id = "google.utils.label"
-
 ########
 # C++  #
 ########
@@ -498,6 +481,17 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.utils.label"
+
+##############
+# Python 2/2 #
+##############
+
+# This buildpack group will always fail but with a clear message that the
+# entrypoint is missing. It must be the last group otherwise projects with
+# a single .py file and no entrypoint will fail
+[[order]]
+  [[order.group]]
+    id = "google.python.missing-entrypoint"
 
 # Currently built with //builders/gcp/base/stack/stack:build.
 [stack]

@@ -26,5 +26,6 @@ go_binary(
     deps = [
         "//pkg/env",
         "//pkg/gcpbuildpack",
+        "//pkg/runtime",
     ],
 )

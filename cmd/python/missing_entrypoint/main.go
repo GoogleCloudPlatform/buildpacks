@@ -22,6 +22,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 )
 
 func main() {
@@ -29,7 +30,14 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	return gcp.OptInAlways(), nil
+	if result := runtime.CheckOverride(ctx, "python"); result != nil {
+		return result, nil
+	}
+
+	if !ctx.HasAtLeastOne("*.py") {
+		return gcp.OptOut("no .py files found"), nil
+	}
+	return gcp.OptIn("found .py files"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {
