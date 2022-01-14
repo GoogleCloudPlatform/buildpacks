@@ -72,6 +72,7 @@ package_group(
         "//builders/gae/php74",
         "//builders/gae/php81",
         "//builders/gcf/php74",
+        "//builders/gcf/php81",
         "//builders/gcp/base",
     ],
 )
@@ -120,6 +121,7 @@ package_group(
         "//builders/gcf/nodejs16",
         "//builders/gcf/nodejs8",
         "//builders/gcf/php74",
+        "//builders/gcf/php81",
         "//builders/gcf/python310",
         "//builders/gcf/python37",
         "//builders/gcf/python38",
