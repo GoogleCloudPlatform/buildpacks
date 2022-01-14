@@ -147,7 +147,7 @@
 
 - package: google.golang.org/grpc
   license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/google.golang.org/grpc/NOTICE.txt
+  license_path: /usr/local/share/licenses/lifecycle/google.golang.org/grpc/LICENSE
 
 - package: google.golang.org/protobuf
   license_name: BSD-3-Clause
