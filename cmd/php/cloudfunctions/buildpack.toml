@@ -7,3 +7,6 @@ name = "PHP - Cloud Functions"
 
 [[stacks]]
 id = "google.php74"
+
+[[stacks]]
+id = "google.php81"

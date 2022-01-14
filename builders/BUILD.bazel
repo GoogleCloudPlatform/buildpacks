@@ -70,6 +70,7 @@ package_group(
         "//builders/gae/php72",
         "//builders/gae/php73",
         "//builders/gae/php74",
+        "//builders/gae/php81",
         "//builders/gcf/php74",
         "//builders/gcp/base",
     ],
