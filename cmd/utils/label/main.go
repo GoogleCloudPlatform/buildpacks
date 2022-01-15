@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements utils/archive-source buildpack.
-// The archive-source buildpack archives user's source code.
+// Implements utils/label-image buildpack.
+// The label-image buildpack adds any environment variables with the "GOOGLE_LABEL_" prefix as
+// labels in the final application image.
 package main
 
 import (
