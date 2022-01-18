@@ -41,6 +41,10 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/buildpacks/github.com/onsi/gomega/types/LICENSE
 
+- package: github.com/rs/xid
+  license_name: MIT
+  license_path: /usr/local/share/licenses/buildpacks/github.com/rs/xid/LICENSE
+
 - package: golang.org/x/net/context/ctxhttp
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/buildpacks/golang.org/x/net/context/ctxhttp/LICENSE

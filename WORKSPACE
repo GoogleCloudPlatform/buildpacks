@@ -123,6 +123,13 @@ go_repository(
 )
 
 go_repository(
+    name = "com_github_rs_xid",
+    importpath = "github.com/rs/xid",
+    sum = "h1:pisBoZ1sLLFc+g7EZflpvatXVqmQKv8EjPP8/radknQ=",
+    version = "v0.0.0-20170604230408-02dd45c33376",
+)
+
+go_repository(
     name = "com_github_sclevine_spec",
     importpath = "github.com/sclevine/spec",
     sum = "h1:z/Q9idDcay5m5irkZ28M7PtQM4aOISzOpj4bUPkDee8=",

@@ -41,6 +41,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/rs/xid"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/checktools"
 )
@@ -933,18 +934,20 @@ func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []strin
 	t.Logf("Finished verifying build metadata (in %s)", time.Since(start))
 }
 
-// startContainer starts a container for the given app and exposes port 8080.
+// startContainer starts a container for the given app
 // The function returns the containerID, the host and port at which the app is reachable and a cleanup function.
 func startContainer(t *testing.T, image, entrypoint string, env []string, cache bool) (string, string, int, func()) {
 	t.Helper()
 
-	// Start docker container and get its id.
-	command := []string{"docker", "run", "--detach", "--publish=8080"}
+	containerName := xid.New().String()
+	command := []string{"docker", "run", "--detach", fmt.Sprintf("--name=%s", containerName)}
 	for _, e := range env {
 		command = append(command, "--env", e)
 	}
 	if cloudbuild {
 		command = append(command, "--network=cloudbuild")
+	} else {
+		command = append(command, "--publish=8080")
 	}
 	if entrypoint != "" {
 		command = append(command, "--entrypoint="+entrypoint)
@@ -957,15 +960,7 @@ func startContainer(t *testing.T, image, entrypoint string, env []string, cache 
 	}
 	t.Logf("Successfully started container: %s", id)
 
-	// Cloud Build uses the exposed port and assigns an IP address.
-	// Local execution uses "localhost" and assigns a random port.
-	host, port := "localhost", 8080
-	if cloudbuild {
-		host = cloudbuildIP(t, id)
-	} else {
-		port = hostPort(t, id)
-	}
-
+	host, port := getHostAndPortForApp(t, id, containerName)
 	return id, host, port, func() {
 		if _, err := runOutput("docker", "stop", id); err != nil {
 			t.Logf("Failed to stop container: %v", err)
@@ -977,6 +972,35 @@ func startContainer(t *testing.T, image, entrypoint string, env []string, cache 
 			t.Logf("Failed to clean up container: %v", err)
 		}
 	}
+}
+
+func getHostAndPortForApp(t *testing.T, containerID, containerName string) (string, int) {
+	if cloudbuild {
+		// In cloudbuild, the host environment is also a docker container and shares the same
+		// network as the containers launched. In docker, within a network, the 'name' of a
+		// container is also a hostname and can be used to address the container. This
+		// useful for making sure http requests go to the intended application rather than
+		// addressing by IP Address which, in the case of a terminated container, can lead to
+		// addressing another newly started container which used the IP address of the
+		// terminated container.
+		//
+		// Remapping random local ports to the container ports, like we do for the local test
+		// runs, is not an option in cloudbuild because the build is run in a host docker
+		// container and the launched containers are not "in" the host container and
+		// therefore ports are not mapped at the build container's 'localhost'.
+		return containerName, 8080
+	}
+	// When supplying the publish parameter with no local port picked, docker will
+	// choose a random port to map to the published port. In this case, it means
+	// there will be a mapping from localhost:${RAND_PORT} -> container:8080. There is a
+	// small chance of a port collision. This can happen when we start a container and it
+	// has a mapping from localhost:p1 -> container:8080, at this point the container
+	// could terminate (example: app fails to start), another test could start a container
+	// and docker could assign it the same random port 'p1'. The alternative is to write
+	// our own port picker logic which would bring its own set of issues when run on
+	// glinux machines which have various services running on ports. Since we have not
+	// observed issues with the docker port picker, we are continuing to use it.
+	return "localhost", hostPort(t, containerID)
 }
 
 // hostPort returns the host port assigned to the exposed container port.
@@ -994,19 +1018,6 @@ func hostPort(t *testing.T, id string) int {
 	}
 	t.Logf("Successfully got port: %d", port)
 	return port
-}
-
-// cloudbuildIP returns the cloudbuild network IP address of the container.
-func cloudbuildIP(t *testing.T, id string) string {
-	t.Helper()
-
-	format := "--format={{(index .NetworkSettings.Networks \"cloudbuild\").IPAddress}}"
-	ip, err := runOutput("docker", "inspect", id, format)
-	if err != nil {
-		t.Fatalf("Error getting IP address: %v", err)
-	}
-	t.Logf("Successfully got IP address: %s", ip)
-	return ip
 }
 
 func outFiles(t *testing.T, builder, dir, logName string) (outFile, errFile *os.File, cleanup func()) {

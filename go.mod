@@ -9,6 +9,7 @@ require (
 	github.com/buildpacks/libcnb v1.21.0
 	github.com/google/go-licenses v0.0.0-20200602185517-f29a4c695c3d // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.7
+	github.com/rs/xid v0.0.0-20170604230408-02dd45c33376
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
 )
