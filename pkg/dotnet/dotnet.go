@@ -99,7 +99,7 @@ func GetSDKVersion(ctx *gcp.Context) (string, error) {
 		return version, nil
 	}
 	// Use the latest LTS version.
-	version, err = client.GetLatestSDKVersion()
+	version, err = client.New().GetLatestSDKVersion()
 	if err != nil {
 		return "", gcp.UserErrorf("getting latest version: %v", err)
 	}
