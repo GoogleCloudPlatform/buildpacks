@@ -402,15 +402,15 @@ gcloud builds submit --pack image=gcr.io/my-project/imageg
 
 This command will send the local source directory to Cloud Build, invoke this buildpack builder on it, and publish the resulting image to Google Container Registry.
 
----
-
 ## Support
 
 Google Cloud Buildpacks are only officially supported when used with Google Cloud products.
 Customers of Google Cloud can use [standard support channels](https://cloud.google.com/support-hub)
 for help using buildpacks with Google Cloud Products.
 
-----
+## Security
+
+For information on reporting security vulnerabilities, see [SECURITY.md](./SECURITY.md).
 
 ## Get involved with the community
 
@@ -422,7 +422,6 @@ We welcome contributions! Here's how you can contribute:
   * Try to fix [good first issues](https://github.com/GoogleCloudPlatform/buildpacks/labels/good%20first%20issue)
   * Help out on [issues that need help](https://github.com/GoogleCloudPlatform/buildpacks/labels/help%20wanted)
   * Join in on [discussion issues](https://github.com/GoogleCloudPlatform/buildpacks/labels/discuss)
-  * Join us on [Slack](https://googlecloud-community.slack.com/archives/C011ZHLLB2T)
 <!--  * Read the [style guide] -->
 
 ## License
