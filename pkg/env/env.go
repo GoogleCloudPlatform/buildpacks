@@ -64,6 +64,10 @@ const (
 	// Behavior: In Go, the value is cleaned up and passed on to subsequent buildpacks as GOOGLE_BUILDABLE.
 	GAEMain = "GAE_YAML_MAIN"
 
+	// GaeApplicationYamlPath is set by gcloud for all GAE Flex runtimes. Flex java mvn deployment has
+	// this env var too.
+	GaeApplicationYamlPath = "GAE_APPLICATION_YAML_PATH"
+
 	// AppEngineAPIs is an env var that enables access to App Engine APIs. Set to TRUE to enable.
 	// Example: `true`, `True`, `1` will enable API access.
 	AppEngineAPIs = "GAE_APP_ENGINE_APIS"

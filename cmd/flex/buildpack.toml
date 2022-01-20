@@ -1,0 +1,9 @@
+api = "0.5"
+
+[buildpack]
+id = "google.appengine.flex"
+version = "0.9.0"
+name = "App Engine - Flex"
+
+[[stacks]]
+id = "google.flex"
