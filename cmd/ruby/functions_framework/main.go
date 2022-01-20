@@ -33,9 +33,11 @@ const (
 
 var (
 	// assumedVersion is the version of the framework used when we cannot determine a version.
+	// To avoid breaking users on early versions of the framework when we could not easily
+	// determine the framework version, this assumes users are on an early version.
 	assumedVersion = semver.MustParse("0.2.0")
 	// recommendedVersion is the lowest version for which a deprecation warning will be hidden.
-	recommendedVersion = semver.MustParse("0.9.0")
+	recommendedVersion = semver.MustParse("1.1.0")
 	// validateTargetVersion is the minimum version that supports validating FUNCTION_TARGET.
 	validateTargetVersion = semver.MustParse("0.7.0")
 )
