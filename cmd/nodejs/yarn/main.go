@@ -55,12 +55,12 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("installing Yarn: %w", err)
 	}
 
-	ml := ctx.Layer("yarn", gcp.BuildLayer, gcp.CacheLayer)
+	ml := ctx.Layer("yarn_modules", gcp.BuildLayer, gcp.CacheLayer)
 	nm := filepath.Join(ml.Path, "node_modules")
 	ctx.RemoveAll("node_modules")
 
 	nodeEnv := nodejs.NodeEnv()
-	cached, err := nodejs.CheckCache(ctx, ml, cache.WithStrings(nodeEnv), cache.WithFiles("package.json", nodejs.YarnLock))
+	cached, err := nodejs.CheckCache(ctx, ml, cache.WithFiles("package.json", nodejs.YarnLock))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
@@ -75,8 +75,10 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.ClearLayer(ml)
 	}
 
-	// Always run yarn install to run preinstall/postinstall scripts.
-	cmd := []string{"yarn", "install", "--non-interactive"}
+	// Always run yarn install to execute customer's lifecycle hooks. Setting --production=false
+	// causes the devDependencies to be installed regardless of the NODE_ENV value, so any hooks
+	// have access to them. We purge the devDependencies from the final app image below.
+	cmd := []string{"yarn", "install", "--non-interactive", "--prefer-offline", "--production=false"}
 	lf, err := nodejs.LockfileFlag(ctx)
 	if err != nil {
 		return err
@@ -84,12 +86,26 @@ func buildFn(ctx *gcp.Context) error {
 	if lf != "" {
 		cmd = append(cmd, lf)
 	}
-	ctx.Exec(cmd, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution)
+	ctx.Exec(cmd, gcp.WithUserAttribution)
 
 	if !cached {
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)
+		// Update the cache before we purge to ensure it includes the devDependencies.
 		ctx.Exec([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution)
+	}
+
+	// Run the gcp-build script if it exists.
+	if err := gcpBuild(ctx); err != nil {
+		return err
+	}
+
+	if nodeEnv == nodejs.EnvProduction {
+		ctx.Logf("Pruning devDependencies.")
+		// Setting `--production=true` causes all `devDependencies` to be deleted.
+		ctx.Exec([]string{"yarn", "install", "--frozen-lockfile", "--ignore-scripts", "--prefer-offline", "--production=true"}, gcp.WithUserAttribution)
+	} else {
+		ctx.Logf("Retaining devDependencies because NODE_ENV=%q", nodeEnv)
 	}
 
 	el := ctx.Layer("env", gcp.BuildLayer, gcp.LaunchLayer)
@@ -149,5 +165,16 @@ func installYarn(ctx *gcp.Context) error {
 		Launch:   true,
 		Build:    true,
 	})
+	return nil
+}
+
+func gcpBuild(ctx *gcp.Context) error {
+	p, err := nodejs.ReadPackageJSON(ctx.ApplicationRoot())
+	if err != nil {
+		return err
+	}
+	if p.Scripts.GCPBuild != "" {
+		ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution)
+	}
 	return nil
 }

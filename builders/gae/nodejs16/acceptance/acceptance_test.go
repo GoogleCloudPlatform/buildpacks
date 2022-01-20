@@ -24,11 +24,10 @@ func init() {
 }
 
 const (
-	npm          = "google.nodejs.npm"
-	npmGCPBuild  = "google.nodejs.npm-gcp-build"
-	yarn         = "google.nodejs.yarn"
-	yarnGCPBuild = "google.nodejs.yarn-gcp-build"
-	appEngine    = "google.nodejs.appengine"
+	npm         = "google.nodejs.npm"
+	npmGCPBuild = "google.nodejs.npm-gcp-build"
+	yarn        = "google.nodejs.yarn"
+	appEngine   = "google.nodejs.appengine"
 )
 
 func TestAcceptance(t *testing.T) {
@@ -74,7 +73,7 @@ func TestAcceptance(t *testing.T) {
 		{
 			App:        "postinstall_npm",
 			MustUse:    []string{npm},
-			MustNotUse: []string{npmGCPBuild, yarn, yarnGCPBuild},
+			MustNotUse: []string{npmGCPBuild, yarn},
 			MustNotOutputCached: []string{
 				"removing existing node_modules/ before installation",
 				"added 1 package",
@@ -83,27 +82,27 @@ func TestAcceptance(t *testing.T) {
 		{
 			App:              "postinstall_yarn",
 			MustUse:          []string{yarn},
-			MustNotUse:       []string{npmGCPBuild, npm, yarnGCPBuild},
+			MustNotUse:       []string{npmGCPBuild, npm},
 			MustOutputCached: []string{"Already up-to-date."},
 		},
 		{
 			App:        "gcp_build_npm",
 			MustUse:    []string{npmGCPBuild},
-			MustNotUse: []string{yarnGCPBuild},
+			MustNotUse: []string{yarn},
 		},
 		{
 			App:        "gcp_build_yarn",
-			MustUse:    []string{yarnGCPBuild},
+			MustUse:    []string{yarn},
 			MustNotUse: []string{npmGCPBuild},
 		},
 		{
 			App:        "gcp_build_npm_no_dependencies",
 			MustUse:    []string{npmGCPBuild},
-			MustNotUse: []string{yarnGCPBuild},
+			MustNotUse: []string{yarn},
 		},
 		{
 			App:        "gcp_build_yarn_no_dependencies",
-			MustUse:    []string{yarnGCPBuild},
+			MustUse:    []string{yarn},
 			MustNotUse: []string{npmGCPBuild},
 		},
 		{

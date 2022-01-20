@@ -25,10 +25,9 @@ func init() {
 }
 
 const (
-	npm          = "google.nodejs.npm"
-	yarn         = "google.nodejs.yarn"
-	npmGCPBuild  = "google.nodejs.npm-gcp-build"
-	yarnGCPBuild = "google.nodejs.yarn-gcp-build"
+	npm         = "google.nodejs.npm"
+	yarn        = "google.nodejs.yarn"
+	npmGCPBuild = "google.nodejs.npm-gcp-build"
 )
 
 func TestAcceptance(t *testing.T) {
@@ -106,12 +105,12 @@ func TestAcceptance(t *testing.T) {
 			Name:       "function with gcp-build",
 			App:        "with_gcp_build",
 			MustUse:    []string{npmGCPBuild},
-			MustNotUse: []string{yarnGCPBuild},
+			MustNotUse: []string{yarn},
 		},
 		{
 			Name:       "function with gcp-build and with yarn",
 			App:        "with_gcp_build_yarn",
-			MustUse:    []string{yarnGCPBuild},
+			MustUse:    []string{yarn},
 			MustNotUse: []string{npmGCPBuild},
 		},
 		{

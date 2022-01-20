@@ -13,10 +13,6 @@ description = "Builder for the GAE Node.js 12 runtime"
   uri = "yarn.tgz"
 
 [[buildpacks]]
-  id = "google.nodejs.yarn-gcp-build"
-  uri = "yarn_gcp_build.tgz"
-
-[[buildpacks]]
   id = "google.nodejs.appengine"
   uri = "appengine.tgz"
 
@@ -25,10 +21,6 @@ description = "Builder for the GAE Node.js 12 runtime"
   uri = "label.tgz"
 
 [[order]]
-  [[order.group]]
-    id = "google.nodejs.yarn-gcp-build"
-    optional = true
-
   [[order.group]]
     id = "google.nodejs.yarn"
 

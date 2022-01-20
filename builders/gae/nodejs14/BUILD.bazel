@@ -12,7 +12,6 @@ builder(
         "//cmd/nodejs/npm:npm.tgz",
         "//cmd/nodejs/npm_gcp_build:npm_gcp_build.tgz",
         "//cmd/nodejs/yarn:yarn.tgz",
-        "//cmd/nodejs/yarn_gcp_build:yarn_gcp_build.tgz",
         "//cmd/utils/label:label.tgz",
     ],
     image = "gae/nodejs14",
