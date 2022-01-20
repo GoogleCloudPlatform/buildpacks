@@ -242,7 +242,7 @@ func createMainVendored(ctx *gcp.Context, fn fnInfo) error {
 	} else {
 		// If the framework isn't in the user-provided vendor directory, we need to fetch it ourselves.
 		ctx.Logf("Found function with vendored dependencies excluding functions-framework")
-		ctx.Warnf("Your vendored dependencies do not contain the functions framework (%s). If there are conflicts between the vendored packages and the dependencies of the framework, you may see encounter unexpected issues.", functionsFrameworkPackage)
+		ctx.Warnf("Your vendored dependencies do not contain the functions framework (%s). If there are conflicts between the vendored packages and the dependencies of the framework, you may encounter unexpected issues.", functionsFrameworkPackage)
 
 		// Install the functions framework. Use `go mod vendor` to do this because that allows the
 		// versions of all of the framework's dependencies to be pinned as specified in the framework's
