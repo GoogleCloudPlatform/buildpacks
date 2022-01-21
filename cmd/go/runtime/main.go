@@ -25,7 +25,6 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/buildpacks/libcnb"
 )
@@ -93,10 +92,6 @@ func buildFn(ctx *gcp.Context) error {
 func runtimeVersion(ctx *gcp.Context) (string, error) {
 	if version := os.Getenv(env.RuntimeVersion); version != "" {
 		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, version)
-		return version, nil
-	}
-	if version := golang.GoModVersion(ctx); version != "" {
-		ctx.Logf("Using runtime version from go.mod: %s", version)
 		return version, nil
 	}
 	version, err := latestGoVersion(ctx)
