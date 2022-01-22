@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -54,6 +55,7 @@ type packageScriptsJSON struct {
 // PackageJSON represents the contents of a package.json file.
 type PackageJSON struct {
 	Main            string             `json:"main"`
+	Type            string             `json:"type"`
 	Version         string             `json:"version"`
 	Engines         packageEnginesJSON `json:"engines"`
 	Scripts         packageScriptsJSON `json:"scripts"`
@@ -129,4 +131,24 @@ func CheckCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, 
 	ctx.SetMetadata(l, nodeVersionKey, currentNodeVersion)
 
 	return false, nil
+}
+
+// SkipSyntaxCheck returns true if we should skip checking the user's function file for syntax errors
+// if it is impacted by https://github.com/GoogleCloudPlatform/functions-framework-nodejs/issues/407.
+func SkipSyntaxCheck(ctx *gcp.Context, file string) (bool, error) {
+	version, err := semver.ParseTolerant(nodeVersion(ctx))
+	if err != nil {
+		return false, gcp.InternalErrorf("failed to detect valid Node.js version %s: %v", version, err)
+	}
+	if version.Major != 16 {
+		return false, nil
+	}
+	if strings.HasSuffix(file, ".mjs") {
+		return true, nil
+	}
+	if !ctx.FileExists(filepath.Join(ctx.ApplicationRoot(), "package.json")) {
+		return false, nil
+	}
+	pjs, err := ReadPackageJSON(ctx.ApplicationRoot())
+	return (pjs != nil && pjs.Type == "module"), err
 }

@@ -141,6 +141,12 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{npm},
 			MustNotUse: []string{yarn},
 		},
+		{
+			Name:       "ESM function",
+			App:        "using_esm",
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

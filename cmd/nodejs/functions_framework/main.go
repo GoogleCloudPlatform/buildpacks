@@ -83,8 +83,14 @@ func buildFn(ctx *gcp.Context) error {
 		return gcp.UserErrorf("%s does not exist", fnFile)
 	}
 
-	// Syntax check the function code without executing to prevent run-time errors.
-	ctx.Exec([]string{"node", "--check", fnFile}, gcp.WithUserAttribution)
+	// TODO(mattrobertson) remove this check once Nodejs has backported the fix to v16. More info here:
+	// https://github.com/GoogleCloudPlatform/functions-framework-nodejs/issues/407
+	if skip, err := nodejs.SkipSyntaxCheck(ctx, fnFile); err != nil {
+		return err
+	} else if !skip {
+		// Syntax check the function code without executing to prevent run-time errors.
+		ctx.Exec([]string{"node", "--check", fnFile}, gcp.WithUserAttribution)
+	}
 
 	l := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 	// We use the absolute path to the functions-framework executable in order to
