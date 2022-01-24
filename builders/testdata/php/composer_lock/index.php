@@ -15,10 +15,10 @@
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-// As of when this test was written, 8.5.2 was the current version of phpunit.
-// composer.lock specifies 8.5.0 and composer.json specifies ^8.5.2, so we
-// expect composer.lock to ensure we get 8.5.0.
-$want = '8.5.0';
+// As of when this test was written, 8.5.22 was the current version of phpunit.
+// composer.lock specifies 8.5.21 and composer.json specifies ^8.5.22, so we
+// expect composer.lock to ensure we get 8.5.21.
+$want = '8.5.21';
 
 $got = PHPUnit\Runner\Version::id();
 

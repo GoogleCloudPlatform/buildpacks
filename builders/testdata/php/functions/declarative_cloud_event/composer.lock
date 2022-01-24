@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "cloudevents/sdk-php",
-            "version": "v1.0.0",
+            "version": "v1.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cloudevents/sdk-php.git",
-                "reference": "53d1f2f3a63b0104bb9cc583b2b9c77c2946781c"
+                "reference": "602cd26557e5522060531b3103450b34b678be1c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cloudevents/sdk-php/zipball/53d1f2f3a63b0104bb9cc583b2b9c77c2946781c",
-                "reference": "53d1f2f3a63b0104bb9cc583b2b9c77c2946781c",
+                "url": "https://api.github.com/repos/cloudevents/sdk-php/zipball/602cd26557e5522060531b3103450b34b678be1c",
+                "reference": "602cd26557e5522060531b3103450b34b678be1c",
                 "shasum": ""
             },
             "require": {
@@ -30,7 +30,7 @@
                 "guzzlehttp/psr7": "^2.0",
                 "php-http/discovery": "^1.14",
                 "phpunit/phpunit": "^9.5 || ^10.0",
-                "psalm/phar": "4.8.1",
+                "psalm/phar": "4.15.0",
                 "psr/http-factory": "^1.0.1",
                 "psr/http-message": "^1.0.1",
                 "squizlabs/php_codesniffer": "3.6.0"
@@ -62,7 +62,7 @@
                 "issues": "https://github.com/cloudevents/sdk-php/issues",
                 "source": "https://github.com/cloudevents/sdk-php"
             },
-            "time": "2021-08-07T16:11:50+00:00"
+            "time": "2021-12-15T21:41:40+00:00"
         },
         {
             "name": "google/cloud-functions-framework",
@@ -380,16 +380,16 @@
         },
         {
             "name": "symfony/polyfill-php80",
-            "version": "v1.23.1",
+            "version": "v1.24.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/polyfill-php80.git",
-                "reference": "1100343ed1a92e3a38f9ae122fc0eb21602547be"
+                "reference": "57b712b08eddb97c762a8caa32c84e037892d2e9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/polyfill-php80/zipball/1100343ed1a92e3a38f9ae122fc0eb21602547be",
-                "reference": "1100343ed1a92e3a38f9ae122fc0eb21602547be",
+                "url": "https://api.github.com/repos/symfony/polyfill-php80/zipball/57b712b08eddb97c762a8caa32c84e037892d2e9",
+                "reference": "57b712b08eddb97c762a8caa32c84e037892d2e9",
                 "shasum": ""
             },
             "require": {
@@ -443,7 +443,7 @@
                 "shim"
             ],
             "support": {
-                "source": "https://github.com/symfony/polyfill-php80/tree/v1.23.1"
+                "source": "https://github.com/symfony/polyfill-php80/tree/v1.24.0"
             },
             "funding": [
                 {
@@ -459,7 +459,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2021-07-28T13:41:28+00:00"
+            "time": "2021-09-13T13:58:33+00:00"
         }
     ],
     "packages-dev": [],
@@ -470,5 +470,5 @@
     "prefer-lowest": false,
     "platform": [],
     "platform-dev": [],
-    "plugin-api-version": "2.1.0"
+    "plugin-api-version": "2.2.0"
 }

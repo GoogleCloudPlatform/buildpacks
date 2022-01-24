@@ -30,15 +30,14 @@ const (
 )
 
 func TestAcceptance(t *testing.T) {
-	t.Skip("Disable php81")
-
-	builder, cleanup := acceptance.CreateBuilder(t)
-	t.Cleanup(cleanup)
 
 	// TODO(b/213471839): Remove when stack images are published.
 	if acceptance.PullImages() {
 		t.Skip("Disabled for continuous builds")
 	}
+
+	builder, cleanup := acceptance.CreateBuilder(t)
+	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
 		{
@@ -134,15 +133,14 @@ func TestAcceptance(t *testing.T) {
 }
 
 func TestFailures(t *testing.T) {
-	t.Skip("Disable php81")
-
-	builder, cleanup := acceptance.CreateBuilder(t)
-	t.Cleanup(cleanup)
 
 	// TODO(b/213471839): Remove when stack images are published.
 	if acceptance.PullImages() {
 		t.Skip("Disabled for continuous builds")
 	}
+
+	builder, cleanup := acceptance.CreateBuilder(t)
+	t.Cleanup(cleanup)
 
 	testCases := []acceptance.FailureTest{
 		{

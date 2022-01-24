@@ -16,7 +16,7 @@
 use Psr\Http\Message\ServerRequestInterface;
 
 function testFunction(ServerRequestInterface $request) {
-  $want = '9.1.1';
+  $want = '9.5.11';
   $got = PHPUnit\Runner\Version::id();
 
   if ($got !== $want) {
