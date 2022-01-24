@@ -299,7 +299,12 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 	// Check that the application responds with `PASS`.
 	start := time.Now()
 
-	body, status, statusCode, err := sendRequest(host, port, cfg.Path, cfg.RequestType)
+	reqType := HTTPType
+	if cfg.RequestType != "" {
+		reqType = cfg.RequestType
+	}
+
+	body, status, statusCode, err := sendRequest(host, port, cfg.Path, reqType)
 
 	if err != nil {
 		t.Fatalf("Unable to invoke app: %v", err)
@@ -314,7 +319,7 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 	if statusCode != wantCode {
 		t.Errorf("Unexpected status code: got %d, want %d", statusCode, wantCode)
 	}
-	if cfg.RequestType == HTTPType && cfg.MustMatch == "" {
+	if reqType == HTTPType && cfg.MustMatch == "" {
 		cfg.MustMatch = "PASS"
 	}
 	if !strings.HasSuffix(body, cfg.MustMatch) {
@@ -333,7 +338,7 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 		for try := tries; try >= 1; try-- {
 			time.Sleep(1 * time.Second)
 
-			body, status, _, err := sendRequestWithTimeout(host, port, cfg.Path, 10*time.Second, cfg.RequestType)
+			body, status, _, err := sendRequestWithTimeout(host, port, cfg.Path, 10*time.Second, reqType)
 			// An app that is rebuilding can be unresponsive.
 			if err != nil {
 				if try == 1 {
