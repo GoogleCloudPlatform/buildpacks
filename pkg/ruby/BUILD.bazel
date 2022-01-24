@@ -1,0 +1,31 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+go_library(
+    name = "ruby",
+    srcs = [
+        "ruby.go",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//cmd/ruby:__subpackages__",
+    ],
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+    ],
+)
+
+go_test(
+    name = "ruby_test",
+    srcs = [
+        "ruby_test.go",
+    ],
+    embed = [":ruby"],
+    rundir = ".",
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+    ],
+)
