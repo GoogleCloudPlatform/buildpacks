@@ -491,6 +491,25 @@ func runOutput(args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+func runCombinedOutput(args ...string) (string, error) {
+	log.Printf("Running %v\n", args)
+	start := time.Now()
+	cmd := exec.Command(args[0], args[1:]...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		logs := fmt.Sprintf("\nstdout & stderr:\n%s\n", out)
+		return "", fmt.Errorf("running command %v: %v%s", args, err, logs)
+	}
+	log.Printf("Finished %v (in %s)\n", args, time.Since(start))
+	return string(out), nil
+}
+
+// runDockerLogs returns the logs for a container, the lineLimit parameter
+// controls the maximum number of lines read from the log
+func runDockerLogs(containerID string, lineLimit int) (string, error) {
+	return runCombinedOutput("docker", "logs", "--tail", string(lineLimit), containerID)
+}
+
 // cleanUpImage attempts to delete an image from the Docker daemon.
 func cleanUpImage(t *testing.T, name string) {
 	t.Helper()
@@ -970,12 +989,25 @@ func startContainer(t *testing.T, image, entrypoint string, env []string, cache 
 		if _, err := runOutput("docker", "stop", id); err != nil {
 			t.Logf("Failed to stop container: %v", err)
 		}
+		if t.Failed() {
+			// output the container logs when a test failed, this can be useful for debugging failures in the test application
+			outputDockerLogs(t, id)
+		}
 		if keepArtifacts {
 			return
 		}
 		if _, err := runOutput("docker", "rm", "-f", id); err != nil {
 			t.Logf("Failed to clean up container: %v", err)
 		}
+	}
+}
+
+func outputDockerLogs(t *testing.T, containerID string) {
+	out, err := runDockerLogs(containerID, 1000)
+	if err == nil {
+		t.Logf("docker logs %v:\n%v", containerID, out)
+	} else {
+		t.Errorf("error fetching docker logs for container %v: %v", containerID, err)
 	}
 }
 
