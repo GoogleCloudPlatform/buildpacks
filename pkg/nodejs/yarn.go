@@ -15,7 +15,12 @@
 package nodejs
 
 import (
+	"io/ioutil"
+	"path/filepath"
+	"strings"
+
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -23,11 +28,62 @@ const (
 	YarnLock = "yarn.lock"
 )
 
-// LockfileFlag returns an appropriate lockfile handling flag, including empty string.
-func LockfileFlag(ctx *gcp.Context) (string, error) {
-	// HACK: For backwards compatibility on App Engine Node.js 10 and older, skip using `--frozen-lockfile`.
-	if isOldNode, err := isPreNode11(ctx); err != nil || isOldNode {
-		return "", err
+type yarn2Lock struct {
+	Metadata struct {
+		Version string `yaml:"version"`
+	} `yaml:"__metadata"`
+}
+
+// YarnInstallCmd returns an appropriate command for installing Yarn dependencies for a given environment.
+func YarnInstallCmd(ctx *gcp.Context, yarn2, pnpMode bool) ([]string, error) {
+	if yarn2 {
+		cmd := []string{"yarn", "install", "--immutable"}
+		if pnpMode {
+			// In Plug'n'Play mode all dependencies must be included in the Yarn cache. The --immutable-cache
+			// option will abort the install with an error if anything is missing or out of date.
+			cmd = append(cmd, "--immutable-cache")
+		}
+		return cmd, nil
 	}
-	return "--frozen-lockfile", nil
+
+	// Setting --production=false causes the devDependencies to be installed regardless of the
+	// NODE_ENV value. The allows the customer's lifecycle hooks to access to them. We purge the
+	// devDependencies from the final app.
+	cmd := []string{"yarn", "install", "--non-interactive", "--prefer-offline", "--production=false"}
+
+	// HACK: For backwards compatibility on App Engine Node.js 10 and older, skip using `--frozen-lockfile`.
+	if isOldNode, err := isPreNode11(ctx); err != nil {
+		return nil, err
+	} else if !isOldNode {
+		cmd = append(cmd, "--frozen-lockfile")
+	}
+	return cmd, nil
+}
+
+// IsYarn2 detects whether the given lockfile was generated with Yarn 2.
+func IsYarn2(rootDir string) (bool, error) {
+	data, err := ioutil.ReadFile(filepath.Join(rootDir, YarnLock))
+	if err != nil {
+		return false, gcp.InternalErrorf("reading yarn.lock: %v", err)
+	}
+
+	var manifest yarn2Lock
+
+	if err := yaml.Unmarshal(data, &manifest); err != nil {
+		// In Yarn1, yarn.lock was not necessarily valid YAML.
+		return false, nil
+	}
+	// After Yarn2, yarn.lock files contain a __metadata.version field.
+	return manifest.Metadata.Version != "", nil
+}
+
+// IsYarnPNP returns true if the project is using Yarn2's Plug'n'Play feature.
+func IsYarnPNP(ctx *gcp.Context) bool {
+	return ctx.FileExists(ctx.ApplicationRoot(), ".yarn", "cache")
+}
+
+// HasYarnWorkspacePlugin returns true if this project has Yarn2's workspaces plugin installed.
+func HasYarnWorkspacePlugin(ctx *gcp.Context) bool {
+	res := ctx.Exec([]string{"yarn", "plugin", "runtime"})
+	return strings.Contains(res.Stdout, "plugin-workspace-tools")
 }

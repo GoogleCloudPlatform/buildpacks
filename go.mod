@@ -12,4 +12,5 @@ require (
 	github.com/rs/xid v0.0.0-20170604230408-02dd45c33376
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
+	gopkg.in/yaml.v2 v2.3.0
 )

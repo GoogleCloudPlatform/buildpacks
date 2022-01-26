@@ -56,3 +56,7 @@
 - package: golang.org/x/sys
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/buildpacks/golang.org/x/sys/LICENSE
+
+- package: gopkg.in/yaml.v2
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/gopkg.in/yaml.v2/LICENSE

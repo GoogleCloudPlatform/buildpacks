@@ -161,6 +161,17 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{npm},
 			MustNotUse: []string{yarn},
 		},
+		{
+			App:        "yarn_two",
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
+		},
+		{
+			App:        "yarn_two_pnp",
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
+			Env:        []string{"GOOGLE_ENTRYPOINT=yarn start"},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

@@ -46,9 +46,11 @@ function license_entry() {
   local license_path="$(echo "${license_url}" | sed 's;https://\(.*\)/blob/\(master\|main\)\(/.*\);\1\3;')"
   # Regex from https://github.com/google/go-licenses/blob/master/licenses/find.go#L26.
   local regex=".*/\(LICEN\(S\|C\)E\|COPYING\|README\|NOTICE\)\(\..+\)?$"
-  local license_file="$(find "${local_dir}/${package}" -regex "$regex" -printf '%P\n' | head -1)"
+  local license_file="$(find "${local_dir}/${package}" -regex "$regex" -printf '%P\n' | sort | head -1)"
   if [ -f "${local_dir}/${license_path}" ]; then
     echo "  license_path: /usr/local/share/licenses/${image_dir}/${license_path}"
+  elif [ -f "${local_dir}/${package}/LICENSE" ]; then
+    echo "  license_path: /usr/local/share/licenses/${image_dir}/${package}/LICENSE"
   elif [ -f "${local_dir}/${package}/${license_file}" ]; then
     echo "  license_path: /usr/local/share/licenses/${image_dir}/${package}/${license_file}"
   else

@@ -18,6 +18,7 @@ go_library(
         "//pkg/gcpbuildpack",
         "@com_github_blang_semver//:go_default_library",
         "@com_github_buildpacks_libcnb//:go_default_library",
+        "@in_gopkg_yaml_v2//:go_default_library",
     ],
 )
 
@@ -34,5 +35,6 @@ go_test(
     deps = [
         "//pkg/gcpbuildpack",
         "//pkg/testdata",
+        "//third_party/golang/cmp",
     ],
 )

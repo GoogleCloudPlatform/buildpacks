@@ -51,48 +51,37 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	if err := installYarn(ctx); err != nil {
+	yarn2, err := nodejs.IsYarn2(ctx.ApplicationRoot())
+	if err != nil {
+		return err
+	}
+
+	// Plug'n'Play mode is a Yarn2 feature in which dependencies are always bundled with the application
+	// source: https://yarnpkg.com/features/pnp
+	pnpMode := yarn2 && nodejs.IsYarnPNP(ctx)
+
+	if err := installYarn(ctx, pnpMode); err != nil {
 		return fmt.Errorf("installing Yarn: %w", err)
 	}
 
 	ml := ctx.Layer("yarn_modules", gcp.BuildLayer, gcp.CacheLayer)
-	nm := filepath.Join(ml.Path, "node_modules")
-	ctx.RemoveAll("node_modules")
-
-	nodeEnv := nodejs.NodeEnv()
-	cached, err := nodejs.CheckCache(ctx, ml, cache.WithFiles("package.json", nodejs.YarnLock))
-	if err != nil {
-		return fmt.Errorf("checking cache: %w", err)
-	}
-
-	if cached {
-		ctx.CacheHit(cacheTag)
-		// Restore cached node_modules.
-		ctx.Exec([]string{"cp", "--archive", nm, "node_modules"}, gcp.WithUserTimingAttribution)
-	} else {
-		ctx.CacheMiss(cacheTag)
-		// Clear cached node_modules to ensure we don't end up with outdated dependencies.
-		ctx.ClearLayer(ml)
-	}
-
-	// Always run yarn install to execute customer's lifecycle hooks. Setting --production=false
-	// causes the devDependencies to be installed regardless of the NODE_ENV value, so any hooks
-	// have access to them. We purge the devDependencies from the final app image below.
-	cmd := []string{"yarn", "install", "--non-interactive", "--prefer-offline", "--production=false"}
-	lf, err := nodejs.LockfileFlag(ctx)
+	updateCache, err := restoreCachedModules(ctx, ml, pnpMode)
 	if err != nil {
 		return err
 	}
-	if lf != "" {
-		cmd = append(cmd, lf)
+
+	// Always run yarn install to execute customer's lifecycle hooks.
+	cmd, err := nodejs.YarnInstallCmd(ctx, yarn2, pnpMode)
+	if err != nil {
+		return err
 	}
 	ctx.Exec(cmd, gcp.WithUserAttribution)
 
-	if !cached {
+	if updateCache {
 		// Ensure node_modules exists even if no dependencies were installed.
 		ctx.MkdirAll("node_modules", 0755)
 		// Update the cache before we purge to ensure it includes the devDependencies.
-		ctx.Exec([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution)
+		ctx.Exec([]string{"cp", "--archive", "node_modules", filepath.Join(ml.Path, "node_modules")}, gcp.WithUserTimingAttribution)
 	}
 
 	// Run the gcp-build script if it exists.
@@ -100,12 +89,20 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	if nodeEnv == nodejs.EnvProduction {
-		ctx.Logf("Pruning devDependencies.")
-		// Setting `--production=true` causes all `devDependencies` to be deleted.
-		ctx.Exec([]string{"yarn", "install", "--frozen-lockfile", "--ignore-scripts", "--prefer-offline", "--production=true"}, gcp.WithUserAttribution)
-	} else {
+	nodeEnv := nodejs.NodeEnv()
+	switch {
+	case nodeEnv != nodejs.EnvProduction:
 		ctx.Logf("Retaining devDependencies because NODE_ENV=%q", nodeEnv)
+	case yarn2 && !nodejs.HasYarnWorkspacePlugin(ctx):
+		ctx.Warnf("Keeping devDependencies because the Yarn workspace-tools plugin is not installed. You can add it to your project by running 'yarn plugin import workspace-tools'")
+	case yarn2:
+		// For Yarn2, dependency pruning is via the workspaces plugin.
+		ctx.Logf("Pruning devDependencies")
+		ctx.Exec([]string{"yarn", "workspaces", "focus", "--all", "--production"}, gcp.WithUserAttribution)
+	default:
+		// For Yarn1, setting `--production=true` causes all `devDependencies` to be deleted.
+		ctx.Logf("Pruning devDependencies")
+		ctx.Exec([]string{"yarn", "install", "--frozen-lockfile", "--ignore-scripts", "--prefer-offline", "--production=true"}, gcp.WithUserAttribution)
 	}
 
 	el := ctx.Layer("env", gcp.BuildLayer, gcp.LaunchLayer)
@@ -130,11 +127,18 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
-func installYarn(ctx *gcp.Context) error {
-	// Skip installation if yarn is already installed.
-	if result := ctx.Exec([]string{"bash", "-c", "command -v yarn || true"}); result.Stdout != "" {
-		ctx.Debugf("Yarn is already installed, skipping installation.")
-		return nil
+func installYarn(ctx *gcp.Context, pnpMode bool) error {
+	// Skip installation if yarn is already installed. Note this does not work in PlugNPlay mode because
+	// it requires Yarn to be installed in the final run image.
+	// TODO(mattrobertson) Remove this once we remove yarn from the base builder images.
+	if !pnpMode {
+		if result := ctx.Exec([]string{"bash", "-c", "command -v yarn || true"}); result.Stdout != "" {
+			ctx.Logf("Yarn is already installed, skipping installation.")
+			return nil
+		}
+		ctx.Warnf("Yarn is not installed...")
+	} else {
+		ctx.Warnf("In PNP mode...")
 	}
 
 	yarnLayer := "yarn_install"
@@ -177,4 +181,37 @@ func gcpBuild(ctx *gcp.Context) error {
 		ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution)
 	}
 	return nil
+}
+
+// restoreCachedModules copies the cached node_modules from the provided layer into the application
+// dir if they can be re-used and returns true if cache needs to be updated.
+func restoreCachedModules(ctx *gcp.Context, ml *libcnb.Layer, pnpMode bool) (bool, error) {
+	if pnpMode {
+		// In Yarn2 Plug'n'Play mode all modules are included with the application source so there
+		// is no point in adding them to a cache layer.
+		ctx.ClearLayer(ml)
+		return false, nil
+	}
+	nm := filepath.Join(ml.Path, "node_modules")
+	ctx.RemoveAll("node_modules")
+
+	cached, err := nodejs.CheckCache(ctx, ml, cache.WithFiles("package.json", nodejs.YarnLock))
+	if err != nil {
+		return true, fmt.Errorf("checking cache: %w", err)
+	}
+
+	if cached {
+		// The yarn.lock hasn't been updated since we last built so the cached node_modules should be
+		// up-to-date. There is no need to update the layer cache after we run "yarn install" because
+		// it should be a no-op.
+		ctx.CacheHit(cacheTag)
+		ctx.Exec([]string{"cp", "--archive", nm, "node_modules"}, gcp.WithUserTimingAttribution)
+		return false, nil
+	}
+
+	// The dependencies listed in the yarn.lock file have changed. Clear the layer cache and update
+	// it after we run yarn install
+	ctx.CacheMiss(cacheTag)
+	ctx.ClearLayer(ml)
+	return true, nil
 }

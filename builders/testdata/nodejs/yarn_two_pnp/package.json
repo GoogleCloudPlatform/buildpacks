@@ -1,0 +1,8 @@
+{
+  "scripts": {
+	  "start": "node index.js"
+  },
+  "dependencies": {
+    "isexe": "^2.0.0"
+  }
+}
