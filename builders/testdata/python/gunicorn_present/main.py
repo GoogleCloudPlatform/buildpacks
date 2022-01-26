@@ -21,7 +21,7 @@ app = Flask(__name__)
 @app.route('/')
 def hello():
   import gunicorn
-  if gunicorn.__version__ == '19.3.0':
+  if gunicorn.__version__ == '20.1.0':
     return 'PASS'
   return 'FAIL: got version %s, expected version 19.3.0' % gunicorn.__version__
 
