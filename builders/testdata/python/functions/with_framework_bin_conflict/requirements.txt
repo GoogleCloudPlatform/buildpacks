@@ -1,2 +1,2 @@
 functions-framework==1.5.0
-spacy==2.3.2  # spacy installs executables into bin and site-packages/bin.
+spacy==3.2.1  # spacy installs executables into bin and site-packages/bin.
