@@ -17,11 +17,20 @@
 package buildpacktestenv
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
+)
+
+const (
+	// EnvHelperMockProcessMap is the env var used to communicate the intended
+	// behavior of the mock process for various commands. It contains a
+	// map[string]MockProcess serialized to JSON.
+	EnvHelperMockProcessMap = "HELPER_MOCK_PROCESS_MAP"
 )
 
 // TempDirs represents temp directories used for buildpack environment setup.
@@ -67,7 +76,9 @@ func setOSArgs(t *testing.T, args []string) func() {
 	}
 }
 
-func setUpTempDirs(t *testing.T, stack string) (TempDirs, func()) {
+// setUpTempDirs creates standard buildpack files and directories in a temp
+// directory. The temps are automatically cleaned up at the end of the test.
+func setUpTempDirs(t *testing.T, stack string) TempDirs {
 	t.Helper()
 	LayersDir, err := ioutil.TempDir("", "layers-")
 	if err != nil {
@@ -134,7 +145,7 @@ version = "entry-version"
 		PlanFile:     filepath.Join(BuildpackDir, "plan.toml"),
 	}
 
-	return temps, func() {
+	t.Cleanup(func() {
 		if err := os.Chdir(oldDir); err != nil {
 			t.Fatalf("changing back to old working directory %q: %v", oldDir, err)
 		}
@@ -153,7 +164,8 @@ version = "entry-version"
 		if err := os.Unsetenv("CNB_STACK_ID"); err != nil {
 			t.Fatalf("unsetting CNB_STACK_ID: %v", err)
 		}
-	}
+	})
+	return temps
 }
 
 // SetUpDetectEnvironment sets up an environment for testing buildpack detect
@@ -166,12 +178,11 @@ func SetUpDetectEnvironment(t *testing.T) (TempDirs, func()) {
 // functionality with a custom stack name.
 func SetUpDetectEnvironmentWithStack(t *testing.T, stack string) (TempDirs, func()) {
 	t.Helper()
-	temps, cleanUpTempDirs := setUpTempDirs(t, stack)
+	temps := setUpTempDirs(t, stack)
 	cleanUpArgs := setOSArgs(t, []string{filepath.Join(temps.BuildpackDir, "bin", "detect"), temps.PlatformDir, temps.PlanFile})
 
 	return temps, func() {
 		cleanUpArgs()
-		cleanUpTempDirs()
 	}
 }
 
@@ -179,11 +190,52 @@ func SetUpDetectEnvironmentWithStack(t *testing.T, stack string) (TempDirs, func
 // functionality.
 func SetUpBuildEnvironment(t *testing.T) (TempDirs, func()) {
 	t.Helper()
-	temps, cleanUpTempDirs := setUpTempDirs(t, "com.stack")
+	temps := setUpTempDirs(t, "com.stack")
 	cleanUpArgs := setOSArgs(t, []string{filepath.Join(temps.BuildpackDir, "bin", "build"), temps.LayersDir, temps.PlatformDir, temps.PlanFile})
 
 	return temps, func() {
 		cleanUpArgs()
-		cleanUpTempDirs()
 	}
+}
+
+// MockProcess encapsulates the behavior of a mock process for test.
+type MockProcess struct {
+	// Stdout is the message that should be printed to stdout.
+	Stdout string
+	// Stderr is the message that should be printed to stderr.
+	Stderr string
+	// ExitCode is the exit code that the process should use.
+	ExitCode int
+}
+
+// NewMockExecCmd constructs an ExecCmd that can replace standard exec.Cmd calls
+// with custom behavior for testing. It takes the path to the mock process
+// binary as the first argument, and a map of
+// { command : mock action to simulate the commands behavior }. The command
+// must be at least a partial match to the full command (binary name and all
+// argus) that would have been executed by exec.Cmd.
+func NewMockExecCmd(t *testing.T, mockProcess string, commands map[string]MockProcess) func(name string, args ...string) *exec.Cmd {
+	t.Helper()
+
+	b, err := json.Marshal(commands)
+	if err != nil {
+		t.Fatalf("unable to marshal MockProcess map to JSON: %v", err)
+	}
+
+	return func(name string, args ...string) *exec.Cmd {
+		cmd := exec.Command(mockProcess, args...)
+		cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", EnvHelperMockProcessMap, string(b)))
+		return cmd
+	}
+}
+
+// UnmarshalMockProcessMap is a utility function that marshals a
+// map[string]MockProcess from JSON.
+func UnmarshalMockProcessMap(data string) (map[string]MockProcess, error) {
+	var mocks map[string]MockProcess
+	if err := json.Unmarshal([]byte(data), &mocks); err != nil {
+		return mocks, err
+	}
+
+	return mocks, nil
 }
