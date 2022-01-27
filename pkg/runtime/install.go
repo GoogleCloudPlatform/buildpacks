@@ -28,10 +28,15 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 )
 
-var dartSdkURL = "https://storage.googleapis.com/dart-archive/channels/stable/release/%[1]s/sdk/dartsdk-linux-x64-release.zip"
+var (
+	dartSdkURL     = "https://storage.googleapis.com/dart-archive/channels/stable/release/%[1]s/sdk/dartsdk-linux-x64-release.zip"
+	rubyRuntimeURL = "https://dl.google.com/runtimes/ruby/ruby-%s.tar.gz"
+)
 
 const (
 	versionKey = "version"
+	// gcpUserAgent is required for the Ruby runtime, but used for others for simplicity.
+	gcpUserAgent = "GCPBuildpacks"
 )
 
 // IsCached returns true if the requested version of a runtime is installed in the given layer.
@@ -78,10 +83,41 @@ func InstallDartSDK(ctx *gcp.Context, layer *libcnb.Layer, version string) error
 	return nil
 }
 
+// InstallRuby downloads a given version of the ruby runtime to the specified layer.
+func InstallRuby(ctx *gcp.Context, layer *libcnb.Layer, version string) error {
+	ctx.ClearLayer(layer)
+	runtimeURL := fmt.Sprintf(rubyRuntimeURL, version)
+
+	tar, err := ioutil.TempFile(layer.Path, "ruby-*.tar.gz")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tar.Name())
+
+	if err := fetchRuntime("Ruby Runtime", version, runtimeURL, tar); err != nil {
+		return err
+	}
+
+	if _, err := ctx.ExecWithErr([]string{"tar", "-xzvf", tar.Name(), "--directory", layer.Path}); err != nil {
+		return fmt.Errorf("extracting Ruby Runtime: %v", err)
+	}
+
+	ctx.SetMetadata(layer, versionKey, version)
+
+	return nil
+}
+
 // fetchRuntime downloads a runtime archive from the given URL and writes it to the given file.
 func fetchRuntime(name, version, url string, f io.Writer) error {
 	client := newRetryableHTTPClient()
-	response, err := client.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return downloadError(name, version, url, err)
+	}
+
+	req.Header.Set("User-Agent", gcpUserAgent)
+
+	response, err := client.Do(req)
 	if err != nil {
 		return downloadError(name, version, url, err)
 	}
@@ -92,7 +128,7 @@ func fetchRuntime(name, version, url string, f io.Writer) error {
 	}
 
 	if _, err = io.Copy(f, response.Body); err != nil {
-		return fmt.Errorf("copying Dart SDK: %v", err)
+		return fmt.Errorf("copying %s: %v", name, err)
 	}
 
 	return nil

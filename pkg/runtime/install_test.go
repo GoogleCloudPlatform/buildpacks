@@ -95,3 +95,86 @@ func TestInstallDartSDK(t *testing.T) {
 	}
 
 }
+
+func TestInstallRuby(t *testing.T) {
+	testCases := []struct {
+		name         string
+		httpStatus   int
+		responseFile string
+		wantFile     string
+		wantError    bool
+		userAgent    string
+	}{
+		{
+			name:         "successful install",
+			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
+			wantFile:     "lib/foo.txt",
+			userAgent:    gcpUserAgent,
+		},
+		{
+			name:         "with invalid user agent",
+			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
+			userAgent:    "go/http",
+			wantError:    true,
+		},
+		{
+			name:       "invalid version",
+			httpStatus: http.StatusNotFound,
+			wantError:  true,
+		},
+		{
+			name:       "corrupt tar file",
+			httpStatus: http.StatusOK,
+			wantError:  true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext()
+			l := &libcnb.Layer{
+				Path:     t.TempDir(),
+				Metadata: map[string]interface{}{},
+			}
+
+			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if tc.httpStatus != 0 {
+					w.WriteHeader(tc.httpStatus)
+				}
+				if tc.userAgent != gcpUserAgent {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				if tc.responseFile != "" {
+					http.ServeFile(w, r, testdata.MustGetPath(tc.responseFile))
+				}
+			}))
+			defer svr.Close()
+
+			origURL := rubyRuntimeURL
+			t.Cleanup(func() { rubyRuntimeURL = origURL })
+			rubyRuntimeURL = svr.URL + "?version=%s"
+
+			version := "3.0.3"
+			err := InstallRuby(ctx, l, version)
+
+			if tc.wantError && err == nil {
+				t.Fatalf("Expecting error but got nil")
+			}
+			if !tc.wantError && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if tc.wantFile != "" {
+				fp := filepath.Join(l.Path, tc.wantFile)
+				if !ctx.FileExists(fp) {
+					t.Errorf("Failed to extract. Missing file: %s", fp)
+				}
+				if l.Metadata["version"] != version {
+					t.Errorf("Layer Metadata.version = %q, want %q", l.Metadata["version"], version)
+				}
+			}
+		})
+	}
+
+}
