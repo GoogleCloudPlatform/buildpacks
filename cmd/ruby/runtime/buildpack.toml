@@ -1,0 +1,9 @@
+api = "0.5"
+
+[buildpack]
+id = "google.ruby.runtime"
+version = "0.0.1"
+name = "Ruby - Runtime"
+
+[[stacks]]
+id = "google"
