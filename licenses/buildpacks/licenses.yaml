@@ -13,10 +13,6 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/buildpacks/cloud.google.com/go/compute/metadata/LICENSE
 
-- package: github.com/blang/semver
-  license_name: MIT
-  license_path: /usr/local/share/licenses/buildpacks/github.com/blang/semver/LICENSE
-
 - package: github.com/buildpacks/libcnb
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/buildpacks/github.com/buildpacks/libcnb/LICENSE
@@ -36,6 +32,10 @@
 - package: github.com/hashicorp/go-retryablehttp
   license_name: MPL-2.0
   license_path: /usr/local/share/licenses/buildpacks/github.com/hashicorp/go-retryablehttp/LICENSE
+
+- package: github.com/Masterminds/semver
+  license_name: MIT
+  license_path: /usr/local/share/licenses/buildpacks/github.com/Masterminds/semver/LICENSE.txt
 
 - package: github.com/onsi/gomega/types
   license_name: MIT

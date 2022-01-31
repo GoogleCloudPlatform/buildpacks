@@ -21,8 +21,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 
-	"github.com/blang/semver"
+	"github.com/Masterminds/semver"
 )
 
 var (
@@ -71,14 +72,14 @@ func PackVersion() error {
 		return fmt.Errorf("running pack: %v", err)
 	}
 	log.Printf("Found pack version %s", out)
-	version, err := semver.ParseTolerant(string(out))
+	// Remove the build suffix so it can be parsed by semver andt the error message is less confusing.
+	// For example, instead of `0.13.1+git-4134cc6.build-1135` use `0.13.1`.
+	version, err := semver.NewVersion(strings.Split(string(out), "+")[0])
 	if err != nil {
 		return fmt.Errorf("parsing semver from %s: %v", out, err)
 	}
-	// Remove the build suffix so that the error message is less confusing.
-	// For example, instead of `0.13.1+git-4134cc6.build-1135` print `0.13.1`.
-	version.Build = nil
-	if version.LT(minPackVersion) {
+
+	if version.LessThan(minPackVersion) {
 		return fmt.Errorf("outdated pack binary (%s): want %s, got %s; to update please follow https://buildpacks.io/docs/install-pack/", path, minPackVersion, version)
 	}
 	return nil

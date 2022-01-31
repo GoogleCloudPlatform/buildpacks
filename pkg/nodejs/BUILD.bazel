@@ -16,8 +16,8 @@ go_library(
     deps = [
         "//pkg/cache",
         "//pkg/gcpbuildpack",
-        "@com_github_blang_semver//:go_default_library",
         "@com_github_buildpacks_libcnb//:go_default_library",
+        "@com_github_masterminds_semver//:go_default_library",
         "@in_gopkg_yaml_v2//:go_default_library",
     ],
 )

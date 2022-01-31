@@ -27,7 +27,7 @@ go_binary(
         "//pkg/appengine",
         "//pkg/appstart",
         "//pkg/gcpbuildpack",
-        "@com_github_blang_semver//:go_default_library",
+        "@com_github_masterminds_semver//:go_default_library",
     ],
 )
 

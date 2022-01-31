@@ -24,7 +24,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/blang/semver"
+	"github.com/Masterminds/semver"
 )
 
 const (
@@ -56,13 +56,13 @@ func SupportsAppEngineApis(ctx *gcp.Context) (bool, error) {
 func SupportsNoGoMod(ctx *gcp.Context) bool {
 	v := GoVersion(ctx)
 
-	version, err := semver.ParseTolerant(v)
+	version, err := semver.NewVersion(v)
 	if err != nil {
 		ctx.Exit(1, gcp.InternalErrorf("unable to parse go version string %q: %s", v, err))
 	}
 
-	go113OrLower := semver.MustParseRange("<1.14.0")
-	return go113OrLower(version)
+	go113OrLower := semver.MustParse("1.14.0")
+	return version.LessThan(go113OrLower)
 }
 
 // SupportsAutoVendor returns true if the Go version supports automatic detection of the vendor directory.
@@ -85,28 +85,28 @@ func VersionMatches(ctx *gcp.Context, versionRange string) bool {
 		return false
 	}
 
-	version, err := semver.ParseTolerant(v)
+	version, err := semver.NewVersion(v)
 	if err != nil {
 		ctx.Exit(1, gcp.InternalErrorf("unable to parse go.mod version string %q: %s", v, err))
 	}
 
-	goVersionMatches, err := semver.ParseRange(versionRange)
+	goVersionMatches, err := semver.NewConstraint(versionRange)
 	if err != nil {
 		ctx.Exit(1, gcp.InternalErrorf("unable to parse version range %q: %s", v, err))
 	}
 
-	if !goVersionMatches(version) {
+	if !goVersionMatches.Check(version) {
 		return false
 	}
 
 	v = GoVersion(ctx)
 
-	version, err = semver.ParseTolerant(v)
+	version, err = semver.NewVersion(v)
 	if err != nil {
 		ctx.Exit(1, gcp.InternalErrorf("unable to parse Go version string %q: %s", v, err))
 	}
 
-	return goVersionMatches(version)
+	return goVersionMatches.Check(version)
 }
 
 // GoVersion reads the version of the installed Go runtime.

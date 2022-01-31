@@ -23,7 +23,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/blang/semver"
+	"github.com/Masterminds/semver"
 )
 
 var (
@@ -85,12 +85,12 @@ func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
 	}
 
 	versionString := match[1]
-	version, verr := semver.ParseTolerant(versionString)
+	version, verr := semver.NewVersion(versionString)
 	if verr != nil {
 		return nil, fmt.Errorf("unable to parse gunicorn version string %q: %v", versionString, verr)
 	}
 
-	if version.LT(minVersion) {
+	if version.LessThan(minVersion) {
 		ctx.Warnf("Installed gunicorn version %q is less than supported version %q.", version, minVersion)
 	}
 

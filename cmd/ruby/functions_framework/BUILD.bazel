@@ -26,7 +26,7 @@ go_binary(
     deps = [
         "//pkg/env",
         "//pkg/gcpbuildpack",
-        "@com_github_blang_semver//:go_default_library",
+        "@com_github_masterminds_semver//:go_default_library",
     ],
 )
 

@@ -23,7 +23,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/blang/semver"
+	"github.com/Masterminds/semver"
 )
 
 const (
@@ -67,12 +67,12 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
-	if version.GTE(validateTargetVersion) {
+	if version.GreaterThan(validateTargetVersion) || version.Equal(validateTargetVersion) {
 		if err := validateTarget(ctx, source); err != nil {
 			return err
 		}
 	}
-	if version.LT(recommendedVersion) {
+	if version.LessThan(recommendedVersion) {
 		ctx.Warnf("Found a deprecated version of functions-framework (%s); consider updating your Gemfile to use functions_framework %s or later.", version, recommendedVersion)
 	}
 
@@ -109,13 +109,13 @@ func frameworkVersion(ctx *gcp.Context) (*semver.Version, error) {
 	// Frameworks older than 0.6 do not support the --version flag, signaled by a
 	// nonzero error code. Respond with a pessimistic guess of the version.
 	if err != nil {
-		return &assumedVersion, nil
+		return assumedVersion, nil
 	}
-	version, perr := semver.ParseTolerant(result.Stdout)
+	version, perr := semver.NewVersion(result.Stdout)
 	if perr != nil {
 		return nil, gcp.UserErrorf(`failed to parse %q from "functions-framework-ruby --version": %v; please ensure a recent version of the functions_framework gem is in your Gemfile`, result.Stdout, perr)
 	}
-	return &version, nil
+	return version, nil
 }
 
 // validateTarget validates that the given target is defined and can be executed

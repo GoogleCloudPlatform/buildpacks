@@ -10,5 +10,5 @@ go_library(
     name = "checktools",
     srcs = ["checktools.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    deps = ["@com_github_blang_semver//:go_default_library"],
+    deps = ["@com_github_masterminds_semver//:go_default_library"],
 )

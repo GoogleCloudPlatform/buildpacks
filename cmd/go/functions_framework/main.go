@@ -27,7 +27,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
-	"github.com/blang/semver"
+	"github.com/Masterminds/semver"
 )
 
 const (
@@ -273,7 +273,7 @@ func createMainGoFile(ctx *gcp.Context, fn fnInfo, main, version string) error {
 	f := ctx.CreateFile(main)
 	defer f.Close()
 
-	requestedVersion, err := semver.ParseTolerant(version)
+	requestedVersion, err := semver.NewVersion(version)
 	if err != nil {
 		return fmt.Errorf("unable to parse framework version string %s: %w", version, err)
 	}
@@ -283,11 +283,11 @@ func createMainGoFile(ctx *gcp.Context, fn fnInfo, main, version string) error {
 		// By default, use the v0 template.
 		// For framework versions greater than or equal to v1.1.0, use the v1_1 template.
 		tmpl = tmplV0
-		v1_1, err := semver.ParseTolerant("v1.1.0")
+		v1_1, err := semver.NewConstraint(">= 1.1.0")
 		if err != nil {
 			return fmt.Errorf("unable to parse framework version string v1.1.0: %v", err)
 		}
-		if requestedVersion.GE(v1_1) {
+		if v1_1.Check(requestedVersion) {
 			tmpl = tmplV1_1
 		}
 	}

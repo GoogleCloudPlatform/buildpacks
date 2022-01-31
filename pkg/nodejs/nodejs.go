@@ -26,7 +26,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
-	"github.com/blang/semver"
+	"github.com/Masterminds/semver"
 )
 
 const (
@@ -87,11 +87,11 @@ var nodeVersion = func(ctx *gcp.Context) string {
 // isPreNode11 returns true if the installed version of Node.js is
 // v10.x.x or older.
 func isPreNode11(ctx *gcp.Context) (bool, error) {
-	version, err := semver.ParseTolerant(nodeVersion(ctx))
+	version, err := semver.NewVersion(nodeVersion(ctx))
 	if err != nil {
 		return false, gcp.InternalErrorf("failed to detect valid Node.js version %s: %v", version, err)
 	}
-	return version.LT(semVer11), nil
+	return version.LessThan(semVer11), nil
 }
 
 // NodeEnv returns the value of NODE_ENV or `production`.
@@ -136,11 +136,11 @@ func CheckCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, 
 // SkipSyntaxCheck returns true if we should skip checking the user's function file for syntax errors
 // if it is impacted by https://github.com/GoogleCloudPlatform/functions-framework-nodejs/issues/407.
 func SkipSyntaxCheck(ctx *gcp.Context, file string) (bool, error) {
-	version, err := semver.ParseTolerant(nodeVersion(ctx))
+	version, err := semver.NewVersion(nodeVersion(ctx))
 	if err != nil {
 		return false, gcp.InternalErrorf("failed to detect valid Node.js version %s: %v", version, err)
 	}
-	if version.Major != 16 {
+	if version.Major() != 16 {
 		return false, nil
 	}
 	if strings.HasSuffix(file, ".mjs") {
