@@ -20,6 +20,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -77,6 +78,61 @@ func readProjectFile(data []byte, proj string) (Project, error) {
 		return p, gcp.UserErrorf("unmarshalling %s: %v", proj, err)
 	}
 	return p, nil
+}
+
+// RuntimeConfigJSONFiles returns all runtimeconfig.json files in 'path' (recursive).
+// The runtimeconfig.json file is present for compiled .NET assemblies.
+func RuntimeConfigJSONFiles(path string) ([]string, error) {
+	var files []string
+	if err := filepath.WalkDir(path, func(f string, d fs.DirEntry, e error) error {
+		if e != nil {
+			return e
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(f, "runtimeconfig.json") {
+			files = append(files, f)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return files, nil
+}
+
+// RuntimeConfigJSON matches the structure of a runtimeconfig.json file.
+type RuntimeConfigJSON struct {
+	RuntimeOptions runtimeOptions `json:"runtimeOptions"`
+}
+
+type framework struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+
+type configProperties struct {
+	SystemGCServer bool `json:"System.GC.Server"`
+}
+
+type runtimeOptions struct {
+	TFM              string           `json:"tfm"`
+	Framework        framework        `json:"framework"`
+	ConfigProperties configProperties `json:"configProperties"`
+}
+
+// ReadRuntimeConfigJSON reads a given runtimeconfig.json file and returns a struct
+// representation of the contents.
+func ReadRuntimeConfigJSON(path string) (*RuntimeConfigJSON, error) {
+	bytes, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading %q: %w", path, err)
+	}
+	var runCfg RuntimeConfigJSON
+	if err := json.Unmarshal(bytes, &runCfg); err != nil {
+		return nil, fmt.Errorf("unmarshalling %q to RuntimeConfig: %v", path, err)
+	}
+	return &runCfg, nil
 }
 
 // globalJSON represents the contents of a global.json file.

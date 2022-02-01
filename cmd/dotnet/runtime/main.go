@@ -50,8 +50,12 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if files := dotnet.ProjectFiles(ctx, "."); len(files) != 0 {
 		return gcp.OptIn("found project files: " + strings.Join(files, ", ")), nil
 	}
-	if ctx.HasAtLeastOne("*.dll") {
-		return gcp.OptIn("found .dll files"), nil
+	rtCfgs, err := dotnet.RuntimeConfigJSONFiles(".")
+	if err != nil {
+		return nil, fmt.Errorf("finding runtimeconfig.json: %w", err)
+	}
+	if len(rtCfgs) > 0 {
+		return gcp.OptIn("found at least one runtimeconfig.json"), nil
 	}
 
 	return gcp.OptOut("no project files or .dll files found"), nil

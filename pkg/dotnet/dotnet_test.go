@@ -18,6 +18,7 @@ import (
 	"encoding/xml"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -78,6 +79,66 @@ func TestReadProjectFile(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("ReadProjectFile\ngot %#v\nwant %#v", got, want)
+	}
+}
+
+func TestRuntimeConfigJSONFiles(t *testing.T) {
+	testCases := []struct {
+		Name                 string
+		TestDataRelativePath string
+		ExpectedResult       []string
+	}{
+		{
+			Name:                 "single file in same directory",
+			TestDataRelativePath: "subdir",
+			ExpectedResult:       []string{"subdir/my.runtimeconfig.json"},
+		},
+		{
+			Name:                 "single file in sub-directory",
+			TestDataRelativePath: "another_dir",
+			ExpectedResult:       []string{"another_dir/with_subfolder/another.runtimeconfig.json"},
+		},
+		{
+			Name:                 "multiple entries",
+			TestDataRelativePath: "",
+			ExpectedResult: []string{
+				"another_dir/with_subfolder/another.runtimeconfig.json",
+				"runtimeconfig.json/test.runtimeconfig.json",
+				"subdir/my.runtimeconfig.json",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			rootDir := testdata.MustGetPath("testdata/runtimeconfig")
+			tstDir := path.Join(rootDir, tc.TestDataRelativePath)
+			files, err := RuntimeConfigJSONFiles(tstDir)
+			if err != nil {
+				t.Fatalf("RuntimeConfigFiles(%v) got error: %v", tstDir, err)
+			}
+			// the test cases are written without the full path to make writing test cases easier
+			// prepend the tstDir to the relative paths to get the true expected result
+			fullPathExpectedResults := make([]string, 0, len(tc.ExpectedResult))
+			for _, val := range tc.ExpectedResult {
+				fullPathExpectedResults = append(fullPathExpectedResults, path.Join(rootDir, val))
+			}
+			if !reflect.DeepEqual(files, fullPathExpectedResults) {
+				t.Errorf("RuntimeConfigFiles(%v) = %q, want %q", tstDir, files, fullPathExpectedResults)
+			}
+		})
+	}
+}
+
+func TestReadRuntimeConfigJSON(t *testing.T) {
+	path := "testdata/runtimeconfig/subdir/my.runtimeconfig.json"
+	rtCfg, err := ReadRuntimeConfigJSON(testdata.MustGetPath(path))
+	if err != nil {
+		t.Fatalf("ReadRuntimeConfigJSON(%v) got error: %v", path, err)
+	}
+	expectedTFM := "netcoreapp3.1"
+	if rtCfg.RuntimeOptions.TFM != expectedTFM {
+		t.Errorf("unexpected tfm value: got %q, want %q", rtCfg.RuntimeOptions.TFM, expectedTFM)
 	}
 }
 
