@@ -6,6 +6,9 @@ version = "0.9.0"
 name = "Ruby - Bundle"
 
 [[stacks]]
+id = "google"
+
+[[stacks]]
 id = "google.ruby25"
 
 [[stacks]]

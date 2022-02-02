@@ -48,6 +48,11 @@ builder(
             "//cmd/python/pip:pip.tgz",
             "//cmd/python/runtime:runtime.tgz",
         ],
+        "ruby": [
+            "//cmd/ruby/missing_entrypoint:missing_entrypoint.tgz",
+            "//cmd/ruby/bundle:bundle.tgz",
+            "//cmd/ruby/runtime:runtime.tgz",
+        ],
     },
     image = "gcp/base",
     visibility = [

@@ -116,6 +116,19 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   id = "google.utils.label"
   uri = "label.tgz"
 
+[[buildpacks]]
+  id = "google.ruby.runtime"
+  uri = "ruby/runtime.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.bundle"
+  uri = "ruby/bundle.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.missing-entrypoint"
+  uri = "ruby/missing_entrypoint.tgz"
+
+
 ########
 # .NET #
 ########
@@ -389,6 +402,26 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.utils.label"
 
 ###########
+# Ruby applications #
+###########
+# Ruby applications.
+# Entrypoint buildpack is required because it cannot be easily inferred.
+[[order]]
+  [[order.group]]
+    id = "google.ruby.runtime"
+
+  [[order.group]]
+    id = "google.ruby.bundle"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label"
+
+
+###########
 # Node.js #
 ###########
 # Note: We detect Node.js last because client-side .js files exist in many
@@ -492,6 +525,13 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 [[order]]
   [[order.group]]
     id = "google.python.missing-entrypoint"
+
+# This buildpack group will always fail but with a clear message that the
+# entrypoint is missing. It must be the last group otherwise projects with
+# a single .rb file and no entrypoint will fail
+[[order]]
+  [[order.group]]
+    id = "google.ruby.missing-entrypoint"
 
 # Currently built with //builders/gcp/base/stack/stack:build.
 [stack]

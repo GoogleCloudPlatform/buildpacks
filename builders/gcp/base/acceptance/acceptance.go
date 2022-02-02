@@ -43,4 +43,6 @@ const (
 	pythonFF        = "google.python.functions-framework"
 	pythonPIP       = "google.python.pip"
 	pythonRuntime   = "google.python.runtime"
+	rubyRuntime     = "google.ruby.runtime"
+	rubyBundle      = "google.ruby.bundle"
 )

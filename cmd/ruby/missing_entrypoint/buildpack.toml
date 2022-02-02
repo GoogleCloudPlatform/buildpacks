@@ -1,0 +1,9 @@
+api = "0.5"
+
+[buildpack]
+id = "google.ruby.missing-entrypoint"
+version = "0.0.1"
+name = "Ruby - missing entrypoint"
+
+[[stacks]]
+id = "google"

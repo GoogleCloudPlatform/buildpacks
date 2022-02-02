@@ -55,6 +55,32 @@ RUBY VERSION
 			want: "2.5.7",
 		},
 		{
+			name:       "from Gemfile.lock with same version on env",
+			runtimeEnv: "3.0.1",
+			lockFiles: []lockFile{
+				lockFile{
+					name: "Gemfile.lock",
+					content: `
+RUBY VERSION
+   ruby 3.0.1p0
+`},
+			},
+			want: "3.0.1",
+		},
+		{
+			name:       "from Gemfile.lock with different version on env",
+			runtimeEnv: "3.0.1",
+			lockFiles: []lockFile{
+				lockFile{
+					name: "Gemfile.lock",
+					content: `
+RUBY VERSION
+   ruby 2.5.7p206
+`},
+			},
+			wantError: true,
+		},
+		{
 			name: "from Gemfile.lock without ruby version",
 			lockFiles: []lockFile{
 				lockFile{

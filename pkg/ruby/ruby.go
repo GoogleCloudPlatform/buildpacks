@@ -35,11 +35,7 @@ const defaultVersion = "3.0.0"
 // DetectVersion detects ruby version from the environment, Gemfile.lock, gems.locked, or falls
 // back to a default version.
 func DetectVersion(ctx *gcp.Context) (string, error) {
-	if version := os.Getenv(env.RuntimeVersion); version != "" {
-		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, version)
-		return version, nil
-	}
-
+	versionFromEnv := os.Getenv(env.RuntimeVersion)
 	// The two lock files have the same format for Ruby version
 	lockFiles := []string{"Gemfile.lock", "gems.locked"}
 
@@ -54,8 +50,31 @@ func DetectVersion(ctx *gcp.Context) (string, error) {
 			}
 
 			defer file.Close()
-			return lockFileVersion(lockFileName, file)
+			lockedVersion, err := lockFileVersion(lockFileName, file)
+
+			if err != nil {
+				return "", err
+			}
+
+			// Lockfile doesn't contain a ruby version, so we can move on
+			if lockedVersion == "" {
+				break
+			}
+
+			// Bundler doesn't allow us to override a version of ruby if it's locked in the lock file
+			// The env will still be useful if a project doesn't lock ruby version or doesn't use bundler
+			if versionFromEnv != "" && lockedVersion != versionFromEnv {
+				return "", gcp.UserErrorf(
+					"Ruby version %q in %s can't be overriden to %q using %s environment variable",
+					lockedVersion, lockFileName, versionFromEnv, env.RuntimeVersion)
+			}
+			return lockedVersion, err
 		}
+	}
+
+	if versionFromEnv != "" {
+		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, versionFromEnv)
+		return versionFromEnv, nil
 	}
 
 	return defaultVersion, nil
@@ -86,5 +105,5 @@ func lockFileVersion(fileName string, r io.Reader) (string, error) {
 		}
 	}
 
-	return defaultVersion, nil
+	return "", nil
 }
