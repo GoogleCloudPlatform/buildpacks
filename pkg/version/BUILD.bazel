@@ -1,0 +1,26 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+go_library(
+    name = "version",
+    srcs = [
+        "version.go",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//cmd/version:__subpackages__",
+    ],
+    deps = [
+        "@com_github_masterminds_semver//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "version_test",
+    srcs = [
+        "version_test.go",
+    ],
+    embed = [":version"],
+    rundir = ".",
+)
