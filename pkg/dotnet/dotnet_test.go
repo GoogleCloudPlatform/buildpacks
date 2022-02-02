@@ -191,3 +191,90 @@ func TestGetSDKorRuntimeVersion(t *testing.T) {
 		})
 	}
 }
+
+func Test_getSDKChannelForTargetFramework(t *testing.T) {
+	testCases := []struct {
+		Name                 string
+		TargetFrameworkValue string
+		ExpectedOK           bool
+		ExpectedResult       string
+	}{
+		{
+			Name:                 "Empty",
+			TargetFrameworkValue: "",
+			ExpectedOK:           false,
+			ExpectedResult:       "",
+		},
+		{
+			Name:                 "NetCore 1.0",
+			TargetFrameworkValue: "netcoreapp1.0",
+			ExpectedOK:           true,
+			ExpectedResult:       "1.0",
+		},
+		{
+			Name:                 "NetCore 2.0",
+			TargetFrameworkValue: "netcoreapp2.0",
+			ExpectedOK:           true,
+			ExpectedResult:       "2.2",
+		},
+		{
+			Name:                 "NetCore 2.1",
+			TargetFrameworkValue: "netcoreapp2.1",
+			ExpectedOK:           true,
+			ExpectedResult:       "2.2",
+		},
+		{
+			Name:                 "NetCore 2.2",
+			TargetFrameworkValue: "netcoreapp2.2",
+			ExpectedOK:           true,
+			ExpectedResult:       "2.2",
+		},
+		{
+			Name:                 "NetCore 3.0",
+			TargetFrameworkValue: "netcoreapp3.0",
+			ExpectedOK:           true,
+			ExpectedResult:       "3.1",
+		},
+		{
+			Name:                 "NetCore 3.1",
+			TargetFrameworkValue: "netcoreapp3.1",
+			ExpectedOK:           true,
+			ExpectedResult:       "3.1",
+		},
+		{
+			Name:                 ".NET 5.0",
+			TargetFrameworkValue: "net5.0",
+			ExpectedOK:           true,
+			ExpectedResult:       "5.0",
+		},
+		{
+			Name:                 ".NET 6.0",
+			TargetFrameworkValue: "net6.0",
+			ExpectedOK:           true,
+			ExpectedResult:       "6.0",
+		},
+		{
+			Name:                 "Future version",
+			TargetFrameworkValue: "net9.0",
+			ExpectedOK:           true,
+			ExpectedResult:       "9.0",
+		},
+		{
+			Name:                 "Garbage value",
+			TargetFrameworkValue: "python3.7",
+			ExpectedOK:           false,
+			ExpectedResult:       "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			result, ok := getSDKChannelForTargetFramework(tc.TargetFrameworkValue)
+
+			if ok != tc.ExpectedOK || result != tc.ExpectedResult {
+				t.Errorf("getSDKChannelForTargetFramework(%v) = (%v, %v), want (%v, %v)", tc.TargetFrameworkValue,
+					result, ok, tc.ExpectedResult, tc.ExpectedOK)
+			}
+		})
+	}
+}

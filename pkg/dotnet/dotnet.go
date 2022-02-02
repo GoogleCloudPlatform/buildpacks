@@ -30,6 +30,18 @@ import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
+var (
+	// See getSDKChannelForTargetFramework for how this map is used.
+	frameworkVersionToSDKVersion = map[string]string{
+		"netcoreapp1.0": "1.0",
+		"netcoreapp2.0": "2.2",
+		"netcoreapp2.1": "2.2",
+		"netcoreapp2.2": "2.2",
+		"netcoreapp3.0": "3.1",
+		"netcoreapp3.1": "3.1",
+	}
+)
+
 // ProjectFiles finds all project files supported by dotnet.
 func ProjectFiles(ctx *gcp.Context, dir string) []string {
 	result := ctx.Exec([]string{"find", dir, "-regex", `.*\.\(cs\|fs\|vb\)proj`}, gcp.WithUserTimingAttribution).Stdout
@@ -142,10 +154,40 @@ type globalJSON struct {
 	} `json:"sdk"`
 }
 
+// getSDKChannelForTargetFramework returns the appropriate SDK channel for the given target framework.
+// The purpose of this function is to select an older SDK channel for projects which have a
+// TargetFramework which is not supported by latest. The second, "ok", value is false when there is
+// no appropriate match, signifying that the caller should use the latest framework version.
+//
+// Note that the .NET 5.0 SDK can compile projects that target 1.0 -> 5.0, however, the 5.0 runtime
+// cannot run the app. For .NET, a runtime can run any app within the same major version. We only
+// install the SDK into the build layer and then only install the runtime into the launch layer.
+// Since we install the runtime version associated with an SDK then we should pick an SDK which
+// will have an associated runtime version that is compatible with the target framework. We choose
+// the greatest compatible SDK/runtime combo to take advantage of an security fixes that have been
+// made. For example, if the app is targetting netcoreapp3.0 then we return "3.1" as the 3.1
+// runtime can run the app.
+func getSDKChannelForTargetFramework(tfm string) (string, bool) {
+	value, ok := frameworkVersionToSDKVersion[tfm]
+	if ok {
+		return value, ok
+	}
+	// The 'current' format for recent release of the .NET SDK is 'net5.0', 'net6.0', etc.
+	netPrefix := "net"
+	if strings.HasPrefix(tfm, netPrefix) {
+		return strings.TrimPrefix(tfm, netPrefix), true
+	}
+	return "", false
+}
+
 // GetSDKVersion returns the appropriate .NET SDK version to use, with the following heuristic:
-// 1. Return value of env variable GOOGLE_RUNTIME_VERSION if present
-// 2. Return SDK.Version from the .NET global.json file if present
-// 3. Query web service at `versionURL` and return result
+// 1. Return value of env variable GOOGLE_RUNTIME_VERSION if present.
+// 2. Return SDK.Version from the .NET global.json file if present.
+// 3. Search for runtimeconfig.json, if present, use the target framework  value in
+//    runtimeOptions.tfm and use the latest compatible SDK version.
+// 3. Get the first target framework version from the Project (csproj) and use the latest
+//    compatible SDK version.
+// 4. Query for the latest LTS version of the SDK via azure web service and return result.
 func GetSDKVersion(ctx *gcp.Context) (string, error) {
 	version, ok, err := lookupSpecifiedSDKVersion(ctx)
 	if err != nil {
@@ -154,12 +196,55 @@ func GetSDKVersion(ctx *gcp.Context) (string, error) {
 	if ok {
 		return version, nil
 	}
-	// Use the latest LTS version.
-	version, err = client.New().GetLatestSDKVersion()
+	sdkChannel, err := getSDKChannel(ctx)
 	if err != nil {
-		return "", gcp.UserErrorf("getting latest version: %v", err)
+		return "", err
 	}
-	ctx.Logf("Using the latest LTS version of .NET SDK: %s", version)
+	sdkVersion, err := client.New().GetLatestSDKVersionForChannel(sdkChannel)
+	if err != nil {
+		return "", gcp.UserErrorf("getting latest version for channel %q: %v", sdkChannel, err)
+	}
+	return sdkVersion, nil
+}
+
+func getSDKChannel(ctx *gcp.Context) (string, error) {
+	rtCfgFiles, err := RuntimeConfigJSONFiles(".")
+	if err != nil {
+		return "", fmt.Errorf("finding runtimeconfig.json: %w", err)
+	}
+	if len(rtCfgFiles) > 1 {
+		return "", fmt.Errorf("more than one runtimeconfig.json file found: %v", rtCfgFiles)
+	}
+	if len(rtCfgFiles) == 1 {
+		rtCfg, err := ReadRuntimeConfigJSON(rtCfgFiles[0])
+		if err != nil {
+			return "", fmt.Errorf("reading runtimeconfig.json: %w", err)
+		}
+		sdkChannel, ok := getSDKChannelForTargetFramework(rtCfg.RuntimeOptions.TFM)
+		if !ok {
+			return "", fmt.Errorf("cannot use runtimeconfig.json tfm value of %q to get .NET sdk version", rtCfg.RuntimeOptions.TFM)
+		}
+		return sdkChannel, nil
+	}
+	projPath, err := FindProjectFile(ctx)
+	if err != nil {
+		return "", fmt.Errorf("finding project: %w", err)
+	}
+	project, err := ReadProjectFile(ctx, projPath)
+	if err != nil {
+		return "", fmt.Errorf("reading project at %q: %w", projPath, err)
+	}
+	return getSDKChannelForProject(project)
+}
+
+func getSDKChannelForProject(p Project) (string, error) {
+	if len(p.PropertyGroups) == 0 {
+		return "", fmt.Errorf("cannot detect SDK version: project's TargetFrameworks field is empty")
+	}
+	version, ok := getSDKChannelForTargetFramework(p.PropertyGroups[0].TargetFramework)
+	if !ok {
+		return "", fmt.Errorf("cannot use project's TargetFramework value of %q to get .NET sdk version", p.PropertyGroups[0].TargetFramework)
+	}
 	return version, nil
 }
 

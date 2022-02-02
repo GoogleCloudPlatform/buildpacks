@@ -25,9 +25,9 @@ import (
 )
 
 const (
-	// msftVersionURL responds with the latest version of .NET for a given release channel. The .NET
-	// 6.0 SDK broke our .NET buildpack so temporarily pin the version to 3.1.x.
-	msftVersionURL = "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/3.1/latest.version"
+	// The .NET 6.0 SDK broke our .NET buildpack so temporarily pin the version to 3.1.x.
+	ltsVersionID   = "3.1"
+	msftVersionURL = "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/%s/latest.version"
 	// msftReleasesIndexURL responds with an index for each release 'channel'
 	msftReleasesIndexURL = "https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/releases-index.json"
 )
@@ -177,7 +177,13 @@ func (rc *Client) GetReleasesJSON(releaseIndex ReleaseIndex) (*ReleasesJSON, err
 
 // GetLatestSDKVersion returns most recent .NET SDK version.
 func (rc *Client) GetLatestSDKVersion() (string, error) {
-	bytes, err := getResponse(rc.versionURL)
+	return rc.GetLatestSDKVersionForChannel(ltsVersionID)
+}
+
+// GetLatestSDKVersionForChannel returns the most recently released version for a given SDK channel.
+// For example, if supplied with '5.0' for channel the reponse would be 5.0.418.
+func (rc *Client) GetLatestSDKVersionForChannel(channel string) (string, error) {
+	bytes, err := getResponse(fmt.Sprintf(rc.versionURL, channel))
 	if err != nil {
 		return "", err
 	}
