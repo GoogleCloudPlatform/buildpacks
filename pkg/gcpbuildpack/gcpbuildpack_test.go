@@ -105,8 +105,7 @@ func TestNewContextWithBuildContext(t *testing.T) {
 }
 
 func TestDetectContextInitialized(t *testing.T) {
-	_, cleanUp := buildpacktestenv.SetUpDetectEnvironment(t)
-	defer cleanUp()
+	setUpDetectEnvironment(t)
 
 	id := "my-id"
 	version := "my-version"
@@ -129,8 +128,7 @@ func TestDetectContextInitialized(t *testing.T) {
 }
 
 func TestDetectEmitsSpan(t *testing.T) {
-	_, cleanUp := buildpacktestenv.SetUpDetectEnvironment(t)
-	defer cleanUp()
+	setUpDetectEnvironment(t)
 
 	var ctx *Context
 	detect(func(c *Context) (DetectResult, error) {
@@ -158,8 +156,7 @@ func TestDetectEmitsSpan(t *testing.T) {
 }
 
 func TestDetectNilResult(t *testing.T) {
-	_, cleanUp := buildpacktestenv.SetUpDetectEnvironment(t)
-	defer cleanUp()
+	setUpDetectEnvironment(t)
 
 	handler := &fakeExitHandler{}
 	// Tests that the function does not panic when both result and error are nil.
@@ -174,8 +171,7 @@ func TestDetectNilResult(t *testing.T) {
 }
 
 func TestBuildContextInitialized(t *testing.T) {
-	_, cleanUp := buildpacktestenv.SetUpBuildEnvironment(t)
-	defer cleanUp()
+	setUpBuildEnvironment(t)
 
 	id := "my-id"
 	version := "my-version"
@@ -199,8 +195,7 @@ func TestBuildContextInitialized(t *testing.T) {
 }
 
 func TestBuildEmitsSpan(t *testing.T) {
-	_, cleanUp := buildpacktestenv.SetUpBuildEnvironment(t)
-	defer cleanUp()
+	setUpBuildEnvironment(t)
 
 	var ctx *Context
 	build(func(c *Context) error {
@@ -238,8 +233,7 @@ func TestBuildEmitsSuccessOutput(t *testing.T) {
 		os.Unsetenv("BUILDER_OUTPUT")
 	}()
 
-	_, cleanUp := buildpacktestenv.SetUpBuildEnvironment(t)
-	defer cleanUp()
+	setUpBuildEnvironment(t)
 
 	build(func(c *Context) error {
 		time.Sleep(100 * time.Millisecond)
@@ -544,7 +538,38 @@ func (eh *fakeExitHandler) Pass() {
 
 func simpleContext(t *testing.T) (*Context, func()) {
 	t.Helper()
-	_, cleanUp := buildpacktestenv.SetUpDetectEnvironment(t)
+	setUpDetectEnvironment(t)
 	c := NewContext()
-	return c, cleanUp
+	// simpleContext relies on t.Cleanup() for cleanup now and no longer
+	// has to return a cleanup func, but calling sites expect a cleanup func.
+	return c, func() {}
+}
+
+// setUpDetectEnvironment sets up an environment for testing buildpack detect
+// functionality.
+func setUpDetectEnvironment(t *testing.T) buildpacktestenv.TempDirs {
+	t.Helper()
+	temps := buildpacktestenv.SetUpTempDirs(t)
+	setOSArgs(t, []string{filepath.Join(temps.BuildpackDir, "bin", "detect"), temps.PlatformDir, temps.PlanFile})
+
+	return temps
+}
+
+// setUpBuildEnvironment sets up an environment for testing buildpack build
+// functionality.
+func setUpBuildEnvironment(t *testing.T) buildpacktestenv.TempDirs {
+	t.Helper()
+	temps := buildpacktestenv.SetUpTempDirs(t)
+	setOSArgs(t, []string{filepath.Join(temps.BuildpackDir, "bin", "build"), temps.LayersDir, temps.PlatformDir, temps.PlanFile})
+
+	return temps
+}
+
+func setOSArgs(t *testing.T, args []string) {
+	t.Helper()
+	oldArgs := os.Args
+	os.Args = args
+	t.Cleanup(func() {
+		os.Args = oldArgs
+	})
 }

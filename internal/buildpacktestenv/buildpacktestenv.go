@@ -67,18 +67,8 @@ func TempWorkingDir(t *testing.T) (string, func()) {
 	}
 }
 
-func setOSArgs(t *testing.T, args []string) func() {
-	t.Helper()
-	oldArgs := os.Args
-	os.Args = args
-	return func() {
-		os.Args = oldArgs
-	}
-}
-
-// setUpTempDirs creates standard buildpack files and directories in a temp
-// directory. The temps are automatically cleaned up at the end of the test.
-func setUpTempDirs(t *testing.T, stack string) TempDirs {
+// SetUpTempDirs sets up temp directories that mimic the layers of buildpacks.
+func SetUpTempDirs(t *testing.T) TempDirs {
 	t.Helper()
 	LayersDir, err := ioutil.TempDir("", "layers-")
 	if err != nil {
@@ -97,15 +87,7 @@ func setUpTempDirs(t *testing.T, stack string) TempDirs {
 		t.Fatalf("creating buildpack dir: %v", err)
 	}
 
-	// set up cwd
-	oldDir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getting working directory: %v", err)
-	}
-	if err := os.Chdir(CodeDir); err != nil {
-		t.Fatalf("changing to code dir %q: %v", CodeDir, err)
-	}
-
+	stack := "com.stack"
 	buildpackTOML := fmt.Sprintf(`
 api = "0.5"
 
@@ -146,9 +128,6 @@ version = "entry-version"
 	}
 
 	t.Cleanup(func() {
-		if err := os.Chdir(oldDir); err != nil {
-			t.Fatalf("changing back to old working directory %q: %v", oldDir, err)
-		}
 		if err := os.RemoveAll(CodeDir); err != nil {
 			t.Fatalf("removing code dir %q: %v", CodeDir, err)
 		}
@@ -166,36 +145,6 @@ version = "entry-version"
 		}
 	})
 	return temps
-}
-
-// SetUpDetectEnvironment sets up an environment for testing buildpack detect
-// functionality.
-func SetUpDetectEnvironment(t *testing.T) (TempDirs, func()) {
-	return SetUpDetectEnvironmentWithStack(t, "com.stack")
-}
-
-// SetUpDetectEnvironmentWithStack sets up an environment for testing buildpack detect
-// functionality with a custom stack name.
-func SetUpDetectEnvironmentWithStack(t *testing.T, stack string) (TempDirs, func()) {
-	t.Helper()
-	temps := setUpTempDirs(t, stack)
-	cleanUpArgs := setOSArgs(t, []string{filepath.Join(temps.BuildpackDir, "bin", "detect"), temps.PlatformDir, temps.PlanFile})
-
-	return temps, func() {
-		cleanUpArgs()
-	}
-}
-
-// SetUpBuildEnvironment sets up an environment for testing buildpack buil
-// functionality.
-func SetUpBuildEnvironment(t *testing.T) (TempDirs, func()) {
-	t.Helper()
-	temps := setUpTempDirs(t, "com.stack")
-	cleanUpArgs := setOSArgs(t, []string{filepath.Join(temps.BuildpackDir, "bin", "build"), temps.LayersDir, temps.PlatformDir, temps.PlanFile})
-
-	return temps, func() {
-		cleanUpArgs()
-	}
 }
 
 // MockProcess encapsulates the behavior of a mock process for test.
