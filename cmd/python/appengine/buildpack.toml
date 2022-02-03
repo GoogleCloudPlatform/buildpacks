@@ -16,3 +16,6 @@ id = "google.python39"
 
 [[stacks]]
 id = "google.python310"
+
+[[stacks]]
+id = "google"

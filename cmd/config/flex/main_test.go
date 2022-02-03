@@ -97,7 +97,7 @@ func TestDetect(t *testing.T) {
 			name: "app.yaml env: flex with newline",
 			env:  []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
 			files: map[string]string{
-				"app.yaml": "\n  env  :  flex  \n",
+				"app.yaml": "runtime: python\n  env  :  flex  \n",
 			},
 			want: 0,
 		},

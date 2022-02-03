@@ -128,6 +128,17 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   id = "google.ruby.missing-entrypoint"
   uri = "ruby/missing_entrypoint.tgz"
 
+[[buildpacks]]
+  id = "google.config.flex"
+  uri = "flex.tgz"
+
+[[buildpacks]]
+  id = "google.python.webserver"
+  uri = "webserver.tgz"
+
+[[buildpacks]]
+  id = "google.python.appengine"
+  uri = "appengine.tgz"
 
 ########
 # .NET #
@@ -365,6 +376,28 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 ##############
 # Python 1/2 #
 ##############
+# GAE Flex Python.
+[[order]]
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
 
 # Python functions.
 [[order]]

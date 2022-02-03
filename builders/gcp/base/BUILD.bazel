@@ -7,6 +7,9 @@ builder(
     buildpacks = [
         "//cmd/config/entrypoint:entrypoint.tgz",
         "//cmd/utils/label:label.tgz",
+        "//cmd/config/flex:flex.tgz",
+        "//cmd/python/webserver:webserver.tgz",
+        "//cmd/python/appengine:appengine.tgz",
     ],
     groups = {
         "cpp": [

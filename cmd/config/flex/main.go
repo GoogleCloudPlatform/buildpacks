@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	envFlexRe = regexp.MustCompile(`^\s*env\s*:\s*(flex|flexible)\s*$`)
+	envFlexRe = regexp.MustCompile(`\s*env\s*:\s*(flex|flexible)\s*`)
 )
 
 func main() {
@@ -34,6 +34,7 @@ func main() {
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	path := os.Getenv(env.GaeApplicationYamlPath)
+
 	if path == "" {
 		return gcp.OptOut("Env var GAE_APPLICATION_YAML_PATH is not set, not a GAE Flex app."), nil
 	}
