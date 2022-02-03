@@ -38,6 +38,12 @@ func TestAcceptanceDotNet(t *testing.T) {
 			FilesMustNotExist: []string{sdk},
 		},
 		{
+			Name:              "simple dotnet 6.0 app",
+			App:               "dotnet/simple_dotnet6",
+			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			FilesMustNotExist: []string{sdk},
+		},
+		{
 			Name:              "simple dotnet app with runtime version",
 			App:               "dotnet/simple",
 			Path:              "/version?want=3.1.1",
@@ -77,7 +83,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 			MustUse: []string{dotnetRuntime, dotnetPublish},
 			BOM: []acceptance.BOMEntry{
 				{
-					Name: "runtime",
+					Name: "sdk",
 					Metadata: map[string]interface{}{
 						"version": "3.1.409",
 					},
@@ -122,7 +128,7 @@ func TestFailuresDotNet(t *testing.T) {
 			Name:      "bad runtime version",
 			App:       "dotnet/simple",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
-			MustMatch: "Runtime version BAD_NEWS_BEARS does not exist",
+			MustMatch: "runtime version BAD_NEWS_BEARS does not exist",
 		},
 	}
 

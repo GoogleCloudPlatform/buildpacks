@@ -25,6 +25,8 @@ go_binary(
     ],
     deps = [
         "//pkg/dotnet",
+        "//pkg/dotnet/release",
+        "//pkg/dotnet/release/client",
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/runtime",

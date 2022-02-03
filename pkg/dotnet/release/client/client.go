@@ -25,8 +25,7 @@ import (
 )
 
 const (
-	// The .NET 6.0 SDK broke our .NET buildpack so temporarily pin the version to 3.1.x.
-	ltsVersionID   = "3.1"
+	ltsVersionID   = "LTS"
 	msftVersionURL = "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/%s/latest.version"
 	// msftReleasesIndexURL responds with an index for each release 'channel'
 	msftReleasesIndexURL = "https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/releases-index.json"
