@@ -24,6 +24,7 @@ go_binary(
         "-w",
     ],
     deps = [
+        "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/ruby",
         "//pkg/runtime",

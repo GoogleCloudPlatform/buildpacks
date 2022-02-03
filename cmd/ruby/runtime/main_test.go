@@ -22,10 +22,10 @@ import (
 
 func TestDetect(t *testing.T) {
 	testCases := []struct {
-		name  string
-		files map[string]string
-		want  int
-		env   []string
+		name   string
+		files  map[string]string
+		want   int
+		envVal string
 	}{
 		{
 			name: "Gemfile file",
@@ -53,10 +53,30 @@ func TestDetect(t *testing.T) {
 			files: map[string]string{},
 			want:  100,
 		},
+		{
+			name:  "no env",
+			files: map[string]string{},
+			want:  100,
+		},
+		{
+			name:   "env is disabled",
+			files:  map[string]string{},
+			want:   100,
+			envVal: "False",
+		},
+		{
+			name:   "env is invalid",
+			files:  map[string]string{},
+			want:   100,
+			envVal: "Flase",
+		},
 	}
 	for _, tc := range testCases {
+		if tc.envVal == "" {
+			tc.envVal = "True"
+		}
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, []string{"GOOGLE_USE_EXPERIMENTAL_RUBY_RUNTIME=" + tc.envVal}, tc.want)
 		})
 	}
 }

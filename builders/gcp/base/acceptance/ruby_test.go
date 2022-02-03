@@ -91,6 +91,7 @@ func TestAcceptanceRuby(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		tc := tc
+		tc.Env = append(tc.Env, "GOOGLE_USE_EXPERIMENTAL_RUBY_RUNTIME=True")
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 
@@ -126,6 +127,8 @@ func TestFailuresRuby(t *testing.T) {
 
 	for _, tc := range testCases {
 		tc := tc
+		tc.Env = append(tc.Env, "GOOGLE_USE_EXPERIMENTAL_RUBY_RUNTIME=True")
+
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 

@@ -125,27 +125,27 @@ const (
 
 // IsDebugMode returns true if the buildpack debug mode is enabled.
 func IsDebugMode() (bool, error) {
-	return isPresentAndTrue(DebugMode)
+	return IsPresentAndTrue(DebugMode)
 }
 
 // IsDevMode indicates that the builder is running in Development mode.
 func IsDevMode() (bool, error) {
-	return isPresentAndTrue(DevMode)
+	return IsPresentAndTrue(DevMode)
 }
 
 // IsUsingNativeImage returns true if the Java application should be built as a native image.
 func IsUsingNativeImage() (bool, error) {
-	return isPresentAndTrue(UseNativeImage)
+	return IsPresentAndTrue(UseNativeImage)
 }
 
 // IsARAuthEnabled returns true if we should automatically generate an Artifact Registry access
 // token from Application Default Credentails before we run pip install.
 func IsARAuthEnabled() (bool, error) {
-	return isPresentAndTrue(ARAuthEnabledEnv)
+	return IsPresentAndTrue(ARAuthEnabledEnv)
 }
 
-// Returns true if the environment variable evaluates to True.
-func isPresentAndTrue(varName string) (bool, error) {
+// IsPresentAndTrue Returns true if the environment variable evaluates to True.
+func IsPresentAndTrue(varName string) (bool, error) {
 	varValue, present := os.LookupEnv(varName)
 	if !present {
 		return false, nil

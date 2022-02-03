@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
@@ -28,6 +29,8 @@ import (
 const (
 	rubyLayer  = "ruby"
 	versionKey = "version"
+	// useRubyRuntime is used to enable the ruby/runtime buildpack
+	useRubyRuntime = "GOOGLE_USE_EXPERIMENTAL_RUBY_RUNTIME"
 )
 
 func main() {
@@ -35,6 +38,15 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	isEnabled, err := env.IsPresentAndTrue(useRubyRuntime)
+	if err != nil {
+		ctx.Warnf("failed to parse %s: %v", useRubyRuntime, err)
+	}
+
+	if !isEnabled {
+		return gcp.OptOutEnvNotSet(useRubyRuntime), nil
+	}
+
 	if result := runtime.CheckOverride(ctx, "ruby"); result != nil {
 		return result, nil
 	}
