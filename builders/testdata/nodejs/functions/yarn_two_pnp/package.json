@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "start": "functions-framework --target=testFunction"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^2.1.1"
+  }
+}

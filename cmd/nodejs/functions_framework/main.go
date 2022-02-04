@@ -83,13 +83,23 @@ func buildFn(ctx *gcp.Context) error {
 		return gcp.UserErrorf("%s does not exist", fnFile)
 	}
 
+	yarnPnP := usingYarnModuleResolution(ctx)
+
+	if yarnPnP && !hasFrameworkDependency {
+		return gcp.UserErrorf("This project is using Yarn Plug'n'Play but you have not included the Functions Framework in your dependencies. Please add it by running: 'yarn add @google-cloud/functions-framework'.")
+	}
+
 	// TODO(mattrobertson) remove this check once Nodejs has backported the fix to v16. More info here:
 	// https://github.com/GoogleCloudPlatform/functions-framework-nodejs/issues/407
 	if skip, err := nodejs.SkipSyntaxCheck(ctx, fnFile); err != nil {
 		return err
 	} else if !skip {
 		// Syntax check the function code without executing to prevent run-time errors.
-		ctx.Exec([]string{"node", "--check", fnFile}, gcp.WithUserAttribution)
+		if yarnPnP {
+			ctx.Exec([]string{"yarn", "node", "--check", fnFile}, gcp.WithUserAttribution)
+		} else {
+			ctx.Exec([]string{"node", "--check", fnFile}, gcp.WithUserAttribution)
+		}
 	}
 
 	l := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
@@ -104,7 +114,11 @@ func buildFn(ctx *gcp.Context) error {
 	// installed below.
 	ff := filepath.Join(".bin", "functions-framework")
 
-	if hasFrameworkDependency {
+	if yarnPnP {
+		// In order for node module resolution to work in Yarn Plug'n'Play mode, we must invoke yarn to
+		// start the Functions Framework.
+		ff = "yarn functions-framework"
+	} else if hasFrameworkDependency {
 		ctx.Logf("Handling functions with dependency on functions-framework.")
 		ctx.ClearLayer(l)
 		ff = filepath.Join("node_modules", ff)
@@ -184,4 +198,18 @@ func getMaxOldSpaceSize() (int, error) {
 	}
 
 	return memHint - nodeJSHeadroomMB, nil
+}
+
+// usingYarnModuleResolution returns true if this project was built using a new version of Yarn that
+// does not create the "node_modules" directory.
+func usingYarnModuleResolution(ctx *gcp.Context) bool {
+	if !ctx.FileExists(nodejs.YarnLock) {
+		return false
+	}
+	yarn2, err := nodejs.IsYarn2(ctx.ApplicationRoot())
+	if err != nil || !yarn2 {
+		return false
+	}
+	linker := ctx.Exec([]string{"yarn", "config", "get", "nodeLinker"}, gcp.WithUserAttribution).Stdout
+	return linker == "pnp"
 }

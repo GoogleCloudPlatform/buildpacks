@@ -147,6 +147,12 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{npm},
 			MustNotUse: []string{yarn},
 		},
+		{
+			Name:       "Yarn 2 PnP function",
+			App:        "yarn_two_pnp",
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc
