@@ -11,7 +11,7 @@ buildpack(
         ":main",
     ],
     visibility = [
-        "//builders:nodejs_builders",
+        "//builders:dart_builders",
     ],
 )
 

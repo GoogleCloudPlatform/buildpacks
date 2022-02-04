@@ -16,6 +16,11 @@ builder(
             "//cmd/cpp/clear_source:clear_source.tgz",
             "//cmd/cpp/functions_framework:functions_framework.tgz",
         ],
+        "dart": [
+            "//cmd/dart/compile:compile.tgz",
+            "//cmd/dart/pub:pub.tgz",
+            "//cmd/dart/sdk:sdk.tgz",
+        ],
         "dotnet": [
             "//cmd/dotnet/functions_framework:functions_framework.tgz",
             "//cmd/dotnet/publish:publish.tgz",

@@ -13,8 +13,16 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "cpp/functions_framework.tgz"
 
 [[buildpacks]]
-  id = "google.go.clear_source"
-  uri = "go/clear_source.tgz"
+  id = "google.dart.compile"
+  uri = "dart/compile.tgz"
+
+[[buildpacks]]
+  id = "google.dart.pub"
+  uri = "dart/pub.tgz"
+
+[[buildpacks]]
+  id = "google.dart.sdk"
+  uri = "dart/sdk.tgz"
 
 [[buildpacks]]
   id = "google.dotnet.runtime"
@@ -27,6 +35,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 [[buildpacks]]
   id = "google.dotnet.functions-framework"
   uri = "dotnet/functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.go.clear_source"
+  uri = "go/clear_source.tgz"
 
 [[buildpacks]]
   id = "google.go.runtime"
@@ -174,6 +186,22 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.utils.label"
+
+########
+# Dart #
+########
+
+[[order]]
+
+  [[order.group]]
+    id = "google.dart.sdk"
+
+  [[order.group]]
+    id = "google.dart.pub"
+    optional = true
+
+  [[order.group]]
+    id = "google.dart.compile"
 
 ######
 # Go #

@@ -144,7 +144,7 @@ func IsARAuthEnabled() (bool, error) {
 	return IsPresentAndTrue(ARAuthEnabledEnv)
 }
 
-// IsPresentAndTrue Returns true if the environment variable evaluates to True.
+// IsPresentAndTrue returns true if the environment variable evaluates to True.
 func IsPresentAndTrue(varName string) (bool, error) {
 	varValue, present := os.LookupEnv(varName)
 	if !present {

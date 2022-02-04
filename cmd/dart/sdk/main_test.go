@@ -15,6 +15,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
@@ -22,12 +23,14 @@ import (
 
 func TestDetect(t *testing.T) {
 	testCases := []struct {
-		name  string
-		files map[string]string
-		want  int
+		name   string
+		envVar string
+		files  map[string]string
+		want   int
 	}{
 		{
-			name: "with pubspec",
+			name:   "with pubspec",
+			envVar: "true",
 			files: map[string]string{
 				"foo.dart":     "",
 				"pubspec.yaml": "",
@@ -35,23 +38,34 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "without pubspec",
+			name:   "without pubspec",
+			envVar: "true",
 			files: map[string]string{
 				"foo.dart": "",
 			},
 			want: 0,
 		},
 		{
-			name: "without dart files",
+			name:   "without dart files",
+			envVar: "true",
 			files: map[string]string{
 				"index.txt": "",
+			},
+			want: 100,
+		},
+		{
+			name:   "missing env var",
+			envVar: "false",
+			files: map[string]string{
+				"foo.dart": "",
 			},
 			want: 100,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+			env := fmt.Sprintf("GOOGLE_DART_ENABLED=%s", tc.envVar)
+			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, []string{env}, tc.want)
 		})
 	}
 }

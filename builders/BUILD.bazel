@@ -13,6 +13,13 @@ package_group(
 )
 
 package_group(
+    name = "dart_builders",
+    packages = [
+        "//builders/gcp/base",
+    ],
+)
+
+package_group(
     name = "dotnet_builders",
     packages = [
         "//builders/gae/dotnet3",

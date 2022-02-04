@@ -28,6 +28,7 @@ import (
 const (
 	dartLayer      = "dart"
 	defaultVersion = "2.15.1"
+	dartEnabledEnv = "GOOGLE_DART_ENABLED"
 )
 
 func main() {
@@ -35,10 +36,12 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if !isDartEnabled() {
+		return gcp.OptOutEnvNotSet(dartEnabledEnv), nil
+	}
 	if result := runtime.CheckOverride(ctx, "dart"); result != nil {
 		return result, nil
 	}
-
 	if ctx.FileExists("pubspec.yaml") {
 		return gcp.OptInFileFound("pubspec.yaml"), nil
 	}
@@ -72,4 +75,10 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.CacheMiss(dartLayer)
 
 	return runtime.InstallDartSDK(ctx, drl, version)
+}
+
+// isDartEnabled returns true if we should enable the experimental Dart buildpacks.
+func isDartEnabled() bool {
+	res, err := env.IsPresentAndTrue(dartEnabledEnv)
+	return err == nil && res
 }

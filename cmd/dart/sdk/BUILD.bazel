@@ -6,12 +6,12 @@ load("//tools:defs.bzl", "buildpack")
 licenses(["notice"])
 
 buildpack(
-    name = "runtime",
+    name = "sdk",
     executables = [
         ":main",
     ],
     visibility = [
-        "//builders:nodejs_builders",
+        "//builders:dart_builders",
     ],
 )
 
@@ -37,5 +37,7 @@ go_test(
     srcs = ["main_test.go"],
     embed = [":main"],
     rundir = ".",
-    deps = ["//internal/buildpacktest"],
+    deps = [
+        "//internal/buildpacktest",
+    ],
 )

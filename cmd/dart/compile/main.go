@@ -41,7 +41,7 @@ func buildFn(ctx *gcp.Context) error {
 	// users wish to invoke the binary manually.
 	bl := ctx.Layer("bin", gcp.LaunchLayer)
 	bl.LaunchEnvironment.Prepend("PATH", string(os.PathListSeparator), bl.Path)
-	outBin := filepath.Join(bl.Path, "main")
+	outBin := filepath.Join(bl.Path, "server")
 
 	buildable, err := dartBuildable(ctx)
 	if err != nil {
@@ -52,7 +52,7 @@ func buildFn(ctx *gcp.Context) error {
 	bld := []string{"dart", "compile", "exe", buildable, "-o", outBin}
 	ctx.Exec(bld, gcp.WithUserAttribution)
 
-	ctx.AddWebProcess([]string{outBin})
+	ctx.AddWebProcess([]string{"/bin/bash", "-c", outBin})
 	return nil
 }
 
@@ -63,6 +63,6 @@ func dartBuildable(ctx *gcp.Context) (string, error) {
 		return buildable, nil
 	}
 
-	// Default to main.dart in the application root.
-	return "main.dart", nil
+	// Default to bin/server.dart in the application root.
+	return "bin/server.dart", nil
 }

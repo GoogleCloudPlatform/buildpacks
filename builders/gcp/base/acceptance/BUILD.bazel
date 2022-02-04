@@ -9,6 +9,29 @@ go_library(
 )
 
 go_test(
+    name = "dart_test",
+    size = "enormous",
+    srcs = ["dart_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata:generic)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-prefix=gcpbase-dotnet-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gcp/base:builder.tar",
+        "//builders/testdata:generic",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//internal/acceptance"],
+)
+
+go_test(
     name = "dotnet_test",
     size = "enormous",
     srcs = ["dotnet_test.go"],
