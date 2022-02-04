@@ -24,8 +24,9 @@ func init() {
 }
 
 func TestAcceptance(t *testing.T) {
-	// Note: these tests are not run on pre-submit as graalvm is an experimental feature and the tests
+	// Note: these tests are disabled as graalvm is an experimental feature and the tests
 	// are flaky (builds fail with OOM errors).
+	t.Skip()
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
