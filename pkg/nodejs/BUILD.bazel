@@ -7,6 +7,7 @@ go_library(
     srcs = [
         "nodejs.go",
         "npm.go",
+        "registry.go",
         "yarn.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
@@ -16,7 +17,9 @@ go_library(
     deps = [
         "//pkg/cache",
         "//pkg/gcpbuildpack",
+        "//pkg/version",
         "@com_github_buildpacks_libcnb//:go_default_library",
+        "@com_github_hashicorp_go_retryablehttp//:go_default_library",
         "@com_github_masterminds_semver//:go_default_library",
         "@in_gopkg_yaml_v2//:go_default_library",
     ],
@@ -27,6 +30,7 @@ go_test(
     srcs = [
         "nodejs_test.go",
         "npm_test.go",
+        "registry_test.go",
         "yarn_test.go",
     ],
     data = glob(["testdata/**"]),

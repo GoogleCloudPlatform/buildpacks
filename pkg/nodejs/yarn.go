@@ -87,3 +87,37 @@ func HasYarnWorkspacePlugin(ctx *gcp.Context) bool {
 	res := ctx.Exec([]string{"yarn", "plugin", "runtime"})
 	return strings.Contains(res.Stdout, "plugin-workspace-tools")
 }
+
+// DetectYarnVersion determines the version of Yarn that should be installed in a Node.js project
+// by examining the "engines.yarn" constraint specified in package.json and comparing it against all
+// published versions in the NPM registry. If the package.json does not include "engines.yarn" it
+// returns the latest stable version available.
+func DetectYarnVersion(applicationRoot string) (string, error) {
+	requested, err := requestedYarnVersion(applicationRoot)
+	if err != nil {
+		return "", err
+	}
+	if requested == "" {
+		version, err := latestPackageVersion("yarn")
+		if err != nil {
+			return "", gcp.InternalErrorf("fetching available Yarn versions: %w", err)
+		}
+		return version, nil
+	}
+
+	version, err := resolvePackageVersion("yarn", requested)
+	if err != nil {
+		return "", gcp.UserErrorf("finding Yarn version that matched %q: %w", requested, err)
+	}
+	return version, nil
+}
+
+// requestedYarnVersion returns the Yarn version specified in the "engines.yarn" section of the
+// project's package.json.
+func requestedYarnVersion(applicationRoot string) (string, error) {
+	pjs, err := ReadPackageJSON(applicationRoot)
+	if err != nil {
+		return "", err
+	}
+	return pjs.Engines.Yarn, nil
+}

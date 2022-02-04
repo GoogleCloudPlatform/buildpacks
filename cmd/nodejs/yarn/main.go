@@ -29,10 +29,10 @@ import (
 )
 
 const (
-	cacheTag    = "prod dependencies"
-	yarnVersion = "1.22.5"
-	yarnURL     = "https://github.com/yarnpkg/yarn/releases/download/v%[1]s/yarn-v%[1]s.tar.gz"
-	versionKey  = "version"
+	cacheTag   = "prod dependencies"
+	yarnLayer  = "yarn_engine"
+	versionKey = "version"
+	yarnURL    = "https://yarnpkg.com/downloads/%[1]s/yarn-v%[1]s.tar.gz"
 )
 
 func main() {
@@ -60,7 +60,7 @@ func buildFn(ctx *gcp.Context) error {
 	// source: https://yarnpkg.com/features/pnp
 	pnpMode := yarn2 && nodejs.IsYarnPNP(ctx)
 
-	if err := installYarn(ctx, pnpMode); err != nil {
+	if err := installYarn(ctx); err != nil {
 		return fmt.Errorf("installing Yarn: %w", err)
 	}
 
@@ -127,45 +127,36 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
-func installYarn(ctx *gcp.Context, pnpMode bool) error {
-	// Skip installation if yarn is already installed. Note this does not work in PlugNPlay mode because
-	// it requires Yarn to be installed in the final run image.
-	// TODO(mattrobertson) Remove this once we remove yarn from the base builder images.
-	if !pnpMode {
-		if result := ctx.Exec([]string{"bash", "-c", "command -v yarn || true"}); result.Stdout != "" {
-			ctx.Logf("Yarn is already installed, skipping installation.")
-			return nil
-		}
-		ctx.Warnf("Yarn is not installed...")
-	} else {
-		ctx.Warnf("In PNP mode...")
+func installYarn(ctx *gcp.Context) error {
+	version, err := nodejs.DetectYarnVersion(ctx.ApplicationRoot())
+	if err != nil {
+		return err
 	}
 
-	yarnLayer := "yarn_install"
 	yrl := ctx.Layer(yarnLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
-
 	// Check the metadata in the cache layer to determine if we need to proceed.
 	metaVersion := ctx.GetMetadata(yrl, versionKey)
-	if yarnVersion == metaVersion {
+	if version == metaVersion {
 		ctx.CacheHit(yarnLayer)
 		ctx.Logf("Yarn cache hit, skipping installation.")
 	} else {
 		ctx.CacheMiss(yarnLayer)
 		ctx.ClearLayer(yrl)
-
 		// Download and install yarn in layer.
-		ctx.Logf("Installing Yarn v%s", yarnVersion)
-		archiveURL := fmt.Sprintf(yarnURL, yarnVersion)
+		ctx.Logf("Installing Yarn v%s", version)
+		archiveURL := fmt.Sprintf(yarnURL, version)
 		command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, yrl.Path)
 		ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 	}
 
 	// Store layer flags and metadata.
-	ctx.SetMetadata(yrl, versionKey, yarnVersion)
+	ctx.SetMetadata(yrl, versionKey, version)
+	// We need to update the path here to ensure the version we just installed take precendence over
+	// anything pre-installed in the base image.
 	ctx.Setenv("PATH", filepath.Join(yrl.Path, "bin")+":"+os.Getenv("PATH"))
 	ctx.AddBOMEntry(libcnb.BOMEntry{
 		Name:     yarnLayer,
-		Metadata: map[string]interface{}{"version": yarnVersion},
+		Metadata: map[string]interface{}{"version": version},
 		Launch:   true,
 		Build:    true,
 	})
