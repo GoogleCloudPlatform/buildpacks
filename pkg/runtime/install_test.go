@@ -58,19 +58,7 @@ func TestInstallDartSDK(t *testing.T) {
 				Metadata: map[string]interface{}{},
 			}
 
-			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if tc.httpStatus != 0 {
-					w.WriteHeader(tc.httpStatus)
-				}
-				if tc.responseFile != "" {
-					http.ServeFile(w, r, testdata.MustGetPath(tc.responseFile))
-				}
-			}))
-			defer svr.Close()
-
-			origURL := dartSdkURL
-			t.Cleanup(func() { dartSdkURL = origURL })
-			dartSdkURL = svr.URL + "?version=%s"
+			stubFileServer(t, tc.httpStatus, tc.responseFile)
 
 			version := "2.15.1"
 			err := InstallDartSDK(ctx, l, version)
@@ -103,19 +91,11 @@ func TestInstallRuby(t *testing.T) {
 		responseFile string
 		wantFile     string
 		wantError    bool
-		userAgent    string
 	}{
 		{
 			name:         "successful install",
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
 			wantFile:     "lib/foo.txt",
-			userAgent:    gcpUserAgent,
-		},
-		{
-			name:         "with invalid user agent",
-			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
-			userAgent:    "go/http",
-			wantError:    true,
 		},
 		{
 			name:       "invalid version",
@@ -131,50 +111,56 @@ func TestInstallRuby(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := gcp.NewContext()
-			l := &libcnb.Layer{
+			stubFileServer(t, tc.httpStatus, tc.responseFile)
+
+			layer := &libcnb.Layer{
 				Path:     t.TempDir(),
 				Metadata: map[string]interface{}{},
 			}
-
-			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if tc.httpStatus != 0 {
-					w.WriteHeader(tc.httpStatus)
-				}
-				if tc.userAgent != gcpUserAgent {
-					w.WriteHeader(http.StatusNotFound)
-					return
-				}
-				if tc.responseFile != "" {
-					http.ServeFile(w, r, testdata.MustGetPath(tc.responseFile))
-				}
-			}))
-			defer svr.Close()
-
-			origURL := rubyRuntimeURL
-			t.Cleanup(func() { rubyRuntimeURL = origURL })
-			rubyRuntimeURL = svr.URL + "?version=%s"
+			ctx := gcp.NewContext()
 
 			version := "3.0.3"
-			err := InstallRuby(ctx, l, version)
+			err := InstallTarball(ctx, Ruby, version, layer)
 
-			if tc.wantError && err == nil {
-				t.Fatalf("Expecting error but got nil")
-			}
-			if !tc.wantError && err != nil {
-				t.Fatalf("unexpected error: %v", err)
+			if tc.wantError == (err == nil) {
+				t.Fatalf("InstallTarball(ctx, %q, %q) got error: %v, want error? %v", Ruby, version, err, tc.wantError)
 			}
 
 			if tc.wantFile != "" {
-				fp := filepath.Join(l.Path, tc.wantFile)
+				fp := filepath.Join(layer.Path, tc.wantFile)
 				if !ctx.FileExists(fp) {
 					t.Errorf("Failed to extract. Missing file: %s", fp)
 				}
-				if l.Metadata["version"] != version {
-					t.Errorf("Layer Metadata.version = %q, want %q", l.Metadata["version"], version)
+				if layer.Metadata["version"] != version {
+					t.Errorf("Layer Metadata.version = %q, want %q", layer.Metadata["version"], version)
 				}
 			}
 		})
 	}
+}
 
+func stubFileServer(t *testing.T, httpStatus int, responseFile string) {
+	t.Helper()
+	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if httpStatus != 0 {
+			w.WriteHeader(httpStatus)
+		}
+		if r.UserAgent() != gcpUserAgent {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if responseFile != "" {
+			http.ServeFile(w, r, testdata.MustGetPath(responseFile))
+		}
+	}))
+	t.Cleanup(svr.Close)
+
+	origDartURL := dartSdkURL
+	origTarballURL := googleTarballURL
+	t.Cleanup(func() {
+		dartSdkURL = origDartURL
+		googleTarballURL = origTarballURL
+	})
+	dartSdkURL = svr.URL + "?version=%s"
+	googleTarballURL = svr.URL + "?runtime=%s&version=%s"
 }

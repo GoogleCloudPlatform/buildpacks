@@ -23,15 +23,10 @@ import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/buildpacks/libcnb"
 )
 
-const (
-	rubyLayer  = "ruby"
-	versionKey = "version"
-	// useRubyRuntime is used to enable the ruby/runtime buildpack
-	useRubyRuntime = "GOOGLE_USE_EXPERIMENTAL_RUBY_RUNTIME"
-)
+// useRubyRuntime is used to enable the ruby/runtime buildpack
+const useRubyRuntime = "GOOGLE_USE_EXPERIMENTAL_RUBY_RUNTIME"
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -69,28 +64,6 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("determining runtime version: %w", err)
 	}
-
-	ctx.AddBOMEntry(libcnb.BOMEntry{
-		Name:     rubyLayer,
-		Metadata: map[string]interface{}{"version": version},
-		Launch:   true,
-		Build:    true,
-	})
-
-	rl := ctx.Layer(rubyLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
-
-	if runtime.IsCached(ctx, rl, version) {
-		ctx.CacheHit(rubyLayer)
-		ctx.Logf("Runtime cache hit, skipping installation.")
-		return nil
-	}
-	ctx.CacheMiss(rubyLayer)
-
-	if err = runtime.InstallRuby(ctx, rl, version); err != nil {
-		ctx.Logf("Failed to install ruby runtime")
-		return err
-	}
-
-	ctx.SetMetadata(rl, versionKey, version)
-	return nil
+	rl := ctx.Layer("ruby", gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	return runtime.InstallTarball(ctx, runtime.Ruby, version, rl)
 }

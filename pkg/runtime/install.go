@@ -22,16 +22,27 @@ import (
 	"os"
 	"path"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
 	"github.com/hashicorp/go-retryablehttp"
 )
 
 var (
-	dartSdkURL     = "https://storage.googleapis.com/dart-archive/channels/stable/release/%[1]s/sdk/dartsdk-linux-x64-release.zip"
-	rubyRuntimeURL = "https://dl.google.com/runtimes/ruby/ruby-%s.tar.gz"
+	dartSdkURL       = "https://storage.googleapis.com/dart-archive/channels/stable/release/%[1]s/sdk/dartsdk-linux-x64-release.zip"
+	googleTarballURL = "https://dl.google.com/runtimes/%[1]s/%[1]s-%s.tar.gz"
 )
+
+type installableRuntime string
+
+// All runtimes that can be installed using the InstallTarball function.
+const (
+	Ruby installableRuntime = "ruby"
+)
+
+// User friendly display name of all runtime (e.g. for use in error message).
+var runtimeNames = map[installableRuntime]string{
+	Ruby: "Ruby Runtime",
+}
 
 const (
 	versionKey = "version"
@@ -56,7 +67,8 @@ func InstallDartSDK(ctx *gcp.Context, layer *libcnb.Layer, version string) error
 	}
 	defer os.Remove(zip.Name())
 
-	if err := fetchRuntime("Dart SDK", version, sdkURL, zip); err != nil {
+	if err := fetchRuntime(sdkURL, zip); err != nil {
+		ctx.Warnf("Failed to download Dart SDK from %s. You can specify the verison by setting the GOOGLE_RUNTIME_VERSION environment variable", sdkURL)
 		return err
 	}
 
@@ -83,23 +95,42 @@ func InstallDartSDK(ctx *gcp.Context, layer *libcnb.Layer, version string) error
 	return nil
 }
 
-// InstallRuby downloads a given version of the ruby runtime to the specified layer.
-func InstallRuby(ctx *gcp.Context, layer *libcnb.Layer, version string) error {
-	ctx.ClearLayer(layer)
-	runtimeURL := fmt.Sprintf(rubyRuntimeURL, version)
+// InstallTarball installs a runtime tarball hosted on dl.google.com into the provided layer.
+func InstallTarball(ctx *gcp.Context, runtime installableRuntime, versionConstraint string, layer *libcnb.Layer) error {
+	runtimeName := runtimeNames[runtime]
+	runtimeID := string(runtime)
 
-	tar, err := ioutil.TempFile(layer.Path, "ruby-*.tar.gz")
+	version := versionConstraint
+	ctx.AddBOMEntry(libcnb.BOMEntry{
+		Name:     runtimeID,
+		Metadata: map[string]interface{}{"version": version},
+		Launch:   true,
+		Build:    true,
+	})
+
+	if IsCached(ctx, layer, version) {
+		ctx.CacheHit(runtimeID)
+		ctx.Logf("%s cache hit, skipping installation.", runtimeName)
+		return nil
+	}
+	ctx.CacheMiss(runtimeID)
+
+	ctx.SetMetadata(layer, versionKey, version)
+	runtimeURL := fmt.Sprintf(googleTarballURL, runtime, version)
+
+	tar, err := ioutil.TempFile(layer.Path, fmt.Sprintf("%s-*.tar.gz", runtimeID))
 	if err != nil {
-		return err
+		return gcp.InternalErrorf("creating tempfile: %v", err)
 	}
 	defer os.Remove(tar.Name())
 
-	if err := fetchRuntime("Ruby Runtime", version, runtimeURL, tar); err != nil {
+	if err := fetchRuntime(runtimeURL, tar); err != nil {
+		ctx.Warnf("Failed to download %s version %s. You can specify the verison by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version)
 		return err
 	}
 
 	if _, err := ctx.ExecWithErr([]string{"tar", "-xzvf", tar.Name(), "--directory", layer.Path}); err != nil {
-		return fmt.Errorf("extracting Ruby Runtime: %v", err)
+		return gcp.InternalErrorf("extracting %s: %v", runtimeName, err)
 	}
 
 	ctx.SetMetadata(layer, versionKey, version)
@@ -108,36 +139,30 @@ func InstallRuby(ctx *gcp.Context, layer *libcnb.Layer, version string) error {
 }
 
 // fetchRuntime downloads a runtime archive from the given URL and writes it to the given file.
-func fetchRuntime(name, version, url string, f io.Writer) error {
+func fetchRuntime(url string, f io.Writer) error {
 	client := newRetryableHTTPClient()
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return downloadError(name, version, url, err)
+		return gcp.UserErrorf("fetching %s: %v", url, err)
 	}
 
 	req.Header.Set("User-Agent", gcpUserAgent)
 
 	response, err := client.Do(req)
 	if err != nil {
-		return downloadError(name, version, url, err)
+		return gcp.UserErrorf("fetching %s: %v", url, err)
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		return downloadError(name, version, url, fmt.Errorf("HTTP status: %d", response.StatusCode))
+		return gcp.UserErrorf("fetching %s returned HTTP status: %d", url, response.StatusCode)
 	}
 
 	if _, err = io.Copy(f, response.Body); err != nil {
-		return fmt.Errorf("copying %s: %v", name, err)
+		return gcp.InternalErrorf("copying response body: %v", err)
 	}
 
 	return nil
-}
-
-// downloadError returns an user error that includes instructions about how to correctly specify
-// a valid runtime version.
-func downloadError(name, version, url string, err error) error {
-	return gcp.UserErrorf("%s version %s does not exist at %s (%v). You can specify the version by setting the %s environment variable.", name, version, url, err, env.RuntimeVersion)
 }
 
 // newRetryableHTTPClient configures an http client for automatic retries.
