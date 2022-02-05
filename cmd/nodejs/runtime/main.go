@@ -85,7 +85,11 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.ClearLayer(nrl)
 
 	archiveURL := fmt.Sprintf(nodeURL, version)
-	if code := ctx.HTTPStatus(archiveURL); code != http.StatusOK {
+	code, err := ctx.HTTPStatus(archiveURL)
+	if err != nil {
+		return err
+	}
+	if code != http.StatusOK {
 		return gcp.UserErrorf("Runtime version %s does not exist at %s (status %d). You can specify the version with %s.", version, archiveURL, code, env.RuntimeVersion)
 	}
 

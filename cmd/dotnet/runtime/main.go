@@ -148,12 +148,20 @@ func setSDKEnvVarsForBuild(sdkl *libcnb.Layer) {
 // sdkArchiveURL returns the URL to fetch the .NET SDK.
 func sdkArchiveURL(ctx *gcp.Context, version string) (string, error) {
 	url := fmt.Sprintf(sdkURL, version)
-	if code := ctx.HTTPStatus(url); code == http.StatusOK {
+	code, err := ctx.HTTPStatus(url)
+	if err != nil {
+		return "", err
+	}
+	if code == http.StatusOK {
 		return url, nil
 	}
 	// Retry with the uncached URL.
 	url = fmt.Sprintf(uncachedSdkURL, version)
-	if code := ctx.HTTPStatus(url); code != http.StatusOK {
+	code, err = ctx.HTTPStatus(url)
+	if err != nil {
+		return "", err
+	}
+	if code != http.StatusOK {
 		return "", gcp.UserErrorf("runtime version %s does not exist at %s (status %d). You can specify the version with %s.", version, url, code, env.RuntimeVersion)
 	}
 	return url, nil
@@ -202,11 +210,19 @@ func dlAndInstallRuntime(ctx *gcp.Context, rtl *libcnb.Layer, version string) er
 
 func aspnetcoreRuntimeArchiveURL(ctx *gcp.Context, version string) (string, error) {
 	url := fmt.Sprintf(aspnetRuntimeURL, version)
-	if code := ctx.HTTPStatus(url); code == http.StatusOK {
+	code, err := ctx.HTTPStatus(url)
+	if err != nil {
+		return "", err
+	}
+	if code == http.StatusOK {
 		return url, nil
 	}
 	url = fmt.Sprintf(uncachedAspnetRuntimeURL, version)
-	if code := ctx.HTTPStatus(url); code != http.StatusOK {
+	code, err = ctx.HTTPStatus(url)
+	if err != nil {
+		return "", err
+	}
+	if code != http.StatusOK {
 		return "", gcp.UserErrorf("runtime version %s does not exist at %s (status %d). You can specify the version with %s.", version, url, code, env.RuntimeVersion)
 	}
 	return url, nil

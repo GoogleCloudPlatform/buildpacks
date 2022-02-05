@@ -378,12 +378,12 @@ func (ctx *Context) AddProcess(name string, cmd []string, opts ...processOption)
 }
 
 // HTTPStatus returns the status code for a url.
-func (ctx *Context) HTTPStatus(url string) int {
+func (ctx *Context) HTTPStatus(url string) (int, error) {
 	res, err := http.Head(url)
 	if err != nil {
-		ctx.Exit(1, UserErrorf("getting status code for %s: %v", url, err))
+		return 0, UserErrorf("getting status code for %s: %v", url, err)
 	}
-	return res.StatusCode
+	return res.StatusCode, nil
 }
 
 // AddLabel adds a label to the user's application container.

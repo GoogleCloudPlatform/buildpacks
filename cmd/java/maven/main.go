@@ -152,7 +152,11 @@ func installMaven(ctx *gcp.Context) (string, error) {
 	// Download and install maven in layer.
 	ctx.Logf("Installing Maven v%s", mavenVersion)
 	archiveURL := fmt.Sprintf(mavenURL, mavenVersion)
-	if code := ctx.HTTPStatus(archiveURL); code != http.StatusOK {
+	code, err := ctx.HTTPStatus(archiveURL)
+	if err != nil {
+		return "", err
+	}
+	if code != http.StatusOK {
 		return "", gcp.UserErrorf("Maven version %s does not exist at %s (status %d).", mavenVersion, archiveURL, code)
 	}
 	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, mvnl.Path)

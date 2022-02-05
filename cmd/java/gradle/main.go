@@ -120,7 +120,11 @@ func installGradle(ctx *gcp.Context) (string, error) {
 	downloadURL := fmt.Sprintf(gradleDistroURL, gradleVersion)
 	// Download and install gradle in layer.
 	ctx.Logf("Installing Gradle v%s", gradleVersion)
-	if code := ctx.HTTPStatus(downloadURL); code != http.StatusOK {
+	code, err := ctx.HTTPStatus(downloadURL)
+	if err != nil {
+		return "", err
+	}
+	if code != http.StatusOK {
 		return "", fmt.Errorf("Gradle version %s does not exist at %s (status %d)", gradleVersion, downloadURL, code)
 	}
 
