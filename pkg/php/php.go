@@ -39,6 +39,8 @@ const (
 
 	phpVersionKey     = "php_version"
 	dependencyHashKey = "dependency_hash"
+
+	composerVersionKey = "php"
 )
 
 type composerScriptsJSON struct {
@@ -170,4 +172,46 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 func ComposerRequire(ctx *gcp.Context, packages []string) {
 	cmd := append([]string{"composer", "require", "--no-progress", "--no-suggest", "--no-interaction"}, packages...)
 	ctx.Exec(cmd, gcp.WithUserAttribution)
+}
+
+// ExtractVersion extracts the php version from the environment, composer.json.
+func ExtractVersion(ctx *gcp.Context) (string, error) {
+	// get the runtime version from env.RuntimeVersion
+	if v := os.Getenv(env.RuntimeVersion); v != "" {
+		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, v)
+		return v, nil
+	}
+
+	// get the runtime version from the composer.json file
+	composerFilePath := filepath.Join(ctx.ApplicationRoot(), composerJSON)
+	if ctx.FileExists(composerFilePath) {
+		v, err := composerFileVersion(ctx)
+		if err != nil {
+			return "", err
+		}
+		if v != "" {
+			ctx.Logf("Using php version from %s %s: %s", composerJSON, composerVersionKey, v)
+			return v, nil
+		}
+	}
+
+	return "", nil
+}
+
+// composerFileVersion extracts the version number from composer.json. returns an error in
+// case the version cannot be read.
+func composerFileVersion(ctx *gcp.Context) (string, error) {
+	cjs, err := ReadComposerJSON(ctx.ApplicationRoot())
+	if err != nil {
+		return "", err
+	}
+
+	// check if composer json has specified php version.
+	v, ok := cjs.Require[composerVersionKey]
+	if !ok {
+		ctx.Logf("composer.json exists but does not specify a php version")
+		return "", nil
+	}
+
+	return v, nil
 }

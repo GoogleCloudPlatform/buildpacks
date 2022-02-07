@@ -25,4 +25,8 @@ go_test(
     srcs = ["php_test.go"],
     embed = [":php"],
     rundir = ".",
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+    ],
 )
