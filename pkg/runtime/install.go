@@ -41,11 +41,13 @@ type installableRuntime string
 // All runtimes that can be installed using the InstallTarball function.
 const (
 	Ruby installableRuntime = "ruby"
+	PHP  installableRuntime = "php"
 )
 
 // User friendly display name of all runtime (e.g. for use in error message).
 var runtimeNames = map[installableRuntime]string{
 	Ruby: "Ruby Runtime",
+	PHP:  "PHP Runtime",
 }
 
 const (
