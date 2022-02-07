@@ -25,6 +25,10 @@ import (
 // ResolveVersion finds the largest version in a list of semantic versions that satisifies the
 // provided constraint. If no version in the list statisfies the constraint it returns an error.
 func ResolveVersion(constraint string, versions []string) (string, error) {
+	if constraint == "" {
+		// use the latest version if no constraint was provided
+		constraint = "*"
+	}
 	c, err := semver.NewConstraint(constraint)
 	if err != nil {
 		return "", err

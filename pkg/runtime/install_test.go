@@ -15,9 +15,12 @@
 package runtime
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -87,23 +90,41 @@ func TestInstallDartSDK(t *testing.T) {
 func TestInstallRuby(t *testing.T) {
 	testCases := []struct {
 		name         string
+		version      string
 		httpStatus   int
 		responseFile string
 		wantFile     string
+		wantVersion  string
 		wantError    bool
 	}{
 		{
 			name:         "successful install",
+			version:      "2.x.x",
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
 			wantFile:     "lib/foo.txt",
+			wantVersion:  "2.2.2",
 		},
 		{
-			name:       "invalid version",
+			name:         "default to highest available verions",
+			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
+			wantFile:     "lib/foo.txt",
+			wantVersion:  "3.3.3",
+		},
+		{
+			name:         "invalid version",
+			version:      ">9.9.9",
+			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
+			wantError:    true,
+		},
+		{
+			name:       "not found",
+			version:    "2.2.2",
 			httpStatus: http.StatusNotFound,
 			wantError:  true,
 		},
 		{
 			name:       "corrupt tar file",
+			version:    "2.2.2",
 			httpStatus: http.StatusOK,
 			wantError:  true,
 		},
@@ -119,11 +140,10 @@ func TestInstallRuby(t *testing.T) {
 			}
 			ctx := gcp.NewContext()
 
-			version := "3.0.3"
-			err := InstallTarball(ctx, Ruby, version, layer)
+			err := InstallTarball(ctx, Ruby, tc.version, layer)
 
 			if tc.wantError == (err == nil) {
-				t.Fatalf("InstallTarball(ctx, %q, %q) got error: %v, want error? %v", Ruby, version, err, tc.wantError)
+				t.Fatalf("InstallTarball(ctx, %q, %q) got error: %v, want error? %v", Ruby, tc.version, err, tc.wantError)
 			}
 
 			if tc.wantFile != "" {
@@ -131,9 +151,9 @@ func TestInstallRuby(t *testing.T) {
 				if !ctx.FileExists(fp) {
 					t.Errorf("Failed to extract. Missing file: %s", fp)
 				}
-				if layer.Metadata["version"] != version {
-					t.Errorf("Layer Metadata.version = %q, want %q", layer.Metadata["version"], version)
-				}
+			}
+			if tc.wantVersion != "" && layer.Metadata["version"] != tc.wantVersion {
+				t.Errorf("Layer Metadata.version = %q, want %q", layer.Metadata["version"], tc.wantVersion)
 			}
 		})
 	}
@@ -149,7 +169,13 @@ func stubFileServer(t *testing.T, httpStatus int, responseFile string) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		if responseFile != "" {
+		if strings.Contains(r.URL.RawQuery, "getversions=1") {
+			data, err := json.Marshal([]string{"1.1.1", "3.3.3", "2.2.2"})
+			if err != nil {
+				t.Fatalf("serializing versions: %v", err)
+			}
+			fmt.Fprint(w, string(data))
+		} else if responseFile != "" {
 			http.ServeFile(w, r, testdata.MustGetPath(responseFile))
 		}
 	}))
@@ -157,10 +183,13 @@ func stubFileServer(t *testing.T, httpStatus int, responseFile string) {
 
 	origDartURL := dartSdkURL
 	origTarballURL := googleTarballURL
+	origVersionsURL := runtimeVersionsURL
 	t.Cleanup(func() {
 		dartSdkURL = origDartURL
 		googleTarballURL = origTarballURL
+		runtimeVersionsURL = origVersionsURL
 	})
 	dartSdkURL = svr.URL + "?version=%s"
 	googleTarballURL = svr.URL + "?runtime=%s&version=%s"
+	runtimeVersionsURL = svr.URL + "?runtime=%s&getversions=1"
 }

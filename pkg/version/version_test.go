@@ -45,6 +45,11 @@ func TestResolveVersion(t *testing.T) {
 			want:       "1.2.3",
 		},
 		{
+			name:     "default to newest",
+			versions: []string{"1.2.3", "1.2.4", "1.3.0", "0.1.2", "2.0.0"},
+			want:     "2.0.0",
+		},
+		{
 			name:       "strips prefix",
 			constraint: "v10.1.1",
 			versions:   []string{"v10.1.1"},

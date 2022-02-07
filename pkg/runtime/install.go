@@ -15,6 +15,8 @@
 package runtime
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -23,13 +25,15 @@ import (
 	"path"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/version"
 	"github.com/buildpacks/libcnb"
 	"github.com/hashicorp/go-retryablehttp"
 )
 
 var (
-	dartSdkURL       = "https://storage.googleapis.com/dart-archive/channels/stable/release/%[1]s/sdk/dartsdk-linux-x64-release.zip"
-	googleTarballURL = "https://dl.google.com/runtimes/%[1]s/%[1]s-%s.tar.gz"
+	dartSdkURL         = "https://storage.googleapis.com/dart-archive/channels/stable/release/%[1]s/sdk/dartsdk-linux-x64-release.zip"
+	googleTarballURL   = "https://dl.google.com/runtimes/%[1]s/%[1]s-%s.tar.gz"
+	runtimeVersionsURL = "https://dl.google.com/runtimes/%s/version.json"
 )
 
 type installableRuntime string
@@ -67,7 +71,7 @@ func InstallDartSDK(ctx *gcp.Context, layer *libcnb.Layer, version string) error
 	}
 	defer os.Remove(zip.Name())
 
-	if err := fetchRuntime(sdkURL, zip); err != nil {
+	if err := fetchURL(sdkURL, zip); err != nil {
 		ctx.Warnf("Failed to download Dart SDK from %s. You can specify the verison by setting the GOOGLE_RUNTIME_VERSION environment variable", sdkURL)
 		return err
 	}
@@ -100,7 +104,10 @@ func InstallTarball(ctx *gcp.Context, runtime installableRuntime, versionConstra
 	runtimeName := runtimeNames[runtime]
 	runtimeID := string(runtime)
 
-	version := versionConstraint
+	version, err := resolveVersion(runtime, versionConstraint)
+	if err != nil {
+		return err
+	}
 	ctx.AddBOMEntry(libcnb.BOMEntry{
 		Name:     runtimeID,
 		Metadata: map[string]interface{}{"version": version},
@@ -124,7 +131,7 @@ func InstallTarball(ctx *gcp.Context, runtime installableRuntime, versionConstra
 	}
 	defer os.Remove(tar.Name())
 
-	if err := fetchRuntime(runtimeURL, tar); err != nil {
+	if err := fetchURL(runtimeURL, tar); err != nil {
 		ctx.Warnf("Failed to download %s version %s. You can specify the verison by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version)
 		return err
 	}
@@ -138,8 +145,33 @@ func InstallTarball(ctx *gcp.Context, runtime installableRuntime, versionConstra
 	return nil
 }
 
-// fetchRuntime downloads a runtime archive from the given URL and writes it to the given file.
-func fetchRuntime(url string, f io.Writer) error {
+// resolveVersion returns the newest available version of a runtime that satisfies the provided
+// version constraint.
+func resolveVersion(runtime installableRuntime, verConstraint string) (string, error) {
+	if version.IsExactSemver(verConstraint) {
+		return verConstraint, nil
+	}
+
+	url := fmt.Sprintf(runtimeVersionsURL, runtime)
+	var buf bytes.Buffer
+	if err := fetchURL(url, io.Writer(&buf)); err != nil {
+		return "", gcp.InternalErrorf("fetching %s versions: %v", runtimeNames[runtime], err)
+	}
+
+	var versions []string
+	if err := json.Unmarshal(buf.Bytes(), &versions); err != nil {
+		return "", gcp.InternalErrorf("decoding response from %q: %v", url, err)
+	}
+
+	v, err := version.ResolveVersion(verConstraint, versions)
+	if err != nil {
+		return "", gcp.UserErrorf("invalid %s version specified: %v", runtimeNames[runtime], err)
+	}
+	return v, nil
+}
+
+// fetchURL makes an HTTP GET request to given URL and writes the body to the provided writer.
+func fetchURL(url string, f io.Writer) error {
 	client := newRetryableHTTPClient()
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
