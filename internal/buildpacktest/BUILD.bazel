@@ -11,6 +11,7 @@ go_library(
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     deps = [
         "//internal/buildpacktestenv",
+        "//pkg/env",
         "//pkg/gcpbuildpack",
     ],
 )

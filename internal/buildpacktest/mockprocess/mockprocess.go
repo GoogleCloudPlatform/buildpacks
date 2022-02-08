@@ -25,7 +25,7 @@ func main() {
 	var mockMatch *buildpacktestenv.MockProcess = nil
 	for shortCommand, mock := range mockProcesses {
 		if strings.Contains(fullCommand, shortCommand) {
-			mockMatch = &mock
+			mockMatch = mock
 			break
 		}
 	}

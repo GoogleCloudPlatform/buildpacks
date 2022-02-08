@@ -166,14 +166,14 @@ func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
 		return nil, fmt.Errorf("empty command provided")
 	}
 
-	log := true
+	shouldLog := true
 	if !params.userFailure && !ctx.debug {
 		// For "system" commands, we will only log if the debug flag is present.
-		log = false
+		shouldLog = false
 	}
 
 	optionalLogf := func(format string, args ...interface{}) {
-		if !log {
+		if !shouldLog {
 			return
 		}
 		ctx.Logf(format, args...)
@@ -198,18 +198,18 @@ func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
 	}(time.Now())
 
 	exitCode := 0
-	ecmd := exec.Command(params.cmd[0], params.cmd[1:]...)
+	ecmd := ctx.execCmd(params.cmd[0], params.cmd[1:]...)
 
 	if params.dir != "" {
 		ecmd.Dir = params.dir
 	}
 
 	if len(params.env) > 0 {
-		ecmd.Env = append(os.Environ(), params.env...)
+		ecmd.Env = append(append(ecmd.Env, os.Environ()...), params.env...)
 	}
 
 	var outb, errb bytes.Buffer
-	combinedb := lockingBuffer{log: log}
+	combinedb := lockingBuffer{log: shouldLog}
 	ecmd.Stdout = io.MultiWriter(&outb, &combinedb)
 	ecmd.Stderr = io.MultiWriter(&errb, &combinedb)
 

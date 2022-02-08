@@ -21,6 +21,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -86,6 +87,8 @@ type Context struct {
 	// build items
 	buildContext libcnb.BuildContext
 	buildResult  libcnb.BuildResult
+
+	execCmd func(name string, arg ...string) *exec.Cmd
 }
 
 // ContextOption configures NewContext functions.
@@ -119,6 +122,14 @@ func WithBuildContext(buildCtx libcnb.BuildContext) ContextOption {
 	}
 }
 
+// WithExecCmd overrides the exec.Cmd instance used for executing commands,
+// primarily useful for testing.
+func WithExecCmd(execCmd func(name string, args ...string) *exec.Cmd) ContextOption {
+	return func(ctx *Context) {
+		ctx.execCmd = execCmd
+	}
+}
+
 // NewContext creates a context.
 func NewContext(opts ...ContextOption) *Context {
 	debug, err := env.IsDebugMode()
@@ -126,11 +137,15 @@ func NewContext(opts ...ContextOption) *Context {
 		logger.Printf("Failed to parse debug mode: %v", err)
 		os.Exit(1)
 	}
-	ctx := &Context{debug: debug}
+	ctx := &Context{
+		debug:   debug,
+		execCmd: exec.Command,
+	}
 	ctx.exiter = defaultExiter{ctx: ctx}
 	for _, o := range opts {
 		o(ctx)
 	}
+
 	return ctx
 }
 

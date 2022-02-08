@@ -162,8 +162,8 @@ type MockProcess struct {
 // binary as the first argument, and a map of
 // { command : mock action to simulate the commands behavior }. The command
 // must be at least a partial match to the full command (binary name and all
-// argus) that would have been executed by exec.Cmd.
-func NewMockExecCmd(t *testing.T, mockProcess string, commands map[string]MockProcess) func(name string, args ...string) *exec.Cmd {
+// args) that would have been executed by exec.Cmd.
+func NewMockExecCmd(t *testing.T, mockProcess string, commands map[string]*MockProcess) func(name string, args ...string) *exec.Cmd {
 	t.Helper()
 
 	b, err := json.Marshal(commands)
@@ -180,8 +180,8 @@ func NewMockExecCmd(t *testing.T, mockProcess string, commands map[string]MockPr
 
 // UnmarshalMockProcessMap is a utility function that marshals a
 // map[string]MockProcess from JSON.
-func UnmarshalMockProcessMap(data string) (map[string]MockProcess, error) {
-	var mocks map[string]MockProcess
+func UnmarshalMockProcessMap(data string) (map[string]*MockProcess, error) {
+	var mocks map[string]*MockProcess
 	if err := json.Unmarshal([]byte(data), &mocks); err != nil {
 		return mocks, err
 	}

@@ -17,7 +17,7 @@
 package buildpacktest
 
 import (
-	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -25,10 +25,12 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktestenv"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -58,12 +60,23 @@ type config struct {
 	envs           []string
 	stack          string
 	want           int
+	mockProcessMap map[string]*buildpacktestenv.MockProcess
 }
 
-// Result encapsulates the result of a buildpack phase.
+// Result encapsulates the result of a buildpack phase ran as a child process.
 type Result struct {
-	Stdout string
-	Stderr string
+	// Output is the combined stdout and stderr of executing the build function
+	// or detect function in a child process. Almost all buildpack output is
+	// logged to stderr. Debug mode is on for tests, so all ctx.Exec commands
+	// will be logged to stderr. Stdout and stderr from ctx.Exec calls end up
+	// being printed to stderr by the `gcpbuildpack` package.
+	//
+	// Some extraneous Go test output appears in the Output here due to
+	// re-using the main test binary as the entrypoint for the child process.
+	Output string
+	// ExitCode is the exit code of the child process that ran the buildpack
+	// function.
+	ExitCode int
 }
 
 // TestDetect is a helper for testing a buildpack's implementation of /bin/detect.
@@ -74,8 +87,9 @@ func TestDetect(t *testing.T, detectFn gcp.DetectFn, testName string, files map[
 	TestDetectWithStack(t, detectFn, testName, files, envs, "com.stack", want)
 }
 
-// TestDetectWithStack is a helper for testing a buildpack's implementation of /bin/detect which allows setting a custom stack name.
-// This MUST be called from a test function with the stub `func TestDetectWithStack(t *testing.T)`
+// TestDetectWithStack is a helper for testing a buildpack's implementation of
+// /bin/detect which allows setting a custom stack name. This MUST be called
+// from a test function with the stub `func TestDetectWithStack(t *testing.T)`.
 // A child process will be started that looks for that test name. The child
 // process will run a buildpack phase instead of the test again, however.
 func TestDetectWithStack(t *testing.T, detectFn gcp.DetectFn, testName string, files map[string]string, envs []string, stack string, want int) {
@@ -89,14 +103,14 @@ func TestDetectWithStack(t *testing.T, detectFn gcp.DetectFn, testName string, f
 		want:           want,
 	})
 
-	if e, ok := err.(*exec.ExitError); ok && e.ExitCode() != want {
-		t.Errorf("unexpected exit status %d, want %d", e.ExitCode(), want)
-		t.Errorf("\nStdout: %s\nStderr: %s", result.Stdout, result.Stderr)
+	if result.ExitCode != want {
+		t.Errorf("unexpected exit status %d, want %d", result.ExitCode, want)
+		t.Errorf("\ncombined stdout, stderr: %s", result.Output)
 	}
 
 	if err == nil && want != 0 {
 		t.Errorf("unexpected exit status 0, want %d", want)
-		t.Errorf("\nStdout: %s\nStderr: %s", result.Stdout, result.Stderr)
+		t.Errorf("\ncombined stdout, stderr: %s", result.Output)
 	}
 }
 
@@ -124,17 +138,17 @@ func runBuildpackPhaseForTest(t *testing.T, cfg *config) (*Result, error) {
 			cmd.Env = append(cmd.Env, e)
 		}
 
-		var stdout bytes.Buffer
-		var stderr bytes.Buffer
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-
 		t.Logf("running command %v", cmd)
 
-		err := cmd.Run()
+		output, err := cmd.CombinedOutput()
+		exitCode := 0
+		if e, ok := err.(*exec.ExitError); ok {
+			exitCode = e.ExitCode()
+		}
 		result := &Result{
-			Stdout: stdout.String(),
-			Stderr: stderr.String(),
+			// Almost all buildpack output is relogged to Stderr
+			Output:   string(output),
+			ExitCode: exitCode,
 		}
 
 		return result, err
@@ -148,8 +162,38 @@ func runBuildpackPhaseForTest(t *testing.T, cfg *config) (*Result, error) {
 // like the main of a standard Go app, using "log.Fatalf" in place of
 // "t.Fatalf".
 func runBuildpackPhaseMain(t *testing.T, cfg *config) {
+	phasePassed, err := runBuildpackPhase(t, cfg)
+	if err != nil {
+		log.Fatalf("buildpack error: %v", err)
+	}
+
+	if cfg.buildpackPhase == detectPhase && !phasePassed {
+		// mimic the libcnb exit code for when /bin/detect runs but does
+		// not detect anything.
+		os.Exit(100)
+	}
+
+	// Do not allow any other Go test validation to continue in the child
+	// process.
+	os.Exit(0)
+}
+
+func runBuildpackPhase(t *testing.T, cfg *config) (bool, error) {
 	temps := buildpacktestenv.SetUpTempDirs(t)
 	opts := []gcp.ContextOption{gcp.WithApplicationRoot(temps.CodeDir), gcp.WithBuildpackRoot(temps.BuildpackDir)}
+
+	// Mock out calls to ctx.Exec, if specified
+	if len(cfg.mockProcessMap) > 0 {
+		mockProcessBinary, err := mockProcessBinaryPath()
+		if err != nil {
+			t.Fatalf("unable to locate mock process binary: %v", err)
+		}
+		eCmd := buildpacktestenv.NewMockExecCmd(t, mockProcessBinary, cfg.mockProcessMap)
+		opts = append(opts, gcp.WithExecCmd(eCmd))
+	}
+
+	// Logs all ctx.Exec commands to stderr
+	os.Setenv(env.DebugMode, "true")
 	ctx := gcp.NewContext(opts...)
 
 	for f, c := range cfg.files {
@@ -157,42 +201,70 @@ func runBuildpackPhaseMain(t *testing.T, cfg *config) {
 
 		if dir := path.Dir(fn); dir != "" {
 			if err := os.MkdirAll(dir, 0744); err != nil {
-				log.Fatalf("creating directory tree %s: %v", dir, err)
+				return false, fmt.Errorf("creating directory tree %s: %v", dir, err)
 			}
 		}
 
 		if err := ioutil.WriteFile(fn, []byte(c), 0644); err != nil {
-			log.Fatalf("writing file %s: %v", fn, err)
+			return false, fmt.Errorf("writing file %s: %v", fn, err)
 		}
 	}
 
-	oldDir, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("getting working directory: %v", err)
-	}
 	if err := os.Chdir(temps.CodeDir); err != nil {
-		log.Fatalf("changing to code dir %q: %v", temps.CodeDir, err)
+		return false, fmt.Errorf("changing to code dir %q: %v", temps.CodeDir, err)
 	}
-	defer func() {
-		if err := os.Chdir(oldDir); err != nil {
-			log.Fatalf("changing back to old working directory %q: %v", oldDir, err)
-		}
-	}()
 
 	if cfg.buildpackPhase == buildPhase {
 		if err := cfg.buildFn(ctx); err != nil {
-			log.Fatalf("build error: %v", err)
+			return false, fmt.Errorf("build error: %v", err)
 		}
 	} else {
 		detect, err := cfg.detectFn(ctx)
 		if err != nil {
-			log.Fatalf("detect error: %v", err)
+			return false, fmt.Errorf("detect error: %v", err)
 		}
 
 		// Mimics the exit code of libcnb library when the detect function
 		// succeeds but does not pass detect.
 		if !detect.Result().Pass {
-			os.Exit(100)
+			return false, nil
 		}
 	}
+
+	return true, nil
+}
+
+// mockProcessBinaryPath returns the path to the mockprocess binary within
+// the current build target's (a go_test) runtime files. The mockprocess
+// binary comes bundled with the `buildpacktest` package, so it's expected
+// to be where the buildpacktest package's location is placed.
+func mockProcessBinaryPath() (string, error) {
+	// Returns the file that would have been at the top frame of a stack
+	// trace created from this line (this file itself).
+	// {buildpacksRepo}/internal/buildpacktest/buildpacktest.go
+	_, callingFile, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", errors.New("unable to determine Go runtime information about calling file")
+	}
+
+	// {buildpacksRepo}/internal/buildpacktest
+	callingDir := filepath.Dir(callingFile)
+
+	buildpackTest := "internal/buildpacktest"
+	// {buildpacksRepo}
+	buildpacksRepo := strings.TrimSuffix(filepath.ToSlash(callingDir), buildpackTest)
+
+	// Full path to currently executing test binary
+	// {bazelRuntimeRoot}/{buildpacksRepo}/{relativePathToTestBinary}
+	executingBinary := filepath.ToSlash(os.Args[0])
+
+	// [{bazelRuntimeRoot}, {relativePathToTestBinary}]
+	split := strings.Split(executingBinary, buildpacksRepo)
+	if len(split) < 2 {
+		return "", fmt.Errorf("unable to determine bazel runtime root, executing test binary: %q, inferred buildpacks repo path: %q, split result: %v", executingBinary, buildpacksRepo, split)
+	}
+
+	// {bazelRuntimeRoot}/{buildpacksRepo}/internal/buildpacktest/mockprocess/mockprocess
+	mockProcessBinary := filepath.Join(split[0], buildpacksRepo, buildpackTest, "mockprocess", "mockprocess")
+	return filepath.FromSlash(mockProcessBinary), nil
 }
