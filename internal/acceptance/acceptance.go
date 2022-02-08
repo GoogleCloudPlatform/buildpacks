@@ -65,6 +65,7 @@ var (
 	lifecycle           string // Path to lifecycle archive; optional.
 	pullImages          bool   // Pull stack images instead of using local daemon.
 	cloudbuild          bool   // Use cloudbuild network; required for Cloud Build.
+	runtimeVersions     string // Comma separated list of runtime versions to test.
 
 	specialChars = regexp.MustCompile("[^a-zA-Z0-9]+")
 )
@@ -100,6 +101,8 @@ func DefineFlags() {
 	flag.StringVar(&lifecycle, "lifecycle", "", "Location of lifecycle archive. Overrides builder.toml if specified.")
 	flag.BoolVar(&pullImages, "pull-images", true, "Pull stack images before running the tests.")
 	flag.BoolVar(&cloudbuild, "cloudbuild", false, "Use cloudbuild network; required for Cloud Build.")
+	flag.StringVar(&runtimeVersions, "runtime-versions", "", "Comma separated list of runtime versions to override in tests.")
+
 }
 
 // UnarchiveTestData extracts the test-data tgz into a temp dir and returns a cleanup function to be deferred.
@@ -1132,4 +1135,13 @@ func envSliceAsMap(t *testing.T, env []string) map[string]string {
 // PullImages returns the value of the -pull-images flag.
 func PullImages() bool {
 	return pullImages
+}
+
+// RuntimeVersions returns the value of the -runtime-versions flag. If the flag was not set it
+// returns the default versions passed as arguments.
+func RuntimeVersions(defaultVersions ...string) []string {
+	if runtimeVersions != "" {
+		return strings.Split(runtimeVersions, ",")
+	}
+	return defaultVersions
 }

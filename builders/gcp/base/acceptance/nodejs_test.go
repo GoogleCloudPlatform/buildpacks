@@ -125,6 +125,16 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			SkipCacheTest: true,
 		},
 	}
+	// Tests for specific versions of Node.js available on dl.google.com.
+	for _, v := range acceptance.RuntimeVersions("8.17.0") {
+		testCases = append(testCases, acceptance.Test{
+			Name:    "runtime version " + v,
+			App:     "nodejs/simple",
+			Path:    "/version?want=" + v,
+			Env:     []string{"GOOGLE_NODEJS_VERSION=" + v},
+			MustUse: []string{nodeRuntime},
+		})
+	}
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {

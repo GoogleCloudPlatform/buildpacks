@@ -75,12 +75,9 @@ func TestAcceptanceRuby(t *testing.T) {
 			MustNotUse: []string{goRuntime, javaRuntime, nodeRuntime, pythonRuntime},
 		},
 	}
-	// Tests for two most recent published patch versions of Ruby.
+	// Tests for specific versions of Ruby available on dl.google.com.
 	// Unlike with the other languages, we control the versions published to GCS.
-	for _, v := range []string{
-		"3.0.3",
-		"2.7.5",
-	} {
+	for _, v := range acceptance.RuntimeVersions("3.0.3", "2.7.5") {
 		testCases = append(testCases, acceptance.Test{
 			Name:    "runtime version " + v,
 			App:     "ruby/version_unlocked",

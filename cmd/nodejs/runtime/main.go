@@ -34,6 +34,7 @@ const (
 	nodeURL       = "https://nodejs.org/dist/v%[1]s/node-v%[1]s-linux-x64.tar.xz"
 	versionKey    = "version"
 	npmVersionKey = "npm-version"
+	versionEnv    = "GOOGLE_NODEJS_VERSION"
 	// TODO(b/171347385): Remove after resolving incompatibilities in Node.js 15.
 	defaultRange = "14.x.x"
 )
@@ -58,6 +59,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	// Use GOOGLE_NODEJS_VERSION to enable installing from the experimental tarball hosting service.
+	if version := os.Getenv(versionEnv); version != "" {
+		nrl := ctx.Layer(nodeLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+		return runtime.InstallTarball(ctx, runtime.Nodejs, version, nrl)
+	}
 	pkgJSON, err := getPkgJSONIfPresent(ctx)
 	if err != nil {
 		return err
