@@ -35,6 +35,10 @@ func main() {
 		os.Exit(0)
 	}
 
+	for dest, src := range mockMatch.MovePaths {
+		os.Rename(src, dest)
+	}
+
 	if mockMatch.Stdout != "" {
 		fmt.Fprint(os.Stdout, mockMatch.Stdout)
 	}

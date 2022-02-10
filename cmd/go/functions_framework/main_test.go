@@ -15,9 +15,10 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 )
 
 func TestDetect(t *testing.T) {
@@ -40,7 +41,72 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetectWithStack(t, detectFn, tc.name, tc.files, tc.env, tc.stack, tc.want)
+			bpt.TestDetectWithStack(t, detectFn, tc.name, tc.files, tc.env, tc.stack, tc.want)
+		})
+	}
+}
+
+func TestBuild(t *testing.T) {
+	testCases := []struct {
+		name         string
+		app          string
+		envs         []string
+		fnPkgName    string
+		opts         []bpt.Option
+		wantExitCode int // 0 if unspecified
+		wantCommands []string
+	}{
+		{
+			name:         "go mod function with framework",
+			app:          "with_framework",
+			envs:         []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			fnPkgName:    "myfunc",
+			wantCommands: []string{fmt.Sprintf("go mod tidy")},
+		},
+		{
+			name:      "go mod function without framework",
+			app:       "no_framework",
+			envs:      []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			fnPkgName: "myfunc",
+			wantCommands: []string{
+				fmt.Sprintf("go get %s", functionsFrameworkModule),
+				"go mod tidy",
+			},
+		},
+		{
+			name:         "vendored function",
+			app:          "no_framework_vendored",
+			envs:         []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			fnPkgName:    "myfunc",
+			wantCommands: []string{"go mod vendor"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			opts := []bpt.Option{
+				bpt.WithTestName(tc.name),
+				bpt.WithApp(tc.app),
+				bpt.WithEnvs(tc.envs...),
+				// Function source code is moved at the beginning of buildFn
+				bpt.WithExecMock("find .", bpt.MockMovePath(".", fnSourceDir)),
+				bpt.WithExecMock("get_package", bpt.MockStdout(fmt.Sprintf(`{"name":"%s"}`, tc.fnPkgName))),
+			}
+
+			opts = append(opts, tc.opts...)
+			result, err := bpt.RunBuild(t, buildFn, opts...)
+			if err != nil {
+				t.Fatalf("error running build: %v, result: %#v", err, result)
+			}
+
+			if result.ExitCode != tc.wantExitCode {
+				t.Errorf("build exit code mismatch, got: %d, want: %d", result.ExitCode, tc.wantExitCode)
+			}
+			for _, cmd := range tc.wantCommands {
+				if !result.CommandExecuted(cmd) {
+					t.Errorf("expected command %q to be executed, but it was not", cmd)
+				}
+			}
 		})
 	}
 }

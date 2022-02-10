@@ -148,6 +148,9 @@ version = "entry-version"
 }
 
 // MockProcess encapsulates the behavior of a mock process for test.
+// To add more behaviors to the mock process, expand this struct and implement
+// the corresponding handling in
+// internal/buildpacktest/mockprocess/mockprocess.go
 type MockProcess struct {
 	// Stdout is the message that should be printed to stdout.
 	Stdout string
@@ -155,6 +158,10 @@ type MockProcess struct {
 	Stderr string
 	// ExitCode is the exit code that the process should use.
 	ExitCode int
+	// MovePaths is a map of {destination path : source path} that will
+	// be moved by the mock process. If the path is a directory,
+	// all contents will be recursively moved.
+	MovePaths map[string]string
 }
 
 // NewMockExecCmd constructs an ExecCmd that can replace standard exec.Cmd calls
@@ -172,7 +179,7 @@ func NewMockExecCmd(t *testing.T, mockProcess string, commands map[string]*MockP
 	}
 
 	return func(name string, args ...string) *exec.Cmd {
-		cmd := exec.Command(mockProcess, args...)
+		cmd := exec.Command(mockProcess, append([]string{name}, args...)...)
 		cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", EnvHelperMockProcessMap, string(b)))
 		return cmd
 	}

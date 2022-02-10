@@ -18,13 +18,17 @@ package buildpacktest
 
 import (
 	"errors"
+	"flag"
 	"fmt"
+	"io"
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -33,6 +37,19 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
+
+var (
+	flagTestData string // Path to directory or archive containing source test data.
+)
+
+// defineFlags sets up flags that control the behavior of the test runner.
+func defineFlags() {
+	flag.StringVar(&flagTestData, "test-data", "", "Location of the test data files.")
+}
+
+func init() {
+	defineFlags()
+}
 
 type buildpackPhase string
 
@@ -60,6 +77,7 @@ type config struct {
 	envs           []string
 	stack          string
 	want           int
+	appPath        string
 	mockProcessMap map[string]*buildpacktestenv.MockProcess
 }
 
@@ -77,6 +95,102 @@ type Result struct {
 	// ExitCode is the exit code of the child process that ran the buildpack
 	// function.
 	ExitCode int
+}
+
+// CommandExecuted returns whether or not a command was executed using ctx.Exec.
+func (r *Result) CommandExecuted(command string) bool {
+	re := regexp.MustCompile(fmt.Sprintf(`Running.*%s.*Done`, command))
+	return re.FindString(r.Output) == ""
+}
+
+// Option is a type for buildpack test options.
+type Option func(cfg *config)
+
+// WithTestName specifies the test case name if a table-driven test is being
+// used. This is important when invoking the test binary again as a child
+// process to execute the buildpack phase.
+func WithTestName(testName string) Option {
+	return func(cfg *config) {
+		cfg.testName = testName
+	}
+}
+
+// WithApp specifies an app, by directory name, to build from testdata.
+func WithApp(appName string) Option {
+	return func(cfg *config) {
+		cfg.appPath = appName
+	}
+}
+
+// WithEnvs specifies env vars to set for the buildpack test.
+func WithEnvs(envs ...string) Option {
+	return func(cfg *config) {
+		cfg.envs = envs
+	}
+}
+
+// WithExecMock mocks the behavior of a shell command executed by a
+// ctx.Exec call. `command` is the command to mock; it must be an exact
+// substring of the full command that would have been executed, though it
+// does not have to be the beginning of the command. `stdout` is what will
+// be printed to stdout, `stderr` is what wiil be printed totderr. `exitCode`
+// will be the exit code of the command.
+//
+// All commands executed through ctx.Exec have stdout and stderr redirected
+// to the return parameters of ctx.Exec. However, the combined output ends
+// up being logged to stderr of the parent process. The stderr of executing
+// detectFn or buildFn can be searched for the stdout or stderr of any ctx.Exec
+// mocks.
+func WithExecMock(command string, opts ...ExecMockOptions) Option {
+	return func(cfg *config) {
+		if cfg.mockProcessMap == nil {
+			cfg.mockProcessMap = map[string]*buildpacktestenv.MockProcess{}
+		}
+		mp := &buildpacktestenv.MockProcess{
+			Stdout:    "",
+			Stderr:    "",
+			ExitCode:  0,
+			MovePaths: map[string]string{},
+		}
+		for _, o := range opts {
+			o(mp)
+		}
+		cfg.mockProcessMap[command] = mp
+	}
+}
+
+// ExecMockOptions are options that configure the behavior of the mock command
+// that replaces ctx.Exec calls.
+type ExecMockOptions func(*buildpacktestenv.MockProcess)
+
+// MockStdout configures what a mocked command prints to stdout.
+func MockStdout(msg string) ExecMockOptions {
+	return func(mp *buildpacktestenv.MockProcess) {
+		mp.Stdout = msg
+	}
+}
+
+// MockStderr configures what a mocked command prints to stderr.
+func MockStderr(msg string) ExecMockOptions {
+	return func(mp *buildpacktestenv.MockProcess) {
+		mp.Stderr = msg
+	}
+}
+
+// MockExitCode configures what a mocked command uses as the exit code.
+func MockExitCode(code int) ExecMockOptions {
+	return func(mp *buildpacktestenv.MockProcess) {
+		mp.ExitCode = code
+	}
+}
+
+// MockMovePath moves all content from src to dest. It is run relative to the
+// application root of the buildpack. Absolute paths to temporary directories
+// can also be used to move test data to within the application root.
+func MockMovePath(dest string, src string) ExecMockOptions {
+	return func(mp *buildpacktestenv.MockProcess) {
+		mp.MovePaths[dest] = src
+	}
 }
 
 // TestDetect is a helper for testing a buildpack's implementation of /bin/detect.
@@ -114,6 +228,24 @@ func TestDetectWithStack(t *testing.T, detectFn gcp.DetectFn, testName string, f
 	}
 }
 
+// RunBuild is a helper for testing a buildpack's implementation of /bin/build.
+// This MUST be called from a test function with the stub `func TestBuild(t *testing.T)`
+// A child process will be started that looks for that test name. The child
+// process will run a buildpack phase instead of the test again, however.
+func RunBuild(t *testing.T, buildFn gcp.BuildFn, opts ...Option) (*Result, error) {
+	t.Helper()
+	cfg := &config{
+		buildpackPhase: buildPhase,
+		buildFn:        buildFn,
+	}
+
+	for _, o := range opts {
+		o(cfg)
+	}
+
+	return runBuildpackPhaseForTest(t, cfg)
+}
+
 // runBuildpackPhaseForTest runs a buildpack phase as a separate child process.
 // A child process is used to avoid the test suite itself being terminated by
 // errant calls to os.Exit() in the buildpack.
@@ -131,7 +263,10 @@ func runBuildpackPhaseForTest(t *testing.T, cfg *config) (*Result, error) {
 		// the env var that signals the buildpack phase should be run (args[0]
 		// is the current running binary).
 		testBinary := filepath.Join(testDir, os.Args[0])
-		cmd := exec.Command(testBinary, fmt.Sprintf("-test.run=Test%s/^%s$", cfg.buildpackPhase, strings.ReplaceAll(cfg.testName, " ", "_")))
+		args := []string{fmt.Sprintf("-test.run=Test%s/^%s$", cfg.buildpackPhase, strings.ReplaceAll(cfg.testName, " ", "_"))}
+		// Forward the `buildpacktest` flags to the child process.
+		args = append(args, os.Args[1:]...)
+		cmd := exec.Command(testBinary, args...)
 		cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", runTestAsHelperProcessEnv, cfg.buildpackPhase))
 
 		for _, e := range cfg.envs {
@@ -186,7 +321,7 @@ func runBuildpackPhase(t *testing.T, cfg *config) (bool, error) {
 	if len(cfg.mockProcessMap) > 0 {
 		mockProcessBinary, err := mockProcessBinaryPath()
 		if err != nil {
-			t.Fatalf("unable to locate mock process binary: %v", err)
+			return false, fmt.Errorf("unable to locate mock process binary: %w", err)
 		}
 		eCmd := buildpacktestenv.NewMockExecCmd(t, mockProcessBinary, cfg.mockProcessMap)
 		opts = append(opts, gcp.WithExecCmd(eCmd))
@@ -195,6 +330,13 @@ func runBuildpackPhase(t *testing.T, cfg *config) (bool, error) {
 	// Logs all ctx.Exec commands to stderr
 	os.Setenv(env.DebugMode, "true")
 	ctx := gcp.NewContext(opts...)
+
+	if cfg.appPath != "" {
+		// Copy apps from test data into temp code dir
+		if err := copyPath(temps.CodeDir, filepath.Join(flagTestData, cfg.appPath)); err != nil {
+			return false, fmt.Errorf("unable to copy app directory %q to %q: %v", cfg.appPath, temps.CodeDir, err)
+		}
+	}
 
 	for f, c := range cfg.files {
 		fn := filepath.Join(temps.CodeDir, f)
@@ -267,4 +409,41 @@ func mockProcessBinaryPath() (string, error) {
 	// {bazelRuntimeRoot}/{buildpacksRepo}/internal/buildpacktest/mockprocess/mockprocess
 	mockProcessBinary := filepath.Join(split[0], buildpacksRepo, buildpackTest, "mockprocess", "mockprocess")
 	return filepath.FromSlash(mockProcessBinary), nil
+}
+
+// copyPath recursively copies files and directories: from srcPath to destPath.
+func copyPath(destPath, srcPath string) error {
+	return filepath.WalkDir(srcPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, err := filepath.Rel(srcPath, path)
+		if err != nil {
+			return err
+		}
+
+		dest := filepath.Join(destPath, relPath)
+		if d.IsDir() {
+			return os.MkdirAll(dest, 0744)
+		}
+
+		srcFile, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer srcFile.Close()
+
+		destFile, err := os.Create(dest)
+		if err != nil {
+			return err
+		}
+		defer destFile.Close()
+
+		if _, err := io.Copy(destFile, srcFile); err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
