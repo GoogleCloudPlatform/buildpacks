@@ -15,6 +15,7 @@
 package nodejs
 
 import (
+	"fmt"
 	"io/ioutil"
 	"path"
 	"testing"
@@ -23,56 +24,38 @@ import (
 	"google3/third_party/golang/cmp/cmp"
 )
 
-func TestYarnInstallCmd(t *testing.T) {
+func TestUseFrozenLockfile(t *testing.T) {
 	testCases := []struct {
 		name    string
 		version string
-		yarn2   bool
-		pnpMode bool
-		want    []string
+		want    bool
 	}{
 		{
-			name:    "Node v10 with Yarn 1",
 			version: "v10.1.1",
-			want:    []string{"yarn", "install", "--non-interactive", "--prefer-offline", "--production=false"},
+			want:    false,
 		},
 		{
-			name:    "Node v8 with Yarn 1",
 			version: "v8.17.0",
-			want:    []string{"yarn", "install", "--non-interactive", "--prefer-offline", "--production=false"},
+			want:    false,
 		},
 		{
-			name:    "Node v15 with Yarn 1",
 			version: "v15.11.0",
-			want:    []string{"yarn", "install", "--non-interactive", "--prefer-offline", "--production=false", "--frozen-lockfile"},
-		},
-		{
-			name:    "Node v15 with Yarn 2 PlugNPlay",
-			version: "v15.11.0",
-			yarn2:   true,
-			pnpMode: true,
-			want:    []string{"yarn", "install", "--immutable", "--immutable-cache"},
-		},
-		{
-			name:    "Node v15 with Yarn 2 without PlugNPlay",
-			version: "v15.11.0",
-			yarn2:   true,
-			want:    []string{"yarn", "install", "--immutable"},
+			want:    true,
 		},
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(fmt.Sprintf("Node.js %s", tc.version), func(t *testing.T) {
 			defer func(fn func(*gcpbuildpack.Context) string) { nodeVersion = fn }(nodeVersion)
 			nodeVersion = func(*gcpbuildpack.Context) string { return tc.version }
 
-			got, err := YarnInstallCmd(nil, tc.yarn2, tc.pnpMode)
+			got, err := UseFrozenLockfile(nil)
 			if err != nil {
-				t.Fatalf("Node.js %v: LockfileFlag(nil, %t, %t) got error: %v", tc.version, tc.yarn2, tc.pnpMode, err)
+				t.Fatalf("Node.js %v: LockfileFlag(nil) got error: %v", tc.version, err)
 			}
 
 			if diff := cmp.Diff(got, tc.want); diff != "" {
-				t.Errorf("Node.js %v: LockfileFlag(nil, %t, %t) (+got, -want):\n %v", tc.version, tc.yarn2, tc.pnpMode, diff)
+				t.Errorf("Node.js %v: LockfileFlag(nil) (+got, -want):\n %v", tc.version, diff)
 			}
 		})
 	}

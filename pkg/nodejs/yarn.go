@@ -34,30 +34,11 @@ type yarn2Lock struct {
 	} `yaml:"__metadata"`
 }
 
-// YarnInstallCmd returns an appropriate command for installing Yarn dependencies for a given environment.
-func YarnInstallCmd(ctx *gcp.Context, yarn2, pnpMode bool) ([]string, error) {
-	if yarn2 {
-		cmd := []string{"yarn", "install", "--immutable"}
-		if pnpMode {
-			// In Plug'n'Play mode all dependencies must be included in the Yarn cache. The --immutable-cache
-			// option will abort the install with an error if anything is missing or out of date.
-			cmd = append(cmd, "--immutable-cache")
-		}
-		return cmd, nil
-	}
-
-	// Setting --production=false causes the devDependencies to be installed regardless of the
-	// NODE_ENV value. The allows the customer's lifecycle hooks to access to them. We purge the
-	// devDependencies from the final app.
-	cmd := []string{"yarn", "install", "--non-interactive", "--prefer-offline", "--production=false"}
-
-	// HACK: For backwards compatibility on App Engine Node.js 10 and older, skip using `--frozen-lockfile`.
-	if isOldNode, err := isPreNode11(ctx); err != nil {
-		return nil, err
-	} else if !isOldNode {
-		cmd = append(cmd, "--frozen-lockfile")
-	}
-	return cmd, nil
+// UseFrozenLockfile returns an true if the environment supporte Yarn's --frozen-lockfile flag. This
+// is a hack to maintain backwards compatibility on App Engine Node.js 10 and older.
+func UseFrozenLockfile(ctx *gcp.Context) (bool, error) {
+	oldNode, err := isPreNode11(ctx)
+	return !oldNode, err
 }
 
 // IsYarn2 detects whether the given lockfile was generated with Yarn 2.
@@ -75,11 +56,6 @@ func IsYarn2(rootDir string) (bool, error) {
 	}
 	// After Yarn2, yarn.lock files contain a __metadata.version field.
 	return manifest.Metadata.Version != "", nil
-}
-
-// IsYarnPNP returns true if the project is using Yarn2's Plug'n'Play feature.
-func IsYarnPNP(ctx *gcp.Context) bool {
-	return ctx.FileExists(ctx.ApplicationRoot(), ".yarn", "cache")
 }
 
 // HasYarnWorkspacePlugin returns true if this project has Yarn2's workspaces plugin installed.

@@ -51,66 +51,28 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	yarn2, err := nodejs.IsYarn2(ctx.ApplicationRoot())
-	if err != nil {
-		return err
-	}
-
-	// Plug'n'Play mode is a Yarn2 feature in which dependencies are always bundled with the application
-	// source: https://yarnpkg.com/features/pnp
-	pnpMode := yarn2 && nodejs.IsYarnPNP(ctx)
-
 	if err := installYarn(ctx); err != nil {
 		return fmt.Errorf("installing Yarn: %w", err)
 	}
 
-	ml := ctx.Layer("yarn_modules", gcp.BuildLayer, gcp.CacheLayer)
-	updateCache, err := restoreCachedModules(ctx, ml, pnpMode)
-	if err != nil {
+	if yarn2, err := nodejs.IsYarn2(ctx.ApplicationRoot()); err != nil {
 		return err
-	}
-
-	// Always run yarn install to execute customer's lifecycle hooks.
-	cmd, err := nodejs.YarnInstallCmd(ctx, yarn2, pnpMode)
-	if err != nil {
-		return err
-	}
-	ctx.Exec(cmd, gcp.WithUserAttribution)
-
-	if updateCache {
-		// Ensure node_modules exists even if no dependencies were installed.
-		ctx.MkdirAll("node_modules", 0755)
-		// Update the cache before we purge to ensure it includes the devDependencies.
-		ctx.Exec([]string{"cp", "--archive", "node_modules", filepath.Join(ml.Path, "node_modules")}, gcp.WithUserTimingAttribution)
-	}
-
-	// Run the gcp-build script if it exists.
-	if err := gcpBuild(ctx); err != nil {
-		return err
-	}
-
-	nodeEnv := nodejs.NodeEnv()
-	switch {
-	case nodeEnv != nodejs.EnvProduction:
-		ctx.Logf("Retaining devDependencies because NODE_ENV=%q", nodeEnv)
-	case yarn2 && !nodejs.HasYarnWorkspacePlugin(ctx):
-		ctx.Warnf("Keeping devDependencies because the Yarn workspace-tools plugin is not installed. You can add it to your project by running 'yarn plugin import workspace-tools'")
-	case yarn2:
-		// For Yarn2, dependency pruning is via the workspaces plugin.
-		ctx.Logf("Pruning devDependencies")
-		ctx.Exec([]string{"yarn", "workspaces", "focus", "--all", "--production"}, gcp.WithUserAttribution)
-	default:
-		// For Yarn1, setting `--production=true` causes all `devDependencies` to be deleted.
-		ctx.Logf("Pruning devDependencies")
-		ctx.Exec([]string{"yarn", "install", "--frozen-lockfile", "--ignore-scripts", "--prefer-offline", "--production=true"}, gcp.WithUserAttribution)
+	} else if yarn2 {
+		if err := yarn2InstallModules(ctx); err != nil {
+			return err
+		}
+	} else {
+		if err := yarn1InstallModules(ctx); err != nil {
+			return err
+		}
 	}
 
 	el := ctx.Layer("env", gcp.BuildLayer, gcp.LaunchLayer)
 	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
-	el.SharedEnvironment.Default("NODE_ENV", nodeEnv)
+	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
 
 	// Configure the entrypoint for production.
-	cmd = []string{"yarn", "run", "start"}
+	cmd := []string{"yarn", "run", "start"}
 
 	if !devmode.Enabled(ctx) {
 		ctx.AddWebProcess(cmd)
@@ -123,6 +85,122 @@ func buildFn(ctx *gcp.Context) error {
 		Ext:    devmode.NodeWatchedExtensions,
 	})
 	devmode.AddSyncMetadata(ctx, devmode.NodeSyncRules)
+
+	return nil
+}
+
+func yarn1InstallModules(ctx *gcp.Context) error {
+	freezeLockfile, err := nodejs.UseFrozenLockfile(ctx)
+	if err != nil {
+		return err
+	}
+
+	ml := ctx.Layer("yarn_modules", gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	cached, err := nodejs.CheckCache(ctx, ml, cache.WithFiles("package.json", nodejs.YarnLock))
+	if err != nil {
+		return fmt.Errorf("checking cache: %w", err)
+	}
+	if cached {
+		// The yarn.lock hasn't been updated since we last built so the cached node_modules should be
+		// up-to-date.
+		ctx.CacheHit(cacheTag)
+	} else {
+		// The dependencies listed in the yarn.lock file have changed. Clear the layer cache and update
+		// it after we run yarn install
+		ctx.CacheMiss(cacheTag)
+		ctx.ClearLayer(ml)
+	}
+
+	// Use Yarn's --modules-folder flag to install directly into the layer and then symlink them into
+	// the app dir.
+	layerModules := filepath.Join(ml.Path, "node_modules")
+	appModules := filepath.Join(ctx.ApplicationRoot(), "node_modules")
+	ctx.MkdirAll(layerModules, 0755)
+	ctx.RemoveAll(appModules)
+	ctx.Symlink(layerModules, appModules)
+	locationFlag := fmt.Sprintf("--modules-folder=%s", layerModules)
+
+	// This is a hack to fix a bug in an old version of Firebase that loaded a config using a path
+	// relative to node_modules: https://github.com/firebase/firebase-functions/issues/630.
+	if ctx.FileExists(".runtimeconfig.json") {
+		layerConfig := filepath.Join(ml.Path, ".runtimeconfig.json")
+		ctx.RemoveAll(layerConfig)
+		ctx.Symlink(filepath.Join(ctx.ApplicationRoot(), ".runtimeconfig.json"), layerConfig)
+	}
+
+	// Always run yarn install to execute customer's lifecycle hooks.
+	cmd := []string{"yarn", "install", "--non-interactive", "--prefer-offline", locationFlag}
+
+	// HACK: For backwards compatibility on App Engine Node.js 10 and older, skip using `--frozen-lockfile`.
+	if freezeLockfile {
+		cmd = append(cmd, "--frozen-lockfile")
+	}
+	gcpBuild, err := hasGCPBuild(ctx)
+	if err != nil {
+		return err
+	}
+	if gcpBuild {
+		// Setting --production=false causes the devDependencies to be installed regardless of the
+		// NODE_ENV value. The allows the customer's lifecycle hooks to access to them. We purge the
+		// devDependencies from the final app.
+		cmd = append(cmd, "--production=false")
+	}
+
+	// Add the layer's node_modules/.bin to the path so it is available in postinstall scripts.
+	nodeBin := filepath.Join(layerModules, ".bin")
+	ctx.Exec(cmd, gcp.WithUserAttribution, gcp.WithEnv(fmt.Sprintf("PATH=%s:%s", os.Getenv("PATH"), nodeBin)))
+
+	if gcpBuild {
+		ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution)
+
+		// If there was a gcp-build script we installed all the devDependencies above. We should try to
+		// prune them from the final app image.
+		nodeEnv := nodejs.NodeEnv()
+		if nodejs.NodeEnv() != nodejs.EnvProduction {
+			ctx.Logf("Retaining devDependencies because NODE_ENV=%q", nodeEnv)
+		} else {
+			// For Yarn1, setting `--production=true` causes all `devDependencies` to be deleted.
+			ctx.Logf("Pruning devDependencies")
+			cmd := []string{"yarn", "install", "--ignore-scripts", "--prefer-offline", "--production=true", locationFlag}
+			if freezeLockfile {
+				cmd = append(cmd, "--frozen-lockfile")
+			}
+			ctx.Exec(cmd, gcp.WithUserAttribution)
+		}
+	}
+
+	return nil
+}
+
+func yarn2InstallModules(ctx *gcp.Context) error {
+	cmd := []string{"yarn", "install", "--immutable"}
+
+	// In Plug'n'Play mode (https://yarnpkg.com/features/pnp) all dependencies must be included in
+	// the Yarn cache. The --immutable-cache option will abort the install with an error if anything
+	// is missing or out of date.
+	if ctx.FileExists(ctx.ApplicationRoot(), ".yarn", "cache") {
+		cmd = append(cmd, "--immutable-cache")
+	}
+	ctx.Exec(cmd, gcp.WithUserAttribution)
+
+	// Run the gcp-build script if it exists.
+	if gcpBuild, err := hasGCPBuild(ctx); err != nil {
+		return err
+	} else if gcpBuild {
+		ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution)
+	}
+
+	nodeEnv := nodejs.NodeEnv()
+	switch {
+	case nodeEnv != nodejs.EnvProduction:
+		ctx.Logf("Retaining devDependencies because NODE_ENV=%q", nodeEnv)
+	case !nodejs.HasYarnWorkspacePlugin(ctx):
+		ctx.Warnf("Keeping devDependencies because the Yarn workspace-tools plugin is not installed. You can add it to your project by running 'yarn plugin import workspace-tools'")
+	default:
+		// For Yarn2, dependency pruning is via the workspaces plugin.
+		ctx.Logf("Pruning devDependencies")
+		ctx.Exec([]string{"yarn", "workspaces", "focus", "--all", "--production"}, gcp.WithUserAttribution)
+	}
 
 	return nil
 }
@@ -163,46 +241,10 @@ func installYarn(ctx *gcp.Context) error {
 	return nil
 }
 
-func gcpBuild(ctx *gcp.Context) error {
+func hasGCPBuild(ctx *gcp.Context) (bool, error) {
 	p, err := nodejs.ReadPackageJSON(ctx.ApplicationRoot())
 	if err != nil {
-		return err
+		return false, err
 	}
-	if p.Scripts.GCPBuild != "" {
-		ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution)
-	}
-	return nil
-}
-
-// restoreCachedModules copies the cached node_modules from the provided layer into the application
-// dir if they can be re-used and returns true if cache needs to be updated.
-func restoreCachedModules(ctx *gcp.Context, ml *libcnb.Layer, pnpMode bool) (bool, error) {
-	if pnpMode {
-		// In Yarn2 Plug'n'Play mode all modules are included with the application source so there
-		// is no point in adding them to a cache layer.
-		ctx.ClearLayer(ml)
-		return false, nil
-	}
-	nm := filepath.Join(ml.Path, "node_modules")
-	ctx.RemoveAll("node_modules")
-
-	cached, err := nodejs.CheckCache(ctx, ml, cache.WithFiles("package.json", nodejs.YarnLock))
-	if err != nil {
-		return true, fmt.Errorf("checking cache: %w", err)
-	}
-
-	if cached {
-		// The yarn.lock hasn't been updated since we last built so the cached node_modules should be
-		// up-to-date. There is no need to update the layer cache after we run "yarn install" because
-		// it should be a no-op.
-		ctx.CacheHit(cacheTag)
-		ctx.Exec([]string{"cp", "--archive", nm, "node_modules"}, gcp.WithUserTimingAttribution)
-		return false, nil
-	}
-
-	// The dependencies listed in the yarn.lock file have changed. Clear the layer cache and update
-	// it after we run yarn install
-	ctx.CacheMiss(cacheTag)
-	ctx.ClearLayer(ml)
-	return true, nil
+	return p.Scripts.GCPBuild != "", nil
 }
