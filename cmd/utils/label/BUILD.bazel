@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
 
 # Buildpack for adding labels to the final image.
 load("//tools:defs.bzl", "buildpack")
@@ -27,4 +27,13 @@ go_binary(
         "//pkg/env",
         "//pkg/gcpbuildpack",
     ],
+)
+
+go_test(
+    name = "main_test",
+    size = "small",
+    srcs = ["main_test.go"],
+    embed = [":main"],
+    rundir = ".",
+    deps = ["//internal/buildpacktest"],
 )
