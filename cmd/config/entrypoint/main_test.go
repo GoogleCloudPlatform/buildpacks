@@ -43,7 +43,30 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "without GOOGLE_ENTRYPOINT or Procfile",
+			name: "with app.yaml",
+			env:  []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
+			files: map[string]string{
+				"app.yaml": "entrypoint: my entrypoint",
+			},
+			want: 0,
+		},
+		{
+			name: "with app.yaml, but not GAE_APPLICATION_YAML_PATH",
+			files: map[string]string{
+				"app.yaml": "entrypoint: my entrypoint",
+			},
+			want: 100,
+		},
+		{
+			name: "with app.yaml, but no entrypoint in it",
+			env:  []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
+			files: map[string]string{
+				"app.yaml": "foo: bar",
+			},
+			want: 100,
+		},
+		{
+			name: "without GOOGLE_ENTRYPOINT, Procfile or app.yaml",
 			want: 100,
 		},
 	}

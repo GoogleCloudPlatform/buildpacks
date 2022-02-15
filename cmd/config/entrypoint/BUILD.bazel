@@ -25,6 +25,7 @@ go_binary(
         "-w",
     ],
     deps = [
+        "//pkg/appyaml",
         "//pkg/env",
         "//pkg/gcpbuildpack",
     ],

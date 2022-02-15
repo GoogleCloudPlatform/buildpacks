@@ -22,6 +22,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
@@ -41,18 +42,39 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if ctx.FileExists("Procfile") {
 		return gcp.OptInFileFound("Procfile"), nil
 	}
-	return gcp.OptOut(fmt.Sprintf("%s not set and Procfile not found", env.Entrypoint)), nil
+	if entrypoint, _ := appyaml.EntrypointIfExists(ctx.ApplicationRoot()); entrypoint != "" {
+		ctx.Logf("Using entrypoint from app.yaml.")
+		return gcp.OptIn("Found the app.yaml file specified by GAE_APPLICATION_YAML_PATH."), nil
+	}
+	return gcp.OptOut(fmt.Sprintf(
+		"%s not set, no valid entrypoint in app.yaml and Procfile not found", env.Entrypoint)), nil
 }
 
 func buildFn(ctx *gcp.Context) error {
-	entrypoint := os.Getenv(env.Entrypoint)
-	if entrypoint != "" {
-		ctx.Logf("Using entrypoint from %s: %s", env.Entrypoint, entrypoint)
+	if entrypoint := os.Getenv(env.Entrypoint); entrypoint != "" {
 		ctx.AddProcess(gcp.WebProcess, []string{entrypoint}, gcp.AsDefaultProcess())
+		ctx.Logf("Using entrypoint from environment variable %s: %s", env.Entrypoint, entrypoint)
 		return nil
 	}
-	b := ctx.ReadFile("Procfile")
-	return addProcfileProcesses(ctx, string(b))
+
+	if ctx.FileExists("Procfile") {
+		b := ctx.ReadFile("Procfile")
+		return addProcfileProcesses(ctx, string(b))
+	}
+
+	entrypoint, err := appyaml.EntrypointIfExists(ctx.ApplicationRoot())
+	if err != nil {
+		return gcp.UserErrorf(fmt.Sprintf(
+			"app.yaml env var set but the specified app.yaml file doesn't exist."))
+	}
+	if entrypoint != "" {
+		ctx.AddProcess(gcp.WebProcess, []string{entrypoint}, gcp.AsDefaultProcess())
+		ctx.Logf("Using entrypoint from app.yaml.")
+		return nil
+	}
+
+	return gcp.UserErrorf(fmt.Sprintf(
+		"%s not set, no valid entrypoint config in Procfile or app.yaml.", env.Entrypoint))
 }
 
 // addProcfileProcesses adds all processes from the given Procfile contents.
