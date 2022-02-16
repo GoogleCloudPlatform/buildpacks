@@ -68,11 +68,11 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Determine if the function has dependency on functions-framework.
 	hasFrameworkDependency := false
-	if ctx.FileExists("package.json") {
-		pjs, err := nodejs.ReadPackageJSON(ctx.ApplicationRoot())
-		if err != nil {
-			return fmt.Errorf("reading package.json: %w", err)
-		}
+	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
+	if err != nil {
+		return fmt.Errorf("reading package.json: %w", err)
+	}
+	if pjs != nil {
 		_, hasFrameworkDependency = pjs.Dependencies[functionsFrameworkPackage]
 		if pjs.Main != "" {
 			fnFile = pjs.Main

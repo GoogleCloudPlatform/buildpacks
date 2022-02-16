@@ -64,18 +64,45 @@ type PackageJSON struct {
 	DevDependencies map[string]string  `json:"devDependencies"`
 }
 
-// ReadPackageJSON returns deserialized package.json from the given dir. Empty dir uses the current working directory.
-func ReadPackageJSON(dir string) (*PackageJSON, error) {
+// ReadPackageJSONIfExists returns deserialized package.json from the given dir. If the provided dir
+// does not contain a package.json file it returns nil. Empty dir string uses the current working
+// directory.
+func ReadPackageJSONIfExists(dir string) (*PackageJSON, error) {
 	f := filepath.Join(dir, "package.json")
 	rawpjs, err := ioutil.ReadFile(f)
+	if os.IsNotExist(err) {
+		// Return an empty struct if the file doesn't exist (null object pattern).
+		return nil, nil
+	}
 	if err != nil {
 		return nil, gcp.InternalErrorf("reading package.json: %v", err)
 	}
+
 	var pjs PackageJSON
 	if err := json.Unmarshal(rawpjs, &pjs); err != nil {
 		return nil, gcp.UserErrorf("unmarshalling package.json: %v", err)
 	}
 	return &pjs, nil
+}
+
+// HasGCPBuild returns true if the given directory contains a package.json file that includes a
+// non-empty "gcp-build" script.
+func HasGCPBuild(dir string) (bool, error) {
+	p, err := ReadPackageJSONIfExists(dir)
+	if err != nil || p == nil {
+		return false, err
+	}
+	return p.Scripts.GCPBuild != "", nil
+}
+
+// HasDevDependencies returns true if the given directory contains a package.json file that lists
+// more one or more devDependencies.
+func HasDevDependencies(dir string) (bool, error) {
+	p, err := ReadPackageJSONIfExists(dir)
+	if err != nil || p == nil {
+		return false, err
+	}
+	return len(p.DevDependencies) > 0, nil
 }
 
 // nodeVersion returns the installed version of Node.js.
@@ -147,9 +174,6 @@ func SkipSyntaxCheck(ctx *gcp.Context, file string) (bool, error) {
 	if strings.HasSuffix(file, ".mjs") {
 		return true, nil
 	}
-	if !ctx.FileExists(filepath.Join(ctx.ApplicationRoot(), "package.json")) {
-		return false, nil
-	}
-	pjs, err := ReadPackageJSON(ctx.ApplicationRoot())
+	pjs, err := ReadPackageJSONIfExists(ctx.ApplicationRoot())
 	return (pjs != nil && pjs.Type == "module"), err
 }

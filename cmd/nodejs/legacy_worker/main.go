@@ -60,14 +60,12 @@ func buildFn(ctx *gcp.Context) error {
 	if ctx.FileExists("index.js") {
 		fnFile = "index.js"
 	}
-	if ctx.FileExists("package.json") {
-		pjs, err := nodejs.ReadPackageJSON(ctx.ApplicationRoot())
-		if err != nil {
-			return err
-		}
-		if pjs.Main != "" {
-			fnFile = pjs.Main
-		}
+	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
+	if err != nil {
+		return err
+	}
+	if pjs != nil && pjs.Main != "" {
+		fnFile = pjs.Main
 	}
 
 	if !ctx.FileExists(fnFile) {

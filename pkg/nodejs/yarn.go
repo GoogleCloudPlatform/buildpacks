@@ -91,8 +91,8 @@ func DetectYarnVersion(applicationRoot string) (string, error) {
 // requestedYarnVersion returns the Yarn version specified in the "engines.yarn" section of the
 // project's package.json.
 func requestedYarnVersion(applicationRoot string) (string, error) {
-	pjs, err := ReadPackageJSON(applicationRoot)
-	if err != nil {
+	pjs, err := ReadPackageJSONIfExists(applicationRoot)
+	if err != nil || pjs == nil {
 		return "", err
 	}
 	return pjs.Engines.Yarn, nil

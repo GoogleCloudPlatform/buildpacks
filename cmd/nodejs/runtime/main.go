@@ -64,7 +64,7 @@ func buildFn(ctx *gcp.Context) error {
 		nrl := ctx.Layer(nodeLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 		return runtime.InstallTarball(ctx, runtime.Nodejs, version, nrl)
 	}
-	pkgJSON, err := getPkgJSONIfPresent(ctx)
+	pkgJSON, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
 	if err != nil {
 		return err
 	}
@@ -160,11 +160,4 @@ func installNPM(ctx *gcp.Context, nrl *libcnb.Layer, version string) {
 	ctx.Exec([]string{npmBinaryPath, "install", fmt.Sprintf("npm@%v", version), "-g"},
 		gcp.WithEnv(fmt.Sprintf("PATH=${PATH}:%v", nodeBin)),
 		gcp.WithUserAttribution)
-}
-
-func getPkgJSONIfPresent(ctx *gcp.Context) (*nodejs.PackageJSON, error) {
-	if !ctx.FileExists("package.json") {
-		return nil, nil
-	}
-	return nodejs.ReadPackageJSON(ctx.ApplicationRoot())
 }

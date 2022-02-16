@@ -135,7 +135,7 @@ func yarn1InstallModules(ctx *gcp.Context) error {
 	if freezeLockfile {
 		cmd = append(cmd, "--frozen-lockfile")
 	}
-	gcpBuild, err := hasGCPBuild(ctx)
+	gcpBuild, err := nodejs.HasGCPBuild(ctx.ApplicationRoot())
 	if err != nil {
 		return err
 	}
@@ -184,10 +184,15 @@ func yarn2InstallModules(ctx *gcp.Context) error {
 	ctx.Exec(cmd, gcp.WithUserAttribution)
 
 	// Run the gcp-build script if it exists.
-	if gcpBuild, err := hasGCPBuild(ctx); err != nil {
+	if gcpBuild, err := nodejs.HasGCPBuild(ctx.ApplicationRoot()); err != nil {
 		return err
 	} else if gcpBuild {
 		ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution)
+	}
+
+	// If there are no devDependencies, there is nothing to prune. We are done.
+	if devDeps, err := nodejs.HasDevDependencies(ctx.ApplicationRoot()); err != nil || !devDeps {
+		return err
 	}
 
 	nodeEnv := nodejs.NodeEnv()
@@ -239,12 +244,4 @@ func installYarn(ctx *gcp.Context) error {
 		Build:    true,
 	})
 	return nil
-}
-
-func hasGCPBuild(ctx *gcp.Context) (bool, error) {
-	p, err := nodejs.ReadPackageJSON(ctx.ApplicationRoot())
-	if err != nil {
-		return false, err
-	}
-	return p.Scripts.GCPBuild != "", nil
 }

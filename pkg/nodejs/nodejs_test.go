@@ -15,6 +15,7 @@
 package nodejs
 
 import (
+	"io/ioutil"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -23,7 +24,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 )
 
-func TestReadPackageJSON(t *testing.T) {
+func TestReadPackageJSONIfExists(t *testing.T) {
 	want := PackageJSON{
 		Engines: packageEnginesJSON{
 			Node: "my-node",
@@ -41,12 +42,22 @@ func TestReadPackageJSON(t *testing.T) {
 		},
 	}
 
-	got, err := ReadPackageJSON(testdata.MustGetPath("testdata/test-read-package/"))
+	got, err := ReadPackageJSONIfExists(testdata.MustGetPath("testdata/test-read-package/"))
 	if err != nil {
-		t.Fatalf("ReadPackageJSON got error: %v", err)
+		t.Fatalf("ReadPackageJSONIfExists got error: %v", err)
 	}
 	if !reflect.DeepEqual(*got, want) {
-		t.Errorf("ReadPackageJSON\ngot %#v\nwant %#v", *got, want)
+		t.Errorf("ReadPackageJSONIfExists\ngot %#v\nwant %#v", *got, want)
+	}
+}
+
+func TestReadPackageJSONIfExistsDoesNotExist(t *testing.T) {
+	got, err := ReadPackageJSONIfExists(t.TempDir())
+	if err != nil {
+		t.Fatalf("ReadPackageJSONIfExists got error: %v", err)
+	}
+	if got != nil {
+		t.Errorf("ReadPackageJSONIfExists\ngot %#v\nwant nil", *got)
 	}
 }
 
@@ -102,6 +113,56 @@ func TestSkipSyntaxCheck(t *testing.T) {
 			}
 			if got != tc.want {
 				t.Errorf("Node.js %v: SkipSyntaxCheck(ctx, %q) = %t, want %t", tc.version, tc.filePath, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHasGCPBuild(t *testing.T) {
+	testCases := []struct {
+		name        string
+		packageJSON string
+		want        bool
+		wantErr     bool
+	}{
+		{
+			name: "no package.json",
+			want: false,
+		},
+		{
+			name:        "invalid package.json",
+			packageJSON: `invalid json`,
+			wantErr:     true,
+		},
+		{
+			name:        "no gcp-build",
+			packageJSON: `{}`,
+			want:        false,
+		},
+		{
+			name:        "with gcp-build",
+			packageJSON: `{"scripts": {"gcp-build": "ls"}}`,
+			want:        true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			dir := t.TempDir()
+			if tc.packageJSON != "" {
+				path := filepath.Join(dir, "package.json")
+				if err := ioutil.WriteFile(path, []byte(tc.packageJSON), 0744); err != nil {
+					t.Fatalf("writing %s: %v", path, err)
+				}
+			}
+
+			got, err := HasGCPBuild(dir)
+			if tc.wantErr == (err == nil) {
+				t.Errorf("HasGCPBuild(%q) got error: %v, want err? %t", dir, err, tc.wantErr)
+			}
+			if got != tc.want {
+				t.Errorf("HasGCPBuild(%q) = %t, want %t", dir, got, tc.want)
 			}
 		})
 	}
