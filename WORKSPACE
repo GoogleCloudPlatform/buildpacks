@@ -252,8 +252,8 @@ maven_install(
 go_repository(
     name = "com_github_buildpacks_libcnb",
     importpath = "github.com/buildpacks/libcnb",
-    sum = "h1:GBK02W22lm1ie8E4hBGStNfShLa/CWbjoBD1kfqAKT4=",
-    version = "v1.21.0",
+    sum = "h1:D8UoXv39+0jkG4M+u/pfxYjLWZMOQv1TH6dZDRFpVsg=",
+    version = "v1.25.5",
 )
 
 go_repository(

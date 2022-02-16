@@ -281,8 +281,13 @@ func (gcpb gcpbuilder) Build(lbctx libcnb.BuildContext) (libcnb.BuildResult, err
 }
 
 func build(buildFn BuildFn) {
+	options := []libcnb.Option{
+		// Without this flag the build SBOM is NOT written to the image's "io.buildpacks.build.metadata" label.
+		// The acceptence tests rely on this being present.
+		libcnb.WithBOMLabel(true),
+	}
 	gcpb := gcpbuilder{buildFn: buildFn}
-	libcnb.Build(gcpb)
+	libcnb.Build(gcpb, options...)
 }
 
 // Exit causes the buildpack to exit with the given exit code and message.
