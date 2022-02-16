@@ -65,7 +65,7 @@ var (
 	lifecycle           string // Path to lifecycle archive; optional.
 	pullImages          bool   // Pull stack images instead of using local daemon.
 	cloudbuild          bool   // Use cloudbuild network; required for Cloud Build.
-	runtimeVersions     string // Comma separated list of runtime versions to test.
+	runtimeVersions     string // Comma separated list of runtime versions to test, or "json" if using json file.
 
 	specialChars = regexp.MustCompile("[^a-zA-Z0-9]+")
 )
@@ -1137,11 +1137,34 @@ func PullImages() bool {
 	return pullImages
 }
 
-// RuntimeVersions returns the value of the -runtime-versions flag. If the flag was not set it
+// RuntimeVersions returns the value of the -runtime-versions flag. If the flag
+// was set as "json" it checks for a version JSON file, if it was not set it
 // returns the default versions passed as arguments.
-func RuntimeVersions(defaultVersions ...string) []string {
+func RuntimeVersions(runtime string, defaultVersions ...string) []string {
+	if runtimeVersions == "json" {
+		return getNewVersions(runtime)
+	}
 	if runtimeVersions != "" {
 		return strings.Split(runtimeVersions, ",")
 	}
 	return defaultVersions
+}
+
+func getNewVersions(runtime string) []string {
+	// Check if JSON file exists.
+	if _, err := os.Stat("new_versions.json"); err != nil {
+		return nil
+	}
+	versionMap := make(map[string][]string)
+	file, err := ioutil.ReadFile("new_versions.json")
+	if err != nil {
+		log.Fatalf("Error parsing JSON file: %q", err)
+	}
+	if err = json.Unmarshal(file, &versionMap); err != nil {
+		log.Fatalf("Unable to decode JSON version map: %q", err)
+	}
+	if _, ok := versionMap[runtime]; !ok {
+		return nil
+	}
+	return versionMap[runtime]
 }

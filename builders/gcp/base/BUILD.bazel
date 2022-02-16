@@ -2,6 +2,8 @@ load("//tools:defs.bzl", "builder")
 
 licenses(["notice"])
 
+package(default_visibility = ["//builders/gcp/base/acceptance:__pkg__"])
+
 builder(
     name = "builder",
     buildpacks = [
@@ -63,7 +65,4 @@ builder(
         ],
     },
     image = "gcp/base",
-    visibility = [
-        "//builders/gcp/base/acceptance:__pkg__",
-    ],
 )

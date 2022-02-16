@@ -126,7 +126,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 		},
 	}
 	// Tests for specific versions of Node.js available on dl.google.com.
-	for _, v := range acceptance.RuntimeVersions("8.17.0") {
+	for _, v := range acceptance.RuntimeVersions("nodejs", "8.17.0") {
 		testCases = append(testCases, acceptance.Test{
 			Name:    "runtime version " + v,
 			App:     "nodejs/simple",
