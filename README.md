@@ -246,12 +246,6 @@ See the [contract](https://github.com/GoogleCloudPlatform/functions-framework) f
   * Passed to `go build` and `go run` as `-ldflags value` with no interpretation.
   * **Example:** `-s -w` is used to strip and reduce binary size.
 
-#### Java Buildpacks
-
-* (*Experimental*) GraalVM [ahead-of-time native image](https://www.graalvm.org/reference-manual/native-image/) compilation. For details, see [here](java_graalvm_native_image.md).
-   * `GOOGLE_JAVA_USE_NATIVE_IMAGE`: `true` to enable experimental GraalVM native image compilation.
-   * `GOOGLE_JAVA_NATIVE_IMAGE_ARGS`: additional build arguments to pass to the [`native-image`](https://www.graalvm.org/reference-manual/native-image/Options/#options-to-native-image-builder) generation tool.
-
 #### Language-idiomatic configuration options
 
 Buildpacks support language-idiomatic configuration through environment
