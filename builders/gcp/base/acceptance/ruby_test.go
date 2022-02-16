@@ -106,7 +106,7 @@ func TestFailuresRuby(t *testing.T) {
 			Name:      "bad runtime version",
 			App:       "ruby/version_unlocked",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS", "GOOGLE_ENTRYPOINT=ruby main.rb"},
-			MustMatch: "Runtime version BAD_NEWS_BEARS does not exist",
+			MustMatch: "invalid Ruby Runtime version specified",
 		},
 		{
 			Name:      "missing entrypoint",

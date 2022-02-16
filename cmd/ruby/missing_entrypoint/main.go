@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements python/missing-entrypoint buildpack.
+// Implements ruby/missing-entrypoint buildpack.
 // This buildpack's goal is to display a clear error message when
-// no entrypoint is defined on a Python application.
+// no entrypoint is defined on a Ruby application.
 package main
 
 import (
