@@ -4,7 +4,7 @@ module github.com/GoogleCloudPlatform/buildpacks
 go 1.16
 
 require (
-	github.com/buildpacks/libcnb v1.21.0
+	github.com/buildpacks/libcnb v1.25.0
 	github.com/BurntSushi/toml v0.3.1
 	github.com/google/go-licenses v0.0.0-20200602185517-f29a4c695c3d // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.7
