@@ -101,6 +101,10 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/mattn/go-isatty/LICENSE
 
+- package: github.com/mitchellh/go-homedir
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/mitchellh/go-homedir/LICENSE
+
 - package: github.com/moby/term
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/moby/term/LICENSE

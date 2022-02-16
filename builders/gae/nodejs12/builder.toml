@@ -51,4 +51,4 @@ description = "Builder for the GAE Node.js 12 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/nodejs12/run"
 
 [lifecycle]
-  version = "0.13.1"
+  version = "0.13.3"

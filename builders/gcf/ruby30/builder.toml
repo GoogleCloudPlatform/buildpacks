@@ -36,4 +36,4 @@ description = "Builder for the GCF Ruby 3.0 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/ruby30/run"
 
 [lifecycle]
-  version = "0.13.1"
+  version = "0.13.3"
