@@ -13,10 +13,6 @@ description = "Builder for the GCF Node.js 12 runtime"
   uri = "yarn.tgz"
 
 [[buildpacks]]
-  id = "google.nodejs.npm-gcp-build"
-  uri = "npm_gcp_build.tgz"
-
-[[buildpacks]]
   id = "google.utils.archive-source"
   uri = "archive_source.tgz"
 
@@ -42,10 +38,6 @@ description = "Builder for the GCF Node.js 12 runtime"
 
   [[order.group]]
     id = "google.utils.archive-source"
-
-  [[order.group]]
-    id = "google.nodejs.npm-gcp-build"
-    optional = true
 
   [[order.group]]
     id = "google.nodejs.npm"

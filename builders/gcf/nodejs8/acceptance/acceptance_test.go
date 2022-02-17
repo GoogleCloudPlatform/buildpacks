@@ -24,9 +24,8 @@ func init() {
 }
 
 const (
-	npm         = "google.nodejs.npm"
-	yarn        = "google.nodejs.yarn"
-	npmGCPBuild = "google.nodejs.npm-gcp-build"
+	npm  = "google.nodejs.npm"
+	yarn = "google.nodejs.yarn"
 
 	// Firebase functions expect FIREBASE_CONFIG & GCLOUD_PROJECT env vars at run time.
 	// Otherwise, initializing the Firebase Admin SDK would fail.
@@ -92,7 +91,7 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:       "function with gcp-build",
 			App:        "with_gcp_build",
-			MustUse:    []string{npmGCPBuild},
+			MustUse:    []string{npm},
 			MustNotUse: []string{yarn},
 		},
 		{

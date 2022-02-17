@@ -5,10 +5,6 @@ description = "Builder for the GAE Node.js 14 runtime"
   uri = "npm.tgz"
 
 [[buildpacks]]
-  id = "google.nodejs.npm-gcp-build"
-  uri = "npm_gcp_build.tgz"
-
-[[buildpacks]]
   id = "google.nodejs.yarn"
   uri = "yarn.tgz"
 
@@ -31,10 +27,6 @@ description = "Builder for the GAE Node.js 14 runtime"
     id = "google.utils.label"
 
 [[order]]
-  [[order.group]]
-    id = "google.nodejs.npm-gcp-build"
-    optional = true
-
   [[order.group]]
     id = "google.nodejs.npm"
     optional = true

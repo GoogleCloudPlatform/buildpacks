@@ -15,7 +15,10 @@
 package nodejs
 
 import (
+	"strings"
+
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/Masterminds/semver"
 )
 
 const (
@@ -24,6 +27,9 @@ const (
 	// NPMShrinkwrap is the name of the npm shrinkwrap file.
 	NPMShrinkwrap = "npm-shrinkwrap.json"
 )
+
+// minPruneVersion is the first npm version that supports the prune command.
+var minPruneVersion = semver.MustParse("5.7.0")
 
 // EnsureLockfile returns the name of the lockfile, generating a package-lock.json if necessary.
 func EnsureLockfile(ctx *gcp.Context) string {
@@ -50,4 +56,19 @@ func NPMInstallCommand(ctx *gcp.Context) (string, error) {
 		return "install", nil
 	}
 	return "ci", nil
+}
+
+// npmVersion returns the version of NPM installed in the system.
+var npmVersion = func(ctx *gcp.Context) string {
+	return strings.TrimSpace(ctx.Exec([]string{"npm", "--version"}).Stdout)
+}
+
+// SupportsNPMPrune returns true if the version of npm installed in the system supports the prune
+// command.
+func SupportsNPMPrune(ctx *gcp.Context) (bool, error) {
+	version, err := semver.NewVersion(npmVersion(ctx))
+	if err != nil {
+		return false, gcp.InternalErrorf("parsing npm version: %v", err)
+	}
+	return !version.LessThan(minPruneVersion), nil
 }

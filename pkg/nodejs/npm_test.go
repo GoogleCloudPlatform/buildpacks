@@ -54,3 +54,38 @@ func TestNPMInstallCommand(t *testing.T) {
 		})
 	}
 }
+
+func TestSupportsNPMPrune(t *testing.T) {
+	testCases := []struct {
+		version string
+		want    bool
+	}{
+		{
+			version: "8.3.1",
+			want:    true,
+		},
+		{
+			version: "5.7.0",
+			want:    true,
+		},
+		{
+			version: "5.0.1",
+			want:    false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.version, func(t *testing.T) {
+			defer func(fn func(*gcpbuildpack.Context) string) { npmVersion = fn }(npmVersion)
+			npmVersion = func(*gcpbuildpack.Context) string { return tc.version }
+
+			got, err := SupportsNPMPrune(nil)
+			if err != nil {
+				t.Errorf("npm %v: SupportsNPMPrune(nil) got error: %v", tc.version, err)
+			}
+			if got != tc.want {
+				t.Errorf("npm %v: SupportsNPMPrune(nil) = %v, want %v", tc.version, got, tc.want)
+			}
+		})
+	}
+}

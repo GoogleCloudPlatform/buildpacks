@@ -9,7 +9,6 @@ builder(
     buildpacks = [
         "//cmd/nodejs/legacy_worker:legacy_worker.tgz",
         "//cmd/nodejs/npm:npm.tgz",
-        "//cmd/nodejs/npm_gcp_build:npm_gcp_build.tgz",
         "//cmd/nodejs/yarn:yarn.tgz",
         "//cmd/utils/archive_source:archive_source.tgz",
         "//cmd/utils/label:label.tgz",

@@ -44,7 +44,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	ml := ctx.Layer("npm", gcp.BuildLayer, gcp.CacheLayer)
+	ml := ctx.Layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
 	nm := filepath.Join(ml.Path, "node_modules")
 	ctx.RemoveAll("node_modules")
 
@@ -54,6 +54,13 @@ func buildFn(ctx *gcp.Context) error {
 	lockfile := nodejs.EnsureLockfile(ctx)
 
 	nodeEnv := nodejs.NodeEnv()
+	gcpBuild, err := nodejs.HasGCPBuild(ctx.ApplicationRoot())
+	if err != nil {
+		return err
+	}
+	if gcpBuild {
+		nodeEnv = nodejs.EnvDevelopment
+	}
 	cached, err := nodejs.CheckCache(ctx, ml, cache.WithStrings(nodeEnv), cache.WithFiles("package.json", lockfile))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
@@ -82,9 +89,22 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Exec([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution)
 	}
 
+	if gcpBuild {
+		ctx.Exec([]string{"npm", "run", "gcp-build"}, gcp.WithUserAttribution)
+
+		shouldPrune, err := shouldPrune(ctx)
+		if err != nil {
+			return err
+		}
+		if shouldPrune {
+			// npm prune deletes devDependencies from node_modules
+			ctx.Exec([]string{"npm", "prune"}, gcp.WithUserAttribution)
+		}
+	}
+
 	el := ctx.Layer("env", gcp.BuildLayer, gcp.LaunchLayer)
 	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
-	el.SharedEnvironment.Default("NODE_ENV", nodeEnv)
+	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
 
 	// Configure the entrypoint for production.
 	cmd := []string{"npm", "start"}
@@ -102,4 +122,20 @@ func buildFn(ctx *gcp.Context) error {
 	devmode.AddSyncMetadata(ctx, devmode.NodeSyncRules)
 
 	return nil
+}
+
+func shouldPrune(ctx *gcp.Context) (bool, error) {
+	// if there are no devDependencies, there is no need to prune.
+	if devDeps, err := nodejs.HasDevDependencies(ctx.ApplicationRoot()); err != nil || !devDeps {
+		return false, err
+	}
+	if nodeEnv := nodejs.NodeEnv(); nodeEnv != nodejs.EnvProduction {
+		ctx.Logf("Retaining devDependencies because $NODE_ENV=%q.", nodeEnv)
+		return false, nil
+	}
+	canPrune, err := nodejs.SupportsNPMPrune(ctx)
+	if err == nil && !canPrune {
+		ctx.Warnf("Retaining devDependencies because the version of NPM you are using does not support 'npm prune'.")
+	}
+	return canPrune, err
 }

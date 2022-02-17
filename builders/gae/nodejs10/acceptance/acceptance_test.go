@@ -24,10 +24,9 @@ func init() {
 }
 
 const (
-	npm         = "google.nodejs.npm"
-	npmGCPBuild = "google.nodejs.npm-gcp-build"
-	yarn        = "google.nodejs.yarn"
-	appEngine   = "google.nodejs.appengine"
+	npm       = "google.nodejs.npm"
+	yarn      = "google.nodejs.yarn"
+	appEngine = "google.nodejs.appengine"
 )
 
 func TestAcceptance(t *testing.T) {
@@ -74,30 +73,30 @@ func TestAcceptance(t *testing.T) {
 		{
 			App:        "postinstall_npm",
 			MustUse:    []string{npm},
-			MustNotUse: []string{npmGCPBuild, yarn},
+			MustNotUse: []string{yarn},
 		},
 		{
 			App:        "postinstall_yarn",
 			MustUse:    []string{yarn},
-			MustNotUse: []string{npmGCPBuild, npm},
+			MustNotUse: []string{npm},
 		},
 		{
 			App:     "gcp_build_npm",
-			MustUse: []string{npmGCPBuild},
+			MustUse: []string{npm},
 		},
 		{
 			App:        "gcp_build_yarn",
 			MustUse:    []string{yarn},
-			MustNotUse: []string{npmGCPBuild},
+			MustNotUse: []string{npm},
 		},
 		{
 			App:     "gcp_build_npm_no_dependencies",
-			MustUse: []string{npmGCPBuild},
+			MustUse: []string{npm},
 		},
 		{
 			App:        "gcp_build_yarn_no_dependencies",
 			MustUse:    []string{yarn},
-			MustNotUse: []string{npmGCPBuild},
+			MustNotUse: []string{npm},
 		},
 		{
 			App:        "local_dependency_npm",
