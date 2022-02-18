@@ -1,2 +1,4 @@
 flask==0.12.5
 click<8.0.0  # TODO(b/187935788): auto-resolved to >8.0.0, which is incompatible with the functions-framework.
+markupsafe<2.1
+itsdangerous<2.1
