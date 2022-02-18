@@ -100,6 +100,18 @@ func TestAcceptancePython(t *testing.T) {
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		})
 	}
+
+	// Tests for specific versions of Python available on dl.google.com.
+	for _, v := range acceptance.RuntimeVersions("python", "3.7.12", "3.8.12", "3.9.10", "3.10.2") {
+		testCases = append(testCases, acceptance.Test{
+			Name:    "dl.google.com runtime version " + v,
+			App:     "python/version",
+			Path:    "/version?want=" + v,
+			Env:     []string{"GOOGLE_PYTHON_VERSION=" + v},
+			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+		})
+	}
+
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {

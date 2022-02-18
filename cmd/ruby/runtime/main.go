@@ -65,5 +65,6 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("determining runtime version: %w", err)
 	}
 	rl := ctx.Layer("ruby", gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
-	return runtime.InstallTarball(ctx, runtime.Ruby, version, rl)
+	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.Ruby, version, rl)
+	return err
 }

@@ -36,6 +36,7 @@ const (
 	versionURL  = "https://storage.googleapis.com/gcp-buildpacks/python/latest.version"
 	versionFile = ".python-version"
 	versionKey  = "version"
+	versionEnv  = "GOOGLE_PYTHON_VERSION"
 )
 
 func main() {
@@ -53,12 +54,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptIn("found .py files"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+func legacyInstallPython(ctx *gcp.Context, layer *libcnb.Layer) (bool, error) {
 	version, err := runtimeVersion(ctx)
 	if err != nil {
-		return fmt.Errorf("determining runtime version: %w", err)
+		return false, fmt.Errorf("determining runtime version: %w", err)
 	}
-
 	ctx.AddBOMEntry(libcnb.BOMEntry{
 		Name:     pythonLayer,
 		Metadata: map[string]interface{}{"version": version},
@@ -66,38 +66,54 @@ func buildFn(ctx *gcp.Context) error {
 		Build:    true,
 	})
 
-	l := ctx.Layer(pythonLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
-
 	// Check the metadata in the cache layer to determine if we need to proceed.
-	metaVersion := ctx.GetMetadata(l, versionKey)
+	metaVersion := ctx.GetMetadata(layer, versionKey)
 	if version == metaVersion {
 		ctx.CacheHit(pythonLayer)
-		return nil
+		return true, nil
 	}
 	ctx.CacheMiss(pythonLayer)
-	ctx.ClearLayer(l)
+	ctx.ClearLayer(layer)
 
 	archiveURL := fmt.Sprintf(pythonURL, version)
 	code, err := ctx.HTTPStatus(archiveURL)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if code != http.StatusOK {
-		return gcp.UserErrorf("Runtime version %s does not exist at %s (status %d). You can specify the version with %s.", version, archiveURL, code, env.RuntimeVersion)
+		return false, gcp.UserErrorf("Runtime version %s does not exist at %s (status %d). You can specify the version with %s.", version, archiveURL, code, env.RuntimeVersion)
 	}
 
 	ctx.Logf("Installing Python v%s", version)
-	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s", archiveURL, l.Path)
+	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s", archiveURL, layer.Path)
 	ctx.Exec([]string{"bash", "-c", command})
 
-	ctx.Logf("Upgrading pip to the latest version and installing build tools")
-	path := filepath.Join(l.Path, "bin/python3")
-	ctx.Exec([]string{path, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"}, gcp.WithUserAttribution)
+	ctx.SetMetadata(layer, versionKey, version)
+	return false, nil
+}
 
-	// Force stdout/stderr streams to be unbuffered so that log messages appear immediately in the logs.
-	l.LaunchEnvironment.Default("PYTHONUNBUFFERED", "TRUE")
+func buildFn(ctx *gcp.Context) error {
+	// Use GOOGLE_PYTHON_VERSION to enable installing from the experimental tarball hosting service.
+	var err error
+	var isCached bool
+	layer := ctx.Layer(pythonLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	if version := os.Getenv(versionEnv); version != "" {
+		isCached, err = runtime.InstallTarballIfNotCached(ctx, runtime.Python, version, layer)
+	} else {
+		isCached, err = legacyInstallPython(ctx, layer)
+	}
 
-	ctx.SetMetadata(l, versionKey, version)
+	if err != nil {
+		return err
+	}
+	if !isCached {
+		// Force stdout/stderr streams to be unbuffered so that log messages appear immediately in the logs.
+		layer.LaunchEnvironment.Default("PYTHONUNBUFFERED", "TRUE")
+
+		ctx.Logf("Upgrading pip to the latest version and installing build tools")
+		path := filepath.Join(layer.Path, "bin/python3")
+		ctx.Exec([]string{path, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"}, gcp.WithUserAttribution)
+	}
 	return nil
 }
 

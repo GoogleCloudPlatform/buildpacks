@@ -62,7 +62,8 @@ func buildFn(ctx *gcp.Context) error {
 	// Use GOOGLE_NODEJS_VERSION to enable installing from the experimental tarball hosting service.
 	if version := os.Getenv(versionEnv); version != "" {
 		nrl := ctx.Layer(nodeLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
-		return runtime.InstallTarball(ctx, runtime.Nodejs, version, nrl)
+		_, err := runtime.InstallTarballIfNotCached(ctx, runtime.Nodejs, version, nrl)
+		return err
 	}
 	pkgJSON, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
 	if err != nil {

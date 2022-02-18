@@ -38,10 +38,11 @@ var (
 
 type installableRuntime string
 
-// All runtimes that can be installed using the InstallTarball function.
+// All runtimes that can be installed using the InstallTarballIfNotCached function.
 const (
 	Nodejs installableRuntime = "nodejs"
 	PHP    installableRuntime = "php"
+	Python installableRuntime = "python"
 	Ruby   installableRuntime = "ruby"
 )
 
@@ -49,6 +50,7 @@ const (
 var runtimeNames = map[installableRuntime]string{
 	Nodejs: "Node.js",
 	PHP:    "PHP Runtime",
+	Python: "Python Runtime",
 	Ruby:   "Ruby Runtime",
 }
 
@@ -103,14 +105,16 @@ func InstallDartSDK(ctx *gcp.Context, layer *libcnb.Layer, version string) error
 	return nil
 }
 
-// InstallTarball installs a runtime tarball hosted on dl.google.com into the provided layer.
-func InstallTarball(ctx *gcp.Context, runtime installableRuntime, versionConstraint string, layer *libcnb.Layer) error {
+// InstallTarballIfNotCached installs a runtime tarball hosted on dl.google.com into the provided layer
+// with caching.
+// Returns true if a cached layer is used.
+func InstallTarballIfNotCached(ctx *gcp.Context, runtime installableRuntime, versionConstraint string, layer *libcnb.Layer) (bool, error) {
 	runtimeName := runtimeNames[runtime]
 	runtimeID := string(runtime)
 
 	version, err := resolveVersion(runtime, versionConstraint)
 	if err != nil {
-		return err
+		return false, err
 	}
 	ctx.AddBOMEntry(libcnb.BOMEntry{
 		Name:     runtimeID,
@@ -122,7 +126,7 @@ func InstallTarball(ctx *gcp.Context, runtime installableRuntime, versionConstra
 	if IsCached(ctx, layer, version) {
 		ctx.CacheHit(runtimeID)
 		ctx.Logf("%s cache hit, skipping installation.", runtimeName)
-		return nil
+		return true, nil
 	}
 	ctx.CacheMiss(runtimeID)
 
@@ -131,22 +135,22 @@ func InstallTarball(ctx *gcp.Context, runtime installableRuntime, versionConstra
 
 	tar, err := ioutil.TempFile(layer.Path, fmt.Sprintf("%s-*.tar.gz", runtimeID))
 	if err != nil {
-		return gcp.InternalErrorf("creating tempfile: %v", err)
+		return false, gcp.InternalErrorf("creating tempfile: %v", err)
 	}
 	defer os.Remove(tar.Name())
 
 	if err := fetchURL(runtimeURL, tar); err != nil {
 		ctx.Warnf("Failed to download %s version %s. You can specify the verison by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version)
-		return err
+		return false, err
 	}
 
 	if _, err := ctx.ExecWithErr([]string{"tar", "-xzvf", tar.Name(), "--directory", layer.Path}); err != nil {
-		return gcp.InternalErrorf("extracting %s: %v", runtimeName, err)
+		return false, gcp.InternalErrorf("extracting %s: %v", runtimeName, err)
 	}
 
 	ctx.SetMetadata(layer, versionKey, version)
 
-	return nil
+	return false, nil
 }
 
 // resolveVersion returns the newest available version of a runtime that satisfies the provided

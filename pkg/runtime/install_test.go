@@ -96,6 +96,7 @@ func TestInstallRuby(t *testing.T) {
 		wantFile     string
 		wantVersion  string
 		wantError    bool
+		wantCached   bool
 	}{
 		{
 			name:         "successful install",
@@ -103,6 +104,12 @@ func TestInstallRuby(t *testing.T) {
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
 			wantFile:     "lib/foo.txt",
 			wantVersion:  "2.2.2",
+		},
+		{
+			name:         "successful cached install",
+			version:      "2.2.2",
+			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
+			wantCached:   true,
 		},
 		{
 			name:         "default to highest available verions",
@@ -139,11 +146,15 @@ func TestInstallRuby(t *testing.T) {
 				Metadata: map[string]interface{}{},
 			}
 			ctx := gcp.NewContext()
-
-			err := InstallTarball(ctx, Ruby, tc.version, layer)
-
+			if tc.wantCached {
+				ctx.SetMetadata(layer, "version", "2.2.2")
+			}
+			isCached, err := InstallTarballIfNotCached(ctx, Ruby, tc.version, layer)
+			if tc.wantCached && !isCached {
+				t.Fatalf("InstallTarballIfNotCached(ctx, %q, %q) got isCached: %v, want error? %v", Ruby, tc.version, isCached, tc.wantCached)
+			}
 			if tc.wantError == (err == nil) {
-				t.Fatalf("InstallTarball(ctx, %q, %q) got error: %v, want error? %v", Ruby, tc.version, err, tc.wantError)
+				t.Fatalf("InstallTarballIfNotCached(ctx, %q, %q) got error: %v, want error? %v", Ruby, tc.version, err, tc.wantError)
 			}
 
 			if tc.wantFile != "" {

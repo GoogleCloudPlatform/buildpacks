@@ -63,5 +63,6 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("determining runtime version: %w", err)
 	}
 	phpl := ctx.Layer("php", gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
-	return runtime.InstallTarball(ctx, runtime.PHP, version, phpl)
+	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.PHP, version, phpl)
+	return err
 }
