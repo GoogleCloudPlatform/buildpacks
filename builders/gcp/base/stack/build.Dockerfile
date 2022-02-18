@@ -21,6 +21,7 @@ COPY licenses/ /usr/local/share/licenses/buildpacks/
 # python3 is required by node-gyp to compile native modules.
 # unzip is required to extract gradle.
 # xz-utils is required to install nodejs/runtime.
+# libgmp-dev is required for ruby/runtime.
 RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
   git \
@@ -34,6 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   zlib1g-dev \
   libstdc++-8-dev \
   pkg-config \
+  libgmp-dev \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 USER cnb
