@@ -97,10 +97,10 @@ type Result struct {
 	ExitCode int
 }
 
-// CommandExecuted returns whether or not a command was executed using ctx.Exec.
+// CommandExecuted returns true if the command was executed using ctx.Exec, otherwise returns false.
 func (r *Result) CommandExecuted(command string) bool {
-	re := regexp.MustCompile(fmt.Sprintf(`Running.*%s.*Done`, command))
-	return re.FindString(r.Output) == ""
+	re := regexp.MustCompile(fmt.Sprintf(`(?s)Running.*%s.*Done`, command))
+	return re.FindString(r.Output) != ""
 }
 
 // Option is a type for buildpack test options.

@@ -1,0 +1,39 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+
+# Buildpack for the PHP runtime.
+load("//tools:defs.bzl", "buildpack")
+
+licenses(["notice"])
+
+buildpack(
+    name = "composer_install",
+    executables = [
+        ":main",
+    ],
+    visibility = [
+        "//builders:php_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//pkg/gcpbuildpack",
+        "@com_github_buildpacks_libcnb//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "main_test",
+    size = "small",
+    srcs = ["main_test.go"],
+    embed = [":main"],
+    rundir = ".",
+    deps = ["//internal/buildpacktest"],
+)

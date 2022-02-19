@@ -1,0 +1,9 @@
+api = "0.5"
+
+[buildpack]
+id = "google.php.composer-install"
+version = "0.0.1"
+name = "PHP - Composer - Install"
+
+[[stacks]]
+id = "google"
