@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -67,7 +66,7 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.ClearLayer(l)
 
 	// download the installer
-	installer, err := ioutil.TempFile(l.Path, fmt.Sprintf("%s-*.php", composerSetup))
+	installer, err := os.CreateTemp(l.Path, fmt.Sprintf("%s-*.php", composerSetup))
 	if err != nil {
 		return fmt.Errorf("creating temp file: %w", err)
 	}
