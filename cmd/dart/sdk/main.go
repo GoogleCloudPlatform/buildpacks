@@ -27,7 +27,7 @@ import (
 
 const (
 	dartLayer      = "dart"
-	defaultVersion = "2.16.0"
+	defaultVersion = "2.16.1"
 	dartEnabledEnv = "GOOGLE_DART_ENABLED"
 )
 
