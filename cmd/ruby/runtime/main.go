@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -66,5 +67,18 @@ func buildFn(ctx *gcp.Context) error {
 	}
 	rl := ctx.Layer("ruby", gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.Ruby, version, rl)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Ruby sometimes writes to local directories tmp/ and log/, so we link these to writable areas.
+	localTemp := filepath.Join(ctx.ApplicationRoot(), "tmp")
+	localLog := filepath.Join(ctx.ApplicationRoot(), "log")
+	ctx.Logf("Removing 'tmp' and 'log' directories in user code")
+	ctx.RemoveAll(localTemp)
+	ctx.RemoveAll(localLog)
+	ctx.Symlink("/tmp", localTemp)
+	ctx.Symlink("/var/log", localLog)
+
+	return nil
 }

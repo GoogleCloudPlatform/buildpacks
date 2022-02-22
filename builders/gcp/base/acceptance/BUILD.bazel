@@ -308,3 +308,26 @@ go_test(
     ],
     deps = ["//internal/acceptance"],
 )
+
+go_test(
+    name = "ruby_fn_test",
+    size = "enormous",
+    srcs = ["ruby_fn_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata/ruby:functions)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-prefix=gcpbase-ruby-fn-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gcp/base:builder.tar",
+        "//builders/testdata/ruby:functions",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//internal/acceptance"],
+)
