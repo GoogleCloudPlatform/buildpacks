@@ -24,7 +24,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"golang.org/x/oauth2/google"
 )
@@ -87,14 +86,6 @@ func arRepositories() []string {
 // necessary for PIP to make authenticated requests to Artifact Registry (see
 // https://pip.pypa.io/en/stable/topics/authentication/#netrc-support).
 func GeneratePythonConfig(ctx *gcp.Context) error {
-	enabled, err := env.IsARAuthEnabled()
-	if err != nil {
-		return err
-	}
-	if !enabled {
-		return nil
-	}
-
 	netrcPath := filepath.Join(ctx.HomeDir(), pythonConfigName)
 	if ctx.FileExists(netrcPath) {
 		ctx.Debugf("Found an existing .netrc file.  Skipping .netrc creation.")
@@ -152,14 +143,6 @@ machine {{$entry}} login oauth2accesstoken password {{$.Token}}
 // necessary for NPM to make authenticated requests to Artifact Registry (see
 // https://cloud.google.com/artifact-registry/docs/nodejs/authentication).
 func GenerateNPMConfig(ctx *gcp.Context) error {
-	enabled, err := env.IsARAuthEnabled()
-	if err != nil {
-		return err
-	}
-	if !enabled {
-		return nil
-	}
-
 	userConfig := filepath.Join(ctx.HomeDir(), npmConfigName)
 	if ctx.FileExists(userConfig) {
 		ctx.Debugf("Found an existing user-level .npmrc file. Skipping .npmrc creation.")

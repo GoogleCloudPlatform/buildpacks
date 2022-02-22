@@ -9,7 +9,6 @@ go_library(
     srcs = ["ar.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     deps = [
-        "//pkg/env",
         "//pkg/gcpbuildpack",
         "@org_golang_x_oauth2//google:go_default_library",
     ],

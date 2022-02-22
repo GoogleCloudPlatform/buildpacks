@@ -26,35 +26,25 @@ import (
 
 func TestGeneratePythonConfig(t *testing.T) {
 	testCases := []struct {
-		name          string
-		arAuthEnabled string
-		fileExists    bool
-		tokenError    error
-		wantConfig    string
+		name       string
+		fileExists bool
+		tokenError error
+		wantConfig string
 	}{
 		{
-			name:          "Feature Disabled",
-			arAuthEnabled: "False",
-			fileExists:    false,
-			wantConfig:    "",
+			name:       ".netrc already exists",
+			fileExists: true,
+			wantConfig: "",
 		},
 		{
-			name:          ".netrc already exists",
-			arAuthEnabled: "True",
-			fileExists:    true,
-			wantConfig:    "",
+			name:       "credential error",
+			fileExists: false,
+			tokenError: fmt.Errorf("Error fetching token"),
+			wantConfig: "",
 		},
 		{
-			name:          "credential error",
-			arAuthEnabled: "True",
-			fileExists:    false,
-			tokenError:    fmt.Errorf("Error fetching token"),
-			wantConfig:    "",
-		},
-		{
-			name:          ".netrc created",
-			arAuthEnabled: "True",
-			fileExists:    false,
+			name:       ".netrc created",
+			fileExists: false,
 			wantConfig: fmt.Sprint(`
 machine asia-python.pkg.dev login oauth2accesstoken password token
 machine asia-east1-python.pkg.dev login oauth2accesstoken password token
@@ -106,8 +96,6 @@ machine us-west4-python.pkg.dev login oauth2accesstoken password token
 			tempHome := t.TempDir()
 			t.Setenv("HOME", tempHome)
 
-			t.Setenv("GOOGLE_EXPERIMENTAL_AR_AUTH_ENABLED", tc.arAuthEnabled)
-
 			ctx := gcp.NewContext()
 
 			filepath := filepath.Join(tempHome, ".netrc")
@@ -134,37 +122,28 @@ machine us-west4-python.pkg.dev login oauth2accesstoken password token
 
 func TestGenerateNPMConfig(t *testing.T) {
 	testCases := []struct {
-		name          string
-		arAuthEnabled string
-		fileExists    bool
-		tokenError    error
-		projectNpmrc  string
-		wantConfig    string
+		name         string
+		fileExists   bool
+		tokenError   error
+		projectNpmrc string
+		wantConfig   string
 	}{
 		{
-			name:          "Feature Disabled",
-			arAuthEnabled: "False",
+			name:       "user .npmrc already exists",
+			fileExists: true,
 		},
 		{
-			name:          "user .npmrc already exists",
-			arAuthEnabled: "True",
-			fileExists:    true,
+			name:       "credential error",
+			tokenError: fmt.Errorf("Error fetching token"),
 		},
 		{
-			name:          "credential error",
-			arAuthEnabled: "True",
-			tokenError:    fmt.Errorf("Error fetching token"),
-		},
-		{
-			name:          "project .npmrc with npmjs.org config",
-			arAuthEnabled: "True",
+			name: "project .npmrc with npmjs.org config",
 			projectNpmrc: fmt.Sprint(`
 //registry.npmjs.org/:_authToken=${NPM_TOKEN}
 `),
 		},
 		{
-			name:          "project .npmrc with AR repo",
-			arAuthEnabled: "True",
+			name: "project .npmrc with AR repo",
 			projectNpmrc: fmt.Sprint(`
 registry=https://us-west1-npm.pkg.dev/my-project/my-repo/
 //us-west1-npm.pkg.dev/my-project/my-repo/:always-auth=true
@@ -174,8 +153,7 @@ registry=https://us-west1-npm.pkg.dev/my-project/my-repo/
 `),
 		},
 		{
-			name:          "project .npmrc with scoped AR repo",
-			arAuthEnabled: "True",
+			name: "project .npmrc with scoped AR repo",
 			projectNpmrc: fmt.Sprint(`
 @myscope:registry=https://us-west1-npm.pkg.dev/my-project/my-repo/
 //us-west1-npm.pkg.dev/my-project/my-repo/:always-auth=true
@@ -185,8 +163,7 @@ registry=https://us-west1-npm.pkg.dev/my-project/my-repo/
 `),
 		},
 		{
-			name:          "project .npmrc with multiple repos",
-			arAuthEnabled: "True",
+			name: "project .npmrc with multiple repos",
 			projectNpmrc: fmt.Sprint(`
 registry=https://us-west1-npm.pkg.dev/my-project/my-repo/
 //us-west1-npm.pkg.dev/my-project/my-repo/:always-auth=true
@@ -213,8 +190,6 @@ always-auth=true
 			defer func() {
 				findDefaultCredentials = origFindDefaultCredentials
 			}()
-
-			t.Setenv("GOOGLE_EXPERIMENTAL_AR_AUTH_ENABLED", tc.arAuthEnabled)
 
 			// set up the application root dir
 			tempRoot := t.TempDir()
