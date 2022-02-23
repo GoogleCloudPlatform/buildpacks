@@ -29,8 +29,13 @@ readonly candidate="latest"
 
 echo "Pulling stack images for ${product}/${runtime}"
 if [[ "${product}" == "gcp" ]]; then
-  docker pull "gcr.io/buildpacks/${product}/run:${candidate}"
-  docker pull "gcr.io/buildpacks/${product}/build:${candidate}"
+  if [[ "${runtime}" == "php" ]]; then
+    docker pull "gcr.io/buildpacks/${product}/${runtime}/run:${candidate}"
+    docker pull "gcr.io/buildpacks/${product}/${runtime}/build:${candidate}"
+  else
+    docker pull "gcr.io/buildpacks/${product}/run:${candidate}"
+    docker pull "gcr.io/buildpacks/${product}/build:${candidate}"
+  fi
 else
   docker pull "gcr.io/${project}/buildpacks/${runtime}/run:${candidate}"
   docker pull "gcr.io/${project}/buildpacks/${runtime}/build:${candidate}"

@@ -47,3 +47,9 @@ echo "> Building gcr.io/buildpacks/gcp/run:$TAG"
 docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/run:$TAG" - < "${DIR}/run.Dockerfile"
 echo "> Building gcr.io/buildpacks/gcp/build:$TAG"
 docker build --build-arg "from_image=common" -t "gcr.io/buildpacks/gcp/build:$TAG" -f "${DIR}/build.Dockerfile" "${TEMP}"
+
+# Build PHP stack images
+echo "> Building gcr.io/buildpacks/gcp/php/run:$TAG"
+docker build --build-arg "from_image=gcr.io/buildpacks/gcp/run:$TAG" -t "gcr.io/buildpacks/gcp/php/run:$TAG" - < "${DIR}/php.Dockerfile"
+echo "> Building gcr.io/buildpacks/gcp/php/build:$TAG"
+docker build --build-arg "from_image=gcr.io/buildpacks/gcp/build:$TAG" -t "gcr.io/buildpacks/gcp/php/build:$TAG" - < "${DIR}/php.Dockerfile"
