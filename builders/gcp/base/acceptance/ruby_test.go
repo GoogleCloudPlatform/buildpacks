@@ -77,7 +77,7 @@ func TestAcceptanceRuby(t *testing.T) {
 	}
 	// Tests for specific versions of Ruby available on dl.google.com.
 	// Unlike with the other languages, we control the versions published to GCS.
-	for _, v := range acceptance.RuntimeVersions("ruby", "3.0.3", "2.7.5") {
+	for _, v := range acceptance.RuntimeVersions("ruby", "3.1.0", "3.0.3", "2.7.5", "2.6.9") {
 		testCases = append(testCases, acceptance.Test{
 			Name:    "runtime version " + v,
 			App:     "ruby/version_unlocked",
@@ -88,7 +88,6 @@ func TestAcceptanceRuby(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		tc := tc
-		tc.Env = append(tc.Env, "GOOGLE_USE_EXPERIMENTAL_RUBY_RUNTIME=True")
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 
@@ -124,8 +123,6 @@ func TestFailuresRuby(t *testing.T) {
 
 	for _, tc := range testCases {
 		tc := tc
-		tc.Env = append(tc.Env, "GOOGLE_USE_EXPERIMENTAL_RUBY_RUNTIME=True")
-
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 

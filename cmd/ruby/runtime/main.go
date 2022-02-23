@@ -20,29 +20,16 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 )
-
-// useRubyRuntime is used to enable the ruby/runtime buildpack
-const useRubyRuntime = "GOOGLE_USE_EXPERIMENTAL_RUBY_RUNTIME"
 
 func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	isEnabled, err := env.IsPresentAndTrue(useRubyRuntime)
-	if err != nil {
-		ctx.Warnf("failed to parse %s: %v", useRubyRuntime, err)
-	}
-
-	if !isEnabled {
-		return gcp.OptOutEnvNotSet(useRubyRuntime), nil
-	}
-
 	if result := runtime.CheckOverride(ctx, "ruby"); result != nil {
 		return result, nil
 	}
