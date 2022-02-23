@@ -46,4 +46,5 @@ const (
 	pythonRuntime   = "google.python.runtime"
 	rubyRuntime     = "google.ruby.runtime"
 	rubyBundle      = "google.ruby.bundle"
+	rubyRails       = "google.ruby.rails"
 )

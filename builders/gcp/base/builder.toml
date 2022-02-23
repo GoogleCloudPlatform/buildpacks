@@ -137,6 +137,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "ruby/bundle.tgz"
 
 [[buildpacks]]
+  id = "google.ruby.rails"
+  uri = "ruby/rails.tgz"
+
+[[buildpacks]]
   id = "google.ruby.missing-entrypoint"
   uri = "ruby/missing_entrypoint.tgz"
 
@@ -473,6 +477,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.ruby.bundle"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.rails"
     optional = true
 
   [[order.group]]

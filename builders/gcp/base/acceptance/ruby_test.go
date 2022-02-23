@@ -74,6 +74,25 @@ func TestAcceptanceRuby(t *testing.T) {
 			MustUse:    []string{rubyRuntime},
 			MustNotUse: []string{goRuntime, javaRuntime, nodeRuntime, pythonRuntime},
 		},
+		{
+			Name:    "rails",
+			App:     "ruby/rails",
+			Env:     []string{"GOOGLE_RUNTIME_VERSION=2.7.5", "GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
+			MustUse: []string{rubyRuntime, rubyRails, rubyBundle, entrypoint},
+		},
+		{
+			Name:    "rails minimal",
+			App:     "ruby/rails_minimal",
+			Env:     []string{"GOOGLE_RUNTIME_VERSION=3.1.0", "GOOGLE_ENTRYPOINT=ruby bin/rails server -b 0.0.0.0 -p $PORT"},
+			MustUse: []string{rubyRuntime, rubyRails, rubyBundle, entrypoint},
+		},
+		{
+			Name:       "rails precompiled",
+			App:        "ruby/rails_precompiled",
+			Env:        []string{"GOOGLE_RUNTIME_VERSION=2.7.5", "GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			MustUse:    []string{rubyRuntime, rubyBundle, entrypoint},
+			MustNotUse: []string{rubyRails},
+		},
 	}
 	// Tests for specific versions of Ruby available on dl.google.com.
 	// Unlike with the other languages, we control the versions published to GCS.
