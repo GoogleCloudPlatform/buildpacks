@@ -117,6 +117,10 @@ const (
 
 	// ContainerMemoryHintMB is used to specify the amount of memory that will be allocated when running the container.
 	ContainerMemoryHintMB = "GOOGLE_CONTAINER_MEMORY_HINT_MB"
+
+	// XGoogleSkipRuntimeLaunch is used to enable an experimental builder feature to include the
+	// runtime layer in the builder image and omit it from the launch image.
+	XGoogleSkipRuntimeLaunch = "X_GOOGLE_SKIP_RUNTIME_LAUNCH"
 )
 
 // IsDebugMode returns true if the buildpack debug mode is enabled.

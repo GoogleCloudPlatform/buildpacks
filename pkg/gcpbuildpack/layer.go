@@ -49,6 +49,18 @@ var LaunchLayerIfDevMode = func(ctx *Context, l *libcnb.Layer) {
 	}
 }
 
+// LaunchLayerUnlessSkipRuntimeLaunch specifies a Launch layer unless XGoogleSkipRuntimeLaunch is set to "true".
+var LaunchLayerUnlessSkipRuntimeLaunch = func(ctx *Context, l *libcnb.Layer) {
+	skip, err := env.IsPresentAndTrue(env.XGoogleSkipRuntimeLaunch)
+	if err != nil {
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, err.Error()))
+
+	}
+	if !skip {
+		l.Launch = true
+	}
+}
+
 // Layer returns a layer, creating its directory.
 func (ctx *Context) Layer(name string, opts ...layerOption) *libcnb.Layer {
 	l, err := ctx.buildContext.Layers.Layer(name)
