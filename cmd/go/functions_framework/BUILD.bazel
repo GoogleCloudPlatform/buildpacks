@@ -35,6 +35,7 @@ go_binary(
     ],
     deps = [
         "//pkg/env",
+        "//pkg/fileutil",
         "//pkg/gcpbuildpack",
         "//pkg/golang",
         "@com_github_masterminds_semver//:go_default_library",

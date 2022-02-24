@@ -15,6 +15,7 @@ go_library(
     deps = [
         "//internal/buildpacktestenv",
         "//pkg/env",
+        "//pkg/fileutil",
         "//pkg/gcpbuildpack",
     ],
 )

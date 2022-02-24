@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+package(default_visibility = ["//:__subpackages__"])
+
+go_test(
+    name = "fileutil_test",
+    size = "small",
+    srcs = ["fileutil_test.go"],
+    data = glob(["testdata/**"]),
+    embed = [":fileutil"],
+    rundir = ".",
+    deps = ["//pkg/testdata"],
+)
+
+go_library(
+    name = "fileutil",
+    srcs = ["fileutil.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+)

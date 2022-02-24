@@ -20,8 +20,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"io/fs"
 	"io/ioutil"
 	"log"
 	"os"
@@ -35,6 +33,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktestenv"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -333,7 +332,7 @@ func runBuildpackPhase(t *testing.T, cfg *config) (bool, error) {
 
 	if cfg.appPath != "" {
 		// Copy apps from test data into temp code dir
-		if err := copyPath(temps.CodeDir, filepath.Join(flagTestData, cfg.appPath)); err != nil {
+		if err := fileutil.MaybeCopyPathContents(temps.CodeDir, filepath.Join(flagTestData, cfg.appPath), fileutil.AllPaths); err != nil {
 			return false, fmt.Errorf("unable to copy app directory %q to %q: %v", cfg.appPath, temps.CodeDir, err)
 		}
 	}
@@ -409,41 +408,4 @@ func mockProcessBinaryPath() (string, error) {
 	// {bazelRuntimeRoot}/{buildpacksRepo}/internal/buildpacktest/mockprocess/mockprocess
 	mockProcessBinary := filepath.Join(split[0], buildpacksRepo, buildpackTest, "mockprocess", "mockprocess")
 	return filepath.FromSlash(mockProcessBinary), nil
-}
-
-// copyPath recursively copies files and directories: from srcPath to destPath.
-func copyPath(destPath, srcPath string) error {
-	return filepath.WalkDir(srcPath, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		relPath, err := filepath.Rel(srcPath, path)
-		if err != nil {
-			return err
-		}
-
-		dest := filepath.Join(destPath, relPath)
-		if d.IsDir() {
-			return os.MkdirAll(dest, 0744)
-		}
-
-		srcFile, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		defer srcFile.Close()
-
-		destFile, err := os.Create(dest)
-		if err != nil {
-			return err
-		}
-		defer destFile.Close()
-
-		if _, err := io.Copy(destFile, srcFile); err != nil {
-			return err
-		}
-
-		return nil
-	})
 }

@@ -19,12 +19,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 	"github.com/Masterminds/semver"
@@ -81,10 +83,17 @@ func buildFn(ctx *gcp.Context) error {
 	// Move the function source code into a subdirectory in order to construct the app in the main application root.
 	ctx.RemoveAll(fnSourceDir)
 	ctx.MkdirAll(fnSourceDir, 0755)
-	// mindepth=1 excludes '.', '+' collects all file names before running the command.
-	// Exclude serverless_function_source_code and .google* dir e.g. .googlebuild, .googleconfig
-	command := fmt.Sprintf("find . -mindepth 1 -not -name %[1]s -prune -not -name %[2]q -prune -exec mv -t %[1]s {} +", fnSourceDir, ".google*")
-	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserTimingAttribution)
+	wd, err := os.Getwd()
+	if err != nil {
+		return gcp.InternalErrorf("getting current directory: %w", err)
+	}
+	if err := fileutil.MaybeMovePathContents(fnSourceDir, wd, func(path string, d fs.DirEntry) (bool, error) {
+		name := filepath.Base(path)
+		// Exclude serverless_function_source_code and .google* dir e.g. .googlebuild, .googleconfig
+		return name != fnSourceDir && !strings.HasPrefix(name, ".google"), nil
+	}); err != nil {
+		return gcp.InternalErrorf("unable to move source code to build directory: %v", err)
+	}
 
 	fnSource := filepath.Join(ctx.ApplicationRoot(), fnSourceDir)
 	pkg, err := extractPackageNameInDir(ctx, fnSource)
