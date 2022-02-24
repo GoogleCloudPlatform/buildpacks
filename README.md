@@ -68,6 +68,9 @@ Supported languages include:
 | Python 3.7 +      | ✓          | ✓                 |
 | Java 8, 11        | ✓          | ✓ (11 only)       |
 | .NET Core 3.1 +   | ✓          | ✓                 |
+| Ruby 2.6 +        | ✓          | ✓                 |
+
+For Ruby functions, the entrypoint has to be set manually (as seen in the [sample apps](https://github.com/GoogleCloudPlatform/buildpack-samples)).
 
 ## App Engine and Cloud Function Builders and Buildpacks
 
@@ -344,7 +347,7 @@ variables. These environment variables should be specified without a
 * **Python**
   * No default entrypoint logic.
 * **Ruby**
-  * Not available in the general builder.
+  * No default entrypoint logic.
 
 ## Known Limitations
 
