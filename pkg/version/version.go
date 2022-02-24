@@ -18,6 +18,7 @@ package version
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/Masterminds/semver"
 )
@@ -57,6 +58,11 @@ func ResolveVersion(constraint string, versions []string) (string, error) {
 
 // IsExactSemver returns true if a given string is valid semantic version.
 func IsExactSemver(constraint string) bool {
+	if strings.Count(constraint, ".") != 2 {
+		// The constraint must include the major, minor, and patch segments to be exact. By default,
+		// semver.NewVersion will set these to zero so we must validate this separately.
+		return false
+	}
 	_, err := semver.NewVersion(constraint)
 	return err == nil
 }

@@ -93,7 +93,11 @@ func TestIsExactSemver(t *testing.T) {
 		},
 		{
 			version: "1.1",
-			want:    true,
+			want:    false,
+		},
+		{
+			version: "2",
+			want:    false,
 		},
 		{
 			version: "",
