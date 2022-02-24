@@ -1,0 +1,47 @@
+description = "Unified builder for the PHP runtime"
+
+[[buildpacks]]
+  id = "google.config.entrypoint"
+  uri = "entrypoint.tgz"
+
+[[buildpacks]]
+  id = "google.php.composer"
+  uri = "composer.tgz"
+
+[[buildpacks]]
+  id = "google.php.composer-install"
+  uri = "composer_install.tgz"
+
+[[buildpacks]]
+  id = "google.php.runtime"
+  uri = "runtime.tgz"
+
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
+[[order]]
+  [[order.group]]
+    id = "google.php.runtime"
+
+  [[order.group]]
+    id = "google.php.composer-install"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label"
+
+[stack]
+  id = "google"
+  build-image = "gcr.io/buildpacks/gcp/php/build:v1"
+  run-image = "gcr.io/buildpacks/gcp/php/run:v1"
+
+[lifecycle]
+  version = "0.13.3"

@@ -19,30 +19,17 @@ package main
 import (
 	"fmt"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 )
 
-// usePHPRuntime is used to enable the php/runtime buildpack
-const usePHPRuntime = "GOOGLE_USE_EXPERIMENTAL_PHP_RUNTIME"
-
 func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	isEnabled, err := env.IsPresentAndTrue(usePHPRuntime)
-	if err != nil {
-		ctx.Warnf("failed to parse %s: %v", usePHPRuntime, err)
-	}
-
-	if !isEnabled {
-		return gcp.OptOutEnvNotSet(usePHPRuntime), nil
-	}
-
 	if result := runtime.CheckOverride(ctx, "php"); result != nil {
 		return result, nil
 	}

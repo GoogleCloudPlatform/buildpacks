@@ -12,6 +12,7 @@ buildpack(
         "//builders:go_builders",
         "//builders:java_builders",
         "//builders:nodejs_builders",
+        "//builders:php_builders",
         "//builders:python_builders",
     ],
 )
