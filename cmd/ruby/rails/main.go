@@ -25,35 +25,51 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !ctx.FileExists("bin", "rails") {
+	railsExists, err := ctx.FileExists("bin", "rails")
+	if err != nil {
+		return nil, err
+	}
+	if !railsExists {
 		return gcp.OptOutFileNotFound("bin/rails"), nil
 	}
-	if !needsRailsAssetPrecompile(ctx) {
+	needsPrecompile, err := needsRailsAssetPrecompile(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !needsPrecompile {
 		return gcp.OptOut("Rails assets do not need precompilation"), nil
 	}
 	return gcp.OptIn("found Rails assets to precompile"), nil
 }
 
-func needsRailsAssetPrecompile(ctx *gcp.Context) bool {
-	if !ctx.FileExists("app", "assets") {
-		return false
+func needsRailsAssetPrecompile(ctx *gcp.Context) (bool, error) {
+	assetsExists, err := ctx.FileExists("app", "assets")
+	if err != nil {
+		return false, err
+	}
+	if !assetsExists {
+		return false, nil
 	}
 
-	if ctx.FileExists("public", "assets", "manifest.yml") {
-		return false
+	manifestExists, err := ctx.FileExists("public", "assets", "manifest.yml")
+	if err != nil {
+		return false, err
+	}
+	if manifestExists {
+		return false, nil
 	}
 
 	matches := ctx.Glob("public/assets/manifest-*.json")
 	if matches != nil {
-		return false
+		return false, nil
 	}
 
 	matches = ctx.Glob("public/assets/.sprockets-manifest-*.json")
 	if matches != nil {
-		return false
+		return false, nil
 	}
 
-	return true
+	return true, nil
 }
 
 func buildFn(ctx *gcp.Context) error {

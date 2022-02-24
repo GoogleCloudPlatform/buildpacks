@@ -83,18 +83,32 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
-func createLauncher(ctx *gcp.Context, launcherSource, launcherTarget string) {
-	launcherContents := ctx.ReadFile(launcherSource)
-	ctx.WriteFile(launcherTarget, launcherContents, 0755)
+func createLauncher(ctx *gcp.Context, launcherSource, launcherTarget string) error {
+	launcherContents, err := ctx.ReadFile(launcherSource)
+	if err != nil {
+		return err
+	}
+	if err := ctx.WriteFile(launcherTarget, launcherContents, os.FileMode(0755)); err != nil {
+		return err
+	}
+	return nil
 }
 
 // classpath determines what the --classpath argument should be. This tells the Functions Framework where to find
 // the classes of the function, including dependencies.
 func classpath(ctx *gcp.Context) (string, error) {
-	if ctx.FileExists("pom.xml") {
+	pomExists, err := ctx.FileExists("pom.xml")
+	if err != nil {
+		return "", err
+	}
+	if pomExists {
 		return mavenClasspath(ctx)
 	}
-	if ctx.FileExists("build.gradle") {
+	buildGradleExists, err := ctx.FileExists("build.gradle")
+	if err != nil {
+		return "", err
+	}
+	if buildGradleExists {
 		return gradleClasspath(ctx)
 	}
 	jars := ctx.Glob("*.jar")
@@ -117,7 +131,10 @@ func classpath(ctx *gcp.Context) (string, error) {
 // from the pom.xml itself, plus all jar files that are dependencies mentioned in the pom.xml.
 func mavenClasspath(ctx *gcp.Context) (string, error) {
 
-	mvn := java.MvnCmd(ctx)
+	mvn, err := java.MvnCmd(ctx)
+	if err != nil {
+		return "", err
+	}
 
 	// Copy the dependencies of the function (`<dependencies>` in pom.xml) into target/dependency.
 	ctx.Exec([]string{mvn, "--batch-mode", "dependency:copy-dependencies", "-Dmdep.prependGroupId", "-DincludeScope=runtime"}, gcp.WithUserAttribution)
@@ -129,7 +146,11 @@ func mavenClasspath(ctx *gcp.Context) (string, error) {
 		return "", gcp.UserErrorf("invalid project.build.finalName configured in pom.xml")
 	}
 	jarName := fmt.Sprintf("target/%s.jar", artifactName)
-	if !ctx.FileExists(jarName) {
+	jarExists, err := ctx.FileExists(jarName)
+	if err != nil {
+		return "", err
+	}
+	if !jarExists {
 		return "", gcp.UserErrorf("expected output jar %s does not exist", jarName)
 	}
 
@@ -146,7 +167,10 @@ func mavenClasspath(ctx *gcp.Context) (string, error) {
 // didn't work very well either, because you can't use a plugins {} clause in an included script.
 func gradleClasspath(ctx *gcp.Context) (string, error) {
 	extraTasksSource := filepath.Join(ctx.BuildpackRoot(), "extra_tasks.gradle")
-	extraTasksText := ctx.ReadFile(extraTasksSource)
+	extraTasksText, err := ctx.ReadFile(extraTasksSource)
+	if err != nil {
+		return "", err
+	}
 	if err := os.Chmod("build.gradle", 0644); err != nil {
 		return "", gcp.InternalErrorf("making build.gradle writable: %v", err)
 	}
@@ -165,7 +189,11 @@ func gradleClasspath(ctx *gcp.Context) (string, error) {
 	// Extract the name of the target jar.
 	execResult := ctx.Exec([]string{"gradle", "--quiet", "_javaFunctionPrintJarTarget"}, gcp.WithUserAttribution)
 	jarName := strings.TrimSpace(execResult.Stdout)
-	if !ctx.FileExists(jarName) {
+	jarExists, err := ctx.FileExists(jarName)
+	if err != nil {
+		return "", err
+	}
+	if !jarExists {
 		return "", gcp.UserErrorf("expected output jar %s does not exist", jarName)
 	}
 
@@ -177,8 +205,15 @@ func gradleClasspath(ctx *gcp.Context) (string, error) {
 func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) (string, error) {
 
 	jars := []string{}
-	if ctx.FileExists("pom.xml") {
-		mvn := java.MvnCmd(ctx)
+	pomExists, err := ctx.FileExists("pom.xml")
+	if err != nil {
+		return "", err
+	}
+	if pomExists {
+		mvn, err := java.MvnCmd(ctx)
+		if err != nil {
+			return "", err
+		}
 		// If the invoker was listed as a dependency in the pom.xml, copy it into target/_javaInvokerDependency.
 		ctx.Exec([]string{
 			mvn,
@@ -189,9 +224,15 @@ func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) (string, e
 			"-DincludeArtifactIds=java-function-invoker",
 		}, gcp.WithUserAttribution)
 		jars = ctx.Glob("target/_javaInvokerDependency/java-function-invoker-*.jar")
-	} else if ctx.FileExists("build.gradle") {
-		// If the invoker was listed as an implementation dependency it will have been copied to build/_javaFunctionDependencies.
-		jars = ctx.Glob("build/_javaFunctionDependencies/java-function-invoker-*.jar")
+	} else {
+		buildGradleExists, err := ctx.FileExists("build.gradle")
+		if err != nil {
+			return "", err
+		}
+		if buildGradleExists {
+			// If the invoker was listed as an implementation dependency it will have been copied to build/_javaFunctionDependencies.
+			jars = ctx.Glob("build/_javaFunctionDependencies/java-function-invoker-*.jar")
+		}
 	}
 	if len(jars) == 1 && isInvokerJar(ctx, jars[0]) {
 		ctx.ClearLayer(layer)

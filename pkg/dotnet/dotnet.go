@@ -79,7 +79,10 @@ type PackageReference struct {
 
 // ReadProjectFile returns a .NET Project object.
 func ReadProjectFile(ctx *gcp.Context, proj string) (Project, error) {
-	data := ctx.ReadFile(proj)
+	data, err := ctx.ReadFile(proj)
+	if err != nil {
+		return Project{}, err
+	}
 	return readProjectFile(data, proj)
 }
 

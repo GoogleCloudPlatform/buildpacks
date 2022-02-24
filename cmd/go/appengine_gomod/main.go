@@ -38,7 +38,11 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !ctx.FileExists("go.mod") {
+	goModExists, err := ctx.FileExists("go.mod")
+	if err != nil {
+		return nil, err
+	}
+	if !goModExists {
 		return gcp.OptOutFileNotFound("go.mod"), nil
 	}
 
@@ -50,14 +54,22 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	buildMainPath, err := cleanMainPath(mainPath(ctx))
+	mp, err := mainPath(ctx)
+	if err != nil {
+		return fmt.Errorf("choosing main path: %w", err)
+	}
+	buildMainPath, err := cleanMainPath(mp)
 	if err != nil {
 		return fmt.Errorf("cleaning main package path: %w", err)
 	}
 
 	if buildMainPath != "." {
 		// If mainPath refers to a file, we prefix it with "./" so that `go build` treats it as such (in a later step).
-		if ctx.FileExists(buildMainPath) {
+		buildMainExists, err := ctx.FileExists(buildMainPath)
+		if err != nil {
+			return err
+		}
+		if buildMainExists {
 			buildMainPath = "." + string(filepath.Separator) + buildMainPath
 		} else {
 			ctx.Logf("Path %q does not exist. Assuming it's a fully qualified package name.", buildMainPath)
@@ -79,18 +91,27 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 // mainPath chooses the main package path from the paths provided by _main-package-path or GAE_YAML_MAIN.
-func mainPath(ctx *gcp.Context) string {
+func mainPath(ctx *gcp.Context) (string, error) {
 	if path := os.Getenv(env.GAEMain); path != "" {
-		return path
+		return path, nil
 	}
 
-	if pathFile := filepath.Join(ctx.ApplicationRoot(), stagerFileName); ctx.FileExists(pathFile) {
-		path := string(ctx.ReadFile(pathFile))
+	pathFile := filepath.Join(ctx.ApplicationRoot(), stagerFileName)
+	pathExists, err := ctx.FileExists(pathFile)
+	if err != nil {
+		return "", err
+	}
+	if pathExists {
+		bytes, err := ctx.ReadFile(pathFile)
+		if err != nil {
+			return "", err
+		}
+		path := string(bytes)
 		ctx.RemoveAll(pathFile)
-		return path
+		return path, nil
 	}
 
-	return ""
+	return "", nil
 }
 
 func cleanMainPath(mp string) (string, error) {

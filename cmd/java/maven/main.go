@@ -45,10 +45,18 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if ctx.FileExists("pom.xml") {
+	pomExists, err := ctx.FileExists("pom.xml")
+	if err != nil {
+		return nil, err
+	}
+	if pomExists {
 		return gcp.OptInFileFound("pom.xml"), nil
 	}
-	if ctx.FileExists(".mvn/extensions.xml") {
+	extXMLExists, err := ctx.FileExists(".mvn/extensions.xml")
+	if err != nil {
+		return nil, err
+	}
+	if extXMLExists {
 		return gcp.OptInFileFound(".mvn/extensions.xml"), nil
 	}
 	return gcp.OptOut("none of the following found: pom.xml or .mvn/extensions.xml."), nil
@@ -64,14 +72,24 @@ func buildFn(ctx *gcp.Context) error {
 	// We can't just use `-Dmaven.repo.local`. It does set the path to `m2/repo` but it fails
 	// to set the path to `m2/wrapper` which is used by mvnw to download Maven.
 	ctx.RemoveAll(homeM2)
-	ctx.Symlink(m2CachedRepo.Path, homeM2)
+	if err := ctx.Symlink(m2CachedRepo.Path, homeM2); err != nil {
+		return err
+	}
 
-	addJvmConfig(ctx)
+	if err := addJvmConfig(ctx); err != nil {
+		return err
+	}
 
 	var mvn string
-	if ctx.FileExists("mvnw") {
+	mvnwExists, err := ctx.FileExists("mvnw")
+	if err != nil {
+		return err
+	}
+	if mvnwExists {
 		// With CRLF endings, the "\r" gets seen as part of the shebang target, which doesn't exist.
-		ensureUnixLineEndings(ctx, "mvnw")
+		if err := ensureUnixLineEndings(ctx, "mvnw"); err != nil {
+			return fmt.Errorf("ensuring unix newline characters: %w", err)
+		}
 		mvn = "./mvnw"
 	} else if mvnInstalled(ctx) {
 		mvn = "mvn"
@@ -110,24 +128,29 @@ func buildFn(ctx *gcp.Context) error {
 // When that bug has been fixed in a version of mvn we can use, we can remove this workaround.
 // Write a JVM flag to .mvn/jvm.config in the project being built to suppress the warning.
 // Don't do anything if there already is a .mvn/jvm.config.
-func addJvmConfig(ctx *gcp.Context) {
+func addJvmConfig(ctx *gcp.Context) error {
 	version := os.Getenv(env.RuntimeVersion)
 	if version == "8" || strings.HasPrefix(version, "8.") {
 		// We don't need this workaround on Java 8, and in fact it fails there because there's no --add-opens option.
-		return
+		return nil
 	}
 	configFile := ".mvn/jvm.config"
-	if ctx.FileExists(configFile) {
-		return
+	configFileExists, err := ctx.FileExists(configFile)
+	if err != nil {
+		return err
+	}
+	if configFileExists {
+		return nil
 	}
 	if err := os.MkdirAll(".mvn", 0755); err != nil {
 		ctx.Logf("Could not create .mvn, reflection warnings may not be disabled: %v", err)
-		return
+		return nil
 	}
 	jvmOptions := "--add-opens java.base/java.lang=ALL-UNNAMED"
 	if err := ioutil.WriteFile(configFile, []byte(jvmOptions), 0644); err != nil {
 		ctx.Logf("Could not create %s, reflection warnings may not be disabled: %v", configFile, err)
 	}
+	return nil
 }
 
 func mvnInstalled(ctx *gcp.Context) bool {
@@ -167,16 +190,25 @@ func installMaven(ctx *gcp.Context) (string, error) {
 }
 
 // Replace CRLF with LF
-func ensureUnixLineEndings(ctx *gcp.Context, file ...string) {
-
-	if !ctx.IsWritable(file...) {
-		return
+func ensureUnixLineEndings(ctx *gcp.Context, file ...string) error {
+	isWriteable, err := ctx.IsWritable(file...)
+	if err != nil {
+		return err
+	}
+	if !isWriteable {
+		return nil
 	}
 
 	path := filepath.Join(file...)
-	data := ctx.ReadFile(path)
+	data, err := ctx.ReadFile(path)
+	if err != nil {
+		return err
+	}
 
 	data = bytes.ReplaceAll(data, []byte{'\r', '\n'}, []byte{'\n'})
 
-	ctx.WriteFile(path, data, 0755)
+	if err := ctx.WriteFile(path, data, os.FileMode(0755)); err != nil {
+		return err
+	}
+	return nil
 }

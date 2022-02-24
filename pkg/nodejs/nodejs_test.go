@@ -16,6 +16,7 @@ package nodejs
 
 import (
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -104,7 +105,10 @@ func TestSkipSyntaxCheck(t *testing.T) {
 			ctx := gcp.NewContext(gcp.WithApplicationRoot(home))
 
 			if tc.packageJSON != "" {
-				ctx.WriteFile(filepath.Join(home, "package.json"), []byte(tc.packageJSON), 0744)
+				pkgJSON := filepath.Join(home, "package.json")
+				if err := os.WriteFile(pkgJSON, []byte(tc.packageJSON), os.FileMode(0744)); err != nil {
+					t.Fatalf("writing file %q: %v", pkgJSON, err)
+				}
 			}
 
 			got, err := SkipSyntaxCheck(ctx, tc.filePath)

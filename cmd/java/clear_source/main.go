@@ -39,7 +39,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		"build.gradle.kts",
 	}
 	for _, f := range files {
-		if ctx.FileExists(f) {
+		exists, err := ctx.FileExists(f)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
 			return gcp.OptInFileFound(f), nil
 		}
 	}

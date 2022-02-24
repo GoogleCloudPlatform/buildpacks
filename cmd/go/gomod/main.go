@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -28,7 +29,11 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if ctx.FileExists("go.mod") {
+	goModExists, err := ctx.FileExists("go.mod")
+	if err != nil {
+		return nil, err
+	}
+	if goModExists {
 		return gcp.OptInFileFound("go.mod"), nil
 	}
 	return gcp.OptOutFileNotFound("go.mod"), nil
@@ -44,10 +49,18 @@ func buildFn(ctx *gcp.Context) error {
 
 	// TODO(b/145604612): Investigate caching the modules layer.
 
+	vendorExists, err := ctx.FileExists("vendor")
+	if err != nil {
+		return err
+	}
 	// When there's a vendor folder and go is 1.14+, we shouldn't download the modules
 	// and let go build use the vendored dependencies.
-	if ctx.FileExists("vendor") {
-		if golang.SupportsAutoVendor(ctx) {
+	if vendorExists {
+		avSupport, err := golang.SupportsAutoVendor(ctx)
+		if err != nil {
+			return fmt.Errorf("checking for auto vendor support: %w", err)
+		}
+		if avSupport {
 			ctx.Logf("Not downloading modules because there's a `vendor` directory")
 			return nil
 		}
@@ -55,7 +68,11 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Warnf(`Ignoring "vendor" directory: To use vendor directory, the Go runtime must be 1.14+ and go.mod must contain a "go 1.14"+ entry. See https://cloud.google.com/appengine/docs/standard/go/specifying-dependencies#vendoring_dependencies.`)
 	}
 
-	if !ctx.IsWritable("go.mod") {
+	goModIsWriteable, err := ctx.IsWritable("go.mod")
+	if err != nil {
+		return err
+	}
+	if !goModIsWriteable {
 		// Preempt an obscure failure mode: if go.mod is not writable then `go list -m` can fail saying:
 		//     go: updates to go.sum needed, disabled by -mod=readonly
 		return gcp.UserErrorf("go.mod exists but is not writable")
@@ -68,14 +85,22 @@ func buildFn(ctx *gcp.Context) error {
 		workdir = ctx.ApplicationRoot()
 	}
 
+	goSumExists, err := ctx.FileExists("go.sum")
+	if err != nil {
+		return err
+	}
 	// Go 1.16+ requires a go.sum file. If one does not exist, generate it.
 	// go build -mod=readonly requires a complete graph of modules which `go mod download` does not produce in all cases (https://golang.org/issue/35832).
-	if !ctx.FileExists("go.sum") {
+	if !goSumExists {
 		ctx.Logf(`go.sum not found, generating using "go mod tidy"`)
-		golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "tidy"}, gcp.WithEnv(env...), gcp.WithWorkDir(workdir), gcp.WithUserAttribution)
+		if _, err := golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "tidy"}, gcp.WithEnv(env...), gcp.WithWorkDir(workdir), gcp.WithUserAttribution); err != nil {
+			return fmt.Errorf("running go mod tidy: %w", err)
+		}
 	}
 
-	golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "download"}, gcp.WithEnv(env...), gcp.WithUserAttribution)
+	if _, err := golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "download"}, gcp.WithEnv(env...), gcp.WithUserAttribution); err != nil {
+		return fmt.Errorf("running go mod download: %w", err)
+	}
 
 	return nil
 }

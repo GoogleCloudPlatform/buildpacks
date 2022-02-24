@@ -37,10 +37,18 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if ctx.FileExists("Gemfile") {
+	gemfileExists, err := ctx.FileExists("Gemfile")
+	if err != nil {
+		return nil, err
+	}
+	if gemfileExists {
 		return gcp.OptInFileFound("Gemfile"), nil
 	}
-	if ctx.FileExists("gems.rb") {
+	gemsRbExists, err := ctx.FileExists("gems.rb")
+	if err != nil {
+		return nil, err
+	}
+	if gemsRbExists {
 		return gcp.OptInFileFound("gems.rb"), nil
 	}
 	return gcp.OptOut("no Gemfile or gems.rb found"), nil
@@ -48,18 +56,32 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 func buildFn(ctx *gcp.Context) error {
 	var lockFile string
-	hasGemfile := ctx.FileExists("Gemfile")
-	hasGemsRB := ctx.FileExists("gems.rb")
+	hasGemfile, err := ctx.FileExists("Gemfile")
+	if err != nil {
+		return err
+	}
+	hasGemsRB, err := ctx.FileExists("gems.rb")
+	if err != nil {
+		return err
+	}
 	if hasGemfile {
 		if hasGemsRB {
 			ctx.Warnf("Gemfile and gems.rb both exist. Using Gemfile.")
 		}
-		if !ctx.FileExists("Gemfile.lock") {
+		gemfileLockExists, err := ctx.FileExists("Gemfile.lock")
+		if err != nil {
+			return err
+		}
+		if !gemfileLockExists {
 			return buildererror.Errorf(buildererror.StatusFailedPrecondition, "Could not find Gemfile.lock file in your app. Please make sure your bundle is up to date before deploying.")
 		}
 		lockFile = "Gemfile.lock"
 	} else if hasGemsRB {
-		if !ctx.FileExists("gems.locked") {
+		gemsLockedExists, err := ctx.FileExists("gems.locked")
+		if err != nil {
+			return err
+		}
+		if !gemsLockedExists {
 			return buildererror.Errorf(buildererror.StatusFailedPrecondition, "Could not find gems.locked file in your app. Please make sure your bundle is up to date before deploying.")
 		}
 		lockFile = "gems.locked"
@@ -106,7 +128,9 @@ func buildFn(ctx *gcp.Context) error {
 		if len(foundBinDirs) > 1 {
 			return fmt.Errorf("unexpected multiple gem bin dirs: %v", foundBinDirs)
 		} else if len(foundBinDirs) == 1 {
-			ctx.Symlink(filepath.Join(ctx.ApplicationRoot(), foundBinDirs[0]), localBinDir)
+			if err := ctx.Symlink(filepath.Join(ctx.ApplicationRoot(), foundBinDirs[0]), localBinDir); err != nil {
+				return err
+			}
 		}
 
 		// Move the built .bundle directory into the layer
@@ -115,7 +139,9 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Always link local .bundle directory to the actual installation stored in the layer.
-	ctx.Symlink(bundleOutput, ".bundle")
+	if err := ctx.Symlink(bundleOutput, ".bundle"); err != nil {
+		return err
+	}
 
 	return nil
 }

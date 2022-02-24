@@ -41,7 +41,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if result := runtime.CheckOverride(ctx, "dart"); result != nil {
 		return result, nil
 	}
-	if ctx.FileExists("pubspec.yaml") {
+	pubspecExists, err := ctx.FileExists("pubspec.yaml")
+	if err != nil {
+		return nil, err
+	}
+	if pubspecExists {
 		return gcp.OptInFileFound("pubspec.yaml"), nil
 	}
 	if len(ctx.Glob("*.dart")) > 0 {

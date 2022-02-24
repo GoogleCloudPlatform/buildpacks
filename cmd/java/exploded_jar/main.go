@@ -27,7 +27,11 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if ctx.FileExists(java.ManifestPath) {
+	manifestExists, err := ctx.FileExists(java.ManifestPath)
+	if err != nil {
+		return nil, err
+	}
+	if manifestExists {
 		return gcp.OptInFileFound(java.ManifestPath), nil
 	}
 	return gcp.OptOutFileNotFound(java.ManifestPath), nil

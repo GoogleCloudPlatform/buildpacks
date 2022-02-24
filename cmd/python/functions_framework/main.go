@@ -56,8 +56,15 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Determine if the function has dependency on functions-framework.
 	hasFrameworkDependency := false
-	if ctx.FileExists("requirements.txt") {
-		content := ctx.ReadFile("requirements.txt")
+	requirementsExists, err := ctx.FileExists("requirements.txt")
+	if err != nil {
+		return err
+	}
+	if requirementsExists {
+		content, err := ctx.ReadFile("requirements.txt")
+		if err != nil {
+			return err
+		}
 		hasFrameworkDependency = containsFF(string(content))
 	}
 
@@ -84,11 +91,21 @@ func validateSource(ctx *gcp.Context) error {
 	// Fail if the default|custom source file doesn't exist, otherwise the app will fail at runtime but still build here.
 	fnSource, ok := os.LookupEnv(env.FunctionSource)
 	if !ok {
-		if !ctx.FileExists("main.py") {
+		mainPYExists, err := ctx.FileExists("main.py")
+		if err != nil {
+			return err
+		}
+		if !mainPYExists {
 			return gcp.UserErrorf("missing main.py and %s not specified. Either create the function in main.py or specify %s to point to the file that contains the function", env.FunctionSource, env.FunctionSource)
 		}
-	} else if !ctx.FileExists(fnSource) {
-		return gcp.UserErrorf("%s specified file %q but it does not exist", env.FunctionSource, fnSource)
+	} else {
+		fnSourceExists, err := ctx.FileExists(fnSource)
+		if err != nil {
+			return err
+		}
+		if !fnSourceExists {
+			return gcp.UserErrorf("%s specified file %q but it does not exist", env.FunctionSource, fnSource)
+		}
 	}
 	return nil
 }

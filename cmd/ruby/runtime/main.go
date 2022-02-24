@@ -34,10 +34,18 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return result, nil
 	}
 
-	if ctx.FileExists("Gemfile") {
+	gemfileExists, err := ctx.FileExists("Gemfile")
+	if err != nil {
+		return nil, err
+	}
+	if gemfileExists {
 		return gcp.OptInFileFound("Gemfile"), nil
 	}
-	if ctx.FileExists("gems.rb") {
+	gemsRbExists, err := ctx.FileExists("gems.rb")
+	if err != nil {
+		return nil, err
+	}
+	if gemsRbExists {
 		return gcp.OptInFileFound("gems.rb"), nil
 	}
 	if !ctx.HasAtLeastOne("*.rb") {

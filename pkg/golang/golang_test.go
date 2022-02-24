@@ -299,7 +299,12 @@ module dir
 				t.Fatalf("writing go.mod: %v", err)
 			}
 
-			if got := GoModVersion(ctx); got != tc.want {
+			got, err := GoModVersion(ctx)
+
+			if err != nil {
+				t.Fatalf("GoModVersion(%q) failed unexpectedly; err=%s", dir, err)
+			}
+			if got != tc.want {
 				t.Errorf("GoModVersion(%q) = %q, want %q", dir, got, tc.want)
 			}
 		})
@@ -402,11 +407,14 @@ func TestSupportsAutoVendor(t *testing.T) {
 			defer func(fn func(*gcp.Context) string) { readGoVersion = fn }(readGoVersion)
 			readGoVersion = func(*gcp.Context) string { return tc.goVersion }
 
-			defer func(fn func(*gcp.Context) string) { readGoMod = fn }(readGoMod)
-			readGoMod = func(*gcp.Context) string { return tc.goMod }
+			defer func(fn func(*gcp.Context) (string, error)) { readGoMod = fn }(readGoMod)
+			readGoMod = func(*gcp.Context) (string, error) { return tc.goMod, nil }
 
-			supported := SupportsAutoVendor(nil)
+			supported, err := SupportsAutoVendor(nil)
 
+			if err != nil {
+				t.Fatalf("VersionSupportsVendoredModules() failed unexpectedly; err=%s", err)
+			}
 			if supported != tc.want {
 				t.Errorf("VersionSupportsVendoredModules() returned %v, wanted %v", supported, tc.want)
 			}
@@ -463,11 +471,14 @@ func TestVersionMatches(t *testing.T) {
 			defer func(fn func(*gcp.Context) string) { readGoVersion = fn }(readGoVersion)
 			readGoVersion = func(*gcp.Context) string { return tc.goVersion }
 
-			defer func(fn func(*gcp.Context) string) { readGoMod = fn }(readGoMod)
-			readGoMod = func(*gcp.Context) string { return tc.goMod }
+			defer func(fn func(*gcp.Context) (string, error)) { readGoMod = fn }(readGoMod)
+			readGoMod = func(*gcp.Context) (string, error) { return tc.goMod, nil }
 
-			supported := VersionMatches(nil, tc.versionCheck)
+			supported, err := VersionMatches(nil, tc.versionCheck)
 
+			if err != nil {
+				t.Fatalf("VersionMatches() failed unexpectedly; err=%s", err)
+			}
 			if supported != tc.want {
 				t.Errorf("VersionMatches() returned %v, wanted %v", supported, tc.want)
 			}

@@ -42,10 +42,18 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if ctx.FileExists("build.gradle") {
+	buildGradleExists, err := ctx.FileExists("build.gradle")
+	if err != nil {
+		return nil, err
+	}
+	if buildGradleExists {
 		return gcp.OptInFileFound("build.gradle"), nil
 	}
-	if ctx.FileExists("build.gradle.kts") {
+	buildGradleKTSExists, err := ctx.FileExists("build.gradle.kts")
+	if err != nil {
+		return nil, err
+	}
+	if buildGradleKTSExists {
 		return gcp.OptInFileFound("build.gradle.kts"), nil
 	}
 	return gcp.OptOut("neither build.gradle nor build.gradle.kts found"), nil
@@ -60,10 +68,16 @@ func buildFn(ctx *gcp.Context) error {
 	// Symlink the gradle-cache layer into ~/.gradle. If ~/.gradle already exists, delete it first.
 	// If it exists as a symlink, RemoveAll will remove the link, not anything it's linked to.
 	ctx.RemoveAll(homeGradle)
-	ctx.Symlink(gradleCachedRepo.Path, homeGradle)
+	if err := ctx.Symlink(gradleCachedRepo.Path, homeGradle); err != nil {
+		return err
+	}
 
+	gradlewExists, err := ctx.FileExists("gradlew")
+	if err != nil {
+		return err
+	}
 	var gradle string
-	if ctx.FileExists("gradlew") {
+	if gradlewExists {
 		gradle = "./gradlew"
 	} else if gradleInstalled(ctx) {
 		gradle = "gradle"

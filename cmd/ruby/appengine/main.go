@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
@@ -47,8 +48,12 @@ func buildFn(ctx *gcp.Context) error {
 	localLog := filepath.Join(ctx.ApplicationRoot(), "log")
 	ctx.RemoveAll(localTemp)
 	ctx.RemoveAll(localLog)
-	ctx.Symlink("/tmp", localTemp)
-	ctx.Symlink("/var/log", localLog)
+	if err := ctx.Symlink("/tmp", localTemp); err != nil {
+		return err
+	}
+	if err := ctx.Symlink("/var/log", localLog); err != nil {
+		return err
+	}
 
 	return appengine.Build(ctx, "ruby",
 		func(ctx *gcp.Context) (*appstart.Entrypoint, error) {
@@ -59,12 +64,9 @@ func buildFn(ctx *gcp.Context) error {
 func entrypoint(ctx *gcp.Context, srcDir string) (*appstart.Entrypoint, error) {
 	var ep string
 	ctx.Logf("WARNING: No entrypoint specified. Attempting to infer entrypoint, but it is recommended to set an explicit `entrypoint` in app.yaml.")
-	if ctx.FileExists(srcDir, railsIndicator) {
-		ep = maybeBundle(ctx, srcDir, railsCommand)
-	} else if ctx.FileExists(srcDir, rackIndicator) {
-		ep = maybeBundle(ctx, srcDir, rackCommand)
-	} else {
-		return nil, gcp.UserErrorf("unable to infer entrypoint, please set the `entrypoint` field in app.yaml: https://cloud.google.com/appengine/docs/standard/ruby/runtime#application_startup")
+	ep, err := inferEntrypoint(ctx, srcDir)
+	if err != nil {
+		return nil, err
 	}
 	ctx.Logf("Using inferred entrypoint: %q", ep)
 	return &appstart.Entrypoint{
@@ -73,9 +75,32 @@ func entrypoint(ctx *gcp.Context, srcDir string) (*appstart.Entrypoint, error) {
 	}, nil
 }
 
-func maybeBundle(ctx *gcp.Context, srcDir, cmd string) string {
-	if ctx.FileExists(srcDir, bundleIndicator) || ctx.FileExists(srcDir, bundle2Indicator) {
-		return "bundle exec " + cmd
+func inferEntrypoint(ctx *gcp.Context, srcDir string) (string, error) {
+	indicatorCmds := map[string]string{
+		railsIndicator: railsCommand,
+		rackIndicator:  rackCommand,
 	}
-	return cmd
+	for indc, cmd := range indicatorCmds {
+		exists, err := ctx.FileExists(srcDir, indc)
+		if err != nil {
+			return "", err
+		}
+		if exists {
+			return maybeBundle(ctx, srcDir, cmd)
+		}
+	}
+	return "", gcp.UserErrorf("unable to infer entrypoint, please set the `entrypoint` field in app.yaml: https://cloud.google.com/appengine/docs/standard/ruby/runtime#application_startup")
+}
+
+func maybeBundle(ctx *gcp.Context, srcDir, cmd string) (string, error) {
+	for _, indc := range []string{bundleIndicator, bundle2Indicator} {
+		exists, err := ctx.FileExists(srcDir, indc)
+		if err != nil {
+			return "", err
+		}
+		if exists {
+			return fmt.Sprintf("bundle exec %s", cmd), nil
+		}
+	}
+	return cmd, nil
 }

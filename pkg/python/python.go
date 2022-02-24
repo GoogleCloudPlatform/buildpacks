@@ -123,11 +123,17 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 		l.SharedEnvironment.Override("VIRTUAL_ENV", l.Path)
 		// Use the virtual environment python3 for all subsequent commands in this buildpack, for
 		// subsequent buildpacks, l.Path/bin will be added by lifecycle.
-		ctx.Setenv("PATH", filepath.Join(l.Path, "bin")+string(os.PathListSeparator)+os.Getenv("PATH"))
-		ctx.Setenv("VIRTUAL_ENV", l.Path)
+		if err := ctx.Setenv("PATH", filepath.Join(l.Path, "bin")+string(os.PathListSeparator)+os.Getenv("PATH")); err != nil {
+			return err
+		}
+		if err := ctx.Setenv("VIRTUAL_ENV", l.Path); err != nil {
+			return err
+		}
 	} else {
 		l.SharedEnvironment.Default("PYTHONUSERBASE", l.Path)
-		ctx.Setenv("PYTHONUSERBASE", l.Path)
+		if err := ctx.Setenv("PYTHONUSERBASE", l.Path); err != nil {
+			return err
+		}
 	}
 
 	for _, req := range reqs {

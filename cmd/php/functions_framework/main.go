@@ -70,8 +70,12 @@ func buildFn(ctx *gcp.Context) error {
 	command := []string{"php", "-l", fnFile}
 	ctx.Exec(command, gcp.WithStdoutTail, gcp.WithUserAttribution)
 
+	composerJSONExists, err := ctx.FileExists("composer.json")
+	if err != nil {
+		return err
+	}
 	// Install the functions framework if need be.
-	if ctx.FileExists("composer.json") {
+	if composerJSONExists {
 		if err := handleComposerJSON(ctx); err != nil {
 			return err
 		}
@@ -112,9 +116,13 @@ func handleComposerJSON(ctx *gcp.Context) error {
 func handleNoComposerJSON(ctx *gcp.Context) error {
 	ctx.Logf("Handling function without composer.json")
 
+	vendorExists, err := ctx.FileExists(php.Vendor)
+	if err != nil {
+		return err
+	}
 	// Check if there's a vendor directory. If not, this is truly a dependency-less function
 	// so we can `composer install` the framework and cache the vendor dir.
-	if !ctx.FileExists(php.Vendor) {
+	if !vendorExists {
 		ctx.Logf("No vendor directory present, installing functions framework")
 		cvt := filepath.Join(ctx.BuildpackRoot(), "converter")
 		ctx.Exec([]string{"cp", filepath.Join(cvt, "composer.json"), filepath.Join(cvt, "composer.lock"), "."})
@@ -126,14 +134,22 @@ func handleNoComposerJSON(ctx *gcp.Context) error {
 		return nil
 	}
 
-	// Check if the vendor directory contains the functions framework. If so we're done.
 	ffPath := filepath.Join(php.Vendor, ffPackage)
-	if ctx.FileExists(ffPath) {
+	ffExists, err := ctx.FileExists(ffPath)
+	if err != nil {
+		return err
+	}
+	// Check if the vendor directory contains the functions framework. If so we're done.
+	if ffExists {
 		ctx.Logf("Functions framework is already present in the vendor directory")
 
+		routerScriptExists, err := ctx.FileExists(routerScript)
+		if err != nil {
+			return err
+		}
 		// Make sure the router script also exists. If the user is vendoring their own deps
 		// you never know how they've structured their vendor directory.
-		if !ctx.FileExists(routerScript) {
+		if !routerScriptExists {
 			return gcp.UserErrorf("functions framework router script %s is not present", routerScript)
 		}
 
@@ -145,7 +161,12 @@ func handleNoComposerJSON(ctx *gcp.Context) error {
 	// without composer.json; vendor/composer/installed.json contains the info required to resolve
 	// a working set of dependencies.
 	ctx.Logf("Functions framework is not present at %s", ffPath)
-	if installed := filepath.Join(php.Vendor, "composer", "installed.json"); !ctx.FileExists(installed) {
+	installed := filepath.Join(php.Vendor, "composer", "installed.json")
+	installedExists, err := ctx.FileExists(installed)
+	if err != nil {
+		return err
+	}
+	if !installedExists {
 		return gcp.UserErrorf("%s is not present, so it appears that Composer was not used to install dependencies. "+
 			"Please install the functions framework at %s. See %s and %s.", installed, ffPath, ffGitHubURL, ffPackagistURL)
 	}

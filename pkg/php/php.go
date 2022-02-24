@@ -134,10 +134,14 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 	l := ctx.Layer("composer", gcp.CacheLayer)
 	layerVendor := filepath.Join(l.Path, Vendor)
 
+	composerLockExists, err := ctx.FileExists(composerLock)
+	if err != nil {
+		return nil, err
+	}
 	// If there's no composer.lock then don't attempt to cache. We'd have to cache using composer.json,
 	// which could result in outdated dependencies if the version constraints in composer.json resolve
 	// to newer versions in the future.
-	if !ctx.FileExists(composerLock) {
+	if !composerLockExists {
 		ctx.Logf("*** Improve build performance by generating and committing %s.", composerLock)
 		composerInstall(ctx, flags)
 		return l, nil
@@ -159,7 +163,9 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 		composerInstall(ctx, flags)
 
 		// Ensure vendor exists even if no dependencies were installed.
-		ctx.MkdirAll(Vendor, 0755)
+		if err := ctx.MkdirAll(Vendor, 0755); err != nil {
+			return nil, err
+		}
 		ctx.Exec([]string{"cp", "--archive", Vendor, layerVendor}, gcp.WithUserTimingAttribution)
 	}
 
@@ -184,7 +190,11 @@ func ExtractVersion(ctx *gcp.Context) (string, error) {
 
 	// get the runtime version from the composer.json file
 	composerFilePath := filepath.Join(ctx.ApplicationRoot(), composerJSON)
-	if ctx.FileExists(composerFilePath) {
+	composerFileExists, err := ctx.FileExists(composerFilePath)
+	if err != nil {
+		return "", err
+	}
+	if composerFileExists {
 		v, err := composerFileVersion(ctx)
 		if err != nil {
 			return "", err

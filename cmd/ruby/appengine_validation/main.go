@@ -27,10 +27,18 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if ctx.FileExists("Gemfile") {
+	gemfileExists, err := ctx.FileExists("Gemfile")
+	if err != nil {
+		return nil, err
+	}
+	if gemfileExists {
 		return gcp.OptInFileFound("Gemfile"), nil
 	}
-	if ctx.FileExists("gems.rb") {
+	gemsRbExists, err := ctx.FileExists("gems.rb")
+	if err != nil {
+		return nil, err
+	}
+	if gemsRbExists {
 		return gcp.OptInFileFound("gems.rb"), nil
 	}
 	return gcp.OptOut("no Gemfile or gems.rb found"), nil
@@ -38,18 +46,24 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 func buildFn(ctx *gcp.Context) error {
 	gemfile := ""
-	if ctx.FileExists("Gemfile") {
+	gemfileExists, err := ctx.FileExists("Gemfile")
+	if err != nil {
+		return err
+	}
+	gemsRbExists, err := ctx.FileExists("gems.rb")
+	if err != nil {
+		return err
+	}
+	if gemfileExists {
 		gemfile = "Gemfile"
-		if ctx.FileExists("gems.rb") {
+		if gemsRbExists {
 			ctx.Warnf("Gemfile and gems.gb both exist. Using Gemfile.")
 		}
-	} else if ctx.FileExists("gems.rb") {
+	} else if gemsRbExists {
 		gemfile = "gems.rb"
-	}
-	if gemfile == "" {
+	} else {
 		return nil
 	}
-
 	script := filepath.Join(ctx.BuildpackRoot(), "scripts", "check_gemfile_version.rb")
 	result, err := ctx.ExecWithErr([]string{"ruby", script, gemfile})
 	if err != nil && result != nil && result.ExitCode != 0 {

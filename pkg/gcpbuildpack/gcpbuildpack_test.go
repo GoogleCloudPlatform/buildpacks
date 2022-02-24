@@ -493,7 +493,9 @@ func TestHasAtLeastOne(t *testing.T) {
 
 			ctx := NewContext(WithApplicationRoot(dir))
 			for _, f := range tc.files {
-				ctx.MkdirAll(tc.prefix, 0777)
+				if err := os.MkdirAll(tc.prefix, 0777); err != nil {
+					t.Fatalf("Error creating %s: %v", tc.prefix, err)
+				}
 				_, err := ioutil.TempFile(tc.prefix, f)
 				if err != nil {
 					t.Fatalf("Creating temp file %s/%s: %v", tc.prefix, f, err)

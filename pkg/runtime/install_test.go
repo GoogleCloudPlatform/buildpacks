@@ -16,6 +16,7 @@ package runtime
 
 import (
 	"net/http"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -75,8 +76,8 @@ func TestInstallDartSDK(t *testing.T) {
 
 			if tc.wantFile != "" {
 				fp := filepath.Join(l.Path, tc.wantFile)
-				if !ctx.FileExists(fp) {
-					t.Errorf("Failed to extract. Missing file: %s", fp)
+				if _, err := os.Stat(fp); err != nil {
+					t.Errorf("Failed to extract. Missing file: %s (%v)", fp, err)
 				}
 				if l.Metadata["version"] != version {
 					t.Errorf("Layer Metadata.version = %q, want %q", l.Metadata["version"], version)
@@ -172,8 +173,8 @@ func TestInstallRuby(t *testing.T) {
 
 			if tc.wantFile != "" {
 				fp := filepath.Join(layer.Path, tc.wantFile)
-				if !ctx.FileExists(fp) {
-					t.Errorf("Failed to extract. Missing file: %s", fp)
+				if _, err := os.Stat(fp); err != nil {
+					t.Errorf("Failed to extract. Missing file: %s (%v)", fp, err)
 				}
 			}
 			if tc.wantVersion != "" && layer.Metadata["version"] != tc.wantVersion {

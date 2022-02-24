@@ -41,7 +41,11 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 func validateAppEngineAPIs(ctx *gcp.Context) error {
-	if !ctx.FileExists("composer.json") {
+	composerExists, err := ctx.FileExists("composer.json")
+	if err != nil {
+		return err
+	}
+	if !composerExists {
 		return nil
 	}
 

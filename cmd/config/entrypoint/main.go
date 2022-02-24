@@ -39,7 +39,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if os.Getenv(env.Entrypoint) != "" {
 		return gcp.OptInEnvSet(env.Entrypoint), nil
 	}
-	if ctx.FileExists("Procfile") {
+	procExists, err := ctx.FileExists("Procfile")
+	if err != nil {
+		return nil, err
+	}
+	if procExists {
 		return gcp.OptInFileFound("Procfile"), nil
 	}
 	if entrypoint, _ := appyaml.EntrypointIfExists(ctx.ApplicationRoot()); entrypoint != "" {
@@ -57,8 +61,15 @@ func buildFn(ctx *gcp.Context) error {
 		return nil
 	}
 
-	if ctx.FileExists("Procfile") {
-		b := ctx.ReadFile("Procfile")
+	procExists, err := ctx.FileExists("Procfile")
+	if err != nil {
+		return err
+	}
+	if procExists {
+		b, err := ctx.ReadFile("Procfile")
+		if err != nil {
+			return err
+		}
 		return addProcfileProcesses(ctx, string(b))
 	}
 

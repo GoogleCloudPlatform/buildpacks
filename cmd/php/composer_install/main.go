@@ -40,7 +40,11 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !ctx.FileExists(composerJSON) {
+	composerJSONExists, err := ctx.FileExists(composerJSON)
+	if err != nil {
+		return nil, err
+	}
+	if !composerJSONExists {
 		return gcp.OptOutFileNotFound(composerJSON), nil
 	}
 	return gcp.OptInFileFound(composerJSON), nil

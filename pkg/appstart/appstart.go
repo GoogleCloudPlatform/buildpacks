@@ -18,6 +18,7 @@ package appstart
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
@@ -71,8 +72,12 @@ func (c Config) Write(ctx *gcp.Context) error {
 	}
 
 	ctx.RemoveAll(ConfigDir)
-	ctx.Symlink(l.Path, ConfigDir)
-	ctx.WriteFile(configFile, cb, 0444)
+	if err := ctx.Symlink(l.Path, ConfigDir); err != nil {
+		return err
+	}
+	if err := ctx.WriteFile(configFile, cb, os.FileMode(0444)); err != nil {
+		return err
+	}
 
 	return nil
 }

@@ -124,7 +124,11 @@ func TestMainPath(t *testing.T) {
 				}
 			}()
 
-			if got := mainPath(ctx); got != tc.want {
+			got, err := mainPath(ctx)
+			if err != nil {
+				t.Fatalf("mainPath() failed unexpectedly; err=%s", err)
+			}
+			if got != tc.want {
 				t.Errorf("mainPath() = %q, want %q", got, tc.want)
 			}
 		})

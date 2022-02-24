@@ -118,7 +118,10 @@ func FindManifestValueFromJar(jarPath, key string) (string, error) {
 
 // MainFromManifest returns the main class specified in the manifest at the input path.
 func MainFromManifest(ctx *gcp.Context, manifestPath string) (string, error) {
-	content := ctx.ReadFile(manifestPath)
+	content, err := ctx.ReadFile(manifestPath)
+	if err != nil {
+		return "", err
+	}
 	main, err := findValueFromManifest(content, mainClassKey)
 	if err != nil {
 		return "", err
@@ -163,10 +166,14 @@ func CheckCacheExpiration(ctx *gcp.Context, m2CachedRepo *libcnb.Layer) {
 }
 
 // MvnCmd returns the command that should be used to invoke maven for this build.
-func MvnCmd(ctx *gcp.Context) string {
-	// If this project has the Maven Wrapper, we should use it
-	if ctx.FileExists("mvnw") {
-		return "./mvnw"
+func MvnCmd(ctx *gcp.Context) (string, error) {
+	exists, err := ctx.FileExists("mvnw")
+	if err != nil {
+		return "", err
 	}
-	return "mvn"
+	// If this project has the Maven Wrapper, we should use it
+	if exists {
+		return "./mvnw", nil
+	}
+	return "mvn", nil
 }

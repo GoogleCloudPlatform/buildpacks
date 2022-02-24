@@ -88,7 +88,11 @@ func validateSource(ctx *gcp.Context) (string, error) {
 		fnSource = defaultSource
 	}
 
-	if ctx.FileExists(fnSource) {
+	fnSourceExists, err := ctx.FileExists(fnSource)
+	if err != nil {
+		return "", err
+	}
+	if fnSourceExists {
 		return fnSource, nil
 	}
 	if sourceEnvFound {

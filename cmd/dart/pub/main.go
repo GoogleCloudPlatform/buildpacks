@@ -29,7 +29,11 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !ctx.FileExists("pubspec.yaml") {
+	pubspecExists, err := ctx.FileExists("pubspec.yaml")
+	if err != nil {
+		return nil, err
+	}
+	if !pubspecExists {
 		return gcp.OptOutFileNotFound("pubspec.yaml"), nil
 	}
 	return gcp.OptInFileFound("pubspec.yaml"), nil

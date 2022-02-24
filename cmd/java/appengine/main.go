@@ -38,7 +38,11 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
-	if ctx.FileExists("WEB-INF", "appengine-web.xml") {
+	webXMLExists, err := ctx.FileExists("WEB-INF", "appengine-web.xml")
+	if err != nil {
+		return nil, err
+	}
+	if webXMLExists {
 		return &appstart.Entrypoint{
 			Type:    appstart.EntrypointGenerated.String(),
 			Command: "serve WEB-INF/appengine-web.xml",

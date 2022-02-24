@@ -132,7 +132,11 @@ func getEntrypoint(ctx *gcp.Context, bin, proj string) (string, error) {
 	ctx.Logf("Determining entrypoint from output directory %s and project file %s", bin, proj)
 	p := strings.TrimSuffix(filepath.Base(proj), filepath.Ext(proj))
 
-	if ep := getEntrypointCmd(ctx, filepath.Join(bin, p)); ep != "" {
+	ep, err := getEntrypointCmd(ctx, filepath.Join(bin, p))
+	if err != nil {
+		return "", err
+	}
+	if ep != "" {
 		return ep, nil
 	}
 
@@ -141,7 +145,11 @@ func getEntrypoint(ctx *gcp.Context, bin, proj string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("getting assembly name: %w", err)
 	}
-	if ep := getEntrypointCmd(ctx, filepath.Join(bin, an)); ep != "" {
+	ep, err = getEntrypointCmd(ctx, filepath.Join(bin, an))
+	if err != nil {
+		return "", err
+	}
+	if ep != "" {
 		return ep, nil
 	}
 
@@ -149,11 +157,16 @@ func getEntrypoint(ctx *gcp.Context, bin, proj string) (string, error) {
 	return "", gcp.UserErrorf("unable to find executable produced from %s, try setting the AssemblyName property", proj)
 }
 
-func getEntrypointCmd(ctx *gcp.Context, ep string) string {
-	if dll := ep + ".dll"; ctx.FileExists(dll) {
-		return fmt.Sprintf("cd %s && exec dotnet %s", path.Dir(dll), path.Base(dll))
+func getEntrypointCmd(ctx *gcp.Context, ep string) (string, error) {
+	dll := ep + ".dll"
+	dllExists, err := ctx.FileExists(dll)
+	if err != nil {
+		return "", err
 	}
-	return ""
+	if dllExists {
+		return fmt.Sprintf("cd %s && exec dotnet %s", path.Dir(dll), path.Base(dll)), nil
+	}
+	return "", nil
 }
 
 func checkCache(ctx *gcp.Context, l *libcnb.Layer) (bool, error) {
@@ -164,7 +177,11 @@ func checkCache(ctx *gcp.Context, l *libcnb.Layer) (bool, error) {
 	// that's where the primary implementation is done.
 	projectFiles := dotnet.ProjectFiles(ctx, ".")
 	globalJSON := filepath.Join(ctx.ApplicationRoot(), "global.json")
-	if ctx.FileExists(globalJSON) {
+	globalJSONExists, err := ctx.FileExists(globalJSON)
+	if err != nil {
+		return false, err
+	}
+	if globalJSONExists {
 		projectFiles = append(projectFiles, globalJSON)
 	}
 	currentVersion := ctx.Exec([]string{"dotnet", "--version"}).Stdout

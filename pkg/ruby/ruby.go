@@ -42,7 +42,11 @@ func DetectVersion(ctx *gcp.Context) (string, error) {
 	for _, lockFileName := range lockFiles {
 
 		path := filepath.Join(ctx.ApplicationRoot(), lockFileName)
-		if ctx.FileExists(path) {
+		pathExists, err := ctx.FileExists(path)
+		if err != nil {
+			return "", err
+		}
+		if pathExists {
 
 			file, err := os.Open(path)
 			if err != nil {

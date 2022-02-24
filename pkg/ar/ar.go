@@ -87,7 +87,11 @@ func arRepositories() []string {
 // https://pip.pypa.io/en/stable/topics/authentication/#netrc-support).
 func GeneratePythonConfig(ctx *gcp.Context) error {
 	netrcPath := filepath.Join(ctx.HomeDir(), pythonConfigName)
-	if ctx.FileExists(netrcPath) {
+	netrcExists, err := ctx.FileExists(netrcPath)
+	if err != nil {
+		return err
+	}
+	if netrcExists {
 		ctx.Debugf("Found an existing .netrc file.  Skipping .netrc creation.")
 		// If a .netrc file already exists we should not override it.
 		return nil
@@ -102,7 +106,10 @@ func GeneratePythonConfig(ctx *gcp.Context) error {
 		return nil
 	}
 
-	f := ctx.CreateFile(netrcPath)
+	f, err := ctx.CreateFile(netrcPath)
+	if err != nil {
+		return err
+	}
 	defer f.Close()
 
 	return writePythonConfig(f, tok)
@@ -144,19 +151,30 @@ machine {{$entry}} login oauth2accesstoken password {{$.Token}}
 // https://cloud.google.com/artifact-registry/docs/nodejs/authentication).
 func GenerateNPMConfig(ctx *gcp.Context) error {
 	userConfig := filepath.Join(ctx.HomeDir(), npmConfigName)
-	if ctx.FileExists(userConfig) {
+	userConfigExists, err := ctx.FileExists(userConfig)
+	if err != nil {
+		return err
+	}
+	if userConfigExists {
 		ctx.Debugf("Found an existing user-level .npmrc file. Skipping .npmrc creation.")
 		return nil
 	}
 
 	projectConfig := filepath.Join(ctx.ApplicationRoot(), npmConfigName)
-	if !ctx.FileExists(projectConfig) {
+	projConfigExists, err := ctx.FileExists(projectConfig)
+	if err != nil {
+		return nil
+	}
+	if !projConfigExists {
 		// Unlike Python, NPM credentials must configured per repo. If the devoloper has not included
 		// a project-level npmrc, there are no AR repos to set credentials for, so there is nothing
 		// more to do.
 		return nil
 	}
-	content := ctx.ReadFile(projectConfig)
+	content, err := ctx.ReadFile(projectConfig)
+	if err != nil {
+		return err
+	}
 
 	matches := npmRegistryRegexp.FindAllStringSubmatch(string(content), -1)
 	var repos []string
@@ -180,7 +198,10 @@ func GenerateNPMConfig(ctx *gcp.Context) error {
 
 	ctx.Debugf("Configuring NPM credentials for: %s", strings.Join(repos, ", "))
 
-	f := ctx.CreateFile(userConfig)
+	f, err := ctx.CreateFile(userConfig)
+	if err != nil {
+		return err
+	}
 	defer f.Close()
 
 	return writeNpmConfig(f, repos, tok)

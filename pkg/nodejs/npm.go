@@ -32,17 +32,25 @@ const (
 var minPruneVersion = semver.MustParse("5.7.0")
 
 // EnsureLockfile returns the name of the lockfile, generating a package-lock.json if necessary.
-func EnsureLockfile(ctx *gcp.Context) string {
-	// npm prefers npm-shrinkwrap.json, see https://docs.npmjs.com/cli/shrinkwrap.
-	if ctx.FileExists(NPMShrinkwrap) {
-		return NPMShrinkwrap
+func EnsureLockfile(ctx *gcp.Context) (string, error) {
+	npmShrinkwrapExists, err := ctx.FileExists(NPMShrinkwrap)
+	if err != nil {
+		return "", err
 	}
-	if !ctx.FileExists(PackageLock) {
+	// npm prefers npm-shrinkwrap.json, see https://docs.npmjs.com/cli/shrinkwrap.
+	if npmShrinkwrapExists {
+		return NPMShrinkwrap, nil
+	}
+	pkgLockExists, err := ctx.FileExists(PackageLock)
+	if err != nil {
+		return "", err
+	}
+	if !pkgLockExists {
 		ctx.Logf("Generating %s.", PackageLock)
 		ctx.Warnf("*** Improve build performance by generating and committing %s.", PackageLock)
 		ctx.Exec([]string{"npm", "install", "--package-lock-only", "--quiet"}, gcp.WithUserAttribution)
 	}
-	return PackageLock
+	return PackageLock, nil
 }
 
 // NPMInstallCommand returns the correct install command based on the version of Node.js.

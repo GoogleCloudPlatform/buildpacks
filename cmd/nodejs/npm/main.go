@@ -37,7 +37,11 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !ctx.FileExists("package.json") {
+	pkgJSONExists, err := ctx.FileExists("package.json")
+	if err != nil {
+		return nil, err
+	}
+	if !pkgJSONExists {
 		return gcp.OptOutFileNotFound("package.json"), nil
 	}
 	return gcp.OptInFileFound("package.json"), nil
@@ -51,7 +55,10 @@ func buildFn(ctx *gcp.Context) error {
 	if err := ar.GenerateNPMConfig(ctx); err != nil {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
-	lockfile := nodejs.EnsureLockfile(ctx)
+	lockfile, err := nodejs.EnsureLockfile(ctx)
+	if err != nil {
+		return err
+	}
 
 	nodeEnv := nodejs.NodeEnv()
 	gcpBuild, err := nodejs.HasGCPBuild(ctx.ApplicationRoot())
@@ -85,7 +92,9 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Exec([]string{"npm", installCmd, "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution)
 
 		// Ensure node_modules exists even if no dependencies were installed.
-		ctx.MkdirAll("node_modules", 0755)
+		if err := ctx.MkdirAll("node_modules", 0755); err != nil {
+			return err
+		}
 		ctx.Exec([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution)
 	}
 

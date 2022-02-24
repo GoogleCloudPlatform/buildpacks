@@ -22,36 +22,39 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 )
 
-// TempDir creates a directory with the provided name in the buildpack temp layer and returns its path. Exits on any error.
-func (ctx *Context) TempDir(name string) string {
+// TempDir creates a directory with the provided name in the buildpack temp layer and returns its path
+func (ctx *Context) TempDir(name string) (string, error) {
 	tmpLayer := ctx.Layer("gcpbuildpack-tmp")
 	directory := filepath.Join(tmpLayer.Path, name)
-	ctx.MkdirAll(directory, 0755)
-	return directory
-}
-
-// WriteFile invokes ioutil.WriteFile, exiting on any error.
-func (ctx *Context) WriteFile(filename string, data []byte, perm os.FileMode) {
-	if err := ioutil.WriteFile(filename, data, perm); err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "writing file %q: %v", filename, err))
+	if err := ctx.MkdirAll(directory, 0755); err != nil {
+		return "", err
 	}
+	return directory, nil
 }
 
-// ReadFile invokes ioutil.ReadFile, exiting on any error.
-func (ctx *Context) ReadFile(filename string) []byte {
+// WriteFile is a pass through for ioutil.WriteFile(...) and returns any error with proper user / system attribution
+func (ctx *Context) WriteFile(filename string, data []byte, perm os.FileMode) error {
+	if err := ioutil.WriteFile(filename, data, perm); err != nil {
+		return buildererror.Errorf(buildererror.StatusInternal, "writing file %q: %v", filename, err)
+	}
+	return nil
+}
+
+// ReadFile is a pass through for ioutil.ReadFile(...) and returns any error with proper user / system attribution
+func (ctx *Context) ReadFile(filename string) ([]byte, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "reading file %q: %v", filename, err))
+		return nil, buildererror.Errorf(buildererror.StatusInternal, "reading file %q: %v", filename, err)
 	}
-	return data
+	return data, nil
 }
 
-// ReadDir invokes ioutil.ReadDir, exiting on any error.
-func (ctx *Context) ReadDir(elem ...string) []os.FileInfo {
+// ReadDir is a pass through for ioutil.ReadDir(...) and returns any error with proper user / system attribution
+func (ctx *Context) ReadDir(elem ...string) ([]os.FileInfo, error) {
 	n := filepath.Join(elem...)
 	files, err := ioutil.ReadDir(n)
 	if err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "reading directory %q: %v", n, err))
+		return nil, buildererror.Errorf(buildererror.StatusInternal, "reading directory %q: %v", n, err)
 	}
-	return files
+	return files, nil
 }

@@ -40,10 +40,18 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !ctx.FileExists(nodejs.YarnLock) {
+	yarnLockExists, err := ctx.FileExists(nodejs.YarnLock)
+	if err != nil {
+		return nil, err
+	}
+	if !yarnLockExists {
 		return gcp.OptOutFileNotFound("yarn.lock"), nil
 	}
-	if !ctx.FileExists("package.json") {
+	pkgJSONExists, err := ctx.FileExists("package.json")
+	if err != nil {
+		return nil, err
+	}
+	if !pkgJSONExists {
 		return gcp.OptOutFileNotFound("package.json"), nil
 	}
 
@@ -115,17 +123,27 @@ func yarn1InstallModules(ctx *gcp.Context) error {
 	// the app dir.
 	layerModules := filepath.Join(ml.Path, "node_modules")
 	appModules := filepath.Join(ctx.ApplicationRoot(), "node_modules")
-	ctx.MkdirAll(layerModules, 0755)
+	if err := ctx.MkdirAll(layerModules, 0755); err != nil {
+		return err
+	}
 	ctx.RemoveAll(appModules)
-	ctx.Symlink(layerModules, appModules)
+	if err := ctx.Symlink(layerModules, appModules); err != nil {
+		return err
+	}
 	locationFlag := fmt.Sprintf("--modules-folder=%s", layerModules)
 
+	runtimeconfigJSONExists, err := ctx.FileExists(".runtimeconfig.json")
+	if err != nil {
+		return err
+	}
 	// This is a hack to fix a bug in an old version of Firebase that loaded a config using a path
 	// relative to node_modules: https://github.com/firebase/firebase-functions/issues/630.
-	if ctx.FileExists(".runtimeconfig.json") {
+	if runtimeconfigJSONExists {
 		layerConfig := filepath.Join(ml.Path, ".runtimeconfig.json")
 		ctx.RemoveAll(layerConfig)
-		ctx.Symlink(filepath.Join(ctx.ApplicationRoot(), ".runtimeconfig.json"), layerConfig)
+		if err := ctx.Symlink(filepath.Join(ctx.ApplicationRoot(), ".runtimeconfig.json"), layerConfig); err != nil {
+			return err
+		}
 	}
 
 	// Always run yarn install to execute customer's lifecycle hooks.
@@ -175,10 +193,14 @@ func yarn1InstallModules(ctx *gcp.Context) error {
 func yarn2InstallModules(ctx *gcp.Context) error {
 	cmd := []string{"yarn", "install", "--immutable"}
 
+	yarnCacheExists, err := ctx.FileExists(ctx.ApplicationRoot(), ".yarn", "cache")
+	if err != nil {
+		return err
+	}
 	// In Plug'n'Play mode (https://yarnpkg.com/features/pnp) all dependencies must be included in
 	// the Yarn cache. The --immutable-cache option will abort the install with an error if anything
 	// is missing or out of date.
-	if ctx.FileExists(ctx.ApplicationRoot(), ".yarn", "cache") {
+	if yarnCacheExists {
 		cmd = append(cmd, "--immutable-cache")
 	}
 	ctx.Exec(cmd, gcp.WithUserAttribution)
@@ -236,7 +258,9 @@ func installYarn(ctx *gcp.Context) error {
 	ctx.SetMetadata(yrl, versionKey, version)
 	// We need to update the path here to ensure the version we just installed take precendence over
 	// anything pre-installed in the base image.
-	ctx.Setenv("PATH", filepath.Join(yrl.Path, "bin")+":"+os.Getenv("PATH"))
+	if err := ctx.Setenv("PATH", filepath.Join(yrl.Path, "bin")+":"+os.Getenv("PATH")); err != nil {
+		return err
+	}
 	ctx.AddBOMEntry(libcnb.BOMEntry{
 		Name:     yarnLayer,
 		Metadata: map[string]interface{}{"version": version},

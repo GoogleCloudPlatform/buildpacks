@@ -66,8 +66,12 @@ func TestIsWritable(t *testing.T) {
 				t.Fatalf("f.Chmod(%s): %v", tc.mode, err)
 			}
 
-			if got, want := ctx.IsWritable(f.Name()), tc.want; got != want {
-				t.Errorf("gcp.IsWritable(%s) = %t, want %t", f.Name(), got, want)
+			got, err := ctx.IsWritable(f.Name())
+			if err != nil {
+				t.Fatalf("gcp.IsWritable(%q) failed unexpectedly; err=%s", f.Name(), err)
+			}
+			if got != tc.want {
+				t.Errorf("gcp.IsWritable(%s) = %t, want %t", f.Name(), got, tc.want)
 			}
 		})
 	}

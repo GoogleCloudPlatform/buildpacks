@@ -16,6 +16,7 @@
 package golang
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -67,22 +68,25 @@ func SupportsNoGoMod(ctx *gcp.Context) bool {
 
 // SupportsAutoVendor returns true if the Go version supports automatic detection of the vendor directory.
 // This feature is supported by Go 1.14 and higher.
-func SupportsAutoVendor(ctx *gcp.Context) bool {
+func SupportsAutoVendor(ctx *gcp.Context) (bool, error) {
 	return VersionMatches(ctx, ">=1.14.0")
 }
 
 // SupportsGoProxyFallback returns true if the Go versioin supports fallback in GOPROXY using the pipe character.
 // This feature is supported by Go 1.15 and higher.
-func SupportsGoProxyFallback(ctx *gcp.Context) bool {
+func SupportsGoProxyFallback(ctx *gcp.Context) (bool, error) {
 	return VersionMatches(ctx, ">=1.15.0")
 }
 
 // VersionMatches checks if the installed version of Go and the version specified in go.mod match the given version range.
 // The range string has the following format: https://github.com/blang/semver#ranges.
-func VersionMatches(ctx *gcp.Context, versionRange string) bool {
-	v := GoModVersion(ctx)
+func VersionMatches(ctx *gcp.Context, versionRange string) (bool, error) {
+	v, err := GoModVersion(ctx)
+	if err != nil {
+		return false, err
+	}
 	if v == "" {
-		return false
+		return false, nil
 	}
 
 	version, err := semver.NewVersion(v)
@@ -96,7 +100,7 @@ func VersionMatches(ctx *gcp.Context, versionRange string) bool {
 	}
 
 	if !goVersionMatches.Check(version) {
-		return false
+		return false, nil
 	}
 
 	v = GoVersion(ctx)
@@ -106,7 +110,7 @@ func VersionMatches(ctx *gcp.Context, versionRange string) bool {
 		ctx.Exit(1, gcp.InternalErrorf("unable to parse Go version string %q: %s", v, err))
 	}
 
-	return goVersionMatches.Check(version)
+	return goVersionMatches.Check(version), nil
 }
 
 // GoVersion reads the version of the installed Go runtime.
@@ -123,18 +127,21 @@ func GoVersion(ctx *gcp.Context) string {
 
 // GoModVersion reads the version of Go from a go.mod file if present.
 // If not present or if version isn't there returns an empty string.
-func GoModVersion(ctx *gcp.Context) string {
-	v := readGoMod(ctx)
+func GoModVersion(ctx *gcp.Context) (string, error) {
+	v, err := readGoMod(ctx)
+	if err != nil {
+		return "", fmt.Errorf("reading go.mod: %w", err)
+	}
 	if v == "" {
-		return v
+		return v, nil
 	}
 
 	match := goModVersionRegexp.FindStringSubmatch(v)
 	if len(match) < 2 || match[1] == "" {
-		return ""
+		return "", nil
 	}
 
-	return match[1]
+	return match[1], nil
 }
 
 // readGoVersion returns the output of `go version`.
@@ -145,31 +152,42 @@ var readGoVersion = func(ctx *gcp.Context) string {
 
 // readGoMod reads the go.mod file if present. If not present, returns an empty string.
 // It can be overridden for testing.
-var readGoMod = func(ctx *gcp.Context) string {
+var readGoMod = func(ctx *gcp.Context) (string, error) {
 	goModPath := filepath.Join(ctx.ApplicationRoot(), "go.mod")
-	if !ctx.FileExists(goModPath) {
-		return ""
+	goModExists, err := ctx.FileExists(goModPath)
+	if err != nil {
+		return "", err
 	}
-
-	return string(ctx.ReadFile(goModPath))
+	if !goModExists {
+		return "", nil
+	}
+	bytes, err := ctx.ReadFile(goModPath)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
 }
 
 // ExecWithGoproxyFallback runs the given command with a GOPROXY fallback.
 // Before Go 1.14, Go would fall back to direct only if a 404 or 410 error ocurred, for those
 // versions, we explictly disable GOPROXY and try again on any error.
 // For newer versions of Go, we take advantage of the "pipe" character which has the same effect.
-func ExecWithGoproxyFallback(ctx *gcp.Context, cmd []string, opts ...gcp.ExecOption) *gcp.ExecResult {
-	if SupportsGoProxyFallback(ctx) {
+func ExecWithGoproxyFallback(ctx *gcp.Context, cmd []string, opts ...gcp.ExecOption) (*gcp.ExecResult, error) {
+	supportsGoProxy, err := SupportsGoProxyFallback(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("checking for go proxy support: %w", err)
+	}
+	if supportsGoProxy {
 		opts = append(opts, gcp.WithEnv("GOPROXY=https://proxy.golang.org|direct"))
-		return ctx.Exec(cmd, opts...)
+		return ctx.Exec(cmd, opts...), nil
 	}
 
 	result, err := ctx.ExecWithErr(cmd, opts...)
 	if err == nil {
-		return result
+		return result, nil
 	}
 	ctx.Warnf("%q failed. Retrying with GOSUMDB=off GOPROXY=direct. Error: %v", strings.Join(cmd, " "), err)
 
 	opts = append(opts, gcp.WithEnv("GOSUMDB=off", "GOPROXY=direct"))
-	return ctx.Exec(cmd, opts...)
+	return ctx.Exec(cmd, opts...), nil
 }

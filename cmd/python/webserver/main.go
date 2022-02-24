@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -43,10 +44,18 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if os.Getenv(env.Entrypoint) != "" {
 		return gcp.OptOut("custom entrypoint present"), nil
 	}
-	if ctx.FileExists("requirements.txt") && gunicornPresentInRequirements(ctx, "requirements.txt") {
-		return gcp.OptOut("gunicorn present in requirements.txt"), nil
+	requirementsExists, err := ctx.FileExists("requirements.txt")
+	if err != nil {
+		return nil, err
 	}
-	if ctx.FileExists("requirements.txt") {
+	if requirementsExists {
+		present, err := gunicornPresentInRequirements(ctx, "requirements.txt")
+		if err != nil {
+			return nil, fmt.Errorf("error detecting gunicorn: %w", err)
+		}
+		if present {
+			return gcp.OptOut("gunicorn present in requirements.txt"), nil
+		}
 		return gcp.OptIn("gunicorn missing from requirements.txt", gcp.WithBuildPlans(python.RequirementsProvidesPlan)), nil
 	}
 	return gcp.OptIn("requirements.txt with gunicorn not found", gcp.WithBuildPlans(python.RequirementsProvidesPlan)), nil
@@ -62,9 +71,12 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
-func gunicornPresentInRequirements(ctx *gcp.Context, path string) bool {
-	content := ctx.ReadFile(path)
-	return containsGunicorn(string(content))
+func gunicornPresentInRequirements(ctx *gcp.Context, path string) (bool, error) {
+	content, err := ctx.ReadFile(path)
+	if err != nil {
+		return false, err
+	}
+	return containsGunicorn(string(content)), nil
 }
 
 func containsGunicorn(s string) bool {

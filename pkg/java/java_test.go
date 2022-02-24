@@ -18,6 +18,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -204,7 +205,11 @@ func TestCheckCacheNewDateMiss(t *testing.T) {
 			if metaExpiry == tc.expiryTimestamp {
 				t.Errorf("checkCacheExpiration() did not set new date when expected to with ExpiryTimestamp: %q", metaExpiry)
 			}
-			if ctx.FileExists(testFilePath) {
+			testFilePathExists, err := ctx.FileExists(testFilePath)
+			if err != nil {
+				t.Fatalf("Error checking if file exists: %v", err)
+			}
+			if testFilePathExists {
 				ctx.RemoveAll(testFilePath)
 				t.Errorf("checkCacheExpiration() did not clear layer")
 			}
@@ -233,7 +238,7 @@ func TestCheckCacheNewDateHit(t *testing.T) {
 			if got, want := ctx.GetMetadata(m2CachedRepo, "expiry_timestamp"), tc.expiryTimestamp; got != want {
 				t.Errorf("checkCacheExpiration() set new date when expected not to with ExpiryTimestamp: %q", got)
 			}
-			if !ctx.FileExists(testFilePath) {
+			if _, err := os.Stat(testFilePath); err != nil {
 				t.Errorf("checkCacheExpiration() cleared layer")
 			}
 			// Clean up layer for next test case.
@@ -246,7 +251,10 @@ func setupTestLayer(t *testing.T, ctx *gcp.Context) (string, *libcnb.Layer) {
 	t.Helper()
 	testLayerRoot := t.TempDir()
 	testFilePath := filepath.Join(testLayerRoot, "testfile")
-	ctx.CreateFile(testFilePath)
+	_, err := os.Create(testFilePath)
+	if err != nil {
+		t.Fatalf("error creating %s: %v", testFilePath, err)
+	}
 	m2CachedRepo := &libcnb.Layer{
 		Path:     testLayerRoot,
 		Metadata: map[string]interface{}{},

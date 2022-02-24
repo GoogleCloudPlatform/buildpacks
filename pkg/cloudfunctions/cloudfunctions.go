@@ -52,8 +52,13 @@ func Build(ctx *gcp.Context, runtime string, eg appstart.EntrypointGenerator) er
 	// will in fact execute serve2.
 	// TODO(mtraver) Remove this layer and symlink once serve2 replaces serve and is renamed.
 	l := ctx.Layer("serve", gcp.LaunchLayer)
-	ctx.MkdirAll(filepath.Join(l.Path, "bin"), 0755)
-	ctx.Symlink("/usr/bin/serve2", filepath.Join(l.Path, "bin", "serve"))
+	binDir := filepath.Join(l.Path, "bin")
+	if err := ctx.MkdirAll(binDir, 0755); err != nil {
+		return err
+	}
+	if err := ctx.Symlink("/usr/bin/serve2", filepath.Join(l.Path, "bin", "serve")); err != nil {
+		return err
+	}
 
 	c, err := getConfig(ctx, runtime, eg)
 	if err != nil {

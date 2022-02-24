@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -60,7 +59,10 @@ func buildFn(ctx *gcp.Context) error {
 // all the logic for which workflow to use (e.g native-image build via command
 // line or maven profile) based on the project setup.
 func createImage(ctx *gcp.Context) ([]string, error) {
-	pom := parsePomFile(ctx)
+	pom, err := parsePomFile(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("parsing pom file: %w", err)
+	}
 	if pom == nil {
 		return buildDefault(ctx)
 	}
@@ -99,7 +101,11 @@ func buildDefault(ctx *gcp.Context) ([]string, error) {
 
 // buildCommandLine runs the native-image build via command line and returns the image entrypoint.
 func buildCommandLine(ctx *gcp.Context, buildArgs []string) ([]string, error) {
-	tempImagePath := filepath.Join(ctx.TempDir("native-image"), "native-app")
+	niDir, err := ctx.TempDir("native-image")
+	if err != nil {
+		return nil, err
+	}
+	tempImagePath := filepath.Join(niDir, "native-app")
 
 	// Use a temporary image path because this command may generate extra files
 	// (*.o and *.build_artifacts.txt) alongside the binary in the temp dir.
@@ -112,15 +118,22 @@ func buildCommandLine(ctx *gcp.Context, buildArgs []string) ([]string, error) {
 	nativeLayer := ctx.Layer("native-image", gcp.LaunchLayer)
 	finalImage := filepath.Join(nativeLayer.Path, "bin", "native-app")
 
-	ctx.MkdirAll(path.Dir(finalImage), 0755)
-	ctx.Rename(tempImagePath, finalImage)
+	if err := ctx.MkdirAll(finalImage, 0755); err != nil {
+		return nil, err
+	}
+	if err := ctx.Rename(tempImagePath, finalImage); err != nil {
+		return nil, err
+	}
 
 	return []string{finalImage}, nil
 }
 
 // buildMaven runs the Maven native-image build and returns the image entrypoint.
 func buildMaven(ctx *gcp.Context, buildProfile string) ([]string, error) {
-	mvn := java.MvnCmd(ctx)
+	mvn, err := java.MvnCmd(ctx)
+	if err != nil {
+		return nil, err
+	}
 	command := []string{mvn, "package", "-DskipTests", "--batch-mode", "-Dhttp.keepAlive=false"}
 
 	if buildProfile != "" {
@@ -137,16 +150,26 @@ func buildMaven(ctx *gcp.Context, buildProfile string) ([]string, error) {
 }
 
 // parsePomFile returns a parsed pom.xml if it exists.
-func parsePomFile(ctx *gcp.Context) *java.MavenProject {
-	if !ctx.FileExists("pom.xml") {
-		return nil
+func parsePomFile(ctx *gcp.Context) (*java.MavenProject, error) {
+	pomExists, err := ctx.FileExists("pom.xml")
+	if err != nil {
+		return nil, err
+	}
+	if !pomExists {
+		return nil, nil
 	}
 
-	tmpDir := ctx.TempDir("native-image-maven")
+	tmpDir, err := ctx.TempDir("native-image-maven")
+	if err != nil {
+		return nil, fmt.Errorf("creating temp directory: %w", err)
+	}
 
 	// Write the effective Maven pom.xml to file.
 	effectivePomPath := filepath.Join(tmpDir, "project_effective_pom.xml")
-	mvn := java.MvnCmd(ctx)
+	mvn, err := java.MvnCmd(ctx)
+	if err != nil {
+		return nil, err
+	}
 	ctx.Exec([]string{
 		mvn,
 		"help:effective-pom",
@@ -155,13 +178,16 @@ func parsePomFile(ctx *gcp.Context) *java.MavenProject {
 		"-Doutput=" + effectivePomPath}, gcp.WithUserAttribution)
 
 	// Parse the effective pom.xml.
-	effectivePom := ctx.ReadFile(effectivePomPath)
+	effectivePom, err := ctx.ReadFile(effectivePomPath)
+	if err != nil {
+		return nil, err
+	}
 	project, err := java.ParsePomFile(effectivePom)
 	if err != nil {
 		ctx.Warnf("A pom.xml was found but unable to be parsed: %v\n", err)
-		return nil
+		return nil, nil
 	}
-	return project
+	return project, nil
 }
 
 // findNativeBuildProfile returns the profile in which the native-image-plugin is defined
@@ -198,7 +224,10 @@ func springBootPluginDefined(ctx *gcp.Context, project *java.MavenProject) bool 
 func findNativeExecutable(ctx *gcp.Context) (string, error) {
 	var allExecutables []string
 
-	targetDir := ctx.ReadDir("target")
+	targetDir, err := ctx.ReadDir("target")
+	if err != nil {
+		return "", err
+	}
 
 	for _, info := range targetDir {
 		// If any of the last three bits of the file mode are set, it is executable.
@@ -244,7 +273,10 @@ func classpathAndMainFromSpringBoot(ctx *gcp.Context) (string, string, error) {
 		return "", "", nil
 	}
 
-	explodedJarDir := ctx.TempDir("exploded-jar")
+	explodedJarDir, err := ctx.TempDir("exploded-jar")
+	if err != nil {
+		return "", "", fmt.Errorf("creating temp directory: %w", err)
+	}
 	ctx.Exec([]string{"unzip", "-q", jar, "-d", explodedJarDir}, gcp.WithUserAttribution)
 
 	classes := filepath.Join(explodedJarDir, "BOOT-INF", "classes")
@@ -276,7 +308,11 @@ func buildFunctionsFramework(ctx *gcp.Context, functionTarget string, project *j
 func createFunctionsClasspath(ctx *gcp.Context, project *java.MavenProject) (string, error) {
 	jarName := fmt.Sprintf("%s-%s.jar", project.ArtifactID, project.Version)
 	applicationJar := filepath.Join("target", jarName)
-	if !ctx.FileExists(applicationJar) {
+	jarExists, err := ctx.FileExists(applicationJar)
+	if err != nil {
+		return "", err
+	}
+	if !jarExists {
 		return "", gcp.UserErrorf("finding application JAR: %s", applicationJar)
 	}
 	dependencies := filepath.Join("target", "dependency", "*")

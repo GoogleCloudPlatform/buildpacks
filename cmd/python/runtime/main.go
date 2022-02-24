@@ -122,8 +122,15 @@ func runtimeVersion(ctx *gcp.Context) (string, error) {
 		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, v)
 		return v, nil
 	}
-	if ctx.FileExists(versionFile) {
-		raw := ctx.ReadFile(versionFile)
+	versionFileExists, err := ctx.FileExists(versionFile)
+	if err != nil {
+		return "", err
+	}
+	if versionFileExists {
+		raw, err := ctx.ReadFile(versionFile)
+		if err != nil {
+			return "", err
+		}
 		v := strings.TrimSpace(string(raw))
 		if v != "" {
 			ctx.Logf("Using runtime version from %s: %s", versionFile, v)

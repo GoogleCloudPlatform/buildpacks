@@ -93,10 +93,12 @@ func AddSyncMetadata(ctx *gcp.Context, syncRulesFn func(string) []SyncRule) {
 }
 
 // writeBuildAndRunScript writes the contents of a file that builds code and then runs the resulting program
-func writeBuildAndRunScript(ctx *gcp.Context, sl *libcnb.Layer, cfg Config) {
+func writeBuildAndRunScript(ctx *gcp.Context, sl *libcnb.Layer, cfg Config) error {
 	sl.Launch = true
 	binDir := filepath.Join(sl.Path, "bin")
-	ctx.MkdirAll(binDir, 0755)
+	if err := ctx.MkdirAll(binDir, 0755); err != nil {
+		return err
+	}
 
 	var cmd []string
 	if cfg.BuildCmd != nil {
@@ -108,15 +110,20 @@ func writeBuildAndRunScript(ctx *gcp.Context, sl *libcnb.Layer, cfg Config) {
 
 	c := fmt.Sprintf("#!/bin/sh\n%s", strings.Join(cmd, " && "))
 	br := filepath.Join(binDir, buildAndRun)
-	ctx.WriteFile(br, []byte(c), os.FileMode(0755))
+	if err := ctx.WriteFile(br, []byte(c), os.FileMode(0755)); err != nil {
+		return err
+	}
 
 	c = fmt.Sprintf("#!/bin/sh\nwatchexec -r -e %s %s", strings.Join(cfg.Ext, ","), br)
 	wr := filepath.Join(binDir, WatchAndRun)
-	ctx.WriteFile(wr, []byte(c), os.FileMode(0755))
+	if err := ctx.WriteFile(wr, []byte(c), os.FileMode(0755)); err != nil {
+		return err
+	}
+	return nil
 }
 
 // installFileWatcher installs the `watchexec` file watcher.
-func installFileWatcher(ctx *gcp.Context) {
+func installFileWatcher(ctx *gcp.Context) error {
 	wxl := ctx.Layer(watchexecLayer, gcp.CacheLayer, gcp.LaunchLayer)
 
 	// Check metadata layer to see if correct version of watchexec is already installed.
@@ -129,7 +136,9 @@ func installFileWatcher(ctx *gcp.Context) {
 		ctx.ClearLayer(wxl)
 
 		binDir := filepath.Join(wxl.Path, "bin")
-		ctx.MkdirAll(binDir, 0755)
+		if err := ctx.MkdirAll(binDir, 0755); err != nil {
+			return err
+		}
 
 		// Download and install watchexec in layer.
 		ctx.Logf("Installing watchexec v%s", watchexecVersion)
@@ -138,4 +147,5 @@ func installFileWatcher(ctx *gcp.Context) {
 		ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 		ctx.SetMetadata(wxl, versionKey, watchexecVersion)
 	}
+	return nil
 }

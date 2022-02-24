@@ -57,7 +57,11 @@ func buildFn(ctx *gcp.Context) error {
 	// Function source code should be defined in the "main" field in package.json, index.js or function.js.
 	// https://cloud.google.com/functions/docs/writing#structuring_source_code
 	fnFile := "function.js"
-	if ctx.FileExists("index.js") {
+	indexJSExists, err := ctx.FileExists("index.js")
+	if err != nil {
+		return err
+	}
+	if indexJSExists {
 		fnFile = "index.js"
 	}
 	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
@@ -68,7 +72,11 @@ func buildFn(ctx *gcp.Context) error {
 		fnFile = pjs.Main
 	}
 
-	if !ctx.FileExists(fnFile) {
+	fnFileExists, err := ctx.FileExists(fnFile)
+	if err != nil {
+		return err
+	}
+	if !fnFileExists {
 		return gcp.UserErrorf("%s does not exist", fnFile)
 	}
 
@@ -81,11 +89,16 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("installing worker.js: %w", err)
 	}
 
+	nm := filepath.Join(ctx.ApplicationRoot(), "node_modules")
+	nmExists, err := ctx.FileExists(nm)
+	if err != nil {
+		return err
+	}
 	// The environment variables required by worker.js are different than those expected
 	// by the Functions Frameworks (hence we don't use ctx.SetFunctionsEnvVars()).
 
 	// Add user's node_modules to NODE_PATH so functions-framework can always find user's packages.
-	if nm := filepath.Join(ctx.ApplicationRoot(), "node_modules"); ctx.FileExists(nm) {
+	if nmExists {
 		l.LaunchEnvironment.Prepend("NODE_PATH", string(os.PathListSeparator), nm)
 	}
 	if target := os.Getenv(env.FunctionTarget); target != "" {

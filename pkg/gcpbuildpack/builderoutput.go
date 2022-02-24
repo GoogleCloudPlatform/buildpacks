@@ -143,8 +143,13 @@ func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 	var bo builderoutput.BuilderOutput
 	fname := filepath.Join(outputDir, builderOutputFilename)
 
+	fnameExists, err := ctx.FileExists(fname)
+	if err != nil {
+		ctx.Warnf("Failed to determine if %s exists, skipping statistics: %v", fname, err)
+		return
+	}
 	// Previous buildpacks may have already written to the builder output file.
-	if ctx.FileExists(fname) {
+	if fnameExists {
 		content, err := ioutil.ReadFile(fname)
 		if err != nil {
 			ctx.Warnf("Failed to read %s, skipping statistics: %v", fname, err)

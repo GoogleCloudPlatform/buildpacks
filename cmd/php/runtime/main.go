@@ -34,7 +34,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return result, nil
 	}
 
-	if ctx.FileExists("composer.json") {
+	composerJSONExists, err := ctx.FileExists("composer.json")
+	if err != nil {
+		return nil, err
+	}
+	if composerJSONExists {
 		return gcp.OptInFileFound("composer.json"), nil
 	}
 	if ctx.HasAtLeastOne("*.php") {

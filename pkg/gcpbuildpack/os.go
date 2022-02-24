@@ -21,74 +21,79 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 )
 
-// Rename renames the old path to the new path, exiting on any error.
-func (ctx *Context) Rename(old, new string) {
+// Rename is a pass through for os.Rename(...) and logs an informational statement and returns any error with proper user / system attribution
+func (ctx *Context) Rename(old, new string) error {
 	ctx.Debugf("Renaming %q to %q", old, new)
 	if err := os.Rename(old, new); err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "renaming %s to %s: %v", old, new, err))
+		return buildererror.Errorf(buildererror.StatusInternal, "renaming %s to %s: %v", old, new, err)
 	}
+	return nil
 }
 
-// CreateFile creates the specified file, return the File object, exiting on any error.
-func (ctx *Context) CreateFile(file string) *os.File {
+// CreateFile is a pass through for os.Create(...) and returns any error with proper user / system attribution
+func (ctx *Context) CreateFile(file string) (*os.File, error) {
 	f, err := os.Create(file)
 	if err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "creating %s: %v", file, err))
+		return nil, buildererror.Errorf(buildererror.StatusInternal, "creating %s: %v", file, err)
 	}
-	return f
+	return f, nil
 }
 
-// MkdirAll creates all necessary directories for the given path, exiting on any error.
-func (ctx *Context) MkdirAll(path string, perm os.FileMode) {
+// MkdirAll is a pass through for os.Create(...) and returns any error with proper user / system attribution
+func (ctx *Context) MkdirAll(path string, perm os.FileMode) error {
 	if err := os.MkdirAll(path, perm); err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "creating %s: %v", path, err))
+		return buildererror.Errorf(buildererror.StatusInternal, "creating %s: %v", path, err)
 	}
+	return nil
 }
 
-// RemoveAll removes the given path, exiting on any error.
-func (ctx *Context) RemoveAll(elem ...string) {
+// RemoveAll is a pass through for os.RemoveAll(...) and returns any error with proper user / system attribution
+func (ctx *Context) RemoveAll(elem ...string) error {
 	path := filepath.Join(elem...)
 	if err := os.RemoveAll(path); err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "removing %s: %v", path, err))
+		return buildererror.Errorf(buildererror.StatusInternal, "removing %s: %v", path, err)
 	}
+	return nil
 }
 
-// Symlink creates newname as a symbolic name to oldname, exiting on any error.
-func (ctx *Context) Symlink(oldname string, newname string) {
+// Symlink is a pass through for os.Symlink(...) and returns any error with proper user / system attribution
+func (ctx *Context) Symlink(oldname string, newname string) error {
 	if err := os.Symlink(oldname, newname); err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "symlinking from %q to %q: %v", oldname, newname, err))
+		return buildererror.Errorf(buildererror.StatusInternal, "symlinking from %q to %q: %v", oldname, newname, err)
 	}
+	return nil
 }
 
-// FileExists returns true if a file exists at the path joined by elem, exiting on any error.
-func (ctx *Context) FileExists(elem ...string) bool {
+// FileExists returns true if a file exists at the path joined by elem
+func (ctx *Context) FileExists(elem ...string) (bool, error) {
 	path := filepath.Join(elem...)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return false
+		return false, nil
 	} else if err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "stat %q: %v", path, err))
+		return false, buildererror.Errorf(buildererror.StatusInternal, "stat %q: %v", path, err)
 	}
-	return true
+	return true, nil
 }
 
-// IsWritable returns true if the file at the path constructed by joining elem is writable by the owner, exiting on any error.
-func (ctx *Context) IsWritable(elem ...string) bool {
+// IsWritable returns true if the file at the path constructed by joining elem is writable by the owner
+func (ctx *Context) IsWritable(elem ...string) (bool, error) {
 	path := filepath.Join(elem...)
 	info, err := os.Stat(path)
 	if err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "stat %q: %v", path, err))
+		return false, buildererror.Errorf(buildererror.StatusInternal, "stat %q: %v", path, err)
 	}
-	return info.Mode().Perm()&0200 != 0
+	return info.Mode().Perm()&0200 != 0, nil
 }
 
-// Setenv immediately sets an environment variable, exiting on any error.
+// Setenv is a pass through for os.Setenv(...) and returns any error with proper user / system attribution
 // Note: this only sets an env var for the current script invocation. If you need an env var that
 // persists through the build environment or the launch environment, use ctx.PrependBuildEnv,...
-func (ctx *Context) Setenv(key, value string) {
+func (ctx *Context) Setenv(key, value string) error {
 	ctx.Debugf("Setting environment variable %s=%s", key, value)
 	if err := os.Setenv(key, value); err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "setting env var %s: %v", key, err))
+		return buildererror.Errorf(buildererror.StatusInternal, "setting env var %s: %v", key, err)
 	}
+	return nil
 }
 
 // HomeDir returns the path of the $USER's $HOME directory.

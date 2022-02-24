@@ -38,10 +38,17 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if path == "" {
 		return gcp.OptOut("Env var GAE_APPLICATION_YAML_PATH is not set, not a GAE Flex app."), nil
 	}
-	if !ctx.FileExists(path) {
+	pathExists, err := ctx.FileExists(path)
+	if err != nil {
+		return nil, err
+	}
+	if !pathExists {
 		return gcp.OptOutFileNotFound(path), nil
 	}
-	content := ctx.ReadFile(path)
+	content, err := ctx.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
 
 	if len(envFlexRe.FindAllString(string(content), -1)) > 0 {
 		return gcp.OptIn("env: flex found in the application yaml file."), nil

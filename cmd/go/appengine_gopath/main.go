@@ -33,7 +33,11 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if ctx.FileExists("go.mod") {
+	goModExists, err := ctx.FileExists("go.mod")
+	if err != nil {
+		return nil, err
+	}
+	if goModExists {
 		return gcp.OptOut("go.mod found"), nil
 	}
 	if !ctx.HasAtLeastOne("*.go") {
@@ -48,7 +52,9 @@ func buildFn(ctx *gcp.Context) error {
 	goPath := l.Path
 	goPathSrc := filepath.Join(goPath, "src")
 
-	ctx.MkdirAll(goPathSrc, 0755)
+	if err := ctx.MkdirAll(goPathSrc, 0755); err != nil {
+		return err
+	}
 
 	l.BuildEnvironment.Override("GOPATH", goPath)
 	l.BuildEnvironment.Override("GO111MODULE", "off")
@@ -57,8 +63,16 @@ func buildFn(ctx *gcp.Context) error {
 	stagerGoPathSrc := filepath.Join(stagerGoPath, "src")
 	stagerGoPathMain := filepath.Join(stagerGoPath, "main-package-path")
 
-	if ctx.FileExists(stagerGoPathSrc) {
-		for _, f := range ctx.ReadDir(stagerGoPathSrc) {
+	stagerGoPathSrcExists, err := ctx.FileExists(stagerGoPathSrc)
+	if err != nil {
+		return err
+	}
+	if stagerGoPathSrcExists {
+		files, err := ctx.ReadDir(stagerGoPathSrc)
+		if err != nil {
+			return err
+		}
+		for _, f := range files {
 			// To avoid superfluous files in root of stagerGoPathSrc, copy the subdirectories individually.
 			if !f.IsDir() {
 				continue
@@ -68,11 +82,21 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	var buildMainPath string
-	if ctx.FileExists(stagerGoPathMain) {
-		buildMainPath = filepath.Join(goPathSrc, strings.TrimSpace(string(ctx.ReadFile(stagerGoPathMain))))
+	stagerGoPathMainExists, err := ctx.FileExists(stagerGoPathMain)
+	if err != nil {
+		return err
+	}
+	if stagerGoPathMainExists {
+		goPathMainBytes, err := ctx.ReadFile(stagerGoPathMain)
+		if err != nil {
+			return err
+		}
+		buildMainPath = filepath.Join(goPathSrc, strings.TrimSpace(string(goPathMainBytes)))
 		// Remove stager directory prior to copying to make sure we don't copy the stager directory to $GOPATH.
 		ctx.RemoveAll(stagerGoPath)
-		ctx.MkdirAll(buildMainPath, 0755)
+		if err := ctx.MkdirAll(buildMainPath, 0755); err != nil {
+			return err
+		}
 		copyDir(ctx, ctx.ApplicationRoot(), buildMainPath)
 	} else {
 		buildMainPath = "./..."

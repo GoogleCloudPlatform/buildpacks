@@ -100,7 +100,10 @@ machine us-west4-python.pkg.dev login oauth2accesstoken password token
 
 			filepath := filepath.Join(tempHome, ".netrc")
 			if tc.fileExists {
-				f := ctx.CreateFile(filepath)
+				f, err := os.Create(filepath)
+				if err != nil {
+					t.Fatalf("error creating %s: %v", filepath, err)
+				}
 				f.Close()
 			}
 

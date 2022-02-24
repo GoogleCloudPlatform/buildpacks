@@ -76,24 +76,32 @@ func main() {
 	gcp.Main(detectFn, buildFn)
 }
 
-func hasCppCode(ctx *gcp.Context) bool {
-	if ctx.FileExists("CMakeLists.txt") {
-		return true
+func hasCppCode(ctx *gcp.Context) (bool, error) {
+	exists, err := ctx.FileExists("CMakeLists.txt")
+	if err != nil {
+		return false, err
+	}
+	if exists {
+		return true, nil
 	}
 	if ctx.HasAtLeastOne("*.cc") {
-		return true
+		return true, nil
 	}
 	if ctx.HasAtLeastOne("*.cxx") {
-		return true
+		return true, nil
 	}
 	if ctx.HasAtLeastOne("*.cpp") {
-		return true
+		return true, nil
 	}
-	return false
+	return false, nil
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !hasCppCode(ctx) {
+	hasCpp, err := hasCppCode(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !hasCpp {
 		return gcp.OptOut("no C++ sources, nor a CMakeLists.txt file found"), nil
 	}
 	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
@@ -189,7 +197,11 @@ func installVcpkg(ctx *gcp.Context) (string, error) {
 	customTripletPath := filepath.Join(vcpkg.Path, "triplets", vcpkgTripletName+".cmake")
 	vcpkgExePath := filepath.Join(vcpkg.Path, "vcpkg")
 	vcpkgBaselinePath := filepath.Join(vcpkg.Path, "versions", "baseline.json")
-	if validateVcpkgCache(ctx, customTripletPath, vcpkgExePath, vcpkgBaselinePath) {
+	isValid, err := validateVcpkgCache(ctx, customTripletPath, vcpkgExePath, vcpkgBaselinePath)
+	if err != nil {
+		return "", err
+	}
+	if isValid {
 		ctx.CacheHit(vcpkgLayerName)
 		return vcpkg.Path, nil
 	}
@@ -204,38 +216,50 @@ func installVcpkg(ctx *gcp.Context) (string, error) {
 	return vcpkg.Path, nil
 }
 
-func validateVcpkgCache(ctx *gcp.Context, customTripletPath string, vcpkgExePath string, vcpkgBaselinePath string) bool {
-	if !ctx.FileExists(customTripletPath) {
+func validateVcpkgCache(ctx *gcp.Context, customTripletPath string, vcpkgExePath string, vcpkgBaselinePath string) (bool, error) {
+	exists, err := ctx.FileExists(customTripletPath)
+	if err != nil {
+		return false, err
+	}
+	if !exists {
 		ctx.Debugf("Missing vcpkg custom triplet (%s)", customTripletPath)
-		return false
+		return false, nil
 	}
-	if !ctx.FileExists(vcpkgBaselinePath) {
+	exists, err = ctx.FileExists(vcpkgBaselinePath)
+	if err != nil {
+		return false, err
+	}
+	if !exists {
 		ctx.Debugf("Missing vcpkg baseline file (%s)", vcpkgBaselinePath)
-		return false
+		return false, nil
 	}
-	if !ctx.FileExists(vcpkgExePath) {
+	exists, err = ctx.FileExists(vcpkgExePath)
+	if err != nil {
+		return false, err
+	}
+	if !exists {
 		ctx.Debugf("Missing vcpkg tool (%s)", vcpkgExePath)
-		return false
+		return false, nil
 	}
 	actualVcpkgToolVersion, err := getVcpkgToolVersion(ctx, vcpkgExePath)
 	if err != nil {
 		ctx.Debugf("Getting vcpkg version %v", err)
-		return false
+		return false, nil
 	}
 	if actualVcpkgToolVersion != vcpkgToolVersion {
 		ctx.Debugf("Mismatched vcpkg tool version, got=%s, want=%s", actualVcpkgToolVersion, actualVcpkgToolVersion)
-		return false
+		return false, nil
 	}
 	actualVcpkgBaselineSha256, err := getVcpkgBaselineSha256(ctx, vcpkgBaselinePath)
 	if err != nil {
 		ctx.Debugf("Getting vcpkg baseline hash %v", err)
-		return false
+		return false, nil
 	}
 	if actualVcpkgBaselineSha256 != vcpkgBaselineSha256 {
 		ctx.Debugf("Mismatched vcpkg baseline SHA256, got=%s, want=%s", actualVcpkgBaselineSha256, vcpkgBaselineSha256)
-		return false
+		return false, nil
 	}
-	return true
+	return true, nil
 }
 
 func getVcpkgToolVersion(ctx *gcp.Context, vcpkgExePath string) (string, error) {
@@ -264,7 +288,10 @@ func getVcpkgBaselineSha256(ctx *gcp.Context, vcpkgBaselinePath string) (string,
 }
 
 func createMainCppFile(ctx *gcp.Context, fn fnInfo, main string) error {
-	f := ctx.CreateFile(main)
+	f, err := ctx.CreateFile(main)
+	if err != nil {
+		return err
+	}
 	defer f.Close()
 
 	tmpl := mainTmpl
@@ -300,7 +327,11 @@ func createMainCppSupportFiles(ctx *gcp.Context, main string, buildpackRoot stri
 	vcpkgJSONDestinationFilename := filepath.Join(main, "vcpkg.json")
 	vcpkgJSONSourceFilename := filepath.Join(ctx.ApplicationRoot(), "vcpkg.json")
 
-	if !ctx.FileExists(vcpkgJSONSourceFilename) {
+	vcpkgExists, err := ctx.FileExists(vcpkgJSONSourceFilename)
+	if err != nil {
+		return err
+	}
+	if !vcpkgExists {
 		vcpkgJSONSourceFilename = filepath.Join(buildpackRoot, "converter", "vcpkg.json")
 	}
 	ctx.Exec([]string{"cp", vcpkgJSONSourceFilename, vcpkgJSONDestinationFilename})

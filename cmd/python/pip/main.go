@@ -47,7 +47,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	// If a requirement.txt file exists, the buildpack needs to provide the Requirements dependency.
 	// If the dependency is not provided by any buildpacks, lifecycle will exclude the pip
 	// buildpack from the build.
-	if ctx.FileExists("requirements.txt") {
+	requirementsExists, err := ctx.FileExists("requirements.txt")
+	if err != nil {
+		return nil, err
+	}
+	if requirementsExists {
 		plan.Provides = python.RequirementsProvides
 	}
 	return gcp.OptInAlways(gcp.WithBuildPlans(plan)), nil
@@ -59,14 +63,17 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.Debugf("Found requirements.txt files provided by other buildpacks: %s", reqs)
 
 	// The workspace requirements.txt file should be installed last.
-	if ctx.FileExists("requirements.txt") {
+	requirementsExists, err := ctx.FileExists("requirements.txt")
+	if err != nil {
+		return err
+	}
+	if requirementsExists {
 		reqs = append(reqs, "requirements.txt")
 	}
 
 	l := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 
-	err := python.InstallRequirements(ctx, l, reqs...)
-	if err != nil {
+	if err := python.InstallRequirements(ctx, l, reqs...); err != nil {
 		return fmt.Errorf("installing dependencies: %w", err)
 	}
 

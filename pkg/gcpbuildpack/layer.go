@@ -67,7 +67,9 @@ func (ctx *Context) Layer(name string, opts ...layerOption) *libcnb.Layer {
 	if err != nil {
 		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, err.Error()))
 	}
-	ctx.MkdirAll(l.Path, layerMode)
+	if err := ctx.MkdirAll(l.Path, layerMode); err != nil {
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "creating %s: %v", l.Path, err))
+	}
 	for _, o := range opts {
 		o(ctx, &l)
 	}
@@ -95,7 +97,9 @@ func (lc layerContributor) Name() string {
 // ClearLayer erases the existing layer, and re-creates the directory.
 func (ctx *Context) ClearLayer(l *libcnb.Layer) {
 	ctx.RemoveAll(l.Path)
-	ctx.MkdirAll(l.Path, layerMode)
+	if err := ctx.MkdirAll(l.Path, layerMode); err != nil {
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "creating %s: %v", l.Path, err))
+	}
 }
 
 // SetMetadata sets metadata on the layer.

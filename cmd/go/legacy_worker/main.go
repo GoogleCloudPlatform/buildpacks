@@ -69,17 +69,23 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Move the function source code into a subdirectory in order to construct the app in the main application root.
 	ctx.RemoveAll(fnSourceDir)
-	ctx.MkdirAll(fnSourceDir, 0755)
+	if err := ctx.MkdirAll(fnSourceDir, 0755); err != nil {
+		return err
+	}
 	// mindepth=1 excludes '.', '+' collects all file names before running the command.
 	// Exclude serverless_function_source_code and .google* dir e.g. .googlebuild, .googleconfig
 	command := fmt.Sprintf("find . -mindepth 1 -not -name %[1]s -prune -not -name %[2]q -prune -exec mv -t %[1]s {} +", fnSourceDir, ".google*")
 	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserTimingAttribution)
 
 	fnSource := filepath.Join(ctx.ApplicationRoot(), fnSourceDir)
+	pkgName, err := extractPackageNameInDir(ctx, fnSource)
+	if err != nil {
+		return fmt.Errorf("extracting package name: %w", err)
+	}
 	fn := fnInfo{
 		Source:  fnSource,
 		Target:  fnTarget,
-		Package: extractPackageNameInDir(ctx, fnSource),
+		Package: pkgName,
 	}
 
 	l.LaunchEnvironment.Default("X_GOOGLE_ENTRY_POINT", os.Getenv(env.FunctionTarget))
@@ -90,9 +96,18 @@ func buildFn(ctx *gcp.Context) error {
 	l.LaunchEnvironment.Default("X_GOOGLE_FUNCTION_TRIGGER_TYPE", triggerType)
 
 	goMod := filepath.Join(fn.Source, "go.mod")
-	if !ctx.FileExists(goMod) {
+	goModExists, err := ctx.FileExists(goMod)
+	if err != nil {
+		return err
+	}
+	if !goModExists {
 		return createMainVendored(ctx, fn)
-	} else if !ctx.IsWritable(goMod) {
+	}
+	isWriteable, err := ctx.IsWritable(goMod)
+	if err != nil {
+		return err
+	}
+	if !isWriteable {
 		// Preempt an obscure failure mode: if go.mod is not writable then `go list -m` can fail saying:
 		//     go: updates to go.sum needed, disabled by -mod=readonly
 		return gcp.UserErrorf("go.mod exists but is not writable")
@@ -117,7 +132,9 @@ ctx.ApplicationRoot()
 func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	l := ctx.Layer(gopathLayerName, gcp.BuildLayer)
 	l.BuildEnvironment.Override("GOPATH", l.Path)
-	ctx.Setenv("GOPATH", l.Path)
+	if err := ctx.Setenv("GOPATH", l.Path); err != nil {
+		return err
+	}
 
 	fnMod, fnPackage, err := moduleAndPackageNames(ctx, fn)
 	if err != nil {
@@ -133,7 +150,10 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 }
 
 func createMainGoModFile(ctx *gcp.Context, fnMod string, goModPath string) error {
-	f := ctx.CreateFile(goModPath)
+	f, err := ctx.CreateFile(goModPath)
+	if err != nil {
+		return err
+	}
 	defer f.Close()
 
 	tmpl, err := template.New("worker_gomod").Parse(goModTmplFile)
@@ -160,7 +180,11 @@ func moduleAndPackageNames(ctx *gcp.Context, fn fnInfo) (string, string, error) 
 	// Add the module name to the the package name, such that go build will be able to find it,
 	// if a directory with the package name is not at the app root. Otherwise, assume the package is at the module root.
 	fnPackage := fnMod
-	if ctx.FileExists(ctx.ApplicationRoot(), fn.Package) {
+	fnPackageExists, err := ctx.FileExists(ctx.ApplicationRoot(), fn.Package)
+	if err != nil {
+		return "", "", err
+	}
+	if fnPackageExists {
 		fnPackage = fmt.Sprintf("%s/%s", fnMod, fn.Package)
 	}
 	return fnMod, fnPackage, nil
@@ -177,22 +201,33 @@ func createMainVendored(ctx *gcp.Context, fn fnInfo) error {
 	l := ctx.Layer(gopathLayerName, gcp.BuildLayer)
 	gopath := ctx.ApplicationRoot()
 	gopathSrc := filepath.Join(gopath, "src")
-	ctx.MkdirAll(gopathSrc, 0755)
+	if err := ctx.MkdirAll(gopathSrc, 0755); err != nil {
+		return err
+	}
 	l.BuildEnvironment.Override(env.Buildable, appModule+"/main")
 	l.BuildEnvironment.Override("GOPATH", gopath)
 	l.BuildEnvironment.Override("GO111MODULE", "auto")
-	ctx.Setenv("GOPATH", gopath)
+	if err := ctx.Setenv("GOPATH", gopath); err != nil {
+		return err
+	}
 
 	appPath := filepath.Join(gopathSrc, appModule, "main")
-	ctx.MkdirAll(appPath, 0755)
+	if err := ctx.MkdirAll(appPath, 0755); err != nil {
+		return err
+	}
 
 	// We move the function source (including any vendored deps) into GOPATH.
-	ctx.Rename(fn.Source, filepath.Join(gopathSrc, fn.Package))
+	if err := ctx.Rename(fn.Source, filepath.Join(gopathSrc, fn.Package)); err != nil {
+		return err
+	}
 	return createMainGoFile(ctx, fn, filepath.Join(appPath, "main.go"))
 }
 
 func createMainGoFile(ctx *gcp.Context, fn fnInfo, main string) error {
-	f := ctx.CreateFile(main)
+	f, err := ctx.CreateFile(main)
+	if err != nil {
+		return err
+	}
 	defer f.Close()
 
 	tmpl, err := template.New("worker_main").Parse(workerTmplFile)
@@ -208,8 +243,11 @@ func createMainGoFile(ctx *gcp.Context, fn fnInfo, main string) error {
 // The parser is dependent on the language version being used, and it's highly likely that the buildpack binary
 // will be built with a different version of the language than the function deployment. Building this script ensures
 // that the version of Go used to build the function app will be the same as the version used to parse it.
-func extractPackageNameInDir(ctx *gcp.Context, source string) string {
+func extractPackageNameInDir(ctx *gcp.Context, source string) (string, error) {
 	script := filepath.Join(ctx.BuildpackRoot(), "converter", "get_package", "main.go")
-	cacheDir := ctx.TempDir("app")
-	return ctx.Exec([]string{"go", "run", script, "-dir", source}, gcp.WithEnv("GOCACHE="+cacheDir), gcp.WithUserAttribution).Stdout
+	cacheDir, err := ctx.TempDir("app")
+	if err != nil {
+		return "", fmt.Errorf("creating temp directory: %w", err)
+	}
+	return ctx.Exec([]string{"go", "run", script, "-dir", source}, gcp.WithEnv("GOCACHE="+cacheDir), gcp.WithUserAttribution).Stdout, nil
 }
