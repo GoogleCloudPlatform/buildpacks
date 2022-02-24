@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktestenv"
@@ -23,8 +24,9 @@ func main() {
 
 	fullCommand := strings.Join(os.Args[1:], " ")
 	var mockMatch *buildpacktestenv.MockProcess = nil
-	for shortCommand, mock := range mockProcesses {
-		if strings.Contains(fullCommand, shortCommand) {
+	for commandRegex, mock := range mockProcesses {
+		re := regexp.MustCompile(commandRegex)
+		if re.MatchString(fullCommand) {
 			mockMatch = mock
 			break
 		}
@@ -33,10 +35,6 @@ func main() {
 		// To avoid needing to mock every call to Exec, assume
 		// the process should pass if it wasn't specified by the test.
 		os.Exit(0)
-	}
-
-	for dest, src := range mockMatch.MovePaths {
-		os.Rename(src, dest)
 	}
 
 	if mockMatch.Stdout != "" {

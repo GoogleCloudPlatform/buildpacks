@@ -47,7 +47,6 @@ func TestDetect(t *testing.T) {
 }
 
 func TestBuild(t *testing.T) {
-	t.Skip("temporarily disabled while fixing")
 	testCases := []struct {
 		name         string
 		app          string
@@ -58,10 +57,13 @@ func TestBuild(t *testing.T) {
 		wantCommands []string
 	}{
 		{
-			name:         "go mod function with framework",
-			app:          "with_framework",
-			envs:         []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			fnPkgName:    "myfunc",
+			name:      "go mod function with framework",
+			app:       "with_framework",
+			envs:      []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			fnPkgName: "myfunc",
+			opts: []bpt.Option{
+				bpt.WithExecMock(`^go list -m$`, bpt.MockStdout("example.com/myfunc")),
+			},
 			wantCommands: []string{fmt.Sprintf("go mod tidy")},
 		},
 		{
@@ -69,6 +71,9 @@ func TestBuild(t *testing.T) {
 			app:       "no_framework",
 			envs:      []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			fnPkgName: "myfunc",
+			opts: []bpt.Option{
+				bpt.WithExecMock(`^go list -m$`, bpt.MockStdout("example.com/myfunc")),
+			},
 			wantCommands: []string{
 				fmt.Sprintf("go get %s", functionsFrameworkModule),
 				"go mod tidy",
@@ -89,15 +94,13 @@ func TestBuild(t *testing.T) {
 				bpt.WithTestName(tc.name),
 				bpt.WithApp(tc.app),
 				bpt.WithEnvs(tc.envs...),
-				// Function source code is moved at the beginning of buildFn
-				bpt.WithExecMock("find .", bpt.MockMovePath(".", fnSourceDir)),
 				bpt.WithExecMock("get_package", bpt.MockStdout(fmt.Sprintf(`{"name":"%s"}`, tc.fnPkgName))),
 			}
 
 			opts = append(opts, tc.opts...)
 			result, err := bpt.RunBuild(t, buildFn, opts...)
 			if err != nil {
-				t.Fatalf("error running build: %v, result: %#v", err, result)
+				t.Fatalf("error running build: %v,logs: %s", err, result.Output)
 			}
 
 			if result.ExitCode != tc.wantExitCode {
@@ -105,7 +108,7 @@ func TestBuild(t *testing.T) {
 			}
 			for _, cmd := range tc.wantCommands {
 				if !result.CommandExecuted(cmd) {
-					t.Errorf("expected command %q to be executed, but it was not", cmd)
+					t.Errorf("expected command %q to be executed, but it was not, build output: %s", cmd, result.Output)
 				}
 			}
 		})

@@ -129,8 +129,8 @@ func WithEnvs(envs ...string) Option {
 }
 
 // WithExecMock mocks the behavior of a shell command executed by a
-// ctx.Exec call. `command` is the command to mock; it must be an exact
-// substring of the full command that would have been executed, though it
+// ctx.Exec call. `commandRegex` is the command to mock; the regex must match
+// the full command that would have been executed, though it
 // does not have to be the beginning of the command. `stdout` is what will
 // be printed to stdout, `stderr` is what wiil be printed totderr. `exitCode`
 // will be the exit code of the command.
@@ -140,21 +140,20 @@ func WithEnvs(envs ...string) Option {
 // up being logged to stderr of the parent process. The stderr of executing
 // detectFn or buildFn can be searched for the stdout or stderr of any ctx.Exec
 // mocks.
-func WithExecMock(command string, opts ...ExecMockOptions) Option {
+func WithExecMock(commandRegex string, opts ...ExecMockOptions) Option {
 	return func(cfg *config) {
 		if cfg.mockProcessMap == nil {
 			cfg.mockProcessMap = map[string]*buildpacktestenv.MockProcess{}
 		}
 		mp := &buildpacktestenv.MockProcess{
-			Stdout:    "",
-			Stderr:    "",
-			ExitCode:  0,
-			MovePaths: map[string]string{},
+			Stdout:   "",
+			Stderr:   "",
+			ExitCode: 0,
 		}
 		for _, o := range opts {
 			o(mp)
 		}
-		cfg.mockProcessMap[command] = mp
+		cfg.mockProcessMap[commandRegex] = mp
 	}
 }
 
@@ -180,15 +179,6 @@ func MockStderr(msg string) ExecMockOptions {
 func MockExitCode(code int) ExecMockOptions {
 	return func(mp *buildpacktestenv.MockProcess) {
 		mp.ExitCode = code
-	}
-}
-
-// MockMovePath moves all content from src to dest. It is run relative to the
-// application root of the buildpack. Absolute paths to temporary directories
-// can also be used to move test data to within the application root.
-func MockMovePath(dest string, src string) ExecMockOptions {
-	return func(mp *buildpacktestenv.MockProcess) {
-		mp.MovePaths[dest] = src
 	}
 }
 

@@ -158,10 +158,6 @@ type MockProcess struct {
 	Stderr string
 	// ExitCode is the exit code that the process should use.
 	ExitCode int
-	// MovePaths is a map of {destination path : source path} that will
-	// be moved by the mock process. If the path is a directory,
-	// all contents will be recursively moved.
-	MovePaths map[string]string
 }
 
 // NewMockExecCmd constructs an ExecCmd that can replace standard exec.Cmd calls
