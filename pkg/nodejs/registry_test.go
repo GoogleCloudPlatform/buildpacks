@@ -16,8 +16,9 @@ package nodejs
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"testing"
+
+	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
 )
 
 func TestLatestPackageVersion(t *testing.T) {
@@ -169,15 +170,10 @@ func TestResolvePackageVersion(t *testing.T) {
 func stubNPMRegistry(t *testing.T, responseData string, httpStatus int) {
 	t.Helper()
 
-	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if httpStatus != 0 {
-			w.WriteHeader(httpStatus)
-		}
-		w.Write([]byte(responseData))
-	}))
-	t.Cleanup(svr.Close)
-
-	origURL := npmRegistryURL
-	t.Cleanup(func() { npmRegistryURL = origURL })
-	npmRegistryURL = svr.URL + "?package=%s"
+	testserver.New(
+		t,
+		testserver.WithStatus(httpStatus),
+		testserver.WithJSON(responseData),
+		testserver.WithMockURL(&npmRegistryURL),
+	)
 }

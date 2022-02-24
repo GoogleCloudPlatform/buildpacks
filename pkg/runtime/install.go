@@ -31,7 +31,7 @@ import (
 )
 
 var (
-	dartSdkURL         = "https://storage.googleapis.com/dart-archive/channels/stable/release/%[1]s/sdk/dartsdk-linux-x64-release.zip"
+	dartSdkURL         = "https://storage.googleapis.com/dart-archive/channels/stable/release/%s/sdk/dartsdk-linux-x64-release.zip"
 	googleTarballURL   = "https://dl.google.com/runtimes/%[1]s/%[1]s-%s.tar.gz"
 	runtimeVersionsURL = "https://dl.google.com/runtimes/%s/version.json"
 )

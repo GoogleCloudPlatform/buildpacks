@@ -37,6 +37,7 @@ go_test(
     embed = [":nodejs"],
     rundir = ".",
     deps = [
+        "//internal/testserver",
         "//pkg/gcpbuildpack",
         "//pkg/testdata",
         "//third_party/golang/cmp",

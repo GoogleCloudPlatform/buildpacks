@@ -17,8 +17,7 @@
 package main
 
 import (
-	"os"
-
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/dart"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
@@ -53,11 +52,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	version := defaultVersion
-	if envVersion := os.Getenv(env.RuntimeVersion); envVersion != "" {
-		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, envVersion)
-		version = envVersion
+	version, err := dart.DetectSDKVersion()
+	if err != nil {
+		return err
 	}
+	ctx.Logf("Using Dart SDK version %s", version)
 
 	// The Dart SDK is only required at compile time. It is not included in the run image.
 	drl := ctx.Layer(dartLayer, gcp.BuildLayer, gcp.CacheLayer)

@@ -30,6 +30,7 @@ go_test(
     embed = [":runtime"],
     rundir = ".",
     deps = [
+        "//internal/testserver",
         "//pkg/gcpbuildpack",
         "//pkg/testdata",
         "@com_github_buildpacks_libcnb//:go_default_library",

@@ -15,14 +15,11 @@
 package runtime
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"path/filepath"
-	"strings"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/buildpacks/libcnb"
@@ -60,8 +57,11 @@ func TestInstallDartSDK(t *testing.T) {
 				Path:     t.TempDir(),
 				Metadata: map[string]interface{}{},
 			}
-
-			stubFileServer(t, tc.httpStatus, tc.responseFile)
+			testserver.New(
+				t,
+				testserver.WithStatus(tc.httpStatus),
+				testserver.WithFile(testdata.MustGetPath(tc.responseFile)),
+				testserver.WithMockURL(&dartSdkURL))
 
 			version := "2.15.1"
 			err := InstallDartSDK(ctx, l, version)
@@ -139,7 +139,20 @@ func TestInstallRuby(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			stubFileServer(t, tc.httpStatus, tc.responseFile)
+			// stub the file server
+			testserver.New(
+				t,
+				testserver.WithStatus(tc.httpStatus),
+				testserver.WithFile(testdata.MustGetPath(tc.responseFile)),
+				testserver.WithMockURL(&googleTarballURL))
+
+			// stub the version manifest
+			testserver.New(
+				t,
+				testserver.WithStatus(http.StatusOK),
+				testserver.WithJSON(`["1.1.1","3.3.3","2.2.2"]`),
+				testserver.WithMockURL(&runtimeVersionsURL),
+			)
 
 			layer := &libcnb.Layer{
 				Path:     t.TempDir(),
@@ -168,39 +181,4 @@ func TestInstallRuby(t *testing.T) {
 			}
 		})
 	}
-}
-
-func stubFileServer(t *testing.T, httpStatus int, responseFile string) {
-	t.Helper()
-	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if httpStatus != 0 {
-			w.WriteHeader(httpStatus)
-		}
-		if r.UserAgent() != gcpUserAgent {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		if strings.Contains(r.URL.RawQuery, "getversions=1") {
-			data, err := json.Marshal([]string{"1.1.1", "3.3.3", "2.2.2"})
-			if err != nil {
-				t.Fatalf("serializing versions: %v", err)
-			}
-			fmt.Fprint(w, string(data))
-		} else if responseFile != "" {
-			http.ServeFile(w, r, testdata.MustGetPath(responseFile))
-		}
-	}))
-	t.Cleanup(svr.Close)
-
-	origDartURL := dartSdkURL
-	origTarballURL := googleTarballURL
-	origVersionsURL := runtimeVersionsURL
-	t.Cleanup(func() {
-		dartSdkURL = origDartURL
-		googleTarballURL = origTarballURL
-		runtimeVersionsURL = origVersionsURL
-	})
-	dartSdkURL = svr.URL + "?version=%s"
-	googleTarballURL = svr.URL + "?runtime=%s&version=%s"
-	runtimeVersionsURL = svr.URL + "?runtime=%s&getversions=1"
 }
