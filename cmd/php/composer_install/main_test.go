@@ -16,9 +16,11 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 
 	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
 )
 
 func TestDetect(t *testing.T) {
@@ -51,32 +53,28 @@ func TestDetect(t *testing.T) {
 }
 
 func TestBuild(t *testing.T) {
-
 	var (
-		composerSetupCmd = fmt.Sprintf("--output %s/%s", composerLayer, composerSetup)
-		expectedHashCmd  = fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s", composerSigURL)
-		actualHashCmd    = "php -r"
-		runInstallerCmd  = fmt.Sprintf("php %s/%s", composerLayer, composerSetup)
+		expectedHash    = "expected_sha384_hash"
+		actualHashCmd   = "php -r"
+		runInstallerCmd = fmt.Sprintf("php %s/%s", composerLayer, composerSetup)
 	)
 
 	testCases := []struct {
-		name            string
-		opts            []bpt.Option
-		wantExitCode    int // 0 if unspecified
-		wantCommands    []string
-		skippedCommands []string
+		name                string
+		opts                []bpt.Option
+		wantExitCode        int // 0 if unspecified
+		wantCommands        []string
+		skippedCommands     []string
+		httpStatusInstaller int
+		httpStatusSignature int
 	}{
 		{
 			name: "good composer-setup hash with installation",
 			opts: []bpt.Option{
-				bpt.WithExecMock(composerSetupURL, bpt.MockExitCode(0)),
-				bpt.WithExecMock(composerSigURL, bpt.MockStdout("expected_sha384_hash")),
-				bpt.WithExecMock("sha384", bpt.MockStdout("expected_sha384_hash")),
+				bpt.WithExecMock("sha384", bpt.MockStdout(expectedHash)),
 				bpt.WithExecMock("--filename composer", bpt.MockExitCode(0)),
 			},
 			wantCommands: []string{
-				composerSetupCmd,
-				expectedHashCmd,
 				actualHashCmd,
 				runInstallerCmd,
 			},
@@ -84,14 +82,10 @@ func TestBuild(t *testing.T) {
 		{
 			name: "bad composer-setup hash with installation",
 			opts: []bpt.Option{
-				bpt.WithExecMock(composerSetupURL, bpt.MockExitCode(0)),
-				bpt.WithExecMock(composerSigURL, bpt.MockStdout("expected_sha384_hash")),
 				bpt.WithExecMock("sha384", bpt.MockStdout("actual_sha384_hash")),
 				bpt.WithExecMock("--filename composer", bpt.MockExitCode(0)),
 			},
 			wantCommands: []string{
-				composerSetupCmd,
-				expectedHashCmd,
 				actualHashCmd,
 			},
 			skippedCommands: []string{
@@ -102,50 +96,36 @@ func TestBuild(t *testing.T) {
 		{
 			name: "unable to download composer-setup",
 			opts: []bpt.Option{
-				bpt.WithExecMock(composerSetupURL, bpt.MockExitCode(1)),
-				bpt.WithExecMock(composerSigURL, bpt.MockStdout("expected_sha384_hash")),
-				bpt.WithExecMock("sha384", bpt.MockStdout("expected_sha384_hash")),
+				bpt.WithExecMock("sha384", bpt.MockStdout(expectedHash)),
 				bpt.WithExecMock("--filename composer", bpt.MockExitCode(0)),
 			},
-			wantCommands: []string{
-				composerSetupCmd,
-			},
 			skippedCommands: []string{
-				expectedHashCmd,
 				actualHashCmd,
 				runInstallerCmd,
 			},
-			wantExitCode: 1,
+			httpStatusInstaller: http.StatusInternalServerError,
+			wantExitCode:        1,
 		},
 		{
 			name: "unable to get expected hash",
 			opts: []bpt.Option{
-				bpt.WithExecMock(composerSetupURL, bpt.MockExitCode(0)),
-				bpt.WithExecMock(composerSigURL, bpt.MockExitCode(1)),
-				bpt.WithExecMock("sha384", bpt.MockStdout("expected_sha384_hash")),
+				bpt.WithExecMock("sha384", bpt.MockStdout(expectedHash)),
 				bpt.WithExecMock("--filename composer", bpt.MockExitCode(0)),
-			},
-			wantCommands: []string{
-				composerSetupCmd,
-				expectedHashCmd,
 			},
 			skippedCommands: []string{
 				actualHashCmd,
 				runInstallerCmd,
 			},
-			wantExitCode: 1,
+			httpStatusSignature: http.StatusInternalServerError,
+			wantExitCode:        1,
 		},
 		{
 			name: "unable to get actual hash",
 			opts: []bpt.Option{
-				bpt.WithExecMock(composerSetupURL, bpt.MockExitCode(0)),
-				bpt.WithExecMock(composerSigURL, bpt.MockStdout("expected_sha384_hash")),
 				bpt.WithExecMock("sha384", bpt.MockExitCode(1)),
 				bpt.WithExecMock("--filename composer", bpt.MockExitCode(0)),
 			},
 			wantCommands: []string{
-				composerSetupCmd,
-				expectedHashCmd,
 				actualHashCmd,
 			},
 			skippedCommands: []string{
@@ -157,6 +137,22 @@ func TestBuild(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			// stub the installer
+			testserver.New(
+				t,
+				testserver.WithStatus(tc.httpStatusInstaller),
+				testserver.WithJSON(`test_file_content`),
+				testserver.WithMockURL(&composerSetupURL),
+			)
+
+			// stub the signature
+			testserver.New(
+				t,
+				testserver.WithStatus(tc.httpStatusSignature),
+				testserver.WithJSON(expectedHash),
+				testserver.WithMockURL(&composerSigURL),
+			)
+
 			opts := []bpt.Option{
 				bpt.WithTestName(tc.name),
 			}

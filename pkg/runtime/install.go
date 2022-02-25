@@ -77,7 +77,7 @@ func InstallDartSDK(ctx *gcp.Context, layer *libcnb.Layer, version string) error
 	}
 	defer os.Remove(zip.Name())
 
-	if err := fetchURL(sdkURL, zip); err != nil {
+	if err := FetchURL(sdkURL, zip); err != nil {
 		ctx.Warnf("Failed to download Dart SDK from %s. You can specify the verison by setting the GOOGLE_RUNTIME_VERSION environment variable", sdkURL)
 		return err
 	}
@@ -139,7 +139,7 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime installableRuntime, ver
 	}
 	defer os.Remove(tar.Name())
 
-	if err := fetchURL(runtimeURL, tar); err != nil {
+	if err := FetchURL(runtimeURL, tar); err != nil {
 		ctx.Warnf("Failed to download %s version %s. You can specify the verison by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version)
 		return false, err
 	}
@@ -162,7 +162,7 @@ func resolveVersion(runtime installableRuntime, verConstraint string) (string, e
 
 	url := fmt.Sprintf(runtimeVersionsURL, runtime)
 	var buf bytes.Buffer
-	if err := fetchURL(url, io.Writer(&buf)); err != nil {
+	if err := FetchURL(url, io.Writer(&buf)); err != nil {
 		return "", gcp.InternalErrorf("fetching %s versions: %v", runtimeNames[runtime], err)
 	}
 
@@ -178,8 +178,8 @@ func resolveVersion(runtime installableRuntime, verConstraint string) (string, e
 	return v, nil
 }
 
-// fetchURL makes an HTTP GET request to given URL and writes the body to the provided writer.
-func fetchURL(url string, f io.Writer) error {
+// FetchURL makes an HTTP GET request to given URL and writes the body to the provided writer.
+func FetchURL(url string, f io.Writer) error {
 	client := newRetryableHTTPClient()
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {

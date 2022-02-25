@@ -17,15 +17,18 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/buildpacks/libcnb"
 )
 
-const (
+var (
 	composerLayer    = "composer"
 	composerJSON     = "composer.json"
 	composerSetup    = "composer-setup"
@@ -76,12 +79,16 @@ func buildFn(ctx *gcp.Context) error {
 	}
 	defer os.Remove(installer.Name())
 
-	fetchCmd := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 --output %s %s", installer.Name(), composerSetupURL)
-	ctx.Exec([]string{"bash", "-c", fetchCmd}, gcp.WithUserAttribution)
+	if err := runtime.FetchURL(composerSetupURL, installer); err != nil {
+		return fmt.Errorf("failed to download composer installer from %s: %w", composerSetupURL, err)
+	}
 
 	// verify the installer hash
-	expectedSHACmd := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s", composerSigURL)
-	expectedSHA := ctx.Exec([]string{"bash", "-c", expectedSHACmd}).Stdout
+	var expectedSHABuf bytes.Buffer
+	if err := runtime.FetchURL(composerSigURL, io.Writer(&expectedSHABuf)); err != nil {
+		return fmt.Errorf("failed to fetch the installer signature from %s: %w", composerSigURL, err)
+	}
+	expectedSHA := expectedSHABuf.String()
 	actualSHACmd := fmt.Sprintf("php -r \"echo hash_file('sha384', '%s');\"", installer.Name())
 	actualSHA := ctx.Exec([]string{"bash", "-c", actualSHACmd}).Stdout
 	if actualSHA != expectedSHA {
@@ -89,7 +96,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// run the installer
-	ctx.Logf("Installing Composer v%s", composerVer)
+	ctx.Logf("installing Composer v%s", composerVer)
 	clBin := filepath.Join(l.Path, "bin")
 	ctx.MkdirAll(clBin, 0755)
 	installCmd := fmt.Sprintf("php %s --install-dir %s --filename composer --version %s", installer.Name(), clBin, composerVer)
