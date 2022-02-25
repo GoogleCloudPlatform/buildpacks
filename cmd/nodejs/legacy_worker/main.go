@@ -106,7 +106,7 @@ func buildFn(ctx *gcp.Context) error {
 		l.LaunchEnvironment.Default("X_GOOGLE_ENTRY_POINT", target)
 	} else {
 		// This should never happen because this env var is used by the detect phase.
-		ctx.Exit(1, gcp.InternalErrorf("required env var %s not found", env.FunctionTarget))
+		return gcp.InternalErrorf("required env var %s not found", env.FunctionTarget)
 	}
 	signature := os.Getenv(env.FunctionSignatureType)
 	if signature == "http" || signature == "" {
