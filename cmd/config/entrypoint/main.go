@@ -22,6 +22,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -36,6 +37,12 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	// Detection for GAE and GCF
+	if env.IsGAE() || env.IsGCF() {
+		return gcp.OptInEnvSet(env.XGoogleTargetPlatform), nil
+	}
+
+	// Detection for GCP builds follows
 	if os.Getenv(env.Entrypoint) != "" {
 		return gcp.OptInEnvSet(env.Entrypoint), nil
 	}
@@ -55,6 +62,18 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	if env.IsGCF() {
+		// Function Frameworks with the function target will automatically build correctly without entrypoint modification.
+		return nil
+	}
+	if env.IsGAE() {
+		runtime, ok := os.LookupEnv(env.Runtime)
+		if !ok {
+			return gcp.InternalErrorf("env.%s required for GAE platform.", env.XGoogleTargetPlatform)
+		}
+		return appengine.Build(ctx, runtime, nil)
+	}
+
 	if entrypoint := os.Getenv(env.Entrypoint); entrypoint != "" {
 		ctx.AddProcess(gcp.WebProcess, []string{entrypoint}, gcp.AsDefaultProcess())
 		ctx.Logf("Using entrypoint from environment variable %s: %s", env.Entrypoint, entrypoint)

@@ -121,7 +121,25 @@ const (
 	// XGoogleSkipRuntimeLaunch is used to enable an experimental builder feature to include the
 	// runtime layer in the builder image and omit it from the launch image.
 	XGoogleSkipRuntimeLaunch = "X_GOOGLE_SKIP_RUNTIME_LAUNCH"
+
+	// XGoogleTargetPlatform is an envar used to specify the target platform for a build (gae, gcf or gcp).
+	XGoogleTargetPlatform = "X_GOOGLE_TARGET_PLATFORM"
 )
+
+// IsGAE returns true if the buildpack target platform is gae.
+func IsGAE() bool {
+	return "gae" == os.Getenv(XGoogleTargetPlatform)
+}
+
+// IsGCP returns true if the buildpack target platform is gae.
+func IsGCP() bool {
+	return "gcp" == os.Getenv(XGoogleTargetPlatform)
+}
+
+// IsGCF returns true if the buildpack target platform is gae.
+func IsGCF() bool {
+	return "gcf" == os.Getenv(XGoogleTargetPlatform)
+}
 
 // IsDebugMode returns true if the buildpack debug mode is enabled.
 func IsDebugMode() (bool, error) {
