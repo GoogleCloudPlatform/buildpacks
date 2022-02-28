@@ -311,55 +311,6 @@ module dir
 	}
 }
 
-func TestSupportsNoGoMod(t *testing.T) {
-	testCases := []struct {
-		goVersion string
-		want      bool
-	}{
-		{
-			goVersion: "go version go1.11 darwin/amd64",
-			want:      true,
-		},
-		{
-			goVersion: "go version go1.11.1 darwin/amd64",
-			want:      true,
-		},
-		{
-			goVersion: "go version go1.13 darwin/amd64",
-			want:      true,
-		},
-		{
-			goVersion: "go version go1.13.3 darwin/amd64",
-			want:      true,
-		},
-		{
-			goVersion: "go version go1.10 darwin/amd64",
-			want:      true,
-		},
-		{
-			goVersion: "go version go1.14 darwin/amd64",
-			want:      false,
-		},
-		{
-			goVersion: "go version go1.15rc1 darwin/amd64",
-			want:      false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.goVersion, func(t *testing.T) {
-			defer func(fn func(*gcp.Context) string) { readGoVersion = fn }(readGoVersion)
-			readGoVersion = func(*gcp.Context) string { return tc.goVersion }
-
-			supported := SupportsNoGoMod(nil)
-
-			if supported != tc.want {
-				t.Errorf("VersionSupportsNoGoModFile() returned %v, wanted %v", supported, tc.want)
-			}
-		})
-	}
-}
-
 func TestSupportsAutoVendor(t *testing.T) {
 	testCases := []struct {
 		goVersion string

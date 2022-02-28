@@ -52,20 +52,6 @@ func SupportsAppEngineApis(ctx *gcp.Context) (bool, error) {
 	return appengine.ApisEnabled(ctx)
 }
 
-// SupportsNoGoMod returns true if the Go version supports deployments without a go.mod file.
-// This feature is supported by Go 1.11 and 1.13 in GCF.
-func SupportsNoGoMod(ctx *gcp.Context) bool {
-	v := GoVersion(ctx)
-
-	version, err := semver.NewVersion(v)
-	if err != nil {
-		ctx.Exit(1, gcp.InternalErrorf("unable to parse go version string %q: %s", v, err))
-	}
-
-	go113OrLower := semver.MustParse("1.14.0")
-	return version.LessThan(go113OrLower)
-}
-
 // SupportsAutoVendor returns true if the Go version supports automatic detection of the vendor directory.
 // This feature is supported by Go 1.14 and higher.
 func SupportsAutoVendor(ctx *gcp.Context) (bool, error) {
