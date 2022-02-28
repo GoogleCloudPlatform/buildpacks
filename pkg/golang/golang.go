@@ -77,38 +77,41 @@ func VersionMatches(ctx *gcp.Context, versionRange string) (bool, error) {
 
 	version, err := semver.NewVersion(v)
 	if err != nil {
-		ctx.Exit(1, gcp.InternalErrorf("unable to parse go.mod version string %q: %s", v, err))
+		return false, gcp.InternalErrorf("unable to parse go.mod version string %q: %s", v, err)
 	}
 
 	goVersionMatches, err := semver.NewConstraint(versionRange)
 	if err != nil {
-		ctx.Exit(1, gcp.InternalErrorf("unable to parse version range %q: %s", v, err))
+		return false, gcp.InternalErrorf("unable to parse version range %q: %s", v, err)
 	}
 
 	if !goVersionMatches.Check(version) {
 		return false, nil
 	}
 
-	v = GoVersion(ctx)
+	v, err = GoVersion(ctx)
+	if err != nil {
+		return false, err
+	}
 
 	version, err = semver.NewVersion(v)
 	if err != nil {
-		ctx.Exit(1, gcp.InternalErrorf("unable to parse Go version string %q: %s", v, err))
+		return false, gcp.InternalErrorf("unable to parse Go version string %q: %s", v, err)
 	}
 
 	return goVersionMatches.Check(version), nil
 }
 
 // GoVersion reads the version of the installed Go runtime.
-func GoVersion(ctx *gcp.Context) string {
+func GoVersion(ctx *gcp.Context) (string, error) {
 	v := readGoVersion(ctx)
 
 	match := goVersionRegexp.FindStringSubmatch(v)
 	if len(match) < 2 || match[1] == "" {
-		ctx.Exit(1, gcp.InternalErrorf("unable to find go version in %q", v))
+		return "", gcp.InternalErrorf("unable to find go version in %q", v)
 	}
 
-	return match[1]
+	return match[1], nil
 }
 
 // GoModVersion reads the version of Go from a go.mod file if present.

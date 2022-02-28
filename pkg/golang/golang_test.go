@@ -52,8 +52,12 @@ func TestGoVersion(t *testing.T) {
 			defer func(fn func(*gcp.Context) string) { readGoVersion = fn }(readGoVersion)
 			readGoVersion = func(*gcp.Context) string { return tc.goVersion }
 
-			if got := GoVersion(nil); got != tc.want {
-				t.Errorf("got %q, want %q", got, tc.want)
+			got, err := GoVersion(nil)
+			if err != nil {
+				t.Errorf("GoVersion(nil) failed unexpectedly; err=%s", err)
+			}
+			if got != tc.want {
+				t.Errorf("GoVersion(nil) = %q, want %q", got, tc.want)
 			}
 		})
 	}
