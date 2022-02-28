@@ -41,8 +41,9 @@ fi
 readonly PACK_VERSION="0.23.0"
 
 temp="$(mktemp -d)"
-curl -fsSL "https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64" -o "$temp/container-structure-test" && chmod +x "$temp/container-structure-test"
-curl -fsSL "https://github.com/buildpacks/pack/releases/download/v${PACK_VERSION}/pack-v${PACK_VERSION}-linux.tgz" | tar xz -C "$temp"
+CURL_OPTS="--retry 5 -fsSL"
+curl ${CURL_OPTS} "https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64" -o "$temp/container-structure-test" && chmod +x "$temp/container-structure-test"
+curl ${CURL_OPTS} "https://github.com/buildpacks/pack/releases/download/v${PACK_VERSION}/pack-v${PACK_VERSION}-linux.tgz" | tar xz -C "$temp"
 
 # TODO(b/155193275): Build stack images when testing GCP builder instead of pulling.
 
