@@ -18,6 +18,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -38,6 +39,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if path == "" {
 		return gcp.OptOut("Env var GAE_APPLICATION_YAML_PATH is not set, not a GAE Flex app."), nil
 	}
+	path = filepath.Join(ctx.ApplicationRoot(), path)
 	pathExists, err := ctx.FileExists(path)
 	if err != nil {
 		return nil, err
