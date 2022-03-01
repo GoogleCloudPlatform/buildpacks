@@ -38,14 +38,14 @@ func TestAcceptanceGo(t *testing.T) {
 		{
 			Name:       "Go.mod",
 			App:        "go/simple_gomod",
-			MustUse:    []string{goRuntime, goBuild},
+			MustUse:    []string{goRuntime, goBuild, goMod},
 			MustNotUse: []string{goPath},
 			MustOutput: []string{"Using latest runtime version:"},
 		},
 		{
 			Name:       "Go.mod package",
 			App:        "go/gomod_package",
-			MustUse:    []string{goRuntime, goBuild},
+			MustUse:    []string{goRuntime, goBuild, goMod},
 			MustNotUse: []string{goPath},
 		},
 		{
@@ -58,7 +58,7 @@ func TestAcceptanceGo(t *testing.T) {
 		{
 			Name:       "Go.mod and vendor",
 			App:        "go/simple_gomod_vendor",
-			MustUse:    []string{goRuntime, goBuild},
+			MustUse:    []string{goRuntime, goBuild, goMod},
 			MustNotUse: []string{goPath},
 		},
 		{

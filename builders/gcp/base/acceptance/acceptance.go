@@ -26,6 +26,7 @@ const (
 	goBuild         = "google.go.build"
 	goClearSource   = "google.go.clear_source"
 	goFF            = "google.go.functions-framework"
+	goMod           = "google.go.gomod"
 	goPath          = "google.go.gopath"
 	goRuntime       = "google.go.runtime"
 	javaClearSource = "google.java.clear_source"
