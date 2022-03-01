@@ -10,6 +10,7 @@ builder(
         "//cmd/php/composer_install:composer_install.tgz",
         "//cmd/php/runtime:runtime.tgz",
         "//cmd/utils/label:label.tgz",
+        "//cmd/utils/nginx:nginx.tgz",
     ],
     image = "gcp/php",
 )

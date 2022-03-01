@@ -20,9 +20,16 @@ description = "Unified builder for the PHP runtime"
   id = "google.utils.label"
   uri = "label.tgz"
 
+[[buildpacks]]
+  id = "google.utils.nginx"
+  uri = "nginx.tgz"
+
 [[order]]
   [[order.group]]
     id = "google.php.runtime"
+
+  [[order.group]]
+    id = "google.utils.nginx"
 
   [[order.group]]
     id = "google.php.composer-install"

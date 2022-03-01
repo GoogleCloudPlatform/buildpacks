@@ -27,13 +27,6 @@ func TestDetect(t *testing.T) {
 		want  int
 	}{
 		{
-			name: "composer.json file",
-			files: map[string]string{
-				"composer.json": "",
-			},
-			want: 0,
-		},
-		{
 			name: "php files",
 			files: map[string]string{
 				"index.php": "",
@@ -51,7 +44,7 @@ func TestDetect(t *testing.T) {
 		{
 			name:  "no composer.json and no php files",
 			files: map[string]string{},
-			want:  100,
+			want:  0,
 		},
 	}
 	for _, tc := range testCases {

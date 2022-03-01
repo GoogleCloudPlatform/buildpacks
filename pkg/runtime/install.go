@@ -44,6 +44,7 @@ const (
 	PHP    installableRuntime = "php"
 	Python installableRuntime = "python"
 	Ruby   installableRuntime = "ruby"
+	Nginx  installableRuntime = "nginx"
 )
 
 // User friendly display name of all runtime (e.g. for use in error message).
@@ -52,6 +53,7 @@ var runtimeNames = map[installableRuntime]string{
 	PHP:    "PHP Runtime",
 	Python: "Python Runtime",
 	Ruby:   "Ruby Runtime",
+	Nginx:  "Nginx Web Server",
 }
 
 const (
