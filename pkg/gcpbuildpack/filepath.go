@@ -22,25 +22,29 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 )
 
-// Glob returns the names of all files matching pattern or nil if there is no matching file, exiting on any error.
-func (ctx *Context) Glob(pattern string) []string {
+// Glob is a pass through for filepath.Glob(...). It returns any error with proper user / system attribution.
+func (ctx *Context) Glob(pattern string) ([]string, error) {
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "globbing %s: %v", pattern, err))
+		return nil, buildererror.Errorf(buildererror.StatusInternal, "globbing %s: %v", pattern, err)
 	}
-	return matches
+	return matches, nil
 }
 
 // HasAtLeastOne walks through file tree searching for at least one match.
-func (ctx *Context) HasAtLeastOne(pattern string) bool {
+func (ctx *Context) HasAtLeastOne(pattern string) (bool, error) {
 	dir := ctx.ApplicationRoot()
 
 	errFileMatch := errors.New("File matched")
-	if len(ctx.Glob(filepath.Join(dir, pattern))) > 0 {
-		return true
+	matches, err := ctx.Glob(filepath.Join(dir, pattern))
+	if err != nil {
+		return false, err
+	}
+	if len(matches) > 0 {
+		return true, nil
 	}
 
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "walking through %s within %s: %v", path, dir, err))
 		}
@@ -52,12 +56,11 @@ func (ctx *Context) HasAtLeastOne(pattern string) bool {
 			return errFileMatch
 		}
 		return nil
-	})
-	if err == errFileMatch {
-		return true
+	}); err != nil {
+		if err == errFileMatch {
+			return true, nil
+		}
+		return false, buildererror.Errorf(buildererror.StatusInternal, "walking through %s: %v", dir, err)
 	}
-	if err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "walking through %s: %v", dir, err))
-	}
-	return false
+	return false, nil
 }

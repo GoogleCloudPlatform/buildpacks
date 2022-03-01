@@ -48,7 +48,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return result, nil
 	}
 
-	if !ctx.HasAtLeastOne("*.py") {
+	atLeastOne, err := ctx.HasAtLeastOne("*.py")
+	if err != nil {
+		return nil, fmt.Errorf("finding *.py files: %w", err)
+	}
+	if !atLeastOne {
 		return gcp.OptOut("no .py files found"), nil
 	}
 	return gcp.OptIn("found .py files"), nil

@@ -84,14 +84,15 @@ func hasCppCode(ctx *gcp.Context) (bool, error) {
 	if exists {
 		return true, nil
 	}
-	if ctx.HasAtLeastOne("*.cc") {
-		return true, nil
-	}
-	if ctx.HasAtLeastOne("*.cxx") {
-		return true, nil
-	}
-	if ctx.HasAtLeastOne("*.cpp") {
-		return true, nil
+
+	for _, pattern := range []string{"*.cc", "*.cxx", "*.cpp"} {
+		atLeastOne, err := ctx.HasAtLeastOne(pattern)
+		if err != nil {
+			return false, fmt.Errorf("finding %v files: %w", pattern, err)
+		}
+		if atLeastOne {
+			return true, nil
+		}
 	}
 	return false, nil
 }

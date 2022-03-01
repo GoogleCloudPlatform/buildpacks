@@ -124,7 +124,10 @@ func buildFn(ctx *gcp.Context) error {
 			gcp.WithEnv("NOKOGIRI_USE_SYSTEM_LIBRARIES=1", "MALLOC_ARENA_MAX=2", "LANG=C.utf8"), gcp.WithUserAttribution)
 
 		// Find any gem-installed binary directory and symlink as a static path
-		foundBinDirs := ctx.Glob(".bundle/gems/ruby/*/bin")
+		foundBinDirs, err := ctx.Glob(".bundle/gems/ruby/*/bin")
+		if err != nil {
+			return fmt.Errorf("finding bin dirs: %w", err)
+		}
 		if len(foundBinDirs) > 1 {
 			return fmt.Errorf("unexpected multiple gem bin dirs: %v", foundBinDirs)
 		} else if len(foundBinDirs) == 1 {

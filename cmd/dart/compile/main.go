@@ -30,7 +30,11 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !ctx.HasAtLeastOne("*.dart") {
+	atLeastOne, err := ctx.HasAtLeastOne("*.dart")
+	if err != nil {
+		return nil, fmt.Errorf("finding *.dart files: %w", err)
+	}
+	if !atLeastOne {
 		return gcp.OptOut("no .dart files found"), nil
 	}
 	return gcp.OptIn("found .dart files"), nil

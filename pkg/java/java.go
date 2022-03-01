@@ -60,7 +60,10 @@ func ExecutableJar(ctx *gcp.Context) (string, error) {
 	for i, path := range jarPaths {
 		path = append([]string{ctx.ApplicationRoot()}, path...)
 		path = append(path, "*.jar")
-		jars := ctx.Glob(filepath.Join(path...))
+		jars, err := ctx.Glob(filepath.Join(path...))
+		if err != nil {
+			return "", fmt.Errorf("finding jars: %w", err)
+		}
 		// There may be multiple jars due to some frameworks like Quarkus creating multiple jars,
 		// so we look for the jar that contains a Main-Class entry in its manifest.
 		executables := filterExecutables(ctx, jars)

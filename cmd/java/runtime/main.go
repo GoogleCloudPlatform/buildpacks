@@ -62,10 +62,18 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		}
 	}
 
-	if len(ctx.Glob("*.java")) > 0 {
+	javaFiles, err := ctx.Glob("*.java")
+	if err != nil {
+		return nil, fmt.Errorf("finding .java files: %w", err)
+	}
+	if len(javaFiles) > 0 {
 		return gcp.OptIn("found .java files"), nil
 	}
-	if len(ctx.Glob("*.jar")) > 0 {
+	jarFiles, err := ctx.Glob("*.jar")
+	if err != nil {
+		return nil, fmt.Errorf("finding .jar files: %w", err)
+	}
+	if len(jarFiles) > 0 {
 		return gcp.OptIn("found .jar files"), nil
 	}
 	return gcp.OptOut(fmt.Sprintf("none of the following found: %s, *.java, *.jar", strings.Join(files, ", "))), nil

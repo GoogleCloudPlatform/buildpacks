@@ -502,9 +502,13 @@ func TestHasAtLeastOne(t *testing.T) {
 				}
 			}
 
-			got := ctx.HasAtLeastOne("*.py")
+			pattern := "*.py"
+			got, err := ctx.HasAtLeastOne(pattern)
+			if err != nil {
+				t.Errorf("HasAtLeastOne(%v) failed unexpectedly; err=%s", pattern, err)
+			}
 			if got != tc.want {
-				t.Errorf("HasAtLeastOne()=%t, want=%t", got, tc.want)
+				t.Errorf("HasAtLeastOne(%v)=%t, want=%t", pattern, got, tc.want)
 			}
 		})
 	}

@@ -79,7 +79,10 @@ func BuildFn(ctx *gcp.Context, exclusions []string) error {
 
 // pathsToRemove returns a list of entries in dir, filtering entries that match any in exclusions. exclusions should be a partial path relative to dir.
 func pathsToRemove(ctx *gcp.Context, dir string, exclusions []string) ([]string, error) {
-	paths := ctx.Glob(filepath.Join(dir, "*"))
+	paths, err := ctx.Glob(filepath.Join(dir, "*"))
+	if err != nil {
+		return nil, fmt.Errorf("finding paths: %w", err)
+	}
 	var filteredPaths []string
 	for _, path := range paths {
 		remove := true

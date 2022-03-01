@@ -17,6 +17,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/dart"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -48,7 +50,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if pubspecExists {
 		return gcp.OptInFileFound("pubspec.yaml"), nil
 	}
-	if len(ctx.Glob("*.dart")) > 0 {
+	dartFiles, err := ctx.Glob("*.dart")
+	if err != nil {
+		return nil, fmt.Errorf("finding .dart files: %w", err)
+	}
+	if len(dartFiles) > 0 {
 		return gcp.OptIn("found .dart files"), nil
 	}
 

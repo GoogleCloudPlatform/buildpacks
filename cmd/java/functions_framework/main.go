@@ -111,7 +111,10 @@ func classpath(ctx *gcp.Context) (string, error) {
 	if buildGradleExists {
 		return gradleClasspath(ctx)
 	}
-	jars := ctx.Glob("*.jar")
+	jars, err := ctx.Glob("*.jar")
+	if err != nil {
+		return "", fmt.Errorf("finding jar files: %w", err)
+	}
 	if len(jars) == 1 {
 		// Already-built jar file. It should be self-contained, which means that it can be the only thing given to --classpath.
 		return jars[0], nil
@@ -121,7 +124,11 @@ func classpath(ctx *gcp.Context) (string, error) {
 	}
 	// We have neither pom.xml nor a jar file. Show what files there are. If the user deployed the wrong directory, this may help them see the problem more easily.
 	description := "directory is empty"
-	if files := ctx.Glob("*"); len(files) > 0 {
+	files, err := ctx.Glob("*")
+	if err != nil {
+		return "", fmt.Errorf("finding files: %w", err)
+	}
+	if len(files) > 0 {
 		description = fmt.Sprintf("directory has these entries: %s", strings.Join(files, ", "))
 	}
 	return "", gcp.UserErrorf("function has neither pom.xml nor already-built jar file; %s", description)
@@ -223,7 +230,10 @@ func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) (string, e
 			"-DincludeGroupIds=com.google.cloud.functions",
 			"-DincludeArtifactIds=java-function-invoker",
 		}, gcp.WithUserAttribution)
-		jars = ctx.Glob("target/_javaInvokerDependency/java-function-invoker-*.jar")
+		jars, err = ctx.Glob("target/_javaInvokerDependency/java-function-invoker-*.jar")
+		if err != nil {
+			return "", fmt.Errorf("finding java-function-invoker jar: %w", err)
+		}
 	} else {
 		buildGradleExists, err := ctx.FileExists("build.gradle")
 		if err != nil {
@@ -231,7 +241,10 @@ func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) (string, e
 		}
 		if buildGradleExists {
 			// If the invoker was listed as an implementation dependency it will have been copied to build/_javaFunctionDependencies.
-			jars = ctx.Glob("build/_javaFunctionDependencies/java-function-invoker-*.jar")
+			jars, err = ctx.Glob("build/_javaFunctionDependencies/java-function-invoker-*.jar")
+			if err != nil {
+				return "", fmt.Errorf("finding java-function-invoker jar: %w", err)
+			}
 		}
 	}
 	if len(jars) == 1 && isInvokerJar(ctx, jars[0]) {

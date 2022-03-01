@@ -17,6 +17,8 @@
 package main
 
 import (
+	"fmt"
+
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -59,12 +61,18 @@ func needsRailsAssetPrecompile(ctx *gcp.Context) (bool, error) {
 		return false, nil
 	}
 
-	matches := ctx.Glob("public/assets/manifest-*.json")
+	matches, err := ctx.Glob("public/assets/manifest-*.json")
+	if err != nil {
+		return false, fmt.Errorf("finding manifets: %w", err)
+	}
 	if matches != nil {
 		return false, nil
 	}
 
-	matches = ctx.Glob("public/assets/.sprockets-manifest-*.json")
+	matches, err = ctx.Glob("public/assets/.sprockets-manifest-*.json")
+	if err != nil {
+		return false, fmt.Errorf("finding sprockets-manifets: %w", err)
+	}
 	if matches != nil {
 		return false, nil
 	}

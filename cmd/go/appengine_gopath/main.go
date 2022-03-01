@@ -20,6 +20,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,7 +41,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if goModExists {
 		return gcp.OptOut("go.mod found"), nil
 	}
-	if !ctx.HasAtLeastOne("*.go") {
+	atLeastOne, err := ctx.HasAtLeastOne("*.go")
+	if err != nil {
+		return nil, fmt.Errorf("finding *.go files: %w", err)
+	}
+	if !atLeastOne {
 		return gcp.OptOut("no .go files found"), nil
 	}
 	return gcp.OptIn("go.mod file not found, assuming GOPATH build"), nil

@@ -48,7 +48,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if gemsRbExists {
 		return gcp.OptInFileFound("gems.rb"), nil
 	}
-	if !ctx.HasAtLeastOne("*.rb") {
+	atLeastOne, err := ctx.HasAtLeastOne("*.rb")
+	if err != nil {
+		return nil, fmt.Errorf("finding *.rb files: %w", err)
+	}
+	if !atLeastOne {
 		return gcp.OptOut("no .rb files found"), nil
 	}
 	return gcp.OptIn("found .rb files"), nil

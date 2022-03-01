@@ -55,7 +55,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if pkgJSONExists {
 		return gcp.OptInFileFound("package.json"), nil
 	}
-	if len(ctx.Glob("*.js")) > 0 {
+	jsFiles, err := ctx.Glob("*.js")
+	if err != nil {
+		return nil, fmt.Errorf("finding js files: %w", err)
+	}
+	if len(jsFiles) > 0 {
 		return gcp.OptIn("found .js files"), nil
 	}
 

@@ -46,7 +46,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return result, nil
 	}
 
-	if ctx.HasAtLeastOne("*.go") {
+	atLeastOne, err := ctx.HasAtLeastOne("*.go")
+	if err != nil {
+		return nil, fmt.Errorf("finding *.go files: %w", err)
+	}
+	if atLeastOne {
 		return gcp.OptIn("found .go files"), nil
 	}
 	return gcp.OptOut("no .go files found"), nil
