@@ -66,7 +66,7 @@ Supported languages include:
 | Go 1.10 +         | ✓          | ✓                 |
 | Node.js 10 +      | ✓          | ✓                 |
 | Python 3.7 +      | ✓          | ✓                 |
-| Java 8, 11        | ✓          | ✓ (11 only)       |
+| Java 8 +          | ✓          | ✓ (11+ only)      |
 | .NET Core 3.1 +   | ✓          | ✓                 |
 | Ruby 2.6 +        | ✓          | ✓                 |
 
