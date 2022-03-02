@@ -1,0 +1,6 @@
+{
+    "require": {
+        "phpunit/phpunit": "^8.5.22",
+        "php": ">= 7.0"
+    }
+}

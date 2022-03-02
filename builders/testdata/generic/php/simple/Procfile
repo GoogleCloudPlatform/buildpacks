@@ -1,0 +1,2 @@
+web: php -S 0.0.0.0:$PORT index.php
+custom: php -S 0.0.0.0:$PORT custom.php
