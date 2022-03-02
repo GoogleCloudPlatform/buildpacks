@@ -21,6 +21,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
+	"github.com/buildpacks/libcnb"
+
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -436,6 +439,61 @@ func TestVersionMatches(t *testing.T) {
 			}
 			if supported != tc.want {
 				t.Errorf("VersionMatches() returned %v, wanted %v", supported, tc.want)
+			}
+		})
+	}
+}
+
+func TestNewGoWorkspaceLayerHappyPath(t *testing.T) {
+	testCases := []struct {
+		Name            string
+		ApplicationRoot string
+		CacheEnabled    bool
+	}{
+		{
+			Name:            "go mod exists",
+			ApplicationRoot: testdata.MustGetPath("testdata/gopath_layer/simple_gomod"),
+			CacheEnabled:    true,
+		},
+		{
+			Name:            "no go mod",
+			ApplicationRoot: t.TempDir(),
+			CacheEnabled:    false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			buildCtx := libcnb.BuildContext{
+				Layers: libcnb.Layers{
+					Path: t.TempDir(),
+				},
+			}
+			ctx := gcp.NewContext(
+				gcp.WithApplicationRoot(tc.ApplicationRoot),
+				gcp.WithBuildContext(buildCtx))
+
+			l, err := NewGoWorkspaceLayer(ctx)
+			if err != nil {
+				t.Fatalf("NewGoPathLayer() failed unexpectedly; err=%s", err)
+			}
+			if l.Cache != tc.CacheEnabled {
+				t.Errorf("layer.Cache enablement mismatch: got %t, want %t", l.Cache, tc.CacheEnabled)
+			}
+			buildVars := map[string]string{
+				"GOPATH":      l.Path,
+				"GO111MODULE": "on",
+				"GOPROXY":     "off",
+			}
+			for envVar, expectedVal := range buildVars {
+				// libcnb appends an ".override" suffix to each env var
+				val, ok := l.BuildEnvironment[fmt.Sprintf("%s.override", envVar)]
+				if !ok {
+					t.Fatalf("Layer missing required env var %v", envVar)
+				}
+				if val != expectedVal {
+					t.Errorf("env var %q value mismatch: got %q, want %q", envVar, val, expectedVal)
+				}
 			}
 		})
 	}

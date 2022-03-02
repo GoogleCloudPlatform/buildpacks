@@ -33,7 +33,9 @@ func WithStrings(strings ...string) Option {
 	}
 }
 
-// WithFiles returns a cache option that hashes contents of the file names.
+// WithFiles returns a cache option that hashes contents of the files. Callers can
+// detect if a file did not exist by checking returned error values against
+// os.IsNotFound(...).
 func WithFiles(files ...string) Option {
 	return func() ([]string, error) {
 		var strings []string

@@ -40,14 +40,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer("gopath", gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
-	l.BuildEnvironment.Override("GOPATH", l.Path)
-	l.BuildEnvironment.Override("GO111MODULE", "on")
-	// Set GOPROXY to ensure no additional dependency is downloaded at built time.
-	// All of them are downloaded here.
-	l.BuildEnvironment.Override("GOPROXY", "off")
-
-	// TODO(b/145604612): Investigate caching the modules layer.
+	l, err := golang.NewGoWorkspaceLayer(ctx)
+	if err != nil {
+		return fmt.Errorf("creating GOPATH layer: %w", err)
+	}
 
 	vendorExists, err := ctx.FileExists("vendor")
 	if err != nil {

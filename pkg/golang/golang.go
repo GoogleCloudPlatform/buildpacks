@@ -23,8 +23,10 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/buildpacks/libcnb"
 	"github.com/Masterminds/semver"
 )
 
@@ -33,6 +35,10 @@ const (
 	OutBin = "main"
 	// BuildDirEnv is an environment variable that buildpacks can use to communicate the working directory to `go build`.
 	BuildDirEnv = "GOOGLE_INTERNAL_BUILD_DIR"
+	// The name of the layer where the GOPATH is stored
+	goPathLayerName = "gopath"
+	// The key used when a layers' cache is keyed off of the go mod
+	goModCacheKey = "go-mod-sha"
 )
 
 var (
@@ -142,7 +148,7 @@ var readGoVersion = func(ctx *gcp.Context) string {
 // readGoMod reads the go.mod file if present. If not present, returns an empty string.
 // It can be overridden for testing.
 var readGoMod = func(ctx *gcp.Context) (string, error) {
-	goModPath := filepath.Join(ctx.ApplicationRoot(), "go.mod")
+	goModPath := goModPath(ctx)
 	goModExists, err := ctx.FileExists(goModPath)
 	if err != nil {
 		return "", err
@@ -155,6 +161,42 @@ var readGoMod = func(ctx *gcp.Context) (string, error) {
 		return "", err
 	}
 	return string(bytes), nil
+}
+
+// NewGoWorkspaceLayer returns a new layer for `go env GOPATH` or the go workspace. The
+// layer is configured for caching if possible. It only supports caching for "go mod"
+// based builds.
+func NewGoWorkspaceLayer(ctx *gcp.Context) (*libcnb.Layer, error) {
+	l := ctx.Layer(goPathLayerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	l.BuildEnvironment.Override("GOPATH", l.Path)
+	l.BuildEnvironment.Override("GO111MODULE", "on")
+	// Set GOPROXY to ensure no additional dependency is downloaded at built time.
+	// All of them are downloaded here.
+	l.BuildEnvironment.Override("GOPROXY", "off")
+	sha, err := cache.Hash(ctx, cache.WithFiles(goModPath(ctx)))
+	if err != nil {
+		if os.IsNotExist(err) {
+			// when go.mod doesn't exist, clear any previously cached bits and return an empty layer
+			l.Cache = false
+			ctx.ClearLayer(l)
+			return l, nil
+		}
+		return nil, err
+	}
+	shaStr := fmt.Sprintf("%x", sha)
+	if shaStr == ctx.GetMetadata(l, goModCacheKey) {
+		ctx.Logf("GOPATH layer cache hit")
+		ctx.CacheHit(goPathLayerName)
+		return l, nil
+	}
+	ctx.Debugf("go.mod SHA has changed: clearing GOPATH layer's cache")
+	ctx.ClearLayer(l)
+	ctx.SetMetadata(l, goModCacheKey, shaStr)
+	return l, nil
+}
+
+func goModPath(ctx *gcp.Context) string {
+	return filepath.Join(ctx.ApplicationRoot(), "go.mod")
 }
 
 // ExecWithGoproxyFallback runs the given command with a GOPROXY fallback.

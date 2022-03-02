@@ -12,8 +12,10 @@ go_library(
     ],
     deps = [
         "//pkg/appengine",
+        "//pkg/cache",
         "//pkg/env",
         "//pkg/gcpbuildpack",
+        "@com_github_buildpacks_libcnb//:go_default_library",
         "@com_github_masterminds_semver//:go_default_library",
     ],
 )
@@ -22,7 +24,12 @@ go_test(
     name = "golang_test",
     size = "small",
     srcs = ["golang_test.go"],
+    data = glob(["testdata/**"]),
     embed = [":golang"],
     rundir = ".",
-    deps = ["//pkg/gcpbuildpack"],
+    deps = [
+        "//pkg/gcpbuildpack",
+        "//pkg/testdata",
+        "@com_github_buildpacks_libcnb//:go_default_library",
+    ],
 )

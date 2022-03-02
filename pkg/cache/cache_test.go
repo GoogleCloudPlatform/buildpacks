@@ -132,7 +132,10 @@ func TestWithFilesError(t *testing.T) {
 	option := WithFiles("/does/not/exist")
 	_, err := Hash(ctx, option)
 	if err == nil {
-		t.Errorf("Hash() got err=nil, want err")
+		t.Fatalf("Hash() got err=nil, want err")
+	}
+	if !os.IsNotExist(err) {
+		t.Errorf("Hash() error type unexpected: got %q want %q", err, os.ErrNotExist)
 	}
 }
 
