@@ -22,7 +22,7 @@ import (
 
 	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"google3/third_party/golang/cmp/cmp"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestDetect(t *testing.T) {

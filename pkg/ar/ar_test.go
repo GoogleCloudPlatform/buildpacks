@@ -20,8 +20,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"google3/third_party/golang/cmp/cmp"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestGeneratePythonConfig(t *testing.T) {
@@ -124,6 +125,7 @@ machine us-west4-python.pkg.dev login oauth2accesstoken password token
 }
 
 func TestGenerateNPMConfig(t *testing.T) {
+	t.Cleanup(buildermetrics.Reset)
 	testCases := []struct {
 		name         string
 		fileExists   bool
@@ -220,6 +222,105 @@ always-auth=true
 
 			if diff := cmp.Diff(tc.wantConfig, string(config)); diff != "" {
 				t.Errorf("unexpected config (+got, -want):\n %v", diff)
+			}
+		})
+	}
+}
+
+func TestGenerateNPMConfigMetrics(t *testing.T) {
+	t.Cleanup(buildermetrics.Reset)
+	successfulCredGens := int64(0)
+	testCases := []struct {
+		name         string
+		fileExists   bool
+		tokenError   error
+		projectNpmrc string
+		wantConfig   string
+	}{
+		{
+			name: "project .npmrc with AR repo",
+			projectNpmrc: fmt.Sprint(`
+registry=https://us-west1-npm.pkg.dev/my-project/my-repo/
+//us-west1-npm.pkg.dev/my-project/my-repo/:always-auth=true
+`),
+			wantConfig: fmt.Sprint(`
+//us-west1-npm.pkg.dev/my-project/my-repo/:_authToken=token
+`),
+		},
+		{
+			name: "project .npmrc with scoped AR repo",
+			projectNpmrc: fmt.Sprint(`
+@myscope:registry=https://us-west1-npm.pkg.dev/my-project/my-repo/
+//us-west1-npm.pkg.dev/my-project/my-repo/:always-auth=true
+`),
+			wantConfig: fmt.Sprint(`
+//us-west1-npm.pkg.dev/my-project/my-repo/:_authToken=token
+`),
+		},
+		{
+			name: "project .npmrc with multiple repos",
+			projectNpmrc: fmt.Sprint(`
+registry=https://us-west1-npm.pkg.dev/my-project/my-repo/
+//us-west1-npm.pkg.dev/my-project/my-repo/:always-auth=true
+@myscope:registry=https://us-central1-npm.pkg.dev/my-other-project/my-other-repo/
+//us-central1-npm.pkg.dev/my-other-project/my-other-repo/:always-auth=true
+registry=https://my-site/my-organization/_packaging/my-project/npm/registry/
+always-auth=true
+//registry.npmjs.org/:_authToken=${NPM_TOKEN}
+`),
+			wantConfig: fmt.Sprint(`
+//us-west1-npm.pkg.dev/my-project/my-repo/:_authToken=token
+//us-central1-npm.pkg.dev/my-other-project/my-other-repo/:_authToken=token
+`),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// stub out the logic for fetching Application Default Credentials
+			origFindDefaultCredentials := findDefaultCredentials
+			findDefaultCredentials = func() (string, error) {
+				return "token", tc.tokenError
+			}
+			defer func() {
+				findDefaultCredentials = origFindDefaultCredentials
+			}()
+
+			t.Setenv("GOOGLE_EXPERIMENTAL_AR_AUTH_ENABLED", "True")
+
+			// set up the application root dir
+			tempRoot := t.TempDir()
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(tempRoot))
+			if tc.projectNpmrc != "" {
+				filepath := filepath.Join(tempRoot, ".npmrc")
+				os.WriteFile(filepath, []byte(tc.projectNpmrc), 0664)
+			}
+
+			// set up the $HOME dir
+			t.Setenv("HOME", t.TempDir())
+			filepath := filepath.Join(ctx.HomeDir(), ".npmrc")
+			if tc.fileExists {
+				os.WriteFile(filepath, []byte{}, 0664)
+			}
+
+			if err := GenerateNPMConfig(ctx); err != nil {
+				t.Fatalf("generating config: %v", err)
+			}
+
+			config, err := os.ReadFile(filepath)
+			if err != nil && tc.wantConfig != "" {
+				t.Fatalf("reading file %s: %v", filepath, err)
+			}
+
+			if diff := cmp.Diff(tc.wantConfig, string(config)); diff != "" {
+				t.Errorf("TestGenerateNPMConfigMetrics unexpected config (+got, -want):\n %v", diff)
+			} else {
+				successfulCredGens++
+			}
+
+			if buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.ArNpmCredsGenCounterID).Value() != successfulCredGens {
+				t.Errorf("TestGenerateNPMConfigMetrics incorrect cred gen count: got %v, want %v",
+					buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.ArNpmCredsGenCounterID).Value(), successfulCredGens)
 			}
 		})
 	}

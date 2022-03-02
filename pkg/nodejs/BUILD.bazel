@@ -40,6 +40,6 @@ go_test(
         "//internal/testserver",
         "//pkg/gcpbuildpack",
         "//pkg/testdata",
-        "//third_party/golang/cmp",
+        "@com_github_google_go-cmp//cmp:go_default_library",
     ],
 )

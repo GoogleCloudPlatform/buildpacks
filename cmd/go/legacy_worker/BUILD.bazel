@@ -48,6 +48,6 @@ go_test(
     deps = [
         "//internal/buildpacktest",
         "//pkg/gcpbuildpack",
-        "//third_party/golang/cmp",
+        "@com_github_google_go-cmp//cmp:go_default_library",
     ],
 )

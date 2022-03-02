@@ -9,6 +9,7 @@ go_library(
     srcs = ["ar.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     deps = [
+        "//pkg/buildermetrics",
         "//pkg/gcpbuildpack",
         "@org_golang_x_oauth2//google:go_default_library",
     ],
@@ -21,7 +22,8 @@ go_test(
     embed = [":ar"],
     rundir = ".",
     deps = [
+        "//pkg/buildermetrics",
         "//pkg/gcpbuildpack",
-        "//third_party/golang/cmp",
+        "@com_github_google_go-cmp//cmp:go_default_library",
     ],
 )

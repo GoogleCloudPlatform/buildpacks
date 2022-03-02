@@ -15,16 +15,18 @@
 package builderoutput
 
 import (
-	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestFromJSON(t *testing.T) {
 	serialized := `
 {
+  "metrics": {"c":{"1":3}},
 	"error": {
 		"buildpackId": "bad-buildpack",
 		"buildpackVersion": "vbad",
@@ -62,7 +64,10 @@ func TestFromJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	bm := buildermetrics.NewBuilderMetrics()
+	bm.GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(3)
 	want := BuilderOutput{
+		Metrics: bm,
 		Error: buildererror.Error{
 			BuildpackID:      "bad-buildpack",
 			BuildpackVersion: "vbad",
@@ -92,13 +97,18 @@ func TestFromJSON(t *testing.T) {
 		CustomImage: true,
 	}
 
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("builder output parsing failed got: %v, want: %v", got, want)
+	if diff := cmp.Diff(got, want, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{})); diff != "" {
+		t.Errorf("builder output parsing failed.  diff: %v", diff)
 	}
 }
 
 func TestJSON(t *testing.T) {
-	b := BuilderOutput{Error: buildererror.Error{Status: buildererror.StatusInternal}}
+	bm := buildermetrics.NewBuilderMetrics()
+	bm.GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(3)
+	b := BuilderOutput{
+		Metrics: bm,
+		Error:   buildererror.Error{Status: buildererror.StatusInternal},
+	}
 
 	s, err := b.JSON()
 
@@ -107,6 +117,9 @@ func TestJSON(t *testing.T) {
 	}
 	if !strings.Contains(string(s), "INTERNAL") {
 		t.Errorf("Expected string 'INTERNAL' not found in %s", s)
+	}
+	if !strings.Contains(string(s), `{"c":{"1":3}}`) {
+		t.Errorf(`Expected string '{"c":{"1":3}}' not found in %s`, s)
 	}
 }
 

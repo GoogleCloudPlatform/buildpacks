@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/builderoutput"
 )
 
@@ -76,6 +77,8 @@ func (ctx *Context) saveErrorOutput(be *buildererror.Error) {
 
 	be.BuildpackID, be.BuildpackVersion = ctx.BuildpackID(), ctx.BuildpackVersion()
 	bo := builderoutput.BuilderOutput{Error: *be}
+	bm := buildermetrics.GlobalBuilderMetrics()
+	bo.Metrics = *bm
 	data, err := bo.JSON()
 	if err != nil {
 		ctx.Warnf("Failed to marshal, skipping structured error output: %v", err)
@@ -169,6 +172,9 @@ func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 		UserDurationMs:   ctx.stats.user.Milliseconds(),
 	})
 	bo.Warnings = append(bo.Warnings, ctx.warnings...)
+
+	bm := buildermetrics.GlobalBuilderMetrics()
+	bo.Metrics = *bm
 
 	var content []byte
 	// Make sure the message is smaller than the maximum allowed size.

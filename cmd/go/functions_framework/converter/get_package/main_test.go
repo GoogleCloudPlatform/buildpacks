@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"google3/third_party/golang/cmp/cmp"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestExtract(t *testing.T) {

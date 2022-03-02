@@ -9,7 +9,10 @@ go_library(
     srcs = ["builderoutput.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = ["//visibility:public"],
-    deps = ["//pkg/buildererror"],
+    deps = [
+        "//pkg/buildererror",
+        "//pkg/buildermetrics",
+    ],
 )
 
 go_test(
@@ -20,5 +23,9 @@ go_test(
     ],
     embed = [":builderoutput"],
     rundir = ".",
-    deps = ["//pkg/buildererror"],
+    deps = [
+        "//pkg/buildererror",
+        "//pkg/buildermetrics",
+        "@com_github_google_go-cmp//cmp:go_default_library",
+    ],
 )

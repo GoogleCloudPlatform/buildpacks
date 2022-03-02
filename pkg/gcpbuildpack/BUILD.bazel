@@ -22,6 +22,7 @@ go_library(
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     deps = [
         "//pkg/buildererror",
+        "//pkg/buildermetrics",
         "//pkg/builderoutput",
         "//pkg/env",
         "@com_github_buildpacks_libcnb//:go_default_library",
@@ -45,8 +46,10 @@ go_test(
     deps = [
         "//internal/buildpacktestenv",
         "//pkg/buildererror",
+        "//pkg/buildermetrics",
         "//pkg/builderoutput",
         "//pkg/env",
         "@com_github_buildpacks_libcnb//:go_default_library",
+        "@com_github_google_go-cmp//cmp:go_default_library",
     ],
 )

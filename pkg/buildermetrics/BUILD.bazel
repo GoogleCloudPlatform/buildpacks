@@ -1,0 +1,27 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+package(default_visibility = ["//:__subpackages__"])
+
+go_library(
+    name = "buildermetrics",
+    srcs = [
+        "buildermetrics.go",
+        "counter.go",
+        "metricids.go",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+)
+
+go_test(
+    name = "buildermetrics_test",
+    size = "small",
+    srcs = [
+        "buildermetrics_test.go",
+        "counter_test.go",
+    ],
+    embed = [":buildermetrics"],
+    rundir = ".",
+    deps = ["@com_github_google_go-cmp//cmp:go_default_library"],
+)

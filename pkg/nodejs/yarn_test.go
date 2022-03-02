@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"google3/third_party/golang/cmp/cmp"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestUseFrozenLockfile(t *testing.T) {

@@ -13,7 +13,7 @@ go_test(
     srcs = ["main_test.go"],
     embed = [":main"],
     rundir = ".",
-    deps = ["//third_party/golang/cmp"],
+    deps = ["@com_github_google_go-cmp//cmp:go_default_library"],
 )
 
 exports_files(["main.go"])

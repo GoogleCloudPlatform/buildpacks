@@ -24,6 +24,8 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
+
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"golang.org/x/oauth2/google"
 )
@@ -166,7 +168,7 @@ func GenerateNPMConfig(ctx *gcp.Context) error {
 		return nil
 	}
 	if !projConfigExists {
-		// Unlike Python, NPM credentials must configured per repo. If the devoloper has not included
+		// Unlike Python, NPM credentials must be configured per repo. If the devoloper has not included
 		// a project-level npmrc, there are no AR repos to set credentials for, so there is nothing
 		// more to do.
 		return nil
@@ -233,6 +235,9 @@ func writeNpmConfig(wr io.Writer, repos []string, tok string) error {
 	if err := t.Execute(wr, cfg); err != nil {
 		return fmt.Errorf("creating NPM .npmrc template: %w", err)
 	}
+
+	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(1)
+
 	return nil
 }
 
