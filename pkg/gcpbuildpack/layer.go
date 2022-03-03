@@ -15,6 +15,7 @@
 package gcpbuildpack
 
 import (
+	"errors"
 	"os"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
@@ -26,39 +27,49 @@ const (
 	layerMode os.FileMode = 0755
 )
 
-type layerOption func(ctx *Context, l *libcnb.Layer)
+type layerOption func(ctx *Context, l *libcnb.Layer) error
 
 // BuildLayer specifies a Build layer.
-var BuildLayer = func(ctx *Context, l *libcnb.Layer) { l.Build = true }
+var BuildLayer = func(ctx *Context, l *libcnb.Layer) error {
+	l.Build = true
+	return nil
+}
 
 // CacheLayer specifies a Cache layer.
-var CacheLayer = func(ctx *Context, l *libcnb.Layer) { l.Cache = true }
+var CacheLayer = func(ctx *Context, l *libcnb.Layer) error {
+	l.Cache = true
+	return nil
+}
 
 // LaunchLayer specifies a Launch layer.
-var LaunchLayer = func(ctx *Context, l *libcnb.Layer) { l.Launch = true }
+var LaunchLayer = func(ctx *Context, l *libcnb.Layer) error {
+	l.Launch = true
+	return nil
+}
 
 // LaunchLayerIfDevMode specifies a Launch layer, but only if dev mode is enabled.
-var LaunchLayerIfDevMode = func(ctx *Context, l *libcnb.Layer) {
+var LaunchLayerIfDevMode = func(ctx *Context, l *libcnb.Layer) error {
 	devMode, err := env.IsDevMode()
 	if err != nil {
 		ctx.Warnf("Dev mode not enabled: %v", err)
-		return
+		return nil
 	}
 	if devMode {
 		l.Launch = true
 	}
+	return nil
 }
 
 // LaunchLayerUnlessSkipRuntimeLaunch specifies a Launch layer unless XGoogleSkipRuntimeLaunch is set to "true".
-var LaunchLayerUnlessSkipRuntimeLaunch = func(ctx *Context, l *libcnb.Layer) {
+var LaunchLayerUnlessSkipRuntimeLaunch = func(ctx *Context, l *libcnb.Layer) error {
 	skip, err := env.IsPresentAndTrue(env.XGoogleSkipRuntimeLaunch)
 	if err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, err.Error()))
-
+		return buildererror.Errorf(buildererror.StatusInternal, err.Error())
 	}
 	if !skip {
 		l.Launch = true
 	}
+	return nil
 }
 
 // Layer returns a layer, creating its directory.
@@ -71,7 +82,13 @@ func (ctx *Context) Layer(name string, opts ...layerOption) *libcnb.Layer {
 		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "creating %s: %v", l.Path, err))
 	}
 	for _, o := range opts {
-		o(ctx, &l)
+		if err := o(ctx, &l); err != nil {
+			var be buildererror.Error
+			if errors.As(err, &be) {
+				ctx.Exit(1, &be)
+			}
+			ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "applying layer option: %v", err))
+		}
 	}
 	if l.Metadata == nil {
 		l.Metadata = make(map[string]interface{})
