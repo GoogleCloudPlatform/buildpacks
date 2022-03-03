@@ -98,15 +98,7 @@ func legacyInstallPython(ctx *gcp.Context, layer *libcnb.Layer) (bool, error) {
 
 func buildFn(ctx *gcp.Context) error {
 	layer := ctx.Layer(pythonLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerUnlessSkipRuntimeLaunch)
-	var isCached bool
-	var err error
-	// Use GOOGLE_PYTHON_VERSION to enable installing from the experimental tarball hosting service.
-	if version := os.Getenv(versionEnv); version != "" {
-		isCached, err = runtime.InstallTarballIfNotCached(ctx, runtime.Python, version, layer)
-	} else {
-		isCached, err = legacyInstallPython(ctx, layer)
-	}
-
+	isCached, err := installPython(ctx, layer)
 	if err != nil {
 		return err
 	}
@@ -119,6 +111,15 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Exec([]string{path, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"}, gcp.WithUserAttribution)
 	}
 	return nil
+}
+
+func installPython(ctx *gcp.Context, layer *libcnb.Layer) (bool, error) {
+	ver := os.Getenv(versionEnv)
+	if ver == "" {
+		return legacyInstallPython(ctx, layer)
+	}
+	// Use GOOGLE_PYTHON_VERSION to enable installing from the experimental tarball hosting service.
+	return runtime.InstallTarballIfNotCached(ctx, runtime.Python, ver, layer)
 }
 
 func runtimeVersion(ctx *gcp.Context) (string, error) {
