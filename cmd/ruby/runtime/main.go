@@ -80,8 +80,12 @@ func buildFn(ctx *gcp.Context) error {
 	if err := ctx.RemoveAll(localLog); err != nil {
 		return err
 	}
-	ctx.Symlink("/tmp", localTemp)
-	ctx.Symlink("/var/log", localLog)
+	if err := ctx.Symlink("/tmp", localTemp); err != nil {
+		return err
+	}
+	if err := ctx.Symlink("/var/log", localLog); err != nil {
+		return err
+	}
 
 	return nil
 }
