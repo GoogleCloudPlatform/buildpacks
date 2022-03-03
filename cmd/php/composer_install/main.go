@@ -98,7 +98,9 @@ func buildFn(ctx *gcp.Context) error {
 	// run the installer
 	ctx.Logf("installing Composer v%s", composerVer)
 	clBin := filepath.Join(l.Path, "bin")
-	ctx.MkdirAll(clBin, 0755)
+	if err := ctx.MkdirAll(clBin, 0755); err != nil {
+		return fmt.Errorf("creating bin folder: %w", err)
+	}
 	installCmd := fmt.Sprintf("php %s --install-dir %s --filename composer --version %s", installer.Name(), clBin, composerVer)
 	ctx.Exec([]string{"bash", "-c", installCmd})
 
