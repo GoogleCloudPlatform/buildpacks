@@ -71,7 +71,9 @@ func BuildFn(ctx *gcp.Context, exclusions []string) error {
 		return fmt.Errorf("filtering paths: %w", err)
 	}
 	for _, path := range paths {
-		ctx.RemoveAll(path)
+		if err := ctx.RemoveAll(path); err != nil {
+			return err
+		}
 	}
 
 	return nil

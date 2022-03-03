@@ -50,7 +50,9 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 func buildFn(ctx *gcp.Context) error {
 	ml := ctx.Layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
 	nm := filepath.Join(ml.Path, "node_modules")
-	ctx.RemoveAll("node_modules")
+	if err := ctx.RemoveAll("node_modules"); err != nil {
+		return err
+	}
 
 	if err := ar.GenerateNPMConfig(ctx); err != nil {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)

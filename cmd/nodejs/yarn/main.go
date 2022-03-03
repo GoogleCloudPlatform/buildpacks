@@ -126,7 +126,9 @@ func yarn1InstallModules(ctx *gcp.Context) error {
 	if err := ctx.MkdirAll(layerModules, 0755); err != nil {
 		return err
 	}
-	ctx.RemoveAll(appModules)
+	if err := ctx.RemoveAll(appModules); err != nil {
+		return err
+	}
 	if err := ctx.Symlink(layerModules, appModules); err != nil {
 		return err
 	}
@@ -140,7 +142,9 @@ func yarn1InstallModules(ctx *gcp.Context) error {
 	// relative to node_modules: https://github.com/firebase/firebase-functions/issues/630.
 	if runtimeconfigJSONExists {
 		layerConfig := filepath.Join(ml.Path, ".runtimeconfig.json")
-		ctx.RemoveAll(layerConfig)
+		if err := ctx.RemoveAll(layerConfig); err != nil {
+			return err
+		}
 		if err := ctx.Symlink(filepath.Join(ctx.ApplicationRoot(), ".runtimeconfig.json"), layerConfig); err != nil {
 			return err
 		}

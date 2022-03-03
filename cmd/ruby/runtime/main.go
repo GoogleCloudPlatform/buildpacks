@@ -74,8 +74,12 @@ func buildFn(ctx *gcp.Context) error {
 	localTemp := filepath.Join(ctx.ApplicationRoot(), "tmp")
 	localLog := filepath.Join(ctx.ApplicationRoot(), "log")
 	ctx.Logf("Removing 'tmp' and 'log' directories in user code")
-	ctx.RemoveAll(localTemp)
-	ctx.RemoveAll(localLog)
+	if err := ctx.RemoveAll(localTemp); err != nil {
+		return err
+	}
+	if err := ctx.RemoveAll(localLog); err != nil {
+		return err
+	}
 	ctx.Symlink("/tmp", localTemp)
 	ctx.Symlink("/var/log", localLog)
 

@@ -71,7 +71,9 @@ func buildFn(ctx *gcp.Context) error {
 	// If it exists as a symlink, RemoveAll will remove the link, not anything it's linked to.
 	// We can't just use `-Dmaven.repo.local`. It does set the path to `m2/repo` but it fails
 	// to set the path to `m2/wrapper` which is used by mvnw to download Maven.
-	ctx.RemoveAll(homeM2)
+	if err := ctx.RemoveAll(homeM2); err != nil {
+		return err
+	}
 	if err := ctx.Symlink(m2CachedRepo.Path, homeM2); err != nil {
 		return err
 	}

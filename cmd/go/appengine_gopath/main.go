@@ -98,7 +98,9 @@ func buildFn(ctx *gcp.Context) error {
 		}
 		buildMainPath = filepath.Join(goPathSrc, strings.TrimSpace(string(goPathMainBytes)))
 		// Remove stager directory prior to copying to make sure we don't copy the stager directory to $GOPATH.
-		ctx.RemoveAll(stagerGoPath)
+		if err := ctx.RemoveAll(stagerGoPath); err != nil {
+			return err
+		}
 		if err := ctx.MkdirAll(buildMainPath, 0755); err != nil {
 			return err
 		}
@@ -106,7 +108,9 @@ func buildFn(ctx *gcp.Context) error {
 	} else {
 		buildMainPath = "./..."
 		// Remove stager directory to make sure there's only one go package in application root.
-		ctx.RemoveAll(stagerGoPath)
+		if err := ctx.RemoveAll(stagerGoPath); err != nil {
+			return err
+		}
 	}
 
 	if _, exists := os.LookupEnv(env.Buildable); !exists {

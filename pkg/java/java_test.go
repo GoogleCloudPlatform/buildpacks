@@ -210,7 +210,9 @@ func TestCheckCacheNewDateMiss(t *testing.T) {
 				t.Fatalf("Error checking if file exists: %v", err)
 			}
 			if testFilePathExists {
-				ctx.RemoveAll(testFilePath)
+				if err := os.RemoveAll(testFilePath); err != nil {
+					t.Errorf("error cleaning up: %v", err)
+				}
 				t.Errorf("checkCacheExpiration() did not clear layer")
 			}
 		})
@@ -242,7 +244,9 @@ func TestCheckCacheNewDateHit(t *testing.T) {
 				t.Errorf("checkCacheExpiration() cleared layer")
 			}
 			// Clean up layer for next test case.
-			ctx.RemoveAll(testFilePath)
+			if err := os.RemoveAll(testFilePath); err != nil {
+				t.Fatalf("error cleaning up: %v", err)
+			}
 		})
 	}
 }

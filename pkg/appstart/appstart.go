@@ -71,7 +71,9 @@ func (c Config) Write(ctx *gcp.Context) error {
 		return fmt.Errorf("marshalling JSON: %w", err)
 	}
 
-	ctx.RemoveAll(ConfigDir)
+	if err := ctx.RemoveAll(ConfigDir); err != nil {
+		return err
+	}
 	if err := ctx.Symlink(l.Path, ConfigDir); err != nil {
 		return err
 	}

@@ -107,7 +107,9 @@ func mainPath(ctx *gcp.Context) (string, error) {
 			return "", err
 		}
 		path := string(bytes)
-		ctx.RemoveAll(pathFile)
+		if err := ctx.RemoveAll(pathFile); err != nil {
+			return "", err
+		}
 		return path, nil
 	}
 

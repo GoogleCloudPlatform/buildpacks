@@ -88,7 +88,9 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Remove any user-provided local bundle config and cache that can interfere with the build process.
-	ctx.RemoveAll(".bundle")
+	if err := ctx.RemoveAll(".bundle"); err != nil {
+		return err
+	}
 
 	deps := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 
@@ -108,7 +110,9 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.Exec([]string{"bundle", "config", "--local", "path", localGemsDir}, gcp.WithUserAttribution)
 	ctx.Exec([]string{"bundle", "lock", "--add-platform", "x86_64-linux"}, gcp.WithUserAttribution)
 	ctx.Exec([]string{"bundle", "lock", "--add-platform", "ruby"}, gcp.WithUserAttribution)
-	ctx.RemoveAll(".bundle")
+	if err := ctx.RemoveAll(".bundle"); err != nil {
+		return err
+	}
 
 	if cached {
 		ctx.CacheHit(layerName)
@@ -137,7 +141,9 @@ func buildFn(ctx *gcp.Context) error {
 		}
 
 		// Move the built .bundle directory into the layer
-		ctx.RemoveAll(bundleOutput)
+		if err := ctx.RemoveAll(bundleOutput); err != nil {
+			return err
+		}
 		ctx.Exec([]string{"mv", ".bundle", bundleOutput}, gcp.WithUserTimingAttribution)
 	}
 

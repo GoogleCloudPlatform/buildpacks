@@ -68,7 +68,9 @@ func buildFn(ctx *gcp.Context) error {
 	fnTarget := os.Getenv(env.FunctionTarget)
 
 	// Move the function source code into a subdirectory in order to construct the app in the main application root.
-	ctx.RemoveAll(fnSourceDir)
+	if err := ctx.RemoveAll(fnSourceDir); err != nil {
+		return err
+	}
 	if err := ctx.MkdirAll(fnSourceDir, 0755); err != nil {
 		return err
 	}

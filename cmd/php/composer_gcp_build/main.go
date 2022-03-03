@@ -58,6 +58,8 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	ctx.Exec([]string{"composer", "run-script", "--timeout=600", "--no-dev", "gcp-build"}, gcp.WithUserAttribution)
-	ctx.RemoveAll(php.Vendor)
+	if err := ctx.RemoveAll(php.Vendor); err != nil {
+		return err
+	}
 	return nil
 }

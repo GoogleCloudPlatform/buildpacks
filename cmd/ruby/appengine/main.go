@@ -46,8 +46,12 @@ func buildFn(ctx *gcp.Context) error {
 	// Ruby sometimes writes to local directories tmp/ and log/, so we link these to writable areas.
 	localTemp := filepath.Join(ctx.ApplicationRoot(), "tmp")
 	localLog := filepath.Join(ctx.ApplicationRoot(), "log")
-	ctx.RemoveAll(localTemp)
-	ctx.RemoveAll(localLog)
+	if err := ctx.RemoveAll(localTemp); err != nil {
+		return err
+	}
+	if err := ctx.RemoveAll(localLog); err != nil {
+		return err
+	}
 	if err := ctx.Symlink("/tmp", localTemp); err != nil {
 		return err
 	}

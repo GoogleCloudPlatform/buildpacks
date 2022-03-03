@@ -67,7 +67,9 @@ func buildFn(ctx *gcp.Context) error {
 	homeGradle := filepath.Join(ctx.HomeDir(), ".gradle")
 	// Symlink the gradle-cache layer into ~/.gradle. If ~/.gradle already exists, delete it first.
 	// If it exists as a symlink, RemoveAll will remove the link, not anything it's linked to.
-	ctx.RemoveAll(homeGradle)
+	if err := ctx.RemoveAll(homeGradle); err != nil {
+		return err
+	}
 	if err := ctx.Symlink(gradleCachedRepo.Path, homeGradle); err != nil {
 		return err
 	}

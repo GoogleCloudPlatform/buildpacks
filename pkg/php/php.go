@@ -130,7 +130,9 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 	//   https://github.com/GoogleCloudPlatform/runtimes-common/commit/6c4970f609d80f9436ac58ae272cfcc6bcd57143
 	flags := []string{"--no-dev", "--no-progress", "--no-suggest", "--no-interaction", "--optimize-autoloader"}
 
-	ctx.RemoveAll(Vendor)
+	if err := ctx.RemoveAll(Vendor); err != nil {
+		return nil, err
+	}
 	l := ctx.Layer("composer", gcp.CacheLayer)
 	layerVendor := filepath.Join(l.Path, Vendor)
 
