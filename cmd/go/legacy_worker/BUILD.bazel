@@ -24,8 +24,8 @@ go_binary(
         "main.go",
     ],
     embedsrcs = [
-        "converter/worker/gomod.tmpl",
-        "converter/worker/main.tmpl",
+        "converter/worker/gomod.tmpl",  #keep
+        "converter/worker/main.tmpl",  #keep
     ],
     # Strip debugging information to reduce binary size.
     gc_linkopts = [
