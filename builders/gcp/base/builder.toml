@@ -156,10 +156,6 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   id = "google.python.webserver"
   uri = "webserver.tgz"
 
-[[buildpacks]]
-  id = "google.python.appengine"
-  uri = "appengine.tgz"
-
 ########
 # .NET #
 ########
