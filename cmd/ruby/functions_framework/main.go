@@ -19,6 +19,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -56,7 +57,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 func buildFn(ctx *gcp.Context) error {
 	// The framework has been installed with the dependencies, so this layer is
 	// used only for env vars.
-	l := ctx.Layer(layerName, gcp.LaunchLayer)
+	l, err := ctx.Layer(layerName, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", layerName, err)
+	}
 	ctx.SetFunctionsEnvVars(l)
 
 	source, err := validateSource(ctx)

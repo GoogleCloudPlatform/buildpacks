@@ -63,7 +63,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	m2CachedRepo := ctx.Layer(m2Layer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	m2CachedRepo, err := ctx.Layer(m2Layer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", m2Layer, err)
+	}
 	java.CheckCacheExpiration(ctx, m2CachedRepo)
 
 	homeM2 := filepath.Join(ctx.HomeDir(), ".m2")
@@ -162,7 +165,10 @@ func mvnInstalled(ctx *gcp.Context) bool {
 
 // installMaven installs Maven and returns the path of the mvn binary
 func installMaven(ctx *gcp.Context) (string, error) {
-	mvnl := ctx.Layer(mavenLayer, gcp.CacheLayer, gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
+	mvnl, err := ctx.Layer(mavenLayer, gcp.CacheLayer, gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
+	if err != nil {
+		return "", fmt.Errorf("creating %v layer: %w", mavenLayer, err)
+	}
 
 	// Check the metadata in the cache layer to determine if we need to proceed.
 	metaVersion := ctx.GetMetadata(mvnl, versionKey)

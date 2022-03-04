@@ -117,12 +117,21 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	vcpkgCache := ctx.Layer(vcpkgCacheLayerName, gcp.BuildLayer, gcp.CacheLayer)
+	vcpkgCache, err := ctx.Layer(vcpkgCacheLayerName, gcp.BuildLayer, gcp.CacheLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", vcpkgCacheLayerName, err)
+	}
 
-	mainLayer := ctx.Layer(mainLayerName)
+	mainLayer, err := ctx.Layer(mainLayerName)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", mainLayerName, err)
+	}
 	ctx.SetFunctionsEnvVars(mainLayer)
 
-	buildLayer := ctx.Layer(buildLayerName, gcp.BuildLayer, gcp.CacheLayer)
+	buildLayer, err := ctx.Layer(buildLayerName, gcp.BuildLayer, gcp.CacheLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", buildLayerName, err)
+	}
 
 	fn := extractFnInfo(os.Getenv(env.FunctionTarget), os.Getenv(env.FunctionSignatureType))
 	if err := createMainCppFile(ctx, fn, filepath.Join(mainLayer.Path, "main.cc")); err != nil {
@@ -132,7 +141,10 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	installLayer := ctx.Layer(installLayerName, gcp.LaunchLayer)
+	installLayer, err := ctx.Layer(installLayerName, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", installLayerName, err)
+	}
 
 	vcpkgExePath := filepath.Join(vcpkgPath, "vcpkg")
 	cmakeExePath, err := getToolPath(ctx, vcpkgExePath, "cmake")
@@ -194,7 +206,10 @@ func getToolPath(ctx *gcp.Context, vcpkgExePath string, tool string) (string, er
 }
 
 func installVcpkg(ctx *gcp.Context) (string, error) {
-	vcpkg := ctx.Layer(vcpkgLayerName, gcp.BuildLayer, gcp.CacheLayer)
+	vcpkg, err := ctx.Layer(vcpkgLayerName, gcp.BuildLayer, gcp.CacheLayer)
+	if err != nil {
+		return "", fmt.Errorf("creating %v layer: %w", vcpkgLayerName, err)
+	}
 	customTripletPath := filepath.Join(vcpkg.Path, "triplets", vcpkgTripletName+".cmake")
 	vcpkgExePath := filepath.Join(vcpkg.Path, "vcpkg")
 	vcpkgBaselinePath := filepath.Join(vcpkg.Path, "versions", "baseline.json")

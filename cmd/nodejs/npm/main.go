@@ -48,7 +48,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	ml := ctx.Layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
+	ml, err := ctx.Layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
 	nm := filepath.Join(ml.Path, "node_modules")
 	if err := ctx.RemoveAll("node_modules"); err != nil {
 		return err
@@ -113,7 +116,10 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	}
 
-	el := ctx.Layer("env", gcp.BuildLayer, gcp.LaunchLayer)
+	el, err := ctx.Layer("env", gcp.BuildLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
 	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
 	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
 
@@ -126,10 +132,12 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Configure the entrypoint and metadata for dev mode.
-	devmode.AddFileWatcherProcess(ctx, devmode.Config{
+	if err := devmode.AddFileWatcherProcess(ctx, devmode.Config{
 		RunCmd: cmd,
 		Ext:    devmode.NodeWatchedExtensions,
-	})
+	}); err != nil {
+		return fmt.Errorf("adding devmode file watcher: %w", err)
+	}
 	devmode.AddSyncMetadata(ctx, devmode.NodeSyncRules)
 
 	return nil

@@ -51,7 +51,10 @@ func Build(ctx *gcp.Context, runtime string, eg appstart.EntrypointGenerator) er
 	// The layer's bin directory will be prepended to the PATH, so executing serve
 	// will in fact execute serve2.
 	// TODO(mtraver) Remove this layer and symlink once serve2 replaces serve and is renamed.
-	l := ctx.Layer("serve", gcp.LaunchLayer)
+	l, err := ctx.Layer("serve", gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
 	binDir := filepath.Join(l.Path, "bin")
 	if err := ctx.MkdirAll(binDir, 0755); err != nil {
 		return err

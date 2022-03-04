@@ -92,7 +92,10 @@ func buildSDKLayer(ctx *gcp.Context, version string, isDevMode bool) error {
 		Build:    true,
 	})
 	// Keep the SDK layer for launch in devmode because we use `dotnet watch`.
-	sdkl := ctx.Layer(sdkLayerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	sdkl, err := ctx.Layer(sdkLayerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", sdkLayerName, err)
+	}
 	sdkMetaVersion := ctx.GetMetadata(sdkl, versionKey)
 	cacheHitValue := fmt.Sprintf("version:%s,devMode:%t", version, isDevMode)
 	if cacheHitValue == sdkMetaVersion {
@@ -178,7 +181,10 @@ func buildRuntimeLayer(ctx *gcp.Context, sdkVersion string) error {
 		Launch:   true,
 		Build:    true,
 	})
-	rtl := ctx.Layer(runtimeLayerName, gcp.CacheLayer, gcp.LaunchLayer)
+	rtl, err := ctx.Layer(runtimeLayerName, gcp.CacheLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", runtimeLayerName, err)
+	}
 	rtMetaVersion := ctx.GetMetadata(rtl, versionKey)
 	if rtVersion == rtMetaVersion {
 		ctx.CacheHit(runtimeLayerName)

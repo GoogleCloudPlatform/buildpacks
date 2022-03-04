@@ -133,7 +133,10 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 	if err := ctx.RemoveAll(Vendor); err != nil {
 		return nil, err
 	}
-	l := ctx.Layer("composer", gcp.CacheLayer)
+	l, err := ctx.Layer("composer", gcp.CacheLayer)
+	if err != nil {
+		return nil, fmt.Errorf("creating layer: %w", err)
+	}
 	layerVendor := filepath.Join(l.Path, Vendor)
 
 	composerLockExists, err := ctx.FileExists(composerLock)

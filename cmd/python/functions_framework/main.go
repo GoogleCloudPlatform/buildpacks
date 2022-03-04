@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -69,7 +70,10 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Install functions-framework if necessary.
-	l := ctx.Layer(layerName, gcp.LaunchLayer, gcp.BuildLayer)
+	l, err := ctx.Layer(layerName, gcp.LaunchLayer, gcp.BuildLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", layerName, err)
+	}
 	if hasFrameworkDependency {
 		ctx.Logf("Handling functions with dependency on functions-framework.")
 		ctx.ClearLayer(l)

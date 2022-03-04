@@ -71,7 +71,10 @@ func buildFn(ctx *gcp.Context) error {
 		reqs = append(reqs, "requirements.txt")
 	}
 
-	l := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	l, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", layerName, err)
+	}
 
 	if err := python.InstallRequirements(ctx, l, reqs...); err != nil {
 		return fmt.Errorf("installing dependencies: %w", err)

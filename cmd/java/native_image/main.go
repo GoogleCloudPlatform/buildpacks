@@ -115,7 +115,10 @@ func buildCommandLine(ctx *gcp.Context, buildArgs []string) ([]string, error) {
 
 	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 
-	nativeLayer := ctx.Layer("native-image", gcp.LaunchLayer)
+	nativeLayer, err := ctx.Layer("native-image", gcp.LaunchLayer)
+	if err != nil {
+		return nil, fmt.Errorf("creating layer: %w", err)
+	}
 	finalImage := filepath.Join(nativeLayer.Path, "bin", "native-app")
 
 	if err := ctx.MkdirAll(finalImage, 0755); err != nil {

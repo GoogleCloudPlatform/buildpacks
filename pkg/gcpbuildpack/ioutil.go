@@ -15,6 +15,7 @@
 package gcpbuildpack
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -24,7 +25,10 @@ import (
 
 // TempDir creates a directory with the provided name in the buildpack temp layer and returns its path
 func (ctx *Context) TempDir(name string) (string, error) {
-	tmpLayer := ctx.Layer("gcpbuildpack-tmp")
+	tmpLayer, err := ctx.Layer("gcpbuildpack-tmp")
+	if err != nil {
+		return "", fmt.Errorf("creating layer: %w", err)
+	}
 	directory := filepath.Join(tmpLayer.Path, name)
 	if err := ctx.MkdirAll(directory, 0755); err != nil {
 		return "", err

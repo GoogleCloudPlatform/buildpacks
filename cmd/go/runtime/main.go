@@ -61,7 +61,10 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
-	grl := ctx.Layer(goLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	grl, err := ctx.Layer(goLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
 
 	// Check metadata layer to see if correct version of Go is already installed.
 	metaVersion := ctx.GetMetadata(grl, versionKey)

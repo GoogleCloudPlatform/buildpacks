@@ -42,11 +42,13 @@ func buildFn(ctx *gcp.Context) error {
 	// Configure the entrypoint and metadata for dev mode.
 	if devmode.Enabled(ctx) {
 		devmode.AddSyncMetadata(ctx, devmode.JavaSyncRules)
-		devmode.AddFileWatcherProcess(ctx, devmode.Config{
+		if err := devmode.AddFileWatcherProcess(ctx, devmode.Config{
 			BuildCmd: []string{".devmode_rebuild.sh"},
 			RunCmd:   command,
 			Ext:      devmode.JavaWatchedExtensions,
-		})
+		}); err != nil {
+			return fmt.Errorf("adding devmode file watcher: %w", err)
+		}
 
 		return nil
 	}

@@ -59,7 +59,10 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("finding project: %w", err)
 	}
 	ctx.Logf("Installing application dependencies.")
-	pkgLayer := ctx.Layer("packages", gcp.BuildLayer, gcp.CacheLayer)
+	pkgLayer, err := ctx.Layer("packages", gcp.BuildLayer, gcp.CacheLayer)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
 
 	cached, err := checkCache(ctx, pkgLayer)
 	if err != nil {
@@ -76,7 +79,10 @@ func buildFn(ctx *gcp.Context) error {
 	cmd := []string{"dotnet", "restore", "--packages", pkgLayer.Path, proj}
 	ctx.Exec(cmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution)
 
-	binLayer := ctx.Layer("bin", gcp.BuildLayer, gcp.LaunchLayer)
+	binLayer, err := ctx.Layer("bin", gcp.BuildLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
 
 	cmd = []string{
 		"dotnet",

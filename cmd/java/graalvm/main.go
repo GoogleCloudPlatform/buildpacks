@@ -67,7 +67,10 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 func installGraalVM(ctx *gcp.Context) error {
-	graalLayer := ctx.Layer(layerName, gcp.CacheLayer, gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
+	graalLayer, err := ctx.Layer(layerName, gcp.CacheLayer, gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", graalLayer, err)
+	}
 
 	metaVersion := ctx.GetMetadata(graalLayer, versionKey)
 	if graalvmVersion == metaVersion {
@@ -84,8 +87,7 @@ func installGraalVM(ctx *gcp.Context) error {
 	command := fmt.Sprintf(
 		"curl --fail --show-error --silent --location %s "+
 			"| tar xz --directory %s --strip-components=1", archiveURL, graalLayer.Path)
-	_, err := ctx.ExecWithErr([]string{"bash", "-c", command}, gcp.WithUserAttribution)
-	if err != nil {
+	if _, err := ctx.ExecWithErr([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 

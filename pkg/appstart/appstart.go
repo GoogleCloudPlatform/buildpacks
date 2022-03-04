@@ -64,7 +64,10 @@ type EntrypointGenerator func(*gcp.Context) (*Entrypoint, error)
 
 // Write writes the config to the default config file in a new layer.
 func (c Config) Write(ctx *gcp.Context) error {
-	l := ctx.Layer("config", gcp.LaunchLayer)
+	l, err := ctx.Layer("config", gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
 
 	cb, err := json.Marshal(c)
 	if err != nil {

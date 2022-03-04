@@ -52,7 +52,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer("gopath", gcp.BuildLayer)
+	l, err := ctx.Layer("gopath", gcp.BuildLayer)
+	if err != nil {
+		return fmt.Errorf("creating gopath layer: %w", err)
+	}
 
 	goPath := l.Path
 	goPathSrc := filepath.Join(goPath, "src")

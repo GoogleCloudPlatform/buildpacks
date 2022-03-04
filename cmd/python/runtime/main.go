@@ -97,7 +97,10 @@ func legacyInstallPython(ctx *gcp.Context, layer *libcnb.Layer) (bool, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	layer := ctx.Layer(pythonLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerUnlessSkipRuntimeLaunch)
+	layer, err := ctx.Layer(pythonLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerUnlessSkipRuntimeLaunch)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", pythonLayer, err)
+	}
 	isCached, err := installPython(ctx, layer)
 	if err != nil {
 		return err

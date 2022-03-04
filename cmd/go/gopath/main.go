@@ -17,6 +17,8 @@
 package main
 
 import (
+	"fmt"
+
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -36,7 +38,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer("gopath", gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
+	l, err := ctx.Layer("gopath", gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
 	l.SharedEnvironment.Override("GOPATH", l.Path)
 	l.SharedEnvironment.Override("GO111MODULE", "off")
 

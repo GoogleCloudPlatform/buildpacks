@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -41,7 +42,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer(layerName, gcp.LaunchLayer, gcp.BuildLayer)
+	l, err := ctx.Layer(layerName, gcp.LaunchLayer, gcp.BuildLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", layerName, err)
+	}
 
 	// The pip install is performed by the pip buildpack; see python.InstallRequirements.
 	ctx.Debugf("Adding functions-framework requirements.txt to the list of requirements files to install.")

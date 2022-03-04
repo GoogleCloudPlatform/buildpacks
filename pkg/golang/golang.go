@@ -167,7 +167,10 @@ var readGoMod = func(ctx *gcp.Context) (string, error) {
 // layer is configured for caching if possible. It only supports caching for "go mod"
 // based builds.
 func NewGoWorkspaceLayer(ctx *gcp.Context) (*libcnb.Layer, error) {
-	l := ctx.Layer(goPathLayerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	l, err := ctx.Layer(goPathLayerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	if err != nil {
+		return nil, fmt.Errorf("creating %v layer: %w", goPathLayerName, err)
+	}
 	l.BuildEnvironment.Override("GOPATH", l.Path)
 	l.BuildEnvironment.Override("GO111MODULE", "on")
 	// Set GOPROXY to ensure no additional dependency is downloaded at built time.

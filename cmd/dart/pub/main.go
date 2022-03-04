@@ -17,6 +17,8 @@
 package main
 
 import (
+	"fmt"
+
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -40,7 +42,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	ml := ctx.Layer(pubLayer, gcp.BuildLayer, gcp.CacheLayer)
+	ml, err := ctx.Layer(pubLayer, gcp.BuildLayer, gcp.CacheLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", pubLayer, err)
+	}
 	ml.BuildEnvironment.Override("PUB_CACHE", ml.Path)
 	ctx.Exec([]string{"dart", "pub", "get"}, gcp.WithUserAttribution)
 	return nil

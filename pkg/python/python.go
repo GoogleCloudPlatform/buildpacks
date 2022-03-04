@@ -92,7 +92,10 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 
 	// The cache layer is used as PIP_CACHE_DIR to keep the cache directory across builds in case
 	// we do not get a full cache hit.
-	cl := ctx.Layer(cacheName, gcp.CacheLayer)
+	cl, err := ctx.Layer(cacheName, gcp.CacheLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", cacheName, err)
+	}
 
 	if err := ar.GeneratePythonConfig(ctx); err != nil {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)

@@ -43,7 +43,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 func buildFn(ctx *gcp.Context) error {
 	// Create a layer for the compiled binary.  Add it to PATH in case
 	// users wish to invoke the binary manually.
-	bl := ctx.Layer("bin", gcp.LaunchLayer)
+	bl, err := ctx.Layer("bin", gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
 	bl.LaunchEnvironment.Prepend("PATH", string(os.PathListSeparator), bl.Path)
 	outBin := filepath.Join(bl.Path, "server")
 

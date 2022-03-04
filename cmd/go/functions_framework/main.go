@@ -74,7 +74,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer(layerName, gcp.LaunchLayer)
+	l, err := ctx.Layer(layerName, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", layerName, err)
+	}
 	ctx.SetFunctionsEnvVars(l)
 	ctx.AddWebProcess([]string{golang.OutBin})
 
@@ -140,7 +143,10 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
-	l := ctx.Layer(gopathLayerName, gcp.BuildLayer)
+	l, err := ctx.Layer(gopathLayerName, gcp.BuildLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", gopathLayerName, err)
+	}
 	l.BuildEnvironment.Override("GOPATH", l.Path)
 	if err := ctx.Setenv("GOPATH", l.Path); err != nil {
 		return err
@@ -195,7 +201,10 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 }
 
 func createMainGoModVendored(ctx *gcp.Context, fn fnInfo) error {
-	l := ctx.Layer(gopathLayerName, gcp.BuildLayer)
+	l, err := ctx.Layer(gopathLayerName, gcp.BuildLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", gopathLayerName, err)
+	}
 	l.BuildEnvironment.Override("GOPATH", l.Path)
 	if err := ctx.Setenv("GOPATH", l.Path); err != nil {
 		return err
@@ -260,7 +269,10 @@ func moduleAndPackageNames(ctx *gcp.Context, fn fnInfo) (string, string, error) 
 // so that Go versions that don't natively handle gomod vendoring would be able to pick up the vendored deps.
 // n.b. later versions of Go (1.14+) handle vendored go.mod files natively, and so we just use the go.mod route there.
 func createMainVendored(ctx *gcp.Context, fn fnInfo) error {
-	l := ctx.Layer(gopathLayerName, gcp.BuildLayer)
+	l, err := ctx.Layer(gopathLayerName, gcp.BuildLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", gopathLayerName, err)
+	}
 	gopath := ctx.ApplicationRoot()
 	gopathSrc := filepath.Join(gopath, "src")
 	if err := ctx.MkdirAll(gopathSrc, 0755); err != nil {

@@ -17,6 +17,8 @@
 package main
 
 import (
+	"fmt"
+
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
@@ -38,7 +40,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer("nginx", gcp.CacheLayer, gcp.LaunchLayer)
-	_, err := runtime.InstallTarballIfNotCached(ctx, runtime.Nginx, nginxVerConstraint, l)
+	l, err := ctx.Layer("nginx", gcp.CacheLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
+	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.Nginx, nginxVerConstraint, l)
 	return err
 }

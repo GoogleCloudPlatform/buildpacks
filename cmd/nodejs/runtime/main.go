@@ -69,8 +69,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 func buildFn(ctx *gcp.Context) error {
 	// Use GOOGLE_NODEJS_VERSION to enable installing from the experimental tarball hosting service.
 	if version := os.Getenv(versionEnv); version != "" {
-		nrl := ctx.Layer(nodeLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
-		_, err := runtime.InstallTarballIfNotCached(ctx, runtime.Nodejs, version, nrl)
+		nrl, err := ctx.Layer(nodeLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+		if err != nil {
+			return fmt.Errorf("creating %v layer: %w", nodeLayer, err)
+		}
+		_, err = runtime.InstallTarballIfNotCached(ctx, runtime.Nodejs, version, nrl)
 		return err
 	}
 	pkgJSON, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
@@ -90,7 +93,10 @@ func buildFn(ctx *gcp.Context) error {
 	})
 
 	// Check the metadata in the cache layer to determine if we need to proceed.
-	nrl := ctx.Layer(nodeLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	nrl, err := ctx.Layer(nodeLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", nodeLayer, err)
+	}
 	if isCached(ctx, nrl, version, npmVersion) {
 		ctx.CacheHit(nodeLayer)
 		ctx.Logf("Runtime cache hit, skipping installation.")

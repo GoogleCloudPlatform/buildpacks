@@ -60,7 +60,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	gradleCachedRepo := ctx.Layer(cacheLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	gradleCachedRepo, err := ctx.Layer(cacheLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", cacheLayer, err)
+	}
 
 	java.CheckCacheExpiration(ctx, gradleCachedRepo)
 
@@ -121,7 +124,10 @@ func gradleInstalled(ctx *gcp.Context) bool {
 
 // installGradle installs Gradle and returns the path of the gradle binary
 func installGradle(ctx *gcp.Context) (string, error) {
-	gradlel := ctx.Layer(gradleLayer, gcp.CacheLayer, gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
+	gradlel, err := ctx.Layer(gradleLayer, gcp.CacheLayer, gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
+	if err != nil {
+		return "", fmt.Errorf("creating %v layer: %w", gradleLayer, err)
+	}
 
 	metaVersion := ctx.GetMetadata(gradlel, versionKey)
 	// Check the metadata in the cache layer to determine if we need to proceed.

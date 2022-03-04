@@ -76,14 +76,20 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	}
 
-	l := ctx.Layer("main_env", gcp.BuildLayer)
+	l, err := ctx.Layer("main_env", gcp.BuildLayer)
+	if err != nil {
+		return fmt.Errorf("creating main_env layer: %w", err)
+	}
 	l.BuildEnvironment.Override(env.Buildable, buildMainPath)
 
 	// HACK: For backwards compatibility on App Engine Go 1.11:
 	// Copy all files to a layer directory that ends with /srv because the appengine package relies on the name:
 	// https://github.com/golang/appengine/blob/553959209a20f3be281c16dd5be5c740a893978f/delay/delay.go#L136
 	// We change the work directory instead of modifying env.Buildable, because the latter is not necessarily a filesystem path.
-	srvl := ctx.Layer("srv", gcp.BuildLayer)
+	srvl, err := ctx.Layer("srv", gcp.BuildLayer)
+	if err != nil {
+		return fmt.Errorf("creating srv layer: %w", err)
+	}
 	srvl.BuildEnvironment.Override(golang.BuildDirEnv, srvl.Path)
 	ctx.Exec([]string{"cp", "--dereference", "-R", ".", srvl.Path}, gcp.WithUserTimingAttribution)
 

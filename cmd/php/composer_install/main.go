@@ -54,7 +54,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer(composerLayer, gcp.BuildLayer, gcp.CacheLayer)
+	l, err := ctx.Layer(composerLayer, gcp.BuildLayer, gcp.CacheLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", composerLayer, err)
+	}
 
 	ctx.AddBOMEntry(libcnb.BOMEntry{
 		Name:     composerLayer,

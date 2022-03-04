@@ -48,7 +48,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	sl := ctx.Layer("src", gcp.LaunchLayer)
+	sl, err := ctx.Layer("src", gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
 	sp := filepath.Join(sl.Path, archiveName)
 	archiveSource(ctx, sp, ctx.ApplicationRoot())
 

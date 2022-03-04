@@ -15,7 +15,6 @@
 package gcpbuildpack
 
 import (
-	"errors"
 	"os"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
@@ -73,28 +72,24 @@ var LaunchLayerUnlessSkipRuntimeLaunch = func(ctx *Context, l *libcnb.Layer) err
 }
 
 // Layer returns a layer, creating its directory.
-func (ctx *Context) Layer(name string, opts ...layerOption) *libcnb.Layer {
+func (ctx *Context) Layer(name string, opts ...layerOption) (*libcnb.Layer, error) {
 	l, err := ctx.buildContext.Layers.Layer(name)
 	if err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, err.Error()))
+		return nil, buildererror.Errorf(buildererror.StatusInternal, err.Error())
 	}
 	if err := ctx.MkdirAll(l.Path, layerMode); err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "creating %s: %v", l.Path, err))
+		return nil, buildererror.Errorf(buildererror.StatusInternal, "creating %s: %v", l.Path, err)
 	}
 	for _, o := range opts {
 		if err := o(ctx, &l); err != nil {
-			var be buildererror.Error
-			if errors.As(err, &be) {
-				ctx.Exit(1, &be)
-			}
-			ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "applying layer option: %v", err))
+			return nil, err
 		}
 	}
 	if l.Metadata == nil {
 		l.Metadata = make(map[string]interface{})
 	}
 	ctx.buildResult.Layers = append(ctx.buildResult.Layers, layerContributor{&l})
-	return &l
+	return &l, nil
 }
 
 type layerContributor struct {

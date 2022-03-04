@@ -75,7 +75,10 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	}
 
-	el := ctx.Layer("env", gcp.BuildLayer, gcp.LaunchLayer)
+	el, err := ctx.Layer("env", gcp.BuildLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
 	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
 	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
 
@@ -88,10 +91,12 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Configure the entrypoint and metadata for dev mode.
-	devmode.AddFileWatcherProcess(ctx, devmode.Config{
+	if err := devmode.AddFileWatcherProcess(ctx, devmode.Config{
 		RunCmd: cmd,
 		Ext:    devmode.NodeWatchedExtensions,
-	})
+	}); err != nil {
+		return fmt.Errorf("adding devmode file watcher: %w", err)
+	}
 	devmode.AddSyncMetadata(ctx, devmode.NodeSyncRules)
 
 	return nil
@@ -103,7 +108,10 @@ func yarn1InstallModules(ctx *gcp.Context) error {
 		return err
 	}
 
-	ml := ctx.Layer("yarn_modules", gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	ml, err := ctx.Layer("yarn_modules", gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
 	cached, err := nodejs.CheckCache(ctx, ml, cache.WithFiles("package.json", nodejs.YarnLock))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
@@ -242,7 +250,10 @@ func installYarn(ctx *gcp.Context) error {
 		return err
 	}
 
-	yrl := ctx.Layer(yarnLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	yrl, err := ctx.Layer(yarnLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", yarnLayer, err)
+	}
 	// Check the metadata in the cache layer to determine if we need to proceed.
 	metaVersion := ctx.GetMetadata(yrl, versionKey)
 	if version == metaVersion {

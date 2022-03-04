@@ -116,7 +116,10 @@ func buildFn(ctx *gcp.Context) error {
 	})
 
 	// Check the metadata in the cache layer to determine if we need to proceed.
-	l := ctx.Layer(javaLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	l, err := ctx.Layer(javaLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", javaLayer, err)
+	}
 	metaVersion := ctx.GetMetadata(l, versionKey)
 	if version == metaVersion {
 		ctx.CacheHit(javaLayer)

@@ -87,7 +87,10 @@ func buildFn(ctx *gcp.Context) error {
 
 	ctx.AddWebProcess([]string{"/bin/bash", "-c", fmt.Sprintf("php -S 0.0.0.0:${PORT} %s", routerScript)})
 
-	l := ctx.Layer("functions-framework", gcp.BuildLayer, gcp.LaunchLayer)
+	l, err := ctx.Layer("functions-framework", gcp.BuildLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
 	ctx.SetFunctionsEnvVars(l)
 	return nil
 }

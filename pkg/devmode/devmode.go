@@ -73,11 +73,16 @@ type Config struct {
 }
 
 // AddFileWatcherProcess installs and configures a file watcher as the entrypoint.
-func AddFileWatcherProcess(ctx *gcp.Context, cfg Config) {
+func AddFileWatcherProcess(ctx *gcp.Context, cfg Config) error {
 	installFileWatcher(ctx)
-	writeBuildAndRunScript(ctx, ctx.Layer(scriptsLayer), cfg)
+	sl, err := ctx.Layer(scriptsLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", scriptsLayer, err)
+	}
+	writeBuildAndRunScript(ctx, sl, cfg)
 	// Override the web process.
 	ctx.AddWebProcess([]string{WatchAndRun})
+	return nil
 }
 
 // AddSyncMetadata adds sync metadata to the final image.
@@ -124,7 +129,10 @@ func writeBuildAndRunScript(ctx *gcp.Context, sl *libcnb.Layer, cfg Config) erro
 
 // installFileWatcher installs the `watchexec` file watcher.
 func installFileWatcher(ctx *gcp.Context) error {
-	wxl := ctx.Layer(watchexecLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	wxl, err := ctx.Layer(watchexecLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", watchexecLayer, err)
+	}
 
 	// Check metadata layer to see if correct version of watchexec is already installed.
 	metaWatchexecVersion := ctx.GetMetadata(wxl, versionKey)

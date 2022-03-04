@@ -54,7 +54,10 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	layer := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	layer, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", layerName, err)
+	}
 	ffPath, err := installFunctionsFramework(ctx, layer)
 	layer.BuildEnvironment.Override(java.FFJarPathEnv, ffPath)
 	if err != nil {

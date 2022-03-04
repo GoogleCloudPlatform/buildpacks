@@ -92,7 +92,10 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	deps := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	deps, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", layerName, err)
+	}
 
 	// This layer directory contains the files installed by bundler into the application .bundle directory
 	bundleOutput := filepath.Join(deps.Path, ".bundle")

@@ -113,7 +113,10 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	}
 
-	l := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	l, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", layerName, err)
+	}
 	// We use the absolute path to the functions-framework executable in order to
 	// avoid having to add its parent directory to PATH which could cause
 	// conflicts with user-specified dependencies in the case where the framework

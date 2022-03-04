@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -39,7 +40,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer(layerName, gcp.BuildLayer, gcp.LaunchLayer)
+	l, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", layerName, err)
+	}
 	ctx.SetFunctionsEnvVars(l)
 	return nil
 }

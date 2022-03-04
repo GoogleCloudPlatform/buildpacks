@@ -69,7 +69,10 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.Logf("Using Dart SDK version %s", version)
 
 	// The Dart SDK is only required at compile time. It is not included in the run image.
-	drl := ctx.Layer(dartLayer, gcp.BuildLayer, gcp.CacheLayer)
+	drl, err := ctx.Layer(dartLayer, gcp.BuildLayer, gcp.CacheLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", dartLayer, err)
+	}
 	ctx.AddBOMEntry(libcnb.BOMEntry{
 		Name:     dartLayer,
 		Metadata: map[string]interface{}{"version": version},

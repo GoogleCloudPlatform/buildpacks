@@ -50,14 +50,20 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 func buildFn(ctx *gcp.Context) error {
 	// Keep GOCACHE in Devmode for faster rebuilds.
-	cl := ctx.Layer("gocache", gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
+	cl, err := ctx.Layer("gocache", gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
 	if devmode.Enabled(ctx) {
 		cl.LaunchEnvironment.Override("GOCACHE", cl.Path)
 	}
 
 	// Create a layer for the compiled binary.  Add it to PATH in case
 	// users wish to invoke the binary manually.
-	bl := ctx.Layer("bin", gcp.LaunchLayer)
+	bl, err := ctx.Layer("bin", gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
 	bl.LaunchEnvironment.Prepend("PATH", string(os.PathListSeparator), bl.Path)
 	outBin := filepath.Join(bl.Path, golang.OutBin)
 
@@ -86,11 +92,13 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Configure the entrypoint and metadata for dev mode.
-	devmode.AddFileWatcherProcess(ctx, devmode.Config{
+	if err := devmode.AddFileWatcherProcess(ctx, devmode.Config{
 		BuildCmd: bld,
 		RunCmd:   []string{outBin},
 		Ext:      devmode.GoWatchedExtensions,
-	})
+	}); err != nil {
+		return fmt.Errorf("adding devmode file watcher: %w", err)
+	}
 
 	devmode.AddSyncMetadata(ctx, devmode.GoSyncRules)
 

@@ -40,7 +40,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer("main_env", gcp.BuildLayer)
+	l, err := ctx.Layer("main_env", gcp.BuildLayer)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
 	l.BuildEnvironment.Override(env.Buildable, os.Getenv(env.GAEMain))
 	return nil
 }
