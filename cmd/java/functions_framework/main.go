@@ -251,7 +251,9 @@ func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) (string, e
 		}
 	}
 	if len(jars) == 1 && isInvokerJar(ctx, jars[0]) {
-		ctx.ClearLayer(layer)
+		if err := ctx.ClearLayer(layer); err != nil {
+			return "", fmt.Errorf("clearing layer %q: %w", layer.Name, err)
+		}
 		// No need to cache the layer because we aren't downloading the framework.
 		layer.Cache = false
 		return jars[0], nil
@@ -265,7 +267,9 @@ func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) (string, e
 		ctx.CacheHit(layerName)
 	} else {
 		ctx.CacheMiss(layerName)
-		ctx.ClearLayer(layer)
+		if err := ctx.ClearLayer(layer); err != nil {
+			return "", fmt.Errorf("clearing layer %q: %w", layer.Name, err)
+		}
 		if err := installFramework(ctx, layer, frameworkVersion); err != nil {
 			return "", err
 		}

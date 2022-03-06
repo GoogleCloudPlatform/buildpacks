@@ -134,7 +134,9 @@ func buildFn(ctx *gcp.Context) error {
 		ff = "yarn functions-framework"
 	} else if hasFrameworkDependency {
 		ctx.Logf("Handling functions with dependency on functions-framework.")
-		ctx.ClearLayer(l)
+		if err := ctx.ClearLayer(l); err != nil {
+			return fmt.Errorf("clearing layer %q: %w", l.Name, err)
+		}
 		ff = filepath.Join("node_modules", ff)
 	} else {
 		ctx.Logf("Handling functions without dependency on functions-framework.")
@@ -189,7 +191,9 @@ func installFunctionsFramework(ctx *gcp.Context, l *libcnb.Layer) error {
 	}
 
 	ctx.CacheMiss(layerName)
-	ctx.ClearLayer(l)
+	if err := ctx.ClearLayer(l); err != nil {
+		return fmt.Errorf("clearing layer %q: %w", l.Name, err)
+	}
 	// NPM expects package.json and the lock file in the prefix directory.
 	ctx.Exec([]string{"cp", "-t", l.Path, pjs, pljs}, gcp.WithUserTimingAttribution)
 	if err := ar.GenerateNPMConfig(ctx); err != nil {

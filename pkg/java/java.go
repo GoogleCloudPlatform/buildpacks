@@ -149,7 +149,7 @@ func findValueFromManifest(manifestContent []byte, key string) (string, error) {
 }
 
 // CheckCacheExpiration clears the m2 layer and sets a new expiry timestamp when the cache is past expiration.
-func CheckCacheExpiration(ctx *gcp.Context, m2CachedRepo *libcnb.Layer) {
+func CheckCacheExpiration(ctx *gcp.Context, m2CachedRepo *libcnb.Layer) error {
 	t := time.Now()
 	expiry := ctx.GetMetadata(m2CachedRepo, expiryTimestampKey)
 	if expiry != "" {
@@ -160,12 +160,15 @@ func CheckCacheExpiration(ctx *gcp.Context, m2CachedRepo *libcnb.Layer) {
 		}
 	}
 	if t.After(time.Now()) {
-		return
+		return nil
 	}
 
 	ctx.Debugf("Cache expired on %v, clearing", t)
-	ctx.ClearLayer(m2CachedRepo)
+	if err := ctx.ClearLayer(m2CachedRepo); err != nil {
+		return fmt.Errorf("clearing layer %q: %w", m2CachedRepo.Name, err)
+	}
 	ctx.SetMetadata(m2CachedRepo, expiryTimestampKey, time.Now().Add(repoExpiration).Format(dateFormat))
+	return nil
 }
 
 // MvnCmd returns the command that should be used to invoke maven for this build.

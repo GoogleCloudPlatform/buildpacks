@@ -107,11 +107,14 @@ func (lc layerContributor) Name() string {
 }
 
 // ClearLayer erases the existing layer, and re-creates the directory.
-func (ctx *Context) ClearLayer(l *libcnb.Layer) {
-	ctx.RemoveAll(l.Path)
-	if err := ctx.MkdirAll(l.Path, layerMode); err != nil {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "creating %s: %v", l.Path, err))
+func (ctx *Context) ClearLayer(l *libcnb.Layer) error {
+	if err := ctx.RemoveAll(l.Path); err != nil {
+		return err
 	}
+	if err := ctx.MkdirAll(l.Path, layerMode); err != nil {
+		return err
+	}
+	return nil
 }
 
 // SetMetadata sets metadata on the layer.

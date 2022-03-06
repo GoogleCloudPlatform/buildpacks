@@ -181,7 +181,9 @@ func NewGoWorkspaceLayer(ctx *gcp.Context) (*libcnb.Layer, error) {
 		if os.IsNotExist(err) {
 			// when go.mod doesn't exist, clear any previously cached bits and return an empty layer
 			l.Cache = false
-			ctx.ClearLayer(l)
+			if err := ctx.ClearLayer(l); err != nil {
+				return nil, fmt.Errorf("clearing layer %q: %w", l.Name, err)
+			}
 			return l, nil
 		}
 		return nil, err
@@ -193,7 +195,9 @@ func NewGoWorkspaceLayer(ctx *gcp.Context) (*libcnb.Layer, error) {
 		return l, nil
 	}
 	ctx.Debugf("go.mod SHA has changed: clearing GOPATH layer's cache")
-	ctx.ClearLayer(l)
+	if err := ctx.ClearLayer(l); err != nil {
+		return nil, fmt.Errorf("clearing layer %q: %w", l.Name, err)
+	}
 	ctx.SetMetadata(l, goModCacheKey, shaStr)
 	return l, nil
 }

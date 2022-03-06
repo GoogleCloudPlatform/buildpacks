@@ -124,7 +124,9 @@ func yarn1InstallModules(ctx *gcp.Context) error {
 		// The dependencies listed in the yarn.lock file have changed. Clear the layer cache and update
 		// it after we run yarn install
 		ctx.CacheMiss(cacheTag)
-		ctx.ClearLayer(ml)
+		if err := ctx.ClearLayer(ml); err != nil {
+			return fmt.Errorf("clearing layer %q: %w", ml.Name, err)
+		}
 	}
 
 	// Use Yarn's --modules-folder flag to install directly into the layer and then symlink them into
@@ -261,7 +263,9 @@ func installYarn(ctx *gcp.Context) error {
 		ctx.Logf("Yarn cache hit, skipping installation.")
 	} else {
 		ctx.CacheMiss(yarnLayer)
-		ctx.ClearLayer(yrl)
+		if err := ctx.ClearLayer(yrl); err != nil {
+			return fmt.Errorf("clearing layer %q: %w", yrl.Name, err)
+		}
 		// Download and install yarn in layer.
 		ctx.Logf("Installing Yarn v%s", version)
 		archiveURL := fmt.Sprintf(yarnURL, version)

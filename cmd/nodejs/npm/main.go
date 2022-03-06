@@ -92,7 +92,9 @@ func buildFn(ctx *gcp.Context) error {
 		}
 		ctx.CacheMiss(cacheTag)
 		// Clear cached node_modules to ensure we don't end up with outdated dependencies after copying.
-		ctx.ClearLayer(ml)
+		if err := ctx.ClearLayer(ml); err != nil {
+			return fmt.Errorf("clearing layer %q: %w", ml.Name, err)
+		}
 
 		ctx.Exec([]string{"npm", installCmd, "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution)
 

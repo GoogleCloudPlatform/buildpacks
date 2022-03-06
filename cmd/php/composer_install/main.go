@@ -73,7 +73,9 @@ func buildFn(ctx *gcp.Context) error {
 		return nil
 	}
 	ctx.CacheMiss(composerLayer)
-	ctx.ClearLayer(l)
+	if err := ctx.ClearLayer(l); err != nil {
+		return fmt.Errorf("clearing layer %q: %w", l.Name, err)
+	}
 
 	// download the installer
 	installer, err := os.CreateTemp(l.Path, fmt.Sprintf("%s-*.php", composerSetup))

@@ -200,7 +200,9 @@ func TestCheckCacheNewDateMiss(t *testing.T) {
 			testFilePath, m2CachedRepo := setupTestLayer(t, ctx)
 			ctx.SetMetadata(m2CachedRepo, "expiry_timestamp", tc.expiryTimestamp)
 
-			CheckCacheExpiration(ctx, m2CachedRepo)
+			if err := CheckCacheExpiration(ctx, m2CachedRepo); err != nil {
+				t.Fatalf("CheckCacheExpiration() unexpected error = %q", err.Error())
+			}
 			metaExpiry := ctx.GetMetadata(m2CachedRepo, "expiry_timestamp")
 			if metaExpiry == tc.expiryTimestamp {
 				t.Errorf("checkCacheExpiration() did not set new date when expected to with ExpiryTimestamp: %q", metaExpiry)
@@ -236,7 +238,9 @@ func TestCheckCacheNewDateHit(t *testing.T) {
 			testFilePath, m2CachedRepo := setupTestLayer(t, ctx)
 			ctx.SetMetadata(m2CachedRepo, "expiry_timestamp", tc.expiryTimestamp)
 
-			CheckCacheExpiration(ctx, m2CachedRepo)
+			if err := CheckCacheExpiration(ctx, m2CachedRepo); err != nil {
+				t.Fatalf("CheckCacheExpiration() unexpected error = %q", err.Error())
+			}
 			if got, want := ctx.GetMetadata(m2CachedRepo, "expiry_timestamp"), tc.expiryTimestamp; got != want {
 				t.Errorf("checkCacheExpiration() set new date when expected not to with ExpiryTimestamp: %q", got)
 			}

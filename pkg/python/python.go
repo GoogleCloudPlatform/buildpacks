@@ -75,7 +75,9 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 	// Defensive check, this should not happen in practice.
 	if len(reqs) == 0 {
 		ctx.Debugf("No requirements.txt to install, clearing layer.")
-		ctx.ClearLayer(l)
+		if err := ctx.ClearLayer(l); err != nil {
+			return fmt.Errorf("clearing layer %q: %w", l.Name, err)
+		}
 		return nil
 	}
 
@@ -206,7 +208,9 @@ func checkCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, 
 		ctx.Debugf("No metadata found from a previous build, skipping cache.")
 	}
 
-	ctx.ClearLayer(l)
+	if err := ctx.ClearLayer(l); err != nil {
+		return false, fmt.Errorf("clearing layer %q: %w", l.Name, err)
+	}
 
 	ctx.Logf("Installing application dependencies.")
 	// Update the layer metadata.

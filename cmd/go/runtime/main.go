@@ -72,7 +72,9 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.CacheHit(goLayer)
 	} else {
 		ctx.CacheMiss(goLayer)
-		ctx.ClearLayer(grl)
+		if err := ctx.ClearLayer(grl); err != nil {
+			return fmt.Errorf("clearing layer %q: %w", grl.Name, err)
+		}
 
 		archiveURL := fmt.Sprintf(goURL, version)
 		code, err := ctx.HTTPStatus(archiveURL)

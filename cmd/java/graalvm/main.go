@@ -80,7 +80,9 @@ func installGraalVM(ctx *gcp.Context) error {
 	}
 
 	ctx.CacheMiss(layerName)
-	ctx.ClearLayer(graalLayer)
+	if err := ctx.ClearLayer(graalLayer); err != nil {
+		return fmt.Errorf("clearing layer %q: %w", graalLayer.Name, err)
+	}
 
 	// Install graalvm into layer.
 	archiveURL := fmt.Sprintf(graalvmURL, graalvmVersion)

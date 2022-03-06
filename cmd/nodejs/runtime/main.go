@@ -103,7 +103,9 @@ func buildFn(ctx *gcp.Context) error {
 		return nil
 	}
 	ctx.CacheMiss(nodeLayer)
-	ctx.ClearLayer(nrl)
+	if err := ctx.ClearLayer(nrl); err != nil {
+		return fmt.Errorf("clearing layer %q: %w", nrl.Name, err)
+	}
 
 	archiveURL := fmt.Sprintf(nodeURL, version)
 	code, err := ctx.HTTPStatus(archiveURL)

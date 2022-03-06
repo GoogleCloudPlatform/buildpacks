@@ -77,7 +77,9 @@ func legacyInstallPython(ctx *gcp.Context, layer *libcnb.Layer) (bool, error) {
 		return true, nil
 	}
 	ctx.CacheMiss(pythonLayer)
-	ctx.ClearLayer(layer)
+	if err := ctx.ClearLayer(layer); err != nil {
+		return false, fmt.Errorf("clearing layer %q: %w", layer.Name, err)
+	}
 
 	archiveURL := fmt.Sprintf(pythonURL, version)
 	code, err := ctx.HTTPStatus(archiveURL)

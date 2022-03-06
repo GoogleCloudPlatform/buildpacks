@@ -164,7 +164,9 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 	} else {
 		ctx.CacheMiss(cacheTag)
 		// Clear layer so we don't end up with outdated dependencies (e.g. something was removed from composer.json).
-		ctx.ClearLayer(l)
+		if err := ctx.ClearLayer(l); err != nil {
+			return nil, fmt.Errorf("clearing layer %q: %w", l.Name, err)
+		}
 		composerInstall(ctx, flags)
 
 		// Ensure vendor exists even if no dependencies were installed.

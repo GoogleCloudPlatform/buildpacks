@@ -155,7 +155,9 @@ func installLegacyWorker(ctx *gcp.Context, l *libcnb.Layer) error {
 	}
 
 	ctx.CacheMiss(layerName)
-	ctx.ClearLayer(l)
+	if err := ctx.ClearLayer(l); err != nil {
+		return fmt.Errorf("clearing layer %q: %w", l.Name, err)
+	}
 
 	ctx.Exec([]string{"cp", "-t", l.Path, pjs, wjs}, gcp.WithUserTimingAttribution)
 	ctx.Exec([]string{"npm", installCmd, "--quiet", "--production", "--prefix", l.Path}, gcp.WithUserAttribution)

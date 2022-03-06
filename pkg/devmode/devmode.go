@@ -141,7 +141,9 @@ func installFileWatcher(ctx *gcp.Context) error {
 	} else {
 		ctx.CacheMiss(watchexecLayer)
 		// Clear layer data to avoid files from multiple versions of watchexec.
-		ctx.ClearLayer(wxl)
+		if err := ctx.ClearLayer(wxl); err != nil {
+			return fmt.Errorf("clearing layer %q: %w", wxl.Name, err)
+		}
 
 		binDir := filepath.Join(wxl.Path, "bin")
 		if err := ctx.MkdirAll(binDir, 0755); err != nil {

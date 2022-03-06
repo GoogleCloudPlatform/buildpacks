@@ -67,7 +67,9 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", m2Layer, err)
 	}
-	java.CheckCacheExpiration(ctx, m2CachedRepo)
+	if err := java.CheckCacheExpiration(ctx, m2CachedRepo); err != nil {
+		return fmt.Errorf("validating the cache: %w", err)
+	}
 
 	homeM2 := filepath.Join(ctx.HomeDir(), ".m2")
 	// Symlink the m2 layer into ~/.m2. If ~/.m2 already exists, delete it first.
@@ -178,7 +180,9 @@ func installMaven(ctx *gcp.Context) (string, error) {
 		return filepath.Join(mvnl.Path, "bin", "mvn"), nil
 	}
 	ctx.CacheMiss(mavenLayer)
-	ctx.ClearLayer(mvnl)
+	if err := ctx.ClearLayer(mvnl); err != nil {
+		return "", fmt.Errorf("clearing layer %q: %w", mvnl.Name, err)
+	}
 
 	// Download and install maven in layer.
 	ctx.Logf("Installing Maven v%s", mavenVersion)

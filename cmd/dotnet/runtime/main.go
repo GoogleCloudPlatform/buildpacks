@@ -104,7 +104,9 @@ func buildSDKLayer(ctx *gcp.Context, version string, isDevMode bool) error {
 		return nil
 	}
 	ctx.CacheMiss(sdkLayerName)
-	ctx.ClearLayer(sdkl)
+	if err := ctx.ClearLayer(sdkl); err != nil {
+		return fmt.Errorf("clearing layer %q: %w", sdkl.Name, err)
+	}
 	if err := dlAndInstallSDK(ctx, sdkl, version, isDevMode); err != nil {
 		return err
 	}
@@ -192,7 +194,9 @@ func buildRuntimeLayer(ctx *gcp.Context, sdkVersion string) error {
 		return nil
 	}
 	ctx.CacheMiss(runtimeLayerName)
-	ctx.ClearLayer(rtl)
+	if err := ctx.ClearLayer(rtl); err != nil {
+		return fmt.Errorf("clearing layer %q: %w", rtl.Name, err)
+	}
 	if err := dlAndInstallRuntime(ctx, rtl, rtVersion); err != nil {
 		return err
 	}

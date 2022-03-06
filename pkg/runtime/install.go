@@ -70,7 +70,9 @@ func IsCached(ctx *gcp.Context, layer *libcnb.Layer, version string) bool {
 
 // InstallDartSDK downloads a given version of the dart SDK to the specified layer.
 func InstallDartSDK(ctx *gcp.Context, layer *libcnb.Layer, version string) error {
-	ctx.ClearLayer(layer)
+	if err := ctx.ClearLayer(layer); err != nil {
+		return fmt.Errorf("clearing layer %q: %w", layer.Name, err)
+	}
 	sdkURL := fmt.Sprintf(dartSdkURL, version)
 
 	zip, err := ioutil.TempFile(layer.Path, "dart-sdk-*.zip")

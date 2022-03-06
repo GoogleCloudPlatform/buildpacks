@@ -76,7 +76,9 @@ func buildFn(ctx *gcp.Context) error {
 	}
 	if hasFrameworkDependency {
 		ctx.Logf("Handling functions with dependency on functions-framework.")
-		ctx.ClearLayer(l)
+		if err := ctx.ClearLayer(l); err != nil {
+			return fmt.Errorf("clearing layer %q: %w", l.Name, err)
+		}
 	} else {
 		ctx.Logf("Handling functions without dependency on functions-framework.")
 

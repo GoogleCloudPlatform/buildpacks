@@ -65,7 +65,9 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating %v layer: %w", cacheLayer, err)
 	}
 
-	java.CheckCacheExpiration(ctx, gradleCachedRepo)
+	if err := java.CheckCacheExpiration(ctx, gradleCachedRepo); err != nil {
+		return fmt.Errorf("validating the cache: %w", err)
+	}
 
 	homeGradle := filepath.Join(ctx.HomeDir(), ".gradle")
 	// Symlink the gradle-cache layer into ~/.gradle. If ~/.gradle already exists, delete it first.
@@ -137,7 +139,9 @@ func installGradle(ctx *gcp.Context) (string, error) {
 		return filepath.Join(gradlel.Path, "bin", "gradle"), nil
 	}
 	ctx.CacheMiss(gradleLayer)
-	ctx.ClearLayer(gradlel)
+	if err := ctx.ClearLayer(gradlel); err != nil {
+		return "", fmt.Errorf("clearing layer %q: %w", gradlel.Name, err)
+	}
 
 	downloadURL := fmt.Sprintf(gradleDistroURL, gradleVersion)
 	// Download and install gradle in layer.

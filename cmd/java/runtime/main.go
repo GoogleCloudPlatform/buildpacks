@@ -126,7 +126,9 @@ func buildFn(ctx *gcp.Context) error {
 		return nil
 	}
 	ctx.CacheMiss(javaLayer)
-	ctx.ClearLayer(l)
+	if err := ctx.ClearLayer(l); err != nil {
+		return fmt.Errorf("clearing layer %q: %w", l.Name, err)
+	}
 
 	// Download and install Java in layer.
 	ctx.Logf("Installing Java v%s", version)
