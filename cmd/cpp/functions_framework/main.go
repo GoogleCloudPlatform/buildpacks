@@ -17,9 +17,7 @@
 package main
 
 import (
-	"crypto/sha256"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,9 +33,8 @@ const (
 	buildLayerName              = "build"
 	vcpkgCacheLayerName         = "vcpkg-binary-cache"
 	vcpkgLayerName              = "vcpkg"
-	vcpkgVersion                = "dfcd4e4b30799c4ce02fe3939b62576fec444224"
-	vcpkgBaselineSha256         = "7738af3dce5670a319f4812b95d05947ec1afcd0acdc3aa63df2078e0af2794f"
-	vcpkgToolVersion            = "2021-08-12-unknownhash"
+	vcpkgTarballPrefix          = "https://github.com/microsoft/vcpkg/archive/refs/tags"
+	vcpkgVersion                = "2022.02.23"
 	vcpkgVersionPrefix          = "Vcpkg package management program version "
 	vcpkgTripletName            = "x64-linux-nodebug"
 	installLayerName            = "cpp"
@@ -51,7 +48,7 @@ type signatureInfo struct {
 }
 
 var (
-	vcpkgURL      = fmt.Sprintf("https://github.com/Microsoft/vcpkg/archive/%s.tar.gz", vcpkgVersion)
+	vcpkgURL      = fmt.Sprintf("%s/%s.tar.gz", vcpkgTarballPrefix, vcpkgVersion)
 	mainTmpl      = template.Must(template.New("mainV0").Parse(mainTextTemplateV0))
 	httpSignature = signatureInfo{
 		ReturnType:   functionsFrameworkNamespace + "::HttpResponse",
@@ -201,8 +198,13 @@ func getToolPath(ctx *gcp.Context, vcpkgExePath string, tool string) (string, er
 	if err != nil {
 		return "", fmt.Errorf("fetching %s tool path (exit code %d): %v", tool, exec.ExitCode, exec.Combined)
 	}
-	// Strip any trailing newline before returning
-	return strings.TrimSuffix(exec.Stdout, "\n"), nil
+	// If the tool needs to be downloaded, vcpkg now prints additional informational messages before the actual path.
+	// Ignore all these messages.
+	ss := strings.Split(exec.Stdout, "\n")
+	if len(ss) < 1 {
+		return "", fmt.Errorf("fetching %s tool path, output should have at least one newline", tool)
+	}
+	return ss[len(ss)-1], nil
 }
 
 func installVcpkg(ctx *gcp.Context) (string, error) {
@@ -257,50 +259,7 @@ func validateVcpkgCache(ctx *gcp.Context, customTripletPath string, vcpkgExePath
 		ctx.Debugf("Missing vcpkg tool (%s)", vcpkgExePath)
 		return false, nil
 	}
-	actualVcpkgToolVersion, err := getVcpkgToolVersion(ctx, vcpkgExePath)
-	if err != nil {
-		ctx.Debugf("Getting vcpkg version %v", err)
-		return false, nil
-	}
-	if actualVcpkgToolVersion != vcpkgToolVersion {
-		ctx.Debugf("Mismatched vcpkg tool version, got=%s, want=%s", actualVcpkgToolVersion, actualVcpkgToolVersion)
-		return false, nil
-	}
-	actualVcpkgBaselineSha256, err := getVcpkgBaselineSha256(ctx, vcpkgBaselinePath)
-	if err != nil {
-		ctx.Debugf("Getting vcpkg baseline hash %v", err)
-		return false, nil
-	}
-	if actualVcpkgBaselineSha256 != vcpkgBaselineSha256 {
-		ctx.Debugf("Mismatched vcpkg baseline SHA256, got=%s, want=%s", actualVcpkgBaselineSha256, vcpkgBaselineSha256)
-		return false, nil
-	}
 	return true, nil
-}
-
-func getVcpkgToolVersion(ctx *gcp.Context, vcpkgExePath string) (string, error) {
-	exec, err := ctx.ExecWithErr([]string{vcpkgExePath, "version", "--feature-flags=-manifests"}, gcp.WithUserAttribution)
-	if err != nil {
-		return "", fmt.Errorf("fetching vcpkg version path (exit code %d, output %q): %v", exec.ExitCode, exec.Combined, err)
-	}
-	for _, line := range strings.Split(exec.Stdout, "\n") {
-		if strings.HasPrefix(line, vcpkgVersionPrefix) {
-			return strings.TrimPrefix(line, vcpkgVersionPrefix), nil
-		}
-	}
-	return "", fmt.Errorf("cannot find version line in vcpkg version output: %s", exec.Combined)
-}
-
-func getVcpkgBaselineSha256(ctx *gcp.Context, vcpkgBaselinePath string) (string, error) {
-	f, err := os.Open(vcpkgBaselinePath)
-	if err != nil {
-		return "", err
-	}
-	sha := sha256.New()
-	if _, err := io.Copy(sha, f); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%x", sha.Sum(nil)), nil
 }
 
 func createMainCppFile(ctx *gcp.Context, fn fnInfo, main string) error {
