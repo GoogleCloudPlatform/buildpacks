@@ -208,7 +208,7 @@ The following confguration options are supported across runtimes:
   * **Example:** `13.7.0` for Node.js, `1.14.1` for Go, `8` for Java, `3.1.301` for .NET.
 * `GOOGLE_BUILDABLE`
   * Specifies path to a buildable unit.
-  * *(Only applicable to compiled languages.)*
+  * *(Only applicable to .NET, Dart and Go languages.)*
   * **Example:** `./maindir` for Go will build the package rooted at maindir.
 * `GOOGLE_BUILD_ARGS`
   * Appends arguments to build command.
