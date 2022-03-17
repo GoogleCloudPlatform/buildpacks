@@ -5,8 +5,8 @@ licenses(["notice"])
 package(default_visibility = ["//:__subpackages__"])
 
 go_binary(
-    name = "mockprocess",
+    name = "cmd",
     testonly = 1,
-    srcs = ["mockprocess.go"],
-    deps = ["//internal/buildpacktestenv"],
+    srcs = ["main.go"],
+    deps = ["//internal/mockprocess/mockprocessutil"],
 )

@@ -5,15 +5,10 @@ licenses(["notice"])
 package(default_visibility = ["//:__subpackages__"])
 
 go_library(
-    name = "buildpacktest",
+    name = "mockprocess",
     testonly = 1,
-    srcs = ["buildpacktest.go"],
+    srcs = ["mockprocess.go"],
+    data = ["//internal/mockprocess/cmd"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    deps = [
-        "//internal/buildpacktestenv",
-        "//internal/mockprocess",
-        "//pkg/env",
-        "//pkg/fileutil",
-        "//pkg/gcpbuildpack",
-    ],
+    deps = ["//internal/mockprocess/mockprocessutil"],
 )

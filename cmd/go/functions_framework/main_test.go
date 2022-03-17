@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 )
 
 func TestDetect(t *testing.T) {
@@ -53,6 +54,7 @@ func TestBuild(t *testing.T) {
 		envs         []string
 		fnPkgName    string
 		opts         []bpt.Option
+		mocks        []*mockprocess.Mock
 		wantExitCode int // 0 if unspecified
 		wantCommands []string
 	}{
@@ -61,8 +63,8 @@ func TestBuild(t *testing.T) {
 			app:       "with_framework",
 			envs:      []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			fnPkgName: "myfunc",
-			opts: []bpt.Option{
-				bpt.WithExecMock(`^go list -m$`, bpt.MockStdout("example.com/myfunc")),
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`^go list -m$`, mockprocess.WithStdout("example.com/myfunc")),
 			},
 			wantCommands: []string{fmt.Sprintf("go mod tidy")},
 		},
@@ -71,8 +73,8 @@ func TestBuild(t *testing.T) {
 			app:       "no_framework",
 			envs:      []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			fnPkgName: "myfunc",
-			opts: []bpt.Option{
-				bpt.WithExecMock(`^go list -m$`, bpt.MockStdout("example.com/myfunc")),
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`^go list -m$`, mockprocess.WithStdout("example.com/myfunc")),
 			},
 			wantCommands: []string{
 				fmt.Sprintf("go get %s", functionsFrameworkModule),
@@ -90,13 +92,17 @@ func TestBuild(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			mocks := []*mockprocess.Mock{
+				mockprocess.New("get_package", mockprocess.WithStdout(fmt.Sprintf(`{"name":"%s"}`, tc.fnPkgName))),
+			}
+			mocks = append(mocks, tc.mocks...)
+
 			opts := []bpt.Option{
 				bpt.WithTestName(tc.name),
 				bpt.WithApp(tc.app),
 				bpt.WithEnvs(tc.envs...),
-				bpt.WithExecMock("get_package", bpt.MockStdout(fmt.Sprintf(`{"name":"%s"}`, tc.fnPkgName))),
+				bpt.WithExecMocks(mocks...),
 			}
-
 			opts = append(opts, tc.opts...)
 			result, err := bpt.RunBuild(t, buildFn, opts...)
 			if err != nil {

@@ -54,5 +54,8 @@ go_test(
     ],
     embed = [":main"],
     rundir = ".",
-    deps = ["//internal/buildpacktest"],
+    deps = [
+        "//internal/buildpacktest",
+        "//internal/mockprocess",
+    ],
 )

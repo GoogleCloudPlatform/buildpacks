@@ -17,7 +17,6 @@
 package buildpacktest
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -27,11 +26,11 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktestenv"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -77,7 +76,7 @@ type config struct {
 	stack          string
 	want           int
 	appPath        string
-	mockProcessMap map[string]*buildpacktestenv.MockProcess
+	mockProcesses  []*mockprocess.Mock
 }
 
 // Result encapsulates the result of a buildpack phase ran as a child process.
@@ -128,57 +127,13 @@ func WithEnvs(envs ...string) Option {
 	}
 }
 
-// WithExecMock mocks the behavior of a shell command executed by a
-// ctx.Exec call. `commandRegex` is the command to mock; the regex must match
-// the full command that would have been executed, though it
-// does not have to be the beginning of the command. `stdout` is what will
-// be printed to stdout, `stderr` is what wiil be printed totderr. `exitCode`
-// will be the exit code of the command.
-//
-// All commands executed through ctx.Exec have stdout and stderr redirected
-// to the return parameters of ctx.Exec. However, the combined output ends
-// up being logged to stderr of the parent process. The stderr of executing
-// detectFn or buildFn can be searched for the stdout or stderr of any ctx.Exec
-// mocks.
-func WithExecMock(commandRegex string, opts ...ExecMockOptions) Option {
+// WithExecMocks mocks the behavior of shell commands.
+func WithExecMocks(mocks ...*mockprocess.Mock) Option {
 	return func(cfg *config) {
-		if cfg.mockProcessMap == nil {
-			cfg.mockProcessMap = map[string]*buildpacktestenv.MockProcess{}
+		if cfg.mockProcesses == nil {
+			cfg.mockProcesses = []*mockprocess.Mock{}
 		}
-		mp := &buildpacktestenv.MockProcess{
-			Stdout:   "",
-			Stderr:   "",
-			ExitCode: 0,
-		}
-		for _, o := range opts {
-			o(mp)
-		}
-		cfg.mockProcessMap[commandRegex] = mp
-	}
-}
-
-// ExecMockOptions are options that configure the behavior of the mock command
-// that replaces ctx.Exec calls.
-type ExecMockOptions func(*buildpacktestenv.MockProcess)
-
-// MockStdout configures what a mocked command prints to stdout.
-func MockStdout(msg string) ExecMockOptions {
-	return func(mp *buildpacktestenv.MockProcess) {
-		mp.Stdout = msg
-	}
-}
-
-// MockStderr configures what a mocked command prints to stderr.
-func MockStderr(msg string) ExecMockOptions {
-	return func(mp *buildpacktestenv.MockProcess) {
-		mp.Stderr = msg
-	}
-}
-
-// MockExitCode configures what a mocked command uses as the exit code.
-func MockExitCode(code int) ExecMockOptions {
-	return func(mp *buildpacktestenv.MockProcess) {
-		mp.ExitCode = code
+		cfg.mockProcesses = append(cfg.mockProcesses, mocks...)
 	}
 }
 
@@ -307,12 +262,11 @@ func runBuildpackPhase(t *testing.T, cfg *config) (bool, error) {
 	opts := []gcp.ContextOption{gcp.WithApplicationRoot(temps.CodeDir), gcp.WithBuildpackRoot(temps.BuildpackDir)}
 
 	// Mock out calls to ctx.Exec, if specified
-	if len(cfg.mockProcessMap) > 0 {
-		mockProcessBinary, err := mockProcessBinaryPath()
+	if len(cfg.mockProcesses) > 0 {
+		eCmd, err := mockprocess.NewExecCmd(cfg.mockProcesses...)
 		if err != nil {
-			return false, fmt.Errorf("unable to locate mock process binary: %w", err)
+			t.Fatalf("error creating mock exec command: %v", err)
 		}
-		eCmd := buildpacktestenv.NewMockExecCmd(t, mockProcessBinary, cfg.mockProcessMap)
 		opts = append(opts, gcp.WithExecCmd(eCmd))
 	}
 
@@ -363,39 +317,4 @@ func runBuildpackPhase(t *testing.T, cfg *config) (bool, error) {
 	}
 
 	return true, nil
-}
-
-// mockProcessBinaryPath returns the path to the mockprocess binary within
-// the current build target's (a go_test) runtime files. The mockprocess
-// binary comes bundled with the `buildpacktest` package, so it's expected
-// to be where the buildpacktest package's location is placed.
-func mockProcessBinaryPath() (string, error) {
-	// Returns the file that would have been at the top frame of a stack
-	// trace created from this line (this file itself).
-	// {buildpacksRepo}/internal/buildpacktest/buildpacktest.go
-	_, callingFile, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", errors.New("unable to determine Go runtime information about calling file")
-	}
-
-	// {buildpacksRepo}/internal/buildpacktest
-	callingDir := filepath.Dir(callingFile)
-
-	buildpackTest := "internal/buildpacktest"
-	// {buildpacksRepo}
-	buildpacksRepo := strings.TrimSuffix(filepath.ToSlash(callingDir), buildpackTest)
-
-	// Full path to currently executing test binary
-	// {bazelRuntimeRoot}/{buildpacksRepo}/{relativePathToTestBinary}
-	executingBinary := filepath.ToSlash(os.Args[0])
-
-	// [{bazelRuntimeRoot}, {relativePathToTestBinary}]
-	split := strings.Split(executingBinary, buildpacksRepo)
-	if len(split) < 2 {
-		return "", fmt.Errorf("unable to determine bazel runtime root, executing test binary: %q, inferred buildpacks repo path: %q, split result: %v", executingBinary, buildpacksRepo, split)
-	}
-
-	// {bazelRuntimeRoot}/{buildpacksRepo}/internal/buildpacktest/mockprocess/mockprocess
-	mockProcessBinary := filepath.Join(split[0], buildpacksRepo, buildpackTest, "mockprocess", "mockprocess")
-	return filepath.FromSlash(mockProcessBinary), nil
 }

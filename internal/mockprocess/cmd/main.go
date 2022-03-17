@@ -9,21 +9,21 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktestenv"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess/mockprocessutil"
 )
 
 func main() {
-	mocksJSON := os.Getenv(buildpacktestenv.EnvHelperMockProcessMap)
+	mocksJSON := os.Getenv(mockprocessutil.EnvHelperMockProcessMap)
 	if mocksJSON == "" {
-		log.Fatalf("%q env var must be set", buildpacktestenv.EnvHelperMockProcessMap)
+		log.Fatalf("%q env var must be set", mockprocessutil.EnvHelperMockProcessMap)
 	}
-	mockProcesses, err := buildpacktestenv.UnmarshalMockProcessMap(mocksJSON)
+	mockProcesses, err := mockprocessutil.UnmarshalMockProcessMap(mocksJSON)
 	if err != nil {
 		log.Fatalf("unable to unmarshal mock process map from JSON '%s': %v", mocksJSON, err)
 	}
 
 	fullCommand := strings.Join(os.Args[1:], " ")
-	var mockMatch *buildpacktestenv.MockProcess = nil
+	var mockMatch *mockprocessutil.MockProcessConfig = nil
 	for commandRegex, mock := range mockProcesses {
 		re := regexp.MustCompile(commandRegex)
 		if re.MatchString(fullCommand) {

@@ -38,6 +38,7 @@ go_test(
     rundir = ".",
     deps = [
         "//internal/buildpacktest",
+        "//internal/mockprocess",
         "//internal/testserver",
     ],
 )
