@@ -64,10 +64,18 @@ func SupportsAutoVendor(ctx *gcp.Context) (bool, error) {
 	return VersionMatches(ctx, ">=1.14.0")
 }
 
-// SupportsGoProxyFallback returns true if the Go versioin supports fallback in GOPROXY using the pipe character.
+// SupportsGoProxyFallback returns true if the Go version supports fallback in GOPROXY using the pipe character.
 // This feature is supported by Go 1.15 and higher.
 func SupportsGoProxyFallback(ctx *gcp.Context) (bool, error) {
 	return VersionMatches(ctx, ">=1.15.0")
+}
+
+// SupportsGoCleanModCache returns true if the Go version supports `go clean -modcache` without loading the packages.
+// The command fails if the packages aren't available for Go 1.12 and lower.
+// The feature to skip loading the packages is only supported by Go 1.13 and higher.
+// More information can be found at golang.org/issue/28680 and golang.org/issue/28459.
+func SupportsGoCleanModCache(ctx *gcp.Context) (bool, error) {
+	return VersionMatches(ctx, ">=1.13.0")
 }
 
 // VersionMatches checks if the installed version of Go and the version specified in go.mod match the given version range.
@@ -145,6 +153,14 @@ var readGoVersion = func(ctx *gcp.Context) string {
 	return ctx.Exec([]string{"go", "version"}).Stdout
 }
 
+// cleanModCache deletes the downloaded cached dependencies using `go clean -modcache`.
+// The cached dependencies are written without write access and attempt
+// to clear layer using ctx.ClearLayer(l) fails with permission denied errors.
+// It can be overridden for testing.
+var cleanModCache = func(ctx *gcp.Context) {
+	ctx.Exec([]string{"go", "clean", "-modcache"})
+}
+
 // readGoMod reads the go.mod file if present. If not present, returns an empty string.
 // It can be overridden for testing.
 var readGoMod = func(ctx *gcp.Context) (string, error) {
@@ -176,14 +192,22 @@ func NewGoWorkspaceLayer(ctx *gcp.Context) (*libcnb.Layer, error) {
 	// Set GOPROXY to ensure no additional dependency is downloaded at built time.
 	// All of them are downloaded here.
 	l.BuildEnvironment.Override("GOPROXY", "off")
+
+	shouldEnablePkgCache, err := SupportsGoCleanModCache(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("checking for go pkg cache support: %w", err)
+	}
+	if !shouldEnablePkgCache {
+		l.Cache = false
+		return l, nil
+	}
+
 	sha, err := cache.Hash(ctx, cache.WithFiles(goModPath(ctx)))
 	if err != nil {
 		if os.IsNotExist(err) {
 			// when go.mod doesn't exist, clear any previously cached bits and return an empty layer
 			l.Cache = false
-			if err := ctx.ClearLayer(l); err != nil {
-				return nil, fmt.Errorf("clearing layer %q: %w", l.Name, err)
-			}
+			cleanModCache(ctx)
 			return l, nil
 		}
 		return nil, err
@@ -195,9 +219,7 @@ func NewGoWorkspaceLayer(ctx *gcp.Context) (*libcnb.Layer, error) {
 		return l, nil
 	}
 	ctx.Debugf("go.mod SHA has changed: clearing GOPATH layer's cache")
-	if err := ctx.ClearLayer(l); err != nil {
-		return nil, fmt.Errorf("clearing layer %q: %w", l.Name, err)
-	}
+	cleanModCache(ctx)
 	ctx.SetMetadata(l, goModCacheKey, shaStr)
 	return l, nil
 }

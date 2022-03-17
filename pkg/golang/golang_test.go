@@ -52,8 +52,7 @@ func TestGoVersion(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.goVersion, func(t *testing.T) {
-			defer func(fn func(*gcp.Context) string) { readGoVersion = fn }(readGoVersion)
-			readGoVersion = func(*gcp.Context) string { return tc.goVersion }
+			mockReadGoVersion(t, tc.goVersion)
 
 			got, err := GoVersion(nil)
 			if err != nil {
@@ -362,11 +361,8 @@ func TestSupportsAutoVendor(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.goMod, func(t *testing.T) {
-			defer func(fn func(*gcp.Context) string) { readGoVersion = fn }(readGoVersion)
-			readGoVersion = func(*gcp.Context) string { return tc.goVersion }
-
-			defer func(fn func(*gcp.Context) (string, error)) { readGoMod = fn }(readGoMod)
-			readGoMod = func(*gcp.Context) (string, error) { return tc.goMod, nil }
+			mockReadGoVersion(t, tc.goVersion)
+			mockReadGoMod(t, tc.goMod)
 
 			supported, err := SupportsAutoVendor(nil)
 
@@ -426,11 +422,8 @@ func TestVersionMatches(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.goMod, func(t *testing.T) {
-			defer func(fn func(*gcp.Context) string) { readGoVersion = fn }(readGoVersion)
-			readGoVersion = func(*gcp.Context) string { return tc.goVersion }
-
-			defer func(fn func(*gcp.Context) (string, error)) { readGoMod = fn }(readGoMod)
-			readGoMod = func(*gcp.Context) (string, error) { return tc.goMod, nil }
+			mockReadGoVersion(t, tc.goVersion)
+			mockReadGoMod(t, tc.goMod)
 
 			supported, err := VersionMatches(nil, tc.versionCheck)
 
@@ -449,11 +442,22 @@ func TestNewGoWorkspaceLayerHappyPath(t *testing.T) {
 		Name            string
 		ApplicationRoot string
 		CacheEnabled    bool
+		goMod           string
+		goVersion       string
 	}{
 		{
 			Name:            "go mod exists",
 			ApplicationRoot: testdata.MustGetPath("testdata/gopath_layer/simple_gomod"),
 			CacheEnabled:    true,
+			goVersion:       "go version go1.14.2 darwin/amd64",
+			goMod:           "module v\ngo 1.14.2",
+		},
+		{
+			Name:            "go mod exists for go < 1.13",
+			ApplicationRoot: testdata.MustGetPath("testdata/gopath_layer/simple_gomod"),
+			CacheEnabled:    false,
+			goVersion:       "go version go1.12.2 darwin/amd64",
+			goMod:           "module v\ngo 1.12.1",
 		},
 		{
 			Name:            "no go mod",
@@ -462,8 +466,13 @@ func TestNewGoWorkspaceLayerHappyPath(t *testing.T) {
 		},
 	}
 
+	mockCleanModCache(t)
+
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
+			mockReadGoVersion(t, tc.goVersion)
+			mockReadGoMod(t, tc.goMod)
+
 			buildCtx := libcnb.BuildContext{
 				Layers: libcnb.Layers{
 					Path: t.TempDir(),
@@ -497,4 +506,31 @@ func TestNewGoWorkspaceLayerHappyPath(t *testing.T) {
 			}
 		})
 	}
+}
+
+// mockReadGoVersion mocks the readGoVersion
+func mockReadGoVersion(t *testing.T, goVer string) {
+	origReadGoVersion := readGoVersion
+	readGoVersion = func(*gcp.Context) string { return goVer }
+	t.Cleanup(func() {
+		readGoVersion = origReadGoVersion
+	})
+}
+
+// mockReadGoMod mocks the readGoMod
+func mockReadGoMod(t *testing.T, goMod string) {
+	origReadGoMod := readGoMod
+	readGoMod = func(*gcp.Context) (string, error) { return goMod, nil }
+	t.Cleanup(func() {
+		readGoMod = origReadGoMod
+	})
+}
+
+// mockCleanModCache mocks the cleanModCache
+func mockCleanModCache(t *testing.T) {
+	origCleanModCache := cleanModCache
+	cleanModCache = func(*gcp.Context) { return }
+	t.Cleanup(func() {
+		cleanModCache = origCleanModCache
+	})
 }
