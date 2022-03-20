@@ -32,7 +32,6 @@ func TestAcceptanceDart(t *testing.T) {
 		{
 			Name:    "simple Dart webserver",
 			App:     "dart/simple",
-			Env:     []string{"GOOGLE_DART_ENABLED=true"},
 			MustUse: []string{dartCompile},
 		},
 	}

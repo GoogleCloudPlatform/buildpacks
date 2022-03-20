@@ -2,7 +2,7 @@ api = "0.6"
 
 [buildpack]
 id = "google.dart.sdk"
-version = "0.1.0"
+version = "1.0.0"
 name = "Dart - SDK"
 
 [[stacks]]

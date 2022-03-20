@@ -25,7 +25,6 @@ go_binary(
     ],
     deps = [
         "//pkg/dart",
-        "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/runtime",
         "@com_github_buildpacks_libcnb//:go_default_library",
