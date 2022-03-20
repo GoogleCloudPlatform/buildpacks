@@ -18,12 +18,16 @@ package dart
 import (
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/hashicorp/go-retryablehttp"
+	"gopkg.in/yaml.v2"
 )
 
 var versionURL = "https://storage.googleapis.com/dart-archive/channels/stable/release/latest/VERSION"
@@ -33,6 +37,12 @@ type releaseInfo struct {
 	Date     string `json:"date"`
 	Version  string `json:"version"`
 	Revision string `json:"revision"`
+}
+
+// pubspec represents the contents of a pubspec.yaml.
+type pubspec struct {
+	Dependencies    map[string]string `yaml:"dependencies"`
+	DevDependencies map[string]string `yaml:"dev_dependencies"`
 }
 
 // DetectSDKVersion detects which SDK version should be installed from the environment or fetches
@@ -67,4 +77,31 @@ func fetchLatestSdkVersion() (string, error) {
 		return "", buildererror.InternalErrorf("unmarshalling response from %q: %v", versionURL, err)
 	}
 	return info.Version, nil
+}
+
+// HasBuildRunner returns true if the given Dart project contains a pubspec.yaml that declares a
+// dependency on build_runner.
+func HasBuildRunner(dir string) (bool, error) {
+	f := filepath.Join(dir, "pubspec.yaml")
+	rawpjs, err := ioutil.ReadFile(f)
+	if os.IsNotExist(err) {
+		// If there is no pubspec.yaml, there is no build_runner dependency.
+		return false, nil
+	}
+	if err != nil {
+		return false, gcp.InternalErrorf("reading pubspec.yaml: %v", err)
+	}
+
+	var ps pubspec
+	if err := yaml.Unmarshal(rawpjs, &ps); err != nil {
+		return false, gcp.UserErrorf("unmarshalling pubspec.yaml: %v", err)
+	}
+
+	if _, exists := ps.Dependencies["build_runner"]; exists {
+		return true, nil
+	}
+	if _, exists := ps.DevDependencies["build_runner"]; exists {
+		return true, nil
+	}
+	return false, nil
 }

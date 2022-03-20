@@ -16,6 +16,8 @@ package dart
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
@@ -71,6 +73,85 @@ func TestResolvePackageVersion(t *testing.T) {
 			}
 			if got != tc.want {
 				t.Errorf(`DetectSDKVersion() = %q, want %q`, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHasBuildRunner(t *testing.T) {
+	testCases := []struct {
+		name    string
+		pubspec string
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "no pubspec.yaml",
+		},
+		{
+			name:    "no dependencies",
+			pubspec: `name: test`,
+		},
+		{
+			name: "no build_runner",
+			pubspec: `
+name: example_json_function
+
+dependencies:
+  functions_framework: ^0.4.0
+
+dev_dependencies:
+  functions_framework_builder: ^0.4.0
+`,
+		},
+		{
+			name: "with dev_dependency",
+			pubspec: `
+name: example_json_function
+
+dependencies:
+  functions_framework: ^0.4.0
+
+dev_dependencies:
+  build_runner: ^2.0.0
+`,
+			want: true,
+		},
+		{
+			name: "with dev_dependency",
+			pubspec: `
+name: example_json_function
+
+dependencies:
+  build_runner: ^2.0.0
+
+dev_dependencies:
+  functions_framework: ^0.4.0
+`,
+			want: true,
+		},
+		{
+			name:    "invalid yaml",
+			pubspec: "\t",
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if tc.pubspec != "" {
+				path := filepath.Join(dir, "pubspec.yaml")
+				if err := os.WriteFile(path, []byte(tc.pubspec), 0744); err != nil {
+					t.Fatalf("writing %s: %v", path, err)
+				}
+			}
+			got, err := HasBuildRunner(dir)
+			if tc.wantErr == (err == nil) {
+				t.Errorf("HasBuildRunner(%q) got error: %v, want err? %t", dir, err, tc.wantErr)
+			}
+			if got != tc.want {
+				t.Errorf("HasBuildRunner(%q) = %t, want %t", dir, got, tc.want)
 			}
 		})
 	}

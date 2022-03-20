@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/dart"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
@@ -41,6 +42,14 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	br, err := dart.HasBuildRunner(ctx.ApplicationRoot())
+	if err != nil {
+		return err
+	}
+	if br {
+		// Run build runner.
+		ctx.Exec([]string{"dart", "run", "build_runner", "build", "--delete-conflicting-outputs"}, gcp.WithUserAttribution)
+	}
 	// Create a layer for the compiled binary.  Add it to PATH in case
 	// users wish to invoke the binary manually.
 	bl, err := ctx.Layer("bin", gcp.LaunchLayer)
