@@ -30,7 +30,7 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if result := runtime.CheckOverride(ctx, "python"); result != nil {
+	if result := runtime.CheckOverride("python"); result != nil {
 		return result, nil
 	}
 

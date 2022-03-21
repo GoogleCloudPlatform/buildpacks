@@ -41,7 +41,7 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if result := runtime.CheckOverride(ctx, "java"); result != nil {
+	if result := runtime.CheckOverride("java"); result != nil {
 		return result, nil
 	}
 

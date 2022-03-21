@@ -46,7 +46,7 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if result := runtime.CheckOverride(ctx, "dotnet"); result != nil {
+	if result := runtime.CheckOverride("dotnet"); result != nil {
 		return result, nil
 	}
 

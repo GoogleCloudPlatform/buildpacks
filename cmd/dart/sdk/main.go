@@ -35,7 +35,7 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if result := runtime.CheckOverride(ctx, "dart"); result != nil {
+	if result := runtime.CheckOverride("dart"); result != nil {
 		return result, nil
 	}
 	pubspecExists, err := ctx.FileExists("pubspec.yaml")

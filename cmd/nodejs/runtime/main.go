@@ -44,7 +44,7 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if result := runtime.CheckOverride(ctx, "nodejs"); result != nil {
+	if result := runtime.CheckOverride("nodejs"); result != nil {
 		return result, nil
 	}
 

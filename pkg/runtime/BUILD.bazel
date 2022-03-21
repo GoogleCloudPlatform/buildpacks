@@ -25,12 +25,14 @@ go_test(
     name = "runtime_test",
     srcs = [
         "install_test.go",
+        "runtime_test.go",
     ],
     data = glob(["testdata/**"]),
     embed = [":runtime"],
     rundir = ".",
     deps = [
         "//internal/testserver",
+        "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/testdata",
         "@com_github_buildpacks_libcnb//:go_default_library",

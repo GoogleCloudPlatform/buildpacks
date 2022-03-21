@@ -42,7 +42,7 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if result := runtime.CheckOverride(ctx, "go"); result != nil {
+	if result := runtime.CheckOverride("go"); result != nil {
 		return result, nil
 	}
 
