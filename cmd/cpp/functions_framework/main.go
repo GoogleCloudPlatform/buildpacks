@@ -45,20 +45,29 @@ type signatureInfo struct {
 	ReturnType   string
 	ArgumentType string
 	WrapperType  string
+	Eval         string
 }
 
 var (
-	vcpkgURL      = fmt.Sprintf("%s/%s.tar.gz", vcpkgTarballPrefix, vcpkgVersion)
-	mainTmpl      = template.Must(template.New("mainV0").Parse(mainTextTemplateV0))
+	vcpkgURL             = fmt.Sprintf("%s/%s.tar.gz", vcpkgTarballPrefix, vcpkgVersion)
+	mainTmpl             = template.Must(template.New("mainV0").Parse(mainTextTemplateV0))
+	declarativeSignature = signatureInfo{
+		ReturnType:   functionsFrameworkNamespace + "::Function",
+		ArgumentType: "",
+		WrapperType:  "",
+		Eval:         "()",
+	}
 	httpSignature = signatureInfo{
 		ReturnType:   functionsFrameworkNamespace + "::HttpResponse",
 		ArgumentType: functionsFrameworkNamespace + "::HttpRequest",
 		WrapperType:  functionsFrameworkNamespace + "::UserHttpFunction",
+		Eval:         "",
 	}
 	cloudEventSignature = signatureInfo{
 		ReturnType:   "void",
 		ArgumentType: functionsFrameworkNamespace + "::CloudEvent",
 		WrapperType:  functionsFrameworkNamespace + "::UserCloudEventFunction",
+		Eval:         "",
 	}
 )
 
@@ -281,7 +290,10 @@ func extractFnInfo(fnTarget string, fnSignature string) fnInfo {
 		Target:    fnTarget,
 		Namespace: "",
 		ShortName: fnTarget,
-		Signature: httpSignature,
+		Signature: declarativeSignature,
+	}
+	if fnSignature == "http" {
+		info.Signature = httpSignature
 	}
 	if fnSignature == "cloudevent" {
 		info.Signature = cloudEventSignature

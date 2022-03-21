@@ -31,8 +31,16 @@ func TestAcceptanceCppFn(t *testing.T) {
 		{
 			Name:       "function with additional dependencies",
 			App:        "test_function",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=test_function"},
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=test_function", "GOOGLE_FUNCTION_SIGNATURE_TYPE=http"},
 			Path:       "/test_function",
+			MustUse:    []string{cppFF},
+			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:       "function using declarative configuration",
+			App:        "test_declarative",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=test_function"},
+			Path:       "/test_declarative",
 			MustUse:    []string{cppFF},
 			MustNotUse: []string{entrypoint},
 		},

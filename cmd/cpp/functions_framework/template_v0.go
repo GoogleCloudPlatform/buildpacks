@@ -25,6 +25,6 @@ const mainTextTemplateV0 = `// Generated file. DO NOT EDIT.
 
 int main(int argc, char* argv[]) {
   return google::cloud::functions::Run(
-	    argc, argv, {{.Signature.WrapperType}} ( {{.Target}} ) );
+	    argc, argv, {{.Signature.WrapperType}} ( {{.Target}} ) {{.Signature.Eval}} );
 }
 `

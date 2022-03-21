@@ -100,7 +100,7 @@ func TestExtractFnInfo(t *testing.T) {
 				Target:    "HelloWorld",
 				Namespace: "",
 				ShortName: "HelloWorld",
-				Signature: httpSignature,
+				Signature: declarativeSignature,
 			},
 		},
 		{fnTarget: "HelloWorld", fnSignatureType: "http",
