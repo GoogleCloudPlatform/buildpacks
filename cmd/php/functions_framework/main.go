@@ -91,7 +91,9 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
 	}
-	ctx.SetFunctionsEnvVars(l)
+	if err := ctx.SetFunctionsEnvVars(l); err != nil {
+		return err
+	}
 	return nil
 }
 

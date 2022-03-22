@@ -132,7 +132,9 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", mainLayerName, err)
 	}
-	ctx.SetFunctionsEnvVars(mainLayer)
+	if err := ctx.SetFunctionsEnvVars(mainLayer); err != nil {
+		return err
+	}
 
 	buildLayer, err := ctx.Layer(buildLayerName, gcp.BuildLayer, gcp.CacheLayer)
 	if err != nil {

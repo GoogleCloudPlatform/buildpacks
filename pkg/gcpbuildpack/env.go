@@ -22,18 +22,20 @@ import (
 )
 
 // SetFunctionsEnvVars sets launch-time functions environment variables.
-func (ctx *Context) SetFunctionsEnvVars(l *libcnb.Layer) {
-	if target := os.Getenv(env.FunctionTarget); target != "" {
-		l.LaunchEnvironment.Default(env.FunctionTargetLaunch, target)
-	} else {
-		ctx.Exit(1, UserErrorf("required env var %s not found", env.FunctionTarget))
+func (ctx *Context) SetFunctionsEnvVars(l *libcnb.Layer) error {
+	target, ok := os.LookupEnv(env.FunctionTarget)
+	if !ok {
+		return UserErrorf("required env var %s not found", env.FunctionTarget)
 	}
-
+	if target == "" {
+		return UserErrorf("required env var %s has an empty value", env.FunctionTarget)
+	}
+	l.LaunchEnvironment.Default(env.FunctionTargetLaunch, target)
 	if signature, ok := os.LookupEnv(env.FunctionSignatureType); ok {
 		l.LaunchEnvironment.Default(env.FunctionSignatureTypeLaunch, signature)
 	}
-
 	if source, ok := os.LookupEnv(env.FunctionSource); ok {
 		l.LaunchEnvironment.Default(env.FunctionSourceLaunch, source)
 	}
+	return nil
 }

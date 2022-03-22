@@ -64,7 +64,9 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	ctx.SetFunctionsEnvVars(layer)
+	if err := ctx.SetFunctionsEnvVars(layer); err != nil {
+		return err
+	}
 
 	// Use javap to check that the class is indeed in the classpath we just determined.
 	// On success, it will output a description of the class and its public members, which we discard.

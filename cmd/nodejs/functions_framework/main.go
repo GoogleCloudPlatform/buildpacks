@@ -166,7 +166,9 @@ func buildFn(ctx *gcp.Context) error {
 		l.LaunchEnvironment.Prepend("NODE_OPTIONS", " ", fmt.Sprintf("--max-old-space-size=%d", size))
 	}
 
-	ctx.SetFunctionsEnvVars(l)
+	if err := ctx.SetFunctionsEnvVars(l); err != nil {
+		return err
+	}
 	ctx.AddWebProcess([]string{"/bin/bash", "-c", ff})
 	return nil
 }

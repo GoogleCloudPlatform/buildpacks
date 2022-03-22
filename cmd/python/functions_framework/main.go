@@ -88,7 +88,9 @@ func buildFn(ctx *gcp.Context) error {
 		l.BuildEnvironment.Append(python.RequirementsFilesEnv, string(os.PathListSeparator), r)
 	}
 
-	ctx.SetFunctionsEnvVars(l)
+	if err := ctx.SetFunctionsEnvVars(l); err != nil {
+		return err
+	}
 	ctx.AddWebProcess([]string{"functions-framework"})
 	return nil
 }
