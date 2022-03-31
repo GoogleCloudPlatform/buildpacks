@@ -1,0 +1,27 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+licenses(["notice"])
+
+exports_files(["config.yaml"])
+
+go_test(
+    name = "acceptance_test",
+    size = "enormous",
+    srcs = ["acceptance_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata:generic)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/go:builder.tar)",
+        "-builder-prefix=go-acceptance-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/go:builder.tar",
+        "//builders/testdata:generic",
+    ],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//internal/acceptance"],
+)
