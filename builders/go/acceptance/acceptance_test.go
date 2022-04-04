@@ -14,6 +14,8 @@
 package acceptance_test
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
@@ -28,48 +30,117 @@ const (
 	goRuntime     = "google.go.runtime"
 )
 
+var goVersions = []string{
+	"1.11",
+	"1.12",
+	"1.13",
+	"1.14",
+	"1.15",
+	"1.16",
+}
+
 func init() {
 	acceptance.DefineFlags()
 }
 
+// TestAcceptanceGo runs each acceptance test case against each version of go.
 func TestAcceptanceGo(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
+	testCases := []struct {
+		Test               acceptance.Test
+		ExcludedGoVersions []string
+	}{
+		{
+			Test: acceptance.Test{
+				Name:           "simple Go application",
+				App:            "go/simple",
+				MustUse:        []string{goRuntime, goBuild, goPath},
+				MustNotUse:     []string{goClearSource},
+				FilesMustExist: []string{"/layers/google.go.build/bin/main", "/workspace/main.go"},
+			},
+		},
+		{
+			Test: acceptance.Test{
+				Name:       "Go.mod",
+				App:        "go/simple_gomod",
+				MustUse:    []string{goRuntime, goBuild, goMod},
+				MustNotUse: []string{goPath},
+			},
+		},
+		{
+			Test: acceptance.Test{
+				Name:       "Go.mod package",
+				App:        "go/gomod_package",
+				MustUse:    []string{goRuntime, goBuild, goMod},
+				MustNotUse: []string{goPath},
+			},
+		},
+		{
+			Test: acceptance.Test{
+				Name:       "Multiple entrypoints",
+				App:        "go/entrypoints",
+				Env:        []string{"GOOGLE_BUILDABLE=cmd/first/main.go"},
+				MustUse:    []string{goRuntime, goBuild},
+				MustNotUse: []string{goPath},
+			},
+		},
+		{
+			Test: acceptance.Test{
+				Name:       "Go.mod and vendor",
+				App:        "go/simple_gomod_vendor",
+				MustUse:    []string{goRuntime, goBuild, goMod},
+				MustNotUse: []string{goPath},
+			},
+			// go mod and vendor cannot be used together before go 1.14
+			ExcludedGoVersions: []string{"1.11", "1.12", "1.13"},
+		},
+	}
+
+	for _, tc := range testCases {
+		for _, v := range goVersions {
+			if shouldSkipVersion(v, tc.ExcludedGoVersions) {
+				continue
+			}
+			verTC := applyRuntimeVersion(t, tc.Test, v)
+			t.Run(verTC.Name, func(t *testing.T) {
+				t.Parallel()
+
+				acceptance.TestApp(t, builder, verTC)
+			})
+		}
+	}
+}
+
+func shouldSkipVersion(version string, excludedVersions []string) bool {
+	for _, ev := range excludedVersions {
+		if version == ev {
+			return true
+		}
+	}
+	return false
+}
+
+func applyRuntimeVersion(t *testing.T, testCase acceptance.Test, version string) acceptance.Test {
+	t.Helper()
+	envRuntimeVersion := "GOOGLE_RUNTIME_VERSION"
+	for _, e := range testCase.Env {
+		if strings.HasPrefix(e, envRuntimeVersion) {
+			t.Fatalf("environment for test %q already contains %q", testCase.Name, envRuntimeVersion)
+		}
+	}
+	testCase.Name = fmt.Sprintf("%s: %s", version, testCase.Name)
+	testCase.Env = append(testCase.Env, fmt.Sprintf("%s=%s", envRuntimeVersion, version))
+	return testCase
+}
+
+// TestAcceptanceGoSingleVersion runs test cases which do not need to be tested against more than one go version.
+func TestAcceptanceGoSingleVersion(t *testing.T) {
+	builder, cleanup := acceptance.CreateBuilder(t)
+	t.Cleanup(cleanup)
+
 	testCases := []acceptance.Test{
-		{
-			Name:           "simple Go application",
-			App:            "go/simple",
-			MustUse:        []string{goRuntime, goBuild, goPath},
-			MustNotUse:     []string{goClearSource},
-			FilesMustExist: []string{"/layers/google.go.build/bin/main", "/workspace/main.go"},
-		},
-		{
-			Name:       "Go.mod",
-			App:        "go/simple_gomod",
-			MustUse:    []string{goRuntime, goBuild, goMod},
-			MustNotUse: []string{goPath},
-			MustOutput: []string{"Using latest runtime version:"},
-		},
-		{
-			Name:       "Go.mod package",
-			App:        "go/gomod_package",
-			MustUse:    []string{goRuntime, goBuild, goMod},
-			MustNotUse: []string{goPath},
-		},
-		{
-			Name:       "Multiple entrypoints",
-			App:        "go/entrypoints",
-			Env:        []string{"GOOGLE_BUILDABLE=cmd/first/main.go"},
-			MustUse:    []string{goRuntime, goBuild},
-			MustNotUse: []string{goPath},
-		},
-		{
-			Name:       "Go.mod and vendor",
-			App:        "go/simple_gomod_vendor",
-			MustUse:    []string{goRuntime, goBuild, goMod},
-			MustNotUse: []string{goPath},
-		},
 		{
 			Name:                "Dev mode",
 			App:                 "go/simple",
