@@ -5,14 +5,11 @@ id = "google.php.functions-framework"
 version = "0.9.5"
 name = "Google - PHP - Functions Framework"
 
+# The cloud run source deploy command uses pack. Older versions of pack which
+# were distributed by gcloud for cloud run do not support wildcard stack id
+# matching. For that reason we must allow an explicit stack id of 'google'
 [[stacks]]
 id = "google"
 
 [[stacks]]
-id = "google.php73"
-
-[[stacks]]
-id = "google.php74"
-
-[[stacks]]
-id = "google.php81"
+id = "*"

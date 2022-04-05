@@ -5,20 +5,11 @@ id = "google.go.appengine_gopath"
 version = "0.9.0"
 name = "Go - App Engine GOPATH"
 
+# The cloud run source deploy command uses pack. Older versions of pack which
+# were distributed by gcloud for cloud run do not support wildcard stack id
+# matching. For that reason we must allow an explicit stack id of 'google'
 [[stacks]]
-id = "google.go111"
+id = "google"
 
 [[stacks]]
-id = "google.go112"
-
-[[stacks]]
-id = "google.go113"
-
-[[stacks]]
-id = "google.go114"
-
-[[stacks]]
-id = "google.go115"
-
-[[stacks]]
-id = "google.go116"
+id = "*"

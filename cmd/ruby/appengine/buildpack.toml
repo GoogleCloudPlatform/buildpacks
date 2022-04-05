@@ -5,14 +5,11 @@ id = "google.ruby.appengine"
 version = "0.9.0"
 name = "Ruby - App Engine"
 
+# The cloud run source deploy command uses pack. Older versions of pack which
+# were distributed by gcloud for cloud run do not support wildcard stack id
+# matching. For that reason we must allow an explicit stack id of 'google' 
 [[stacks]]
-id = "google.ruby25"
+id = "google"
 
 [[stacks]]
-id = "google.ruby26"
-
-[[stacks]]
-id = "google.ruby27"
-
-[[stacks]]
-id = "google.ruby30"
+id = "*"

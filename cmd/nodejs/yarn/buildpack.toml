@@ -5,6 +5,9 @@ id = "google.nodejs.yarn"
 version = "2.0.0"
 name = "Node.js - Yarn"
 
+# The cloud run source deploy command uses pack. Older versions of pack which
+# were distributed by gcloud for cloud run do not support wildcard stack id
+# matching. For that reason we must allow an explicit stack id of 'google'
 [[stacks]]
 id = "google"
 

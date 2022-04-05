@@ -5,20 +5,11 @@ id = "google.nodejs.npm"
 version = "0.9.0"
 name = "Node.js - NPM"
 
+# The cloud run source deploy command uses pack. Older versions of pack which
+# were distributed by gcloud for cloud run do not support wildcard stack id
+# matching. For that reason we must allow an explicit stack id of 'google'
 [[stacks]]
 id = "google"
 
 [[stacks]]
-id = "google.nodejs8"
-
-[[stacks]]
-id = "google.nodejs10"
-
-[[stacks]]
-id = "google.nodejs12"
-
-[[stacks]]
-id = "google.nodejs14"
-
-[[stacks]]
-id = "google.nodejs16"
+id = "*"

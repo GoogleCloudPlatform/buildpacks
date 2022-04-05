@@ -6,4 +6,4 @@ version = "0.9.1"
 name = "Go - Runtime"
 
 [[stacks]]
-id = "google"
+id = "*"

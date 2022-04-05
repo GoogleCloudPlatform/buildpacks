@@ -5,17 +5,11 @@ id = "google.python.pip"
 version = "0.9.2"
 name = "Python - pip"
 
+# The cloud run source deploy command uses pack. Older versions of pack which
+# were distributed by gcloud for cloud run do not support wildcard stack id
+# matching. For that reason we must allow an explicit stack id of 'google' 
 [[stacks]]
 id = "google"
 
 [[stacks]]
-id = "google.python37"
-
-[[stacks]]
-id = "google.python38"
-
-[[stacks]]
-id = "google.python39"
-
-[[stacks]]
-id = "google.python310"
+id = "*"
