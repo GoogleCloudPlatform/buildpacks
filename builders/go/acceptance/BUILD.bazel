@@ -25,3 +25,29 @@ go_test(
     ],
     deps = ["//internal/acceptance"],
 )
+
+go_test(
+    name = "gae_test",
+    size = "enormous",
+    srcs = ["gae_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata:go)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/go:builder.tar)",
+        "-builder-prefix=go-gae-acceptance-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/go:builder.tar",
+        "//builders/testdata:go",
+    ],
+    gc_linkopts = [
+        "-I /lib64/ld-linux-x86-64.so.2",
+        "-extldflags=\"-Wl,--dynamic-linker,/lib64/ld-linux-x86-64.so.2\"",
+    ],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//internal/acceptance"],
+)
