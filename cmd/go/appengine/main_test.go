@@ -24,18 +24,24 @@ func TestDetect(t *testing.T) {
 	testCases := []struct {
 		name  string
 		files map[string]string
+		env   []string
 		want  int
 	}{
 		{
-			// The buildpack always opts in.
 			name:  "no files",
 			files: map[string]string{},
+			want:  100,
+		},
+		{
+			name:  "no files with target_platform",
+			files: map[string]string{},
+			env:   []string{"X_GOOGLE_TARGET_PLATFORM=gae"},
 			want:  0,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
 		})
 	}
 }

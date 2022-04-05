@@ -24,14 +24,23 @@ func TestDetect(t *testing.T) {
 	testCases := []struct {
 		name  string
 		files map[string]string
+		env   []string
 		want  int
 	}{
 		{
-			name: ".go files without go.mod",
+			name: ".go files without go.mod, with target_platform",
 			files: map[string]string{
 				"main.go": "",
 			},
+			env:  []string{"X_GOOGLE_TARGET_PLATFORM=gae"},
 			want: 0,
+		},
+		{
+			name: ".go files without go.mod, without target_platform",
+			files: map[string]string{
+				"main.go": "",
+			},
+			want: 100,
 		},
 		{
 			name: ".go files with go.mod",
@@ -39,17 +48,19 @@ func TestDetect(t *testing.T) {
 				"go.mod":  "",
 				"main.go": "",
 			},
+			env:  []string{"X_GOOGLE_TARGET_PLATFORM=gae"},
 			want: 100,
 		},
 		{
 			name:  "no files",
 			files: map[string]string{},
+			env:   []string{"X_GOOGLE_TARGET_PLATFORM=gae"},
 			want:  100,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
 		})
 	}
 }

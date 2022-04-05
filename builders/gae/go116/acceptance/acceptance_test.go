@@ -145,7 +145,7 @@ func TestAcceptance(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 
-			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=go116")
+			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=go116", "X_GOOGLE_TARGET_PLATFORM=gae")
 
 			acceptance.TestApp(t, builder, tc)
 		})

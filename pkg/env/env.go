@@ -124,11 +124,17 @@ const (
 
 	// XGoogleTargetPlatform is an envar used to specify the target platform for a build (gae, gcf or gcp).
 	XGoogleTargetPlatform = "X_GOOGLE_TARGET_PLATFORM"
+
+	// TargetPlatformAppEngine is the appengine value for 'X_GOOGLE_TARGET_PLATFORM'
+	TargetPlatformAppEngine = "gae"
+
+	// TargetPlatformFunctions is the functions value for 'X_GOOGLE_TARGET_PLATFORM'
+	TargetPlatformFunctions = "gcf"
 )
 
 // IsGAE returns true if the buildpack target platform is gae.
 func IsGAE() bool {
-	return "gae" == os.Getenv(XGoogleTargetPlatform)
+	return TargetPlatformAppEngine == os.Getenv(XGoogleTargetPlatform)
 }
 
 // IsGCP returns true if the buildpack target platform is neither gae nor gcf.
@@ -138,7 +144,7 @@ func IsGCP() bool {
 
 // IsGCF returns true if the buildpack target platform is gcf.
 func IsGCF() bool {
-	return "gcf" == os.Getenv(XGoogleTargetPlatform)
+	return TargetPlatformFunctions == os.Getenv(XGoogleTargetPlatform)
 }
 
 // IsDebugMode returns true if the buildpack debug mode is enabled.

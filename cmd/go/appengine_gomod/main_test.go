@@ -36,13 +36,21 @@ func TestDetect(t *testing.T) {
 			files: map[string]string{
 				"go.mod": "",
 			},
-			env:  []string{},
+			env:  []string{"X_GOOGLE_TARGET_PLATFORM=gae"},
 			want: 0,
+		},
+		{
+			name: "go.mod and buildable undefined, no target_platform",
+			files: map[string]string{
+				"go.mod": "",
+			},
+			env:  []string{},
+			want: 100,
 		},
 		{
 			name:  "no go.mod",
 			files: map[string]string{},
-			env:   []string{},
+			env:   []string{"X_GOOGLE_TARGET_PLATFORM=gae"},
 			want:  100,
 		},
 		{
@@ -52,6 +60,7 @@ func TestDetect(t *testing.T) {
 			},
 			env: []string{
 				"GOOGLE_BUILDABLE=./main",
+				"X_GOOGLE_TARGET_PLATFORM=gae",
 			},
 			want: 100,
 		},

@@ -21,6 +21,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 )
@@ -30,7 +31,10 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	return gcp.OptInAlways(), nil
+	if env.IsGAE() {
+		return appengine.OptInTargetPlatformAE(), nil
+	}
+	return appengine.OptOutTargetPlatformNotAE(), nil
 }
 
 func buildFn(ctx *gcp.Context) error {
