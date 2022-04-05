@@ -5,14 +5,14 @@ licenses(["notice"])
 exports_files(["config.yaml"])
 
 go_test(
-    name = "acceptance_test",
+    name = "gcp_test",
     size = "enormous",
-    srcs = ["acceptance_test.go"],
+    srcs = ["gcp_test.go"],
     args = [
         "-test-data=$(location //builders/testdata:generic)",
         "-structure-test-config=$(location :config.yaml)",
         "-builder-source=$(location //builders/go:builder.tar)",
-        "-builder-prefix=go-acceptance-test-",
+        "-builder-prefix=go-gcp-acceptance-test-",
     ],
     data = [
         ":config.yaml",

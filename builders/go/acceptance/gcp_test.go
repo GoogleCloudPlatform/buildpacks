@@ -43,8 +43,8 @@ func init() {
 	acceptance.DefineFlags()
 }
 
-// TestAcceptanceGo runs each acceptance test case against each version of go.
-func TestAcceptanceGo(t *testing.T) {
+// TestGCPAcceptanceGo runs each GCP acceptance test case against each version of go.
+func TestGCPAcceptanceGo(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
@@ -135,8 +135,9 @@ func applyRuntimeVersion(t *testing.T, testCase acceptance.Test, version string)
 	return testCase
 }
 
-// TestAcceptanceGoSingleVersion runs test cases which do not need to be tested against more than one go version.
-func TestAcceptanceGoSingleVersion(t *testing.T) {
+// TestGCPAcceptanceGoSingleVersion runs GCP test cases which do not need to be tested against more
+// than one go version.
+func TestGCPAcceptanceGoSingleVersion(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
@@ -199,7 +200,7 @@ func TestAcceptanceGoSingleVersion(t *testing.T) {
 	}
 }
 
-func TestFailuresGo(t *testing.T) {
+func TestGCPFailuresGo(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
