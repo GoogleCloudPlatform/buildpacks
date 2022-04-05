@@ -25,12 +25,16 @@ func TestDetect(t *testing.T) {
 		name  string
 		files map[string]string
 		want  int
+		env   []string
 	}{
 		{
 			name: "with composer.json",
 			files: map[string]string{
 				"index.php":     "",
 				"composer.json": "",
+			},
+			env: []string{
+				"X_GOOGLE_TARGET_PLATFORM=gae",
 			},
 			want: 0,
 		},
@@ -39,6 +43,9 @@ func TestDetect(t *testing.T) {
 			files: map[string]string{
 				"index.php": "",
 			},
+			env: []string{
+				"X_GOOGLE_TARGET_PLATFORM=gae",
+			},
 			want: 0,
 		},
 		{
@@ -46,12 +53,34 @@ func TestDetect(t *testing.T) {
 			files: map[string]string{
 				"foo.txt": "",
 			},
+			env: []string{
+				"X_GOOGLE_TARGET_PLATFORM=gae",
+			},
 			want: 0,
+		},
+		{
+			name: "without target platform",
+			files: map[string]string{
+				"index.php":     "",
+				"composer.json": "",
+			},
+			want: 100,
+		},
+		{
+			name: "with target platform other than gae",
+			files: map[string]string{
+				"index.php":     "",
+				"composer.json": "",
+			},
+			env: []string{
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
+			},
+			want: 100,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
 		})
 	}
 }

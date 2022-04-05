@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
 )
@@ -29,8 +30,11 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	// Always opt in.
-	return gcp.OptInAlways(), nil
+	if env.IsGAE() {
+		return gcp.OptInEnvSet(env.XGoogleTargetPlatform), nil
+	}
+
+	return gcp.OptOutEnvNotSet(env.XGoogleTargetPlatform), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

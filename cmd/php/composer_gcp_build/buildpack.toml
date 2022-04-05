@@ -6,13 +6,7 @@ version = "0.9.1"
 name = "PHP - Composer gcp-build"
 
 [[stacks]]
-id = "google.php72"
+id = "google"
 
 [[stacks]]
-id = "google.php73"
-
-[[stacks]]
-id = "google.php74"
-
-[[stacks]]
-id = "google.php81"
+id = "*"

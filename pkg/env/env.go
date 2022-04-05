@@ -131,12 +131,12 @@ func IsGAE() bool {
 	return "gae" == os.Getenv(XGoogleTargetPlatform)
 }
 
-// IsGCP returns true if the buildpack target platform is gae.
+// IsGCP returns true if the buildpack target platform is neither gae nor gcf.
 func IsGCP() bool {
-	return "gcp" == os.Getenv(XGoogleTargetPlatform)
+	return !IsGAE() && !IsGCF()
 }
 
-// IsGCF returns true if the buildpack target platform is gae.
+// IsGCF returns true if the buildpack target platform is gcf.
 func IsGCF() bool {
 	return "gcf" == os.Getenv(XGoogleTargetPlatform)
 }

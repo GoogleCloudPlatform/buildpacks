@@ -116,7 +116,7 @@ func TestAcceptance(t *testing.T) {
 			t.Parallel()
 
 			tc.Path = "/testFunction"
-			tc.Env = append(tc.Env, "GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=php81")
+			tc.Env = append(tc.Env, "GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=php81", "X_GOOGLE_TARGET_PLATFORM=gcf")
 			tc.FilesMustExist = append(tc.FilesMustExist,
 				"/layers/google.utils.archive-source/src/source-code.tar.gz",
 				"/workspace/.googlebuild/source-code.tar.gz",
@@ -162,7 +162,7 @@ func TestFailures(t *testing.T) {
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
 
-			tc.Env = append(tc.Env, "GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=php81")
+			tc.Env = append(tc.Env, "GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=php81", "X_GOOGLE_TARGET_PLATFORM=gcf")
 			acceptance.TestBuildFailure(t, builder, tc)
 		})
 	}

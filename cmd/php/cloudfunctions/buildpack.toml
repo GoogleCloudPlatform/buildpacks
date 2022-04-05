@@ -6,7 +6,7 @@ version = "0.9.0"
 name = "PHP - Cloud Functions"
 
 [[stacks]]
-id = "google.php74"
+id = "google"
 
 [[stacks]]
-id = "google.php81"
+id = "*"

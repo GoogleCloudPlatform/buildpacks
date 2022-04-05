@@ -11,7 +11,7 @@ buildpack(
         ":main",
     ],
     visibility = [
-        "//builders:function_builders",
+        "//builders:__subpackages__",
     ],
 )
 

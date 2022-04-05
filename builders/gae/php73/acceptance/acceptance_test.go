@@ -87,7 +87,7 @@ func TestAcceptance(t *testing.T) {
 		if tc.Name == "" {
 			tc.Name = tc.App
 		}
-		tc.Env = append(tc.Env, "GOOGLE_RUNTIME=php73")
+		tc.Env = append(tc.Env, "GOOGLE_RUNTIME=php73", "X_GOOGLE_TARGET_PLATFORM=gae")
 
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
