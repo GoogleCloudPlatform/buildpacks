@@ -24,15 +24,12 @@ func init() {
 }
 
 func TestAcceptance(t *testing.T) {
-	t.Skip("Disable ruby30")
-
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
-	// TODO(b/193272221): Remove when stack images are published.
-	//if acceptance.PullImages() {
-	//t.Skip("Disabled for continuous builds")
-	//}
+	if acceptance.PullImages() {
+		t.Skip("Disabled for continuous builds")
+	}
 
 	testCases := []acceptance.Test{
 		{
