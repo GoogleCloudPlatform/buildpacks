@@ -35,6 +35,10 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if !env.IsGCF() {
+		return gcp.OptOut("Env var X_GOOGLE_TARGET_PLATFORM is not set to gcf."), nil
+	}
+
 	// Fail archiving source when users want to clear source from the final container.
 	if cs, ok := os.LookupEnv(env.ClearSource); ok {
 		c, err := strconv.ParseBool(cs)

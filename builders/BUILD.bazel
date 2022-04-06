@@ -98,6 +98,7 @@ package_group(
         "//builders/gcf/python38",
         "//builders/gcf/python39",
         "//builders/gcp/base",
+        "//builders/python",
     ],
 )
 

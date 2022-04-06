@@ -68,6 +68,7 @@ func TestAcceptance(t *testing.T) {
 			tc.Env = append(tc.Env,
 				"GOOGLE_FUNCTION_TARGET=testFunction",
 				"GOOGLE_RUNTIME=ruby30",
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
 			)
 			tc.FilesMustExist = append(tc.FilesMustExist,
 				"/layers/google.utils.archive-source/src/source-code.tar.gz",
@@ -133,6 +134,7 @@ func TestFailures(t *testing.T) {
 			tc.Env = append(tc.Env,
 				"GOOGLE_FUNCTION_TARGET=testFunction",
 				"GOOGLE_RUNTIME=ruby30",
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
 			)
 
 			acceptance.TestBuildFailure(t, builder, tc)

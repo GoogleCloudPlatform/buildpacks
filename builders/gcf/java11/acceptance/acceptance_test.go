@@ -81,6 +81,7 @@ func TestAcceptance(t *testing.T) {
 			tc.Env = append(tc.Env,
 				"GOOGLE_RUNTIME=java11",
 			)
+			tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
 
 			tc.FilesMustExist = append(tc.FilesMustExist,
 				"/layers/google.utils.archive-source/src/source-code.tar.gz",
@@ -137,6 +138,7 @@ func TestFailures(t *testing.T) {
 			tc.Env = append(tc.Env,
 				"GOOGLE_RUNTIME=java11",
 			)
+			tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
 
 			acceptance.TestBuildFailure(t, builder, tc)
 		})

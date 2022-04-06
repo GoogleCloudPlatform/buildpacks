@@ -35,6 +35,12 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if !env.IsGCF() {
+		return gcp.OptOut("Deployment environment is not GCF."), nil
+	}
+	if runtime := os.Getenv(env.Runtime); runtime != "python37" {
+		return gcp.OptOut(fmt.Sprintf("env var %s is not set to python37", env.Runtime)), nil
+	}
 	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
 		return gcp.OptInEnvSet(env.FunctionTarget, gcp.WithBuildPlans(python.RequirementsProvidesPlan)), nil
 	}

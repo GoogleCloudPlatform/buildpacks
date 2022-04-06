@@ -1,0 +1,119 @@
+description = "Unified builder all Python runtimes"
+
+[[buildpacks]]
+  id = "google.config.entrypoint"
+  uri = "entrypoint.tgz"
+
+[[buildpacks]]
+  id = "google.python.appengine"
+  uri = "appengine.tgz"
+
+[[buildpacks]]
+  id = "google.python.functions-framework"
+  uri = "functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.python.functions-framework-compat"
+  uri = "functions_framework_compat.tgz"
+
+[[buildpacks]]
+  id = "google.python.missing-entrypoint"
+  uri = "missing_entrypoint.tgz"
+
+[[buildpacks]]
+  id = "google.python.pip"
+  uri = "pip.tgz"
+
+[[buildpacks]]
+  id = "google.python.runtime"
+  uri = "runtime.tgz"
+
+[[buildpacks]]
+  id = "google.python.webserver"
+  uri = "webserver.tgz"
+
+[[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source.tgz"
+
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
+# Python functions (gcf and gcp).
+[[order]]
+
+  # gcf only
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  # gcf and python37 only
+  [[order.group]]
+    id = "google.python.functions-framework-compat"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# Python applications (gae)
+[[order]]
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+   [[order.group]]
+    id = "google.python.runtime"
+
+   [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.appengine"
+
+  [[order.group]]
+    id = "google.utils.label"
+
+
+# Python applications (gcp)
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  # Entrypoint buildpack is required because it cannot be easily inferred.
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# gcp only
+# This buildpack group will always fail but with a clear message that the
+# entrypoint is missing. It must be the last group otherwise projects with
+# a single .py file and no entrypoint will fail
+[[order]]
+  [[order.group]]
+    id = "google.python.missing-entrypoint"
+
+[stack]
+  id = "google"
+  build-image = "gcr.io/buildpacks/gcp/build:v1" 
+  run-image = "gcr.io/buildpacks/gcp/run:v1"
+
+[lifecycle]
+  version = "0.13.3"

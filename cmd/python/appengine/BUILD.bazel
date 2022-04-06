@@ -26,6 +26,7 @@ go_binary(
     deps = [
         "//pkg/appengine",
         "//pkg/appstart",
+        "//pkg/env",
         "//pkg/gcpbuildpack",
         "@com_github_masterminds_semver//:go_default_library",
     ],

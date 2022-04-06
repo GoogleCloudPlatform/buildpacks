@@ -112,6 +112,7 @@ func TestAcceptance(t *testing.T) {
 			tc.Env = append(tc.Env,
 				"GOOGLE_FUNCTION_TARGET=testFunction",
 				"GOOGLE_RUNTIME=python37",
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
 			)
 			tc.FilesMustExist = append(tc.FilesMustExist,
 				"/layers/google.utils.archive-source/src/source-code.tar.gz",
@@ -129,8 +130,12 @@ func TestFailures(t *testing.T) {
 
 	testCases := []acceptance.FailureTest{
 		{
-			App:       "fail_syntax_error",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=python37"},
+			App: "fail_syntax_error",
+			Env: []string{
+				"GOOGLE_FUNCTION_TARGET=testFunction",
+				"GOOGLE_RUNTIME=python37",
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
+			},
 			MustMatch: "SyntaxError: invalid syntax",
 		},
 	}

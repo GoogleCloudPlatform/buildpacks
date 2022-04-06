@@ -77,6 +77,7 @@ func TestAcceptance(t *testing.T) {
 			tc.Env = append(tc.Env,
 				"GOOGLE_FUNCTION_TARGET=testFunction",
 				"GOOGLE_RUNTIME=python38",
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
 			)
 			tc.FilesMustExist = append(tc.FilesMustExist,
 				"/layers/google.utils.archive-source/src/source-code.tar.gz",
@@ -95,18 +96,21 @@ func TestFailures(t *testing.T) {
 	testCases := []acceptance.FailureTest{
 		{
 			App:       "fail_syntax_error",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=python38"},
 			MustMatch: "SyntaxError: invalid syntax",
 		},
 		{
 			App:       "fail_broken_dependencies",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=python38"},
 			MustMatch: `functions-framework .* has requirement flask<3\.0,>=1\.0, but you have flask 0\.12\.5`,
 		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
+		tc.Env = append(tc.Env,
+			"GOOGLE_FUNCTION_TARGET=testFunction",
+			"GOOGLE_RUNTIME=python38",
+			"X_GOOGLE_TARGET_PLATFORM=gcf",
+		)
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
 

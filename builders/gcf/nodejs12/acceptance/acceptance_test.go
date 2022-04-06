@@ -150,6 +150,7 @@ func TestAcceptance(t *testing.T) {
 			tc.Env = append(tc.Env,
 				"GOOGLE_FUNCTION_TARGET=testFunction",
 				"GOOGLE_RUNTIME=nodejs12",
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
 			)
 
 			tc.FilesMustExist = append(tc.FilesMustExist,
@@ -169,12 +170,10 @@ func TestFailures(t *testing.T) {
 	testCases := []acceptance.FailureTest{
 		{
 			App:       "fail_syntax_error",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=nodejs12"},
 			MustMatch: "SyntaxError:",
 		},
 		{
 			App:       "fail_wrong_main",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=nodejs12"},
 			MustMatch: "function.js does not exist",
 		},
 	}
@@ -183,6 +182,12 @@ func TestFailures(t *testing.T) {
 		tc := tc
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
+
+			tc.Env = append(tc.Env,
+				"GOOGLE_FUNCTION_TARGET=testFunction",
+				"GOOGLE_RUNTIME=nodejs12",
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
+			)
 
 			acceptance.TestBuildFailure(t, builder, tc)
 		})

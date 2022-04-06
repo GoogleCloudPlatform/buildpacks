@@ -65,6 +65,7 @@ func TestAcceptance(t *testing.T) {
 			tc.Env = append(tc.Env,
 				"GOOGLE_RUNTIME=dotnet3",
 			)
+			tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
 			tc.FilesMustExist = append(tc.FilesMustExist,
 				"/layers/google.utils.archive-source/src/source-code.tar.gz",
 				"/workspace/.googlebuild/source-code.tar.gz",

@@ -126,6 +126,7 @@ func TestAcceptance(t *testing.T) {
 				"GOOGLE_FUNCTION_SIGNATURE_TYPE=http",
 				"GOOGLE_FUNCTION_TARGET=testFunction",
 				"GOOGLE_RUNTIME=nodejs8",
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
 			)
 
 			// The legacy worker.js runtimes have a slightly different runtime
@@ -156,17 +157,14 @@ func TestFailures(t *testing.T) {
 	testCases := []acceptance.FailureTest{
 		{
 			App:       "fail_syntax_error",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=nodejs8"},
 			MustMatch: "SyntaxError:",
 		},
 		{
 			App:       "fail_wrong_main",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=nodejs8"},
 			MustMatch: "function.js does not exist",
 		},
 		{
 			App:       "with_framework_yarn",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=nodejs8"},
 			MustMatch: `The engine "node" is incompatible with this module`,
 		},
 	}
@@ -175,6 +173,12 @@ func TestFailures(t *testing.T) {
 		tc := tc
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
+
+			tc.Env = append(tc.Env,
+				"GOOGLE_FUNCTION_TARGET=testFunction",
+				"GOOGLE_RUNTIME=nodejs8",
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
+			)
 
 			acceptance.TestBuildFailure(t, builder, tc)
 		})

@@ -29,12 +29,46 @@ func TestDetect(t *testing.T) {
 		want  int
 	}{
 		{
-			name: "with target",
-			env:  []string{"GOOGLE_FUNCTION_TARGET=helloWorld"},
+			name: "optIn",
+			env: []string{
+				"GOOGLE_FUNCTION_TARGET=helloWorld",
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
+				"GOOGLE_RUNTIME=python37",
+			},
 			want: 0,
 		},
 		{
-			name: "without target",
+			name: "optOutWrongPlatform",
+			env: []string{
+				"GOOGLE_FUNCTION_TARGET=helloWorld",
+				"X_GOOGLE_TARGET_PLATFORM=gae",
+				"GOOGLE_RUNTIME=python37",
+			},
+			want: 100,
+		},
+		{
+			name: "optOutNoTarget",
+			env: []string{
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
+				"GOOGLE_RUNTIME=python37",
+			},
+			want: 100,
+		},
+		{
+			name: "optOutWrongRuntimeVersion",
+			env: []string{
+				"GOOGLE_FUNCTION_TARGET=helloWorld",
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
+				"GOOGLE_RUNTIME=python38",
+			},
+			want: 100,
+		},
+		{
+			name: "optOutNoRuntime",
+			env: []string{
+				"GOOGLE_FUNCTION_TARGET=helloWorld",
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
+			},
 			want: 100,
 		},
 	}

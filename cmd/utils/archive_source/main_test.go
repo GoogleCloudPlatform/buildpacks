@@ -36,22 +36,41 @@ func TestDetect(t *testing.T) {
 		want  int
 	}{
 		{
+			name: "x google target not set",
+			want: 100,
+		},
+		{
+			name: "x google target set to gae",
+			want: 100,
+			env:  []string{"X_GOOGLE_TARGET_PLATFORM=gae"},
+		},
+		{
 			name: "clear source not set",
 			want: 0,
+			env:  []string{"X_GOOGLE_TARGET_PLATFORM=gcf"},
 		},
 		{
 			name: "clear source invalid",
-			env:  []string{"GOOGLE_CLEAR_SOURCE=giraffe"},
+			env: []string{
+				"GOOGLE_CLEAR_SOURCE=giraffe",
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
+			},
 			want: 1,
 		},
 		{
 			name: "clear source false",
-			env:  []string{"GOOGLE_CLEAR_SOURCE=false"},
+			env: []string{
+				"GOOGLE_CLEAR_SOURCE=false",
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
+			},
 			want: 0,
 		},
 		{
 			name: "clear source true",
-			env:  []string{"GOOGLE_CLEAR_SOURCE=true"},
+			env: []string{
+				"GOOGLE_CLEAR_SOURCE=true",
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
+			},
 			want: 100,
 		},
 	}

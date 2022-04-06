@@ -79,7 +79,7 @@ func TestAcceptance(t *testing.T) {
 		if tc.Name == "" {
 			tc.Name = tc.App
 		}
-		tc.Env = append(tc.Env, "GOOGLE_RUNTIME=python39")
+		tc.Env = append(tc.Env, "GOOGLE_RUNTIME=python38", "X_GOOGLE_TARGET_PLATFORM=gae")
 
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
@@ -106,8 +106,7 @@ func TestFailures(t *testing.T) {
 		tc := tc
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
-
-			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=python39")
+			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=python38", "X_GOOGLE_TARGET_PLATFORM=gae")
 
 			acceptance.TestBuildFailure(t, builder, tc)
 		})
