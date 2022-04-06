@@ -13,4 +13,6 @@
 # limitations under the License.
 
 source "https://rubygems.org"
-gem "functions_framework", "~> 0.7"
+gem "webrick", "~> 1.7"
+
+gem "functions_framework", "~> 1.1"

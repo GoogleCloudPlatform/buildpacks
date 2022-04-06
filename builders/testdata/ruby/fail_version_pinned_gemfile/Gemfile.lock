@@ -5,10 +5,10 @@ GEM
     rack (2.0.6)
     rack-protection (2.0.4)
       rack
-    sinatra (2.0.4)
+    sinatra (2.2.0)
       mustermann (~> 1.0)
-      rack (~> 2.0)
-      rack-protection (= 2.0.4)
+      rack (~> 2.2)
+      rack-protection (= 2.2.0)
       tilt (~> 2.0)
     tilt (2.0.8)
 

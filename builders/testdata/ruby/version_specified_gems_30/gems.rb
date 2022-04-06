@@ -13,5 +13,7 @@
 # limitations under the License.
 
 source "https://rubygems.org"
-gem "sinatra", "~> 2.0"
 ruby '~> 3.0.0'
+gem "webrick", "~> 1.7"
+
+gem "sinatra", "~> 2.1"

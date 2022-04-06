@@ -13,5 +13,4 @@
 # limitations under the License.
 
 source "https://rubygems.org"
-gem "sinatra", "~> 2.0"
 ruby ">= 2.5.3", "< 2.5.20"

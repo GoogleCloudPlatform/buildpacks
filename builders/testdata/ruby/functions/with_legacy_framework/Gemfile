@@ -14,3 +14,4 @@
 
 source "https://rubygems.org"
 gem "functions_framework", "~> 0.5.2"
+gem "webrick", "~> 1.7"

@@ -24,17 +24,10 @@ func init() {
 }
 
 func TestAcceptance(t *testing.T) {
-	t.Skip("Disabled")
-
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
-
-	// TODO(b/193272221): Remove when stack images are published.
-	//if acceptance.PullImages() {
-	//t.Skip("Disabled for continuous builds")
-	//}
-
 	testCases := []acceptance.Test{
+
 		{
 			App: "rack",
 			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec rackup -p $PORT config-custom.ru"},
@@ -62,11 +55,11 @@ func TestAcceptance(t *testing.T) {
 			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 		},
 		{
-			App: "version_specified_gemfile_27",
+			App: "version_specified_gemfile_30",
 			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 		},
 		{
-			App: "version_specified_gems_27",
+			App: "version_specified_gems_30",
 			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 		},
 	}
@@ -83,9 +76,6 @@ func TestAcceptance(t *testing.T) {
 }
 
 func TestFailures(t *testing.T) {
-	// TODO(b/193272221): Remove when stack images are published.
-	t.Skip("Disabled")
-
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 

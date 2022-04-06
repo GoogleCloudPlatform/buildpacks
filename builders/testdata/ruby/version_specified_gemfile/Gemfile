@@ -15,3 +15,4 @@
 source "https://rubygems.org"
 gem "sinatra", "~> 2.0"
 ruby '~> 2.5.0'
+gem "webrick", "~> 1.7"

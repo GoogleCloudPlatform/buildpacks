@@ -13,5 +13,6 @@
 # limitations under the License.
 
 source "https://rubygems.org"
-gem "sinatra", "~> 2.0"
+gem "sinatra", "~> 2.2.0"
 gem "toys-core", git: "https://github.com/dazuma/toys", ref: "16a06e5e1bb394c89dbc23c70f628532e7a8fcb9"
+gem "webrick", "~> 1.7"
