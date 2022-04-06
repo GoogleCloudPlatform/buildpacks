@@ -26,6 +26,7 @@ func init() {
 const (
 	composer         = "google.php.composer"
 	composerGCPBuild = "google.php.composer-gcp-build"
+	composerInstall  = "google.php.composer-install"
 )
 
 func TestAcceptance(t *testing.T) {
@@ -36,30 +37,30 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:       "symfony app",
 			App:        "symfony",
-			MustUse:    []string{composer},
+			MustUse:    []string{composer, composerInstall},
 			MustNotUse: []string{composerGCPBuild},
 		},
 		{
 			Name:       "composer.json without dependencies",
 			App:        "composer_json_no_dependencies",
-			MustUse:    []string{composer},
+			MustUse:    []string{composer, composerInstall},
 			MustNotUse: []string{composerGCPBuild},
 		},
 		{
 			Name:       "composer.lock respected",
 			App:        "composer_lock",
-			MustUse:    []string{composer},
+			MustUse:    []string{composer, composerInstall},
 			MustNotUse: []string{composerGCPBuild},
 		},
 		{
 			Name:    "composer.json with gcp-build script and no dependencies",
 			App:     "gcp_build_no_dependencies",
-			MustUse: []string{composer, composerGCPBuild},
+			MustUse: []string{composer, composerGCPBuild, composerInstall},
 		},
 		{
 			Name:       "no composer.json",
 			App:        "no_composer_json",
-			MustNotUse: []string{composer, composerGCPBuild},
+			MustNotUse: []string{composer, composerGCPBuild, composerInstall},
 		},
 		// Test that we can build an app with SDK dependencies
 		{

@@ -94,7 +94,8 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("failed to fetch the installer signature from %s: %w", composerSigURL, err)
 	}
 	expectedSHA := expectedSHABuf.String()
-	actualSHACmd := fmt.Sprintf("php -r \"echo hash_file('sha384', '%s');\"", installer.Name())
+	// Disable the deprecated warnings inline using -d 'error_reporting=24575' flag while we add php.ini.
+	actualSHACmd := fmt.Sprintf("php -d 'error_reporting=24575' -r \"echo hash_file('sha384', '%s');\"", installer.Name())
 	actualSHA := ctx.Exec([]string{"bash", "-c", actualSHACmd}).Stdout
 	if actualSHA != expectedSHA {
 		return fmt.Errorf("invalid composer installer found at %q: checksum for composer installer, %q, does not match expected checksum of %q", composerSetupURL, actualSHA, expectedSHA)

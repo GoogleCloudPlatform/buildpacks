@@ -9,6 +9,10 @@ description = "Builder for the GAE PHP 7.4 runtime"
   uri = "composer_gcp_build.tgz"
 
 [[buildpacks]]
+  id = "google.php.composer-install"
+  uri = "composer_install.tgz"
+
+[[buildpacks]]
   id = "google.php.appengine"
   uri = "appengine.tgz"
 
@@ -17,6 +21,10 @@ description = "Builder for the GAE PHP 7.4 runtime"
   uri = "label.tgz"
 
 [[order]]
+  [[order.group]]
+    id = "google.php.composer-install"
+    optional = true
+
   [[order.group]]
     id = "google.php.composer-gcp-build"
     optional = true

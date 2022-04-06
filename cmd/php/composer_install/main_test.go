@@ -56,7 +56,7 @@ func TestDetect(t *testing.T) {
 func TestBuild(t *testing.T) {
 	var (
 		expectedHash    = "expected_sha384_hash"
-		actualHashCmd   = "php -r"
+		actualHashCmd   = "php -d 'error_reporting=24575' -r"
 		runInstallerCmd = fmt.Sprintf("php %s/%s", composerLayer, composerSetup)
 	)
 

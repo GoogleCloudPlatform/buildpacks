@@ -27,6 +27,7 @@ func init() {
 const (
 	composer         = "google.php.composer"
 	composerGCPBuild = "google.php.composer-gcp-build"
+	composerInstall  = "google.php.composer-install"
 )
 
 func TestAcceptance(t *testing.T) {
@@ -37,7 +38,7 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:       "function without composer.json",
 			App:        "no_composer_json",
-			MustNotUse: []string{composer, composerGCPBuild},
+			MustNotUse: []string{composer, composerGCPBuild, composerInstall},
 			MustOutput: []string{
 				"Handling function without composer.json",
 				"No vendor directory present, installing functions framework",
@@ -47,7 +48,7 @@ func TestAcceptance(t *testing.T) {
 			Name:       "non default source file",
 			App:        "non_default_source_file",
 			Env:        []string{"GOOGLE_FUNCTION_SOURCE=myfunc.php"},
-			MustNotUse: []string{composer, composerGCPBuild},
+			MustNotUse: []string{composer, composerGCPBuild, composerInstall},
 			MustOutput: []string{
 				"Handling function without composer.json",
 				"No vendor directory present, installing functions framework",
@@ -56,34 +57,34 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:       "function without framework dependency",
 			App:        "no_framework",
-			MustUse:    []string{composer},
+			MustUse:    []string{composer, composerInstall},
 			MustNotUse: []string{composerGCPBuild},
 			MustOutput: []string{"Handling function without dependency on functions framework"},
 		},
 		{
 			Name:       "function with framework dependency",
 			App:        "with_framework",
-			MustUse:    []string{composer},
+			MustUse:    []string{composer, composerInstall},
 			MustNotUse: []string{composerGCPBuild},
 			MustOutput: []string{"Handling function with dependency on functions framework"},
 		},
 		{
 			Name:       "function with dependencies",
 			App:        "with_dependencies",
-			MustUse:    []string{composer},
+			MustUse:    []string{composer, composerInstall},
 			MustNotUse: []string{composerGCPBuild},
 			MustOutput: []string{"Handling function without dependency on functions framework"},
 		},
 		{
 			Name:       "function with gcp-build",
 			App:        "with_gcp_build",
-			MustUse:    []string{composer, composerGCPBuild},
+			MustUse:    []string{composer, composerGCPBuild, composerInstall},
 			MustOutput: []string{"Handling function with dependency on functions framework"},
 		},
 		{
 			Name:       "function with vendor dir but no framework",
 			App:        "vendored_no_framework",
-			MustNotUse: []string{composer, composerGCPBuild},
+			MustNotUse: []string{composer, composerGCPBuild, composerInstall},
 			MustOutput: []string{
 				"Handling function without composer.json",
 				"Functions framework is not present at vendor/google/cloud-functions-framework",
