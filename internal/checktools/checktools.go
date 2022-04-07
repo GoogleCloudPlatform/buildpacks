@@ -27,8 +27,10 @@ import (
 )
 
 var (
+	// LINT.IfChange(minPackVersion)
 	// minPackVersion is the minimum required version of pack.
 	minPackVersion = semver.MustParse("0.23.0")
+	// LINT.ThenChange(//depot/google3/apphosting/g3doc/runtimes/tutorials/buildpack-tests-debug.md)
 )
 
 // Installed checks that all required tools are on PATH.
