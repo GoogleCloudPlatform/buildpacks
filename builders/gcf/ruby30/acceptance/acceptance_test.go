@@ -27,10 +27,6 @@ func TestAcceptance(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
-	if acceptance.PullImages() {
-		t.Skip("Disabled for continuous builds")
-	}
-
 	testCases := []acceptance.Test{
 		{
 			Name: "function with dependencies",
