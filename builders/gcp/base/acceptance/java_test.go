@@ -132,7 +132,7 @@ func TestAcceptanceJava(t *testing.T) {
 		{
 			Name:       "Maven build args",
 			App:        "java/maven_testing_profile",
-			Env:        []string{"GOOGLE_BUILD_ARGS=-Dnative=false"},
+			Env:        []string{"GOOGLE_BUILD_ARGS=--settings=maven_settings.xml -Dnative=false"},
 			MustUse:    []string{javaMaven, javaRuntime, javaEntrypoint},
 			MustNotUse: []string{entrypoint},
 		},

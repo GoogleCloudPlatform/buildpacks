@@ -114,7 +114,7 @@ func buildFn(ctx *gcp.Context) error {
 		if strings.Contains(buildArgs, "maven.repo.local") {
 			ctx.Warnf("Detected maven.repo.local property set in GOOGLE_BUILD_ARGS. Maven caching may not work properly.")
 		}
-		command = append(command, buildArgs)
+		command = append(command, strings.Fields(buildArgs)...)
 	}
 
 	if !ctx.Debug() && !devmode.Enabled(ctx) {
