@@ -14,8 +14,6 @@
 package acceptance_test
 
 import (
-	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
@@ -29,15 +27,6 @@ const (
 	goPath        = "google.go.gopath"
 	goRuntime     = "google.go.runtime"
 )
-
-var goVersions = []string{
-	"1.11",
-	"1.12",
-	"1.13",
-	"1.14",
-	"1.15",
-	"1.16",
-}
 
 func init() {
 	acceptance.DefineFlags()
@@ -120,19 +109,6 @@ func shouldSkipVersion(version string, excludedVersions []string) bool {
 		}
 	}
 	return false
-}
-
-func applyRuntimeVersion(t *testing.T, testCase acceptance.Test, version string) acceptance.Test {
-	t.Helper()
-	envRuntimeVersion := "GOOGLE_RUNTIME_VERSION"
-	for _, e := range testCase.Env {
-		if strings.HasPrefix(e, envRuntimeVersion) {
-			t.Fatalf("environment for test %q already contains %q", testCase.Name, envRuntimeVersion)
-		}
-	}
-	testCase.Name = fmt.Sprintf("%s: %s", version, testCase.Name)
-	testCase.Env = append(testCase.Env, fmt.Sprintf("%s=%s", envRuntimeVersion, version))
-	return testCase
 }
 
 // TestGCPAcceptanceGoSingleVersion runs GCP test cases which do not need to be tested against more

@@ -7,7 +7,10 @@ exports_files(["config.yaml"])
 go_test(
     name = "gcp_test",
     size = "enormous",
-    srcs = ["gcp_test.go"],
+    srcs = [
+        "common_test.go",
+        "gcp_test.go",
+    ],
     args = [
         "-test-data=$(location //builders/testdata:generic)",
         "-structure-test-config=$(location :config.yaml)",
@@ -29,7 +32,10 @@ go_test(
 go_test(
     name = "gae_test",
     size = "enormous",
-    srcs = ["gae_test.go"],
+    srcs = [
+        "common_test.go",
+        "gae_test.go",
+    ],
     args = [
         "-test-data=$(location //builders/testdata:go)",
         "-structure-test-config=$(location :config.yaml)",
