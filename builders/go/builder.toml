@@ -1,6 +1,10 @@
 description = "Unified builder for the Go runtime"
 
 [[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source.tgz"
+
+[[buildpacks]]
   id = "google.config.entrypoint"
   uri = "entrypoint.tgz"
 
@@ -79,6 +83,10 @@ description = "Unified builder for the Go runtime"
 [[order]]
 
   [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
     id = "google.go.runtime"
 
   [[order.group]]
@@ -86,10 +94,6 @@ description = "Unified builder for the Go runtime"
 
   [[order.group]]
     id = "google.go.build"
-
-  [[order.group]]
-    id = "google.config.entrypoint"
-    optional = true
 
   [[order.group]]
     id = "google.go.clear_source"

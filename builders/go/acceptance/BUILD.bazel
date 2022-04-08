@@ -5,6 +5,31 @@ licenses(["notice"])
 exports_files(["config.yaml"])
 
 go_test(
+    name = "gcf_test",
+    size = "enormous",
+    srcs = [
+        "common_test.go",
+        "gcf_test.go",
+    ],
+    args = [
+        "-test-data=$(location //builders/testdata/go:functions)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/go:builder.tar)",
+        "-builder-prefix=go-gcf-acceptance-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/go:builder.tar",
+        "//builders/testdata/go:functions",
+    ],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//internal/acceptance"],
+)
+
+go_test(
     name = "gcp_test",
     size = "enormous",
     srcs = [

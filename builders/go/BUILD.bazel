@@ -17,6 +17,7 @@ builder(
         "//cmd/go/gomod:gomod.tgz",
         "//cmd/go/gopath:gopath.tgz",
         "//cmd/go/runtime:runtime.tgz",
+        "//cmd/utils/archive_source:archive_source.tgz",
         "//cmd/utils/label:label.tgz",
     ],
     image = "gcp/go",
