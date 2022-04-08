@@ -58,6 +58,7 @@ var (
 	structureTestConfig string // Path to container test configuration file.
 	builderSource       string // Path to directory or archive containing builder source.
 	builderImage        string // Name of the builder image to test; takes precedence over builderSource.
+	runImageOverride    string // Name of the run image to use during the test. This takes preference over the run-image defined in the builder.toml.
 	builderPrefix       string // Prefix for created builder image.
 	keepArtifacts       bool   // If true, keeps intermediate artifacts such as application images.
 	packBin             string // Path to pack binary.
@@ -66,8 +67,7 @@ var (
 	pullImages          bool   // Pull stack images instead of using local daemon.
 	cloudbuild          bool   // Use cloudbuild network; required for Cloud Build.
 	runtimeVersions     string // Comma separated list of runtime versions to test, or "json" if using json file.
-
-	specialChars = regexp.MustCompile("[^a-zA-Z0-9]+")
+	specialChars        = regexp.MustCompile("[^a-zA-Z0-9]+")
 )
 
 type requestType string
@@ -94,6 +94,7 @@ func DefineFlags() {
 	flag.StringVar(&structureTestConfig, "structure-test-config", "", "Location of the container structure test configuration.")
 	flag.StringVar(&builderSource, "builder-source", "", "Location of the builder source files.")
 	flag.StringVar(&builderImage, "builder-image", "", "Name of the builder image to test; takes precedence over builderSource.")
+	flag.StringVar(&runImageOverride, "run-image-override", "", "Name of the run image to use during the test. This takes preference over the run-image defined in the builder.toml.")
 	flag.StringVar(&builderPrefix, "builder-prefix", "acceptance-test-builder-", "Prefix for the generated builder image.")
 	flag.BoolVar(&keepArtifacts, "keep-artifacts", false, "Keep images and other artifacts after tests have finished.")
 	flag.StringVar(&packBin, "pack", "pack", "Path to pack binary.")
@@ -544,9 +545,13 @@ func CreateBuilder(t *testing.T) (string, func()) {
 			if _, err := runOutput("docker", "pull", builderImage); err != nil {
 				t.Fatalf("Error pulling %s: %v", builderImage, err)
 			}
-			run, err := runImageFromMetadata(builderImage)
-			if err != nil {
-				t.Fatalf("Error extracting run image from image %s: %v", builderImage, err)
+			run := runImageOverride
+			if run == "" {
+				var err error
+				run, err = runImageFromMetadata(builderImage)
+				if err != nil {
+					t.Fatalf("Error extracting run image from image %s: %v", builderImage, err)
+				}
 			}
 			if _, err := runOutput("docker", "pull", run); err != nil {
 				t.Fatalf("Error pulling %s: %v", run, err)
@@ -580,6 +585,9 @@ func CreateBuilder(t *testing.T) (string, func()) {
 	// Pull images once in the beginning to prevent them from changing in the middle of testing.
 	// The images are intentionally not cleaned up to prevent conflicts across different test targets.
 	if pullImages {
+		if runImageOverride != "" {
+			run = runImageOverride
+		}
 		if _, err := runOutput("docker", "pull", run); err != nil {
 			t.Fatalf("Error pulling %s: %v", run, err)
 		}
@@ -735,6 +743,9 @@ func stackImagesFromConfig(path string) (string, string, error) {
 func buildCommand(srcDir, image, builder string, env map[string]string, cache bool) []string {
 	// Pack command to build app.
 	args := strings.Fields(fmt.Sprintf("%s build %s --builder %s --path %s --pull-policy never --verbose --no-color --trust-builder", packBin, image, builder, srcDir))
+	if runImageOverride != "" {
+		args = append(args, "--run-image", runImageOverride)
+	}
 	if !cache {
 		args = append(args, "--clear-cache")
 	}

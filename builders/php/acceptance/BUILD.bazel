@@ -19,6 +19,7 @@ go_test(
         "-structure-test-config=$(location :config.yaml)",
         "-builder-source=$(location //builders/php:builder.tar)",
         "-builder-prefix=php-acceptance-test-",
+        "-run-image-override=gcr.io/buildpacks/gcp/php/run:v1",
     ],
     data = [
         ":config.yaml",
