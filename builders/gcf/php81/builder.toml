@@ -35,7 +35,6 @@ description = "Builder for the GCF PHP 8.1 runtime"
 
   [[order.group]]
     id = "google.php.composer-install"
-    optional = true
 
   [[order.group]]
     id = "google.php.composer-gcp-build"

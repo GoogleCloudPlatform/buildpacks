@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/buildpacks/libcnb"
@@ -43,6 +44,10 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
+		// functions-frameworks buildpack expect composer sdk to be installed always.
+		return gcp.OptInAlways(), nil
+	}
 	composerJSONExists, err := ctx.FileExists(composerJSON)
 	if err != nil {
 		return nil, err

@@ -38,7 +38,8 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:       "function without composer.json",
 			App:        "no_composer_json",
-			MustNotUse: []string{composer, composerGCPBuild, composerInstall},
+			MustUse:    []string{composerInstall},
+			MustNotUse: []string{composer, composerGCPBuild},
 			MustOutput: []string{
 				"Handling function without composer.json",
 				"No vendor directory present, installing functions framework",
@@ -48,7 +49,8 @@ func TestAcceptance(t *testing.T) {
 			Name:       "non default source file",
 			App:        "non_default_source_file",
 			Env:        []string{"GOOGLE_FUNCTION_SOURCE=myfunc.php"},
-			MustNotUse: []string{composer, composerGCPBuild, composerInstall},
+			MustUse:    []string{composerInstall},
+			MustNotUse: []string{composer, composerGCPBuild},
 			MustOutput: []string{
 				"Handling function without composer.json",
 				"No vendor directory present, installing functions framework",
@@ -84,7 +86,8 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:       "function with vendor dir but no framework",
 			App:        "vendored_no_framework",
-			MustNotUse: []string{composer, composerGCPBuild, composerInstall},
+			MustUse:    []string{composerInstall},
+			MustNotUse: []string{composer, composerGCPBuild},
 			MustOutput: []string{
 				"Handling function without composer.json",
 				"Functions framework is not present at vendor/google/cloud-functions-framework",

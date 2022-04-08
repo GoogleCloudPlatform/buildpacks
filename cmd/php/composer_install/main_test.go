@@ -29,26 +29,56 @@ func TestDetect(t *testing.T) {
 		name  string
 		files map[string]string
 		want  int
+		env   []string
 	}{
 		{
-			name: "with composer.json",
+			name: "gae with composer.json",
 			files: map[string]string{
 				"index.php":     "",
 				"composer.json": "",
 			},
+			env: []string{
+				"X_GOOGLE_TARGET_PLATFORM=gae",
+			},
 			want: 0,
 		},
 		{
-			name: "without composer.json",
+			name: "gae without composer.json",
 			files: map[string]string{
 				"index.php": "",
 			},
+			env: []string{
+				"X_GOOGLE_TARGET_PLATFORM=gae",
+			},
 			want: 100,
+		},
+		{
+			name: "gcf with composer.json",
+			files: map[string]string{
+				"index.php":     "",
+				"composer.json": "",
+			},
+			env: []string{
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
+				"GOOGLE_FUNCTION_TARGET=helloWorld",
+			},
+			want: 0,
+		},
+		{
+			name: "gcf without composer.json",
+			files: map[string]string{
+				"index.php": "",
+			},
+			env: []string{
+				"X_GOOGLE_TARGET_PLATFORM=gcf",
+				"GOOGLE_FUNCTION_TARGET=helloWorld",
+			},
+			want: 0,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			bpt.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+			bpt.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
 		})
 	}
 }
