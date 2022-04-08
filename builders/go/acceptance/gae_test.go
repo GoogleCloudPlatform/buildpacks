@@ -20,10 +20,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
-func init() {
-	acceptance.DefineFlags()
-}
-
 func TestGAEAcceptanceGo(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 

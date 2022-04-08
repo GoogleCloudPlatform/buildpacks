@@ -22,10 +22,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
-func init() {
-	acceptance.DefineFlags()
-}
-
 func vendorSetup(builder, src string) error {
 	// The setup function runs `go mod vendor` to vendor dependencies specified in go.mod.
 	args := strings.Fields(fmt.Sprintf("docker run --rm -v %s:/workspace -w /workspace -u root %s go mod vendor", src, builder))

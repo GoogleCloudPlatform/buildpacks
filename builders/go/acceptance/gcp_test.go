@@ -28,10 +28,6 @@ const (
 	goRuntime     = "google.go.runtime"
 )
 
-func init() {
-	acceptance.DefineFlags()
-}
-
 // TestGCPAcceptanceGo runs each GCP acceptance test case against each version of go.
 func TestGCPAcceptanceGo(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)

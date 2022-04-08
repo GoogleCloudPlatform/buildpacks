@@ -22,6 +22,10 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
+func init() {
+	acceptance.DefineFlags()
+}
+
 var goVersions = []string{
 	"1.11",
 	"1.12",
