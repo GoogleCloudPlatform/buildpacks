@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,7 +25,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -58,52 +56,16 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptIn("found .py files"), nil
 }
 
-func legacyInstallPython(ctx *gcp.Context, layer *libcnb.Layer) (bool, error) {
-	version, err := runtimeVersion(ctx)
-	if err != nil {
-		return false, fmt.Errorf("determining runtime version: %w", err)
-	}
-	ctx.AddBOMEntry(libcnb.BOMEntry{
-		Name:     pythonLayer,
-		Metadata: map[string]interface{}{"version": version},
-		Launch:   true,
-		Build:    true,
-	})
-
-	// Check the metadata in the cache layer to determine if we need to proceed.
-	metaVersion := ctx.GetMetadata(layer, versionKey)
-	if version == metaVersion {
-		ctx.CacheHit(pythonLayer)
-		return true, nil
-	}
-	ctx.CacheMiss(pythonLayer)
-	if err := ctx.ClearLayer(layer); err != nil {
-		return false, fmt.Errorf("clearing layer %q: %w", layer.Name, err)
-	}
-
-	archiveURL := fmt.Sprintf(pythonURL, version)
-	code, err := ctx.HTTPStatus(archiveURL)
-	if err != nil {
-		return false, err
-	}
-	if code != http.StatusOK {
-		return false, gcp.UserErrorf("Runtime version %s does not exist at %s (status %d). You can specify the version with %s.", version, archiveURL, code, env.RuntimeVersion)
-	}
-
-	ctx.Logf("Installing Python v%s", version)
-	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s", archiveURL, layer.Path)
-	ctx.Exec([]string{"bash", "-c", command})
-
-	ctx.SetMetadata(layer, versionKey, version)
-	return false, nil
-}
-
 func buildFn(ctx *gcp.Context) error {
 	layer, err := ctx.Layer(pythonLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerUnlessSkipRuntimeLaunch)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", pythonLayer, err)
 	}
-	isCached, err := installPython(ctx, layer)
+	ver, err := runtimeVersion(ctx)
+	if err != nil {
+		return fmt.Errorf("determining runtime version: %w", err)
+	}
+	isCached, err := runtime.InstallTarballIfNotCached(ctx, runtime.Python, ver, layer)
 	if err != nil {
 		return err
 	}
@@ -118,18 +80,13 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
-func installPython(ctx *gcp.Context, layer *libcnb.Layer) (bool, error) {
-	ver := os.Getenv(versionEnv)
-	if ver == "" {
-		return legacyInstallPython(ctx, layer)
-	}
-	// Use GOOGLE_PYTHON_VERSION to enable installing from the experimental tarball hosting service.
-	return runtime.InstallTarballIfNotCached(ctx, runtime.Python, ver, layer)
-}
-
 func runtimeVersion(ctx *gcp.Context) (string, error) {
+	if v := os.Getenv(versionEnv); v != "" {
+		ctx.Logf("Using Python version from %s: %s", versionEnv, v)
+		return v, nil
+	}
 	if v := os.Getenv(env.RuntimeVersion); v != "" {
-		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, v)
+		ctx.Logf("Using Python version from %s: %s", env.RuntimeVersion, v)
 		return v, nil
 	}
 	versionFileExists, err := ctx.FileExists(versionFile)
@@ -143,13 +100,12 @@ func runtimeVersion(ctx *gcp.Context) (string, error) {
 		}
 		v := strings.TrimSpace(string(raw))
 		if v != "" {
-			ctx.Logf("Using runtime version from %s: %s", versionFile, v)
+			ctx.Logf("Using Python version from %s: %s", versionFile, v)
 			return v, nil
 		}
 		return "", gcp.UserErrorf("%s exists but does not specify a version", versionFile)
 	}
-	// Intentionally no user-attributed becase the URL is provided by Google.
-	v := ctx.Exec([]string{"curl", "--fail", "--show-error", "--silent", "--location", versionURL}).Stdout
-	ctx.Logf("Using latest runtime version: %s", v)
-	return v, nil
+	// This will use the highest listed at https://dl.google.com/runtimes/python/version.json.
+	ctx.Logf("Python version not specified, using the test available version.")
+	return "*", nil
 }

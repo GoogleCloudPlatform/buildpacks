@@ -81,25 +81,6 @@ func TestAcceptancePython(t *testing.T) {
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 	}
-	// Tests for two most recent published patch versions of Python.
-	// Unlike with the other languages, we control the versions published to GCS.
-	for _, v := range []string{
-		"3.7.11",
-		"3.7.12",
-		"3.8.11",
-		"3.8.12",
-		"3.9.6",
-		"3.9.7",
-		"3.9.8",
-	} {
-		testCases = append(testCases, acceptance.Test{
-			Name:    "runtime version " + v,
-			App:     "python/version",
-			Path:    "/version?want=" + v,
-			Env:     []string{"GOOGLE_RUNTIME_VERSION=" + v},
-			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
-		})
-	}
 
 	// Tests for specific versions of Python available on dl.google.com.
 	for _, v := range acceptance.RuntimeVersions("python", "3.7.12", "3.8.12", "3.9.10", "3.10.2") {
@@ -131,7 +112,7 @@ func TestFailuresPython(t *testing.T) {
 			Name:      "bad runtime version",
 			App:       "python/simple",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS", "GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
-			MustMatch: "Runtime version BAD_NEWS_BEARS does not exist",
+			MustMatch: "invalid Python version specified",
 		},
 		{
 			Name:      "python-version empty",

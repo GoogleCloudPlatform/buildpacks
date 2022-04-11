@@ -51,7 +51,7 @@ const (
 var runtimeNames = map[installableRuntime]string{
 	Nodejs: "Node.js",
 	PHP:    "PHP Runtime",
-	Python: "Python Runtime",
+	Python: "Python",
 	Ruby:   "Ruby Runtime",
 	Nginx:  "Nginx Web Server",
 }
@@ -129,10 +129,11 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime installableRuntime, ver
 
 	if IsCached(ctx, layer, version) {
 		ctx.CacheHit(runtimeID)
-		ctx.Logf("%s cache hit, skipping installation.", runtimeName)
+		ctx.Logf("%s v%s cache hit, skipping installation.", runtimeName, version)
 		return true, nil
 	}
 	ctx.CacheMiss(runtimeID)
+	ctx.Logf("Installing %s v%s.", runtimeName, version)
 
 	ctx.SetMetadata(layer, versionKey, version)
 	runtimeURL := fmt.Sprintf(googleTarballURL, runtime, version)
