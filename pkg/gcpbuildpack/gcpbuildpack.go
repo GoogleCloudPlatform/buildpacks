@@ -317,7 +317,7 @@ func (ctx *Context) Warnf(format string, args ...interface{}) {
 // Tipf emits a structured logging line for usage tips.
 func (ctx *Context) Tipf(format string, args ...interface{}) {
 	// Tips are only displayed for the gcp/base builder, not in GAE/GCF environments.
-	if os.Getenv("CNB_STACK_ID") == "google" {
+	if env.IsGCP() {
 		ctx.Logf(format, args...)
 	}
 }
