@@ -251,3 +251,9 @@ func ExecWithGoproxyFallback(ctx *gcp.Context, cmd []string, opts ...gcp.ExecOpt
 	opts = append(opts, gcp.WithEnv("GOSUMDB=off", "GOPROXY=direct"))
 	return ctx.Exec(cmd, opts...), nil
 }
+
+// IsGo111Runtime returns true when the GOOGLE_RUNTIME is go111. This will be
+// true when using GCF or GAE with go 1.11.
+func IsGo111Runtime() bool {
+	return os.Getenv(env.Runtime) == "go111"
+}

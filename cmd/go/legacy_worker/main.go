@@ -54,6 +54,9 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if !golang.IsGo111Runtime() {
+		return gcp.OptOut("Only compatible with go111"), nil
+	}
 	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
 		return gcp.OptInEnvSet(env.FunctionTarget), nil
 	}

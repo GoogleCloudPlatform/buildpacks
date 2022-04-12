@@ -25,6 +25,10 @@ description = "Unified builder for the Go runtime"
   uri = "clear_source.tgz"
 
 [[buildpacks]]
+  id = "google.go.legacy-worker"
+  uri = "legacy_worker.tgz"
+
+[[buildpacks]]
   id = "google.go.runtime"
   uri = "runtime.tgz"
 
@@ -80,6 +84,31 @@ description = "Unified builder for the Go runtime"
   [[order.group]]
     id = "google.utils.label"
 
+# The GCF go111 order group. The legacy worker is the "functions-framework"
+# buildpack for go111.
+[[order]]
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.legacy-worker"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.go.clear_source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# The GCF order group.
 [[order]]
 
   [[order.group]]

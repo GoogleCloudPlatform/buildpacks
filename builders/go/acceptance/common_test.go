@@ -38,15 +38,23 @@ var goVersions = []string{
 func applyRuntimeVersion(t *testing.T, testCase acceptance.Test, version string) acceptance.Test {
 	t.Helper()
 	envRuntimeVersion := "GOOGLE_RUNTIME_VERSION"
-	for _, e := range testCase.Env {
-		if strings.HasPrefix(e, envRuntimeVersion) {
-			t.Fatalf("Environment for test %q already contains %q", testCase.Name, envRuntimeVersion)
-		}
-	}
+	verifyEnvVarNotPresent(t, envRuntimeVersion, testCase)
+	envRuntime := "GOOGLE_RUNTIME"
+	verifyEnvVarNotPresent(t, envRuntime, testCase)
+	testCase.Env = append(testCase.Env, fmt.Sprintf("%s=go%s", envRuntime, strings.ReplaceAll(version, ".", "")))
 	testCase.Name = fmt.Sprintf("%s: %s", version, testCase.Name)
-	testCase.Env = append(testCase.Env, fmt.Sprintf("%s=%s", envRuntimeVersion, version))
 	if version == "1.11" {
 		testCase.Env = append(testCase.Env, "GOPROXY=https://proxy.golang.org")
 	}
 	return testCase
+}
+func verifyEnvVarNotPresent(t *testing.T, envVar string, testCase acceptance.Test) {
+
+	t.Helper()
+	for _, e := range testCase.Env {
+		// append an '=' to avoid matching env vars with the same prefix, example: GOOGLE_RUNTIME and GOOGLE_RUNTIME_VERSION
+		if strings.HasPrefix(e, fmt.Sprintf("%s=", envVar)) {
+			t.Fatalf("Environment for test case %q already contains %q", testCase.Name, envVar)
+		}
+	}
 }
