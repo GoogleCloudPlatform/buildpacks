@@ -72,6 +72,13 @@ func TestAcceptancePHP(t *testing.T) {
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=7.4.27", "GOOGLE_ENTRYPOINT=php -S 0.0.0.0:8080"},
 			MustUse:   []string{phpRuntime, phpComposerInstall, phpComposer, entrypoint},
 		},
+		{
+			Name:      "php ini config",
+			App:       "php/php_ini_config",
+			MustMatch: "PASS_PHP_INI",
+			Env:       []string{"GOOGLE_ENTRYPOINT=php -S 0.0.0.0:8080"},
+			MustUse:   []string{phpRuntime, entrypoint},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

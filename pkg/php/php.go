@@ -41,6 +41,44 @@ const (
 	dependencyHashKey = "dependency_hash"
 
 	composerVersionKey = "php"
+
+	// PHPIni is the content of the php.ini config file
+	PHPIni = `
+; Copyright 2022 Google Inc.
+;
+; Licensed under the Apache License, Version 2.0 (the "License");
+; you may not use this file except in compliance with the License.
+; You may obtain a copy of the License at
+;
+;     http://www.apache.org/licenses/LICENSE-2.0
+;
+; Unless required by applicable law or agreed to in writing, software
+; distributed under the License is distributed on an "AS IS" BASIS,
+; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+; See the License for the specific language governing permissions and
+; limitations under the License.
+
+expose_php = Off
+memory_limit = -1
+max_execution_time = 0
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Error handling and logging, based on php.ini-production. ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT
+display_errors = Off
+display_startup_errors = Off
+log_errors = On
+log_errors_max_len = 0
+ignore_repeated_errors = Off
+ignore_repeated_source = Off
+html_errors = Off
+zend.assertions = -1
+;; Enable maximum file sizes up to Front-End limits.
+upload_max_filesize = 32M
+post_max_size = 32M
+`
 )
 
 type composerScriptsJSON struct {

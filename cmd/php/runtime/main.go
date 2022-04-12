@@ -18,11 +18,18 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/buildpacks/libcnb"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+)
+
+const (
+	phpIniName = "php.ini"
 )
 
 func main() {
@@ -63,5 +70,25 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating layer: %w", err)
 	}
 	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.PHP, version, phpl)
-	return err
+	if err != nil {
+		return err
+	}
+	return addPHPIni(ctx, phpl)
+}
+
+func addPHPIni(ctx *gcp.Context, phpl *libcnb.Layer) error {
+	destDir := filepath.Join(phpl.Path, "etc")
+	destPath := filepath.Join(destDir, phpIniName)
+
+	if err := ctx.MkdirAll(destDir, 0755); err != nil {
+		return fmt.Errorf("creating etc folder: %w", err)
+	}
+
+	if err := ctx.WriteFile(destPath, []byte(php.PHPIni), os.FileMode(0755)); err != nil {
+		return err
+	}
+
+	// PHP uses PHPRC env var to find php.ini
+	phpl.LaunchEnvironment.Default("PHPRC", destDir)
+	return nil
 }
