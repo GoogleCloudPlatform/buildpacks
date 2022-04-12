@@ -25,8 +25,8 @@ go_binary(
     ],
     deps = [
         "//pkg/env",
+        "//pkg/fetch",
         "//pkg/gcpbuildpack",
-        "//pkg/runtime",
         "@com_github_buildpacks_libcnb//:go_default_library",
     ],
 )

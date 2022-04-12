@@ -15,19 +15,15 @@
 package runtime
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/version"
 	"github.com/buildpacks/libcnb"
-	"github.com/hashicorp/go-retryablehttp"
 )
 
 var (
@@ -81,7 +77,7 @@ func InstallDartSDK(ctx *gcp.Context, layer *libcnb.Layer, version string) error
 	}
 	defer os.Remove(zip.Name())
 
-	if err := FetchURL(sdkURL, zip); err != nil {
+	if err := fetch.GetURL(sdkURL, zip); err != nil {
 		ctx.Warnf("Failed to download Dart SDK from %s. You can specify the verison by setting the GOOGLE_RUNTIME_VERSION environment variable", sdkURL)
 		return err
 	}
@@ -138,19 +134,9 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime installableRuntime, ver
 	ctx.SetMetadata(layer, versionKey, version)
 	runtimeURL := fmt.Sprintf(googleTarballURL, runtime, version)
 
-	tar, err := ioutil.TempFile(layer.Path, fmt.Sprintf("%s-*.tar.gz", runtimeID))
-	if err != nil {
-		return false, gcp.InternalErrorf("creating tempfile: %v", err)
-	}
-	defer os.Remove(tar.Name())
-
-	if err := FetchURL(runtimeURL, tar); err != nil {
+	if err := fetch.Tarball(runtimeURL, layer.Path, 0); err != nil {
 		ctx.Warnf("Failed to download %s version %s. You can specify the verison by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version)
 		return false, err
-	}
-
-	if _, err := ctx.ExecWithErr([]string{"tar", "-xzvf", tar.Name(), "--directory", layer.Path}); err != nil {
-		return false, gcp.InternalErrorf("extracting %s: %v", runtimeName, err)
 	}
 
 	ctx.SetMetadata(layer, versionKey, version)
@@ -166,14 +152,10 @@ func resolveVersion(runtime installableRuntime, verConstraint string) (string, e
 	}
 
 	url := fmt.Sprintf(runtimeVersionsURL, runtime)
-	var buf bytes.Buffer
-	if err := FetchURL(url, io.Writer(&buf)); err != nil {
-		return "", gcp.InternalErrorf("fetching %s versions: %v", runtimeNames[runtime], err)
-	}
 
 	var versions []string
-	if err := json.Unmarshal(buf.Bytes(), &versions); err != nil {
-		return "", gcp.InternalErrorf("decoding response from %q: %v", url, err)
+	if err := fetch.JSON(url, &versions); err != nil {
+		return "", gcp.InternalErrorf("fetching %s versions: %v", runtimeNames[runtime], err)
 	}
 
 	v, err := version.ResolveVersion(verConstraint, versions)
@@ -181,38 +163,4 @@ func resolveVersion(runtime installableRuntime, verConstraint string) (string, e
 		return "", gcp.UserErrorf("invalid %s version specified: %v", runtimeNames[runtime], err)
 	}
 	return v, nil
-}
-
-// FetchURL makes an HTTP GET request to given URL and writes the body to the provided writer.
-func FetchURL(url string, f io.Writer) error {
-	client := newRetryableHTTPClient()
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return gcp.UserErrorf("fetching %s: %v", url, err)
-	}
-
-	req.Header.Set("User-Agent", gcpUserAgent)
-
-	response, err := client.Do(req)
-	if err != nil {
-		return gcp.UserErrorf("fetching %s: %v", url, err)
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		return gcp.UserErrorf("fetching %s returned HTTP status: %d", url, response.StatusCode)
-	}
-
-	if _, err = io.Copy(f, response.Body); err != nil {
-		return gcp.InternalErrorf("copying response body: %v", err)
-	}
-
-	return nil
-}
-
-// newRetryableHTTPClient configures an http client for automatic retries.
-func newRetryableHTTPClient() *http.Client {
-	retryClient := retryablehttp.NewClient()
-	retryClient.RetryMax = 3
-	return retryClient.StandardClient()
 }

@@ -24,8 +24,8 @@ import (
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/buildpacks/libcnb"
 )
 
@@ -89,13 +89,13 @@ func buildFn(ctx *gcp.Context) error {
 	}
 	defer os.Remove(installer.Name())
 
-	if err := runtime.FetchURL(composerSetupURL, installer); err != nil {
+	if err := fetch.GetURL(composerSetupURL, installer); err != nil {
 		return fmt.Errorf("failed to download composer installer from %s: %w", composerSetupURL, err)
 	}
 
 	// verify the installer hash
 	var expectedSHABuf bytes.Buffer
-	if err := runtime.FetchURL(composerSigURL, io.Writer(&expectedSHABuf)); err != nil {
+	if err := fetch.GetURL(composerSigURL, io.Writer(&expectedSHABuf)); err != nil {
 		return fmt.Errorf("failed to fetch the installer signature from %s: %w", composerSigURL, err)
 	}
 	expectedSHA := expectedSHABuf.String()
