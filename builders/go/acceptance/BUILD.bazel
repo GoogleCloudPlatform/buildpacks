@@ -72,10 +72,6 @@ go_test(
         "//builders/go:builder.tar",
         "//builders/testdata:go",
     ],
-    gc_linkopts = [
-        "-I /lib64/ld-linux-x86-64.so.2",
-        "-extldflags=\"-Wl,--dynamic-linker,/lib64/ld-linux-x86-64.so.2\"",
-    ],
     rundir = ".",
     tags = [
         "local",
