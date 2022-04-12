@@ -32,7 +32,6 @@ const (
 	cacheTag   = "prod dependencies"
 	yarnLayer  = "yarn_engine"
 	versionKey = "version"
-	yarnURL    = "https://yarnpkg.com/downloads/%[1]s/yarn-v%[1]s.tar.gz"
 )
 
 func main() {
@@ -268,9 +267,9 @@ func installYarn(ctx *gcp.Context) error {
 		}
 		// Download and install yarn in layer.
 		ctx.Logf("Installing Yarn v%s", version)
-		archiveURL := fmt.Sprintf(yarnURL, version)
-		command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, yrl.Path)
-		ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
+		if err := nodejs.InstallYarn(ctx, yrl.Path, version); err != nil {
+			return err
+		}
 	}
 
 	// Store layer flags and metadata.

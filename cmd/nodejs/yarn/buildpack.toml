@@ -2,7 +2,7 @@ api = "0.6"
 
 [buildpack]
 id = "google.nodejs.yarn"
-version = "2.0.0"
+version = "2.1.0"
 name = "Node.js - Yarn"
 
 # The cloud run source deploy command uses pack. Older versions of pack which

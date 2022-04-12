@@ -17,10 +17,15 @@ package nodejs
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
+	"os"
 	"path"
+	"path/filepath"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -147,6 +152,64 @@ __metadata:
 			}
 			if got != tc.want {
 				t.Errorf("YarnLock(%q) = (%t, %v), want %t", dir, got, err, tc.want)
+			}
+		})
+	}
+}
+
+func TestInstallYarn(t *testing.T) {
+	testCases := []struct {
+		name       string
+		version    string
+		httpStatus int
+		wantFile   string
+		wantError  bool
+	}{
+		{
+			name:     "Yarn 1",
+			version:  "1.1.1",
+			wantFile: "foo.txt",
+		},
+		{
+			name:     "Yarn 2",
+			version:  "2.2.2",
+			wantFile: "bin/yarn",
+		},
+		{
+			name:       "invalid version",
+			version:    "9.9.9",
+			httpStatus: http.StatusNotFound,
+			wantError:  true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testserver.New(
+				t,
+				testserver.WithStatus(tc.httpStatus),
+				testserver.WithJSON(`yarn!`),
+				testserver.WithMockURL(&yarn2URL),
+			)
+
+			testserver.New(
+				t,
+				testserver.WithStatus(tc.httpStatus),
+				testserver.WithFile(testdata.MustGetPath("testdata/dummy-yarn.tar.gz")),
+				testserver.WithMockURL(&yarnURL),
+			)
+
+			dir := t.TempDir()
+			err := InstallYarn(nil, dir, tc.version)
+			if tc.wantError == (err == nil) {
+				t.Fatalf("InstallYarn(nil, %q, %q) got error: %v, want error? %v", dir, tc.version, err, tc.wantError)
+			}
+
+			if tc.wantFile != "" {
+				fp := filepath.Join(dir, tc.wantFile)
+				if _, err := os.Stat(fp); err != nil {
+					t.Errorf("Missing file: %s (%v)", fp, err)
+				}
 			}
 		})
 	}

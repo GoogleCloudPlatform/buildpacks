@@ -15,12 +15,22 @@
 package nodejs
 
 import (
+	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/Masterminds/semver"
 	"gopkg.in/yaml.v2"
+)
+
+var (
+	yarnURL  = "https://yarnpkg.com/downloads/%[1]s/yarn-v%[1]s.tar.gz"
+	yarn2URL = "https://repo.yarnpkg.com/%s/packages/yarnpkg-cli/bin/yarn.js"
+	version2 = semver.MustParse("2.0.0")
 )
 
 const (
@@ -96,4 +106,32 @@ func requestedYarnVersion(applicationRoot string) (string, error) {
 		return "", err
 	}
 	return pjs.Engines.Yarn, nil
+}
+
+// InstallYarn downloads a given version of Yarn into the provided directory.
+func InstallYarn(ctx *gcp.Context, dir, version string) error {
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		gcp.UserErrorf("parsing yarn version %q: %v", version, err)
+	}
+	if v.LessThan(version2) {
+		archiveURL := fmt.Sprintf(yarnURL, version)
+		stripComponents := 1
+		return fetch.Tarball(archiveURL, dir, stripComponents)
+	}
+
+	yarnPath := filepath.Join(dir, "bin", "yarn")
+	if err = os.MkdirAll(filepath.Dir(yarnPath), 0755); err != nil {
+		return gcp.InternalErrorf("creating directory %q: %v", filepath.Dir(yarnPath), err)
+	}
+	out, err := os.OpenFile(yarnPath, os.O_CREATE|os.O_RDWR, os.FileMode(0777))
+	if err != nil {
+		return gcp.InternalErrorf("creating file %q: %v", yarnPath, err)
+	}
+	defer out.Close()
+	binURL := fmt.Sprintf(yarn2URL, version)
+	if err = fetch.GetURL(binURL, out); err != nil {
+		return err
+	}
+	return nil
 }
