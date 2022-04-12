@@ -77,6 +77,7 @@ func TestLatestPackageVersion(t *testing.T) {
 func TestResolvePackageVersion(t *testing.T) {
 	testCases := []struct {
 		name       string
+		pkg        string
 		constraint string
 		httpStatus int
 		response   string
@@ -85,6 +86,7 @@ func TestResolvePackageVersion(t *testing.T) {
 	}{
 		{
 			name:       "single version",
+			pkg:        "npm",
 			constraint: "8.x.x",
 			response: `{
 				"name": "npm",
@@ -103,6 +105,7 @@ func TestResolvePackageVersion(t *testing.T) {
 		},
 		{
 			name:       "multiple versions",
+			pkg:        "npm",
 			constraint: "<9.0.0",
 			response: `{
 				"name": "npm",
@@ -129,11 +132,13 @@ func TestResolvePackageVersion(t *testing.T) {
 		},
 		{
 			name:       "non-existent package",
+			pkg:        "npm",
 			httpStatus: http.StatusNotFound,
 			wantError:  true,
 		},
 		{
 			name:       "invalid constraint",
+			pkg:        "npm",
 			constraint: "invalid",
 			response: `{
 				"name": "npm",
@@ -150,18 +155,76 @@ func TestResolvePackageVersion(t *testing.T) {
 			}`,
 			wantError: true,
 		},
+		{
+			name:       "yarn 1",
+			pkg:        "yarn",
+			constraint: "1.x.x",
+			response: `{
+				"name": "yarn",
+				"dist-tags": {
+					"latest": "1.21.1"
+				},
+				"versions": {
+					"1.21.1": {
+						"name": "yarn",
+						"version": "1.21.1"
+					}
+				},
+				"modified": "2022-01-27T21:10:55.626Z"
+			}`,
+			want: "1.21.1",
+		},
+		{
+			name:       "yarn 2",
+			pkg:        "yarn",
+			constraint: "2.x.x",
+			response: `{
+				"name": "yarn",
+				"dist-tags": {
+					"latest": "1.21.1"
+				},
+				"versions": {
+					"1.21.1": {
+						"name": "yarn",
+						"version": "1.21.1"
+					}
+				},
+				"modified": "2022-01-27T21:10:55.626Z"
+			}`,
+			want: "2.4.3",
+		},
+		{
+			name:       "yarn *",
+			pkg:        "yarn",
+			constraint: "*",
+			response: `{
+				"name": "yarn",
+				"dist-tags": {
+					"latest": "1.21.1"
+				},
+				"versions": {
+					"1.21.1": {
+						"name": "yarn",
+						"version": "1.21.1"
+					}
+				},
+				"modified": "2022-01-27T21:10:55.626Z"
+			}`,
+			want: "1.21.1",
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			stubNPMRegistry(t, tc.response, tc.httpStatus)
+			stubYarnTags(t)
 
-			got, err := resolvePackageVersion("npm", tc.constraint)
+			got, err := resolvePackageVersion(tc.pkg, tc.constraint)
 			if tc.wantError == (err == nil) {
-				t.Fatalf(`resolvePackageVersion("npm", %q) got error: %v, want error?: %v`, tc.constraint, err, tc.wantError)
+				t.Fatalf(`resolvePackageVersion(%q, %q) got error: %v, want error?: %v`, tc.pkg, tc.constraint, err, tc.wantError)
 			}
 			if got != tc.want {
-				t.Fatalf(`resolvePackageVersion("npm", %q) = %q, want %q`, tc.constraint, got, tc.want)
+				t.Fatalf(`resolvePackageVersion(%q, %q) = %q, want %q`, tc.pkg, tc.constraint, got, tc.want)
 			}
 		})
 	}
@@ -175,5 +238,29 @@ func stubNPMRegistry(t *testing.T, responseData string, httpStatus int) {
 		testserver.WithStatus(httpStatus),
 		testserver.WithJSON(responseData),
 		testserver.WithMockURL(&npmRegistryURL),
+	)
+}
+
+func stubYarnTags(t *testing.T) {
+	t.Helper()
+
+	testserver.New(
+		t,
+		testserver.WithJSON(`{
+			"latest": {
+				"stable": "3.2.0",
+				"canary": "3.2.0"
+			},
+			"tags": [
+				"3.2.0",
+				"3.0.0",
+				"3.0.0-rc.2",
+				"3.0.0-rc.1",
+				"2.4.3",
+				"2.2.1",
+				"2.0.0-rc.4"
+			]
+		}`),
+		testserver.WithMockURL(&yarnTagsURL),
 	)
 }
