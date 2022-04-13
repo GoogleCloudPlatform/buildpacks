@@ -51,7 +51,7 @@ var (
 
 // SupportsAppEngineApis is a Go buildpack specific function that returns true if App Engine API access is enabled
 func SupportsAppEngineApis(ctx *gcp.Context) (bool, error) {
-	if os.Getenv(env.Runtime) == "go111" {
+	if IsGo111Runtime() {
 		return true, nil
 	}
 
