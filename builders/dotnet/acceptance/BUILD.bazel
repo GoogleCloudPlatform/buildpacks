@@ -1,0 +1,85 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+licenses(["notice"])
+
+exports_files(["config.yaml"])
+
+test_suite(
+    # run all tests in this BUILD
+    name = "acceptance_test",
+)
+
+go_test(
+    name = "gcf_test",
+    size = "enormous",
+    srcs = [
+        "common_test.go",
+        "gcf_test.go",
+    ],
+    args = [
+        "-test-data=$(location //builders/testdata/dotnet:functions)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/dotnet:builder.tar)",
+        "-builder-prefix=dotnet-gcf-acceptance-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/dotnet:builder.tar",
+        "//builders/testdata/dotnet:functions",
+    ],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//internal/acceptance"],
+)
+
+go_test(
+    name = "gcp_test",
+    size = "enormous",
+    srcs = [
+        "common_test.go",
+        "gcp_test.go",
+    ],
+    args = [
+        "-test-data=$(location //builders/testdata:generic)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/dotnet:builder.tar)",
+        "-builder-prefix=dotnet-gcp-acceptance-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/dotnet:builder.tar",
+        "//builders/testdata:generic",
+    ],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//internal/acceptance"],
+)
+
+go_test(
+    name = "gae_test",
+    size = "enormous",
+    srcs = [
+        "common_test.go",
+        "gae_test.go",
+    ],
+    args = [
+        "-test-data=$(location //builders/testdata:dotnet)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/dotnet:builder.tar)",
+        "-builder-prefix=dotnet-gae-acceptance-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/dotnet:builder.tar",
+        "//builders/testdata:dotnet",
+    ],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//internal/acceptance"],
+)

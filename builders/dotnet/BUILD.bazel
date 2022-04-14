@@ -1,0 +1,12 @@
+load("//tools:defs.bzl", "builder")
+
+package(default_visibility = ["//builders/dotnet:__subpackages__"])
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+    ],
+    image = "gcp/dotnet",
+)
