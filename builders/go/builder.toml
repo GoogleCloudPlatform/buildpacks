@@ -178,8 +178,8 @@ description = "Unified builder for the Go runtime"
 
 [stack]
   id = "google.gae18"
-  build-image = "gcr.io/gae-runtimes/buildpacks/go/build"
-  run-image = "gcr.io/gae-runtimes/buildpacks/go/run"
+  build-image = "gcr.io/gae-runtimes/buildpacks/go/build:go116_20220413_1_16_13_RC00"
+  run-image = "gcr.io/gae-runtimes/buildpacks/go/run:go116_20220413_1_16_13_RC00"
 
 [lifecycle]
   version = "0.13.3"
