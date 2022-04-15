@@ -4,6 +4,11 @@ licenses(["notice"])
 
 exports_files(["config.yaml"])
 
+test_suite(
+    # run all tests in this BUILD
+    name = "acceptance_test",
+)
+
 go_test(
     name = "gcf_test",
     size = "enormous",
