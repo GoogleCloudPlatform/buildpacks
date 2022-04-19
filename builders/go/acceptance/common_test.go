@@ -39,6 +39,7 @@ func applyRuntimeVersion(t *testing.T, testCase acceptance.Test, version string)
 	t.Helper()
 	envRuntimeVersion := "GOOGLE_RUNTIME_VERSION"
 	verifyEnvVarNotPresent(t, envRuntimeVersion, testCase)
+	testCase.Env = append(testCase.Env, fmt.Sprintf("%s=%s", envRuntimeVersion, version))
 	envRuntime := "GOOGLE_RUNTIME"
 	verifyEnvVarNotPresent(t, envRuntime, testCase)
 	testCase.Env = append(testCase.Env, fmt.Sprintf("%s=go%s", envRuntime, strings.ReplaceAll(version, ".", "")))

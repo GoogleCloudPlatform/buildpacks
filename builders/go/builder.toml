@@ -59,6 +59,9 @@ description = "Unified builder for the Go runtime"
     optional = true
 
   [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
     id = "google.go.gomod"
 
   [[order.group]]
@@ -74,6 +77,9 @@ description = "Unified builder for the Go runtime"
 
   [[order.group]]
     id = "google.go.appengine_gopath"
+
+  [[order.group]]
+    id = "google.go.runtime"
 
   [[order.group]]
     id = "google.go.build"
