@@ -120,25 +120,6 @@ func TestAcceptance(t *testing.T) {
 			App:  "appengine_sdk",
 			Env:  []string{"GAE_APP_ENGINE_APIS=TRUE"},
 		},
-		// Test that we get a warning using SDK libraries indirectly.
-		{
-			Name:       "appengine_sdk transitive dependencies",
-			App:        "appengine_transitive_sdk",
-			MustOutput: []string{"WARNING: There is an indirect dependency on App Engine APIs, but they are not enabled in your app.yaml. You may see runtime errors trying to access these APIs. Set the app_engine_apis property."},
-		},
-		// Test that we get a warning when GAE_APP_ENGINE_APIS is set but no lib is used.
-		{
-			Name:       "GAE_APP_ENGINE_APIS set with no use",
-			App:        "gomod",
-			Env:        []string{"GAE_APP_ENGINE_APIS=TRUE"},
-			MustOutput: []string{"WARNING: App Engine APIs are enabled, but don't appear to be used, causing a possible performance penalty. Delete app_engine_apis from your app.yaml."},
-		},
-		// Test that we can warn when we have an app with SDK dependencies but no flag set.
-		{
-			Name:       "appengine_sdk dependencies warn",
-			App:        "appengine_sdk",
-			MustOutput: []string{"WARNING: There is a dependency on App Engine APIs, but they are not enabled in your app.yaml. Set the app_engine_apis property."},
-		},
 	}
 	for _, tc := range testCases {
 		tc := tc

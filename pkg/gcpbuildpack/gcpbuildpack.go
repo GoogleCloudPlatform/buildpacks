@@ -56,7 +56,7 @@ const (
 )
 
 var (
-	logger         = log.New(os.Stderr, "", 0)
+	defaultLogger  = log.New(os.Stderr, "", 0)
 	labelKeyRegexp = regexp.MustCompile(labelKeyRegexpStr)
 )
 
@@ -77,6 +77,7 @@ type Context struct {
 	applicationRoot string
 	buildpackRoot   string
 	debug           bool
+	logger          *log.Logger
 	stats           stats
 	exiter          Exiter
 	warnings        []string
@@ -130,16 +131,25 @@ func WithExecCmd(execCmd func(name string, args ...string) *exec.Cmd) ContextOpt
 	}
 }
 
+// WithLogger override the logger implementation, this is useful for unit tests
+// which want to verify logging output.
+func WithLogger(logger *log.Logger) ContextOption {
+	return func(ctx *Context) {
+		ctx.logger = logger
+	}
+}
+
 // NewContext creates a context.
 func NewContext(opts ...ContextOption) *Context {
 	debug, err := env.IsDebugMode()
 	if err != nil {
-		logger.Printf("Failed to parse debug mode: %v", err)
+		defaultLogger.Printf("Failed to parse debug mode: %v", err)
 		os.Exit(1)
 	}
 	ctx := &Context{
 		debug:   debug,
 		execCmd: exec.Command,
+		logger:  defaultLogger,
 	}
 	ctx.exiter = defaultExiter{ctx: ctx}
 	for _, o := range opts {
@@ -209,7 +219,7 @@ func Main(d DetectFn, b BuildFn) {
 	case "build":
 		build(b)
 	default:
-		logger.Print("Unknown command, expected 'detect' or 'build'.")
+		defaultLogger.Print("Unknown command, expected 'detect' or 'build'.")
 		os.Exit(1)
 	}
 }
@@ -297,7 +307,7 @@ func (ctx *Context) Exit(exitCode int, be *buildererror.Error) {
 
 // Logf emits a structured logging line.
 func (ctx *Context) Logf(format string, args ...interface{}) {
-	logger.Printf(format, args...)
+	ctx.logger.Printf(format, args...)
 }
 
 // Debugf emits a structured logging line if the debug flag is set.
