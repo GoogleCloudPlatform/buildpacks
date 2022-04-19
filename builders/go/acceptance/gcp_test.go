@@ -88,7 +88,7 @@ func TestGCPAcceptanceGo(t *testing.T) {
 			if shouldSkipVersion(v, tc.ExcludedGoVersions) {
 				continue
 			}
-			verTC := applyRuntimeVersion(t, tc.Test, v)
+			verTC := applyRuntimeVersionTest(t, tc.Test, v)
 			t.Run(verTC.Name, func(t *testing.T) {
 				t.Parallel()
 
@@ -178,24 +178,36 @@ func TestGCPFailuresGo(t *testing.T) {
 
 	testCases := []acceptance.FailureTest{
 		{
+			Name:                   "no Go files in root",
+			App:                    "go/entrypoints",
+			MustMatch:              `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built`,
+			SkipBuilderOutputMatch: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		for _, v := range goVersions {
+			verTC := applyRuntimeVersionFailureTest(t, tc, v)
+			t.Run(verTC.Name, func(t *testing.T) {
+				t.Parallel()
+				acceptance.TestBuildFailure(t, builder, verTC)
+			})
+		}
+	}
+}
+
+// TestGCPFailuresGoSingleVersion runs GCP failure test cases which do not need to be tested against
+// more than one go version.
+func TestGCPFailuresGoSingleVersion(t *testing.T) {
+	builder, cleanup := acceptance.CreateBuilder(t)
+	t.Cleanup(cleanup)
+
+	testCases := []acceptance.FailureTest{
+		{
 			Name:      "bad runtime version",
 			App:       "go/simple",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
 			MustMatch: "Runtime version BAD_NEWS_BEARS does not exist",
-		},
-		{
-			Name:                   "no Go files in root (Go 1.12)",
-			App:                    "go/entrypoints",
-			Env:                    []string{"GOOGLE_RUNTIME_VERSION=1.12"},
-			MustMatch:              `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built`,
-			SkipBuilderOutputMatch: true,
-		},
-		{
-			Name:                   "no Go files in root (Go 1.14)",
-			App:                    "go/entrypoints",
-			Env:                    []string{"GOOGLE_RUNTIME_VERSION=1.14"},
-			MustMatch:              `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built`,
-			SkipBuilderOutputMatch: true,
 		},
 	}
 
@@ -203,7 +215,6 @@ func TestGCPFailuresGo(t *testing.T) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-
 			acceptance.TestBuildFailure(t, builder, tc)
 		})
 	}

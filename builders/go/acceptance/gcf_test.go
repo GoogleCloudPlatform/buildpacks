@@ -198,7 +198,7 @@ func TestGCFAcceptanceGo(t *testing.T) {
 			if shouldSkipVersion(v) {
 				continue
 			}
-			verTC := applyRuntimeVersion(t, tc, v)
+			verTC := applyRuntimeVersionTest(t, tc, v)
 			t.Run(verTC.Name, func(t *testing.T) {
 				t.Parallel()
 				if verTC.Setup != nil {
@@ -234,21 +234,20 @@ func TestGCFFailuresGo(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.App, func(t *testing.T) {
-			t.Parallel()
-
-			if tc.Setup != nil {
-				t.Skip("TODO: The setup functions require go to be pre-installed which is not true for the unified builder")
+		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
+		for _, v := range goVersions {
+			if shouldSkipVersion(v) {
+				continue
 			}
-
-			tc.Env = append(tc.Env,
-				"GOOGLE_RUNTIME=go116",
-				"GOOGLE_RUNTIME_VERSION=1.16",
-				"X_GOOGLE_TARGET_PLATFORM=gcf")
-
-			acceptance.TestBuildFailure(t, builder, tc)
-		})
+			verTC := applyRuntimeVersionFailureTest(t, tc, v)
+			t.Run(verTC.Name, func(t *testing.T) {
+				t.Parallel()
+				if verTC.Setup != nil {
+					t.Skip("TODO: The setup functions require go to be pre-installed which is not true for the unified builder")
+				}
+				acceptance.TestBuildFailure(t, builder, verTC)
+			})
+		}
 	}
 }
 
@@ -346,7 +345,7 @@ func TestGCFAcceptanceGo111(t *testing.T) {
 
 	for _, tc := range testCases {
 		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
-		tc := applyRuntimeVersion(t, tc, "1.11")
+		tc := applyRuntimeVersionTest(t, tc, "1.11")
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 			if tc.Setup != nil {
@@ -376,12 +375,8 @@ func TestGCFFailuresGo111(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc.Env = append(tc.Env,
-			"X_GOOGLE_TARGET_PLATFORM=gcf",
-			"GOOGLE_RUNTIME=go111",
-			"GOOGLE_RUNTIME_VERSION=1.11",
-		)
-		tc := tc
+		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
+		tc := applyRuntimeVersionFailureTest(t, tc, "1.11")
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
 			acceptance.TestBuildFailure(t, builder, tc)

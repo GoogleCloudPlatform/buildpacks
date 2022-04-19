@@ -120,7 +120,7 @@ func TestGAEAcceptanceGo(t *testing.T) {
 	for _, tc := range testCases {
 		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gae")
 		for _, v := range goVersions {
-			verTC := applyRuntimeVersion(t, tc, v)
+			verTC := applyRuntimeVersionTest(t, tc, v)
 			t.Run(verTC.Name, func(t *testing.T) {
 				t.Parallel()
 				acceptance.TestApp(t, builder, verTC)
