@@ -14,6 +14,9 @@
 
 package buildermetrics
 
+// CounterID is an index to Counter
+type CounterID string
+
 // **********************************************
 // ** ID VALUES MUST NEVER CHANGE OR BE REUSED **
 // **********************************************
@@ -30,3 +33,23 @@ package buildermetrics
 const (
 	ArNpmCredsGenCounterID CounterID = "1"
 )
+
+var (
+	counterDescriptors = map[CounterID]Descriptor{
+		ArNpmCredsGenCounterID: Descriptor{
+			"npm_artifact_registry_creds_generated",
+			"The number of artifact registry credentials generated for NPM",
+		},
+	}
+)
+
+// Descriptor provides details about a metric
+type Descriptor struct {
+	Name        string
+	Description string
+}
+
+// Descriptor returns the Descriptor for a CounterID
+func (c CounterID) Descriptor() Descriptor {
+	return counterDescriptors[c]
+}

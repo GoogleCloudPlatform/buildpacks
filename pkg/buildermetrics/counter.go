@@ -19,9 +19,6 @@ import (
 	"sync/atomic"
 )
 
-// CounterID is an index to Counter
-type CounterID string
-
 // Counter is an increasing metric to be recorded in BuilderMetrics
 type Counter struct {
 	value int64

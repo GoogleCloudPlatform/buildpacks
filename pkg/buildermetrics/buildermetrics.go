@@ -45,6 +45,13 @@ func (b *BuilderMetrics) GetCounter(m CounterID) *Counter {
 	return b.counters[m]
 }
 
+// ForEachCounter executes a function for each initialized Counter
+func (b *BuilderMetrics) ForEachCounter(f func(CounterID, *Counter)) {
+	for id, c := range b.counters {
+		f(id, c)
+	}
+}
+
 // Reset resets the state of the metrics struct
 // For testing use only.
 func Reset() {

@@ -106,3 +106,21 @@ func TestBuilderMetricsMarshalJSON(t *testing.T) {
 		})
 	}
 }
+
+func TestForEachCounter(t *testing.T) {
+	b := NewBuilderMetrics()
+	c1 := b.GetCounter("1")
+	c2 := b.GetCounter("2")
+	c3 := b.GetCounter("3")
+	c1.Increment(3)
+	c2.Increment(5)
+	c3.Increment(8)
+	sum := int64(0)
+	b.ForEachCounter(func(id CounterID, c *Counter) {
+		sum += c.Value()
+	})
+	want := c1.Value() + c2.Value() + c3.Value()
+	if sum != want {
+		t.Errorf("ForEachCounter counter.Value() sum = %v, want %v", sum, want)
+	}
+}

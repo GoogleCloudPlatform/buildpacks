@@ -9,9 +9,10 @@ go_library(
     srcs = [
         "buildermetrics.go",
         "counter.go",
-        "metricids.go",
+        "counterids.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = ["//visibility:public"],
 )
 
 go_test(
