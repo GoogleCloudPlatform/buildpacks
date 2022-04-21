@@ -32,4 +32,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libzip4 \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+EXPOSE 8080
 USER cnb
