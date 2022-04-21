@@ -1119,7 +1119,7 @@ func cleanUpVolumes(t *testing.T, image string) {
 	// This logic is copied from pack's codebase.
 	fqn := "index.docker.io/library/" + image + ":latest"
 	digest := sha256.Sum256([]byte(fqn))
-	prefix := fmt.Sprintf("pack-cache-%x", digest[:6])
+	prefix := fmt.Sprintf("pack-cache-library_%v_latest-%x", image, digest[:6])
 
 	if _, err := runOutput("docker", "volume", "rm", "-f", prefix+".launch", prefix+".build"); err != nil {
 		t.Logf("Failed to clean up cache volumes: %v", err)
