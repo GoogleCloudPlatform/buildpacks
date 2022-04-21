@@ -41,7 +41,7 @@ func init() {
 		excludedGoVersions[v] = v
 	}
 	// go111 has several differences from the new runtimes and many
-	// of the test cases have subtle differences for that reaosn, it
+	// of the test cases have subtle differences for that reason, it
 	// is tested seperately.
 	excludedGoVersions["1.11"] = "1.11"
 }
