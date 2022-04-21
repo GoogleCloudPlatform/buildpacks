@@ -28,11 +28,12 @@ func init() {
 }
 
 var goVersions = []string{
-	"1.11",
+	// TODO: temporarily disable all versions other than 1.16 to improve test run performance, b/229977732
+	/*"1.11",
 	"1.12",
 	"1.13",
 	"1.14",
-	"1.15",
+	"1.15",*/
 	"1.16",
 }
 
