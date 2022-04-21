@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_test")
+load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
 
 licenses(["notice"])
 
@@ -9,86 +9,44 @@ test_suite(
     name = "acceptance_test",
 )
 
-go_test(
+acceptance_test_suite(
     name = "gcf_test",
-    size = "enormous",
     srcs = [
         "common_test.go",
         "gcf_test.go",
     ],
-    args = [
-        "-test-data=$(location //builders/testdata/go:functions)",
-        "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/go:builder.tar)",
-        "-builder-prefix=go-gcf-acceptance-test-",
-    ],
-    data = [
-        ":config.yaml",
-        "//builders/go:builder.tar",
-        "//builders/testdata/go:functions",
-    ],
+    builder = "//builders/go:builder.tar",
     rundir = ".",
-    tags = [
-        "local",
-    ],
+    testdata = "//builders/testdata/go:functions",
     deps = [
-        "//internal/acceptance",
         "//pkg/env",
     ],
 )
 
-go_test(
+acceptance_test_suite(
     name = "gcp_test",
-    size = "enormous",
     srcs = [
         "common_test.go",
         "gcp_test.go",
     ],
-    args = [
-        "-test-data=$(location //builders/testdata:generic)",
-        "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/go:builder.tar)",
-        "-builder-prefix=go-gcp-acceptance-test-",
-    ],
-    data = [
-        ":config.yaml",
-        "//builders/go:builder.tar",
-        "//builders/testdata:generic",
-    ],
+    builder = "//builders/go:builder.tar",
     rundir = ".",
-    tags = [
-        "local",
-    ],
+    testdata = "//builders/testdata:generic",
     deps = [
-        "//internal/acceptance",
         "//pkg/env",
     ],
 )
 
-go_test(
+acceptance_test_suite(
     name = "gae_test",
-    size = "enormous",
     srcs = [
         "common_test.go",
         "gae_test.go",
     ],
-    args = [
-        "-test-data=$(location //builders/testdata:go)",
-        "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/go:builder.tar)",
-        "-builder-prefix=go-gae-acceptance-test-",
-    ],
-    data = [
-        ":config.yaml",
-        "//builders/go:builder.tar",
-        "//builders/testdata:go",
-    ],
+    builder = "//builders/go:builder.tar",
     rundir = ".",
-    tags = [
-        "local",
-    ],
+    testdata = "//builders/testdata:go",
     deps = [
-        "//internal/acceptance",
         "//pkg/env",
     ],
 )

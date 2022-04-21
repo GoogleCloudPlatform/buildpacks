@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_test")
+load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
 
 licenses(["notice"])
 
@@ -9,77 +9,35 @@ test_suite(
     name = "acceptance_test",
 )
 
-go_test(
+acceptance_test_suite(
     name = "gcf_test",
-    size = "enormous",
     srcs = [
         "common_test.go",
         "gcf_test.go",
     ],
-    args = [
-        "-test-data=$(location //builders/testdata/dotnet:functions)",
-        "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/dotnet:builder.tar)",
-        "-builder-prefix=dotnet-gcf-acceptance-test-",
-    ],
-    data = [
-        ":config.yaml",
-        "//builders/dotnet:builder.tar",
-        "//builders/testdata/dotnet:functions",
-    ],
+    builder = "//builders/dotnet:builder.tar",
     rundir = ".",
-    tags = [
-        "local",
-    ],
-    deps = ["//internal/acceptance"],
+    testdata = "//builders/testdata/dotnet:functions",
 )
 
-go_test(
+acceptance_test_suite(
     name = "gcp_test",
-    size = "enormous",
     srcs = [
         "common_test.go",
         "gcp_test.go",
     ],
-    args = [
-        "-test-data=$(location //builders/testdata:generic)",
-        "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/dotnet:builder.tar)",
-        "-builder-prefix=dotnet-gcp-acceptance-test-",
-    ],
-    data = [
-        ":config.yaml",
-        "//builders/dotnet:builder.tar",
-        "//builders/testdata:generic",
-    ],
+    builder = "//builders/dotnet:builder.tar",
     rundir = ".",
-    tags = [
-        "local",
-    ],
-    deps = ["//internal/acceptance"],
+    testdata = "//builders/testdata:generic",
 )
 
-go_test(
+acceptance_test_suite(
     name = "gae_test",
-    size = "enormous",
     srcs = [
         "common_test.go",
         "gae_test.go",
     ],
-    args = [
-        "-test-data=$(location //builders/testdata:dotnet)",
-        "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/dotnet:builder.tar)",
-        "-builder-prefix=dotnet-gae-acceptance-test-",
-    ],
-    data = [
-        ":config.yaml",
-        "//builders/dotnet:builder.tar",
-        "//builders/testdata:dotnet",
-    ],
+    builder = "//builders/dotnet:builder.tar",
     rundir = ".",
-    tags = [
-        "local",
-    ],
-    deps = ["//internal/acceptance"],
+    testdata = "//builders/testdata:dotnet",
 )
