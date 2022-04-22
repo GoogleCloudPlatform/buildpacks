@@ -26,7 +26,7 @@ func init() {
 
 func TestAcceptanceDotNet(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
-	defer cleanup()
+	t.Cleanup(cleanup)
 
 	sdk := filepath.Join("/layers", dotnetRuntime, "sdk")
 
@@ -113,7 +113,9 @@ func TestAcceptanceDotNet(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
 			acceptance.TestApp(t, builder, tc)
 		})
 	}

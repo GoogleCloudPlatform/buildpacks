@@ -25,7 +25,7 @@ func init() {
 
 func TestAcceptance(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
-	defer cleanup()
+	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
 		{
@@ -61,7 +61,9 @@ func TestAcceptance(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
 			tc.Env = append(tc.Env,
 				"GOOGLE_RUNTIME=dotnet3",
 			)
