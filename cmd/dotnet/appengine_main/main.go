@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
@@ -29,6 +30,9 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if !env.IsGAE() {
+		return appengine.OptOutTargetPlatformNotAE(), nil
+	}
 	if proj := os.Getenv(env.GAEMain); proj == "" {
 		return gcp.OptOut("app.yaml main field is not defined, using default"), nil
 	}

@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2022 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,29 +27,13 @@ func TestDetect(t *testing.T) {
 		want int
 	}{
 		{
-			name: "would normally opt in, but without TARGET_PLATFORM should opt out",
-			env:  []string{"GAE_YAML_MAIN=app.csproj"},
+			name: "without TARGET_PLATFORM should opt out",
 			want: 100,
 		},
 		{
-			name: "with app.yaml main",
-			env:  []string{"GAE_YAML_MAIN=app.csproj", "X_GOOGLE_TARGET_PLATFORM=gae"},
-			want: 0,
-		},
-		{
-			name: "without app.yaml main",
+			name: "with TARGET_PLATFORM should opt in",
 			env:  []string{"X_GOOGLE_TARGET_PLATFORM=gae"},
-			want: 100,
-		},
-		{
-			name: "with empty app.yaml main",
-			env:  []string{"GAE_YAML_MAIN=", "X_GOOGLE_TARGET_PLATFORM=gae"},
-			want: 100,
-		},
-		{
-			name: "with GOOGLE_BUILDABLE and app.yaml main",
-			env:  []string{"GAE_YAML_MAIN=app.csproj", "GOOGLE_BUILDABLE=other.csproj", "X_GOOGLE_TARGET_PLATFORM=gae"},
-			want: 100,
+			want: 0,
 		},
 	}
 	for _, tc := range testCases {
