@@ -1,5 +1,107 @@
 description = "Unified builder for the .NET runtime"
 
+[[buildpacks]]
+  id = "google.config.entrypoint"
+  uri = "entrypoint.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.appengine"
+  uri = "appengine.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.appengine_main"
+  uri = "appengine_main.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.functions-framework"
+  uri = "functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.publish"
+  uri = "publish.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.runtime"
+  uri = "runtime.tgz"
+
+[[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source.tgz"
+
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
+# AppEngine order group
+[[order]]
+
+  [[order.group]]
+    id = "google.dotnet.appengine_main"
+    optional = true
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
+
+  [[order.group]]
+    id = "google.dotnet.publish"
+    optional = true
+
+  [[order.group]]
+    id = "google.dotnet.appengine"
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# GCF order group
+[[order]]
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+
+  [[order.group]]
+    id = "google.dotnet.functions-framework"
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
+
+  [[order.group]]
+    id = "google.dotnet.publish"
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# Cloud Run / General purpose order group
+[[order]]
+
+  [[order.group]]
+    id = "google.dotnet.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
+
+  [[order.group]]
+    id = "google.dotnet.publish"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# Prebuilt .NET applications.
+[[order]]
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label"
+
 [stack]
   id = "google"
   build-image = "gcr.io/buildpacks/gcp/build:v1"

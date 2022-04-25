@@ -16,7 +16,75 @@ package acceptance_test
 
 import (
 	"testing"
+
+	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
-func TestXxx(t *testing.T) {
+func TestGAEAcceptanceDotNet(t *testing.T) {
+	builder, cleanup := acceptance.CreateBuilder(t)
+	t.Cleanup(cleanup)
+
+	testCases := []acceptance.Test{
+		{
+			Name: "cs no deps",
+			App:  "cs_no_deps",
+		},
+		{
+			Name: "cs AssemblyName set",
+			App:  "cs_assemblyname",
+		},
+		{
+			Name: "cs with dep",
+			App:  "cs_with_dep",
+		},
+		{
+			Name: "cs with local deps",
+			App:  "cs_local_deps",
+			Env:  []string{"GOOGLE_BUILDABLE=App"},
+		},
+		{
+			Name: "cs custom project file",
+			App:  "cs_nested_proj",
+			Env:  []string{"GOOGLE_BUILDABLE=app/app.csproj"},
+		},
+		{
+			Name: "cs custom project file from GAE",
+			App:  "cs_nested_proj",
+			Env:  []string{"GAE_YAML_MAIN=app/app.csproj"},
+		},
+		{
+			Name: "cs custom project file precedence",
+			App:  "cs_nested_proj",
+			Env:  []string{"GAE_YAML_MAIN=nonexistent/app.csproj", "GOOGLE_BUILDABLE=app/app.csproj"},
+		},
+		{
+			Name: "cs custom project with proj in name",
+			App:  "cs_nested_proj",
+			Env:  []string{"GOOGLE_BUILDABLE=myproj"},
+		},
+		{
+			Name: "cs custom entrypoint",
+			App:  "cs_custom_entrypoint",
+			Env:  []string{"GOOGLE_ENTRYPOINT=bin/app --flag=myflag"},
+		},
+		{
+			Name: "prebuilt app",
+			App:  "prebuilt",
+			Env:  []string{"GOOGLE_ENTRYPOINT=./cs_no_deps"},
+		},
+		{
+			Name: "build args",
+			App:  "cs_properties",
+			Env:  []string{"GOOGLE_BUILD_ARGS=-p:Version=1.0.1.0 -p:FileVersion=1.0.1.0"},
+		},
+	}
+	for _, tc := range testCases {
+		tc.Env = append(tc.Env, "GOOGLE_RUNTIME=dotnet3", "X_GOOGLE_TARGET_PLATFORM=gae")
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
+			t.Skip("TODO(rleidle): The appengine buildpacks require /start to be present, for this we need to swap the run image, however, that is not yet possible due to the stack ids (google and google.dotnet3) not being the same")
+			acceptance.TestApp(t, builder, tc)
+		})
+	}
 }

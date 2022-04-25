@@ -22,6 +22,7 @@ package_group(
 package_group(
     name = "dotnet_builders",
     packages = [
+        "//builders/dotnet",
         "//builders/gae/dotnet3",
         "//builders/gcf/dotnet3",
         "//builders/gcp/base",

@@ -16,7 +16,57 @@ package acceptance_test
 
 import (
 	"testing"
+
+	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
-func TestXxx(t *testing.T) {
+func TestGCFAcceptanceDotNet(t *testing.T) {
+	builder, cleanup := acceptance.CreateBuilder(t)
+	t.Cleanup(cleanup)
+
+	testCases := []acceptance.Test{
+		{
+			Name: "cs single target",
+			App:  "cs_single_target",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=TestFunction.Function"},
+			Path: "/function",
+		},
+		{
+			Name: "cs multiple targets",
+			App:  "cs_multiple_targets",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=TestFunction.Function"},
+			Path: "/function",
+		},
+		{
+			Name: "cs nested configuration",
+			App:  "cs_nested_configuration",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=TestFunction.Function"},
+			Path: "/function",
+		},
+		{
+			Name: "fs function",
+			App:  "fs_function",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=fs_function.Function"},
+			Path: "/function",
+		},
+		{
+			Name: "vb function",
+			App:  "vb_function",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=vb_function.CloudFunction"},
+			Path: "/function",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc.Env = append(tc.Env, "GOOGLE_RUNTIME=dotnet3", "X_GOOGLE_TARGET_PLATFORM=gcf")
+		tc.FilesMustExist = append(tc.FilesMustExist,
+			"/layers/google.utils.archive-source/src/source-code.tar.gz",
+			"/workspace/.googlebuild/source-code.tar.gz",
+		)
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
+			acceptance.TestApp(t, builder, tc)
+		})
+	}
 }
