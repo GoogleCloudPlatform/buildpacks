@@ -29,6 +29,11 @@ def acceptance_test_suite(name, srcs, testdata, builder, structure_test_config =
         tags = [
             "local",
         ],
+        gc_linkopts = [
+            "-I",
+            "/lib64/ld-linux-x86-64.so.2",
+            "-extldflags=\"-Wl,--dynamic-linker,/lib64/ld-linux-x86-64.so.2\"",
+        ],
         deps = _build_deps(deps),
         **kwargs
     )
