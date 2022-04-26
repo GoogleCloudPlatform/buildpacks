@@ -2,7 +2,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 """Utility macros for buildpacks."""
 
-load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_mklink")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
 def buildpack(name, executables, descriptor = "buildpack.toml", srcs = None, extension = "tgz", strip_prefix = ".", visibility = None):
     """Macro to create a single buildpack as a tgz or tar archive.
@@ -23,15 +24,25 @@ def buildpack(name, executables, descriptor = "buildpack.toml", srcs = None, ext
       visibility: the visibility
     """
 
+    pkg_mklink(
+        name = "_link_build" + name,
+        target = "main",
+        link_name = "bin/build",
+    )
+    pkg_mklink(
+        name = "_link_detect" + name,
+        target = "main",
+        link_name = "bin/detect",
+    )
+
     # relocate binary into bin/, create symlinks
     pkg_tar(
         name = name + "_executables",
         package_dir = "bin",
-        srcs = executables,
-        symlinks = {
-            "bin/detect": "main",
-            "bin/build": "main",
-        },
+        srcs = executables + [
+            ":_link_build" + name,
+            ":_link_detect" + name,
+        ],
     )
     if not srcs:
         srcs = []
