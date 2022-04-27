@@ -19,7 +19,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
-func TestGCFAcceptanceGo(t *testing.T) {
+func TestAcceptance(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
@@ -156,7 +156,7 @@ func TestGCFAcceptanceGo(t *testing.T) {
 	}
 }
 
-func TestGCFFailuresGo(t *testing.T) {
+func TestFailures(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 

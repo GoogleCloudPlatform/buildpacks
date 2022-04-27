@@ -20,7 +20,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
-func TestGAEAcceptanceGo(t *testing.T) {
+func TestAcceptance(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 
 	t.Cleanup(cleanup)

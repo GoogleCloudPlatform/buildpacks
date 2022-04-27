@@ -19,8 +19,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
-// TestGCPAcceptanceGo runs each GCP acceptance test case against each version of go.
-func TestGCPAcceptanceGo(t *testing.T) {
+func TestAcceptance(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
@@ -151,7 +150,7 @@ func TestGCPAcceptanceGo(t *testing.T) {
 	}
 }
 
-func TestGCPFailuresGo(t *testing.T) {
+func TestFailures(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
