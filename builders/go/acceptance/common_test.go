@@ -16,6 +16,7 @@ package acceptance_test
 
 import (
 	"fmt"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -27,6 +28,15 @@ func init() {
 	acceptance.DefineFlags()
 }
 
+const (
+	goBuild       = "google.go.build"
+	goClearSource = "google.go.clear_source"
+	goFF          = "google.go.functions-framework"
+	goMod         = "google.go.gomod"
+	goPath        = "google.go.gopath"
+	goRuntime     = "google.go.runtime"
+)
+
 var goVersions = []string{
 	// TODO: temporarily disable all versions other than 1.16 to improve test run performance, b/229977732
 	/*"1.11",
@@ -35,6 +45,28 @@ var goVersions = []string{
 	"1.14",
 	"1.15",*/
 	"1.16",
+}
+
+func vendorSetup(builder, src string) error {
+	// The setup function runs `go mod vendor` to vendor dependencies
+	// specified in go.mod.
+	args := strings.Fields(fmt.Sprintf("docker run --rm -v %s:/workspace -w /workspace -u root %s go mod vendor", src, builder))
+	cmd := exec.Command(args[0], args[1:]...)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("vendoring dependencies: %v, output:\n%s", err, out)
+	}
+	return nil
+}
+
+func goSumSetup(builder, src string) error {
+	// The setup function runs `go mod vendor` to vendor dependencies
+	// specified in go.mod.
+	args := strings.Fields(fmt.Sprintf("docker run --rm -v %s:/workspace -w /workspace -u root %s go mod tidy", src, builder))
+	cmd := exec.Command(args[0], args[1:]...)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("generating go.sum: %v, output:\n%s", err, out)
+	}
+	return nil
 }
 
 func applyRuntimeVersionTest(t *testing.T, testCase acceptance.Test, version string) acceptance.Test {
@@ -51,9 +83,16 @@ func applyRuntimeVersionFailureTest(t *testing.T, testCase acceptance.FailureTes
 	return testCase
 }
 
+func shouldApplyRuntimeVersionEnv(environment map[string]string) bool {
+	return !hasEnvVar("GOOGLE_RUNTIME_VERSION", environment)
+}
+
 func applyRuntimeVersionEnv(t *testing.T, environment []string, version string) []string {
 	t.Helper()
 	envMap := envToMap(t, environment)
+	if !shouldApplyRuntimeVersionEnv(envMap) {
+		return environment
+	}
 	addEnvVar(t, envMap, "GOOGLE_RUNTIME_VERSION", version)
 	// X_GOOGLE_TARGET_PLATFORM defined tells us that a build contacted RCS. GOOGLE_RUNTIME will only have
 	// a value when a build uses RCS for configuration, so only GCF and GAE. For cloud run builds,

@@ -50,3 +50,19 @@ acceptance_test_suite(
         "//pkg/env",
     ],
 )
+
+# This suite is a special suite just for go 1.11. The order group GCF & go111 includes the legacy-worker buildpack.
+# As a result, the behavior and the tests for that version are slightly different.
+acceptance_test_suite(
+    name = "1.11_gcf_test",
+    srcs = [
+        "common_test.go",
+        "v111_gcf_test.go",
+    ],
+    builder = "//builders/go:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/go:functions",
+    deps = [
+        "//pkg/env",
+    ],
+)

@@ -19,15 +19,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
-const (
-	goBuild       = "google.go.build"
-	goClearSource = "google.go.clear_source"
-	goFF          = "google.go.functions-framework"
-	goMod         = "google.go.gomod"
-	goPath        = "google.go.gopath"
-	goRuntime     = "google.go.runtime"
-)
-
 // TestGCPAcceptanceGo runs each GCP acceptance test case against each version of go.
 func TestGCPAcceptanceGo(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
@@ -36,6 +27,7 @@ func TestGCPAcceptanceGo(t *testing.T) {
 	testCases := []struct {
 		Test               acceptance.Test
 		ExcludedGoVersions []string
+		IncludedGoVersions []string
 	}{
 		{
 			Test: acceptance.Test{
@@ -81,11 +73,74 @@ func TestGCPAcceptanceGo(t *testing.T) {
 			// go mod and vendor cannot be used together before go 1.14
 			ExcludedGoVersions: []string{"1.11", "1.12", "1.13"},
 		},
+		{
+			Test: acceptance.Test{
+				Name:                "Dev mode",
+				App:                 "go/simple",
+				Env:                 []string{"GOOGLE_DEVMODE=1"},
+				MustUse:             []string{goRuntime, goBuild, goPath},
+				FilesMustExist:      []string{"/layers/google.go.runtime/go/bin/go", "/workspace/main.go"},
+				MustRebuildOnChange: "/workspace/main.go",
+			},
+			// This test only runs against a single version of Go as it is unlikely to break across versions.
+			IncludedGoVersions: []string{"1.16"},
+		},
+		{
+			Test: acceptance.Test{
+				// This is a separate test case from Dev mode above because it has a fixed runtime version.
+				// Its only purpose is to test that the metadata is set correctly.
+				Name:    "Dev mode metadata",
+				App:     "go/simple",
+				Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=1.16.4"},
+				MustUse: []string{goRuntime, goBuild, goPath},
+				BOM: []acceptance.BOMEntry{
+					{
+						Name: "go",
+						Metadata: map[string]interface{}{
+							"version": "1.16.4",
+						},
+					},
+					{
+						Name: "devmode",
+						Metadata: map[string]interface{}{
+							"devmode.sync": []interface{}{
+								map[string]interface{}{"dest": "/workspace", "src": "**/*.go"},
+							},
+						},
+					},
+				},
+			},
+			// This test only runs against a single version of Go as it is unlikely to break across versions.
+			IncludedGoVersions: []string{"1.16"},
+		},
+		{
+			Test: acceptance.Test{
+				Name:    "Go runtime version respected",
+				App:     "go/simple",
+				Path:    "/version?want=1.13",
+				Env:     []string{"GOOGLE_RUNTIME_VERSION=1.13"},
+				MustUse: []string{goRuntime, goBuild, goPath},
+			},
+			// This test only runs against a single version of Go as it is unlikely to break across versions.
+			IncludedGoVersions: []string{"1.13"},
+		},
+		{
+			Test: acceptance.Test{
+				Name:              "clear source",
+				App:               "go/simple",
+				Env:               []string{"GOOGLE_CLEAR_SOURCE=true"},
+				MustUse:           []string{goClearSource},
+				FilesMustExist:    []string{"/layers/google.go.build/bin/main"},
+				FilesMustNotExist: []string{"/layers/google.go.runtime", "/workspace/main.go"},
+			},
+			// This test only runs against a single version of Go as it is unlikely to break across versions.
+			IncludedGoVersions: []string{"1.16"},
+		},
 	}
 
 	for _, tc := range testCases {
 		for _, v := range goVersions {
-			if shouldSkipVersion(v, tc.ExcludedGoVersions) {
+			if !shouldTestVersion(v, tc.IncludedGoVersions, tc.ExcludedGoVersions) {
 				continue
 			}
 			verTC := applyRuntimeVersionTest(t, tc.Test, v)
@@ -98,124 +153,63 @@ func TestGCPAcceptanceGo(t *testing.T) {
 	}
 }
 
-func shouldSkipVersion(version string, excludedVersions []string) bool {
-	for _, ev := range excludedVersions {
-		if version == ev {
+func shouldTestVersion(version string, includedVersions []string, excludedVersions []string) bool {
+	if sliceContains(version, excludedVersions) {
+		return false
+	}
+	if len(includedVersions) == 0 {
+		return true
+	}
+	return sliceContains(version, includedVersions)
+}
+
+func sliceContains(value string, slice []string) bool {
+	for _, v := range slice {
+		if v == value {
 			return true
 		}
 	}
 	return false
 }
 
-// TestGCPAcceptanceGoSingleVersion runs GCP test cases which do not need to be tested against more
-// than one go version.
-func TestGCPAcceptanceGoSingleVersion(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
-	t.Cleanup(cleanup)
-
-	testCases := []acceptance.Test{
-		{
-			Name:                "Dev mode",
-			App:                 "go/simple",
-			Env:                 []string{"GOOGLE_DEVMODE=1"},
-			MustUse:             []string{goRuntime, goBuild, goPath},
-			FilesMustExist:      []string{"/layers/google.go.runtime/go/bin/go", "/workspace/main.go"},
-			MustRebuildOnChange: "/workspace/main.go",
-		},
-		{
-			// This is a separate test case from Dev mode above because it has a fixed runtime version.
-			// Its only purpose is to test that the metadata is set correctly.
-			Name:    "Dev mode metadata",
-			App:     "go/simple",
-			Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=1.16.4"},
-			MustUse: []string{goRuntime, goBuild, goPath},
-			BOM: []acceptance.BOMEntry{
-				{
-					Name: "go",
-					Metadata: map[string]interface{}{
-						"version": "1.16.4",
-					},
-				},
-				{
-					Name: "devmode",
-					Metadata: map[string]interface{}{
-						"devmode.sync": []interface{}{
-							map[string]interface{}{"dest": "/workspace", "src": "**/*.go"},
-						},
-					},
-				},
-			},
-		},
-		{
-			Name:    "Go runtime version respected",
-			App:     "go/simple",
-			Path:    "/version?want=1.13",
-			Env:     []string{"GOOGLE_RUNTIME_VERSION=1.13"},
-			MustUse: []string{goRuntime, goBuild, goPath},
-		},
-		{
-			Name:              "clear source",
-			App:               "go/simple",
-			Env:               []string{"GOOGLE_CLEAR_SOURCE=true"},
-			MustUse:           []string{goClearSource},
-			FilesMustExist:    []string{"/layers/google.go.build/bin/main"},
-			FilesMustNotExist: []string{"/layers/google.go.runtime", "/workspace/main.go"},
-		},
-	}
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
-
-			acceptance.TestApp(t, builder, tc)
-		})
-	}
-}
-
 func TestGCPFailuresGo(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
-	testCases := []acceptance.FailureTest{
+	testCases := []struct {
+		FailureTest        acceptance.FailureTest
+		IncludedGoVersions []string
+	}{
 		{
-			Name:                   "no Go files in root",
-			App:                    "go/entrypoints",
-			MustMatch:              `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built`,
-			SkipBuilderOutputMatch: true,
+			FailureTest: acceptance.FailureTest{
+				Name:                   "no Go files in root",
+				App:                    "go/entrypoints",
+				MustMatch:              `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built`,
+				SkipBuilderOutputMatch: true,
+			},
+		},
+		{
+			FailureTest: acceptance.FailureTest{
+				Name:      "bad runtime version",
+				App:       "go/simple",
+				Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
+				MustMatch: "Runtime version BAD_NEWS_BEARS does not exist",
+			},
+			// This test only runs against a single version of Go as it is unlikely to break across versions.
+			IncludedGoVersions: []string{"1.16"},
 		},
 	}
 
 	for _, tc := range testCases {
 		for _, v := range goVersions {
-			verTC := applyRuntimeVersionFailureTest(t, tc, v)
+			if !shouldTestVersion(v, tc.IncludedGoVersions, nil) {
+				continue
+			}
+			verTC := applyRuntimeVersionFailureTest(t, tc.FailureTest, v)
 			t.Run(verTC.Name, func(t *testing.T) {
 				t.Parallel()
 				acceptance.TestBuildFailure(t, builder, verTC)
 			})
 		}
-	}
-}
-
-// TestGCPFailuresGoSingleVersion runs GCP failure test cases which do not need to be tested against
-// more than one go version.
-func TestGCPFailuresGoSingleVersion(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
-	t.Cleanup(cleanup)
-
-	testCases := []acceptance.FailureTest{
-		{
-			Name:      "bad runtime version",
-			App:       "go/simple",
-			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
-			MustMatch: "Runtime version BAD_NEWS_BEARS does not exist",
-		},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
-			acceptance.TestBuildFailure(t, builder, tc)
-		})
 	}
 }
