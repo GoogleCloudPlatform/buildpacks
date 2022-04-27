@@ -31,7 +31,7 @@ func main() {
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !env.IsGAE() {
-		return appengine.OptOutTargetPlatformNotAE(), nil
+		return appengine.OptOutTargetPlatformNotGAE(), nil
 	}
 	if proj := os.Getenv(env.GAEMain); proj == "" {
 		return gcp.OptOut("app.yaml main field is not defined, using default"), nil

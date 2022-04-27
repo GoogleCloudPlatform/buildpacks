@@ -104,14 +104,14 @@ func ApisEnabled(ctx *gcp.Context) (bool, error) {
 	return parsed, nil
 }
 
-// OptInTargetPlatformAE returns a DetectResult for when a buildpack is opting in because of a 'gae' value
-// for 'X_GOOGLE_TARGET_PLATFORM'.
-func OptInTargetPlatformAE() gcp.DetectResult {
+// OptInTargetPlatformGAE returns a DetectResult for when a buildpack is opting in because of a 'gae' value
+// for 'X_GOOGLE_TARGET_PLATFORM'. The 'gae' value means AppEngine.
+func OptInTargetPlatformGAE() gcp.DetectResult {
 	return gcp.OptInEnvSet(env.TargetPlatformAppEngine)
 }
 
-// OptOutTargetPlatformNotAE returns a DetectResult for when a buildpack is opting out because the value for
-// 'X_GOOGLE_TARGET_PLATFORM' is not 'gae'.
-func OptOutTargetPlatformNotAE() gcp.DetectResult {
+// OptOutTargetPlatformNotGAE returns a DetectResult for when a buildpack is opting out because the value for
+// 'X_GOOGLE_TARGET_PLATFORM' is not 'gae'. The 'gae' value means AppEngine.
+func OptOutTargetPlatformNotGAE() gcp.DetectResult {
 	return gcp.OptOut(fmt.Sprintf("%s not set to %q", env.XGoogleTargetPlatform, env.TargetPlatformAppEngine))
 }

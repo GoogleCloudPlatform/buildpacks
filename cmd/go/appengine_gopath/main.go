@@ -36,7 +36,7 @@ func main() {
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !env.IsGAE() {
-		return appengine.OptOutTargetPlatformNotAE(), nil
+		return appengine.OptOutTargetPlatformNotGAE(), nil
 	}
 	goModExists, err := ctx.FileExists("go.mod")
 	if err != nil {
