@@ -139,37 +139,16 @@ func TestGCPAcceptanceGo(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		for _, v := range goVersions {
-			if !shouldTestVersion(v, tc.IncludedGoVersions, tc.ExcludedGoVersions) {
-				continue
-			}
-			verTC := applyRuntimeVersionTest(t, tc.Test, v)
-			t.Run(verTC.Name, func(t *testing.T) {
-				t.Parallel()
-
-				acceptance.TestApp(t, builder, verTC)
-			})
+		if !acceptance.ShouldTestVersion(tc.IncludedGoVersions, tc.ExcludedGoVersions) {
+			continue
 		}
-	}
-}
+		tc := tc
+		t.Run(tc.Test.Name, func(t *testing.T) {
+			t.Parallel()
 
-func shouldTestVersion(version string, includedVersions []string, excludedVersions []string) bool {
-	if sliceContains(version, excludedVersions) {
-		return false
+			acceptance.TestApp(t, builder, tc.Test)
+		})
 	}
-	if len(includedVersions) == 0 {
-		return true
-	}
-	return sliceContains(version, includedVersions)
-}
-
-func sliceContains(value string, slice []string) bool {
-	for _, v := range slice {
-		if v == value {
-			return true
-		}
-	}
-	return false
 }
 
 func TestGCPFailuresGo(t *testing.T) {
@@ -201,15 +180,13 @@ func TestGCPFailuresGo(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		for _, v := range goVersions {
-			if !shouldTestVersion(v, tc.IncludedGoVersions, nil) {
-				continue
-			}
-			verTC := applyRuntimeVersionFailureTest(t, tc.FailureTest, v)
-			t.Run(verTC.Name, func(t *testing.T) {
-				t.Parallel()
-				acceptance.TestBuildFailure(t, builder, verTC)
-			})
+		if !acceptance.ShouldTestVersion(tc.IncludedGoVersions, nil) {
+			continue
 		}
+		tc := tc
+		t.Run(tc.FailureTest.Name, func(t *testing.T) {
+			t.Parallel()
+			acceptance.TestBuildFailure(t, builder, tc.FailureTest)
+		})
 	}
 }

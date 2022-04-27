@@ -19,25 +19,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
-var (
-	// goVersionsWithoutGCFSupport contains the list of go versions for which
-	// there is GCP or GAE support, but not GCF.
-	goVersionsWithoutGCFSupport = []string{"1.12", "1.14", "1.15"}
-	// excludedGoVersions is the set of versions for which the regular
-	// acceptance tests are not run.
-	excludedGoVersions = make(map[string]string)
-)
-
-func init() {
-	// The tests in this file are lengthy to run due to the number of
-	// dependencies pulled in by FF and the test apps. In addition,
-	// some of them do not pass for unsupported go versions. For that
-	// reason exclude the versions without GCF support.
-	for _, v := range goVersionsWithoutGCFSupport {
-		excludedGoVersions[v] = v
-	}
-}
-
 func TestGCFAcceptanceGo(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
@@ -164,25 +145,15 @@ func TestGCFAcceptanceGo(t *testing.T) {
 			"/layers/google.utils.archive-source/src/source-code.tar.gz",
 			"/workspace/.googlebuild/source-code.tar.gz",
 		)
-		for _, v := range goVersions {
-			if shouldSkipVersion(v) {
-				continue
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
+			if tc.Setup != nil {
+				t.Skip("TODO: The setup functions require go to be pre-installed which is not true for the unified builder")
 			}
-			verTC := applyRuntimeVersionTest(t, tc, v)
-			t.Run(verTC.Name, func(t *testing.T) {
-				t.Parallel()
-				if verTC.Setup != nil {
-					t.Skip("TODO: The setup functions require go to be pre-installed which is not true for the unified builder")
-				}
-				acceptance.TestApp(t, builder, verTC)
-			})
-		}
+			acceptance.TestApp(t, builder, tc)
+		})
 	}
-}
-
-func shouldSkipVersion(version string) bool {
-	_, ok := excludedGoVersions[version]
-	return ok
 }
 
 func TestGCFFailuresGo(t *testing.T) {
@@ -205,18 +176,13 @@ func TestGCFFailuresGo(t *testing.T) {
 
 	for _, tc := range testCases {
 		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
-		for _, v := range goVersions {
-			if shouldSkipVersion(v) {
-				continue
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
+			if tc.Setup != nil {
+				t.Skip("TODO: The setup functions require go to be pre-installed which is not true for the unified builder")
 			}
-			verTC := applyRuntimeVersionFailureTest(t, tc, v)
-			t.Run(verTC.Name, func(t *testing.T) {
-				t.Parallel()
-				if verTC.Setup != nil {
-					t.Skip("TODO: The setup functions require go to be pre-installed which is not true for the unified builder")
-				}
-				acceptance.TestBuildFailure(t, builder, verTC)
-			})
-		}
+			acceptance.TestBuildFailure(t, builder, tc)
+		})
 	}
 }

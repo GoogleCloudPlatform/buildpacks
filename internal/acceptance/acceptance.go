@@ -66,7 +66,8 @@ var (
 	lifecycle           string // Path to lifecycle archive; optional.
 	pullImages          bool   // Pull stack images instead of using local daemon.
 	cloudbuild          bool   // Use cloudbuild network; required for Cloud Build.
-	runtimeVersions     string // Comma separated list of runtime versions to test, or "json" if using json file.
+	runtimeVersion      string // A runtime version which will be applied to tests that do not explicilty set a version.
+	runtimeName         string // The name of the runtime (aka the language name such as 'go' or 'dotnet'). Used to properly set GOOGLE_RUNTIME.
 	specialChars        = regexp.MustCompile("[^a-zA-Z0-9]+")
 )
 
@@ -102,7 +103,8 @@ func DefineFlags() {
 	flag.StringVar(&lifecycle, "lifecycle", "", "Location of lifecycle archive. Overrides builder.toml if specified.")
 	flag.BoolVar(&pullImages, "pull-images", true, "Pull stack images before running the tests.")
 	flag.BoolVar(&cloudbuild, "cloudbuild", false, "Use cloudbuild network; required for Cloud Build.")
-	flag.StringVar(&runtimeVersions, "runtime-versions", "", "Comma separated list of runtime versions to override in tests.")
+	flag.StringVar(&runtimeVersion, "runtime-version", "", "A default runtime version which will be applied to the tests that do not explicitly set a version.")
+	flag.StringVar(&runtimeName, "runtime-name", "", "The name of the runtime (aka the language name such as 'go' or 'dotnet'). Used to properly set GOOGLE_RUNTIME.")
 
 }
 
@@ -192,8 +194,7 @@ type BOMEntry struct {
 func TestApp(t *testing.T, builder string, cfg Test) {
 	t.Helper()
 
-	env := envSliceAsMap(t, cfg.Env)
-	env["GOOGLE_DEBUG"] = "true"
+	env := prepareEnvTest(t, cfg)
 
 	if cfg.Name == "" {
 		cfg.Name = cfg.App
@@ -251,12 +252,7 @@ type FailureTest struct {
 func TestBuildFailure(t *testing.T, builder string, cfg FailureTest) {
 	t.Helper()
 
-	env := envSliceAsMap(t, cfg.Env)
-	env["GOOGLE_DEBUG"] = "true"
-	if !cfg.SkipBuilderOutputMatch {
-		env["BUILDER_OUTPUT"] = "/tmp/builderoutput"
-		env["EXPECTED_BUILDER_OUTPUT"] = cfg.MustMatch
-	}
+	env := prepareEnvFailureTest(t, cfg)
 
 	if cfg.Name == "" {
 		cfg.Name = cfg.App
@@ -1126,39 +1122,35 @@ func cleanUpVolumes(t *testing.T, image string) {
 	}
 }
 
-// envSliceAsMap converts the given slice of KEY=VAL strings to a map.
-func envSliceAsMap(t *testing.T, env []string) map[string]string {
-	t.Helper()
-	result := make(map[string]string)
-	for _, kv := range env {
-		parts := strings.SplitN(kv, "=", 2)
-		if len(parts) != 2 {
-			t.Fatalf("Invalid environment variable: %q", kv)
-		}
-		if _, ok := result[parts[0]]; ok {
-			t.Fatalf("Env var %s is already set.", parts[0])
-		}
-		result[parts[0]] = parts[1]
-	}
-	return result
-}
-
 // PullImages returns the value of the -pull-images flag.
 func PullImages() bool {
 	return pullImages
 }
 
-// RuntimeVersions returns the value of the -runtime-versions flag. If the flag
-// was set as "json" it checks for a version JSON file, if it was not set it
-// returns the default versions passed as arguments.
-func RuntimeVersions(runtime string, defaultVersions ...string) []string {
-	if runtimeVersions == "json" {
-		return getNewVersions(runtime)
+// ShouldTestVersion returns true if the current test run's version is in the
+// included set and not in the excluded set. The empty inclusion set includes all
+// versions. The empty exclusion set excludes no versions. The current test run's
+// version is set by the runtime-version flag.
+func ShouldTestVersion(includedVersions []string, excludedVersions []string) bool {
+	if runtimeVersion == "" {
+		return true
 	}
-	if runtimeVersions != "" {
-		return strings.Split(runtimeVersions, ",")
+	if sliceContains(runtimeVersion, excludedVersions) {
+		return false
 	}
-	return defaultVersions
+	if len(includedVersions) == 0 {
+		return true
+	}
+	return sliceContains(runtimeVersion, includedVersions)
+}
+
+func sliceContains(value string, slice []string) bool {
+	for _, v := range slice {
+		if v == value {
+			return true
+		}
+	}
+	return false
 }
 
 func getNewVersions(runtime string) []string {

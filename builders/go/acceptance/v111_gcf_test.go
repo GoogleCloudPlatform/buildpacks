@@ -114,7 +114,7 @@ func TestGCFAcceptanceGo111(t *testing.T) {
 
 	for _, tc := range testCases {
 		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
-		tc := applyRuntimeVersionTest(t, tc, "1.11")
+		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 			if tc.Setup != nil {
@@ -145,7 +145,7 @@ func TestGCFFailuresGo111(t *testing.T) {
 
 	for _, tc := range testCases {
 		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
-		tc := applyRuntimeVersionFailureTest(t, tc, "1.11")
+		tc := tc
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
 			acceptance.TestBuildFailure(t, builder, tc)

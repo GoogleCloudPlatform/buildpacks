@@ -57,20 +57,18 @@ func TestAcceptance(t *testing.T) {
 		},
 	}
 
-	for _, rubyVersion := range acceptance.RuntimeVersions("ruby", "2.7.5") {
-		for _, tc := range testCases {
-			tc := tc
-			t.Run(tc.Name, func(t *testing.T) {
-				t.Parallel()
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
 
-				tc.Path = "/testFunction"
-				tc.Env = append(tc.Env,
-					"GOOGLE_RUNTIME_VERSION="+rubyVersion,
-					"GOOGLE_ENTRYPOINT=bundle exec functions-framework-ruby --target testFunction",
-				)
+			tc.Path = "/testFunction"
+			tc.Env = append(tc.Env,
+				"GOOGLE_RUNTIME_VERSION="+"2.7.5",
+				"GOOGLE_ENTRYPOINT=bundle exec functions-framework-ruby --target testFunction",
+			)
 
-				acceptance.TestApp(t, builder, tc)
-			})
-		}
+			acceptance.TestApp(t, builder, tc)
+		})
 	}
 }

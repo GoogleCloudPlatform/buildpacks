@@ -9,6 +9,34 @@ test_suite(
     name = "acceptance_test",
 )
 
+# The union of all versions across all products.
+VERSIONS_ALL_PRODUCTS = [
+    "1.11",
+    "1.12",
+    "1.13",
+    "1.14",
+    "1.15",
+    "1.16",
+]
+
+# The product versions for which there is GAE support.
+VERSIONS_GAE_SUPPORT = VERSIONS_ALL_PRODUCTS
+
+# The product versions for which there is explicit, tested GCP support. Technically any version is available
+# on GCP, but not all versions are tested.
+VERSIONS_GCP_SUPPORT = VERSIONS_ALL_PRODUCTS
+
+# The product versions for which there is GCF support. The GCF tests are expensive to run so only the released
+# versions are tested.
+VERSIONS_GCF_SUPPORT = [
+    "1.13",
+    "1.16",
+]
+
+# The GCF Legacy Worker is only available and used for the "GCF go111" runtime version. It has different behavior,
+# a unique order group, and is tested seperately.
+VERSION_GCF_LEGACY_WORKER = "1.11"
+
 acceptance_test_suite(
     name = "gcf_test",
     srcs = [
@@ -18,9 +46,7 @@ acceptance_test_suite(
     builder = "//builders/go:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/go:functions",
-    deps = [
-        "//pkg/env",
-    ],
+    versions = VERSIONS_GCF_SUPPORT,
 )
 
 acceptance_test_suite(
@@ -32,9 +58,7 @@ acceptance_test_suite(
     builder = "//builders/go:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata:generic",
-    deps = [
-        "//pkg/env",
-    ],
+    versions = VERSIONS_GCP_SUPPORT,
 )
 
 acceptance_test_suite(
@@ -46,9 +70,7 @@ acceptance_test_suite(
     builder = "//builders/go:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata:go",
-    deps = [
-        "//pkg/env",
-    ],
+    versions = VERSIONS_GAE_SUPPORT,
 )
 
 # This suite is a special suite just for go 1.11. The order group GCF & go111 includes the legacy-worker buildpack.
@@ -59,10 +81,8 @@ acceptance_test_suite(
         "common_test.go",
         "v111_gcf_test.go",
     ],
+    args = ["-runtime-version=" + VERSION_GCF_LEGACY_WORKER],
     builder = "//builders/go:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/go:functions",
-    deps = [
-        "//pkg/env",
-    ],
 )

@@ -83,7 +83,7 @@ func TestAcceptancePython(t *testing.T) {
 	}
 
 	// Tests for specific versions of Python available on dl.google.com.
-	for _, v := range acceptance.RuntimeVersions("python", "3.7.12", "3.8.12", "3.9.10", "3.10.2") {
+	for _, v := range []string{"3.7.12", "3.8.12", "3.9.10", "3.10.2"} {
 		testCases = append(testCases, acceptance.Test{
 			Name:    "dl.google.com runtime version " + v,
 			App:     "python/version",
