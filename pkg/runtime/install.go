@@ -129,6 +129,9 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime installableRuntime, ver
 		return true, nil
 	}
 	ctx.CacheMiss(runtimeID)
+	if err := ctx.ClearLayer(layer); err != nil {
+		return false, gcp.InternalErrorf("clearing layer %q: %w", layer.Name, err)
+	}
 	ctx.Logf("Installing %s v%s.", runtimeName, version)
 
 	ctx.SetMetadata(layer, versionKey, version)
