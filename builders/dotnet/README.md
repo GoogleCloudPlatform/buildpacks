@@ -5,7 +5,7 @@ This directory contains the definition of the .NET builder.
 To build the builder image, run:
 
 ```bash
-bazel build builders/dotnet:builder.image
+bazel build //builders/dotnet:builder.image
 ```
 
 ## Build a Test Application
@@ -19,7 +19,7 @@ pack build sample-dotnet --builder gcp/dotnet --path builders/testdata/dotnet/cs
 To run the acceptance tests across all the products, run:
 
 ```bash
-bazel test builders/dotnet/acceptance:acceptance_test
+bazel test //builders/dotnet/acceptance:acceptance_test
 ```
 
 ### Test a Single Product
@@ -29,5 +29,5 @@ acronym of the product. For example, to run the tests for Google Cloud
 Functions, run:
 
 ```bash
-bazel test builders/dotnet/acceptance:gcf_test
+bazel test //builders/dotnet/acceptance:gcf_test
 ```

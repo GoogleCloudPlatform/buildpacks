@@ -5,7 +5,7 @@ This directory contains the definition of the Go builder.
 To build the builder image, run:
 
 ```bash
-bazel build builders/go:builder.image
+bazel build //builders/go:builder.image
 ```
 
 ## Build a Test Application
@@ -19,7 +19,7 @@ pack build sample-go --builder gcp/go --path builders/testdata/go/gomod_go_sum/ 
 To run the acceptance tests across all the products, run:
 
 ```bash
-bazel test builders/go/acceptance:acceptance_test
+bazel test //builders/go/acceptance:acceptance_test
 ```
 
 ### Test a Single Product
@@ -29,5 +29,5 @@ acronym of the product. For example, to run the tests for Google Cloud
 Functions, run:
 
 ```bash
-bazel test builders/go/acceptance:gcf_test
+bazel test //builders/go/acceptance:gcf_test
 ```
