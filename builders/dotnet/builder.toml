@@ -103,9 +103,9 @@ description = "Unified builder for the .NET runtime"
     id = "google.utils.label"
 
 [stack]
-  id = "google"
-  build-image = "gcr.io/buildpacks/gcp/build:v1"
-  run-image = "gcr.io/buildpacks/gcp/run:v1"
+  id = "google.gae18"
+  build-image = "gcr.io/gae-runtimes/buildpacks/dotnet/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/dotnet/run"
 
 [lifecycle]
   version = "0.13.3"
