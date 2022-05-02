@@ -35,6 +35,9 @@ pkg_tar(
         "//builders/testdata/java/java11_compat_webapp:appengine-web.xml": "java11_compat_webapp/WEB-INF/appengine-web.xml",
         "//builders/testdata/java/java11_compat_webapp:web.xml": "java11_compat_webapp/WEB-INF/web.xml",
         "//builders/testdata/java/java11_compat_webapp:compiledjar": "java11_compat_webapp/WEB-INF/lib/helloservlet.jar",
+        "//builders/testdata/java/java17_compat_webapp:appengine-web.xml": "java17_compat_webapp/WEB-INF/appengine-web.xml",
+        "//builders/testdata/java/java17_compat_webapp:web.xml": "java17_compat_webapp/WEB-INF/web.xml",
+        "//builders/testdata/java/java17_compat_webapp:compiledjar": "java17_compat_webapp/WEB-INF/lib/helloservlet.jar",
     },
     strip_prefix = "java",
 )

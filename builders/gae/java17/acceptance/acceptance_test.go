@@ -26,15 +26,8 @@ func init() {
 }
 
 func TestAcceptance(t *testing.T) {
-	t.Skip("Disable java17")
-
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
-
-	// TODO(b/193268028): Remove when stack images are published.
-	//if acceptance.PullImages() {
-	//	t.Skip("Disabled for continuous builds")
-	//}
 
 	// In general we fail if we see the string WARNING, because it should be possible to have a project that produces no warnings.
 	// In a few cases that is hard and we omit the check.
@@ -91,39 +84,42 @@ func TestAcceptance(t *testing.T) {
 			Env:  []string{"GOOGLE_ENTRYPOINT=java -jar target/ktor-0.0.1-jar-with-dependencies.jar"},
 			// We don't check for WARNING, because our project-artifact-generated code produces several of them.
 		},
-		{
-			Name:          "gradle micronaut",
-			App:           "gradle_micronaut",
-			MustNotOutput: []string{"WARNING"},
-		},
-		{
-			Name:          "gradlew micronaut",
-			App:           "gradlew_micronaut",
-			MustNotOutput: []string{"WARNING"},
-		},
-		{
-			Name: "gradle kotlin",
-			App:  "gradle-kotlin",
-		},
-		{
-			Name:              "hello quarkus maven with source clearing",
-			App:               "hello_quarkus_maven",
-			Env:               []string{"GOOGLE_CLEAR_SOURCE=true"},
-			MustNotOutput:     []string{"WARNING"},
-			FilesMustNotExist: []string{"/workspace/src/main/java/hello/Hello.java", "/workspace/pom.xml"},
-		},
-		{
-			Name:              "Gradle with source clearing",
-			App:               "gradle_micronaut",
-			Env:               []string{"GOOGLE_CLEAR_SOURCE=true", "GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
-			MustNotOutput:     []string{"WARNING"},
-			FilesMustNotExist: []string{"/workspace/src/main/java/example/Application.java", "/workspace/build.gradle"},
-		},
-		{
-			Name:          "Java gradle quarkus",
-			App:           "gradle_quarkus",
-			MustNotOutput: []string{"WARNING"},
-		},
+		// TODO(b/226577140): Fix and enable gradle tests
+		/*
+			{
+				Name:          "gradle micronaut",
+				App:           "gradle_micronaut",
+				MustNotOutput: []string{"WARNING"},
+			},
+			{
+				Name:          "gradlew micronaut",
+				App:           "gradlew_micronaut",
+				MustNotOutput: []string{"WARNING"},
+			},
+			{
+				Name: "gradle kotlin",
+				App:  "gradle-kotlin",
+			},
+			{
+				Name:              "hello quarkus maven with source clearing",
+				App:               "hello_quarkus_maven",
+				Env:               []string{"GOOGLE_CLEAR_SOURCE=true"},
+				MustNotOutput:     []string{"WARNING"},
+				FilesMustNotExist: []string{"/workspace/src/main/java/hello/Hello.java", "/workspace/pom.xml"},
+			},
+			{
+				Name:              "Gradle with source clearing",
+				App:               "gradle_micronaut",
+				Env:               []string{"GOOGLE_CLEAR_SOURCE=true", "GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
+				MustNotOutput:     []string{"WARNING"},
+				FilesMustNotExist: []string{"/workspace/src/main/java/example/Application.java", "/workspace/build.gradle"},
+			},
+			{
+				Name:          "Java gradle quarkus",
+				App:           "gradle_quarkus",
+				MustNotOutput: []string{"WARNING"},
+			},
+		*/
 	}
 	for _, tc := range testCases {
 		tc := tc

@@ -1,0 +1,18 @@
+licenses(["notice"])
+
+package(
+    default_visibility = ["//builders:__subpackages__"],
+)
+
+exports_files([
+    "appengine-web.xml",
+    "compiledjar",
+    "web.xml",
+])
+
+# TODO: fix this build rule so that it can be built dynamically.
+#
+# To get compilerjar, use:
+# curl https://repo1.maven.org/maven2/javax/servlet/javax.servlet-api/3.1.0/javax.servlet-api-3.1.0.jar --output servlet.jar
+# javac HelloServlet.java -cp servlet.jar -d .
+# jar cvf compiledjar java17_compat_webapp

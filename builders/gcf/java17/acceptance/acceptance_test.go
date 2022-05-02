@@ -28,15 +28,8 @@ func init() {
 }
 
 func TestAcceptance(t *testing.T) {
-	t.Skip("Disable java17")
-
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
-
-	// TODO(b/193268028): Remove when stack images are published.
-	//if acceptance.PullImages() {
-	//	t.Skip("Disabled for continuous builds")
-	//}
 
 	testCases := []acceptance.Test{
 		{
@@ -58,19 +51,22 @@ func TestAcceptance(t *testing.T) {
 			FilesMustExist:    []string{"/workspace/target/_javaInvokerDependency/java-function-invoker-1.0.2.jar"},
 			FilesMustNotExist: []string{ffJarPath},
 		},
-		{
-			Name:           "function with gradle",
-			App:            "gradle",
-			Env:            []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
-			FilesMustExist: []string{ffJarPath},
-		},
-		{
-			Name:              "function with invoker as gradle dependency",
-			App:               "gradle_invoker_dep",
-			Env:               []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
-			FilesMustExist:    []string{"/workspace/build/_javaFunctionDependencies/java-function-invoker-1.0.2.jar"},
-			FilesMustNotExist: []string{ffJarPath},
-		},
+		// TODO(b/226577140): Fix and enable gradle tests
+		/*
+			{
+				Name:           "function with gradle",
+				App:            "gradle",
+				Env:            []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
+				FilesMustExist: []string{ffJarPath},
+			},
+			{
+				Name:              "function with invoker as gradle dependency",
+				App:               "gradle_invoker_dep",
+				Env:               []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
+				FilesMustExist:    []string{"/workspace/build/_javaFunctionDependencies/java-function-invoker-1.0.2.jar"},
+				FilesMustNotExist: []string{ffJarPath},
+			},
+		*/
 		{
 			Name: "prebuilt jar",
 			App:  "jar",
