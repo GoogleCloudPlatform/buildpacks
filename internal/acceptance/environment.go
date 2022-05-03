@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 )
 
 func prepareEnvTest(t *testing.T, test Test) map[string]string {
@@ -58,7 +59,11 @@ func applyRuntimeVersion(t *testing.T, environment map[string]string, version st
 	// a value when a build uses RCS for configuration, so only GCF and GAE. For cloud run builds,
 	// GOOGLE_RUNTIME will not have a value.
 	if hasEnvVar(env.XGoogleTargetPlatform, environment) && runtimeName != "" {
-		addEnvVar(t, environment, "GOOGLE_RUNTIME", fmt.Sprintf("%s%s", runtimeName, strings.ReplaceAll(version, ".", "")))
+		runtimeEnvVar, err := runtime.FormatName(runtimeName, version)
+		if err != nil {
+			t.Fatalf("Error formatting the runtime name for %q: %v", runtimeName, err)
+		}
+		addEnvVar(t, environment, "GOOGLE_RUNTIME", runtimeEnvVar)
 	}
 	if version == "1.11" {
 		addEnvVar(t, environment, "GOPROXY", "https://proxy.golang.org")

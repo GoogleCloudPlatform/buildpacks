@@ -68,3 +68,73 @@ func TestCheckOverride(t *testing.T) {
 		})
 	}
 }
+
+func TestRuntimeVersion(t *testing.T) {
+	testCases := []struct {
+		name           string
+		languageName   string
+		version        string
+		expectedResult string
+	}{
+		{
+			name:           "go116",
+			languageName:   "go",
+			version:        "1.16.5",
+			expectedResult: "go116",
+		},
+		{
+			name:           "go116, partial semver",
+			languageName:   "go",
+			version:        "1.16",
+			expectedResult: "go116",
+		},
+		{
+			name:           "nodejs8",
+			languageName:   "nodejs",
+			version:        "8.17.1",
+			expectedResult: "nodejs8",
+		},
+		{
+			name:           "dotnet3",
+			languageName:   "dotnet",
+			version:        "3.420.1",
+			expectedResult: "dotnet3",
+		},
+		{
+			name:           "java11",
+			languageName:   "java",
+			version:        "1.11.3",
+			expectedResult: "java11",
+		},
+		{
+			name:           "php55",
+			languageName:   "php",
+			version:        "5.5.38",
+			expectedResult: "php55",
+		},
+		{
+			name:           "python27",
+			languageName:   "python",
+			version:        "2.7.15",
+			expectedResult: "python27",
+		},
+		{
+			name:           "ruby31",
+			languageName:   "ruby",
+			version:        "3.1.7",
+			expectedResult: "ruby31",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := FormatName(tc.languageName, tc.version)
+			if err != nil {
+				t.Fatalf("Unexpected error: FormatName(%v, %v) = %v", tc.languageName, tc.version, err)
+			}
+			if result != tc.expectedResult {
+				t.Errorf("FormatName(%v, %v) = %v, want %v", tc.languageName, tc.version, result, tc.expectedResult)
+			}
+		})
+	}
+}

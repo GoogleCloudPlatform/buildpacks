@@ -18,10 +18,12 @@ package runtime
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/Masterminds/semver"
 )
 
 // CheckOverride returns a Detect result or nil based on the GOOGLE_RUNTIME environment variable value.
@@ -48,4 +50,32 @@ func CheckOverride(wantRuntime string) gcp.DetectResult {
 		return gcp.OptIn(fmt.Sprintf("%s  matches %q", env.Runtime, wantRuntime))
 	}
 	return gcp.OptOut(fmt.Sprintf("%s does not match to %q", env.Runtime, wantRuntime))
+}
+
+// FormatName takes in a language name and version and returns the GCF / GAE runtime name.
+//
+// For example, FormatRuntime("go", "1.16.0") returns "go116".
+func FormatName(languageName, version string) (string, error) {
+	verSubStr, err := formatVersion(languageName, version)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s%s", languageName, verSubStr), nil
+}
+
+func formatVersion(languageName, version string) (string, error) {
+	semVer, err := semver.NewVersion(version)
+	if err != nil {
+		return "", fmt.Errorf("parsing %q as a semver: %w", version, err)
+	}
+	switch languageName {
+	case "java":
+		return strconv.FormatUint(semVer.Minor(), 10), nil
+	case "dotnet":
+		fallthrough
+	case "nodejs":
+		return strconv.FormatUint(semVer.Major(), 10), nil
+	default:
+		return fmt.Sprintf("%d%d", semVer.Major(), semVer.Minor()), nil
+	}
 }

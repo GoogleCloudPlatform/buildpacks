@@ -20,6 +20,7 @@ go_library(
     deps = [
         "//internal/checktools",
         "//pkg/env",
+        "//pkg/runtime",
         "@com_github_burntsushi_toml//:go_default_library",
         "@com_github_masterminds_semver//:go_default_library",
         "@com_github_rs_xid//:go_default_library",

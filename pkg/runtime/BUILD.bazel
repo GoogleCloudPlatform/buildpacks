@@ -10,8 +10,7 @@ go_library(
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
-        "//cmd:__subpackages__",
-        "//pkg/nodejs:__subpackages__",
+        "//:__subpackages__",
     ],
     deps = [
         "//pkg/env",
@@ -19,6 +18,7 @@ go_library(
         "//pkg/gcpbuildpack",
         "//pkg/version",
         "@com_github_buildpacks_libcnb//:go_default_library",
+        "@com_github_masterminds_semver//:go_default_library",
     ],
 )
 
