@@ -24,9 +24,9 @@ func TestAcceptance(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	testCases := []struct {
-		Test               acceptance.Test
-		ExcludedGoVersions []string
-		IncludedGoVersions []string
+		Test                       acceptance.Test
+		ExcludedGoVersions         []string
+		VersionInclusionConstraint string
 	}{
 		{
 			Test: acceptance.Test{
@@ -70,7 +70,7 @@ func TestAcceptance(t *testing.T) {
 				MustNotUse: []string{goPath},
 			},
 			// go mod and vendor cannot be used together before go 1.14
-			ExcludedGoVersions: []string{"1.11", "1.12", "1.13"},
+			VersionInclusionConstraint: ">= 1.14",
 		},
 		{
 			Test: acceptance.Test{
@@ -82,7 +82,7 @@ func TestAcceptance(t *testing.T) {
 				MustRebuildOnChange: "/workspace/main.go",
 			},
 			// This test only runs against a single version of Go as it is unlikely to break across versions.
-			IncludedGoVersions: []string{"1.16"},
+			VersionInclusionConstraint: "1.16",
 		},
 		{
 			Test: acceptance.Test{
@@ -110,7 +110,7 @@ func TestAcceptance(t *testing.T) {
 				},
 			},
 			// This test only runs against a single version of Go as it is unlikely to break across versions.
-			IncludedGoVersions: []string{"1.16"},
+			VersionInclusionConstraint: "1.16",
 		},
 		{
 			Test: acceptance.Test{
@@ -121,7 +121,7 @@ func TestAcceptance(t *testing.T) {
 				MustUse: []string{goRuntime, goBuild, goPath},
 			},
 			// This test only runs against a single version of Go as it is unlikely to break across versions.
-			IncludedGoVersions: []string{"1.13"},
+			VersionInclusionConstraint: "1.13",
 		},
 		{
 			Test: acceptance.Test{
@@ -133,12 +133,12 @@ func TestAcceptance(t *testing.T) {
 				FilesMustNotExist: []string{"/layers/google.go.runtime", "/workspace/main.go"},
 			},
 			// This test only runs against a single version of Go as it is unlikely to break across versions.
-			IncludedGoVersions: []string{"1.16"},
+			VersionInclusionConstraint: "1.16",
 		},
 	}
 
 	for _, tc := range testCases {
-		if !acceptance.ShouldTestVersion(tc.IncludedGoVersions, tc.ExcludedGoVersions) {
+		if !acceptance.ShouldTestVersion(t, tc.VersionInclusionConstraint) {
 			continue
 		}
 		tc := tc
@@ -155,8 +155,8 @@ func TestFailures(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	testCases := []struct {
-		FailureTest        acceptance.FailureTest
-		IncludedGoVersions []string
+		FailureTest                acceptance.FailureTest
+		VersionInclusionConstraint string
 	}{
 		{
 			FailureTest: acceptance.FailureTest{
@@ -174,12 +174,12 @@ func TestFailures(t *testing.T) {
 				MustMatch: "Runtime version BAD_NEWS_BEARS does not exist",
 			},
 			// This test only runs against a single version of Go as it is unlikely to break across versions.
-			IncludedGoVersions: []string{"1.16"},
+			VersionInclusionConstraint: "1.16",
 		},
 	}
 
 	for _, tc := range testCases {
-		if !acceptance.ShouldTestVersion(tc.IncludedGoVersions, nil) {
+		if !acceptance.ShouldTestVersion(t, tc.VersionInclusionConstraint) {
 			continue
 		}
 		tc := tc

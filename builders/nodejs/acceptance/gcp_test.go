@@ -36,9 +36,8 @@ func TestAcceptance(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	testCases := []struct {
-		Test                   acceptance.Test
-		IncludedNodeJSVersions []string
-		ExcludedNodeJSVersions []string
+		Test                       acceptance.Test
+		VersionInclusionConstraint string
 	}{
 		{
 			Test: acceptance.Test{
@@ -59,7 +58,7 @@ func TestAcceptance(t *testing.T) {
 		},
 		{
 			// Test installs a specific version of node and only needs to be run with a single version
-			IncludedNodeJSVersions: []string{"14.18.3"},
+			VersionInclusionConstraint: "14",
 			Test: acceptance.Test{
 				// This is a separate test case from Dev mode above because it has a fixed runtime version.
 				// Its only purpose is to test that the metadata is set correctly.
@@ -117,7 +116,7 @@ func TestAcceptance(t *testing.T) {
 		},
 		{
 			// Test installs a specific version of node and only needs to be run with a single version
-			IncludedNodeJSVersions: []string{"12.22.9"},
+			VersionInclusionConstraint: "12",
 			Test: acceptance.Test{
 				Name:    "runtime version with npm install",
 				App:     "nodejs/simple",
@@ -128,7 +127,7 @@ func TestAcceptance(t *testing.T) {
 		},
 		{
 			// Test installs a specific version of node and only needs to be run with a single version
-			IncludedNodeJSVersions: []string{"12.22.9"},
+			VersionInclusionConstraint: "12",
 			Test: acceptance.Test{
 				Name:    "runtime version with npm ci",
 				App:     "nodejs/simple",
@@ -155,8 +154,8 @@ func TestAcceptance(t *testing.T) {
 			},
 		},
 		{
-			// npm@7 is incompatible with nodejs@8
-			ExcludedNodeJSVersions: []string{"8.17.0"},
+			// npm@7 requires nodejs@10+
+			VersionInclusionConstraint: ">= 10.0.0",
 			Test: acceptance.Test{
 				Name:          "NPM version specified",
 				App:           "nodejs/npm_version_specified",
@@ -168,7 +167,7 @@ func TestAcceptance(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		if !acceptance.ShouldTestVersion(tc.IncludedNodeJSVersions, tc.ExcludedNodeJSVersions) {
+		if !acceptance.ShouldTestVersion(t, tc.VersionInclusionConstraint) {
 			continue
 		}
 		tc := tc
@@ -185,12 +184,12 @@ func TestFailures(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	testCases := []struct {
-		FailureTest            acceptance.FailureTest
-		IncludedNodeJSVersions []string
+		FailureTest                acceptance.FailureTest
+		VersionInclusionConstraint string
 	}{
 		{
 			// Test has no version specific characteristics and should act the same across all versions
-			IncludedNodeJSVersions: []string{"12.22.9"},
+			VersionInclusionConstraint: "12",
 			FailureTest: acceptance.FailureTest{
 				Name:      "bad runtime version",
 				App:       "nodejs/simple",
@@ -201,7 +200,7 @@ func TestFailures(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		if !acceptance.ShouldTestVersion(tc.IncludedNodeJSVersions, nil) {
+		if !acceptance.ShouldTestVersion(t, tc.VersionInclusionConstraint) {
 			continue
 		}
 		tc := tc

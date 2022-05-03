@@ -41,6 +41,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/Masterminds/semver"
 	"github.com/rs/xid"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/checktools"
@@ -1127,21 +1128,33 @@ func PullImages() bool {
 	return pullImages
 }
 
-// ShouldTestVersion returns true if the current test run's version is in the
-// included set and not in the excluded set. The empty inclusion set includes all
-// versions. The empty exclusion set excludes no versions. The current test run's
-// version is set by the runtime-version flag.
-func ShouldTestVersion(includedVersions []string, excludedVersions []string) bool {
-	if runtimeVersion == "" {
+// ShouldTestVersion returns true if the current test run's version is included
+// in the constraint parameter. An empty inclusion constraint is treated as
+// matching all versions.
+//
+// The version comparison check supports partial matches. For example, an excluded
+// version of '12.5' will match all '12.5.x' versions. In addition, you can specify
+// ranges such as '>=10.0.0'. The version comparison uses semver2 for the constraint
+// comparision. See the documentation for semver2 to learn more.
+func ShouldTestVersion(t *testing.T, inclusionConstraint string) bool {
+	t.Helper()
+	if runtimeVersion == "" || inclusionConstraint == "" {
 		return true
 	}
-	if sliceContains(runtimeVersion, excludedVersions) {
-		return false
+	rtVer, err := semver.NewVersion(runtimeVersion)
+	if err != nil {
+		t.Fatalf("Unable to use %q as a semver.Version: %v", runtimeVersion, err)
 	}
-	if len(includedVersions) == 0 {
-		return true
+	return versionMatches(t, rtVer, inclusionConstraint)
+}
+
+func versionMatches(t *testing.T, version *semver.Version, constraint string) bool {
+	t.Helper()
+	c, err := semver.NewConstraint(constraint)
+	if err != nil {
+		t.Fatalf("Unable to use %q as a semver.Constraint: %v", constraint, err)
 	}
-	return sliceContains(runtimeVersion, includedVersions)
+	return c.Check(version)
 }
 
 func sliceContains(value string, slice []string) bool {

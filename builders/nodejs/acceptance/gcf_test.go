@@ -34,8 +34,8 @@ func TestAcceptance(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	testCases := []struct {
-		Test                   acceptance.Test
-		ExcludedNodeJSVersions []string
+		Test                       acceptance.Test
+		VersionInclusionConstraint string
 	}{
 		{
 			Test: acceptance.Test{
@@ -170,7 +170,7 @@ func TestAcceptance(t *testing.T) {
 		},
 		{
 			// The app uses the "ES Module" which requires nodejs@13
-			ExcludedNodeJSVersions: []string{"10.24.1", "12.22.9"},
+			VersionInclusionConstraint: ">= 13.0.0",
 			Test: acceptance.Test{
 				Name:       "ESM function",
 				App:        "using_esm",
@@ -180,7 +180,7 @@ func TestAcceptance(t *testing.T) {
 		},
 		{
 			// The app uses Workers also called 'worker_threads' which are supported with nodejs@12+
-			ExcludedNodeJSVersions: []string{"10.24.1"},
+			VersionInclusionConstraint: ">= 12.0.0",
 			Test: acceptance.Test{
 				Name:       "Yarn 2 PnP function",
 				App:        "yarn_two_pnp",
@@ -190,7 +190,7 @@ func TestAcceptance(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		if !acceptance.ShouldTestVersion(nil, tc.ExcludedNodeJSVersions) {
+		if !acceptance.ShouldTestVersion(t, tc.VersionInclusionConstraint) {
 			continue
 		}
 		tc := applyStaticAcceptanceTestOptions(tc.Test)
