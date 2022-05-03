@@ -27,6 +27,13 @@ VERSIONS_ALL = [
     VERISON_NODEJS16,
 ]
 
+VERSIONS_WITH_GCF_SUPPORT = [
+    VERSION_NODEJS10,
+    VERSION_NODEJS12,
+    VERISON_NODEJS14,
+    VERISON_NODEJS16,
+]
+
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
 
 acceptance_test_suite(
@@ -38,4 +45,15 @@ acceptance_test_suite(
     rundir = ".",
     testdata = "//builders/testdata:generic",
     versions = VERSIONS_WITH_GCP_SUPPORT,
+)
+
+acceptance_test_suite(
+    name = "gcf_test",
+    srcs = [
+        "gcf_test.go",
+    ],
+    builder = "//builders/nodejs:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/nodejs:functions",
+    versions = VERSIONS_WITH_GCF_SUPPORT,
 )

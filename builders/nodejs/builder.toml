@@ -35,6 +35,9 @@ description = "Builder for the Node.js runtime"
     id = "google.nodejs.runtime"
 
   [[order.group]]
+    id = "google.utils.archive-source"
+
+  [[order.group]]
     id = "google.nodejs.yarn"
 
   [[order.group]]
@@ -52,6 +55,9 @@ description = "Builder for the Node.js runtime"
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
 
   [[order.group]]
     id = "google.nodejs.npm"
@@ -75,6 +81,9 @@ description = "Builder for the Node.js runtime"
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
 
   [[order.group]]
     id = "google.nodejs.functions-framework"
