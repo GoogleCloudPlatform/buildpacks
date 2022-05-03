@@ -1,0 +1,19 @@
+load("//tools:defs.bzl", "builder")
+
+package(default_visibility = ["//builders/nodejs:__subpackages__"])
+
+licenses(["notice"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/config/entrypoint:entrypoint.tgz",
+        "//cmd/nodejs/functions_framework:functions_framework.tgz",
+        "//cmd/nodejs/npm:npm.tgz",
+        "//cmd/nodejs/runtime:runtime.tgz",
+        "//cmd/nodejs/yarn:yarn.tgz",
+        "//cmd/utils/archive_source:archive_source.tgz",
+        "//cmd/utils/label:label.tgz",
+    ],
+    image = "gcp/nodejs",
+)

@@ -1,0 +1,41 @@
+load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
+
+licenses(["notice"])
+
+exports_files(["config.yaml"])
+
+test_suite(
+    # run all tests in this BUILD
+    name = "acceptance_test",
+)
+
+VERSION_NODEJS8 = "8.17.0"
+
+VERSION_NODEJS10 = "10.24.1"
+
+VERSION_NODEJS12 = "12.22.9"
+
+VERISON_NODEJS14 = "14.18.3"
+
+VERISON_NODEJS16 = "16.13.2"
+
+VERSIONS_ALL = [
+    VERSION_NODEJS8,
+    VERSION_NODEJS10,
+    VERSION_NODEJS12,
+    VERISON_NODEJS14,
+    VERISON_NODEJS16,
+]
+
+VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
+
+acceptance_test_suite(
+    name = "gcp_test",
+    srcs = [
+        "gcp_test.go",
+    ],
+    builder = "//builders/nodejs:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata:generic",
+    versions = VERSIONS_WITH_GCP_SUPPORT,
+)

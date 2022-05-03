@@ -70,6 +70,7 @@ package_group(
         "//builders/gcf/nodejs16",
         "//builders/gcf/nodejs8",
         "//builders/gcp/base",
+        "//builders/nodejs",
     ],
 )
 

@@ -1,0 +1,107 @@
+description = "Builder for the Node.js runtime"
+
+[[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source.tgz"
+
+[[buildpacks]]
+  id = "google.config.entrypoint"
+  uri = "entrypoint.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.runtime"
+  uri = "runtime.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.npm"
+  uri = "npm.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.yarn"
+  uri = "yarn.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.functions-framework"
+  uri = "functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
+
+# The GCP / GCF order group for yarn
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.yarn"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# The GCP / GCF order group for npm
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.npm"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# Separate groups for Node.js projects without dependencies.
+# Making both yarn and npm optional in the previous groups leads
+# the yarn group to opt in every time.
+
+# The GCP / GCF Node.js functions without a package.json.
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# The GCP order group for Node.js applications without a package.json.
+# Entrypoint is required because it cannot be read from package.json.
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label"
+
+[stack]
+  id = "google"
+  build-image = "gcr.io/buildpacks/gcp/build:v1"
+  run-image = "gcr.io/buildpacks/gcp/run:v1"
+
+[lifecycle]
+  version = "0.13.3"
