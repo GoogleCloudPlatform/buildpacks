@@ -36,6 +36,8 @@ description = "Builder for the Node.js runtime"
 
   [[order.group]]
     id = "google.utils.archive-source"
+    # archive source is marked as optional so that this order group can be used by GCP
+    optional = true
 
   [[order.group]]
     id = "google.nodejs.yarn"
@@ -58,6 +60,8 @@ description = "Builder for the Node.js runtime"
 
   [[order.group]]
     id = "google.utils.archive-source"
+    # archive source is marked as optional so that this order group can be used by GCP
+    optional = true
 
   [[order.group]]
     id = "google.nodejs.npm"
@@ -84,6 +88,8 @@ description = "Builder for the Node.js runtime"
 
   [[order.group]]
     id = "google.utils.archive-source"
+    # archive source is marked as optional so that this order group can be used by GCP
+    optional = true
 
   [[order.group]]
     id = "google.nodejs.functions-framework"
