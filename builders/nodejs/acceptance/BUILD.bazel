@@ -34,6 +34,10 @@ VERSIONS_WITH_GCF_SUPPORT = [
     VERISON_NODEJS16,
 ]
 
+# The GCF Legacy Worker is only available and used for the "GCF nodejs8" runtime version. It has
+# different behavior, a unique order group, and is tested seperately.
+VERSION_GCF_LEGACY_WORKER = VERSION_NODEJS8
+
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
 
 acceptance_test_suite(
@@ -56,4 +60,15 @@ acceptance_test_suite(
     rundir = ".",
     testdata = "//builders/testdata/nodejs:functions",
     versions = VERSIONS_WITH_GCF_SUPPORT,
+)
+
+acceptance_test_suite(
+    name = "8.17.0_gcf_test",
+    srcs = [
+        "legacy_worker_gcf_test.go",
+    ],
+    args = ["-runtime-version=" + VERSION_GCF_LEGACY_WORKER],
+    builder = "//builders/nodejs:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/nodejs:functions",
 )

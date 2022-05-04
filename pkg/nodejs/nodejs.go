@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
 	"github.com/Masterminds/semver"
@@ -176,4 +177,11 @@ func SkipSyntaxCheck(ctx *gcp.Context, file string) (bool, error) {
 	}
 	pjs, err := ReadPackageJSONIfExists(ctx.ApplicationRoot())
 	return (pjs != nil && pjs.Type == "module"), err
+}
+
+// IsNodeJS8Runtime returns true when the GOOGLE_RUNTIME is nodejs8. This will be
+// true when using GCF or GAE with nodejs8. This function is useful for some
+// legacy behavior in GCF.
+func IsNodeJS8Runtime() bool {
+	return os.Getenv(env.Runtime) == "nodejs8"
 }

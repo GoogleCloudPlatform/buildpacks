@@ -37,6 +37,16 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
+			name: "with target and GOOGLE_RUNTIME",
+			env:  []string{"GOOGLE_FUNCTION_TARGET=helloWorld", "GOOGLE_RUNTIME=nodejs10"},
+			want: 0,
+		},
+		{
+			name: "with target, but GOOGLE_RUNTIME is nodejs8",
+			env:  []string{"GOOGLE_FUNCTION_TARGET=helloWorld", "GOOGLE_RUNTIME=nodejs8"},
+			want: 100,
+		},
+		{
 			name: "without target",
 			want: 100,
 		},

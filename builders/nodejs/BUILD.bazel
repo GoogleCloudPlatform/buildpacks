@@ -9,6 +9,7 @@ builder(
     buildpacks = [
         "//cmd/config/entrypoint:entrypoint.tgz",
         "//cmd/nodejs/functions_framework:functions_framework.tgz",
+        "//cmd/nodejs/legacy_worker:legacy_worker.tgz",
         "//cmd/nodejs/npm:npm.tgz",
         "//cmd/nodejs/runtime:runtime.tgz",
         "//cmd/nodejs/yarn:yarn.tgz",

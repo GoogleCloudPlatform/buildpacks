@@ -171,3 +171,49 @@ func TestHasGCPBuild(t *testing.T) {
 		})
 	}
 }
+
+func TestIsNodeJS8Runtime(t *testing.T) {
+	testCases := []struct {
+		name           string
+		runtimeEnvVar  string
+		expectedResult bool
+	}{
+		{
+			name:           "empty should return false",
+			runtimeEnvVar:  "",
+			expectedResult: false,
+		},
+		{
+			name:           "go111 should return false",
+			runtimeEnvVar:  "go111",
+			expectedResult: false,
+		},
+		{
+			name:           "nodejs8 should return true",
+			runtimeEnvVar:  "nodejs8",
+			expectedResult: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			setGoogleRuntime(t, tc.runtimeEnvVar)
+			result := IsNodeJS8Runtime()
+			if result != tc.expectedResult {
+				t.Fatalf("IsNodeJS8Runtime(GOOGLE_RUNTIME=%v) = %v, want %v", tc.runtimeEnvVar, result, tc.expectedResult)
+			}
+		})
+	}
+}
+
+func setGoogleRuntime(t *testing.T, value string) {
+	googleRuntimeEnv := "GOOGLE_RUNTIME"
+	t.Cleanup(func() {
+		if err := os.Unsetenv(googleRuntimeEnv); err != nil {
+			t.Fatalf("Error resetting environment variable %q: %v", googleRuntimeEnv, err)
+		}
+	})
+	if err := os.Setenv("GOOGLE_RUNTIME", value); err != nil {
+		t.Errorf("Error setting environment variable %q: %v", googleRuntimeEnv, err)
+	}
+}
