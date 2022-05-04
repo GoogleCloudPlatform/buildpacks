@@ -24,7 +24,7 @@ def acceptance_test_suite(name, srcs, testdata, builder, structure_test_config =
     # if there are no versions passed in then create a go_test(...) rule directly without changing
     # the name of the test
     if versions == None:
-        _new_go_test(name, srcs, args, data, deps, **kwargs)
+        _new_go_test_for_single_version(name, srcs, args, data, deps, **kwargs)
     else:
         _new_go_test_for_versions(versions, name, srcs, args, data, deps, **kwargs)
 
@@ -45,6 +45,11 @@ def _new_go_test_for_versions(versions, name, srcs, args, data, deps, **kwargs):
         name = name,
         tests = tests,
     )
+    _new_bin_filegroup_alias(name, tests[0])
+
+def _new_go_test_for_single_version(name, srcs, args, data, deps, **kwargs):
+    _new_go_test(name, srcs, args, data, deps, **kwargs)
+    _new_bin_filegroup_alias(name, name)
 
 def _new_go_test(name, srcs, args, data, deps, **kwargs):
     go_test(
@@ -58,6 +63,16 @@ def _new_go_test(name, srcs, args, data, deps, **kwargs):
         ],
         deps = deps,
         **kwargs
+    )
+
+def _new_bin_filegroup_alias(name, test_name):
+    # The test binaries generated in this file have names such as '1.13_gae_test'. For external
+    # consumers who wish to invoke the test binary directly, the following filegroup gives them
+    # a static name that they can reference such as 'gae_test_bin'.
+    native.filegroup(
+        name = name + "_bin",
+        srcs = [":" + test_name],
+        testonly = 1,
     )
 
 def _build_args(args, name, testdata, builder, structure_test_config):
