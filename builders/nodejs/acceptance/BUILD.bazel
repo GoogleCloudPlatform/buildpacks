@@ -27,6 +27,13 @@ VERSIONS_ALL = [
     VERISON_NODEJS16,
 ]
 
+VERSIONS_WITH_GAE_SUPPORT = [
+    VERSION_NODEJS10,
+    VERSION_NODEJS12,
+    VERISON_NODEJS14,
+    VERISON_NODEJS16,
+]
+
 VERSIONS_WITH_GCF_SUPPORT = [
     VERSION_NODEJS10,
     VERSION_NODEJS12,
@@ -49,6 +56,17 @@ acceptance_test_suite(
     rundir = ".",
     testdata = "//builders/testdata:generic",
     versions = VERSIONS_WITH_GCP_SUPPORT,
+)
+
+acceptance_test_suite(
+    name = "gae_test",
+    srcs = [
+        "gae_test.go",
+    ],
+    builder = "//builders/nodejs:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata:nodejs",
+    versions = VERSIONS_WITH_GAE_SUPPORT,
 )
 
 acceptance_test_suite(

@@ -1,6 +1,10 @@
 description = "Builder for the Node.js runtime"
 
 [[buildpacks]]
+  id = "google.nodejs.appengine"
+  uri = "appengine.tgz"
+
+[[buildpacks]]
   id = "google.utils.archive-source"
   uri = "archive_source.tgz"
 
@@ -27,9 +31,41 @@ description = "Builder for the Node.js runtime"
 [[buildpacks]]
   id = "google.nodejs.yarn"
   uri = "yarn.tgz"
+
 [[buildpacks]]
   id = "google.utils.label"
   uri = "label.tgz"
+
+# the GAE order group for yarn
+[[order]]
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.yarn"
+
+  [[order.group]]
+    id = "google.nodejs.appengine"
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# the GAE order group for npm
+[[order]]
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.npm"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.appengine"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 # The GCF order group for nodejs8 and yarn, this group must be before any
 # order with functions-framework marked as optional.
@@ -157,9 +193,9 @@ description = "Builder for the Node.js runtime"
     id = "google.utils.label"
 
 [stack]
-  id = "google"
-  build-image = "gcr.io/buildpacks/gcp/build:v1"
-  run-image = "gcr.io/buildpacks/gcp/run:v1"
+  id = "google.gae18"
+  build-image = "gcr.io/gae-runtimes/buildpacks/go/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/go/run"
 
 [lifecycle]
   version = "0.13.3"
