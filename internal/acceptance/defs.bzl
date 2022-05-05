@@ -61,6 +61,7 @@ def _new_go_test(name, srcs, args, data, deps, **kwargs):
         tags = [
             "local",
         ],
+        gc_linkopts = [],
         deps = deps,
         **kwargs
     )
