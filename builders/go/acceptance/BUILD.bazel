@@ -17,6 +17,8 @@ VERSIONS_ALL_PRODUCTS = [
     "1.14",
     "1.15",
     "1.16",
+    # this version is not launched in any products but is being tested to ensure it works
+    "1.18",
 ]
 
 # The product versions for which there is GAE support.
@@ -31,6 +33,8 @@ VERSIONS_GCP_SUPPORT = VERSIONS_ALL_PRODUCTS
 VERSIONS_GCF_SUPPORT = [
     "1.13",
     "1.16",
+    # this version is not launched in any products but is being tested to ensure it works
+    "1.18",
 ]
 
 # The GCF Legacy Worker is only available and used for the "GCF go111" runtime version. It has different behavior,

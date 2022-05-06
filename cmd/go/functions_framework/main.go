@@ -333,7 +333,9 @@ func createMainVendored(ctx *gcp.Context, fn fnInfo) error {
 			fmt.Sprintf("cp --archive %s/. %s", cvt, ffDepsDir),
 			// The only dependency is the functions framework.
 			fmt.Sprintf("go mod edit -require %s@%s", functionsFrameworkModule, functionsFrameworkVersion),
-			// Download the FF and its dependencies at the versions specified in the FF's go.mod.
+			// Download dependencies and generate the go.sum file.
+			"go mod tidy",
+			// Prepare the vendor folder.
 			"go mod vendor",
 			// Copy the contents of the vendor dir into GOPATH/src.
 			fmt.Sprintf("cp --archive vendor/. %s", gopathSrc),
