@@ -97,15 +97,8 @@ func TestAcceptance(t *testing.T) {
 }
 
 func TestFailures(t *testing.T) {
-	t.Skip("Disable java17")
-
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
-
-	// TODO(b/193268028): Remove when stack images are published.
-	//if acceptance.PullImages() {
-	//	t.Skip("Disabled for continuous builds")
-	//}
 
 	testCases := []acceptance.FailureTest{
 		{
@@ -128,11 +121,14 @@ func TestFailures(t *testing.T) {
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.NonExistent"},
 			MustMatch: `build succeeded but did not produce the class "functions.NonExistent"`,
 		},
-		{
-			App:       "gradle",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.NonExistent"},
-			MustMatch: `build succeeded but did not produce the class "functions.NonExistent"`,
-		},
+		// TODO(b/226577140): Fix and enable gradle tests
+		/*
+			{
+				App:       "gradle",
+				Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.NonExistent"},
+				MustMatch: `build succeeded but did not produce the class "functions.NonExistent"`,
+			},
+		*/
 		{
 			App:       "jar",
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.NonExistent"},
