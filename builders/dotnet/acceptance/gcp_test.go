@@ -26,10 +26,6 @@ const (
 )
 
 func TestAcceptanceDotNet(t *testing.T) {
-	// TODO(mattrobertson): Remove when stack images are published.
-	if acceptance.PullImages() {
-		t.Skip("Disabled for continuous builds")
-	}
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
@@ -126,10 +122,6 @@ func TestAcceptanceDotNet(t *testing.T) {
 }
 
 func TestFailuresDotNet(t *testing.T) {
-	// TODO(mattrobertson): Remove when stack images are published.
-	if acceptance.PullImages() {
-		t.Skip("Disabled for continuous builds")
-	}
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
