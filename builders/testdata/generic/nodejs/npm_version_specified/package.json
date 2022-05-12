@@ -2,14 +2,14 @@
   "name": "sample-node",
   "version": "0.0.1",
   "dependencies": {
-    "express": "4.17.1"
+    "express": "4.18.1"
   },
   "scripts": {
     "start": "node web.js",
     "preinstall": "npm --version"
   },
   "engines": {
-    "node": "12.11.0",
-    "npm": "7.24.1"
+    "node": "16.x.x",
+    "npm": "8.3.1"
   }
 }

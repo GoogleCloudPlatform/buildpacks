@@ -31,6 +31,20 @@ const (
 // minPruneVersion is the first npm version that supports the prune command.
 var minPruneVersion = semver.MustParse("5.7.0")
 
+// RequestedNPMVersion returns any customer provided NPM version constraint configured in the
+// "engines" section of the package.json file in the given application dir.
+func RequestedNPMVersion(dir string) (string, error) {
+	pjs, err := ReadPackageJSONIfExists(dir)
+	if err != nil || pjs == nil || pjs.Engines.NPM == "" {
+		return "", err
+	}
+	version, err := resolvePackageVersion("npm", pjs.Engines.NPM)
+	if err != nil {
+		gcp.InternalErrorf("fetching npm metadata: %v", err)
+	}
+	return version, nil
+}
+
 // EnsureLockfile returns the name of the lockfile, generating a package-lock.json if necessary.
 func EnsureLockfile(ctx *gcp.Context) (string, error) {
 	npmShrinkwrapExists, err := ctx.FileExists(NPMShrinkwrap)

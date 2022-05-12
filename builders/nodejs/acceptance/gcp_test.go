@@ -154,13 +154,13 @@ func TestAcceptance(t *testing.T) {
 			},
 		},
 		{
-			// npm@7 requires nodejs@10+
-			VersionInclusionConstraint: ">= 10.0.0",
+			// npm@8 requires nodejs@12+
+			VersionInclusionConstraint: ">= 12.0.0",
 			Test: acceptance.Test{
 				Name:          "NPM version specified",
 				App:           "nodejs/npm_version_specified",
-				MustMatch:     "hello, world",
-				MustOutput:    []string{"npm --version\n\n7.24.1"},
+				MustOutput:    []string{"npm --version\n\n8.3.1"},
+				Path:          "/version?want=8.3.1",
 				SkipCacheTest: true,
 			},
 		},

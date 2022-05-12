@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -30,11 +29,10 @@ import (
 )
 
 const (
-	nodeLayer     = "node"
-	nodeURL       = "https://nodejs.org/dist/v%[1]s/node-v%[1]s-linux-x64.tar.xz"
-	versionKey    = "version"
-	npmVersionKey = "npm-version"
-	versionEnv    = "GOOGLE_NODEJS_VERSION"
+	nodeLayer  = "node"
+	nodeURL    = "https://nodejs.org/dist/v%[1]s/node-v%[1]s-linux-x64.tar.xz"
+	versionKey = "version"
+	versionEnv = "GOOGLE_NODEJS_VERSION"
 	// TODO(b/171347385): Remove after resolving incompatibilities in Node.js 15.
 	defaultRange = "14.x.x"
 )
@@ -84,7 +82,6 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
-	npmVersion := getNPMVersion(pkgJSON)
 	ctx.AddBOMEntry(libcnb.BOMEntry{
 		Name:     nodeLayer,
 		Metadata: map[string]interface{}{"version": version},
@@ -97,7 +94,7 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", nodeLayer, err)
 	}
-	if isCached(ctx, nrl, version, npmVersion) {
+	if isCached(ctx, nrl, version) {
 		ctx.CacheHit(nodeLayer)
 		ctx.Logf("Runtime cache hit, skipping installation.")
 		return nil
@@ -120,11 +117,6 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.Logf("Installing Node.js v%s", version)
 	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xJ --directory %s --strip-components=1", archiveURL, nrl.Path)
 	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
-	if npmVersion != "" {
-		ctx.Logf("Installing NPM version '%s'", npmVersion)
-		installNPM(ctx, nrl, npmVersion)
-		ctx.SetMetadata(nrl, npmVersionKey, npmVersion)
-	}
 	ctx.SetMetadata(nrl, versionKey, version)
 	return nil
 }
@@ -152,29 +144,8 @@ func runtimeVersion(ctx *gcp.Context, pkgJSON *nodejs.PackageJSON) (string, erro
 	return version, nil
 }
 
-// getNPMVersion returns the NPM version from the 'engines' field, if not present or the empty string then an empty string is returned.
-func getNPMVersion(pkgJSON *nodejs.PackageJSON) string {
-	if pkgJSON == nil {
-		return ""
-	}
-	return pkgJSON.Engines.NPM
-}
-
-// isCached returns true if the requested version of node and NPM match what is isntalled into the 'nrl' layer
-func isCached(ctx *gcp.Context, nrl *libcnb.Layer, nodeVersion, npmVersion string) bool {
+// isCached returns true if the requested version of Node.js is already installed in the 'nrl' layer.
+func isCached(ctx *gcp.Context, nrl *libcnb.Layer, nodeVersion string) bool {
 	metaVersion := ctx.GetMetadata(nrl, versionKey)
-	if metaVersion != nodeVersion {
-		return false
-	}
-	metaNPMVersion := ctx.GetMetadata(nrl, npmVersionKey)
-	return metaNPMVersion == npmVersion
-}
-
-// installNPM installs NPM into the system, respecting the version specified
-func installNPM(ctx *gcp.Context, nrl *libcnb.Layer, version string) {
-	nodeBin := path.Join(nrl.Path, "bin")
-	npmBinaryPath := path.Join(nodeBin, "npm")
-	ctx.Exec([]string{npmBinaryPath, "install", fmt.Sprintf("npm@%v", version), "-g"},
-		gcp.WithEnv(fmt.Sprintf("PATH=${PATH}:%v", nodeBin)),
-		gcp.WithUserAttribution)
+	return metaVersion == nodeVersion
 }

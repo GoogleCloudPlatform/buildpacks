@@ -15,10 +15,58 @@
 package nodejs
 
 import (
+	"io/ioutil"
+	"path/filepath"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
+
+func TestRequestedNPMVersion(t *testing.T) {
+	testCases := []struct {
+		name        string
+		packageJSON string
+		want        string
+		wantErr     bool
+	}{
+		{
+			name:        "default is empty",
+			packageJSON: `{}`,
+			want:        "",
+		},
+		{
+			name:        "engines.npm set",
+			packageJSON: `{"engines": {"npm": "2.2.2"}}`,
+			want:        "2.2.2",
+		},
+		{
+			name:        "invalid package.json",
+			packageJSON: `invalid json`,
+			wantErr:     true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			dir := t.TempDir()
+			if tc.packageJSON != "" {
+				path := filepath.Join(dir, "package.json")
+				if err := ioutil.WriteFile(path, []byte(tc.packageJSON), 0744); err != nil {
+					t.Fatalf("writing %s: %v", path, err)
+				}
+			}
+
+			got, err := RequestedNPMVersion(dir)
+			if tc.wantErr == (err == nil) {
+				t.Errorf("RequestedNPMVersion(%q) got error: %v, want err? %t", dir, err, tc.wantErr)
+			}
+			if got != tc.want {
+				t.Errorf("RequestedNPMVersion(%q) = %q, want %q", dir, got, tc.want)
+			}
+		})
+	}
+}
 
 func TestNPMInstallCommand(t *testing.T) {
 	testCases := []struct {

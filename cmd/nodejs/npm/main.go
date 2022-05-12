@@ -56,10 +56,14 @@ func buildFn(ctx *gcp.Context) error {
 	if err := ctx.RemoveAll("node_modules"); err != nil {
 		return err
 	}
-
 	if err := ar.GenerateNPMConfig(ctx); err != nil {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
+
+	if err := upgradeNPM(ctx); err != nil {
+		return err
+	}
+
 	lockfile, err := nodejs.EnsureLockfile(ctx)
 	if err != nil {
 		return err
@@ -159,4 +163,34 @@ func shouldPrune(ctx *gcp.Context) (bool, error) {
 		ctx.Warnf("Retaining devDependencies because the version of NPM you are using does not support 'npm prune'.")
 	}
 	return canPrune, err
+}
+
+func upgradeNPM(ctx *gcp.Context) error {
+	npmVersion, err := nodejs.RequestedNPMVersion(ctx.ApplicationRoot())
+	if err != nil {
+		return err
+	}
+	if npmVersion == "" {
+		// if an NPM version was not requested, use whatever was bundled with Node.js.
+		return nil
+	}
+	npmLayer, err := ctx.Layer("npm", gcp.BuildLayer, gcp.LaunchLayer, gcp.CacheLayer)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
+	}
+	metaVersion := ctx.GetMetadata(npmLayer, "version")
+	if metaVersion == npmVersion {
+		ctx.Logf("npm@%s cache hit, skipping installation.", npmVersion)
+		return nil
+	}
+	ctx.ClearLayer(npmLayer)
+	prefix := fmt.Sprintf("--prefix=%s", npmLayer.Path)
+	pkg := fmt.Sprintf("npm@%s", npmVersion)
+	ctx.Exec([]string{"npm", "install", "-g", prefix, pkg}, gcp.WithUserAttribution)
+	// Set the path here to ensure the version we just installed takes precedence over the npm bundled
+	// with the Node.js engine.
+	if err := ctx.Setenv("PATH", filepath.Join(npmLayer.Path, "bin")+":"+os.Getenv("PATH")); err != nil {
+		return err
+	}
+	return nil
 }

@@ -120,8 +120,8 @@ func TestAcceptanceNodeJs(t *testing.T) {
 		{
 			Name:          "NPM version specified",
 			App:           "nodejs/npm_version_specified",
-			MustMatch:     "hello, world",
-			MustOutput:    []string{"npm --version\n\n7.24.1"},
+			MustOutput:    []string{"npm --version\n\n8.3.1"},
+			Path:          "/version?want=8.3.1",
 			SkipCacheTest: true,
 		},
 	}

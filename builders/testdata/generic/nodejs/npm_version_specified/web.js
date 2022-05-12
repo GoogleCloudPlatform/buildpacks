@@ -20,11 +20,22 @@
  */
 
 
+const { exec } = require("child_process");
 const express = require('express');
 const app = express();
 
-app.get('/', (req, res) => {
-  res.send('hello, world');
+app.get('/version', (req, res) => {
+  exec("npm --version", (error, stdout, stderr) => {
+    const want = req.query.want;
+    const got = stdout.trim();
+    if (!want) {
+      res.end('FAIL: ?want must be set to a version');
+    } else if (got !== want) {
+      res.end(`FAIL: current version: ${got}; want ${want}`);
+    } else {
+      res.end('PASS');
+    }
+  });
 });
 
 app.listen(process.env.PORT || 8080);
