@@ -35,6 +35,8 @@ const (
 	EnvDevelopment = "development"
 	// EnvProduction represents a NODE_ENV production value.
 	EnvProduction = "production"
+	// EnvNodeVersion can be used to specify the version of Node.js is used for an app.
+	EnvNodeVersion = "GOOGLE_NODEJS_VERSION"
 
 	nodeVersionKey    = "node_version"
 	dependencyHashKey = "dependency_hash"
@@ -104,6 +106,24 @@ func HasDevDependencies(dir string) (bool, error) {
 		return false, err
 	}
 	return len(p.DevDependencies) > 0, nil
+}
+
+// RequestedNodejsVersion returns any customer provided Node.js version constraint by inspecting the
+// environment and the package.json.
+func RequestedNodejsVersion(ctx *gcp.Context, dir string) (string, error) {
+	if version := os.Getenv(EnvNodeVersion); version != "" {
+		ctx.Logf("Using runtime version from %s: %s", EnvNodeVersion, version)
+		return version, nil
+	}
+	if version := os.Getenv(env.RuntimeVersion); version != "" {
+		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, version)
+		return version, nil
+	}
+	pjs, err := ReadPackageJSONIfExists(dir)
+	if err != nil || pjs == nil {
+		return "", err
+	}
+	return pjs.Engines.Node, nil
 }
 
 // nodeVersion returns the installed version of Node.js.

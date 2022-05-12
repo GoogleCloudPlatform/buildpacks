@@ -18,24 +18,13 @@ package main
 
 import (
 	"fmt"
-	"net/http"
-	"os"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/buildpacks/libcnb"
 )
 
-const (
-	nodeLayer  = "node"
-	nodeURL    = "https://nodejs.org/dist/v%[1]s/node-v%[1]s-linux-x64.tar.xz"
-	versionKey = "version"
-	versionEnv = "GOOGLE_NODEJS_VERSION"
-	// TODO(b/171347385): Remove after resolving incompatibilities in Node.js 15.
-	defaultRange = "14.x.x"
-)
+const nodeLayer = "node"
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -65,87 +54,14 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	// Use GOOGLE_NODEJS_VERSION to enable installing from the experimental tarball hosting service.
-	if version := os.Getenv(versionEnv); version != "" {
-		nrl, err := ctx.Layer(nodeLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
-		if err != nil {
-			return fmt.Errorf("creating %v layer: %w", nodeLayer, err)
-		}
-		_, err = runtime.InstallTarballIfNotCached(ctx, runtime.Nodejs, version, nrl)
-		return err
-	}
-	pkgJSON, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
+	version, err := nodejs.RequestedNodejsVersion(ctx, ctx.ApplicationRoot())
 	if err != nil {
 		return err
 	}
-	version, err := runtimeVersion(ctx, pkgJSON)
-	if err != nil {
-		return err
-	}
-	ctx.AddBOMEntry(libcnb.BOMEntry{
-		Name:     nodeLayer,
-		Metadata: map[string]interface{}{"version": version},
-		Launch:   true,
-		Build:    true,
-	})
-
-	// Check the metadata in the cache layer to determine if we need to proceed.
-	nrl, err := ctx.Layer(nodeLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	nrl, err := ctx.Layer(nodeLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerUnlessSkipRuntimeLaunch)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", nodeLayer, err)
 	}
-	if isCached(ctx, nrl, version) {
-		ctx.CacheHit(nodeLayer)
-		ctx.Logf("Runtime cache hit, skipping installation.")
-		return nil
-	}
-	ctx.CacheMiss(nodeLayer)
-	if err := ctx.ClearLayer(nrl); err != nil {
-		return fmt.Errorf("clearing layer %q: %w", nrl.Name, err)
-	}
-
-	archiveURL := fmt.Sprintf(nodeURL, version)
-	code, err := ctx.HTTPStatus(archiveURL)
-	if err != nil {
-		return err
-	}
-	if code != http.StatusOK {
-		return gcp.UserErrorf("Runtime version %s does not exist at %s (status %d). You can specify the version with %s.", version, archiveURL, code, env.RuntimeVersion)
-	}
-
-	// Download and install Node.js in layer.
-	ctx.Logf("Installing Node.js v%s", version)
-	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xJ --directory %s --strip-components=1", archiveURL, nrl.Path)
-	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
-	ctx.SetMetadata(nrl, versionKey, version)
-	return nil
-}
-
-// runtimeVersion returns the version of the runtime to install.
-// The version is read from env var if set or determined based on the `engines` field in package.json.
-func runtimeVersion(ctx *gcp.Context, pkgJSON *nodejs.PackageJSON) (string, error) {
-	if version := os.Getenv(env.RuntimeVersion); version != "" {
-		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, version)
-		return version, nil
-	}
-	// The default empty range returns the latest version.
-	var versionRange string
-	if pkgJSON != nil {
-		versionRange = pkgJSON.Engines.Node
-	}
-	if versionRange == "" {
-		versionRange = defaultRange
-	}
-	// Use package.json and semver.io to determine best-fit Node.js version.
-	ctx.Logf("Resolving Node.js version based on semver %q", versionRange)
-	result := ctx.Exec([]string{"curl", "--fail", "--show-error", "--silent", "--location", "--get", "--data-urlencode", fmt.Sprintf("range=%s", versionRange), "http://semver.io/node/resolve"}, gcp.WithUserAttribution)
-	version := result.Stdout
-	ctx.Logf("Using resolved runtime version from package.json: %s", version)
-	return version, nil
-}
-
-// isCached returns true if the requested version of Node.js is already installed in the 'nrl' layer.
-func isCached(ctx *gcp.Context, nrl *libcnb.Layer, nodeVersion string) bool {
-	metaVersion := ctx.GetMetadata(nrl, versionKey)
-	return metaVersion == nodeVersion
+	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.Nodejs, version, nrl)
+	return err
 }

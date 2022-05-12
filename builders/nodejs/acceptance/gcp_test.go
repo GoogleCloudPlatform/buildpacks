@@ -68,7 +68,7 @@ func TestAcceptance(t *testing.T) {
 				MustUse: []string{nodeRuntime, nodeNPM},
 				BOM: []acceptance.BOMEntry{
 					{
-						Name: "node",
+						Name: "nodejs",
 						Metadata: map[string]interface{}{
 							"version": "14.17.0",
 						},
@@ -114,25 +114,27 @@ func TestAcceptance(t *testing.T) {
 				MustNotUse: []string{nodeNPM},
 			},
 		},
-		{
-			// Test installs a specific version of node and only needs to be run with a single version
-			VersionInclusionConstraint: "12",
-			Test: acceptance.Test{
-				Name:    "runtime version with npm install",
-				App:     "nodejs/simple",
-				Path:    "/version?want=12.13.0",
-				Env:     []string{"GOOGLE_RUNTIME_VERSION=12.13.0"},
-				MustUse: []string{nodeRuntime, nodeNPM},
-			},
-		},
+		// TODO (mattrobertson) update this to key off of the npm version
+		// instead of the Node.js version.
+		// {
+		// 	// Test installs a specific version of node and only needs to be run with a single version
+		// 	VersionInclusionConstraint: "12",
+		// 	Test: acceptance.Test{
+		// 		Name:    "runtime version with npm install",
+		// 		App:     "nodejs/simple",
+		// 		Path:    "/version?want=12.13.0",
+		// 		Env:     []string{"GOOGLE_RUNTIME_VERSION=12.13.0"},
+		// 		MustUse: []string{nodeRuntime, nodeNPM},
+		// 	},
+		// },
 		{
 			// Test installs a specific version of node and only needs to be run with a single version
 			VersionInclusionConstraint: "12",
 			Test: acceptance.Test{
 				Name:    "runtime version with npm ci",
 				App:     "nodejs/simple",
-				Path:    "/version?want=12.13.1",
-				Env:     []string{"GOOGLE_RUNTIME_VERSION=12.13.1"},
+				Path:    "/version?want=16.9.1",
+				Env:     []string{"GOOGLE_RUNTIME_VERSION=16.9.1"},
 				MustUse: []string{nodeRuntime, nodeNPM},
 			},
 		},
@@ -194,7 +196,7 @@ func TestFailures(t *testing.T) {
 				Name:      "bad runtime version",
 				App:       "nodejs/simple",
 				Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
-				MustMatch: "Runtime version BAD_NEWS_BEARS does not exist",
+				MustMatch: "invalid Node.js version specified",
 			},
 		},
 	}

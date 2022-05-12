@@ -2,7 +2,7 @@ api = "0.5"
 
 [buildpack]
 id = "google.nodejs.runtime"
-version = "0.10.0"
+version = "1.0.0"
 name = "Node.js - Runtime"
 
 # The cloud run source deploy command uses pack. Older versions of pack which
