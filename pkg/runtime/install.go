@@ -32,24 +32,29 @@ var (
 	runtimeVersionsURL = "https://dl.google.com/runtimes/%s/version.json"
 )
 
-type installableRuntime string
+// InstallableRuntime is used to hold runtimes information
+type InstallableRuntime string
 
 // All runtimes that can be installed using the InstallTarballIfNotCached function.
 const (
-	Nodejs installableRuntime = "nodejs"
-	PHP    installableRuntime = "php"
-	Python installableRuntime = "python"
-	Ruby   installableRuntime = "ruby"
-	Nginx  installableRuntime = "nginx"
+	Nodejs InstallableRuntime = "nodejs"
+	PHP    InstallableRuntime = "php"
+	Python InstallableRuntime = "python"
+	Ruby   InstallableRuntime = "ruby"
+	Nginx  InstallableRuntime = "nginx"
+	Pid1   InstallableRuntime = "pid1"
+	Serve  InstallableRuntime = "serve"
 )
 
 // User friendly display name of all runtime (e.g. for use in error message).
-var runtimeNames = map[installableRuntime]string{
+var runtimeNames = map[InstallableRuntime]string{
 	Nodejs: "Node.js",
 	PHP:    "PHP Runtime",
 	Python: "Python",
 	Ruby:   "Ruby Runtime",
 	Nginx:  "Nginx Web Server",
+	Pid1:   "Pid1",
+	Serve:  "Serve",
 }
 
 const (
@@ -108,7 +113,7 @@ func InstallDartSDK(ctx *gcp.Context, layer *libcnb.Layer, version string) error
 // InstallTarballIfNotCached installs a runtime tarball hosted on dl.google.com into the provided layer
 // with caching.
 // Returns true if a cached layer is used.
-func InstallTarballIfNotCached(ctx *gcp.Context, runtime installableRuntime, versionConstraint string, layer *libcnb.Layer) (bool, error) {
+func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, versionConstraint string, layer *libcnb.Layer) (bool, error) {
 	runtimeName := runtimeNames[runtime]
 	runtimeID := string(runtime)
 
@@ -149,7 +154,7 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime installableRuntime, ver
 
 // resolveVersion returns the newest available version of a runtime that satisfies the provided
 // version constraint.
-func resolveVersion(runtime installableRuntime, verConstraint string) (string, error) {
+func resolveVersion(runtime InstallableRuntime, verConstraint string) (string, error) {
 	if version.IsExactSemver(verConstraint) {
 		return verConstraint, nil
 	}
