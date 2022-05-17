@@ -1,12 +1,12 @@
-# Buildpack Stack `google-min-18`
+# Buildpack Stack `google.min.22`
 
 A minimal buildpack stack based on Ubuntu 22.04 LTS (Jammy Jellyfish).
 
 ## Run Image
 
-[gcr.io/buildpacks/stacks/google-min-18/run](https://gcr.io/buildpacks/stacks/google-min-18/run)
+[gcr.io/buildpacks/stacks/google-min-22/run](https://gcr.io/buildpacks/stacks/google-min-22/run)
 
-Installed Packages: 
+Installed Packages:
 
 * `ca-certificates`
 * `locales`
@@ -15,7 +15,7 @@ Installed Packages:
 
 ## Build Image
 
-[gcr.io/buildpacks/stacks/google-min-18/build](https://gcr.io/buildpacks/stacks/google-min-18/build)
+[gcr.io/buildpacks/stacks/google-min-22/build](https://gcr.io/buildpacks/stacks/google-min-22/build)
 
 Installed Packages:
 
