@@ -31,6 +31,8 @@ acceptance_test_suite(
     testdata = "//builders/testdata:generic",
 )
 
+# There are no GAE tests for dotnet as there is no dotnet runtime on GAE. However, the language
+# test framework expects a `gae_test` target. For that reason this target exists.
 acceptance_test_suite(
     name = "gae_test",
     srcs = [
@@ -39,5 +41,5 @@ acceptance_test_suite(
     ],
     builder = "//builders/dotnet:builder.tar",
     rundir = ".",
-    testdata = "//builders/testdata:dotnet",
+    testdata = "//builders/testdata:generic",
 )

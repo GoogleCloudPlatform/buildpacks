@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,6 +37,40 @@ func TestAcceptanceDotNet(t *testing.T) {
 			App:               "dotnet/simple",
 			MustUse:           []string{dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
+		},
+		{
+			Name:              "app with assembly name specified",
+			App:               "dotnet/cs_assemblyname",
+			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			FilesMustNotExist: []string{sdk},
+		},
+		{
+			Name:              "app with local dependencies",
+			App:               "dotnet/cs_local_deps",
+			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			FilesMustNotExist: []string{sdk},
+			Env:               []string{"GOOGLE_BUILDABLE=App"},
+		},
+		{
+			Name:              "app with custom entry point",
+			App:               "dotnet/cs_custom_entrypoint",
+			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			FilesMustNotExist: []string{sdk},
+			Env:               []string{"GOOGLE_ENTRYPOINT=bin/app --flag=myflag"},
+		},
+		{
+			Name:              "app with nested directory structure",
+			App:               "dotnet/cs_nested_proj",
+			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			FilesMustNotExist: []string{sdk},
+			Env:               []string{"GOOGLE_BUILDABLE=app/app.csproj"},
+		},
+		{
+			Name:              "build with properties specified",
+			App:               "dotnet/cs_properties",
+			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			FilesMustNotExist: []string{sdk},
+			Env:               []string{"GOOGLE_BUILD_ARGS=-p:Version=1.0.1.0 -p:FileVersion=1.0.1.0"},
 		},
 		{
 			Name:              "simple dotnet 6.0 app",
