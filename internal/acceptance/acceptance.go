@@ -181,9 +181,22 @@ type Test struct {
 	Setup setupFunc
 }
 
+// SetupContext is passed into the Test.Setup function, it gives the setupFunc implementor access
+// to various fields to determine what modifications they should make to their source.
+type SetupContext struct {
+	// SrcDir contains a path to a modifable copy of the source on local disk that will be copied
+	// to the build environment at /workspace.
+	SrcDir string
+	// Builder is the name of the builder image.
+	Builder string
+	// RuntimeVersion is the version for which this test run will be performed.
+	RuntimeVersion string
+}
+
 // setupFunc is a function that is called before the test starts and can be used to modify the test source.
-// The function has access to the builder image name and a directory with a modifiable copy of the source
-type setupFunc func(builder, srcDir string) error
+// The setupCtx.SrcDir property contains a path to a copy of the source which can be modified before the
+// test runs.
+type setupFunc func(setupCtx SetupContext) error
 
 // BOMEntry represents a bill-of-materials entry in the image metadata.
 type BOMEntry struct {
@@ -713,7 +726,12 @@ func setupSource(t *testing.T, setup setupFunc, builder, src, app string) string
 	if _, err := runOutput("cp", "-R", src+sep+".", temp); err != nil {
 		t.Fatalf("Error copying app files: %v", err)
 	}
-	if err := setup(builder, temp); err != nil {
+	setupCtx := SetupContext{
+		SrcDir:         temp,
+		Builder:        builder,
+		RuntimeVersion: runtimeVersion,
+	}
+	if err := setup(setupCtx); err != nil {
 		t.Fatalf("Error running test setup: %v", err)
 	}
 	return temp

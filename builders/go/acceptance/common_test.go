@@ -35,10 +35,11 @@ const (
 	goRuntime     = "google.go.runtime"
 )
 
-func vendorSetup(builder, src string) error {
+func vendorSetup(setupCtx acceptance.SetupContext) error {
 	// The setup function runs `go mod vendor` to vendor dependencies
 	// specified in go.mod.
-	args := strings.Fields(fmt.Sprintf("docker run --rm -v %s:/workspace -w /workspace -u root %s go mod vendor", src, builder))
+	args := strings.Fields(fmt.Sprintf("docker run --rm -v %s:/workspace -w /workspace -u root %s go mod vendor",
+		setupCtx.SrcDir, setupCtx.Builder))
 	cmd := exec.Command(args[0], args[1:]...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("vendoring dependencies: %v, output:\n%s", err, out)
@@ -46,10 +47,11 @@ func vendorSetup(builder, src string) error {
 	return nil
 }
 
-func goSumSetup(builder, src string) error {
+func goSumSetup(setupCtx acceptance.SetupContext) error {
 	// The setup function runs `go mod vendor` to vendor dependencies
 	// specified in go.mod.
-	args := strings.Fields(fmt.Sprintf("docker run --rm -v %s:/workspace -w /workspace -u root %s go mod tidy", src, builder))
+	args := strings.Fields(fmt.Sprintf("docker run --rm -v %s:/workspace -w /workspace -u root %s go mod tidy",
+		setupCtx.SrcDir, setupCtx.Builder))
 	cmd := exec.Command(args[0], args[1:]...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("generating go.sum: %v, output:\n%s", err, out)
