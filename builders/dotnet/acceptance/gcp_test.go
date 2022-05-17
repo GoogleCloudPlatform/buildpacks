@@ -87,13 +87,6 @@ func TestAcceptanceDotNet(t *testing.T) {
 			FilesMustNotExist: []string{sdk},
 		},
 		{
-			Name:              "simple dotnet app with global.json",
-			App:               "dotnet/simple_with_global",
-			Path:              "/version?want=3.1.0",
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
-			FilesMustNotExist: []string{sdk},
-		},
-		{
 			Name:              "simple prebuilt dotnet app",
 			App:               "dotnet/simple_prebuilt",
 			Env:               []string{"GOOGLE_ENTRYPOINT=./simple"},

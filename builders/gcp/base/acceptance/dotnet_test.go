@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -48,13 +48,6 @@ func TestAcceptanceDotNet(t *testing.T) {
 			App:               "dotnet/simple",
 			Path:              "/version?want=3.1.1",
 			Env:               []string{"GOOGLE_RUNTIME_VERSION=3.1.101"},
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
-			FilesMustNotExist: []string{sdk},
-		},
-		{
-			Name:              "simple dotnet app with global.json",
-			App:               "dotnet/simple_with_global",
-			Path:              "/version?want=3.1.0",
 			MustUse:           []string{dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 		},
