@@ -32,6 +32,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -717,7 +718,7 @@ func setupSource(t *testing.T, setup setupFunc, builder, src, app string) string
 	if cloudbuild {
 		root = "/workspace"
 	}
-	temp, err := ioutil.TempDir(root, app)
+	temp, err := ioutil.TempDir(root, path.Base(app))
 	if err != nil {
 		t.Fatalf("Error creating temporary directory: %v", err)
 	}
