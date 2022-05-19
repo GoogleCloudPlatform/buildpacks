@@ -1,8 +1,8 @@
-api = "0.5"
+api = "0.6"
 
 [buildpack]
 id = "google.php.functions-framework"
-version = "0.9.5"
+version = "0.9.6"
 name = "Google - PHP - Functions Framework"
 
 # The cloud run source deploy command uses pack. Older versions of pack which

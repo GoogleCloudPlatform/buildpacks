@@ -1,4 +1,4 @@
-api = "0.5"
+api = "0.6"
 
 [buildpack]
 id = "google.php.cloudfunctions"

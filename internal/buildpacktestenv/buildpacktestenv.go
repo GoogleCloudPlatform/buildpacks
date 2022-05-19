@@ -89,7 +89,7 @@ func SetUpTempDirs(t *testing.T) TempDirs {
 
 	stack := "com.stack"
 	buildpackTOML := fmt.Sprintf(`
-api = "0.5"
+api = "0.6"
 
 [buildpack]
 id = "my-id"
