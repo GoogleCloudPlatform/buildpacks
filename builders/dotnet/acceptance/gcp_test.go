@@ -31,116 +31,130 @@ func TestAcceptanceDotNet(t *testing.T) {
 
 	sdk := filepath.Join("/layers", dotnetRuntime, "sdk")
 
-	testCases := []acceptance.Test{
+	testCases := []struct {
+		test                       acceptance.Test
+		versionInclusionConstraint string
+	}{
+
 		{
-			Name:              "simple dotnet app",
-			App:               "dotnet/simple",
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
-			FilesMustNotExist: []string{sdk},
+			test: acceptance.Test{
+				Name:              "app with assembly name specified",
+				App:               "dotnet/cs_assemblyname",
+				MustUse:           []string{dotnetRuntime, dotnetPublish},
+				FilesMustNotExist: []string{sdk},
+			},
 		},
 		{
-			Name:              "app with assembly name specified",
-			App:               "dotnet/cs_assemblyname",
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
-			FilesMustNotExist: []string{sdk},
+			test: acceptance.Test{
+				Name:              "app with local dependencies",
+				App:               "dotnet/cs_local_deps",
+				MustUse:           []string{dotnetRuntime, dotnetPublish},
+				FilesMustNotExist: []string{sdk},
+				Env:               []string{"GOOGLE_BUILDABLE=App"},
+			},
 		},
 		{
-			Name:              "app with local dependencies",
-			App:               "dotnet/cs_local_deps",
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
-			FilesMustNotExist: []string{sdk},
-			Env:               []string{"GOOGLE_BUILDABLE=App"},
+			test: acceptance.Test{
+				Name:              "app with custom entry point",
+				App:               "dotnet/cs_custom_entrypoint",
+				MustUse:           []string{dotnetRuntime, dotnetPublish},
+				FilesMustNotExist: []string{sdk},
+				Env:               []string{"GOOGLE_ENTRYPOINT=bin/app --flag=myflag"},
+			},
 		},
 		{
-			Name:              "app with custom entry point",
-			App:               "dotnet/cs_custom_entrypoint",
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
-			FilesMustNotExist: []string{sdk},
-			Env:               []string{"GOOGLE_ENTRYPOINT=bin/app --flag=myflag"},
+			test: acceptance.Test{
+				Name:              "app with nested directory structure",
+				App:               "dotnet/cs_nested_proj",
+				MustUse:           []string{dotnetRuntime, dotnetPublish},
+				FilesMustNotExist: []string{sdk},
+				Env:               []string{"GOOGLE_BUILDABLE=app/app.csproj"},
+			},
 		},
 		{
-			Name:              "app with nested directory structure",
-			App:               "dotnet/cs_nested_proj",
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
-			FilesMustNotExist: []string{sdk},
-			Env:               []string{"GOOGLE_BUILDABLE=app/app.csproj"},
+			test: acceptance.Test{
+				Name:              "build with properties specified",
+				App:               "dotnet/cs_properties",
+				MustUse:           []string{dotnetRuntime, dotnetPublish},
+				FilesMustNotExist: []string{sdk},
+				Env:               []string{"GOOGLE_BUILD_ARGS=-p:Version=1.0.1.0 -p:FileVersion=1.0.1.0"},
+			},
 		},
 		{
-			Name:              "build with properties specified",
-			App:               "dotnet/cs_properties",
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
-			FilesMustNotExist: []string{sdk},
-			Env:               []string{"GOOGLE_BUILD_ARGS=-p:Version=1.0.1.0 -p:FileVersion=1.0.1.0"},
+			test: acceptance.Test{
+				Name:              "simple dotnet app",
+				App:               "dotnet/simple",
+				MustUse:           []string{dotnetRuntime, dotnetPublish},
+				FilesMustNotExist: []string{sdk},
+			},
 		},
 		{
-			Name:              "simple dotnet 6.0 app",
-			App:               "dotnet/simple_dotnet6",
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
-			FilesMustNotExist: []string{sdk},
+			test: acceptance.Test{
+				Name:              "simple prebuilt dotnet app",
+				App:               "dotnet/simple_prebuilt",
+				Env:               []string{"GOOGLE_ENTRYPOINT=./simple"},
+				MustUse:           []string{dotnetRuntime},
+				MustNotUse:        []string{dotnetPublish},
+				FilesMustNotExist: []string{sdk},
+			},
 		},
 		{
-			Name:              "simple dotnet app with runtime version",
-			App:               "dotnet/simple",
-			Path:              "/version?want=3.1.1",
-			Env:               []string{"GOOGLE_RUNTIME_VERSION=3.1.101"},
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
-			FilesMustNotExist: []string{sdk},
+			// Version 6.0 of the .NET sdk made changes to watch. When running this test
+			// with 6.0 watch notices that the file has changed but decides that there are
+			// no Hot Swap changes to reload. Disable this test while this is being
+			// investigated.
+			versionInclusionConstraint: "!= 6.0",
+			test: acceptance.Test{
+				Name:                "Dev mode",
+				App:                 "dotnet/simple",
+				Env:                 []string{"GOOGLE_DEVMODE=1"},
+				MustUse:             []string{dotnetRuntime, dotnetPublish},
+				FilesMustExist:      []string{sdk, "/workspace/Startup.cs"},
+				MustRebuildOnChange: "/workspace/Startup.cs",
+			},
 		},
 		{
-			Name:              "simple prebuilt dotnet app",
-			App:               "dotnet/simple_prebuilt",
-			Env:               []string{"GOOGLE_ENTRYPOINT=./simple"},
-			MustUse:           []string{dotnetRuntime},
-			MustNotUse:        []string{dotnetPublish},
-			FilesMustNotExist: []string{sdk},
-		},
-		{
-			Name:                "Dev mode",
-			App:                 "dotnet/simple",
-			Env:                 []string{"GOOGLE_DEVMODE=1"},
-			MustUse:             []string{dotnetRuntime, dotnetPublish},
-			FilesMustExist:      []string{sdk, "/workspace/Startup.cs"},
-			MustRebuildOnChange: "/workspace/Startup.cs",
-		},
-		{
-			// This is a separate test case from Dev mode above because it has a fixed runtime version.
-			// Its only purpose is to test that the metadata is set correctly.
-			Name:    "Dev mode metadata",
-			App:     "dotnet/simple",
-			Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=3.1.409"},
-			MustUse: []string{dotnetRuntime, dotnetPublish},
-			BOM: []acceptance.BOMEntry{
-				{
-					Name: "sdk",
-					Metadata: map[string]interface{}{
-						"version": "3.1.409",
+			// Test is only intended to be run against a single version
+			versionInclusionConstraint: "3",
+			test: acceptance.Test{
+				// This is a separate test case from Dev mode above because it has a fixed runtime version.
+				// Its only purpose is to test that the metadata is set correctly.
+				Name:    "Dev mode metadata",
+				App:     "dotnet/simple",
+				Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=3.1.409"},
+				MustUse: []string{dotnetRuntime, dotnetPublish},
+				BOM: []acceptance.BOMEntry{
+					{
+						Name: "sdk",
+						Metadata: map[string]interface{}{
+							"version": "3.1.409",
+						},
 					},
-				},
-				{
-					Name: "devmode",
-					Metadata: map[string]interface{}{
-						"devmode.sync": []interface{}{
-							map[string]interface{}{"dest": "/workspace", "src": "**/*.cs"},
-							map[string]interface{}{"dest": "/workspace", "src": "*.csproj"},
-							map[string]interface{}{"dest": "/workspace", "src": "**/*.fs"},
-							map[string]interface{}{"dest": "/workspace", "src": "*.fsproj"},
-							map[string]interface{}{"dest": "/workspace", "src": "**/*.vb"},
-							map[string]interface{}{"dest": "/workspace", "src": "*.vbproj"},
-							map[string]interface{}{"dest": "/workspace", "src": "**/*.resx"},
+					{
+						Name: "devmode",
+						Metadata: map[string]interface{}{
+							"devmode.sync": []interface{}{
+								map[string]interface{}{"dest": "/workspace", "src": "**/*.cs"},
+								map[string]interface{}{"dest": "/workspace", "src": "*.csproj"},
+								map[string]interface{}{"dest": "/workspace", "src": "**/*.fs"},
+								map[string]interface{}{"dest": "/workspace", "src": "*.fsproj"},
+								map[string]interface{}{"dest": "/workspace", "src": "**/*.vb"},
+								map[string]interface{}{"dest": "/workspace", "src": "*.vbproj"},
+								map[string]interface{}{"dest": "/workspace", "src": "**/*.resx"},
+							},
 						},
 					},
 				},
 			},
 		},
-		{
-			Name:    "dotnet selected via GOOGLE_RUNTIME",
-			App:     "override",
-			Env:     []string{"GOOGLE_RUNTIME=dotnet"},
-			MustUse: []string{dotnetRuntime},
-		},
 	}
-	for _, tc := range testCases {
-		tc := tc
+
+	for _, testCase := range testCases {
+		if !acceptance.ShouldTestVersion(t, testCase.versionInclusionConstraint) {
+			continue
+		}
+		tc := testCase.test
+		tc.Setup = setupTargetFramework
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 			acceptance.TestApp(t, builder, tc)
@@ -152,20 +166,30 @@ func TestFailuresDotNet(t *testing.T) {
 	builder, cleanup := acceptance.CreateBuilder(t)
 	t.Cleanup(cleanup)
 
-	testCases := []acceptance.FailureTest{
+	testCases := []struct {
+		failureTest                acceptance.FailureTest
+		versionInclusionConstraint string
+	}{
 		{
-			Name:      "bad runtime version",
-			App:       "dotnet/simple",
-			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
-			MustMatch: "runtime version BAD_NEWS_BEARS does not exist",
+			// Test will produce the same results across all versions.
+			versionInclusionConstraint: "3",
+			failureTest: acceptance.FailureTest{
+				Name:      "bad runtime version",
+				App:       "dotnet/simple",
+				Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
+				MustMatch: "runtime version BAD_NEWS_BEARS does not exist",
+			},
 		},
 	}
 
-	for _, tc := range testCases {
-		tc := tc
+	for _, testCase := range testCases {
+		if !acceptance.ShouldTestVersion(t, testCase.versionInclusionConstraint) {
+			continue
+		}
+		tc := testCase.failureTest
+		tc.Setup = setupTargetFramework
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-
 			acceptance.TestBuildFailure(t, builder, tc)
 		})
 	}

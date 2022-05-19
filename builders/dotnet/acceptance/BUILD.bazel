@@ -9,6 +9,26 @@ test_suite(
     name = "acceptance_test",
 )
 
+VERSION_DOTNET3 = "3.1.416"
+
+VERSION_DOTNET6 = "6.0.300"
+
+VERSIONS_ALL = [
+    VERSION_DOTNET3,
+    # .NET6 is enabled for testing across all products to prepare for it's release
+    # Delete this comment when dotnet6 or versionless dotnet is released
+    VERSION_DOTNET6,
+]
+
+VERSIONS_WITH_GCF_SUPPORT = VERSIONS_ALL
+
+VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
+
+COMMON_DEPS = [
+    "//pkg/dotnet/release",
+    "//pkg/dotnet/release/client",
+]
+
 acceptance_test_suite(
     name = "gcf_test",
     srcs = [
@@ -18,6 +38,10 @@ acceptance_test_suite(
     builder = "//builders/dotnet:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/dotnet:functions",
+    versions = VERSIONS_WITH_GCF_SUPPORT,
+    deps = COMMON_DEPS + [
+        "@com_github_masterminds_semver//:go_default_library",
+    ],
 )
 
 acceptance_test_suite(
@@ -29,6 +53,10 @@ acceptance_test_suite(
     builder = "//builders/dotnet:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata:generic",
+    versions = VERSIONS_WITH_GCP_SUPPORT,
+    deps = COMMON_DEPS + [
+        "@com_github_masterminds_semver//:go_default_library",
+    ],
 )
 
 # There are no GAE tests for dotnet as there is no dotnet runtime on GAE. However, the language

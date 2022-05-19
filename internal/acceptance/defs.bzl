@@ -106,6 +106,9 @@ def _extract_builder_name(builder):
 def _build_deps(deps):
     if deps == None:
         deps = []
+    else:
+        # make a copy of the list to prevent mutating a shared 'deps' value declared in a BUILD file
+        deps = list(deps)
     deps.append("//internal/acceptance")
     return deps
 

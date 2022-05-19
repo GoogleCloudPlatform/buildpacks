@@ -58,15 +58,20 @@ func TestGCFAcceptanceDotNet(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc.Env = append(tc.Env, "GOOGLE_RUNTIME=dotnet3", "X_GOOGLE_TARGET_PLATFORM=gcf")
-		tc.FilesMustExist = append(tc.FilesMustExist,
-			"/layers/google.utils.archive-source/src/source-code.tar.gz",
-			"/workspace/.googlebuild/source-code.tar.gz",
-		)
-		tc := tc
+		tc := applyStaticTestOptions(tc)
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 			acceptance.TestApp(t, builder, tc)
 		})
 	}
+}
+
+func applyStaticTestOptions(test acceptance.Test) acceptance.Test {
+	test.Env = append(test.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
+	test.FilesMustExist = append(test.FilesMustExist,
+		"/layers/google.utils.archive-source/src/source-code.tar.gz",
+		"/workspace/.googlebuild/source-code.tar.gz",
+	)
+	test.Setup = setupTargetFramework
+	return test
 }
