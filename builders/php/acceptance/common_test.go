@@ -12,5 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package acceptance implements acceptance tests for a buildpack builder.
-package acceptance
+package acceptance_test
+
+import (
+	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
+)
+
+func init() {
+	acceptance.DefineFlags()
+}
+
+const (
+	composer         = "google.php.composer"
+	composerGCPBuild = "google.php.composer-gcp-build"
+	composerInstall  = "google.php.composer-install"
+	entrypoint       = "google.config.entrypoint"
+	phpRuntime       = "google.php.runtime"
+)

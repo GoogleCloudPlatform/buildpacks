@@ -1,35 +1,24 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
 
 licenses(["notice"])
 
 exports_files(["config.yaml"])
 
-go_library(
-    name = "acceptance",
-    srcs = ["acceptance.go"],
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-)
+VERSIONS_ALL_PRODUCTS = [
+    "7.2",
+    "7.3",
+    "7.4",
+    "8.1",
+]
 
-go_test(
-    name = "acceptance_test",
-    size = "enormous",
-    srcs = ["acceptance_test.go"],
-    args = [
-        "-test-data=$(location //builders/testdata:generic)",
-        "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/php:builder.tar)",
-        "-builder-prefix=php-acceptance-test-",
-        "-run-image-override=gcr.io/buildpacks/gcp/php/run:v1",
+acceptance_test_suite(
+    name = "gcp_test",
+    srcs = [
+        "common_test.go",
+        "gcp_test.go",
     ],
-    data = [
-        ":config.yaml",
-        "//builders/php:builder.tar",
-        "//builders/testdata:generic",
-    ],
-    embed = [":acceptance"],
+    builder = "//builders/php:builder.tar",
     rundir = ".",
-    tags = [
-        "local",
-    ],
-    deps = ["//internal/acceptance"],
+    testdata = "//builders/testdata:generic",
+    versions = VERSIONS_ALL_PRODUCTS,
 )
