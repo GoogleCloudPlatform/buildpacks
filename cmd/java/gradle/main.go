@@ -30,7 +30,6 @@ import (
 )
 
 const (
-	gradleVersion   = "6.5.1"
 	gradleDistroURL = "https://services.gradle.org/distributions/gradle-%s-bin.zip"
 	gradleLayer     = "gradle"
 	cacheLayer      = "cache"
@@ -133,6 +132,7 @@ func installGradle(ctx *gcp.Context) (string, error) {
 
 	metaVersion := ctx.GetMetadata(gradlel, versionKey)
 	// Check the metadata in the cache layer to determine if we need to proceed.
+	gradleVersion := java.GetLatestGradleVersion()
 	if gradleVersion == metaVersion {
 		ctx.CacheHit(gradleLayer)
 		ctx.Logf("Gradle cache hit, skipping installation.")

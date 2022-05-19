@@ -6,6 +6,7 @@ licenses(["notice"])
 go_library(
     name = "java",
     srcs = [
+        "gradle.go",
         "java.go",
         "maven.go",
     ],
@@ -14,6 +15,7 @@ go_library(
         "//cmd/java:__subpackages__",
     ],
     deps = [
+        "//pkg/fetch",
         "//pkg/gcpbuildpack",
         "@com_github_buildpacks_libcnb//:go_default_library",
     ],
@@ -23,6 +25,7 @@ go_test(
     name = "java_test",
     size = "small",
     srcs = [
+        "gradle_test.go",
         "java_test.go",
         "maven_test.go",
     ],
@@ -35,6 +38,7 @@ go_test(
     embed = [":java"],
     rundir = ".",
     deps = [
+        "//internal/testserver",
         "//pkg/gcpbuildpack",
         "@com_github_buildpacks_libcnb//:go_default_library",
     ],
