@@ -31,7 +31,7 @@ const (
 )
 
 func TestAcceptance(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
@@ -125,13 +125,13 @@ func TestAcceptance(t *testing.T) {
 				"/workspace/.googlebuild/source-code.tar.gz",
 			)
 
-			acceptance.TestApp(t, builder, tc)
+			acceptance.TestApp(t, builderImage, runImage, tc)
 		})
 	}
 }
 
 func TestFailures(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.FailureTest{
@@ -165,7 +165,7 @@ func TestFailures(t *testing.T) {
 			t.Parallel()
 
 			tc.Env = append(tc.Env, "GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_RUNTIME=php74", "X_GOOGLE_TARGET_PLATFORM=gcf")
-			acceptance.TestBuildFailure(t, builder, tc)
+			acceptance.TestBuildFailure(t, builderImage, runImage, tc)
 		})
 	}
 }

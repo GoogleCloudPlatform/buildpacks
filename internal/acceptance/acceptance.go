@@ -206,7 +206,7 @@ type BOMEntry struct {
 }
 
 // TestApp builds and a single application and verifies that it runs and handles requests.
-func TestApp(t *testing.T, builder string, cfg Test) {
+func TestApp(t *testing.T, builderName, runName string, cfg Test) {
 	t.Helper()
 
 	env := prepareEnvTest(t, cfg)
@@ -215,7 +215,7 @@ func TestApp(t *testing.T, builder string, cfg Test) {
 		cfg.Name = cfg.App
 	}
 	// Docker image names may not contain underscores or start with a capital letter.
-	image := fmt.Sprintf("%s-%s", strings.ToLower(specialChars.ReplaceAllString(cfg.Name, "-")), builder)
+	image := fmt.Sprintf("%s-%s", strings.ToLower(specialChars.ReplaceAllString(cfg.Name, "-")), builderName)
 
 	// Delete the docker image and volumes created by pack during the build.
 	defer func() {
@@ -229,7 +229,7 @@ func TestApp(t *testing.T, builder string, cfg Test) {
 	// Run Setup function if provided.
 	src := filepath.Join(testData, cfg.App)
 	if cfg.Setup != nil {
-		src = setupSource(t, cfg.Setup, builder, src, cfg.App)
+		src = setupSource(t, cfg.Setup, builderName, src, cfg.App)
 	}
 
 	// Run a no-cache build, followed by a cache build, unless caching is disabled for the app.
@@ -239,9 +239,9 @@ func TestApp(t *testing.T, builder string, cfg Test) {
 	}
 	for _, cache := range cacheOptions {
 		t.Run(fmt.Sprintf("cache %t", cache), func(t *testing.T) {
-			buildApp(t, src, image, builder, env, cache, cfg)
+			buildApp(t, src, image, builderName, runName, env, cache, cfg)
 			verifyBuildMetadata(t, image, cfg.MustUse, cfg.MustNotUse, cfg.BOM)
-			verifyStructure(t, image, builder, cache, checks)
+			verifyStructure(t, image, builderName, cache, checks)
 			invokeApp(t, cfg, image, cache)
 		})
 	}
@@ -264,7 +264,7 @@ type FailureTest struct {
 }
 
 // TestBuildFailure runs a build and ensures that it fails. Additionally, it ensures the emitted logs match mustMatch regexps.
-func TestBuildFailure(t *testing.T, builder string, cfg FailureTest) {
+func TestBuildFailure(t *testing.T, builderName, runName string, cfg FailureTest) {
 	t.Helper()
 
 	env := prepareEnvFailureTest(t, cfg)
@@ -272,7 +272,7 @@ func TestBuildFailure(t *testing.T, builder string, cfg FailureTest) {
 	if cfg.Name == "" {
 		cfg.Name = cfg.App
 	}
-	image := fmt.Sprintf("%s-%s", strings.ToLower(specialChars.ReplaceAllString(cfg.Name, "-")), builder)
+	image := fmt.Sprintf("%s-%s", strings.ToLower(specialChars.ReplaceAllString(cfg.Name, "-")), builderName)
 
 	// Delete the docker volumes created by pack during the build.
 	if !keepArtifacts {
@@ -281,10 +281,10 @@ func TestBuildFailure(t *testing.T, builder string, cfg FailureTest) {
 
 	src := filepath.Join(testData, cfg.App)
 	if cfg.Setup != nil {
-		src = setupSource(t, cfg.Setup, builder, src, cfg.App)
+		src = setupSource(t, cfg.Setup, builderName, src, cfg.App)
 	}
 
-	outb, errb, cleanup := buildFailingApp(t, src, image, builder, env)
+	outb, errb, cleanup := buildFailingApp(t, src, image, builderName, runName, env)
 	defer cleanup()
 
 	r, err := regexp.Compile(cfg.MustMatch)
@@ -537,8 +537,18 @@ func cleanUpImage(t *testing.T, name string) {
 	}
 }
 
-// CreateBuilder creates a builder image.
-func CreateBuilder(t *testing.T) (string, func()) {
+// ProvisionImages provisions the builder, build, and run images necessary for running
+// a test.
+//
+// The 'builderName' return value is the name of the builder image.
+// The 'runName' return value is the name of the run image. This value will be the
+//	empty string when the run image is not override and the builder's default run
+//	image is to be used.
+//
+// The 'cleanup' return value is a function which should be run after the tests are
+// complete to clean up the images which are explicitly created. Images that are
+// pulled are not cleaned up to prevent conflicts with other tests.
+func ProvisionImages(t *testing.T) (builderName string, runName string, cleanup func()) {
 	t.Helper()
 
 	if err := checktools.Installed(); err != nil {
@@ -548,7 +558,7 @@ func CreateBuilder(t *testing.T) (string, func()) {
 		t.Fatalf("Error checking pack version: %v", err)
 	}
 
-	name := builderPrefix + randString(10)
+	builderName = builderPrefix + randString(10)
 
 	if builderImage != "" {
 		t.Logf("Testing existing builder image: %s", builderImage)
@@ -556,24 +566,24 @@ func CreateBuilder(t *testing.T) (string, func()) {
 			if _, err := runOutput("docker", "pull", builderImage); err != nil {
 				t.Fatalf("Error pulling %s: %v", builderImage, err)
 			}
-			run := runImageOverride
-			if run == "" {
+			runName = runImageOverride
+			if runName == "" {
 				var err error
-				run, err = runImageFromMetadata(builderImage)
+				runName, err = runImageFromMetadata(builderImage)
 				if err != nil {
 					t.Fatalf("Error extracting run image from image %s: %v", builderImage, err)
 				}
 			}
-			if _, err := runOutput("docker", "pull", run); err != nil {
-				t.Fatalf("Error pulling %s: %v", run, err)
+			if _, err := runOutput("docker", "pull", runName); err != nil {
+				t.Fatalf("Error pulling %s: %v", runName, err)
 			}
 		}
 		// Pack cache is based on builder name; retag with a unique name.
-		if _, err := runOutput("docker", "tag", builderImage, name); err != nil {
-			t.Fatalf("Error tagging %s as %s: %v", builderImage, name, err)
+		if _, err := runOutput("docker", "tag", builderImage, builderName); err != nil {
+			t.Fatalf("Error tagging %s as %s: %v", builderImage, builderName, err)
 		}
-		return name, func() {
-			cleanUpImage(t, name)
+		return builderName, runName, func() {
+			cleanUpImage(t, builderName)
 		}
 	}
 
@@ -589,29 +599,30 @@ func CreateBuilder(t *testing.T) (string, func()) {
 		}
 	}
 
-	run, build, err := stackImagesFromConfig(config)
+	run, buildName, err := stackImagesFromConfig(config)
 	if err != nil {
 		t.Fatalf("Error extracting stack images from %s: %v", config, err)
 	}
+	runName = run
 	// Pull images once in the beginning to prevent them from changing in the middle of testing.
 	// The images are intentionally not cleaned up to prevent conflicts across different test targets.
 	if pullImages {
 		if runImageOverride != "" {
-			run = runImageOverride
+			runName = runImageOverride
 		}
-		if _, err := runOutput("docker", "pull", run); err != nil {
+		if _, err := runOutput("docker", "pull", runName); err != nil {
 			t.Fatalf("Error pulling %s: %v", run, err)
 		}
-		if _, err := runOutput("docker", "pull", build); err != nil {
-			t.Fatalf("Error pulling %s: %v", build, err)
+		if _, err := runOutput("docker", "pull", buildName); err != nil {
+			t.Fatalf("Error pulling %s: %v", buildName, err)
 		}
 	}
 
 	// Pack command to create the builder.
-	args := strings.Fields(fmt.Sprintf("builder create %s --config %s --pull-policy never --verbose --no-color", name, config))
+	args := strings.Fields(fmt.Sprintf("builder create %s --config %s --pull-policy never --verbose --no-color", builderName, config))
 	cmd := exec.Command(packBin, args...)
 
-	outFile, errFile, cleanup := outFiles(t, name, "pack", "create-builder")
+	outFile, errFile, cleanup := outFiles(t, builderName, "pack", "create-builder")
 	defer cleanup()
 	var outb, errb bytes.Buffer
 	cmd.Stdout = io.MultiWriter(outFile, &outb) // pack emits some errors to stdout.
@@ -622,10 +633,10 @@ func CreateBuilder(t *testing.T) (string, func()) {
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("Error creating builder: %v, logs:\nstdout: %s\nstderr:%s", err, outb.String(), errb.String())
 	}
-	t.Logf("Successfully created builder: %s (in %s)", name, time.Since(start))
+	t.Logf("Successfully created builder: %s (in %s)", builderName, time.Since(start))
 
-	return name, func() {
-		cleanUpImage(t, name)
+	return builderName, runName, func() {
+		cleanUpImage(t, builderName)
 		cleanUpBuilder()
 	}
 }
@@ -756,11 +767,11 @@ func stackImagesFromConfig(path string) (string, string, error) {
 	return config.Stack.RunImage, config.Stack.BuildImage, nil
 }
 
-func buildCommand(srcDir, image, builder string, env map[string]string, cache bool) []string {
+func buildCommand(srcDir, image, builderName, runName string, env map[string]string, cache bool) []string {
 	// Pack command to build app.
-	args := strings.Fields(fmt.Sprintf("%s build %s --builder %s --path %s --pull-policy never --verbose --no-color --trust-builder", packBin, image, builder, srcDir))
-	if runImageOverride != "" {
-		args = append(args, "--run-image", runImageOverride)
+	args := strings.Fields(fmt.Sprintf("%s build %s --builder %s --path %s --pull-policy never --verbose --no-color --trust-builder", packBin, image, builderName, srcDir))
+	if runName != "" {
+		args = append(args, "--run-image", runName)
 	}
 	if !cache {
 		args = append(args, "--clear-cache")
@@ -778,7 +789,7 @@ func buildCommand(srcDir, image, builder string, env map[string]string, cache bo
 }
 
 // buildApp builds an application image from source.
-func buildApp(t *testing.T, srcDir, image, builder string, env map[string]string, cache bool, cfg Test) {
+func buildApp(t *testing.T, srcDir, image, builderName, runName string, env map[string]string, cache bool, cfg Test) {
 	t.Helper()
 
 	attempts := cfg.FlakyBuildAttempts
@@ -795,10 +806,10 @@ func buildApp(t *testing.T, srcDir, image, builder string, env map[string]string
 		if attempt > 1 {
 			filename = fmt.Sprintf("%s-attempt-%d", filename, attempt)
 		}
-		outFile, errFile, cleanup := outFiles(t, builder, "pack-build", filename)
+		outFile, errFile, cleanup := outFiles(t, builderName, "pack-build", filename)
 		defer cleanup()
 
-		bcmd := buildCommand(srcDir, image, builder, env, cache)
+		bcmd := buildCommand(srcDir, image, builderName, runName, env, cache)
 		cmd := exec.Command(bcmd[0], bcmd[1:]...)
 		cmd.Stdout = io.MultiWriter(outFile, &outb) // pack emits detect output to stdout.
 		cmd.Stderr = io.MultiWriter(errFile, &errb) // pack emits build output to stderr.
@@ -853,13 +864,13 @@ func buildApp(t *testing.T, srcDir, image, builder string, env map[string]string
 
 // buildFailingApp attempts to build an app and ensures that it failues (non-zero exit code).
 // It returns the build's stdout, stderr and a cleanup function.
-func buildFailingApp(t *testing.T, srcDir, image, builder string, env map[string]string) ([]byte, []byte, func()) {
+func buildFailingApp(t *testing.T, srcDir, image, builderName, runName string, env map[string]string) ([]byte, []byte, func()) {
 	t.Helper()
 
-	bcmd := buildCommand(srcDir, image, builder, env, false)
+	bcmd := buildCommand(srcDir, image, builderName, runName, env, false)
 	cmd := exec.Command(bcmd[0], bcmd[1:]...)
 
-	outFile, errFile, cleanup := outFiles(t, builder, "pack-build-failing", image)
+	outFile, errFile, cleanup := outFiles(t, builderName, "pack-build-failing", image)
 	defer cleanup()
 	var outb, errb bytes.Buffer
 	cmd.Stdout = io.MultiWriter(outFile, &outb)

@@ -24,7 +24,7 @@ func init() {
 }
 
 func TestAcceptance(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
@@ -73,7 +73,7 @@ func TestAcceptance(t *testing.T) {
 				"/workspace/.googlebuild/source-code.tar.gz",
 			)
 
-			acceptance.TestApp(t, builder, tc)
+			acceptance.TestApp(t, builderImage, runImage, tc)
 		})
 	}
 }

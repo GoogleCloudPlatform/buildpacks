@@ -24,7 +24,7 @@ func init() {
 }
 
 func TestAcceptance(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
@@ -68,7 +68,7 @@ func TestAcceptance(t *testing.T) {
 				"/workspace/.googlebuild/source-code.tar.gz",
 			)
 
-			acceptance.TestApp(t, builder, tc)
+			acceptance.TestApp(t, builderImage, runImage, tc)
 		})
 	}
 }
@@ -76,7 +76,7 @@ func TestAcceptance(t *testing.T) {
 func TestFailures(t *testing.T) {
 	t.Skip("Disable ruby30")
 
-	builder, cleanup := acceptance.CreateBuilder(t)
+	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	// TODO(b/193272221): Remove when stack images are published.
@@ -130,7 +130,7 @@ func TestFailures(t *testing.T) {
 				"X_GOOGLE_TARGET_PLATFORM=gcf",
 			)
 
-			acceptance.TestBuildFailure(t, builder, tc)
+			acceptance.TestBuildFailure(t, builderImage, runImage, tc)
 		})
 	}
 }

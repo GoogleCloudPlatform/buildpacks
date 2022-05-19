@@ -26,7 +26,7 @@ const (
 )
 
 func TestAcceptanceDotNet(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	sdk := filepath.Join("/layers", dotnetRuntime, "sdk")
@@ -157,13 +157,13 @@ func TestAcceptanceDotNet(t *testing.T) {
 		tc.Setup = setupTargetFramework
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-			acceptance.TestApp(t, builder, tc)
+			acceptance.TestApp(t, builderImage, runImage, tc)
 		})
 	}
 }
 
 func TestFailuresDotNet(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []struct {
@@ -190,7 +190,7 @@ func TestFailuresDotNet(t *testing.T) {
 		tc.Setup = setupTargetFramework
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-			acceptance.TestBuildFailure(t, builder, tc)
+			acceptance.TestBuildFailure(t, builderImage, runImage, tc)
 		})
 	}
 }

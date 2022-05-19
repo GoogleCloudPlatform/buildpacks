@@ -25,7 +25,7 @@ func init() {
 }
 
 func TestAcceptance(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
@@ -90,7 +90,7 @@ func TestAcceptance(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 
-			acceptance.TestApp(t, builder, tc)
+			acceptance.TestApp(t, builderImage, runImage, tc)
 		})
 	}
 }

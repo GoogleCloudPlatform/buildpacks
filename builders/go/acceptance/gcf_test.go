@@ -20,7 +20,7 @@ import (
 )
 
 func TestAcceptance(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
@@ -151,13 +151,13 @@ func TestAcceptance(t *testing.T) {
 			if tc.Setup != nil {
 				t.Skip("TODO: The setup functions require go to be pre-installed which is not true for the unified builder")
 			}
-			acceptance.TestApp(t, builder, tc)
+			acceptance.TestApp(t, builderImage, runImage, tc)
 		})
 	}
 }
 
 func TestFailures(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.FailureTest{
@@ -182,7 +182,7 @@ func TestFailures(t *testing.T) {
 			if tc.Setup != nil {
 				t.Skip("TODO: The setup functions require go to be pre-installed which is not true for the unified builder")
 			}
-			acceptance.TestBuildFailure(t, builder, tc)
+			acceptance.TestBuildFailure(t, builderImage, runImage, tc)
 		})
 	}
 }

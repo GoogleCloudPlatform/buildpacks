@@ -20,7 +20,7 @@ import (
 )
 
 func TestAcceptance(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []struct {
@@ -145,13 +145,13 @@ func TestAcceptance(t *testing.T) {
 		t.Run(tc.Test.Name, func(t *testing.T) {
 			t.Parallel()
 
-			acceptance.TestApp(t, builder, tc.Test)
+			acceptance.TestApp(t, builderImage, runImage, tc.Test)
 		})
 	}
 }
 
 func TestFailures(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []struct {
@@ -185,7 +185,7 @@ func TestFailures(t *testing.T) {
 		tc := tc
 		t.Run(tc.FailureTest.Name, func(t *testing.T) {
 			t.Parallel()
-			acceptance.TestBuildFailure(t, builder, tc.FailureTest)
+			acceptance.TestBuildFailure(t, builderImage, runImage, tc.FailureTest)
 		})
 	}
 }

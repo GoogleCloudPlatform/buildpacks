@@ -26,7 +26,7 @@ func init() {
 }
 
 func TestAcceptance(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	// In general we fail if we see the string WARNING, because it should be possible to have a project that produces no warnings.
@@ -130,7 +130,7 @@ func TestAcceptance(t *testing.T) {
 
 			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=java17")
 
-			acceptance.TestApp(t, builder, tc)
+			acceptance.TestApp(t, builderImage, runImage, tc)
 		})
 	}
 }
