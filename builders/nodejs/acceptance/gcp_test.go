@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -114,19 +114,6 @@ func TestAcceptance(t *testing.T) {
 				MustNotUse: []string{nodeNPM},
 			},
 		},
-		// TODO (mattrobertson) update this to key off of the npm version
-		// instead of the Node.js version.
-		// {
-		// 	// Test installs a specific version of node and only needs to be run with a single version
-		// 	VersionInclusionConstraint: "12",
-		// 	Test: acceptance.Test{
-		// 		Name:    "runtime version with npm install",
-		// 		App:     "nodejs/simple",
-		// 		Path:    "/version?want=12.13.0",
-		// 		Env:     []string{"GOOGLE_RUNTIME_VERSION=12.13.0"},
-		// 		MustUse: []string{nodeRuntime, nodeNPM},
-		// 	},
-		// },
 		{
 			// Test installs a specific version of node and only needs to be run with a single version
 			VersionInclusionConstraint: "12",
@@ -163,6 +150,18 @@ func TestAcceptance(t *testing.T) {
 				App:           "nodejs/npm_version_specified",
 				MustOutput:    []string{"npm --version\n\n8.3.1"},
 				Path:          "/version?want=8.3.1",
+				SkipCacheTest: true,
+			},
+		},
+		{
+			// npm@5 requires nodejs@8
+			VersionInclusionConstraint: "8",
+			Test: acceptance.Test{
+				Name:          "old NPM version specified",
+				App:           "nodejs/old_npm_version_specified",
+				Path:          "/version?want=5.5.1",
+				MustUse:       []string{nodeRuntime, nodeNPM},
+				MustOutput:    []string{"npm --version\n\n5.5.1"},
 				SkipCacheTest: true,
 			},
 		},

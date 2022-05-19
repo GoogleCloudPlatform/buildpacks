@@ -28,8 +28,12 @@ const (
 	NPMShrinkwrap = "npm-shrinkwrap.json"
 )
 
-// minPruneVersion is the first npm version that supports the prune command.
-var minPruneVersion = semver.MustParse("5.7.0")
+var (
+	// minPruneVersion is the first npm version that supports the prune command.
+	minPruneVersion = semver.MustParse("5.7.0")
+	// minNpmCIVersion is the first npm version that suports the ci command.
+	minNpmCIVersion = semver.MustParse("6.14.0")
+)
 
 // RequestedNPMVersion returns any customer provided NPM version constraint configured in the
 // "engines" section of the package.json file in the given application dir.
@@ -67,14 +71,16 @@ func EnsureLockfile(ctx *gcp.Context) (string, error) {
 	return PackageLock, nil
 }
 
-// NPMInstallCommand returns the correct install command based on the version of Node.js.
+// NPMInstallCommand returns the correct install command based on the version of Node.js. By default
+// we prefer "npm ci" because it handles transitive dependencies determinstically. See the NPM docs:
+// https://docs.npmjs.com/cli/v6/commands/npm-ci
 func NPMInstallCommand(ctx *gcp.Context) (string, error) {
-	// HACK: For backwards compatibility on App Engine Node.js 10 and older, always use `npm install`.
-	isOldNode, err := isPreNode11(ctx)
+	version, err := semver.NewVersion(npmVersion(ctx))
 	if err != nil {
-		return "", err
+		return "", gcp.InternalErrorf("parsing npm version: %v", err)
 	}
-	if isOldNode {
+	// HACK: For backwards compatibility with old versions of npm always use `npm install`.
+	if version.LessThan(minNpmCIVersion) {
 		return "install", nil
 	}
 	return "ci", nil

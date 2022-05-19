@@ -13,21 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-'use strict';
 
+/**
+ * @fileoverview A hello world application with a specific NPM version specified
+ * in package.json.
+ */
+
+
+const { exec } = require("child_process");
 const express = require('express');
-const epkg = require('express/package.json');
-const http = require('http');
+const app = express();
 
-const server = http.createServer((request, response) => {
-  response.writeHead(200, {"Content-Type": "text/plain"});
-  let want = "4.17.1";
-  let got = epkg.version;
-  if (want != got) {
-    response.end(`Unexpected express version: got ${got}, want ${want}`);
-  } else {
-    response.end("PASS");
-  }
+app.get('/version', (req, res) => {
+  exec("npm --version", (error, stdout, stderr) => {
+    const want = req.query.want;
+    const got = stdout.trim();
+    if (!want) {
+      res.end('FAIL: ?want must be set to a version');
+    } else if (got !== want) {
+      res.end(`FAIL: current version: ${got}; want ${want}`);
+    } else {
+      res.end('PASS');
+    }
+  });
 });
 
-server.listen(process.env.PORT);
+app.listen(process.env.PORT || 8080);

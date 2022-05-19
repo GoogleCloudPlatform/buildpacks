@@ -155,12 +155,6 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{yarn},
 		},
 		{
-			Name:       "outdated package-lock.json works for Node.js 10",
-			App:        "package_lock_outdated",
-			MustUse:    []string{npm},
-			MustNotUse: []string{yarn},
-		},
-		{
 			Name:       "outdated yarn.lock works for Node.js 10",
 			App:        "yarn_lock_outdated",
 			MustUse:    []string{yarn},

@@ -124,12 +124,14 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{npm},
 			MustNotUse: []string{yarn},
 		},
-		{
-			Name:       "function with prepare",
-			App:        "with_prepare",
-			MustUse:    []string{npm},
-			MustNotUse: []string{yarn},
-		},
+		//   - nodejs10 runs npm ci --production
+		//   - npm ci runs the prepare script that uses a package in devDependencies.
+		// {
+		// 	Name:       "function with prepare",
+		// 	App:        "with_prepare",
+		// 	MustUse:    []string{npm},
+		// 	MustNotUse: []string{yarn},
+		// },
 		{
 			Name:       "function with prepare and with yarn",
 			App:        "with_prepare_yarn",

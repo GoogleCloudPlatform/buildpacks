@@ -74,23 +74,19 @@ func TestNPMInstallCommand(t *testing.T) {
 		want    string
 	}{
 		{
-			version: "v10.1.1",
-			want:    "install",
-		},
-		{
-			version: "v8.17.0",
-			want:    "install",
-		},
-		{
-			version: "v15.11.0",
+			version: "8.3.1",
 			want:    "ci",
+		},
+		{
+			version: "5.7.0",
+			want:    "install",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.version, func(t *testing.T) {
-			defer func(fn func(*gcpbuildpack.Context) string) { nodeVersion = fn }(nodeVersion)
-			nodeVersion = func(*gcpbuildpack.Context) string { return tc.version }
+			defer func(fn func(*gcpbuildpack.Context) string) { npmVersion = fn }(npmVersion)
+			npmVersion = func(*gcpbuildpack.Context) string { return tc.version }
 
 			got, err := NPMInstallCommand(nil)
 			if err != nil {
