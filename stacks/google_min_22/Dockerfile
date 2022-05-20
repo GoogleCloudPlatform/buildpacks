@@ -19,7 +19,13 @@ ARG cnb_gid=1000
 
 ARG packages=run-packages.txt
 COPY ${packages} /tmp/packages.txt
+
+# Version identifier of the image.
+ARG CANDIDATE_NAME
 RUN \
+  # Write version information
+  mkdir -p /usr/local/versions && \
+    echo ${CANDIDATE_NAME} > /usr/local/versions/run_base && \
   # Disable universe and multiverse repositories
   mv /etc/apt/sources.list /etc/apt/sources.list.universe && \
   cat /etc/apt/sources.list.universe \
@@ -47,7 +53,7 @@ USER cnb
 
 ENV CNB_STACK_ID="google.min.22"
 ENV CNB_USER_ID=${cnb_uid}
-ENV CNB_GROUP_ID=${cnb_guid}
+ENV CNB_GROUP_ID=${cnb_gid}
 
 # Standard buildpacks metadata
 LABEL io.buildpacks.stack.id="google.min.22"

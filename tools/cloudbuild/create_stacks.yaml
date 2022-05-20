@@ -1,0 +1,78 @@
+
+# Copyright 2022 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# GCB config for building all the base images defined in the /stacks directory. It should be
+# submitted from the project root directory and provided with a `_CANDIDATE_NAME` substitution
+# that serves as a unique identifier of the images:
+#
+#   $ gcloud builds submit --config=tools/cloudbuild/create_stacks.yaml \
+#      --substitutions _CANDIDATE_NAME=my-local-build
+steps:
+  - id: min-build-image
+    name: gcr.io/cloud-builders/docker
+    dir: stacks/google_min_22
+    args:
+    - 'build'
+    - '--build-arg="packages=build-packages.txt"'
+    - '--build-arg="CANDIDATE_NAME=${_CANDIDATE_NAME}"'
+    - '-t=gcr.io/$PROJECT_ID/stacks/google-min-22/build:latest'
+    - '.'
+    waitFor: ['-']
+
+  - id: min-run-image
+    name: gcr.io/cloud-builders/docker
+    dir: stacks/google_min_22
+    args:
+    - 'build'
+    - '--build-arg="packages=run-packages.txt"'
+    - '--build-arg="CANDIDATE_NAME=${_CANDIDATE_NAME}"'
+    - '-t=gcr.io/$PROJECT_ID/stacks/google-min-22/run:latest'
+    - '.'
+    waitFor: ['-']
+
+  - id: gae-build-image
+    name: gcr.io/cloud-builders/docker
+    dir: stacks/google_gae_22
+    args:
+    - 'build'
+    - '--file=build.Dockerfile'
+    - '--build-arg="CANDIDATE_NAME=${_CANDIDATE_NAME}"'
+    - '-t=gcr.io/$PROJECT_ID/stacks/google-gae-22/build:latest'
+    - '.'
+    waitFor: ['-']
+
+  - id: gae-run-image
+    name: gcr.io/cloud-builders/docker
+    dir: stacks/google_gae_22
+    args:
+    - 'build'
+    - '--file=run.Dockerfile'
+    - '--build-arg="CANDIDATE_NAME=${_CANDIDATE_NAME}"'
+    - '-t=gcr.io/$PROJECT_ID/stacks/google-gae-22/run:latest'
+    - '.'
+    waitFor: ['-']
+
+images:
+  - 'gcr.io/$PROJECT_ID/stacks/google-min-22/build:latest'
+  - 'gcr.io/$PROJECT_ID/stacks/google-min-22/run:latest'
+  - 'gcr.io/$PROJECT_ID/stacks/google-gae-22/build:latest'
+  - 'gcr.io/$PROJECT_ID/stacks/google-gae-22/run:latest'
+
+substitutions:
+  _CANDIDATE_NAME: localbuild
+
+timeout: '10800s'
+options:
+  machineType: 'N1_HIGHCPU_32'

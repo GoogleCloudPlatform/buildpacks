@@ -55,7 +55,7 @@ ENTRYPOINT []
 
 ENV CNB_STACK_ID="google.gae.22"
 ENV CNB_USER_ID=${cnb_uid}
-ENV CNB_GROUP_ID=${cnb_guid}
+ENV CNB_GROUP_ID=${cnb_gid}
 
 # Standard buildpacks metadata
 LABEL io.buildpacks.stack.id="google.gae.22"
