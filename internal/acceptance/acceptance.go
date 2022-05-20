@@ -612,7 +612,7 @@ func ProvisionImages(t *testing.T) (builderName string, runName string, cleanup 
 		}
 	}
 
-	builderConfig, err := readBuilderConfig(config)
+	builderConfig, err := readBuilderTOML(config)
 	if err != nil {
 		t.Fatalf("Error reading builder.toml: %v", err)
 	}
@@ -809,7 +809,7 @@ func runImageFromMetadata(image string) (string, error) {
 	format := "--format={{(index (index .Config.Labels) \"io.buildpacks.builder.metadata\")}}"
 	out, err := runOutput("docker", "inspect", image, format)
 	if err != nil {
-		return "", fmt.Errorf("reading builer metadata: %v", err)
+		return "", fmt.Errorf("reading builder metadata: %v", err)
 	}
 
 	var metadata struct {
@@ -855,7 +855,7 @@ func setupSource(t *testing.T, setup setupFunc, builder, src, app string) string
 	return temp
 }
 
-func readBuilderConfig(path string) (*builderTOML, error) {
+func readBuilderTOML(path string) (*builderTOML, error) {
 	bytes, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading %q: %w", path, err)
