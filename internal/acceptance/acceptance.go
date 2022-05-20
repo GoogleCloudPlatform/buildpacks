@@ -205,6 +205,15 @@ type BOMEntry struct {
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
+// builderTOML contains the values from builder.toml file
+type builderTOML struct {
+	Stack struct {
+		ID         string `toml:"id"`
+		RunImage   string `toml:"run-image"`
+		BuildImage string `toml:"build-image"`
+	} `toml:"stack"`
+}
+
 // TestApp builds and a single application and verifies that it runs and handles requests.
 func TestApp(t *testing.T, builderName, runName string, cfg Test) {
 	t.Helper()
@@ -558,7 +567,7 @@ func ProvisionImages(t *testing.T) (builderName string, runName string, cleanup 
 		t.Fatalf("Error checking pack version: %v", err)
 	}
 
-	builderName = builderPrefix + randString(10)
+	builderName = generateRandomImageName(builderPrefix)
 
 	if builderImage != "" {
 		t.Logf("Testing existing builder image: %s", builderImage)
@@ -566,24 +575,18 @@ func ProvisionImages(t *testing.T) (builderName string, runName string, cleanup 
 			if _, err := runOutput("docker", "pull", builderImage); err != nil {
 				t.Fatalf("Error pulling %s: %v", builderImage, err)
 			}
-			runName = runImageOverride
-			if runName == "" {
-				var err error
-				runName, err = runImageFromMetadata(builderImage)
-				if err != nil {
-					t.Fatalf("Error extracting run image from image %s: %v", builderImage, err)
-				}
-			}
-			if _, err := runOutput("docker", "pull", runName); err != nil {
-				t.Fatalf("Error pulling %s: %v", runName, err)
-			}
 		}
 		// Pack cache is based on builder name; retag with a unique name.
 		if _, err := runOutput("docker", "tag", builderImage, builderName); err != nil {
 			t.Fatalf("Error tagging %s as %s: %v", builderImage, builderName, err)
 		}
+		runName, cleanUpRun, err := provisionRunImageFromBuilder(builderName)
+		if err != nil {
+			t.Fatalf("Error provisioning run image for builder %q: %v", builderName, err)
+		}
 		return builderName, runName, func() {
 			cleanUpImage(t, builderName)
+			cleanUpRun(t)
 		}
 	}
 
@@ -599,23 +602,21 @@ func ProvisionImages(t *testing.T) (builderName string, runName string, cleanup 
 		}
 	}
 
-	run, buildName, err := stackImagesFromConfig(config)
+	builderConfig, err := readBuilderConfig(config)
 	if err != nil {
-		t.Fatalf("Error extracting stack images from %s: %v", config, err)
+		t.Fatalf("Error reading builder.toml: %v", err)
 	}
-	runName = run
 	// Pull images once in the beginning to prevent them from changing in the middle of testing.
 	// The images are intentionally not cleaned up to prevent conflicts across different test targets.
 	if pullImages {
-		if runImageOverride != "" {
-			runName = runImageOverride
-		}
-		if _, err := runOutput("docker", "pull", runName); err != nil {
-			t.Fatalf("Error pulling %s: %v", run, err)
-		}
+		buildName := builderConfig.Stack.BuildImage
 		if _, err := runOutput("docker", "pull", buildName); err != nil {
 			t.Fatalf("Error pulling %s: %v", buildName, err)
 		}
+	}
+	runName, cleanUpRun, err := provisionRunImageFromTOML(builderConfig)
+	if err != nil {
+		t.Fatalf("Error provisioning run image: %v", err)
 	}
 
 	// Pack command to create the builder.
@@ -638,7 +639,102 @@ func ProvisionImages(t *testing.T) (builderName string, runName string, cleanup 
 	return builderName, runName, func() {
 		cleanUpImage(t, builderName)
 		cleanUpBuilder()
+		cleanUpRun(t)
 	}
+}
+
+func provisionRunImageFromTOML(builderConfig *builderTOML) (string, func(t *testing.T), error) {
+	runName := builderConfig.Stack.RunImage
+	if runImageOverride != "" {
+		runName = runImageOverride
+	}
+	if pullImages {
+		if _, err := runOutput("docker", "pull", runName); err != nil {
+			return "", nil, fmt.Errorf("pulling %q: %w", runName, err)
+		}
+	}
+	if runName == builderConfig.Stack.RunImage {
+		// when the run image name is the one defined in the builderconfig, do not verify the stack ids
+		// match because a builder.toml should contain valid configuration.
+		return runName, func(t *testing.T) {}, nil
+	}
+	return provisionImageWithMatchingStackID(runName, builderConfig.Stack.ID)
+}
+
+func provisionRunImageFromBuilder(builderName string) (string, func(t *testing.T), error) {
+	builderDefinedRunImage, err := runImageFromMetadata(builderName)
+	if err != nil {
+		return "", nil, fmt.Errorf("Error extracting run image from image %q: %w", builderName, err)
+	}
+	runName := builderDefinedRunImage
+	if runImageOverride != "" {
+		runName = runImageOverride
+	}
+	if pullImages {
+		if _, err := runOutput("docker", "pull", runName); err != nil {
+			return "", nil, fmt.Errorf("pulling %q: %w", runName, err)
+		}
+	}
+	if builderDefinedRunImage == runName {
+		// when the run image is the one defined for the builder, do not verify the stack ids match
+		// because the builder should contain valid configuration.
+		return runName, func(t *testing.T) {}, nil
+	}
+	builderStackID, err := getImageStackID(builderName)
+	if err != nil {
+		return "", nil, fmt.Errorf("getting stack id of builder %q: %w", builderName, err)
+	}
+	return provisionImageWithMatchingStackID(runName, builderStackID)
+}
+
+// provisionImageWithMatchingStackId returns an image with the contents of 'fromImage' and a stack
+// ID of 'stackID'. The second return value is a cleanUp function which will destroy the returned
+// image if the image was newly created. The cleanUp function is a no-op if the fromImage already
+// had the desired stackID.
+//
+// This function is useful for ensuring a run image has the same stack id as the builder. This is
+// necessary because pack requires that the two match.
+func provisionImageWithMatchingStackID(fromImage, stackID string) (string, func(t *testing.T), error) {
+	imageStackID, err := getImageStackID(fromImage)
+	if err != nil {
+		return "", nil, fmt.Errorf("getting stack id of image %q: %w", fromImage, err)
+	}
+	if imageStackID == stackID {
+		return fromImage, func(t *testing.T) {}, nil
+	}
+	newImage, err := newImageWithStackID(fromImage, stackID)
+	if err != nil {
+		return "", nil, fmt.Errorf("creating image from %q with stack id %q: %w", fromImage, stackID, err)
+	}
+	cleanUp := func(t *testing.T) {
+		cleanUpImage(t, newImage)
+	}
+	return newImage, cleanUp, nil
+}
+
+func getImageStackID(image string) (string, error) {
+	out, err := runOutput("docker", "inspect", `--format={{index .Config.Labels "io.buildpacks.stack.id"}}`, image)
+	if err != nil {
+		return "", fmt.Errorf("getting stack id from docker inspect: %w", err)
+	}
+	return out, nil
+}
+
+func newImageWithStackID(fromImage, stackID string) (string, error) {
+	newImage := generateRandomImageName(fromImage)
+	_, err := runCombinedOutput("bash", "-c", fmt.Sprintf(`echo "FROM %s" | docker build --label io.buildpacks.stack.id="%s" -t "%s" -`, fromImage, stackID, newImage))
+	if err != nil {
+		return "", fmt.Errorf("changing stack id label on %q: %v", fromImage, err)
+	}
+	return newImage, nil
+}
+
+func generateRandomImageName(baseName string) string {
+	rand := randString(10)
+	if strings.Contains(baseName, ":") {
+		return fmt.Sprintf("%v_%v", baseName, rand)
+	}
+	return baseName + rand
 }
 
 func extractBuilder(t *testing.T, builderSource string) (string, func()) {
@@ -749,22 +845,16 @@ func setupSource(t *testing.T, setup setupFunc, builder, src, app string) string
 	return temp
 }
 
-// stackImagesFromConfig returns the run images specified by the given builder.toml.
-func stackImagesFromConfig(path string) (string, string, error) {
-	p, err := ioutil.ReadFile(path)
+func readBuilderConfig(path string) (*builderTOML, error) {
+	bytes, err := os.ReadFile(path)
 	if err != nil {
-		return "", "", fmt.Errorf("reading %s: %v", path, err)
+		return nil, fmt.Errorf("reading %q: %w", path, err)
 	}
-	var config struct {
-		Stack struct {
-			RunImage   string `toml:"run-image"`
-			BuildImage string `toml:"build-image"`
-		} `toml:"stack"`
+	var bc builderTOML
+	if err := toml.Unmarshal(bytes, &bc); err != nil {
+		return nil, fmt.Errorf("unmarshalling %q: %w", path, err)
 	}
-	if err := toml.Unmarshal(p, &config); err != nil {
-		return "", "", fmt.Errorf("unmarshaling %s: %v", path, err)
-	}
-	return config.Stack.RunImage, config.Stack.BuildImage, nil
+	return &bc, nil
 }
 
 func buildCommand(srcDir, image, builderName, runName string, env map[string]string, cache bool) []string {
