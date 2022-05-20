@@ -33,167 +33,124 @@ func TestAcceptance(t *testing.T) {
 	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
-	testCases := []struct {
-		Test                       acceptance.Test
-		VersionInclusionConstraint string
-	}{
+	testCases := []acceptance.Test{
 		{
-			Test: acceptance.Test{
-				Name: "function without package",
-				App:  "no_package",
-			},
+			Name: "function without package",
+			App:  "no_package",
 		},
 		{
-			Test: acceptance.Test{
-				Name: "function without package and with yarn",
-				App:  "no_package_yarn",
-			},
+			Name: "function without package and with yarn",
+			App:  "no_package_yarn",
 		},
 		{
-			Test: acceptance.Test{
-				Name: "declarative http function",
-				App:  "declarative_http",
-			},
+			Name: "declarative http function",
+			App:  "declarative_http",
 		},
 		{
-			Test: acceptance.Test{
-				Name:                "declarative CloudEvent function",
-				App:                 "declarative_cloud_event",
-				RequestType:         acceptance.CloudEventType,
-				MustMatchStatusCode: http.StatusNoContent,
-			},
+			Name:                "declarative CloudEvent function",
+			App:                 "declarative_cloud_event",
+			RequestType:         acceptance.CloudEventType,
+			MustMatchStatusCode: http.StatusNoContent,
 		},
 		{
-			Test: acceptance.Test{
-				Name:       "function without framework",
-				App:        "no_framework",
-				MustUse:    []string{npm},
-				MustNotUse: []string{yarn},
-			},
+			Name:       "function without framework",
+			App:        "no_framework",
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
 		},
 		{
-			Test: acceptance.Test{
-				Name:       "function without framework and with yarn",
-				App:        "no_framework_yarn",
-				MustUse:    []string{yarn},
-				MustNotUse: []string{npm},
-			},
+			Name:       "function without framework and with yarn",
+			App:        "no_framework_yarn",
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
 		},
 		{
-			Test: acceptance.Test{
-				Name:       "function with framework",
-				App:        "with_framework",
-				MustUse:    []string{npm},
-				MustNotUse: []string{yarn},
-			},
+			Name:       "function with framework",
+			App:        "with_framework",
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
 		},
 		{
-			Test: acceptance.Test{
-				Name:       "function with framework and with yarn",
-				App:        "with_framework_yarn",
-				MustUse:    []string{yarn},
-				MustNotUse: []string{npm},
-			},
+			Name:       "function with framework and with yarn",
+			App:        "with_framework_yarn",
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
 		},
 		{
-			Test: acceptance.Test{
-				Name:       "function with dependencies",
-				App:        "with_dependencies",
-				MustUse:    []string{npm},
-				MustNotUse: []string{yarn},
-			},
+			Name:       "function with dependencies",
+			App:        "with_dependencies",
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
 		},
 		{
-			Test: acceptance.Test{
-				Name:       "function with dependencies and with yarn",
-				App:        "with_dependencies_yarn",
-				MustUse:    []string{yarn},
-				MustNotUse: []string{npm},
-			},
+			Name:       "function with dependencies and with yarn",
+			App:        "with_dependencies_yarn",
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
 		},
 		{
-			Test: acceptance.Test{
-				Name:       "function with local dependency",
-				App:        "local_dependency",
-				MustUse:    []string{npm},
-				MustNotUse: []string{yarn},
-			},
+			Name:       "function with local dependency",
+			App:        "local_dependency",
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
 		},
 		{
-			Test: acceptance.Test{
-				Name:       "function with local dependency and with yarn",
-				App:        "local_dependency_yarn",
-				MustUse:    []string{yarn},
-				MustNotUse: []string{npm},
-			},
+			Name:       "function with local dependency and with yarn",
+			App:        "local_dependency_yarn",
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
 		},
 		{
-			Test: acceptance.Test{
-				Name:       "function with gcp-build",
-				App:        "with_gcp_build",
-				MustUse:    []string{npm},
-				MustNotUse: []string{yarn},
-			},
+			Name:       "function with gcp-build",
+			App:        "with_gcp_build",
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
 		},
 		{
-			Test: acceptance.Test{
-				Name:       "function with gcp-build and with yarn",
-				App:        "with_gcp_build_yarn",
-				MustUse:    []string{yarn},
-				MustNotUse: []string{npm},
-			},
+			Name:       "function with gcp-build and with yarn",
+			App:        "with_gcp_build_yarn",
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
 		},
 		{
-			Test: acceptance.Test{
-				Name:       "function with runtime env var",
-				App:        "with_env_var",
-				RunEnv:     []string{"FOO=foo"},
-				MustUse:    []string{npm},
-				MustNotUse: []string{yarn},
-			},
+			Name:       "function with runtime env var",
+			App:        "with_env_var",
+			RunEnv:     []string{"FOO=foo"},
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
 		},
 		{
-			Test: acceptance.Test{
-				Name:       "function with prepare and with yarn",
-				App:        "with_prepare_yarn",
-				MustUse:    []string{yarn},
-				MustNotUse: []string{npm},
-			},
+			Name:       "function with prepare and with yarn",
+			App:        "with_prepare_yarn",
+			MustUse:    []string{yarn},
+			MustNotUse: []string{npm},
 		},
 		{
-			Test: acceptance.Test{
-				Name:       "framework loads user dependencies",
-				App:        "load_user_dependencies",
-				MustUse:    []string{npm},
-				MustNotUse: []string{yarn},
-			},
+			Name:       "framework loads user dependencies",
+			App:        "load_user_dependencies",
+			MustUse:    []string{npm},
+			MustNotUse: []string{yarn},
 		},
 		{
+			Name: "ESM function",
 			// The app uses the "ES Module" which requires nodejs@13
 			VersionInclusionConstraint: ">= 13.0.0",
-			Test: acceptance.Test{
-				Name:       "ESM function",
-				App:        "using_esm",
-				MustUse:    []string{npm},
-				MustNotUse: []string{yarn},
-			},
+			App:                        "using_esm",
+			MustUse:                    []string{npm},
+			MustNotUse:                 []string{yarn},
 		},
 		{
+			Name: "Yarn 2 PnP function",
 			// The app uses Workers also called 'worker_threads' which are supported with nodejs@12+
 			VersionInclusionConstraint: ">= 12.0.0",
-			Test: acceptance.Test{
-				Name:       "Yarn 2 PnP function",
-				App:        "yarn_two_pnp",
-				MustUse:    []string{yarn},
-				MustNotUse: []string{npm},
-			},
+			App:                        "yarn_two_pnp",
+			MustUse:                    []string{yarn},
+			MustNotUse:                 []string{npm},
 		},
 	}
-	for _, tc := range testCases {
-		if !acceptance.ShouldTestVersion(t, tc.VersionInclusionConstraint) {
-			continue
-		}
-		tc := applyStaticAcceptanceTestOptions(tc.Test)
+
+	for _, tc := range acceptance.FilterTests(t, testCases) {
+		tc := applyStaticAcceptanceTestOptions(tc)
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 			acceptance.TestApp(t, builderImage, runImage, tc)

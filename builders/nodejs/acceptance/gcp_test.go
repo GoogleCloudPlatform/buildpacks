@@ -35,147 +35,131 @@ func TestAcceptance(t *testing.T) {
 	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
-	testCases := []struct {
-		Test                       acceptance.Test
-		VersionInclusionConstraint string
-	}{
+	testCases := []acceptance.Test{
 		{
-			Test: acceptance.Test{
-				Name:    "simple application",
-				App:     "nodejs/simple",
-				MustUse: []string{nodeRuntime, nodeNPM},
-			},
+			Name:    "simple application",
+			App:     "nodejs/simple",
+			MustUse: []string{nodeRuntime, nodeNPM},
 		},
 		{
-			Test: acceptance.Test{
-				Name:                "Dev mode",
-				App:                 "nodejs/simple",
-				Env:                 []string{"GOOGLE_DEVMODE=1"},
-				MustUse:             []string{nodeRuntime, nodeNPM},
-				FilesMustExist:      []string{"/workspace/server.js"},
-				MustRebuildOnChange: "/workspace/server.js",
-			},
+			Name:                "Dev mode",
+			App:                 "nodejs/simple",
+			Env:                 []string{"GOOGLE_DEVMODE=1"},
+			MustUse:             []string{nodeRuntime, nodeNPM},
+			FilesMustExist:      []string{"/workspace/server.js"},
+			MustRebuildOnChange: "/workspace/server.js",
 		},
 		{
+			// This is a separate test case from Dev mode above because it has a fixed runtime version.
+			// Its only purpose is to test that the metadata is set correctly.
+			Name: "Dev mode metadata",
 			// Test installs a specific version of node and only needs to be run with a single version
 			VersionInclusionConstraint: "14",
-			Test: acceptance.Test{
-				// This is a separate test case from Dev mode above because it has a fixed runtime version.
-				// Its only purpose is to test that the metadata is set correctly.
-				Name:    "Dev mode metadata",
-				App:     "nodejs/simple",
-				Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=14.17.0"},
-				MustUse: []string{nodeRuntime, nodeNPM},
-				BOM: []acceptance.BOMEntry{
-					{
-						Name: "nodejs",
-						Metadata: map[string]interface{}{
-							"version": "14.17.0",
-						},
+			App:                        "nodejs/simple",
+			Env:                        []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=14.17.0"},
+			MustUse:                    []string{nodeRuntime, nodeNPM},
+			BOM: []acceptance.BOMEntry{
+				{
+					Name: "nodejs",
+					Metadata: map[string]interface{}{
+						"version": "14.17.0",
 					},
-					{
-						Name: "devmode",
-						Metadata: map[string]interface{}{
-							"devmode.sync": []interface{}{
-								map[string]interface{}{"dest": "/workspace", "src": "**/*.js"},
-								map[string]interface{}{"dest": "/workspace", "src": "**/*.mjs"},
-								map[string]interface{}{"dest": "/workspace", "src": "**/*.coffee"},
-								map[string]interface{}{"dest": "/workspace", "src": "**/*.litcoffee"},
-								map[string]interface{}{"dest": "/workspace", "src": "**/*.json"},
-								map[string]interface{}{"dest": "/workspace", "src": "public/**"},
-							},
+				},
+				{
+					Name: "devmode",
+					Metadata: map[string]interface{}{
+						"devmode.sync": []interface{}{
+							map[string]interface{}{"dest": "/workspace", "src": "**/*.js"},
+							map[string]interface{}{"dest": "/workspace", "src": "**/*.mjs"},
+							map[string]interface{}{"dest": "/workspace", "src": "**/*.coffee"},
+							map[string]interface{}{"dest": "/workspace", "src": "**/*.litcoffee"},
+							map[string]interface{}{"dest": "/workspace", "src": "**/*.json"},
+							map[string]interface{}{"dest": "/workspace", "src": "public/**"},
 						},
 					},
 				},
 			},
 		},
 		{
-			Test: acceptance.Test{
-				Name:    "simple application (custom entrypoint)",
-				App:     "nodejs/custom_entrypoint",
-				Env:     []string{"GOOGLE_ENTRYPOINT=node custom.js"},
-				MustUse: []string{nodeRuntime, nodeNPM, entrypoint},
-			},
+			Name:    "simple application (custom entrypoint)",
+			App:     "nodejs/custom_entrypoint",
+			Env:     []string{"GOOGLE_ENTRYPOINT=node custom.js"},
+			MustUse: []string{nodeRuntime, nodeNPM, entrypoint},
 		},
 		{
-			Test: acceptance.Test{
-				Name:       "yarn",
-				App:        "nodejs/yarn",
-				MustUse:    []string{nodeRuntime, nodeYarn},
-				MustNotUse: []string{nodeNPM},
-			},
+			Name:       "yarn",
+			App:        "nodejs/yarn",
+			MustUse:    []string{nodeRuntime, nodeYarn},
+			MustNotUse: []string{nodeNPM},
 		},
 		{
-			Test: acceptance.Test{
-				Name:       "yarn (Dev Mode)",
-				App:        "nodejs/yarn",
-				Env:        []string{"GOOGLE_DEVMODE=1"},
-				MustUse:    []string{nodeRuntime, nodeYarn},
-				MustNotUse: []string{nodeNPM},
-			},
+			Name:       "yarn (Dev Mode)",
+			App:        "nodejs/yarn",
+			Env:        []string{"GOOGLE_DEVMODE=1"},
+			MustUse:    []string{nodeRuntime, nodeYarn},
+			MustNotUse: []string{nodeNPM},
 		},
+		// TODO (mattrobertson) update this to key off of the npm version
+		// instead of the Node.js version.
+		// {
+		// 	// Test installs a specific version of node and only needs to be run with a single version
+		// 	VersionInclusionConstraint: "12",
+		// 	Test: acceptance.Test{
+		// 		Name:    "runtime version with npm install",
+		// 		App:     "nodejs/simple",
+		// 		Path:    "/version?want=12.13.0",
+		// 		Env:     []string{"GOOGLE_RUNTIME_VERSION=12.13.0"},
+		// 		MustUse: []string{nodeRuntime, nodeNPM},
+		// 	},
+		// },
 		{
+			Name: "runtime version with npm ci",
 			// Test installs a specific version of node and only needs to be run with a single version
 			VersionInclusionConstraint: "12",
-			Test: acceptance.Test{
-				Name:    "runtime version with npm ci",
-				App:     "nodejs/simple",
-				Path:    "/version?want=16.9.1",
-				Env:     []string{"GOOGLE_RUNTIME_VERSION=16.9.1"},
-				MustUse: []string{nodeRuntime, nodeNPM},
-			},
+			App:                        "nodejs/simple",
+			Path:                       "/version?want=16.9.1",
+			Env:                        []string{"GOOGLE_RUNTIME_VERSION=16.9.1"},
+			MustUse:                    []string{nodeRuntime, nodeNPM},
 		},
 		{
-			Test: acceptance.Test{
-				Name:       "without package.json",
-				App:        "nodejs/no_package",
-				Env:        []string{"GOOGLE_ENTRYPOINT=node server.js"},
-				MustUse:    []string{nodeRuntime},
-				MustNotUse: []string{nodeNPM, nodeYarn},
-			},
+			Name:       "without package.json",
+			App:        "nodejs/no_package",
+			Env:        []string{"GOOGLE_ENTRYPOINT=node server.js"},
+			MustUse:    []string{nodeRuntime},
+			MustNotUse: []string{nodeNPM, nodeYarn},
 		},
 		{
-			Test: acceptance.Test{
-				Name:    "selected via GOOGLE_RUNTIME",
-				App:     "override",
-				Env:     []string{"GOOGLE_RUNTIME=nodejs"},
-				MustUse: []string{nodeRuntime},
-			},
+			Name:    "selected via GOOGLE_RUNTIME",
+			App:     "override",
+			Env:     []string{"GOOGLE_RUNTIME=nodejs"},
+			MustUse: []string{nodeRuntime},
 		},
 		{
+			Name: "NPM version specified",
 			// npm@8 requires nodejs@12+
 			VersionInclusionConstraint: ">= 12.0.0",
-			Test: acceptance.Test{
-				Name:          "NPM version specified",
-				App:           "nodejs/npm_version_specified",
-				MustOutput:    []string{"npm --version\n\n8.3.1"},
-				Path:          "/version?want=8.3.1",
-				SkipCacheTest: true,
-			},
+			App:                        "nodejs/npm_version_specified",
+			MustOutput:                 []string{"npm --version\n\n8.3.1"},
+			Path:                       "/version?want=8.3.1",
+			SkipCacheTest:              true,
 		},
 		{
+			Name: "old NPM version specified",
 			// npm@5 requires nodejs@8
 			VersionInclusionConstraint: "8",
-			Test: acceptance.Test{
-				Name:          "old NPM version specified",
-				App:           "nodejs/old_npm_version_specified",
-				Path:          "/version?want=5.5.1",
-				MustUse:       []string{nodeRuntime, nodeNPM},
-				MustOutput:    []string{"npm --version\n\n5.5.1"},
-				SkipCacheTest: true,
-			},
+			App:                        "nodejs/old_npm_version_specified",
+			Path:                       "/version?want=5.5.1",
+			MustUse:                    []string{nodeRuntime, nodeNPM},
+			MustOutput:                 []string{"npm --version\n\n5.5.1"},
+			SkipCacheTest:              true,
 		},
 	}
 
-	for _, tc := range testCases {
-		if !acceptance.ShouldTestVersion(t, tc.VersionInclusionConstraint) {
-			continue
-		}
+	for _, tc := range acceptance.FilterTests(t, testCases) {
 		tc := tc
-		t.Run(tc.Test.Name, func(t *testing.T) {
+		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-
-			acceptance.TestApp(t, builderImage, runImage, tc.Test)
+			acceptance.TestApp(t, builderImage, runImage, tc)
 		})
 	}
 }
@@ -184,31 +168,22 @@ func TestFailures(t *testing.T) {
 	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
-	testCases := []struct {
-		FailureTest                acceptance.FailureTest
-		VersionInclusionConstraint string
-	}{
+	testCases := []acceptance.FailureTest{
 		{
+			Name: "bad runtime version",
 			// Test has no version specific characteristics and should act the same across all versions
 			VersionInclusionConstraint: "12",
-			FailureTest: acceptance.FailureTest{
-				Name:      "bad runtime version",
-				App:       "nodejs/simple",
-				Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
-				MustMatch: "invalid Node.js version specified",
-			},
+			App:                        "nodejs/simple",
+			Env:                        []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
+			MustMatch:                  "invalid Node.js version specified",
 		},
 	}
 
-	for _, tc := range testCases {
-		if !acceptance.ShouldTestVersion(t, tc.VersionInclusionConstraint) {
-			continue
-		}
+	for _, tc := range acceptance.FilterFailureTests(t, testCases) {
 		tc := tc
-		t.Run(tc.FailureTest.Name, func(t *testing.T) {
+		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-
-			acceptance.TestBuildFailure(t, builderImage, runImage, tc.FailureTest)
+			acceptance.TestBuildFailure(t, builderImage, runImage, tc)
 		})
 	}
 }

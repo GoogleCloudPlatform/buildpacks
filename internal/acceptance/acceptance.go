@@ -180,6 +180,11 @@ type Test struct {
 	BOM []BOMEntry
 	// Setup is a function that sets up the source directory before test.
 	Setup setupFunc
+	// VersionInclusionConstraint is a 'semver' inclusion filter for runtime versions. The FilterTest
+	// method  will only return test cases with an inclusion constrant that matches with the value of the
+	// `-runtime-version` flag. When the inclusion constraint or `runtime-version` flag are empty all
+	// tests are included. See semver documentation to learn what is possible.
+	VersionInclusionConstraint string
 }
 
 // SetupContext is passed into the Test.Setup function, it gives the setupFunc implementor access
@@ -270,6 +275,11 @@ type FailureTest struct {
 	SkipBuilderOutputMatch bool
 	// Setup is a function that sets up the source directory before test.
 	Setup setupFunc
+	// VersionInclusionConstraint is a 'semver' inclusion filter for runtime versions. The FilterTest
+	// method  will only return test cases with an inclusion constrant that matches with the value of the
+	// `-runtime-version` flag. When the inclusion constraint or `runtime-version` flag are empty all
+	// tests are included. See semver documentation to learn what is possible.
+	VersionInclusionConstraint string
 }
 
 // TestBuildFailure runs a build and ensures that it fails. Additionally, it ensures the emitted logs match mustMatch regexps.
@@ -1246,6 +1256,30 @@ func cleanUpVolumes(t *testing.T, image string) {
 // PullImages returns the value of the -pull-images flag.
 func PullImages() bool {
 	return pullImages
+}
+
+// FilterTests returns a new slice with only tests that should be run. Tests are filtered out if
+// their VersionInclusionConstraint does not match the `-runtime-version` flag.
+func FilterTests(t *testing.T, testCases []Test) []Test {
+	results := make([]Test, 0)
+	for _, tc := range testCases {
+		if ShouldTestVersion(t, tc.VersionInclusionConstraint) {
+			results = append(results, tc)
+		}
+	}
+	return results
+}
+
+// FilterFailureTests returns a new slice with only tests that should be run. Tests are filtered out
+// if their VersionInclusionConstraint does not match the `-runtime-version` flag.
+func FilterFailureTests(t *testing.T, testCases []FailureTest) []FailureTest {
+	results := make([]FailureTest, 0)
+	for _, tc := range testCases {
+		if ShouldTestVersion(t, tc.VersionInclusionConstraint) {
+			results = append(results, tc)
+		}
+	}
+	return results
 }
 
 // ShouldTestVersion returns true if the current test run's version is included
