@@ -1,0 +1,8 @@
+licenses(["notice"])
+
+exports_files([
+    "build-packages.txt",
+    "build.Dockerfile",
+    "run-packages.txt",
+    "run.Dockerfile",
+])
