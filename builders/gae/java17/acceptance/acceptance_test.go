@@ -84,6 +84,13 @@ func TestAcceptance(t *testing.T) {
 			Env:  []string{"GOOGLE_ENTRYPOINT=java -jar target/ktor-0.0.1-jar-with-dependencies.jar"},
 			// We don't check for WARNING, because our project-artifact-generated code produces several of them.
 		},
+		{
+			Name:              "hello quarkus maven with source clearing",
+			App:               "hello_quarkus_maven",
+			Env:               []string{"GOOGLE_CLEAR_SOURCE=true"},
+			MustNotOutput:     []string{"WARNING"},
+			FilesMustNotExist: []string{"/workspace/src/main/java/hello/Hello.java", "/workspace/pom.xml"},
+		},
 		// TODO(b/226577140): Fix and enable gradle tests
 		/*
 			{
@@ -99,13 +106,6 @@ func TestAcceptance(t *testing.T) {
 			{
 				Name: "gradle kotlin",
 				App:  "gradle-kotlin",
-			},
-			{
-				Name:              "hello quarkus maven with source clearing",
-				App:               "hello_quarkus_maven",
-				Env:               []string{"GOOGLE_CLEAR_SOURCE=true"},
-				MustNotOutput:     []string{"WARNING"},
-				FilesMustNotExist: []string{"/workspace/src/main/java/hello/Hello.java", "/workspace/pom.xml"},
 			},
 			{
 				Name:              "Gradle with source clearing",
