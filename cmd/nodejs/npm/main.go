@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -111,6 +112,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	if gcpBuild {
 		ctx.Exec([]string{"npm", "run", "gcp-build"}, gcp.WithUserAttribution)
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmGcpBuildUsageCounterID).Increment(1)
 
 		shouldPrune, err := shouldPrune(ctx)
 		if err != nil {

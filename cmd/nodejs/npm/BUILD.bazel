@@ -25,6 +25,7 @@ go_binary(
     ],
     deps = [
         "//pkg/ar",
+        "//pkg/buildermetrics",
         "//pkg/cache",
         "//pkg/devmode",
         "//pkg/gcpbuildpack",

@@ -31,7 +31,8 @@ type CounterID string
 // Intended usage:
 //   buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.MyNewMetric).Increment(1)
 const (
-	ArNpmCredsGenCounterID CounterID = "1"
+	ArNpmCredsGenCounterID    CounterID = "1"
+	NpmGcpBuildUsageCounterID CounterID = "2"
 )
 
 var (
@@ -39,6 +40,10 @@ var (
 		ArNpmCredsGenCounterID: Descriptor{
 			"npm_artifact_registry_creds_generated",
 			"The number of artifact registry credentials generated for NPM",
+		},
+		NpmGcpBuildUsageCounterID: Descriptor{
+			"npm_gcp_build_script_uses",
+			"The number of times the gcp-build script is used by npm developers",
 		},
 	}
 )
