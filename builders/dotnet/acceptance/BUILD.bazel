@@ -70,4 +70,7 @@ acceptance_test_suite(
     builder = "//builders/dotnet:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata:generic",
+    deps = COMMON_DEPS + [
+        "@com_github_masterminds_semver//:go_default_library",
+    ],
 )
