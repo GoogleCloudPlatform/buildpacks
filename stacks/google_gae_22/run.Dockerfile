@@ -102,5 +102,9 @@ LABEL io.buildpacks.stack.mixins="[]"
 LABEL io.buildpacks.stack.homepage \
   "https://github.com/GoogleCloudPlatform/buildpacks/stacks/google-gae-22"
 
+# Set $PORT to 8080 by default
+ENV PORT 8080
+EXPOSE 8080
+
 CMD []
 ENTRYPOINT []
