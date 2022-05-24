@@ -64,6 +64,10 @@ func applyRuntimeVersion(t *testing.T, environment map[string]string, version st
 			t.Fatalf("Error formatting the runtime name for %q: %v", runtimeName, err)
 		}
 		addEnvVar(t, environment, "GOOGLE_RUNTIME", runtimeEnvVar)
+
+		// X_GOOGLE_SKIP_RUNTIME_LAUNCH tells the buildpacks to skip adding runtime to the launch layer.
+		// This is needed for GAE and GCF since they are using an overridden run-image which already has the runtime installed.
+		addEnvVar(t, environment, "X_GOOGLE_SKIP_RUNTIME_LAUNCH", "true")
 	}
 	if version == "1.11" {
 		addEnvVar(t, environment, "GOPROXY", "https://proxy.golang.org")

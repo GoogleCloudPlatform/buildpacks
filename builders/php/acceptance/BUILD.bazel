@@ -2,7 +2,10 @@ load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
 
 licenses(["notice"])
 
-exports_files(["config.yaml"])
+exports_files([
+    "config.yaml",
+    "args.bzl",
+])
 
 VERSIONS_ALL_PRODUCTS = [
     "7.2",

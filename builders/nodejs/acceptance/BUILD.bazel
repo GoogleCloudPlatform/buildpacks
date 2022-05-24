@@ -1,8 +1,12 @@
 load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
+load(":args.bzl", "nodejsargs")
 
 licenses(["notice"])
 
-exports_files(["config.yaml"])
+exports_files([
+    "config.yaml",
+    "args.bzl",
+])
 
 test_suite(
     # run all tests in this BUILD
@@ -63,6 +67,7 @@ acceptance_test_suite(
     srcs = [
         "gae_test.go",
     ],
+    argsmap = nodejsargs(),
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata:nodejs",
@@ -74,6 +79,7 @@ acceptance_test_suite(
     srcs = [
         "gcf_test.go",
     ],
+    argsmap = nodejsargs(),
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/nodejs:functions",
@@ -85,7 +91,10 @@ acceptance_test_suite(
     srcs = [
         "legacy_worker_gcf_test.go",
     ],
-    args = ["-runtime-version=" + VERSION_GCF_LEGACY_WORKER],
+    args = [
+        "-runtime-version=" + VERSION_GCF_LEGACY_WORKER,
+        "-run-image-override=gcr.io/gae-runtimes/buildpacks/nodejs8/run",
+    ],
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/nodejs:functions",

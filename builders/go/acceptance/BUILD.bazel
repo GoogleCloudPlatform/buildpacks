@@ -1,8 +1,12 @@
 load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
+load(":args.bzl", "goargs")
 
 licenses(["notice"])
 
-exports_files(["config.yaml"])
+exports_files([
+    "config.yaml",
+    "args.bzl",
+])
 
 test_suite(
     # run all tests in this BUILD
@@ -22,7 +26,14 @@ VERSIONS_ALL_PRODUCTS = [
 ]
 
 # The product versions for which there is GAE support.
-VERSIONS_GAE_SUPPORT = VERSIONS_ALL_PRODUCTS
+VERSIONS_GAE_SUPPORT = [
+    "1.11",
+    "1.12",
+    "1.13",
+    "1.14",
+    "1.15",
+    "1.16",
+]
 
 # The product versions for which there is explicit, tested GCP support. Technically any version is available
 # on GCP, but not all versions are tested.
@@ -33,8 +44,6 @@ VERSIONS_GCP_SUPPORT = VERSIONS_ALL_PRODUCTS
 VERSIONS_GCF_SUPPORT = [
     "1.13",
     "1.16",
-    # this version is not launched in any products but is being tested to ensure it works
-    "1.18",
 ]
 
 # The GCF Legacy Worker is only available and used for the "GCF go111" runtime version. It has different behavior,
@@ -47,6 +56,7 @@ acceptance_test_suite(
         "common_test.go",
         "gcf_test.go",
     ],
+    argsmap = goargs(),
     builder = "//builders/go:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/go:functions",
@@ -71,6 +81,7 @@ acceptance_test_suite(
         "common_test.go",
         "gae_test.go",
     ],
+    argsmap = goargs(),
     builder = "//builders/go:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata:go",
@@ -85,7 +96,10 @@ acceptance_test_suite(
         "common_test.go",
         "v111_gcf_test.go",
     ],
-    args = ["-runtime-version=" + VERSION_GCF_LEGACY_WORKER],
+    args = [
+        "-runtime-version=" + VERSION_GCF_LEGACY_WORKER,
+        "-run-image-override=gcr.io/gae-runtimes/buildpacks/go111/run",
+    ],
     builder = "//builders/go:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/go:functions",
