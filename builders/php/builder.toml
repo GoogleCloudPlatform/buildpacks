@@ -44,30 +44,11 @@ description = "Unified builder for the PHP runtime"
   id = "google.utils.archive-source"
   uri = "archive_source.tgz"
 
-# PHP applications (gcp and cloud-run)
+# PHP applications (gcf)
 [[order]]
   [[order.group]]
     id = "google.php.runtime"
 
-  [[order.group]]
-    id = "google.utils.nginx"
-
-  [[order.group]]
-    id = "google.php.composer-install"
-    optional = true
-
-  [[order.group]]
-    id = "google.php.composer"
-    optional = true
-
-  [[order.group]]
-    id = "google.config.entrypoint"
-
-  [[order.group]]
-    id = "google.utils.label"
-
-# PHP applications (gcf)
-[[order]]
   [[order.group]]
     id = "google.utils.archive-source"
 
@@ -95,6 +76,9 @@ description = "Unified builder for the PHP runtime"
 # PHP applications (gae)
 [[order]]
   [[order.group]]
+    id = "google.php.runtime"
+
+  [[order.group]]
     id = "google.php.composer-install"
     optional = true
 
@@ -108,6 +92,28 @@ description = "Unified builder for the PHP runtime"
 
   [[order.group]]
     id = "google.php.appengine"
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# PHP applications (gcp and cloud-run)
+[[order]]
+  [[order.group]]
+    id = "google.php.runtime"
+
+  [[order.group]]
+    id = "google.utils.nginx"
+
+  [[order.group]]
+    id = "google.php.composer-install"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
 
   [[order.group]]
     id = "google.utils.label"

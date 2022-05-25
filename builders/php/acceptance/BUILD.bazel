@@ -15,6 +15,11 @@ VERSIONS_ALL_PRODUCTS = [
     "8.1",
 ]
 
+VERSIONS_GCF_SUPPORT = [
+    "7.4",
+    "8.1",
+]
+
 acceptance_test_suite(
     name = "gcp_test",
     srcs = [
@@ -50,5 +55,5 @@ acceptance_test_suite(
     builder = "//builders/php:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/php:functions",
-    versions = VERSIONS_ALL_PRODUCTS,
+    versions = VERSIONS_GCF_SUPPORT,
 )
