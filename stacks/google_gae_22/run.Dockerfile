@@ -69,7 +69,7 @@ RUN \
   # Nginx creates the following directories at bootup, even if configured to be
   # ignored. Because of the read-only filesystem in production, we create them
   # ahead of time.
-  mkdir -p var/lib/nginx/{body,proxy,fastcgi,uwsgi,scgi} && \
+  bash -c 'mkdir -p /var/lib/nginx/{body,proxy,fastcgi,uwsgi,scgi}' && \
   mkdir -m 0777 /tmp/run && \
   rm -rf /run && ln -s /tmp/run /run && \
   rm -rf /var/cache/nginx && ln -s /tmp/var/cache/nginx /var/cache/nginx && \
@@ -91,7 +91,7 @@ USER ${cnb_uid}:${cnb_gid}
 
 ENV CNB_STACK_ID="google.gae.22"
 ENV CNB_USER_ID=${cnb_uid}
-ENV CNB_GROUP_ID=${cnb_guid}
+ENV CNB_GROUP_ID=${cnb_gid}
 
 # Standard buildpacks metadata.
 LABEL io.buildpacks.stack.id="google.gae.22"
