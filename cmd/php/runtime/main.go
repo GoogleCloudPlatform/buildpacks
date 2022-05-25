@@ -75,12 +75,18 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	setPeclConfig(phpl)
+	setPHPFpmConfig(phpl)
+
 	return addPHPIni(ctx, phpl)
 }
 
 func setPeclConfig(phpl *libcnb.Layer) {
 	phpl.SharedEnvironment.Default("PHP_PEAR_PHP_BIN", filepath.Join(phpl.Path, "bin", "php"))
 	phpl.SharedEnvironment.Default("PHP_PEAR_INSTALL_DIR", filepath.Join(phpl.Path, "lib", "php"))
+}
+
+func setPHPFpmConfig(phpl *libcnb.Layer) {
+	phpl.LaunchEnvironment.Append("PATH", string(os.PathListSeparator), filepath.Join(phpl.Path, "sbin"))
 }
 
 func addPHPIni(ctx *gcp.Context, phpl *libcnb.Layer) error {
