@@ -14,6 +14,8 @@
 
 package buildermetrics
 
+import "fmt"
+
 // CounterID is an index to Counter
 type CounterID string
 
@@ -55,6 +57,14 @@ type Descriptor struct {
 }
 
 // Descriptor returns the Descriptor for a CounterID
-func (c CounterID) Descriptor() Descriptor {
-	return counterDescriptors[c]
+func (c CounterID) Descriptor() (Descriptor, error) {
+	desc, ok := counterDescriptors[c]
+	if !ok {
+		return Descriptor{}, fmt.Errorf("Descriptor for CounterID %q not found", c)
+	}
+	if desc.Name == "" || desc.Description == "" {
+		return Descriptor{}, fmt.Errorf("Descriptor %q (for CounterID %q) must have both a Name and a Description", desc, c)
+	}
+	return desc, nil
+
 }
