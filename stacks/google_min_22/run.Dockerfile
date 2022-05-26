@@ -17,8 +17,7 @@ FROM ubuntu:22.04
 ARG cnb_uid=1000
 ARG cnb_gid=1000
 
-ARG packages=run-packages.txt
-COPY ${packages} /tmp/packages.txt
+COPY run-packages.txt /tmp/packages.txt
 
 # Version identifier of the image.
 ARG CANDIDATE_NAME

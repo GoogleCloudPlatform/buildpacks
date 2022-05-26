@@ -2,6 +2,9 @@ licenses(["notice"])
 
 exports_files([
     "build-packages.txt",
-    "Dockerfile",
+    "build.Dockerfile",
+    "build_structure_test.yaml",
     "run-packages.txt",
+    "run.Dockerfile",
+    "run_structure_test.yaml",
 ])
