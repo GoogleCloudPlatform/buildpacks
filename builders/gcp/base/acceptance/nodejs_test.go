@@ -29,9 +29,10 @@ func TestAcceptanceNodeJs(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:    "simple application",
-			App:     "nodejs/simple",
-			MustUse: []string{nodeRuntime, nodeNPM},
+			Name:            "simple application",
+			App:             "nodejs/simple",
+			MustUse:         []string{nodeRuntime, nodeNPM},
+			EnableCacheTest: true,
 		},
 		{
 			Name:                "Dev mode",
@@ -111,19 +112,17 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			MustNotUse: []string{goRuntime, javaRuntime, pythonRuntime},
 		},
 		{
-			Name:          "NPM version specified",
-			App:           "nodejs/npm_version_specified",
-			MustOutput:    []string{"npm --version\n\n8.3.1"},
-			Path:          "/version?want=8.3.1",
-			SkipCacheTest: true,
+			Name:       "NPM version specified",
+			App:        "nodejs/npm_version_specified",
+			MustOutput: []string{"npm --version\n\n8.3.1"},
+			Path:       "/version?want=8.3.1",
 		},
 		{
-			Name:          "old NPM version specified",
-			App:           "nodejs/old_npm_version_specified",
-			Path:          "/version?want=5.5.1",
-			MustUse:       []string{nodeRuntime, nodeNPM},
-			MustOutput:    []string{"npm --version\n\n5.5.1"},
-			SkipCacheTest: true,
+			Name:       "old NPM version specified",
+			App:        "nodejs/old_npm_version_specified",
+			Path:       "/version?want=5.5.1",
+			MustUse:    []string{nodeRuntime, nodeNPM},
+			MustOutput: []string{"npm --version\n\n5.5.1"},
 		},
 	}
 	// Tests for specific versions of Node.js available on dl.google.com.

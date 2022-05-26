@@ -50,11 +50,12 @@ func TestAcceptance(t *testing.T) {
 			Path: "/Func",
 		},
 		{
-			Name:  "vendored function without framework",
-			App:   "no_framework",
-			Env:   []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			Path:  "/Func",
-			Setup: vendorSetup,
+			Name:            "vendored function without framework",
+			App:             "no_framework",
+			Env:             []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			Path:            "/Func",
+			Setup:           vendorSetup,
+			EnableCacheTest: true,
 		},
 		{
 			Name: "function with old framework",

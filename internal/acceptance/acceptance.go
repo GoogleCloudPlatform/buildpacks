@@ -150,8 +150,8 @@ type Test struct {
 	Entrypoint string
 	// MustMatch specifies the expected response, if not provided "PASS" will be used.
 	MustMatch string
-	// SkipCacheTest skips testing of cached builds for this test case.
-	SkipCacheTest bool
+	// EnableCacheTest enables a second run of the test with the buildpacks cache enabled.
+	EnableCacheTest bool
 	// MustUse specifies the IDs of the buildpacks that must be used during the build.
 	MustUse []string
 	// MustNotUse specifies the IDs of the buildpacks that must not be used during the build.
@@ -246,19 +246,28 @@ func TestApp(t *testing.T, builderName, runName string, cfg Test) {
 		src = setupSource(t, cfg.Setup, builderName, src, cfg.App)
 	}
 
-	// Run a no-cache build, followed by a cache build, unless caching is disabled for the app.
-	cacheOptions := []bool{false}
-	if !cfg.SkipCacheTest {
-		cacheOptions = append(cacheOptions, true)
+	if cfg.EnableCacheTest {
+		testAppWithCache(t, src, image, builderName, runName, env, checks, cfg)
+	} else {
+		testApp(t, src, image, builderName, runName, env, false, checks, cfg)
 	}
-	for _, cache := range cacheOptions {
-		t.Run(fmt.Sprintf("cache %t", cache), func(t *testing.T) {
-			buildApp(t, src, image, builderName, runName, env, cache, cfg)
-			verifyBuildMetadata(t, image, cfg.MustUse, cfg.MustNotUse, cfg.BOM)
-			verifyStructure(t, image, builderName, cache, checks)
-			invokeApp(t, cfg, image, cache)
-		})
-	}
+}
+
+func testAppWithCache(t *testing.T, src, image, builderName, runName string, env map[string]string, checks *StructureTest, cfg Test) {
+	// Run a no-cache build, followed by a cache build
+	t.Run("cache false", func(t *testing.T) {
+		testApp(t, src, image, builderName, runName, env, false, checks, cfg)
+	})
+	t.Run("cache true", func(t *testing.T) {
+		testApp(t, src, image, builderName, runName, env, true, checks, cfg)
+	})
+}
+
+func testApp(t *testing.T, src, image, builderName, runName string, env map[string]string, cacheEnabled bool, checks *StructureTest, cfg Test) {
+	buildApp(t, src, image, builderName, runName, env, cacheEnabled, cfg)
+	verifyBuildMetadata(t, image, cfg.MustUse, cfg.MustNotUse, cfg.BOM)
+	verifyStructure(t, image, builderName, cacheEnabled, checks)
+	invokeApp(t, cfg, image, cacheEnabled)
 }
 
 // FailureTest describes a failure test.

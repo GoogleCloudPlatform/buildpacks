@@ -67,11 +67,12 @@ func TestAcceptance(t *testing.T) {
 			MustOutput: []string{"Found function with vendored dependencies excluding functions-framework"},
 		},
 		{
-			Name:       "function without framework",
-			App:        "no_framework",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			Path:       "/Func",
-			MustOutput: []string{"go.sum not found, generating"},
+			Name:            "function without framework",
+			App:             "no_framework",
+			Env:             []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			Path:            "/Func",
+			MustOutput:      []string{"go.sum not found, generating"},
+			EnableCacheTest: true,
 		},
 		{
 			Name:          "function with go.sum",

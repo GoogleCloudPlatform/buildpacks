@@ -34,8 +34,9 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput: []string{`WARNING: You are using pip version`},
 		},
 		{
-			Name: "function with dependencies",
-			App:  "with_dependencies",
+			Name:            "function with dependencies",
+			App:             "with_dependencies",
+			EnableCacheTest: true,
 		},
 		{
 			Name: "function with framework",
@@ -52,7 +53,6 @@ func TestAcceptance(t *testing.T) {
 			MustMatch:     "OK",
 			MustNotOutput: []string{"WARNING"},
 			RequestType:   acceptance.CloudEventType,
-			SkipCacheTest: true,
 		},
 		{
 			Name: "function with framework and dependency bin",

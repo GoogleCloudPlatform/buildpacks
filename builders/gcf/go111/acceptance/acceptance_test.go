@@ -56,10 +56,11 @@ func TestAcceptance(t *testing.T) {
 			Path: "/Func",
 		},
 		{
-			Name: "function without framework",
-			App:  "no_framework",
-			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			Path: "/Func",
+			Name:            "function without framework",
+			App:             "no_framework",
+			Env:             []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			Path:            "/Func",
+			EnableCacheTest: true,
 		},
 		{
 			Name: "function with go.sum",

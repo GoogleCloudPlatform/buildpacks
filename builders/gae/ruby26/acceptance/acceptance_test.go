@@ -29,15 +29,17 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			App: "rack",
-			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec rackup -p $PORT config-custom.ru"},
+			App:             "rack",
+			Env:             []string{"GOOGLE_ENTRYPOINT=bundle exec rackup -p $PORT config-custom.ru"},
+			EnableCacheTest: true,
 		},
 		{
 			App: "rack_inferred",
 		},
 		{
-			App: "rails",
-			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
+			App:             "rails",
+			Env:             []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
+			EnableCacheTest: true,
 		},
 		{
 			App: "rails_inferred",
@@ -47,8 +49,9 @@ func TestAcceptance(t *testing.T) {
 			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 		},
 		{
-			App: "simple_gemfile",
-			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			App:             "simple_gemfile",
+			Env:             []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			EnableCacheTest: true,
 		},
 		{
 			App: "simple_gems",

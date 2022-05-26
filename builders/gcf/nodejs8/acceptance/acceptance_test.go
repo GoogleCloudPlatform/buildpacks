@@ -47,10 +47,11 @@ func TestAcceptance(t *testing.T) {
 			App:  "no_package_yarn",
 		},
 		{
-			Name:       "function without framework",
-			App:        "no_framework",
-			MustUse:    []string{npm},
-			MustNotUse: []string{yarn},
+			Name:            "function without framework",
+			App:             "no_framework",
+			MustUse:         []string{npm},
+			MustNotUse:      []string{yarn},
+			EnableCacheTest: true,
 		},
 		{
 			Name:       "function without framework and with yarn",
@@ -65,10 +66,11 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{yarn},
 		},
 		{
-			Name:       "function with dependencies",
-			App:        "with_dependencies",
-			MustUse:    []string{npm},
-			MustNotUse: []string{yarn},
+			Name:            "function with dependencies",
+			App:             "with_dependencies",
+			MustUse:         []string{npm},
+			MustNotUse:      []string{yarn},
+			EnableCacheTest: true,
 		},
 		{
 			Name:       "function with dependencies and with yarn",

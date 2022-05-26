@@ -33,8 +33,9 @@ func TestAcceptance(t *testing.T) {
 			App: "no_requirements_txt",
 		},
 		{
-			App:           "requirements_txt",
-			MustNotOutput: []string{`WARNING: You are using pip version`},
+			App:             "requirements_txt",
+			MustNotOutput:   []string{`WARNING: You are using pip version`},
+			EnableCacheTest: true,
 		},
 		{
 			App: "requirements_bin_conflict",
@@ -43,7 +44,8 @@ func TestAcceptance(t *testing.T) {
 			App: "requirements_builtin_conflict",
 		},
 		{
-			App: "pip_dependency",
+			App:             "pip_dependency",
+			EnableCacheTest: true,
 		},
 		{
 			App: "gunicorn_present",

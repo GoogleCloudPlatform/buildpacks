@@ -71,14 +71,17 @@ func TestAcceptanceDotNet(t *testing.T) {
 			App:               "dotnet/simple",
 			MustUse:           []string{dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
-		}, {
+			EnableCacheTest:   true,
+		},
+		{
 			Name:              "simple prebuilt dotnet app",
 			App:               "dotnet/simple_prebuilt",
 			Env:               []string{"GOOGLE_ENTRYPOINT=./simple"},
 			MustUse:           []string{dotnetRuntime},
 			MustNotUse:        []string{dotnetPublish},
 			FilesMustNotExist: []string{sdk},
-		}, {
+		},
+		{
 			Name: "Dev mode",
 			// Version 6.0 of the .NET sdk made changes to watch. When running this test
 			// with 6.0 watch notices that the file has changed but decides that there are
@@ -90,7 +93,8 @@ func TestAcceptanceDotNet(t *testing.T) {
 			MustUse:                    []string{dotnetRuntime, dotnetPublish},
 			FilesMustExist:             []string{sdk, "/workspace/Startup.cs"},
 			MustRebuildOnChange:        "/workspace/Startup.cs",
-		}, {
+		},
+		{
 			// This is a separate test case from Dev mode above because it has a fixed runtime version.
 			// Its only purpose is to test that the metadata is set correctly.
 			Name: "Dev mode metadata",

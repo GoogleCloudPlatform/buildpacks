@@ -25,11 +25,12 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:           "simple Go application",
-			App:            "go/simple",
-			MustUse:        []string{goRuntime, goBuild, goPath},
-			MustNotUse:     []string{goClearSource},
-			FilesMustExist: []string{"/layers/google.go.build/bin/main", "/workspace/main.go"},
+			Name:            "simple Go application",
+			App:             "go/simple",
+			MustUse:         []string{goRuntime, goBuild, goPath},
+			MustNotUse:      []string{goClearSource},
+			FilesMustExist:  []string{"/layers/google.go.build/bin/main", "/workspace/main.go"},
+			EnableCacheTest: true,
 		},
 		{
 			Name:       "Go.mod",
@@ -57,6 +58,7 @@ func TestAcceptance(t *testing.T) {
 			App:                        "go/simple_gomod_vendor",
 			MustUse:                    []string{goRuntime, goBuild, goMod},
 			MustNotUse:                 []string{goPath},
+			EnableCacheTest:            true,
 		},
 		{
 			Name: "Dev mode",

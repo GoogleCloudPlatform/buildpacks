@@ -36,10 +36,11 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:       "symfony app",
-			App:        "symfony",
-			MustUse:    []string{composer, composerInstall},
-			MustNotUse: []string{composerGCPBuild},
+			Name:            "symfony app",
+			App:             "symfony",
+			MustUse:         []string{composer, composerInstall},
+			MustNotUse:      []string{composerGCPBuild},
+			EnableCacheTest: true,
 		},
 		{
 			Name:       "composer.json without dependencies",
@@ -65,9 +66,10 @@ func TestAcceptance(t *testing.T) {
 		},
 		// Test that we can build an app with SDK dependencies
 		{
-			Name: "appengine_sdk dependencies",
-			App:  "appengine_sdk",
-			Env:  []string{"GAE_APP_ENGINE_APIS=TRUE"},
+			Name:            "appengine_sdk dependencies",
+			App:             "appengine_sdk",
+			Env:             []string{"GAE_APP_ENGINE_APIS=TRUE"},
+			EnableCacheTest: true,
 		},
 		// Test that we get a warning using SDK libraries indirectly.
 		{

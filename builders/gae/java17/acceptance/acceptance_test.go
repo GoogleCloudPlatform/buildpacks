@@ -59,9 +59,10 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput: []string{"WARNING"},
 		},
 		{
-			Name:          "hello sparkjava maven",
-			App:           "sparkjava-helloworld",
-			MustNotOutput: []string{"WARNING"},
+			Name:            "hello sparkjava maven",
+			App:             "sparkjava-helloworld",
+			MustNotOutput:   []string{"WARNING"},
+			EnableCacheTest: true,
 		},
 		{
 			Name: "hello micronaut maven",
@@ -74,9 +75,10 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput: []string{"WARNING"},
 		},
 		{
-			Name:          "http server",
-			App:           "http-server",
-			MustNotOutput: []string{"WARNING"},
+			Name:            "http server",
+			App:             "http-server",
+			MustNotOutput:   []string{"WARNING"},
+			EnableCacheTest: true,
 		},
 		{
 			Name: "Ktor Kotlin maven mwnw",
@@ -97,6 +99,7 @@ func TestAcceptance(t *testing.T) {
 				Name:          "gradle micronaut",
 				App:           "gradle_micronaut",
 				MustNotOutput: []string{"WARNING"},
+				EnableCacheTest:            true,
 			},
 			{
 				Name:          "gradlew micronaut",

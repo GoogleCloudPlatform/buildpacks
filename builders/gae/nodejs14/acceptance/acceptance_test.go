@@ -45,9 +45,10 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{yarn},
 		},
 		{
-			App:        "package_json",
-			MustUse:    []string{npm},
-			MustNotUse: []string{yarn},
+			App:             "package_json",
+			MustUse:         []string{npm},
+			MustNotUse:      []string{yarn},
+			EnableCacheTest: true,
 		},
 		{
 			App:        "package_lock",

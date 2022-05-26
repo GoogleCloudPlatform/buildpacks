@@ -29,11 +29,12 @@ func TestAcceptanceJava(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:       "simple Java application",
-			App:        "java/simple",
-			Env:        []string{"GOOGLE_ENTRYPOINT=java Main.java"},
-			MustUse:    []string{javaRuntime, entrypoint},
-			MustNotUse: []string{javaEntrypoint},
+			Name:            "simple Java application",
+			App:             "java/simple",
+			Env:             []string{"GOOGLE_ENTRYPOINT=java Main.java"},
+			MustUse:         []string{javaRuntime, entrypoint},
+			MustNotUse:      []string{javaEntrypoint},
+			EnableCacheTest: true,
 		},
 		{
 			Name: "Java runtime version respected",
@@ -62,10 +63,11 @@ func TestAcceptanceJava(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 		{
-			Name:       "Java 11 maven",
-			App:        "java/hello_quarkus_maven",
-			MustUse:    []string{javaMaven, javaRuntime, javaEntrypoint},
-			MustNotUse: []string{entrypoint},
+			Name:            "Java 11 maven",
+			App:             "java/hello_quarkus_maven",
+			MustUse:         []string{javaMaven, javaRuntime, javaEntrypoint},
+			MustNotUse:      []string{entrypoint},
+			EnableCacheTest: true,
 		},
 		{
 			Name:                "Java maven (Dev Mode)",

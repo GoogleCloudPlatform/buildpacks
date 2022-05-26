@@ -36,6 +36,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 			App:               "dotnet/simple",
 			MustUse:           []string{dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
+			EnableCacheTest:   true,
 		},
 		{
 			Name:              "simple dotnet 6.0 app",

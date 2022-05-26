@@ -29,8 +29,9 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name: "function with dependencies",
-			App:  "with_dependencies",
+			Name:            "function with dependencies",
+			App:             "with_dependencies",
+			EnableCacheTest: true,
 		},
 		{
 			Name: "function with platform-specific dependencies",

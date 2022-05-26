@@ -29,10 +29,11 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name: "cs single target",
-			App:  "cs_single_target",
-			Env:  []string{"GOOGLE_FUNCTION_TARGET=TestFunction.Function"},
-			Path: "/function",
+			Name:            "cs single target",
+			App:             "cs_single_target",
+			Env:             []string{"GOOGLE_FUNCTION_TARGET=TestFunction.Function"},
+			Path:            "/function",
+			EnableCacheTest: true,
 		},
 		{
 			Name: "cs multiple targets",

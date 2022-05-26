@@ -64,11 +64,12 @@ func TestAcceptance(t *testing.T) {
 			MustOutput: []string{"Handling function without dependency on functions framework"},
 		},
 		{
-			Name:       "function with framework dependency",
-			App:        "with_framework",
-			MustUse:    []string{composer, composerInstall},
-			MustNotUse: []string{composerGCPBuild},
-			MustOutput: []string{"Handling function with dependency on functions framework"},
+			Name:            "function with framework dependency",
+			App:             "with_framework",
+			MustUse:         []string{composer, composerInstall},
+			MustNotUse:      []string{composerGCPBuild},
+			MustOutput:      []string{"Handling function with dependency on functions framework"},
+			EnableCacheTest: true,
 		},
 		{
 			Name:       "function with dependencies",

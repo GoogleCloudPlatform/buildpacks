@@ -29,9 +29,10 @@ func TestAcceptanceRuby(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:    "entrypoint from procfile web",
-			App:     "ruby/simple",
-			MustUse: []string{rubyRuntime, rubyBundle, entrypoint},
+			Name:            "entrypoint from procfile web",
+			App:             "ruby/simple",
+			MustUse:         []string{rubyRuntime, rubyBundle, entrypoint},
+			EnableCacheTest: true,
 		},
 		{
 			Name:       "entrypoint from procfile custom",
@@ -75,10 +76,11 @@ func TestAcceptanceRuby(t *testing.T) {
 			MustNotUse: []string{goRuntime, javaRuntime, nodeRuntime, pythonRuntime},
 		},
 		{
-			Name:    "rails",
-			App:     "ruby/rails",
-			Env:     []string{"GOOGLE_RUNTIME_VERSION=2.7.5", "GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
-			MustUse: []string{rubyRuntime, rubyRails, rubyBundle, entrypoint},
+			Name:            "rails",
+			App:             "ruby/rails",
+			Env:             []string{"GOOGLE_RUNTIME_VERSION=2.7.5", "GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
+			MustUse:         []string{rubyRuntime, rubyRails, rubyBundle, entrypoint},
+			EnableCacheTest: true,
 		},
 		{
 			Name:    "rails minimal",

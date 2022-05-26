@@ -28,8 +28,9 @@ func TestAcceptance(t *testing.T) {
 	testCases := []acceptance.Test{
 		// Test that gopath apps can rely on a vendor dependency in $GOPATH/src.
 		{
-			Name: "gopath GOPATH/src vendor dependency",
-			App:  "gopath_main_ongopath_gopathvendordeps",
+			Name:            "gopath GOPATH/src vendor dependency",
+			App:             "gopath_main_ongopath_gopathvendordeps",
+			EnableCacheTest: true,
 		},
 		// Test that gopath apps can rely on a vendor dependency in application root.
 		{
@@ -60,8 +61,9 @@ func TestAcceptance(t *testing.T) {
 		},
 		// Test that we can build a simple app.
 		{
-			Name: "gopath no dependencies",
-			App:  "gopath",
+			Name:            "gopath no dependencies",
+			App:             "gopath",
+			EnableCacheTest: true,
 		},
 
 		// Test that GOOGLE_BUILDABLE takes precedence over app.yaml and go-app-stager.

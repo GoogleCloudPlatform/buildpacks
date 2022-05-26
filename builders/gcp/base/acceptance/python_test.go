@@ -29,9 +29,10 @@ func TestAcceptancePython(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:    "entrypoint from procfile web",
-			App:     "python/simple",
-			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+			Name:            "entrypoint from procfile web",
+			App:             "python/simple",
+			MustUse:         []string{pythonRuntime, pythonPIP, entrypoint},
+			EnableCacheTest: true,
 		},
 		{
 			Name:       "entrypoint from procfile custom",

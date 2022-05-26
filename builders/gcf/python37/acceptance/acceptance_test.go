@@ -34,8 +34,9 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput: []string{"WARNING: Found incompatible dependencies", "WARNING: You are using pip version"},
 		},
 		{
-			Name: "function with dependencies",
-			App:  "with_dependencies",
+			Name:            "function with dependencies",
+			App:             "with_dependencies",
+			EnableCacheTest: true,
 			// No MustNotOutput WARNING because hatch non-deterministically produces an incompatible dependency tree.
 		},
 		{
@@ -54,7 +55,6 @@ func TestAcceptance(t *testing.T) {
 			MustMatch:     "OK",
 			MustNotOutput: []string{"WARNING"},
 			RequestType:   acceptance.CloudEventType,
-			SkipCacheTest: true,
 		},
 		{
 			Name: "function with framework and dependency bin",

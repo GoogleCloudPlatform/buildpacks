@@ -33,10 +33,11 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:           "function with maven",
-			App:            "maven",
-			Env:            []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
-			FilesMustExist: []string{ffJarPath},
+			Name:            "function with maven",
+			App:             "maven",
+			Env:             []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
+			FilesMustExist:  []string{ffJarPath},
+			EnableCacheTest: true,
 		},
 		{
 			Name:           "function with build.finalName setting in pom.xml",
@@ -52,10 +53,11 @@ func TestAcceptance(t *testing.T) {
 			FilesMustNotExist: []string{ffJarPath},
 		},
 		{
-			Name:           "function with gradle",
-			App:            "gradle",
-			Env:            []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
-			FilesMustExist: []string{ffJarPath},
+			Name:            "function with gradle",
+			App:             "gradle",
+			Env:             []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
+			FilesMustExist:  []string{ffJarPath},
+			EnableCacheTest: true,
 		},
 		{
 			Name:              "function with invoker as gradle dependency",
