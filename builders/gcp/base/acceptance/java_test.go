@@ -65,6 +65,15 @@ func TestAcceptanceJava(t *testing.T) {
 		{
 			Name:            "Java 11 maven",
 			App:             "java/hello_quarkus_maven",
+			Env:             []string{"GOOGLE_RUNTIME_VERSION=11"},
+			MustUse:         []string{javaMaven, javaRuntime, javaEntrypoint},
+			MustNotUse:      []string{entrypoint},
+			EnableCacheTest: true,
+		},
+		{
+			Name:            "Java 17 maven",
+			App:             "java/hello_quarkus_maven",
+			Env:             []string{"GOOGLE_RUNTIME_VERSION=17"},
 			MustUse:         []string{javaMaven, javaRuntime, javaEntrypoint},
 			MustNotUse:      []string{entrypoint},
 			EnableCacheTest: true,
@@ -113,6 +122,13 @@ func TestAcceptanceJava(t *testing.T) {
 		},
 		{
 			Name:       "Java 11 gradle",
+			App:        "java/gradle_micronaut",
+			Env:        []string{"GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
+			MustUse:    []string{javaGradle, javaRuntime, entrypoint},
+			MustNotUse: []string{javaEntrypoint},
+		},
+		{
+			Name:       "Java 17 gradle",
 			App:        "java/gradle_micronaut",
 			Env:        []string{"GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
 			MustUse:    []string{javaGradle, javaRuntime, entrypoint},
