@@ -23,11 +23,13 @@
 # Produces a builder Docker image tagged <name> with the last directory in the
 # <source tar> path and writes the image sha to <sha file> path.
 
-set -euo pipefail
+set -euox pipefail
 
 readonly name="${1:?image name missing}"
 readonly tar="${2:?tar path missing}"
-readonly sha="${3:?sha path missing}"
+readonly descriptor="${3:?descriptor path missing}"
+readonly sha="${4:?sha path missing}"
+
 
 # Blaze does not set $HOME which is required by pack.
 readonly temp="$(mktemp -d)"
@@ -38,5 +40,6 @@ mkdir "$HOME"
 echo "Extracting builder tar:"
 tar xvf "$tar" -C "$temp"
 
-pack builder create "$name" --config="${temp}/builder.toml" --pull-policy=never
+echo "Creating builder:"
+pack builder create "$name" --config="${temp}/${descriptor}" --pull-policy=never
 docker inspect --format='{{index .Id}}' "$name" > "$sha"
