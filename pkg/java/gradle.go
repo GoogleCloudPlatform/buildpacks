@@ -18,11 +18,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 )
 
-const (
-	// DefaultGradleVersion is the gradle version if not provided by the user
-	DefaultGradleVersion = "6.5.1"
-)
-
 var (
 	gradleVersionURL = "https://services.gradle.org/versions/current"
 )
@@ -45,10 +40,10 @@ type APIResponseGradleVersion struct {
 }
 
 // GetLatestGradleVersion gets the latest gradle version if available
-func GetLatestGradleVersion() string {
+func GetLatestGradleVersion() (string, error) {
 	var result APIResponseGradleVersion
-	if err := fetch.JSON(gradleVersionURL, result); err != nil {
-		return DefaultGradleVersion
+	if err := fetch.JSON(gradleVersionURL, &result); err != nil {
+		return "", err
 	}
-	return result.Version
+	return result.Version, nil
 }

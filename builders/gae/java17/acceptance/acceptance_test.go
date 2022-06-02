@@ -14,8 +14,10 @@
 package acceptance
 
 import (
+	"bytes"
 	"flag"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
@@ -23,6 +25,51 @@ import (
 
 func init() {
 	acceptance.DefineFlags()
+}
+
+// updateGradleVersions replaces various dependency versions in the application source that are
+// incompatible with Gradle 7.
+func updateGradleVersions(setupCtx acceptance.SetupContext) error {
+	err := replaceInFile(filepath.Join(setupCtx.SrcDir, "build.gradle"), map[string]string{
+		"5.2.0": "7.1.2", // com.github.johnrengelman.shadow plugin
+	})
+	if err != nil {
+		return err
+	}
+
+	err = replaceInFile(filepath.Join(setupCtx.SrcDir, "build.gradle.kts"), map[string]string{
+		"4.0.4":   "7.1.2",          // com.github.johnrengelman.shadow plugin
+		"1.3.21":  "1.6.21",         // kotlin jvm and kapt plugins
+		"compile": "implementation", // `compile` was deprecated in favor of `implementation`
+	})
+	if err != nil {
+		return err
+	}
+
+	gwFp := filepath.Join(setupCtx.SrcDir, "gradle/wrapper/gradle-wrapper.properties")
+	err = replaceInFile(gwFp, map[string]string{
+		// gradle distro versions:
+		"5.3.1": "7.4.2",
+		"6.1":   "7.4.2",
+		"6.4.1": "7.4.2",
+	})
+	return err
+}
+
+// replaceInFile is a helper to find and replace strings in a file at a given path.
+func replaceInFile(path string, repacements map[string]string) error {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	for k, v := range repacements {
+		content = bytes.Replace(content, []byte(k), []byte(v), -1)
+	}
+	os.Remove(path)
+	return os.WriteFile(path, content, 0644)
 }
 
 func TestAcceptance(t *testing.T) {
@@ -93,36 +140,38 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput:     []string{"WARNING"},
 			FilesMustNotExist: []string{"/workspace/src/main/java/hello/Hello.java", "/workspace/pom.xml"},
 		},
-		// TODO(b/226577140): Fix and enable gradle tests
-		/*
-			{
-				Name:          "gradle micronaut",
-				App:           "gradle_micronaut",
-				MustNotOutput: []string{"WARNING"},
-				EnableCacheTest:            true,
-			},
-			{
-				Name:          "gradlew micronaut",
-				App:           "gradlew_micronaut",
-				MustNotOutput: []string{"WARNING"},
-			},
-			{
-				Name: "gradle kotlin",
-				App:  "gradle-kotlin",
-			},
-			{
-				Name:              "Gradle with source clearing",
-				App:               "gradle_micronaut",
-				Env:               []string{"GOOGLE_CLEAR_SOURCE=true", "GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
-				MustNotOutput:     []string{"WARNING"},
-				FilesMustNotExist: []string{"/workspace/src/main/java/example/Application.java", "/workspace/build.gradle"},
-			},
-			{
-				Name:          "Java gradle quarkus",
-				App:           "gradle_quarkus",
-				MustNotOutput: []string{"WARNING"},
-			},
-		*/
+		{
+			Name:            "gradle micronaut",
+			App:             "gradle_micronaut",
+			MustNotOutput:   []string{"WARNING"},
+			EnableCacheTest: true,
+			Setup:           updateGradleVersions,
+		},
+		{
+			Name:          "gradlew micronaut",
+			App:           "gradlew_micronaut",
+			MustNotOutput: []string{"WARNING"},
+			Setup:         updateGradleVersions,
+		},
+		{
+			Name:  "gradle kotlin",
+			App:   "gradle-kotlin",
+			Setup: updateGradleVersions,
+		},
+		{
+			Name:              "Gradle with source clearing",
+			App:               "gradle_micronaut",
+			Env:               []string{"GOOGLE_CLEAR_SOURCE=true", "GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
+			MustNotOutput:     []string{"WARNING"},
+			FilesMustNotExist: []string{"/workspace/src/main/java/example/Application.java", "/workspace/build.gradle"},
+			Setup:             updateGradleVersions,
+		},
+		{
+			Name:          "Java gradle quarkus",
+			App:           "gradle_quarkus",
+			MustNotOutput: []string{"WARNING"},
+			Setup:         updateGradleVersions,
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

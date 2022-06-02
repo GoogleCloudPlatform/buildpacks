@@ -1,8 +1,7 @@
 // This gradle project is meant to fail on a default build.
 // System property "env" must be set to "test" in order to pass.
 plugins {
-    id "net.ltgt.apt-eclipse" version "0.21"
-    id "com.github.johnrengelman.shadow" version "5.2.0"
+    id "com.github.johnrengelman.shadow" version "7.1.2"
     id "application"
 }
 

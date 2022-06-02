@@ -132,7 +132,10 @@ func installGradle(ctx *gcp.Context) (string, error) {
 
 	metaVersion := ctx.GetMetadata(gradlel, versionKey)
 	// Check the metadata in the cache layer to determine if we need to proceed.
-	gradleVersion := java.GetLatestGradleVersion()
+	gradleVersion, err := java.GetLatestGradleVersion()
+	if err != nil {
+		return "", fmt.Errorf("getting latest gradle version: %w", err)
+	}
 	if gradleVersion == metaVersion {
 		ctx.CacheHit(gradleLayer)
 		ctx.Logf("Gradle cache hit, skipping installation.")

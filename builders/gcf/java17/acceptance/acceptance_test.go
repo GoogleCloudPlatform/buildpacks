@@ -52,23 +52,20 @@ func TestAcceptance(t *testing.T) {
 			FilesMustExist:    []string{"/workspace/target/_javaInvokerDependency/java-function-invoker-1.0.2.jar"},
 			FilesMustNotExist: []string{ffJarPath},
 		},
-		// TODO(b/226577140): Fix and enable gradle tests
-		/*
-			{
-				Name:           "function with gradle",
-				App:            "gradle",
-				Env:            []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
-				FilesMustExist: []string{ffJarPath},
-				EnableCacheTest:            true,
-			},
-			{
-				Name:              "function with invoker as gradle dependency",
-				App:               "gradle_invoker_dep",
-				Env:               []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
-				FilesMustExist:    []string{"/workspace/build/_javaFunctionDependencies/java-function-invoker-1.0.2.jar"},
-				FilesMustNotExist: []string{ffJarPath},
-			},
-		*/
+		{
+			Name:            "function with gradle",
+			App:             "gradle",
+			Env:             []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
+			FilesMustExist:  []string{ffJarPath},
+			EnableCacheTest: true,
+		},
+		{
+			Name:              "function with invoker as gradle dependency",
+			App:               "gradle_invoker_dep",
+			Env:               []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
+			FilesMustExist:    []string{"/workspace/build/_javaFunctionDependencies/java-function-invoker-1.0.2.jar"},
+			FilesMustNotExist: []string{ffJarPath},
+		},
 		{
 			Name: "prebuilt jar",
 			App:  "jar",
@@ -123,14 +120,11 @@ func TestFailures(t *testing.T) {
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.NonExistent"},
 			MustMatch: `build succeeded but did not produce the class "functions.NonExistent"`,
 		},
-		// TODO(b/226577140): Fix and enable gradle tests
-		/*
-			{
-				App:       "gradle",
-				Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.NonExistent"},
-				MustMatch: `build succeeded but did not produce the class "functions.NonExistent"`,
-			},
-		*/
+		{
+			App:       "gradle",
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.NonExistent"},
+			MustMatch: `build succeeded but did not produce the class "functions.NonExistent"`,
+		},
 		{
 			App:       "jar",
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=functions.NonExistent"},
