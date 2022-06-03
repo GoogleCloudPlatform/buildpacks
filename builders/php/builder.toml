@@ -119,9 +119,9 @@ description = "Unified builder for the PHP runtime"
     id = "google.utils.label"
 
 [stack]
-  id = "google"
-  build-image = "gcr.io/buildpacks/gcp/php/build:v1"
-  run-image = "gcr.io/buildpacks/gcp/php/run:v1"
+  id = "google.gae.18"
+  build-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-gae-18/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-gae-18/run"
 
 [lifecycle]
   version = "0.13.3"
