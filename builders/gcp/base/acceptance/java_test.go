@@ -49,13 +49,6 @@ func TestAcceptanceJava(t *testing.T) {
 			MustNotUse: []string{javaEntrypoint},
 		},
 		{
-			Name:       "Java selected via GOOGLE_RUNTIME",
-			App:        "override",
-			Env:        []string{"GOOGLE_RUNTIME=java", "GOOGLE_ENTRYPOINT=java Main.java"},
-			MustUse:    []string{javaRuntime, entrypoint},
-			MustNotUse: []string{goRuntime, nodeRuntime, pythonRuntime},
-		},
-		{
 			Name:       "Java 8 maven",
 			App:        "java/hello_quarkus_maven",
 			Env:        []string{"GOOGLE_RUNTIME_VERSION=8"},

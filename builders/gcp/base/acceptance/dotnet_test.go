@@ -98,13 +98,6 @@ func TestAcceptanceDotNet(t *testing.T) {
 				},
 			},
 		},
-		{
-			Name:       "dotnet selected via GOOGLE_RUNTIME",
-			App:        "override",
-			Env:        []string{"GOOGLE_RUNTIME=dotnet"},
-			MustUse:    []string{dotnetRuntime},
-			MustNotUse: []string{nodeRuntime, pythonRuntime, goRuntime},
-		},
 	}
 	for _, tc := range testCases {
 		tc := tc

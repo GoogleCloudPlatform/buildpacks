@@ -69,13 +69,6 @@ func TestAcceptancePython(t *testing.T) {
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		{
-			Name:       "selected via GOOGLE_RUNTIME",
-			App:        "override",
-			Env:        []string{"GOOGLE_RUNTIME=python", "GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
-			MustUse:    []string{pythonRuntime},
-			MustNotUse: []string{goRuntime, javaRuntime, nodeRuntime},
-		},
-		{
 			Name:    "python with client-side scripts correctly builds as a python app",
 			App:     "python/scripts",
 			Env:     []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},

@@ -25,6 +25,7 @@ func TestDetect(t *testing.T) {
 	testCases := []struct {
 		name  string
 		files map[string]string
+		env   []string
 		want  int
 	}{
 		{
@@ -33,6 +34,22 @@ func TestDetect(t *testing.T) {
 				"pom.xml": "",
 			},
 			want: 0,
+		},
+		{
+			name: "pom.xml with runtime set to java",
+			files: map[string]string{
+				"pom.xml": "",
+			},
+			env:  []string{"GOOGLE_RUNTIME=java"},
+			want: 0,
+		},
+		{
+			name: "pom.xml with runtime set to python",
+			files: map[string]string{
+				"pom.xml": "",
+			},
+			env:  []string{"GOOGLE_RUNTIME=python"},
+			want: 100,
 		},
 		{
 			name: ".mvn/extensions.xml",
@@ -77,7 +94,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
 		})
 	}
 }

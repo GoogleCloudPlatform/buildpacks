@@ -103,13 +103,6 @@ func TestAcceptanceGo(t *testing.T) {
 			MustUse: []string{goRuntime, goBuild, goPath},
 		},
 		{
-			Name:       "Go selected via GOOGLE_RUNTIME",
-			App:        "override",
-			Env:        []string{"GOOGLE_RUNTIME=go"},
-			MustUse:    []string{goRuntime},
-			MustNotUse: []string{javaRuntime, nodeRuntime, pythonRuntime},
-		},
-		{
 			Name:              "clear source",
 			App:               "go/simple",
 			Env:               []string{"GOOGLE_CLEAR_SOURCE=true"},

@@ -130,12 +130,6 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{nodeNPM, nodeYarn},
 		},
 		{
-			Name:    "selected via GOOGLE_RUNTIME",
-			App:     "override",
-			Env:     []string{"GOOGLE_RUNTIME=nodejs"},
-			MustUse: []string{nodeRuntime},
-		},
-		{
 			Name: "NPM version specified",
 			// npm@8 requires nodejs@12+
 			VersionInclusionConstraint: ">= 12.0.0",

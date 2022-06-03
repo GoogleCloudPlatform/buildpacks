@@ -69,13 +69,6 @@ func TestAcceptanceRuby(t *testing.T) {
 			MustUse: []string{rubyRuntime, rubyBundle, entrypoint},
 		},
 		{
-			Name:       "selected via GOOGLE_RUNTIME",
-			App:        "override",
-			Env:        []string{"GOOGLE_RUNTIME=ruby", "GOOGLE_ENTRYPOINT=ruby main.rb"},
-			MustUse:    []string{rubyRuntime},
-			MustNotUse: []string{goRuntime, javaRuntime, nodeRuntime, pythonRuntime},
-		},
-		{
 			Name:            "rails",
 			App:             "ruby/rails",
 			Env:             []string{"GOOGLE_RUNTIME_VERSION=2.7.5", "GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},

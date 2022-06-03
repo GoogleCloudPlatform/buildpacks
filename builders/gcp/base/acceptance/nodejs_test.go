@@ -105,13 +105,6 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			MustNotUse: []string{nodeNPM, nodeYarn},
 		},
 		{
-			Name:       "selected via GOOGLE_RUNTIME",
-			App:        "override",
-			Env:        []string{"GOOGLE_RUNTIME=nodejs"},
-			MustUse:    []string{nodeRuntime},
-			MustNotUse: []string{goRuntime, javaRuntime, pythonRuntime},
-		},
-		{
 			Name:       "NPM version specified",
 			App:        "nodejs/npm_version_specified",
 			MustOutput: []string{"npm --version\n\n8.3.1"},

@@ -24,6 +24,7 @@ func TestDetect(t *testing.T) {
 	testCases := []struct {
 		name  string
 		files map[string]string
+		env   []string
 		want  int
 	}{
 		{
@@ -33,6 +34,24 @@ func TestDetect(t *testing.T) {
 				"package.json": "",
 			},
 			want: 0,
+		},
+		{
+			name: "with package and runtime set to nodejs",
+			files: map[string]string{
+				"index.js":     "",
+				"package.json": "",
+			},
+			env:  []string{"GOOGLE_RUNTIME=nodejs"},
+			want: 0,
+		},
+		{
+			name: "with package and runtime set to python",
+			files: map[string]string{
+				"index.js":     "",
+				"package.json": "",
+			},
+			env:  []string{"GOOGLE_RUNTIME=python"},
+			want: 100,
 		},
 		{
 			name: "without package",
@@ -51,7 +70,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
 		})
 	}
 }
