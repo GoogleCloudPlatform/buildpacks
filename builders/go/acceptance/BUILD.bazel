@@ -71,7 +71,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/go:builder.tar",
     rundir = ".",
-    testdata = "//builders/testdata:generic",
+    testdata = "//builders/testdata/go:generic",
     versions = VERSIONS_GCP_SUPPORT,
 )
 
@@ -84,7 +84,7 @@ acceptance_test_suite(
     argsmap = goargs(),
     builder = "//builders/go:builder.tar",
     rundir = ".",
-    testdata = "//builders/testdata:go",
+    testdata = "//builders/testdata/go:appengine",
     versions = VERSIONS_GAE_SUPPORT,
 )
 

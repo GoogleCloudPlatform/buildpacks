@@ -16,7 +16,7 @@ go_test(
     size = "enormous",
     srcs = ["acceptance_test.go"],
     args = [
-        "-test-data=$(location //builders/testdata:go)",
+        "-test-data=$(location //builders/testdata/go:appengine)",
         "-structure-test-config=$(location :config.yaml)",
         "-builder-source=$(location //builders/gae/go115:builder.tar)",
         "-builder-prefix=gaego115-acceptance-test-",
@@ -24,7 +24,7 @@ go_test(
     data = [
         ":config.yaml",
         "//builders/gae/go115:builder.tar",
-        "//builders/testdata:go",
+        "//builders/testdata/go:appengine",
     ],
     embed = [":acceptance"],
     rundir = ".",

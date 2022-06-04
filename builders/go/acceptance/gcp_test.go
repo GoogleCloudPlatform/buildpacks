@@ -26,7 +26,7 @@ func TestAcceptance(t *testing.T) {
 	testCases := []acceptance.Test{
 		{
 			Name:            "simple Go application",
-			App:             "go/simple",
+			App:             "simple",
 			MustUse:         []string{goRuntime, goBuild, goPath},
 			MustNotUse:      []string{goClearSource},
 			FilesMustExist:  []string{"/layers/google.go.build/bin/main", "/workspace/main.go"},
@@ -34,19 +34,19 @@ func TestAcceptance(t *testing.T) {
 		},
 		{
 			Name:       "Go.mod",
-			App:        "go/simple_gomod",
+			App:        "simple_gomod",
 			MustUse:    []string{goRuntime, goBuild, goMod},
 			MustNotUse: []string{goPath},
 		},
 		{
 			Name:       "Go.mod package",
-			App:        "go/gomod_package",
+			App:        "gomod_package",
 			MustUse:    []string{goRuntime, goBuild, goMod},
 			MustNotUse: []string{goPath},
 		},
 		{
 			Name:       "Multiple entrypoints",
-			App:        "go/entrypoints",
+			App:        "entrypoints",
 			Env:        []string{"GOOGLE_BUILDABLE=cmd/first/main.go"},
 			MustUse:    []string{goRuntime, goBuild},
 			MustNotUse: []string{goPath},
@@ -55,7 +55,7 @@ func TestAcceptance(t *testing.T) {
 			Name: "Go.mod and vendor",
 			// go mod and vendor cannot be used together before go 1.14
 			VersionInclusionConstraint: ">= 1.14",
-			App:                        "go/simple_gomod_vendor",
+			App:                        "simple_gomod_vendor",
 			MustUse:                    []string{goRuntime, goBuild, goMod},
 			MustNotUse:                 []string{goPath},
 			EnableCacheTest:            true,
@@ -64,7 +64,7 @@ func TestAcceptance(t *testing.T) {
 			Name: "Dev mode",
 			// This test only runs against a single version of Go as it is unlikely to break across versions.
 			VersionInclusionConstraint: "1.16",
-			App:                        "go/simple",
+			App:                        "simple",
 			Env:                        []string{"GOOGLE_DEVMODE=1"},
 			MustUse:                    []string{goRuntime, goBuild, goPath},
 			FilesMustExist:             []string{"/layers/google.go.runtime/go/bin/go", "/workspace/main.go"},
@@ -76,7 +76,7 @@ func TestAcceptance(t *testing.T) {
 			Name: "Dev mode metadata",
 			// This test only runs against a single version of Go as it is unlikely to break across versions.
 			VersionInclusionConstraint: "1.16",
-			App:                        "go/simple",
+			App:                        "simple",
 			Env:                        []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=1.16.4"},
 			MustUse:                    []string{goRuntime, goBuild, goPath},
 			BOM: []acceptance.BOMEntry{
@@ -100,7 +100,7 @@ func TestAcceptance(t *testing.T) {
 			Name: "Go runtime version respected",
 			// This test only runs against a single version of Go as it is unlikely to break across versions.
 			VersionInclusionConstraint: "1.13",
-			App:                        "go/simple",
+			App:                        "simple",
 			Path:                       "/version?want=1.13",
 			Env:                        []string{"GOOGLE_RUNTIME_VERSION=1.13"},
 			MustUse:                    []string{goRuntime, goBuild, goPath},
@@ -109,7 +109,7 @@ func TestAcceptance(t *testing.T) {
 			Name: "clear source",
 			// This test only runs against a single version of Go as it is unlikely to break across versions.
 			VersionInclusionConstraint: "1.16",
-			App:                        "go/simple",
+			App:                        "simple",
 			Env:                        []string{"GOOGLE_CLEAR_SOURCE=true"},
 			MustUse:                    []string{goClearSource},
 			FilesMustExist:             []string{"/layers/google.go.build/bin/main"},
@@ -133,7 +133,7 @@ func TestFailures(t *testing.T) {
 	testCases := []acceptance.FailureTest{
 		{
 			Name:                   "no Go files in root",
-			App:                    "go/entrypoints",
+			App:                    "entrypoints",
 			MustMatch:              `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built`,
 			SkipBuilderOutputMatch: true,
 		},
@@ -141,7 +141,7 @@ func TestFailures(t *testing.T) {
 			Name: "bad runtime version",
 			// This test only runs against a single version of Go as it is unlikely to break across versions.
 			VersionInclusionConstraint: "1.16",
-			App:                        "go/simple",
+			App:                        "simple",
 			Env:                        []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
 			MustMatch:                  "Runtime version BAD_NEWS_BEARS does not exist",
 		},

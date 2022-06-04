@@ -30,7 +30,7 @@ func TestAcceptanceGo(t *testing.T) {
 	testCases := []acceptance.Test{
 		{
 			Name:            "simple Go application",
-			App:             "go/simple",
+			App:             "simple",
 			MustUse:         []string{goRuntime, goBuild, goPath},
 			MustNotUse:      []string{goClearSource},
 			FilesMustExist:  []string{"/layers/google.go.build/bin/main", "/workspace/main.go"},
@@ -38,34 +38,34 @@ func TestAcceptanceGo(t *testing.T) {
 		},
 		{
 			Name:       "Go.mod",
-			App:        "go/simple_gomod",
+			App:        "simple_gomod",
 			MustUse:    []string{goRuntime, goBuild, goMod},
 			MustNotUse: []string{goPath},
 			MustOutput: []string{"Using latest runtime version:"},
 		},
 		{
 			Name:       "Go.mod package",
-			App:        "go/gomod_package",
+			App:        "gomod_package",
 			MustUse:    []string{goRuntime, goBuild, goMod},
 			MustNotUse: []string{goPath},
 		},
 		{
 			Name:       "Multiple entrypoints",
-			App:        "go/entrypoints",
+			App:        "entrypoints",
 			Env:        []string{"GOOGLE_BUILDABLE=cmd/first/main.go"},
 			MustUse:    []string{goRuntime, goBuild},
 			MustNotUse: []string{goPath},
 		},
 		{
 			Name:            "Go.mod and vendor",
-			App:             "go/simple_gomod_vendor",
+			App:             "simple_gomod_vendor",
 			MustUse:         []string{goRuntime, goBuild, goMod},
 			MustNotUse:      []string{goPath},
 			EnableCacheTest: true,
 		},
 		{
 			Name:                "Dev mode",
-			App:                 "go/simple",
+			App:                 "simple",
 			Env:                 []string{"GOOGLE_DEVMODE=1"},
 			MustUse:             []string{goRuntime, goBuild, goPath},
 			FilesMustExist:      []string{"/layers/google.go.runtime/go/bin/go", "/workspace/main.go"},
@@ -75,7 +75,7 @@ func TestAcceptanceGo(t *testing.T) {
 			// This is a separate test case from Dev mode above because it has a fixed runtime version.
 			// Its only purpose is to test that the metadata is set correctly.
 			Name:    "Dev mode metadata",
-			App:     "go/simple",
+			App:     "simple",
 			Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=1.16.4"},
 			MustUse: []string{goRuntime, goBuild, goPath},
 			BOM: []acceptance.BOMEntry{
@@ -97,14 +97,14 @@ func TestAcceptanceGo(t *testing.T) {
 		},
 		{
 			Name:    "Go runtime version respected",
-			App:     "go/simple",
+			App:     "simple",
 			Path:    "/version?want=1.13",
 			Env:     []string{"GOOGLE_RUNTIME_VERSION=1.13"},
 			MustUse: []string{goRuntime, goBuild, goPath},
 		},
 		{
 			Name:              "clear source",
-			App:               "go/simple",
+			App:               "simple",
 			Env:               []string{"GOOGLE_CLEAR_SOURCE=true"},
 			MustUse:           []string{goClearSource},
 			FilesMustExist:    []string{"/layers/google.go.build/bin/main"},
@@ -128,20 +128,20 @@ func TestFailuresGo(t *testing.T) {
 	testCases := []acceptance.FailureTest{
 		{
 			Name:      "bad runtime version",
-			App:       "go/simple",
+			App:       "simple",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
 			MustMatch: "Runtime version BAD_NEWS_BEARS does not exist",
 		},
 		{
 			Name:                   "no Go files in root (Go 1.12)",
-			App:                    "go/entrypoints",
+			App:                    "entrypoints",
 			Env:                    []string{"GOOGLE_RUNTIME_VERSION=1.12"},
 			MustMatch:              `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built`,
 			SkipBuilderOutputMatch: true,
 		},
 		{
 			Name:                   "no Go files in root (Go 1.14)",
-			App:                    "go/entrypoints",
+			App:                    "entrypoints",
 			Env:                    []string{"GOOGLE_RUNTIME_VERSION=1.14"},
 			MustMatch:              `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built`,
 			SkipBuilderOutputMatch: true,

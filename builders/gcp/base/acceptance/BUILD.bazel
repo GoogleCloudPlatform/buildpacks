@@ -61,7 +61,7 @@ go_test(
     size = "enormous",
     srcs = ["go_test.go"],
     args = [
-        "-test-data=$(location //builders/testdata:generic)",
+        "-test-data=$(location //builders/testdata/go:generic)",
         "-structure-test-config=$(location :config.yaml)",
         "-builder-source=$(location //builders/gcp/base:builder.tar)",
         "-builder-prefix=gcpbase-go-test-",
@@ -69,7 +69,7 @@ go_test(
     data = [
         ":config.yaml",
         "//builders/gcp/base:builder.tar",
-        "//builders/testdata:generic",
+        "//builders/testdata/go:generic",
     ],
     embed = [":acceptance"],
     rundir = ".",
