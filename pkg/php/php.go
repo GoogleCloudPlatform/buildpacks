@@ -166,7 +166,7 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 	//   https://github.com/GoogleCloudPlatform/php-docs-samples/issues/736
 	//   https://github.com/GoogleCloudPlatform/runtimes-common/pull/763
 	//   https://github.com/GoogleCloudPlatform/runtimes-common/commit/6c4970f609d80f9436ac58ae272cfcc6bcd57143
-	flags := []string{"--no-dev", "--no-progress", "--no-suggest", "--no-interaction", "--optimize-autoloader"}
+	flags := []string{"--no-dev", "--no-progress", "--no-interaction", "--optimize-autoloader"}
 
 	if err := ctx.RemoveAll(Vendor); err != nil {
 		return nil, err
@@ -221,7 +221,7 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 // be specified as `composer require` would expect them on the command line, for example
 // "myorg/mypackage:^0.7". It does no caching.
 func ComposerRequire(ctx *gcp.Context, packages []string) {
-	cmd := append([]string{"composer", "require", "--no-progress", "--no-suggest", "--no-interaction"}, packages...)
+	cmd := append([]string{"composer", "require", "--no-progress", "--no-interaction"}, packages...)
 	ctx.Exec(cmd, gcp.WithUserAttribution)
 }
 
