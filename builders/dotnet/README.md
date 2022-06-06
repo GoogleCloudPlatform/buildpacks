@@ -12,7 +12,7 @@ bazel build //builders/dotnet:builder.image
 To build the sample application [cs_no_deps](../testdata/dotnet/cs_no_deps/), run:
 
 ```bash
-pack build sample-dotnet --builder gcp/dotnet --path builders/testdata/dotnet/cs_no_deps/ --trust-builder -v
+pack build sample-dotnet --builder gcp/dotnet --path builders/testdata/generic/dotnet/simple/ --trust-builder -v
 ```
 
 ## Acceptance Tests

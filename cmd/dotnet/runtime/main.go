@@ -34,9 +34,7 @@ import (
 const (
 	sdkLayerName             = "sdk"
 	runtimeLayerName         = "runtime"
-	sdkURL                   = "https://dotnetcli.azureedge.net/dotnet/Sdk/%[1]s/dotnet-sdk-%[1]s-linux-x64.tar.gz"
 	aspnetRuntimeURL         = "https://dotnetcli.azureedge.net/dotnet/aspnetcore/Runtime/%[1]s/aspnetcore-runtime-%[1]s-linux-x64.tar.gz"
-	uncachedSdkURL           = "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/%[1]s/dotnet-sdk-%[1]s-linux-x64.tar.gz"
 	uncachedAspnetRuntimeURL = "https://dotnetcli.blob.core.windows.net/dotnet/aspnetcore/Runtime/%[1]s/aspnetcore-runtime-%[1]s-linux-x64.tar.gz"
 	versionKey               = "version"
 )
@@ -85,12 +83,6 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 func buildSDKLayer(ctx *gcp.Context, version string, isDevMode bool) error {
-	ctx.AddBOMEntry(libcnb.BOMEntry{
-		Name:     sdkLayerName,
-		Metadata: map[string]interface{}{"version": version},
-		Launch:   true,
-		Build:    true,
-	})
 	// Keep the SDK layer for launch in devmode because we use `dotnet watch`.
 	sdkl, err := ctx.Layer(sdkLayerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
 	if err != nil {
@@ -115,13 +107,9 @@ func buildSDKLayer(ctx *gcp.Context, version string, isDevMode bool) error {
 }
 
 func dlAndInstallSDK(ctx *gcp.Context, sdkl *libcnb.Layer, version string, isDevMode bool) error {
-	archiveURL, err := sdkArchiveURL(ctx, version)
-	if err != nil {
+	if _, err := runtime.InstallTarballIfNotCached(ctx, runtime.DotnetSDK, version, sdkl); err != nil {
 		return err
 	}
-	ctx.Logf("Installing .NET SDK v%s", version)
-	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, sdkl.Path)
-	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
 	setSDKEnvVars(sdkl, isDevMode)
 	return nil
 }
@@ -148,28 +136,6 @@ func setSDKEnvVarsDevMode(sdkl *libcnb.Layer) {
 func setSDKEnvVarsForBuild(sdkl *libcnb.Layer) {
 	sdkl.BuildEnvironment.Default("DOTNET_ROOT", sdkl.Path)
 	sdkl.BuildEnvironment.Prepend("PATH", string(os.PathListSeparator), sdkl.Path)
-}
-
-// sdkArchiveURL returns the URL to fetch the .NET SDK.
-func sdkArchiveURL(ctx *gcp.Context, version string) (string, error) {
-	url := fmt.Sprintf(sdkURL, version)
-	code, err := ctx.HTTPStatus(url)
-	if err != nil {
-		return "", err
-	}
-	if code == http.StatusOK {
-		return url, nil
-	}
-	// Retry with the uncached URL.
-	url = fmt.Sprintf(uncachedSdkURL, version)
-	code, err = ctx.HTTPStatus(url)
-	if err != nil {
-		return "", err
-	}
-	if code != http.StatusOK {
-		return "", gcp.UserErrorf("runtime version %s does not exist at %s (status %d). You can specify the version with %s.", version, url, code, env.RuntimeVersion)
-	}
-	return url, nil
 }
 
 func buildRuntimeLayer(ctx *gcp.Context, sdkVersion string) error {
