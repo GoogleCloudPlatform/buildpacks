@@ -33,20 +33,20 @@ func TestAcceptanceDotNet(t *testing.T) {
 	testCases := []acceptance.Test{
 		{
 			Name:              "simple dotnet app",
-			App:               "dotnet/simple",
+			App:               "simple",
 			MustUse:           []string{dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 			EnableCacheTest:   true,
 		},
 		{
 			Name:              "simple dotnet 6.0 app",
-			App:               "dotnet/simple_dotnet6",
+			App:               "simple_dotnet6",
 			MustUse:           []string{dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 		},
 		{
 			Name:              "simple dotnet app with runtime version",
-			App:               "dotnet/simple",
+			App:               "simple",
 			Path:              "/version?want=3.1.1",
 			Env:               []string{"GOOGLE_RUNTIME_VERSION=3.1.101"},
 			MustUse:           []string{dotnetRuntime, dotnetPublish},
@@ -54,7 +54,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 		},
 		{
 			Name:              "simple prebuilt dotnet app",
-			App:               "dotnet/simple_prebuilt",
+			App:               "simple_prebuilt",
 			Env:               []string{"GOOGLE_ENTRYPOINT=./simple"},
 			MustUse:           []string{dotnetRuntime},
 			MustNotUse:        []string{dotnetPublish},
@@ -62,7 +62,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 		},
 		{
 			Name:                "Dev mode",
-			App:                 "dotnet/simple",
+			App:                 "simple",
 			Env:                 []string{"GOOGLE_DEVMODE=1"},
 			MustUse:             []string{dotnetRuntime, dotnetPublish},
 			FilesMustExist:      []string{sdk, "/workspace/Startup.cs"},
@@ -72,7 +72,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 			// This is a separate test case from Dev mode above because it has a fixed runtime version.
 			// Its only purpose is to test that the metadata is set correctly.
 			Name:    "Dev mode metadata",
-			App:     "dotnet/simple",
+			App:     "simple",
 			Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=3.1.409"},
 			MustUse: []string{dotnetRuntime, dotnetPublish},
 			BOM: []acceptance.BOMEntry{
@@ -115,7 +115,7 @@ func TestFailuresDotNet(t *testing.T) {
 	testCases := []acceptance.FailureTest{
 		{
 			Name:      "bad runtime version",
-			App:       "dotnet/simple",
+			App:       "simple",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
 			MustMatch: "invalid .NET SDK version specified: improper constraint: BAD_NEWS_BEARS",
 		},

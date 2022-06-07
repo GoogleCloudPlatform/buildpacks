@@ -34,48 +34,48 @@ func TestAcceptanceDotNet(t *testing.T) {
 	testCases := []acceptance.Test{
 		{
 			Name:              "app with assembly name specified",
-			App:               "dotnet/cs_assemblyname",
+			App:               "cs_assemblyname",
 			MustUse:           []string{dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 		},
 		{
 			Name:              "app with local dependencies",
-			App:               "dotnet/cs_local_deps",
+			App:               "cs_local_deps",
 			MustUse:           []string{dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 			Env:               []string{"GOOGLE_BUILDABLE=App"},
 		},
 		{
 			Name:              "app with custom entry point",
-			App:               "dotnet/cs_custom_entrypoint",
+			App:               "cs_custom_entrypoint",
 			MustUse:           []string{dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 			Env:               []string{"GOOGLE_ENTRYPOINT=bin/app --flag=myflag"},
 		},
 		{
 			Name:              "app with nested directory structure",
-			App:               "dotnet/cs_nested_proj",
+			App:               "cs_nested_proj",
 			MustUse:           []string{dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 			Env:               []string{"GOOGLE_BUILDABLE=app/app.csproj"},
 		},
 		{
 			Name:              "build with properties specified",
-			App:               "dotnet/cs_properties",
+			App:               "cs_properties",
 			MustUse:           []string{dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 			Env:               []string{"GOOGLE_BUILD_ARGS=-p:Version=1.0.1.0 -p:FileVersion=1.0.1.0"},
 		},
 		{
 			Name:              "simple dotnet app",
-			App:               "dotnet/simple",
+			App:               "simple",
 			MustUse:           []string{dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 			EnableCacheTest:   true,
 		},
 		{
 			Name:              "simple prebuilt dotnet app",
-			App:               "dotnet/simple_prebuilt",
+			App:               "simple_prebuilt",
 			Env:               []string{"GOOGLE_ENTRYPOINT=./simple"},
 			MustUse:           []string{dotnetRuntime},
 			MustNotUse:        []string{dotnetPublish},
@@ -88,7 +88,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 			// no Hot Swap changes to reload. Disable this test while this is being
 			// investigated.
 			VersionInclusionConstraint: "!= 6.0",
-			App:                        "dotnet/simple",
+			App:                        "simple",
 			Env:                        []string{"GOOGLE_DEVMODE=1"},
 			MustUse:                    []string{dotnetRuntime, dotnetPublish},
 			FilesMustExist:             []string{sdk, "/workspace/Startup.cs"},
@@ -100,7 +100,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 			Name: "Dev mode metadata",
 			// Test is only intended to be run against a single version
 			VersionInclusionConstraint: "3",
-			App:                        "dotnet/simple",
+			App:                        "simple",
 			Env:                        []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=3.1.409"},
 			MustUse:                    []string{dotnetRuntime, dotnetPublish},
 			BOM: []acceptance.BOMEntry{
@@ -147,7 +147,7 @@ func TestFailuresDotNet(t *testing.T) {
 			Name: "bad runtime version",
 			// Test will produce the same results across all versions.
 			VersionInclusionConstraint: "3",
-			App:                        "dotnet/simple",
+			App:                        "simple",
 			Env:                        []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
 			MustMatch:                  "invalid .NET SDK version specified: improper constraint: BAD_NEWS_BEARS",
 		},
