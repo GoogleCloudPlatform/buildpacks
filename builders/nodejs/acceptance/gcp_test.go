@@ -38,13 +38,13 @@ func TestAcceptance(t *testing.T) {
 	testCases := []acceptance.Test{
 		{
 			Name:            "simple application",
-			App:             "nodejs/simple",
+			App:             "simple",
 			MustUse:         []string{nodeRuntime, nodeNPM},
 			EnableCacheTest: true,
 		},
 		{
 			Name:                "Dev mode",
-			App:                 "nodejs/simple",
+			App:                 "simple",
 			Env:                 []string{"GOOGLE_DEVMODE=1"},
 			MustUse:             []string{nodeRuntime, nodeNPM},
 			FilesMustExist:      []string{"/workspace/server.js"},
@@ -56,7 +56,7 @@ func TestAcceptance(t *testing.T) {
 			Name: "Dev mode metadata",
 			// Test installs a specific version of node and only needs to be run with a single version
 			VersionInclusionConstraint: "14",
-			App:                        "nodejs/simple",
+			App:                        "simple",
 			Env:                        []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=14.17.0"},
 			MustUse:                    []string{nodeRuntime, nodeNPM},
 			BOM: []acceptance.BOMEntry{
@@ -83,19 +83,19 @@ func TestAcceptance(t *testing.T) {
 		},
 		{
 			Name:    "simple application (custom entrypoint)",
-			App:     "nodejs/custom_entrypoint",
+			App:     "custom_entrypoint",
 			Env:     []string{"GOOGLE_ENTRYPOINT=node custom.js"},
 			MustUse: []string{nodeRuntime, nodeNPM, entrypoint},
 		},
 		{
 			Name:       "yarn",
-			App:        "nodejs/yarn",
+			App:        "yarn",
 			MustUse:    []string{nodeRuntime, nodeYarn},
 			MustNotUse: []string{nodeNPM},
 		},
 		{
 			Name:       "yarn (Dev Mode)",
-			App:        "nodejs/yarn",
+			App:        "yarn",
 			Env:        []string{"GOOGLE_DEVMODE=1"},
 			MustUse:    []string{nodeRuntime, nodeYarn},
 			MustNotUse: []string{nodeNPM},
@@ -107,7 +107,7 @@ func TestAcceptance(t *testing.T) {
 		// 	VersionInclusionConstraint: "12",
 		// 	Test: acceptance.Test{
 		// 		Name:    "runtime version with npm install",
-		// 		App:     "nodejs/simple",
+		// 		App:     "simple",
 		// 		Path:    "/version?want=12.13.0",
 		// 		Env:     []string{"GOOGLE_RUNTIME_VERSION=12.13.0"},
 		// 		MustUse: []string{nodeRuntime, nodeNPM},
@@ -117,14 +117,14 @@ func TestAcceptance(t *testing.T) {
 			Name: "runtime version with npm ci",
 			// Test installs a specific version of node and only needs to be run with a single version
 			VersionInclusionConstraint: "12",
-			App:                        "nodejs/simple",
+			App:                        "simple",
 			Path:                       "/version?want=16.9.1",
 			Env:                        []string{"GOOGLE_RUNTIME_VERSION=16.9.1"},
 			MustUse:                    []string{nodeRuntime, nodeNPM},
 		},
 		{
 			Name:       "without package.json",
-			App:        "nodejs/no_package",
+			App:        "no_package",
 			Env:        []string{"GOOGLE_ENTRYPOINT=node server.js"},
 			MustUse:    []string{nodeRuntime},
 			MustNotUse: []string{nodeNPM, nodeYarn},
@@ -133,7 +133,7 @@ func TestAcceptance(t *testing.T) {
 			Name: "NPM version specified",
 			// npm@8 requires nodejs@12+
 			VersionInclusionConstraint: ">= 12.0.0",
-			App:                        "nodejs/npm_version_specified",
+			App:                        "npm_version_specified",
 			MustOutput:                 []string{"npm --version\n\n8.3.1"},
 			Path:                       "/version?want=8.3.1",
 		},
@@ -141,7 +141,7 @@ func TestAcceptance(t *testing.T) {
 			Name: "old NPM version specified",
 			// npm@5 requires nodejs@8
 			VersionInclusionConstraint: "8",
-			App:                        "nodejs/old_npm_version_specified",
+			App:                        "old_npm_version_specified",
 			Path:                       "/version?want=5.5.1",
 			MustUse:                    []string{nodeRuntime, nodeNPM},
 			MustOutput:                 []string{"npm --version\n\n5.5.1"},
@@ -166,7 +166,7 @@ func TestFailures(t *testing.T) {
 			Name: "bad runtime version",
 			// Test has no version specific characteristics and should act the same across all versions
 			VersionInclusionConstraint: "12",
-			App:                        "nodejs/simple",
+			App:                        "simple",
 			Env:                        []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
 			MustMatch:                  "invalid Node.js version specified",
 		},

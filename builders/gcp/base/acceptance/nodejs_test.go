@@ -30,13 +30,13 @@ func TestAcceptanceNodeJs(t *testing.T) {
 	testCases := []acceptance.Test{
 		{
 			Name:            "simple application",
-			App:             "nodejs/simple",
+			App:             "simple",
 			MustUse:         []string{nodeRuntime, nodeNPM},
 			EnableCacheTest: true,
 		},
 		{
 			Name:                "Dev mode",
-			App:                 "nodejs/simple",
+			App:                 "simple",
 			Env:                 []string{"GOOGLE_DEVMODE=1"},
 			MustUse:             []string{nodeRuntime, nodeNPM},
 			FilesMustExist:      []string{"/workspace/server.js"},
@@ -46,7 +46,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			// This is a separate test case from Dev mode above because it has a fixed runtime version.
 			// Its only purpose is to test that the metadata is set correctly.
 			Name:    "Dev mode metadata",
-			App:     "nodejs/simple",
+			App:     "simple",
 			Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=14.17.0"},
 			MustUse: []string{nodeRuntime, nodeNPM},
 			BOM: []acceptance.BOMEntry{
@@ -73,46 +73,46 @@ func TestAcceptanceNodeJs(t *testing.T) {
 		},
 		{
 			Name:    "simple application (custom entrypoint)",
-			App:     "nodejs/custom_entrypoint",
+			App:     "custom_entrypoint",
 			Env:     []string{"GOOGLE_ENTRYPOINT=node custom.js"},
 			MustUse: []string{nodeRuntime, nodeNPM, entrypoint},
 		},
 		{
 			Name:       "yarn",
-			App:        "nodejs/yarn",
+			App:        "yarn",
 			MustUse:    []string{nodeRuntime, nodeYarn},
 			MustNotUse: []string{nodeNPM},
 		},
 		{
 			Name:       "yarn (Dev Mode)",
-			App:        "nodejs/yarn",
+			App:        "yarn",
 			Env:        []string{"GOOGLE_DEVMODE=1"},
 			MustUse:    []string{nodeRuntime, nodeYarn},
 			MustNotUse: []string{nodeNPM},
 		},
 		{
 			Name:    "runtime version with npm ci",
-			App:     "nodejs/simple",
+			App:     "simple",
 			Path:    "/version?want=16.9.1",
 			Env:     []string{"GOOGLE_RUNTIME_VERSION=16.9.1"},
 			MustUse: []string{nodeRuntime, nodeNPM},
 		},
 		{
 			Name:       "without package.json",
-			App:        "nodejs/no_package",
+			App:        "no_package",
 			Env:        []string{"GOOGLE_ENTRYPOINT=node server.js"},
 			MustUse:    []string{nodeRuntime},
 			MustNotUse: []string{nodeNPM, nodeYarn},
 		},
 		{
 			Name:       "NPM version specified",
-			App:        "nodejs/npm_version_specified",
+			App:        "npm_version_specified",
 			MustOutput: []string{"npm --version\n\n8.3.1"},
 			Path:       "/version?want=8.3.1",
 		},
 		{
 			Name:       "old NPM version specified",
-			App:        "nodejs/old_npm_version_specified",
+			App:        "old_npm_version_specified",
 			Path:       "/version?want=5.5.1",
 			MustUse:    []string{nodeRuntime, nodeNPM},
 			MustOutput: []string{"npm --version\n\n5.5.1"},
@@ -122,7 +122,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 	for _, v := range []string{"8.17.0"} {
 		testCases = append(testCases, acceptance.Test{
 			Name:    "runtime version " + v,
-			App:     "nodejs/simple",
+			App:     "simple",
 			Path:    "/version?want=" + v,
 			Env:     []string{"GOOGLE_NODEJS_VERSION=" + v},
 			MustUse: []string{nodeRuntime},
@@ -145,7 +145,7 @@ func TestFailuresNodeJs(t *testing.T) {
 	testCases := []acceptance.FailureTest{
 		{
 			Name:      "bad runtime version",
-			App:       "nodejs/simple",
+			App:       "simple",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
 			MustMatch: "invalid Node.js version specified",
 		},

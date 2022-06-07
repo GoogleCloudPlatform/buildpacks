@@ -6,8 +6,6 @@ package(default_visibility = ["//builders:__subpackages__"])
 
 exports_files(
     [
-        "appengine",
         "functions",
-        "generic",
     ],
 )

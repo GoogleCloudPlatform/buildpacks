@@ -15,7 +15,7 @@ go_test(
     size = "enormous",
     srcs = ["acceptance_test.go"],
     args = [
-        "-test-data=$(location //builders/testdata:nodejs)",
+        "-test-data=$(location //builders/testdata/nodejs:appengine)",
         "-structure-test-config=$(location :config.yaml)",
         "-builder-source=$(location //builders/gae/nodejs10:builder.tar)",
         "-builder-prefix=gaenodejs10-acceptance-test-",
@@ -23,7 +23,7 @@ go_test(
     data = [
         ":config.yaml",
         "//builders/gae/nodejs10:builder.tar",
-        "//builders/testdata:nodejs",
+        "//builders/testdata/nodejs:appengine",
     ],
     embed = [":acceptance"],
     rundir = ".",
