@@ -5,6 +5,7 @@ licenses(["notice"])
 go_library(
     name = "ruby",
     srcs = [
+        "gemfile.go",
         "ruby.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
@@ -14,12 +15,14 @@ go_library(
     deps = [
         "//pkg/env",
         "//pkg/gcpbuildpack",
+        "@com_github_masterminds_semver//:go_default_library",
     ],
 )
 
 go_test(
     name = "ruby_test",
     srcs = [
+        "gemfile_test.go",
         "ruby_test.go",
     ],
     embed = [":ruby"],

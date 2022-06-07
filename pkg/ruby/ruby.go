@@ -16,19 +16,13 @@
 package ruby
 
 import (
-	"bufio"
-	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
-
-// Match against ruby string example: ruby 2.6.7p450
-var rubyVersionRe = regexp.MustCompile(`^\s*ruby\s+([^p^\s]+)(p\d+)?\s*$`)
 
 const defaultVersion = "3.0.0"
 
@@ -47,17 +41,10 @@ func DetectVersion(ctx *gcp.Context) (string, error) {
 			return "", err
 		}
 		if pathExists {
-
-			file, err := os.Open(path)
-			if err != nil {
-				return "", err
-			}
-
-			defer file.Close()
-			lockedVersion, err := lockFileVersion(lockFileName, file)
+			lockedVersion, err := ParseRubyVersion(path)
 
 			if err != nil {
-				return "", err
+				return "", gcp.UserErrorf("Error %q in: %s", err, lockFileName)
 			}
 
 			// Lockfile doesn't contain a ruby version, so we can move on
@@ -82,32 +69,4 @@ func DetectVersion(ctx *gcp.Context) (string, error) {
 	}
 
 	return defaultVersion, nil
-}
-
-// lockFileVersion extacts the version number from Gemfile.lock or gems.locked, returns an error in
-// case the version string is malformed.
-func lockFileVersion(fileName string, r io.Reader) (string, error) {
-	const token = "RUBY VERSION"
-
-	scanner := bufio.NewScanner(r)
-
-	for scanner.Scan() {
-		if scanner.Text() == token {
-			// Read the next line once the token is found
-			if !scanner.Scan() {
-				break
-			}
-
-			version := scanner.Text()
-
-			matches := rubyVersionRe.FindStringSubmatch(version)
-			if len(matches) > 1 {
-				return matches[1], nil
-			}
-
-			return "", gcp.UserErrorf("Invalid ruby version in %s: %q", fileName, version)
-		}
-	}
-
-	return "", nil
 }
