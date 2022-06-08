@@ -31,7 +31,7 @@ func TestAcceptanceDart(t *testing.T) {
 	testCases := []acceptance.Test{
 		{
 			Name:    "simple Dart webserver",
-			App:     "dart/simple",
+			App:     "simple",
 			MustUse: []string{dartCompile},
 		},
 	}
