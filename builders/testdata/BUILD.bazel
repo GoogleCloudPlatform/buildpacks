@@ -1,5 +1,4 @@
 # Test data for builder acceptance tests.
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
 licenses(["notice"])
 
@@ -16,28 +15,4 @@ exports_files(
         "python",
         "ruby",
     ],
-)
-
-# The java builder acceptance tests expect the following structure:
-#   ./custom_entrypoint/Main.java
-#   ./single_jar/fatjar.jar
-#   ./<other test cases>
-# Note that java/custom_entrypoint is considered a package due to the BUILD file
-# and so must be fully-resolved. Likewise the presence of a java/BUILD file
-# means that we can't just use java/** here.
-pkg_tar(
-    name = "javatestdata",
-    srcs = ["//builders/testdata/java:files"],
-    extension = "tgz",
-    files = {
-        "//builders/testdata/java/custom_entrypoint:Main.java": "custom_entrypoint/Main.java",
-        "//builders/testdata/java/custom_entrypoint:runnablejar": "single_jar/fatjar.jar",
-        "//builders/testdata/java/java11_compat_webapp:appengine-web.xml": "java11_compat_webapp/WEB-INF/appengine-web.xml",
-        "//builders/testdata/java/java11_compat_webapp:web.xml": "java11_compat_webapp/WEB-INF/web.xml",
-        "//builders/testdata/java/java11_compat_webapp:compiledjar": "java11_compat_webapp/WEB-INF/lib/helloservlet.jar",
-        "//builders/testdata/java/java17_compat_webapp:appengine-web.xml": "java17_compat_webapp/WEB-INF/appengine-web.xml",
-        "//builders/testdata/java/java17_compat_webapp:web.xml": "java17_compat_webapp/WEB-INF/web.xml",
-        "//builders/testdata/java/java17_compat_webapp:compiledjar": "java17_compat_webapp/WEB-INF/lib/helloservlet.jar",
-    },
-    strip_prefix = "java",
 )
