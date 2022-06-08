@@ -30,47 +30,47 @@ func TestAcceptancePython(t *testing.T) {
 	testCases := []acceptance.Test{
 		{
 			Name:            "entrypoint from procfile web",
-			App:             "python/simple",
+			App:             "simple",
 			MustUse:         []string{pythonRuntime, pythonPIP, entrypoint},
 			EnableCacheTest: true,
 		},
 		{
 			Name:       "entrypoint from procfile custom",
-			App:        "python/simple",
+			App:        "simple",
 			Path:       "/custom",
 			Entrypoint: "custom", // Must match the non-web process in Procfile.
 			MustUse:    []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		{
 			Name:    "entrypoint from env",
-			App:     "python/simple",
+			App:     "simple",
 			Path:    "/custom",
 			Env:     []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 custom:app"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		{
 			Name:    "entrypoint with env var",
-			App:     "python/simple",
+			App:     "simple",
 			Path:    "/env?want=bar",
 			Env:     []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		{
 			Name:    "runtime version from env",
-			App:     "python/version",
+			App:     "version",
 			Path:    "/version?want=3.8.0",
 			Env:     []string{"GOOGLE_RUNTIME_VERSION=3.8.0"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		{
 			Name:    "runtime version from .python-version",
-			App:     "python/version",
+			App:     "version",
 			Path:    "/version?want=3.8.1",
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		{
 			Name:    "python with client-side scripts correctly builds as a python app",
-			App:     "python/scripts",
+			App:     "scripts",
 			Env:     []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
@@ -80,7 +80,7 @@ func TestAcceptancePython(t *testing.T) {
 	for _, v := range []string{"3.7.12", "3.8.12", "3.9.10", "3.10.2"} {
 		testCases = append(testCases, acceptance.Test{
 			Name:    "dl.google.com runtime version " + v,
-			App:     "python/version",
+			App:     "version",
 			Path:    "/version?want=" + v,
 			Env:     []string{"GOOGLE_PYTHON_VERSION=" + v},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
@@ -104,18 +104,18 @@ func TestFailuresPython(t *testing.T) {
 	testCases := []acceptance.FailureTest{
 		{
 			Name:      "bad runtime version",
-			App:       "python/simple",
+			App:       "simple",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS", "GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustMatch: "invalid Python version specified",
 		},
 		{
 			Name:      "python-version empty",
-			App:       "python/empty_version",
+			App:       "empty_version",
 			MustMatch: ".python-version exists but does not specify a version",
 		},
 		{
 			Name:      "missing entrypoint",
-			App:       "python/missing_entrypoint",
+			App:       "missing_entrypoint",
 			MustMatch: `for Python, an entrypoint must be manually set, either with "GOOGLE_ENTRYPOINT" env var or by creating a "Procfile" file`,
 		},
 	}

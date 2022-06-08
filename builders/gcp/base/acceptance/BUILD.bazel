@@ -130,7 +130,7 @@ go_test(
     size = "enormous",
     srcs = ["python_test.go"],
     args = [
-        "-test-data=$(location //builders/testdata:generic)",
+        "-test-data=$(location //builders/testdata/python:generic)",
         "-structure-test-config=$(location :config.yaml)",
         "-builder-source=$(location //builders/gcp/base:builder.tar)",
         "-builder-prefix=gcpbase-python-test-",
@@ -138,7 +138,7 @@ go_test(
     data = [
         ":config.yaml",
         "//builders/gcp/base:builder.tar",
-        "//builders/testdata:generic",
+        "//builders/testdata/python:generic",
     ],
     embed = [":acceptance"],
     rundir = ".",
