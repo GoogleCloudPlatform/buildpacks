@@ -28,7 +28,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/php:builder.tar",
     rundir = ".",
-    testdata = "//builders/testdata:generic",
+    testdata = "//builders/testdata/php:generic",
     versions = VERSIONS_ALL_PRODUCTS,
 )
 
@@ -41,7 +41,7 @@ acceptance_test_suite(
     argsmap = phpargs(),
     builder = "//builders/php:builder.tar",
     rundir = ".",
-    testdata = "//builders/testdata:php",
+    testdata = "//builders/testdata/php:appengine",
     versions = VERSIONS_ALL_PRODUCTS,
 )
 

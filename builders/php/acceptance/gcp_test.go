@@ -26,20 +26,20 @@ func TestAcceptance(t *testing.T) {
 	testCases := []acceptance.Test{
 		{
 			Name:      "entrypoint from procfile web",
-			App:       "php/simple",
+			App:       "simple",
 			MustMatch: "PASS_INDEX",
 			MustUse:   []string{phpRuntime, composerInstall, composer, entrypoint},
 		},
 		{
 			Name:      "entrypoint from env",
-			App:       "php/simple",
+			App:       "simple",
 			MustMatch: "PASS_INDEX",
 			Env:       []string{"GOOGLE_ENTRYPOINT=php -S 0.0.0.0:8080"},
 			MustUse:   []string{phpRuntime, composerInstall, composer, entrypoint},
 		},
 		{
 			Name:      "entrypoint from env custom",
-			App:       "php/simple",
+			App:       "simple",
 			Path:      "/custom.php",
 			MustMatch: "PASS_CUSTOM",
 			Env:       []string{"GOOGLE_ENTRYPOINT=php -S 0.0.0.0:8080"},
@@ -47,7 +47,7 @@ func TestAcceptance(t *testing.T) {
 		},
 		{
 			Name:      "entrypoint with env var",
-			App:       "php/simple",
+			App:       "simple",
 			Path:      "/env.php?want=bar",
 			MustMatch: "PASS_ENV",
 			Env:       []string{"GOOGLE_ENTRYPOINT=FOO=bar php -S 0.0.0.0:8080"},
@@ -55,7 +55,7 @@ func TestAcceptance(t *testing.T) {
 		},
 		{
 			Name:      "php ini config",
-			App:       "php/php_ini_config",
+			App:       "php_ini_config",
 			MustMatch: "PASS_PHP_INI",
 			Env:       []string{"GOOGLE_ENTRYPOINT=php -S 0.0.0.0:8080"},
 			MustUse:   []string{phpRuntime, entrypoint},

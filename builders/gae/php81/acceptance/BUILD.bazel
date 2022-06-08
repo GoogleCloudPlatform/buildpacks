@@ -15,7 +15,7 @@ go_test(
     size = "enormous",
     srcs = ["acceptance_test.go"],
     args = [
-        "-test-data=$(location //builders/testdata:php)",
+        "-test-data=$(location //builders/testdata/php:appengine)",
         "-structure-test-config=$(location :config.yaml)",
         "-builder-source=$(location //builders/gae/php81:builder.tar)",
         "-builder-prefix=gaephp81-acceptance-test-",
@@ -23,7 +23,7 @@ go_test(
     data = [
         ":config.yaml",
         "//builders/gae/php81:builder.tar",
-        "//builders/testdata:php",
+        "//builders/testdata/php:appengine",
     ],
     flaky = True,
     embed = [":acceptance"],
