@@ -25,6 +25,10 @@ description = "Unified builder for the .NET runtime"
   uri = "runtime.tgz"
 
 [[buildpacks]]
+  id = "google.dotnet.sdk"
+  uri = "sdk.tgz"
+
+[[buildpacks]]
   id = "google.utils.archive-source"
   uri = "archive_source.tgz"
 
@@ -34,6 +38,9 @@ description = "Unified builder for the .NET runtime"
 
 # AppEngine order group
 [[order]]
+
+  [[order.group]]
+    id = "google.dotnet.sdk"
 
   [[order.group]]
     id = "google.dotnet.appengine_main"
@@ -56,6 +63,9 @@ description = "Unified builder for the .NET runtime"
 [[order]]
 
   [[order.group]]
+    id = "google.dotnet.sdk"
+
+  [[order.group]]
     id = "google.utils.archive-source"
 
   [[order.group]]
@@ -72,6 +82,9 @@ description = "Unified builder for the .NET runtime"
 
 # Cloud Run / General purpose order group
 [[order]]
+
+  [[order.group]]
+    id = "google.dotnet.sdk"
 
   [[order.group]]
     id = "google.dotnet.functions-framework"

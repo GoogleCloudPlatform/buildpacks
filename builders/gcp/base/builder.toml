@@ -29,6 +29,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "dotnet/runtime.tgz"
 
 [[buildpacks]]
+  id = "google.dotnet.sdk"
+  uri = "dotnet/sdk.tgz"
+
+[[buildpacks]]
   id = "google.dotnet.publish"
   uri = "dotnet/publish.tgz"
 
@@ -161,6 +165,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 ########
 
 [[order]]
+
+  [[order.group]]
+    id = "google.dotnet.sdk"
 
   [[order.group]]
     id = "google.dotnet.functions-framework"

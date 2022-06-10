@@ -28,20 +28,20 @@ func TestAcceptanceDotNet(t *testing.T) {
 	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
-	sdk := filepath.Join("/layers", dotnetRuntime, "sdk")
+	sdk := filepath.Join("/layers", dotnetSDK, "sdk")
 
 	testCases := []acceptance.Test{
 		{
 			Name:              "simple dotnet app",
 			App:               "simple",
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			MustUse:           []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 			EnableCacheTest:   true,
 		},
 		{
 			Name:              "simple dotnet 6.0 app",
 			App:               "simple_dotnet6",
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			MustUse:           []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 		},
 		{
@@ -49,7 +49,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 			App:               "simple",
 			Path:              "/version?want=3.1.1",
 			Env:               []string{"GOOGLE_RUNTIME_VERSION=3.1.101"},
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			MustUse:           []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 		},
 		{
@@ -57,14 +57,14 @@ func TestAcceptanceDotNet(t *testing.T) {
 			App:               "simple_prebuilt",
 			Env:               []string{"GOOGLE_ENTRYPOINT=./simple"},
 			MustUse:           []string{dotnetRuntime},
-			MustNotUse:        []string{dotnetPublish},
+			MustNotUse:        []string{dotnetSDK, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 		},
 		{
 			Name:                "Dev mode",
 			App:                 "simple",
 			Env:                 []string{"GOOGLE_DEVMODE=1"},
-			MustUse:             []string{dotnetRuntime, dotnetPublish},
+			MustUse:             []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustExist:      []string{sdk, "/workspace/Startup.cs"},
 			MustRebuildOnChange: "/workspace/Startup.cs",
 		},
@@ -74,7 +74,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 			Name:    "Dev mode metadata",
 			App:     "simple",
 			Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=3.1.409"},
-			MustUse: []string{dotnetRuntime, dotnetPublish},
+			MustUse: []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			BOM: []acceptance.BOMEntry{
 				{
 					Name: "dotnetsdk",

@@ -23,53 +23,54 @@ import (
 const (
 	dotnetPublish = "google.dotnet.publish"
 	dotnetRuntime = "google.dotnet.runtime"
+	dotnetSDK     = "google.dotnet.sdk"
 )
 
 func TestAcceptanceDotNet(t *testing.T) {
 	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
-	sdk := filepath.Join("/layers", dotnetRuntime, "sdk")
+	sdk := filepath.Join("/layers", dotnetSDK, "sdk")
 
 	testCases := []acceptance.Test{
 		{
 			Name:              "app with assembly name specified",
 			App:               "cs_assemblyname",
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			MustUse:           []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 		},
 		{
 			Name:              "app with local dependencies",
 			App:               "cs_local_deps",
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			MustUse:           []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 			Env:               []string{"GOOGLE_BUILDABLE=App"},
 		},
 		{
 			Name:              "app with custom entry point",
 			App:               "cs_custom_entrypoint",
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			MustUse:           []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 			Env:               []string{"GOOGLE_ENTRYPOINT=bin/app --flag=myflag"},
 		},
 		{
 			Name:              "app with nested directory structure",
 			App:               "cs_nested_proj",
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			MustUse:           []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 			Env:               []string{"GOOGLE_BUILDABLE=app/app.csproj"},
 		},
 		{
 			Name:              "build with properties specified",
 			App:               "cs_properties",
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			MustUse:           []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 			Env:               []string{"GOOGLE_BUILD_ARGS=-p:Version=1.0.1.0 -p:FileVersion=1.0.1.0"},
 		},
 		{
 			Name:              "simple dotnet app",
 			App:               "simple",
-			MustUse:           []string{dotnetRuntime, dotnetPublish},
+			MustUse:           []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 			EnableCacheTest:   true,
 		},
@@ -78,7 +79,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 			App:               "simple_prebuilt",
 			Env:               []string{"GOOGLE_ENTRYPOINT=./simple"},
 			MustUse:           []string{dotnetRuntime},
-			MustNotUse:        []string{dotnetPublish},
+			MustNotUse:        []string{dotnetSDK, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 		},
 		{
@@ -90,7 +91,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 			VersionInclusionConstraint: "!= 6.0",
 			App:                        "simple",
 			Env:                        []string{"GOOGLE_DEVMODE=1"},
-			MustUse:                    []string{dotnetRuntime, dotnetPublish},
+			MustUse:                    []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustExist:             []string{sdk, "/workspace/Startup.cs"},
 			MustRebuildOnChange:        "/workspace/Startup.cs",
 		},
@@ -102,7 +103,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 			VersionInclusionConstraint: "3",
 			App:                        "simple",
 			Env:                        []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=3.1.409"},
-			MustUse:                    []string{dotnetRuntime, dotnetPublish},
+			MustUse:                    []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			BOM: []acceptance.BOMEntry{
 				{
 					Name: "dotnetsdk",

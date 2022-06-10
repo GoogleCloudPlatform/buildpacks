@@ -23,6 +23,7 @@ const (
 	dotnetFF        = "google.dotnet.functions-framework"
 	dotnetPublish   = "google.dotnet.publish"
 	dotnetRuntime   = "google.dotnet.runtime"
+	dotnetSDK       = "google.dotnet.sdk"
 	goBuild         = "google.go.build"
 	goClearSource   = "google.go.clear_source"
 	goFF            = "google.go.functions-framework"

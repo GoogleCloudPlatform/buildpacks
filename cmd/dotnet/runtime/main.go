@@ -32,7 +32,6 @@ import (
 )
 
 const (
-	sdkLayerName             = "sdk"
 	runtimeLayerName         = "runtime"
 	aspnetRuntimeURL         = "https://dotnetcli.azureedge.net/dotnet/aspnetcore/Runtime/%[1]s/aspnetcore-runtime-%[1]s-linux-x64.tar.gz"
 	uncachedAspnetRuntimeURL = "https://dotnetcli.blob.core.windows.net/dotnet/aspnetcore/Runtime/%[1]s/aspnetcore-runtime-%[1]s-linux-x64.tar.gz"
@@ -71,71 +70,12 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("checking if dev mode is enabled: %w", err)
 	}
-	if err := buildSDKLayer(ctx, sdkVersion, isDevMode); err != nil {
-		return fmt.Errorf("building the sdk layer: %w", err)
-	}
 	if !isDevMode {
 		if err := buildRuntimeLayer(ctx, sdkVersion); err != nil {
 			return fmt.Errorf("building the runtime layer: %w", err)
 		}
 	}
 	return nil
-}
-
-func buildSDKLayer(ctx *gcp.Context, version string, isDevMode bool) error {
-	// Keep the SDK layer for launch in devmode because we use `dotnet watch`.
-	sdkl, err := ctx.Layer(sdkLayerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", sdkLayerName, err)
-	}
-	sdkMetaVersion := ctx.GetMetadata(sdkl, versionKey)
-	cacheHitValue := fmt.Sprintf("version:%s,devMode:%t", version, isDevMode)
-	if cacheHitValue == sdkMetaVersion {
-		ctx.CacheHit(sdkLayerName)
-		ctx.Logf(".NET SDK cache hit, skipping installation.")
-		return nil
-	}
-	ctx.CacheMiss(sdkLayerName)
-	if err := ctx.ClearLayer(sdkl); err != nil {
-		return fmt.Errorf("clearing layer %q: %w", sdkl.Name, err)
-	}
-	if err := dlAndInstallSDK(ctx, sdkl, version, isDevMode); err != nil {
-		return err
-	}
-	ctx.SetMetadata(sdkl, versionKey, cacheHitValue)
-	return nil
-}
-
-func dlAndInstallSDK(ctx *gcp.Context, sdkl *libcnb.Layer, version string, isDevMode bool) error {
-	if _, err := runtime.InstallTarballIfNotCached(ctx, runtime.DotnetSDK, version, sdkl); err != nil {
-		return err
-	}
-	setSDKEnvVars(sdkl, isDevMode)
-	return nil
-}
-
-func setSDKEnvVars(sdkl *libcnb.Layer, isDevMode bool) {
-	if isDevMode {
-		setSDKEnvVarsDevMode(sdkl)
-	} else {
-		setSDKEnvVarsForBuild(sdkl)
-	}
-}
-
-// setSDKEnvVarsDevMode sets the env vars for dev mode. In dev mode, the full
-// SDK is present at launch time and the runtime layer is not created.
-func setSDKEnvVarsDevMode(sdkl *libcnb.Layer) {
-	sdkl.SharedEnvironment.Default("DOTNET_ROOT", sdkl.Path)
-	sdkl.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), sdkl.Path)
-	sdkl.LaunchEnvironment.Default("DOTNET_RUNNING_IN_CONTAINER", "true")
-}
-
-// setSDKEnvVarsForBuild sets the SDK variables needed at build time. The SDK
-// layer is only present for the build and the runtime layer is present in the launch
-// image.
-func setSDKEnvVarsForBuild(sdkl *libcnb.Layer) {
-	sdkl.BuildEnvironment.Default("DOTNET_ROOT", sdkl.Path)
-	sdkl.BuildEnvironment.Prepend("PATH", string(os.PathListSeparator), sdkl.Path)
 }
 
 func buildRuntimeLayer(ctx *gcp.Context, sdkVersion string) error {
