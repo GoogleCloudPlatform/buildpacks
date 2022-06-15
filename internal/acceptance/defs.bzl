@@ -2,6 +2,30 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 """Macros for running acceptance tests."""
 
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+
+# acceptance_test_suite defines several targets that are useful with buildpacks acceptance tests.
+# It defines a test target for each version, a test suite that runs all of the versioned targets,
+# a cloudbuild build configuration, and tarball for submitting to cloudbuild. See below for more
+# specifics on each of the targets.
+#
+# Given a name of 'gae_test' and versions value of [1.13, 1.14], it defines the following:
+# * 1.13_gae_test: A test target with a version of 1.13.
+# * 1.14_gae_test: A test target with a version of 1.14.
+# * gae_test: A test suite target that aliases to [1.13_gae_test, 1.14_gae_test]. Useful for running
+#   all versions of the tests.
+# * gae_test_cloudbuild.yaml: A cloudbuild config which contains a step for running the tests
+#   against 1.13 and a step for running against 1.14.
+# * gae_test_cloudbuild.tar.gz: A tarball which can be used with 'gae_test_cloudbuild.yaml' to
+#   submit a cloudbuild.
+#
+# To submit a cloudbuild with the go builder:
+#   blaze build //third_party/gcp_buildpacks/builders/go/acceptance:gae_test_cloudbuild.tar.gz
+#   blaze build //third_party/gcp_buildpacks/builders/go/acceptance:gae_test_cloudbuild.yaml
+#   gcloud builds submit \
+#      blaze-bin/third_party/gcp_buildpacks/builders/go/acceptance/gae_test_cloudbuild.tar.gz \
+#      --config blaze-genfiles/third_party/gcp_buildpacks/builders/go/acceptance/gae_test_cloudbuild.yaml
+
 def acceptance_test_suite(
         name,
         srcs,
@@ -28,10 +52,14 @@ def acceptance_test_suite(
       **kwargs: this argument captures all additional arguments and forwards them to the generated go_test rule
     """
 
-    args = _build_args(args, name, testdata, builder, structure_test_config)
+    test_args = _build_args(args, name, testdata, builder, structure_test_config)
     data = _build_data(structure_test_config, builder, testdata)
     deps = _build_deps(deps)
 
+    _build_tests(name, srcs, test_args, data, deps, versions, argsmap, **kwargs)
+    _cloudbuild_targets(name, srcs, structure_test_config, builder, args, deps, versions, argsmap, testdata)
+
+def _build_tests(name, srcs, args, data, deps, versions, argsmap, **kwargs):
     # if there are no versions passed in then create a go_test(...) rule directly without changing
     # the name of the test
     if versions == None:
@@ -98,6 +126,9 @@ def _build_args(args, name, testdata, builder, structure_test_config):
 
     if args == None:
         args = []
+    else:
+        # make a copy of the args list to prevent mutating the passed in value
+        args = list(args)
     args.append("-test-data=$(location " + testdata + ")")
     args.append("-structure-test-config=$(location " + structure_test_config + ")")
     args.append("-builder-source=$(location " + builder + ")")
@@ -133,3 +164,159 @@ def _remove_suffix(value, suffix):
     if value.endswith(suffix):
         value = value[:-len(suffix)]
     return value
+
+# _cloudbuild_targets builds two rules that can be used to run the acceptance tests in gcloud.
+def _cloudbuild_targets(name, srcs, structure_test_config, builder, args, deps, versions, argsmap, testdata):
+    bin_name = _build_cloudbuild_test_binary(name, srcs, deps)
+
+    # this hack is to prevent the tarball from being built in bazel, as _build_testdata_target
+    # makes use of Fileset which is not available in bazel.
+    if testdata.startswith("//third_party/gcp_buildpacks"):
+        _build_cloudbuild_tarball(name, bin_name, structure_test_config, builder, testdata)
+    _build_cloudbuild_config_target(name, bin_name, builder, args, versions, argsmap, testdata)
+
+def _build_cloudbuild_tarball(name, bin_name, structure_test_config, builder, testdata):
+    testdata_fileset_name = _build_testdata_target(name, testdata)
+    pkg_tar(
+        name + "_cloudbuild.tar",
+        extension = ".gz",
+        # Fileset changes the file mode to 0555 which breaks some of our tests which assume
+        # that the files have owner-write permisions
+        mode = "0755",
+        # ideally we would use 'include_runfiles' to get the builder, testdata, and structure
+        # config, however this is not possible due to limitations, see comment on
+        # _build_testdata_target for more.
+        srcs = [
+            bin_name,
+            builder,
+            testdata_fileset_name,
+            structure_test_config,
+        ],
+        testonly = 1,
+    )
+
+def _build_cloudbuild_test_binary(name, srcs, deps):
+    bin_name = name + "cloudbuild_bin"
+    _new_go_test(bin_name, srcs, None, None, deps)
+    return bin_name
+
+# _build_testdata_target creates a Fileset target for the given testdata label. The reason to do
+# this is our testdata is accessed via exports_files(...) which copies the testdata into writeable
+# folders. The acceptance test suite relies on the the folders being writeable. However, pkg_tar
+# is not able to accept source files that are directories. It requires an explicit fileset to bring
+# in a directory of files. This behavior also applies to the 'includes_runfiles' option.  The
+# directories created by the fileset are not writeable but this is acceptable as the pkg_tar has a
+# 'mode' option for setting the file mode.
+def _build_testdata_target(name, testdata):
+    testdata_label = testdata[testdata.rfind(":") + 1:]
+    fileset_name = name + "_" + testdata_label
+    native.Fileset(
+        name = fileset_name,
+        out = name + "/" + testdata_label,
+        entries = [
+            native.FilesetEntry(
+                srcdir = testdata,
+            ),
+        ],
+    )
+    return fileset_name
+
+def _build_cloudbuild_config_target(name, bin_name, builder, args, versions, argsmap, testdata):
+    cloudbuild_config = _build_cloudbuild_config(name, bin_name, builder, args, versions, argsmap, testdata)
+    native.genrule(
+        name = name + "_cloudbuild_config",
+        outs = [name + "_cloudbuild.yaml"],
+        cmd = "echo '" + cloudbuild_config + "' >> $@",
+    )
+
+# "LOOSE" substitution option is enabled so that unused variables can be defined like
+# '_RUNTIME_LANGUAGE'. This which will be useful to consumers who wish to insert their own
+# substitutions and want to reference common properties.
+#
+# To use a different builder than the 'builder.tar' that was passed into acceptance_test_suite,
+# define the _BUILDER_IMAGE substitution. For example, replace the empty string with
+#   gcr.io/gae-runtimes/buildpacks/{_RUNTIME_LANGUAGE}/builder:latest
+_buildconfig_template = """options:
+  machineType: E2_HIGHCPU_8
+  dynamic_substitutions: true
+  substitution_option: 'ALLOW_LOOSE'
+substitutions:
+  _PULL_IMAGES: \"true\"
+  _BUILDER_IMAGE: \"\"
+  _RUNTIME_LANGUAGE: ${runtime_language}
+timeout: 3600s
+steps:
+"""
+
+def _build_cloudbuild_config(name, bin_name, builder, args, versions, argsmap, testdata):
+    builder_name = _extract_builder_name(builder)
+    result = _format_cloudbuild_config(builder_name)
+    steps = _build_cloudbuild_steps(name, bin_name, args, versions, argsmap, testdata)
+    for s in steps:
+        s = indent(s, 2)
+        result += "- " + s + "\n"
+    return result
+
+def _format_cloudbuild_config(runtime_language):
+    result = _buildconfig_template
+    result = result.replace("${runtime_language}", runtime_language)
+    return result
+
+def indent(value, n, ch = " "):
+    padding = n * ch
+    lines = value.splitlines(True)
+    return padding.join(lines)
+
+def _build_cloudbuild_steps(name, bin_name, args, versions, argsmap, testdata):
+    testdata_label = testdata[testdata.rfind(":") + 1:]
+
+    # if there were no versions passed in then create a list with a single None value so the
+    # below loop will still have a single iteration and pass a None value for version to _build_step
+    if versions == None:
+        versions = [None]
+
+    steps = []
+    for ver in versions:
+        if args == None:
+            ver_args = []
+        else:
+            ver_args = list(args)
+        if argsmap != None and argsmap.get(ver) != None:
+            for key, val in argsmap[ver].items():
+                ver_args.append(key + "=" + val)
+        step_config = _build_step(name, bin_name, ver, ver_args, testdata_label)
+        steps.append(step_config)
+    return steps
+
+# By default, _BUILDER_IMAGE is defined as the empty string. The acceptance test framework will
+# use the flag -builder-source when -builder-image is empty. When -builder-image has a value then
+# it takes precedence over -builder-source.
+_step_template = """entrypoint: /bin/bash
+id: ${test_name}
+name: gcr.io/gae-runtimes/utilities/pack:latest
+waitFor: ['-']
+args:
+- -c
+- >
+  ./${bin_name} \\
+    -cloudbuild \\
+    -pull-images=$${_PULL_IMAGES} \\
+    -test-data=${testdata} \\
+    -builder-source=builder.tar \\
+    -builder-image=$${_BUILDER_IMAGE} \\
+    -structure-test-config=config.yaml"""
+
+def _build_step(name, bin_name, version, args, testdata_label):
+    result = _step_template
+    result = result.replace("${bin_name}", bin_name)
+    if version != None:
+        name = name + "-" + version
+    result = result.replace("${test_name}", name)
+    result = result.replace("${testdata}", testdata_label)
+    if args == None:
+        args = []
+    if version != None:
+        args.append("-runtime-version=" + version)
+    for a in args:
+        result += " \\\n    " + a
+    return result
