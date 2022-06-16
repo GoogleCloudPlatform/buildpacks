@@ -18,6 +18,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
@@ -32,9 +34,6 @@ const (
 
 	// pid1VerConstraint is used to control updating to a new major version.
 	pid1VerConstraint = "^1.0.0"
-
-	// serveVerConstraint is used to control updating to a new major version.
-	serveVerConstraint = "^1.0.0"
 )
 
 func main() {
@@ -48,19 +47,18 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 func buildFn(ctx *gcp.Context) error {
 	// install nginx
-	if _, err := install(ctx, "nginx", nginxVerConstraint, runtime.Nginx); err != nil {
+	nl, err := install(ctx, "nginx", nginxVerConstraint, runtime.Nginx)
+	if err != nil {
 		return err
 	}
+	nl.LaunchEnvironment.Append("PATH", string(os.PathListSeparator), filepath.Join(nl.Path, "sbin"))
 
 	// install pid1
-	if _, err := install(ctx, "pid1", pid1VerConstraint, runtime.Pid1); err != nil {
+	pl, err := install(ctx, "pid1", pid1VerConstraint, runtime.Pid1)
+	if err != nil {
 		return err
 	}
-
-	// install serve
-	if _, err := install(ctx, "serve", serveVerConstraint, runtime.Serve); err != nil {
-		return err
-	}
+	pl.LaunchEnvironment.Append("PATH", string(os.PathListSeparator), pl.Path)
 
 	return nil
 }

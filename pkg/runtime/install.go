@@ -43,7 +43,6 @@ const (
 	Ruby      InstallableRuntime = "ruby"
 	Nginx     InstallableRuntime = "nginx"
 	Pid1      InstallableRuntime = "pid1"
-	Serve     InstallableRuntime = "serve"
 	DotnetSDK InstallableRuntime = "dotnetsdk"
 )
 
@@ -55,7 +54,6 @@ var runtimeNames = map[InstallableRuntime]string{
 	Ruby:      "Ruby Runtime",
 	Nginx:     "Nginx Web Server",
 	Pid1:      "Pid1",
-	Serve:     "Serve",
 	DotnetSDK: ".NET SDK",
 }
 
