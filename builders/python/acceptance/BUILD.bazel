@@ -1,0 +1,70 @@
+load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
+load(":args.bzl", "pythonargs")
+
+licenses(["notice"])
+
+exports_files([
+    "config.yaml",
+    "args.bzl",
+])
+
+test_suite(
+    # run all tests in this BUILD
+    name = "acceptance_test",
+)
+
+VERSION_PYTHON37 = "3.7.12"
+
+VERSION_PYTHON38 = "3.8.12"
+
+VERSION_PYTHON39 = "3.9.10"
+
+VERSION_PYTHON310 = "3.10.4"
+
+VERSIONS_ALL = [
+    VERSION_PYTHON37,
+    VERSION_PYTHON38,
+    VERSION_PYTHON39,
+    VERSION_PYTHON310,
+]
+
+VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
+
+VERSIONS_WITH_GAE_SUPPORT = VERSIONS_ALL
+
+VERSIONS_WITH_GCF_SUPPORT = VERSIONS_ALL
+
+acceptance_test_suite(
+    name = "gcp_test",
+    srcs = [
+        "gcp_test.go",
+    ],
+    builder = "//builders/python:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/python:generic",
+    versions = VERSIONS_WITH_GCP_SUPPORT,
+)
+
+acceptance_test_suite(
+    name = "gae_test",
+    srcs = [
+        "gae_test.go",
+    ],
+    argsmap = pythonargs(),
+    builder = "//builders/python:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/python:appengine",
+    versions = VERSIONS_WITH_GAE_SUPPORT,
+)
+
+acceptance_test_suite(
+    name = "gcf_test",
+    srcs = [
+        "gcf_test.go",
+    ],
+    argsmap = pythonargs(),
+    builder = "//builders/python:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/python:functions",
+    versions = VERSIONS_WITH_GCF_SUPPORT,
+)
