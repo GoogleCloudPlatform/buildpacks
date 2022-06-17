@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 
@@ -26,7 +25,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -77,63 +75,13 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 func buildRuntimeLayer(ctx *gcp.Context, rtVersion string) error {
-	ctx.AddBOMEntry(libcnb.BOMEntry{
-		Name:     runtimeLayerName,
-		Metadata: map[string]interface{}{"version": rtVersion},
-		Launch:   true,
-		Build:    true,
-	})
 	rtl, err := ctx.Layer(runtimeLayerName, gcp.CacheLayer, gcp.LaunchLayer)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", runtimeLayerName, err)
 	}
-	rtMetaVersion := ctx.GetMetadata(rtl, versionKey)
-	if rtVersion == rtMetaVersion {
-		ctx.CacheHit(runtimeLayerName)
-		ctx.Logf(".NET runtime cache hit on key %q, skipping installation.", rtVersion)
-		return nil
-	}
-	ctx.CacheMiss(runtimeLayerName)
-	if err := ctx.ClearLayer(rtl); err != nil {
-		return fmt.Errorf("clearing layer %q: %w", rtl.Name, err)
-	}
-	if err := dlAndInstallRuntime(ctx, rtl, rtVersion); err != nil {
-		return err
-	}
-	return nil
-}
-
-func dlAndInstallRuntime(ctx *gcp.Context, rtl *libcnb.Layer, version string) error {
-	aspnetcoreRuntimeArchiveURL, err := aspnetcoreRuntimeArchiveURL(ctx, version)
-	if err != nil {
-		return err
-	}
-	ctx.Logf("Installing ASP.NET Core Runtime v%s", version)
-	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", aspnetcoreRuntimeArchiveURL, rtl.Path)
-	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
-	ctx.SetMetadata(rtl, versionKey, version)
+	runtime.InstallTarballIfNotCached(ctx, runtime.AspNetCore, rtVersion, rtl)
 	rtl.LaunchEnvironment.Default("DOTNET_ROOT", rtl.Path)
 	rtl.LaunchEnvironment.Prepend("PATH", string(os.PathListSeparator), rtl.Path)
 	rtl.LaunchEnvironment.Default("DOTNET_RUNNING_IN_CONTAINER", "true")
 	return nil
-}
-
-func aspnetcoreRuntimeArchiveURL(ctx *gcp.Context, version string) (string, error) {
-	url := fmt.Sprintf(aspnetRuntimeURL, version)
-	code, err := ctx.HTTPStatus(url)
-	if err != nil {
-		return "", err
-	}
-	if code == http.StatusOK {
-		return url, nil
-	}
-	url = fmt.Sprintf(uncachedAspnetRuntimeURL, version)
-	code, err = ctx.HTTPStatus(url)
-	if err != nil {
-		return "", err
-	}
-	if code != http.StatusOK {
-		return "", gcp.UserErrorf("runtime version %s does not exist at %s (status %d). You can specify the version with %s.", version, url, code, env.RuntimeVersion)
-	}
-	return url, nil
 }

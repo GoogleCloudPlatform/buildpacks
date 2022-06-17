@@ -37,13 +37,14 @@ type InstallableRuntime string
 
 // All runtimes that can be installed using the InstallTarballIfNotCached function.
 const (
-	Nodejs    InstallableRuntime = "nodejs"
-	PHP       InstallableRuntime = "php"
-	Python    InstallableRuntime = "python"
-	Ruby      InstallableRuntime = "ruby"
-	Nginx     InstallableRuntime = "nginx"
-	Pid1      InstallableRuntime = "pid1"
-	DotnetSDK InstallableRuntime = "dotnetsdk"
+	Nodejs     InstallableRuntime = "nodejs"
+	PHP        InstallableRuntime = "php"
+	Python     InstallableRuntime = "python"
+	Ruby       InstallableRuntime = "ruby"
+	Nginx      InstallableRuntime = "nginx"
+	Pid1       InstallableRuntime = "pid1"
+	DotnetSDK  InstallableRuntime = "dotnetsdk"
+	AspNetCore InstallableRuntime = "aspnetcore"
 )
 
 // User friendly display name of all runtime (e.g. for use in error message).

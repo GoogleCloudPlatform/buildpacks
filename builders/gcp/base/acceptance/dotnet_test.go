@@ -62,7 +62,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 			FilesMustNotExist:          []string{sdk},
 			BOM: []acceptance.BOMEntry{
 				{
-					Name: "runtime",
+					Name: "aspnetcore",
 					Metadata: map[string]interface{}{
 						"version": "3.1.0", // Version specified by simple_prebuilt/simple.runtimeconfig.json.
 					},
