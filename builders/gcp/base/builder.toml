@@ -174,10 +174,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     optional = true
 
   [[order.group]]
-    id = "google.dotnet.runtime"
+    id = "google.dotnet.publish"
 
   [[order.group]]
-    id = "google.dotnet.publish"
+    id = "google.dotnet.runtime"
 
   [[order.group]]
     id = "google.config.entrypoint"

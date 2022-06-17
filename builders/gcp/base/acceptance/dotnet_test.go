@@ -47,18 +47,27 @@ func TestAcceptanceDotNet(t *testing.T) {
 		{
 			Name:              "simple dotnet app with runtime version",
 			App:               "simple",
-			Path:              "/version?want=3.1.1",
+			Path:              "/version?want=3.1.0",
 			Env:               []string{"GOOGLE_RUNTIME_VERSION=3.1.101"},
 			MustUse:           []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 		},
 		{
-			Name:              "simple prebuilt dotnet app",
-			App:               "simple_prebuilt",
-			Env:               []string{"GOOGLE_ENTRYPOINT=./simple"},
-			MustUse:           []string{dotnetRuntime},
-			MustNotUse:        []string{dotnetSDK, dotnetPublish},
-			FilesMustNotExist: []string{sdk},
+			Name:                       "simple prebuilt dotnet app",
+			VersionInclusionConstraint: "3", // simple_prebuilt is a dotnet 3 app.
+			App:                        "simple_prebuilt",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=./simple"},
+			MustUse:                    []string{dotnetRuntime},
+			MustNotUse:                 []string{dotnetSDK, dotnetPublish},
+			FilesMustNotExist:          []string{sdk},
+			BOM: []acceptance.BOMEntry{
+				{
+					Name: "runtime",
+					Metadata: map[string]interface{}{
+						"version": "3.1.0", // Version specified by simple_prebuilt/simple.runtimeconfig.json.
+					},
+				},
+			},
 		},
 		{
 			Name:                "Dev mode",

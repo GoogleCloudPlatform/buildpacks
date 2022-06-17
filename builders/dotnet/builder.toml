@@ -47,11 +47,11 @@ description = "Unified builder for the .NET runtime"
     optional = true
 
   [[order.group]]
-    id = "google.dotnet.runtime"
-
-  [[order.group]]
     id = "google.dotnet.publish"
     optional = true
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
 
   [[order.group]]
     id = "google.dotnet.appengine"
@@ -72,10 +72,10 @@ description = "Unified builder for the .NET runtime"
     id = "google.dotnet.functions-framework"
 
   [[order.group]]
-    id = "google.dotnet.runtime"
+    id = "google.dotnet.publish"
 
   [[order.group]]
-    id = "google.dotnet.publish"
+    id = "google.dotnet.runtime"
 
   [[order.group]]
     id = "google.utils.label"
@@ -91,10 +91,10 @@ description = "Unified builder for the .NET runtime"
     optional = true
 
   [[order.group]]
-    id = "google.dotnet.runtime"
+    id = "google.dotnet.publish"
 
   [[order.group]]
-    id = "google.dotnet.publish"
+    id = "google.dotnet.runtime"
 
   [[order.group]]
     id = "google.config.entrypoint"

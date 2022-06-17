@@ -42,6 +42,8 @@ var (
 	}
 )
 
+const aspDotnetCore = "Microsoft.AspNetCore.App"
+
 // ProjectFiles finds all project files supported by dotnet.
 func ProjectFiles(ctx *gcp.Context, dir string) []string {
 	result := ctx.Exec([]string{"find", dir, "-regex", `.*\.\(cs\|fs\|vb\)proj`}, gcp.WithUserTimingAttribution).Stdout
@@ -133,6 +135,7 @@ type configProperties struct {
 type runtimeOptions struct {
 	TFM              string           `json:"tfm"`
 	Framework        framework        `json:"framework"`
+	Frameworks       []framework      `json:"frameworks"`
 	ConfigProperties configProperties `json:"configProperties"`
 }
 
@@ -305,4 +308,33 @@ func FindProjectFile(ctx *gcp.Context) (string, error) {
 		proj = projFiles[0]
 	}
 	return proj, nil
+}
+
+// GetRuntimeVersion returns the Microsoft.AspNetCore.App version
+// in the runtimeconfig.json file.
+func GetRuntimeVersion(ctx *gcp.Context) (string, error) {
+	rtCfgFiles, err := RuntimeConfigJSONFiles(".")
+	if err != nil {
+		return "", fmt.Errorf("finding runtimeconfig.json: %w", err)
+	}
+	if len(rtCfgFiles) == 0 {
+		return "", fmt.Errorf("runtimeconfig.json does not exist")
+	}
+	// If publish buildpack is called, we have multiple
+	// identical copiesof runtimeconfig.json.
+	rtCfgFile := rtCfgFiles[0]
+	ctx.Logf("Using runtimeconfig file %q", rtCfgFile)
+	rtCfg, err := ReadRuntimeConfigJSON(rtCfgFile)
+	if err != nil {
+		return "", fmt.Errorf("reading runtimeconfig.json: %w", err)
+	}
+	if rtCfg.RuntimeOptions.Framework.Name == aspDotnetCore {
+		return rtCfg.RuntimeOptions.Framework.Version, nil
+	}
+	for _, fw := range rtCfg.RuntimeOptions.Frameworks {
+		if fw.Name == aspDotnetCore {
+			return fw.Version, nil
+		}
+	}
+	return "", fmt.Errorf("couldn't find runtime version from runtimeconfig.json: %#v", rtCfg)
 }

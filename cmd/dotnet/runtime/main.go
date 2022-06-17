@@ -23,8 +23,6 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/dotnet"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/dotnet/release/client"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/dotnet/release"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
@@ -62,7 +60,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	sdkVersion, err := dotnet.GetSDKVersion(ctx)
+	runtimeVersion, err := dotnet.GetRuntimeVersion(ctx)
 	if err != nil {
 		return err
 	}
@@ -71,18 +69,14 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("checking if dev mode is enabled: %w", err)
 	}
 	if !isDevMode {
-		if err := buildRuntimeLayer(ctx, sdkVersion); err != nil {
+		if err := buildRuntimeLayer(ctx, runtimeVersion); err != nil {
 			return fmt.Errorf("building the runtime layer: %w", err)
 		}
 	}
 	return nil
 }
 
-func buildRuntimeLayer(ctx *gcp.Context, sdkVersion string) error {
-	rtVersion, err := release.GetRuntimeVersionForSDKVersion(client.New(), sdkVersion)
-	if err != nil {
-		return err
-	}
+func buildRuntimeLayer(ctx *gcp.Context, rtVersion string) error {
 	ctx.AddBOMEntry(libcnb.BOMEntry{
 		Name:     runtimeLayerName,
 		Metadata: map[string]interface{}{"version": rtVersion},
@@ -96,7 +90,7 @@ func buildRuntimeLayer(ctx *gcp.Context, sdkVersion string) error {
 	rtMetaVersion := ctx.GetMetadata(rtl, versionKey)
 	if rtVersion == rtMetaVersion {
 		ctx.CacheHit(runtimeLayerName)
-		ctx.Logf(".NET runtime cache hit, skipping installation.")
+		ctx.Logf(".NET runtime cache hit on key %q, skipping installation.", rtVersion)
 		return nil
 	}
 	ctx.CacheMiss(runtimeLayerName)
