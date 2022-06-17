@@ -46,7 +46,10 @@ RUN \
   update-locale LANG=en_US.UTF-8 LANGUAGE=en_US.UTF-8 LC_ALL=en_US.UTF-8 && \
   # Configure the user
   groupadd cnb --gid ${cnb_gid} && \
-  useradd --uid ${cnb_uid} --gid ${cnb_gid} -m -s /bin/bash cnb
+  useradd --uid ${cnb_uid} --gid ${cnb_gid} -m -s /bin/bash cnb && \
+  # Nothing in this image requires an additional license, but we need to add an
+  # empty license.yaml so the license validation doesn't fail.
+  touch /.google/usr/local/share/licenses/base_runtime/licenses.yaml
 
 USER cnb
 

@@ -53,6 +53,12 @@ RUN \
   ln -s /usr/bin/pid1 /start && \ 
   ln -s /usr/bin/pid1 /usr/bin/start && \
   ln -s /usr/bin/serve /serve && \
+  # Copy pid1 and serve license information into the directory that the license
+  # validation will look for them.
+  mkdir -p /usr/local/share/licenses/pid1/ && \
+  cp /usr/lib/pid1/licenses.yaml /usr/local/share/licenses/pid1/ && \
+  mkdir -p /usr/local/share/licenses/serve/ && \
+  cp /usr/lib/serve/licenses.yaml /usr/local/share/licenses/serve/ && \
   # Configure the user's home directory
   mkdir /www-data-home && \
   chown www-data:www-data /www-data-home && \
