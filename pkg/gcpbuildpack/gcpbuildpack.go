@@ -201,6 +201,11 @@ func (ctx *Context) BuildpackRoot() string {
 	return ctx.buildpackRoot
 }
 
+// StackID returns the stack id.
+func (ctx *Context) StackID() string {
+	return ctx.buildContext.StackID
+}
+
 // Debug returns whether debug mode is enabled.
 func (ctx *Context) Debug() bool {
 	return ctx.debug
