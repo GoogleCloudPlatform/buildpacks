@@ -49,6 +49,7 @@ RUN \
   useradd --uid ${cnb_uid} --gid ${cnb_gid} -m -s /bin/bash cnb && \
   # Nothing in this image requires an additional license, but we need to add an
   # empty license.yaml so the license validation doesn't fail.
+  mkdir -p /.google/usr/local/share/licenses/base_runtime/ && \
   touch /.google/usr/local/share/licenses/base_runtime/licenses.yaml
 
 USER cnb
