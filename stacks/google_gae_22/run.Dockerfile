@@ -43,9 +43,9 @@ RUN \
   update-locale LANG=en_US.UTF-8 LANGUAGE=en_US.UTF-8 LC_ALL=en_US.UTF-8 && \
   # Install the start and serve binaries.
   mkdir /usr/lib/pid1 && mkdir /usr/lib/serve && \
-  curl -A GCPBuildpacks https://dl.google.com/runtimes/serve/serve-1.0.0.tar.gz \
+  curl -A GCPBuildpacks https://dl.google.com/runtimes/serve/serve-1.0.1.tar.gz \
     | tar xvz -C /usr/lib/serve && \
-  curl -A GCPBuildpacks https://dl.google.com/runtimes/pid1/pid1-1.0.0.tar.gz \
+  curl -A GCPBuildpacks https://dl.google.com/runtimes/pid1/pid1-1.0.4.tar.gz \
     | tar xvz -C /usr/lib/pid1 && \
   # These invoked as start, serve, /start and /serve in some places.
   cp /usr/lib/pid1/pid1 /usr/bin/pid1 && \
