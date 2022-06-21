@@ -24,11 +24,6 @@ VERSIONS_WITH_GCF_SUPPORT = VERSIONS_ALL
 
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
 
-COMMON_DEPS = [
-    "//pkg/dotnet/release",
-    "//pkg/dotnet/release/client",
-]
-
 acceptance_test_suite(
     name = "gcf_test",
     srcs = [
@@ -39,7 +34,7 @@ acceptance_test_suite(
     rundir = ".",
     testdata = "//builders/testdata/dotnet:functions",
     versions = VERSIONS_WITH_GCF_SUPPORT,
-    deps = COMMON_DEPS + [
+    deps = [
         "@com_github_masterminds_semver//:go_default_library",
     ],
 )
@@ -54,7 +49,7 @@ acceptance_test_suite(
     rundir = ".",
     testdata = "//builders/testdata/dotnet:generic",
     versions = VERSIONS_WITH_GCP_SUPPORT,
-    deps = COMMON_DEPS + [
+    deps = [
         "@com_github_masterminds_semver//:go_default_library",
     ],
 )
@@ -70,7 +65,7 @@ acceptance_test_suite(
     builder = "//builders/dotnet:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/dotnet:generic",
-    deps = COMMON_DEPS + [
+    deps = [
         "@com_github_masterminds_semver//:go_default_library",
     ],
 )
