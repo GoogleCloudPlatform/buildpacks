@@ -2,7 +2,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 """Macros for running acceptance tests."""
 
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("@rules_pkg//pkg:zip.bzl", "pkg_zip")
 
 # acceptance_test_suite defines several targets that are useful with buildpacks acceptance tests.
 # It defines a test target for each version, a test suite that runs all of the versioned targets,
@@ -16,14 +16,14 @@ load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 #   all versions of the tests.
 # * gae_test_cloudbuild.yaml: A cloudbuild config which contains a step for running the tests
 #   against 1.13 and a step for running against 1.14.
-# * gae_test_cloudbuild.tar.gz: A tarball which can be used with 'gae_test_cloudbuild.yaml' to
+# * gae_test_cloudbuild.zip: A zip which can be used with 'gae_test_cloudbuild.yaml' to
 #   submit a cloudbuild.
 #
 # To submit a cloudbuild with the go builder:
-#   blaze build //third_party/gcp_buildpacks/builders/go/acceptance:gae_test_cloudbuild.tar.gz
+#   blaze build //third_party/gcp_buildpacks/builders/go/acceptance:gae_test_cloudbuild.zip
 #   blaze build //third_party/gcp_buildpacks/builders/go/acceptance:gae_test_cloudbuild.yaml
 #   gcloud builds submit \
-#      blaze-bin/third_party/gcp_buildpacks/builders/go/acceptance/gae_test_cloudbuild.tar.gz \
+#      blaze-bin/third_party/gcp_buildpacks/builders/go/acceptance/gae_test_cloudbuild.zip \
 #      --config blaze-genfiles/third_party/gcp_buildpacks/builders/go/acceptance/gae_test_cloudbuild.yaml
 
 def acceptance_test_suite(
@@ -172,20 +172,13 @@ def _cloudbuild_targets(name, srcs, structure_test_config, builder, args, deps, 
     # this hack is to prevent the tarball from being built in bazel, as _build_testdata_target
     # makes use of Fileset which is not available in bazel.
     if testdata.startswith("//third_party/gcp_buildpacks"):
-        _build_cloudbuild_tarball(name, bin_name, structure_test_config, builder, testdata)
+        _build_cloudbuild_zip(name, bin_name, structure_test_config, builder, testdata)
     _build_cloudbuild_config_target(name, bin_name, builder, args, versions, argsmap, testdata)
 
-def _build_cloudbuild_tarball(name, bin_name, structure_test_config, builder, testdata):
+def _build_cloudbuild_zip(name, bin_name, structure_test_config, builder, testdata):
     testdata_fileset_name = _build_testdata_target(name, testdata)
-    pkg_tar(
-        name + "_cloudbuild.tar",
-        extension = ".gz",
-        # Fileset changes the file mode to 0555 which breaks some of our tests which assume
-        # that the files have owner-write permisions
-        mode = "0755",
-        # ideally we would use 'include_runfiles' to get the builder, testdata, and structure
-        # config, however this is not possible due to limitations, see comment on
-        # _build_testdata_target for more.
+    pkg_zip(
+        name = name + "_cloudbuild",
         srcs = [
             bin_name,
             builder,
@@ -202,11 +195,9 @@ def _build_cloudbuild_test_binary(name, srcs, deps):
 
 # _build_testdata_target creates a Fileset target for the given testdata label. The reason to do
 # this is our testdata is accessed via exports_files(...) which copies the testdata into writeable
-# folders. The acceptance test suite relies on the the folders being writeable. However, pkg_tar
-# is not able to accept source files that are directories. It requires an explicit fileset to bring
-# in a directory of files. This behavior also applies to the 'includes_runfiles' option.  The
-# directories created by the fileset are not writeable but this is acceptable as the pkg_tar has a
-# 'mode' option for setting the file mode.
+# folders. The acceptance test suite relies on the the folders being writeable. However, most Bazel
+# rules, including pkg_zip or pkg_tar, are not able to accept source files that are directories. It
+# requires an explicit fileset to bring in a directory of files.
 def _build_testdata_target(name, testdata):
     testdata_label = testdata[testdata.rfind(":") + 1:]
     fileset_name = name + "_" + testdata_label
@@ -246,6 +237,12 @@ substitutions:
   _RUNTIME_LANGUAGE: ${runtime_language}
 timeout: 3600s
 steps:
+- id: fix-permissions
+  name: gcr.io/gae-runtimes/utilities/pack:latest
+  entrypoint: /bin/bash
+  args:
+  - -c
+  - chmod -R 755 *
 """
 
 def _build_cloudbuild_config(name, bin_name, builder, args, versions, argsmap, testdata):
@@ -294,7 +291,7 @@ def _build_cloudbuild_steps(name, bin_name, args, versions, argsmap, testdata):
 _step_template = """entrypoint: /bin/bash
 id: ${test_name}
 name: gcr.io/gae-runtimes/utilities/pack:latest
-waitFor: ['-']
+waitFor: ['fix-permissions']
 args:
 - -c
 - >
