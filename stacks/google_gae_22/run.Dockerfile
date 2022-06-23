@@ -40,7 +40,7 @@ RUN \
   mv /etc/apt/sources.list.universe /etc/apt/sources.list && \
   # Configure the system locale
   locale-gen en_US.UTF-8 && \
-  update-locale LANG=en_US.UTF-8 LANGUAGE=en_US.UTF-8 LC_ALL=en_US.UTF-8 && \
+  update-locale LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8 && \
   # Install the start and serve binaries.
   mkdir /usr/lib/pid1 && mkdir /usr/lib/serve && \
   curl -A GCPBuildpacks https://dl.google.com/runtimes/serve/serve-1.0.1.tar.gz \
@@ -95,6 +95,9 @@ ARG cnb_uid=33
 ARG cnb_gid=33
 USER ${cnb_uid}:${cnb_gid}
 
+ENV LANG="en_US.UTF-8"
+ENV LANGUAGE="en_US:en"
+ENV LC_ALL="en_US.UTF-8"
 ENV CNB_STACK_ID="google.gae.22"
 ENV CNB_USER_ID=${cnb_uid}
 ENV CNB_GROUP_ID=${cnb_gid}

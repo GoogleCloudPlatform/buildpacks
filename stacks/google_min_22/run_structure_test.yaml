@@ -17,6 +17,12 @@ schemaVersion: '2.0.0'
 
 metadataTest:
   env:
+    - key: LANG
+      value: 'en_US.UTF-8'
+    - key: LANGUAGE
+      value: 'en_US:en'
+    - key: LC_ALL
+      value: 'en_US.UTF-8'
     - key: PORT
       value: 8080
     - key: 'CNB_STACK_ID'
