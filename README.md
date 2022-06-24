@@ -342,6 +342,7 @@ variables. These environment variables should be specified without a
       * `java -classpath . <class>`
 * **Node.js**
   * Use `npm start`; see the [npm documentation](https://docs.npmjs.com/cli/start.html).
+  * A custom build step are supported by declaring an npm script called `gcp-build`.
 * **PHP**
   * Not available in the general builder.
 * **Python**
@@ -355,7 +356,6 @@ variables. These environment variables should be specified without a
   * Caching is project-specific, not cross-project. Dependencies, such as the JDK, cannot be shared across projects and need to be redownloaded on first build.
   * Built images have their creation time set to 40 years in the past. See [reproducible builds](https://buildpacks.io/docs/reference/reproducibility/).
 * **Node**:
-  * Custom build steps (e.g. executing the "build" script of package.json) are not supported.
   * Existing `node_modules` directory is deleted and dependencies reinstalled using package.json and a lockfile if present.
 * **Python**
   * Private dependencies must be vendored. The build does not have access to private repository credentials and cannot pull dependencies at build time.
