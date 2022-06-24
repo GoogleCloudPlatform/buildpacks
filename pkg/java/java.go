@@ -183,3 +183,16 @@ func MvnCmd(ctx *gcp.Context) (string, error) {
 	}
 	return "mvn", nil
 }
+
+// GradleCmd returns the command that should be used to invoke gradle for this build.
+func GradleCmd(ctx *gcp.Context) (string, error) {
+	exists, err := ctx.FileExists("gradlew")
+	if err != nil {
+		return "", err
+	}
+	// If this project has the Gradle Wrapper, we should use it
+	if exists {
+		return "./gradlew", nil
+	}
+	return "gradle", nil
+}
