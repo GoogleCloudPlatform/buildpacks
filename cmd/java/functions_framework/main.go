@@ -142,7 +142,6 @@ func classpath(ctx *gcp.Context) (string, error) {
 // mavenClasspath determines the --classpath when there is a pom.xml. This will consist of the jar file built
 // from the pom.xml itself, plus all jar files that are dependencies mentioned in the pom.xml.
 func mavenClasspath(ctx *gcp.Context) (string, error) {
-
 	mvn, err := java.MvnCmd(ctx)
 	if err != nil {
 		return "", err
@@ -178,6 +177,11 @@ func mavenClasspath(ctx *gcp.Context) (string, error) {
 // because apparently you can't define tasks there; and having the predefined script include the user's build.gradle
 // didn't work very well either, because you can't use a plugins {} clause in an included script.
 func gradleClasspath(ctx *gcp.Context) (string, error) {
+	gradle, err := java.GradleCmd(ctx)
+	if err != nil {
+		return "", err
+	}
+
 	extraTasksSource := filepath.Join(ctx.BuildpackRoot(), "extra_tasks.gradle")
 	extraTasksText, err := ctx.ReadFile(extraTasksSource)
 	if err != nil {
@@ -196,10 +200,10 @@ func gradleClasspath(ctx *gcp.Context) (string, error) {
 	}
 
 	// Copy the dependencies of the function (`dependencies {...}` in build.gradle) into build/_javaFunctionDependencies.
-	ctx.Exec([]string{"gradle", "--quiet", "_javaFunctionCopyAllDependencies"}, gcp.WithUserAttribution)
+	ctx.Exec([]string{gradle, "--quiet", "_javaFunctionCopyAllDependencies"}, gcp.WithUserAttribution)
 
 	// Extract the name of the target jar.
-	execResult := ctx.Exec([]string{"gradle", "--quiet", "_javaFunctionPrintJarTarget"}, gcp.WithUserAttribution)
+	execResult := ctx.Exec([]string{gradle, "--quiet", "_javaFunctionPrintJarTarget"}, gcp.WithUserAttribution)
 	jarName := strings.TrimSpace(execResult.Stdout)
 	jarExists, err := ctx.FileExists(jarName)
 	if err != nil {
