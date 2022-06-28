@@ -52,6 +52,7 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 	nl.LaunchEnvironment.Append("PATH", string(os.PathListSeparator), filepath.Join(nl.Path, "sbin"))
+	nl.BuildEnvironment.Default("NGINX_ROOT", nl.Path)
 
 	// install pid1
 	pl, err := install(ctx, "pid1", pid1VerConstraint, runtime.Pid1)
