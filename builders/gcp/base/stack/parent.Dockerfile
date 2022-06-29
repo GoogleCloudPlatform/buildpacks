@@ -22,6 +22,8 @@ ARG stack_id="google"
 # Required by dotnet/runtime: libicu60
 # Required by go/runtime: tzdata (Go may panic without /usr/share/zoneinfo)
 # Required by ruby/runtime: libyaml
+# Required by php/runtime: libtidy5, libpq5, libxml2, libenchant1c2a,
+# libpng16-16, libonig4, libjpeg8, libfreetype6, libxslt1.1, libzip4
 RUN apt-get update && apt-get install -y --no-install-recommends \
   libexpat1 \
   libffi6 \
@@ -30,6 +32,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libc++1-9 \
   tzdata \
   libyaml-0-2 \
+  libtidy5 \
+  libpq5 \
+  libxml2 \
+  libenchant1c2a \
+  libpng16-16 \
+  libonig4 \
+  libjpeg8 \
+  libfreetype6 \
+  libxslt1.1 \
+  libzip4 \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 LABEL io.buildpacks.stack.id=${stack_id}

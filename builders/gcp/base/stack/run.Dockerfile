@@ -15,5 +15,16 @@
 ARG from_image
 FROM ${from_image}
 
+# nginx creates the following directories at bootup, even if configured to be
+# ignored. Because of the read-only filesystem (for cnb user), we create them
+# ahead of time.
+RUN bash -c 'mkdir -p /var/lib/nginx/{body,proxy,fastcgi,uwsgi,scgi}'
+RUN bash -c 'mkdir -p /tmp/{var,run,doc_root}'
+RUN bash -c 'mkdir -p /var/log/nginx'
+RUN bash -c 'mkdir -p /tmp/var/cache/nginx'
+RUN chmod -R 777 /var/lib/nginx/
+RUN chmod -R 777 /var/log/nginx/
+RUN chmod -R 777 /tmp/
+
 ENV PORT 8080
 USER cnb
