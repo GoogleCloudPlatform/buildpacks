@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -45,16 +45,14 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput: []string{"WARNING: Found incompatible dependencies"},
 		},
 		{
-			Name:          "function using http declarative function signatures",
-			App:           "use_declarative",
-			MustNotOutput: []string{"WARNING"},
+			Name: "function using http declarative function signatures",
+			App:  "use_declarative",
 		},
 		{
-			Name:          "function using CloudEvent declarative function signatures",
-			App:           "use_cloud_event_declarative",
-			MustMatch:     "OK",
-			MustNotOutput: []string{"WARNING"},
-			RequestType:   acceptance.CloudEventType,
+			Name:        "function using CloudEvent declarative function signatures",
+			App:         "use_cloud_event_declarative",
+			MustMatch:   "OK",
+			RequestType: acceptance.CloudEventType,
 		},
 		{
 			Name: "function with framework and dependency bin",
