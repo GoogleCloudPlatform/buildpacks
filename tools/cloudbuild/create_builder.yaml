@@ -24,10 +24,6 @@ steps:
     name: bazel-pack
     args: ['build', '//builders/gcp/base:builder.image']
 
-  - id: create-php-builder
-    name: bazel-pack
-    args: ['build', '//builders/php:builder.image']
-
   - id: run-acceptance-tests
     name: bazel-pack
     args:
@@ -63,22 +59,6 @@ steps:
         && docker tag gcp/base gcr.io/$PROJECT_ID/builder:v1
         && docker tag gcp/base gcr.io/$PROJECT_ID/builder:$COMMIT_SHA
 
-  - id: tag-php-images
-    name: bazel-pack
-    entrypoint: /bin/bash
-    args:
-      - -c
-      - >
-        docker tag gcr.io/buildpacks/gcp/php/run:v1 gcr.io/$PROJECT_ID/gcp/php/run:latest
-        && docker tag gcr.io/buildpacks/gcp/php/run:v1 gcr.io/$PROJECT_ID/gcp/php/run:v1
-        && docker tag gcr.io/buildpacks/gcp/php/run:v1 gcr.io/$PROJECT_ID/gcp/php/run:$COMMIT_SHA
-        && docker tag gcr.io/buildpacks/gcp/php/build:v1 gcr.io/$PROJECT_ID/gcp/php/build:latest
-        && docker tag gcr.io/buildpacks/gcp/php/build:v1 gcr.io/$PROJECT_ID/gcp/php/build:v1
-        && docker tag gcr.io/buildpacks/gcp/php/build:v1 gcr.io/$PROJECT_ID/gcp/php/build:$COMMIT_SHA
-        && docker tag gcp/php gcr.io/$PROJECT_ID/builder/php:latest
-        && docker tag gcp/php gcr.io/$PROJECT_ID/builder/php:v1
-        && docker tag gcp/php gcr.io/$PROJECT_ID/builder/php:$COMMIT_SHA
-
 # Even though a :latest tag is published, it may be unstable and may be phased out eventually.
 # We recommend using the :v1 tag.
 images:
@@ -91,16 +71,6 @@ images:
   - 'gcr.io/$PROJECT_ID/gcp/build:latest'
   - 'gcr.io/$PROJECT_ID/gcp/build:v1'
   - 'gcr.io/$PROJECT_ID/gcp/build:$COMMIT_SHA'
-     # PHP stack images.
-  - 'gcr.io/$PROJECT_ID/builder/php:latest'
-  - 'gcr.io/$PROJECT_ID/builder/php:v1'
-  - 'gcr.io/$PROJECT_ID/builder/php:$COMMIT_SHA'
-  - 'gcr.io/$PROJECT_ID/gcp/php/run:latest'
-  - 'gcr.io/$PROJECT_ID/gcp/php/run:v1'
-  - 'gcr.io/$PROJECT_ID/gcp/php/run:$COMMIT_SHA'
-  - 'gcr.io/$PROJECT_ID/gcp/php/build:latest'
-  - 'gcr.io/$PROJECT_ID/gcp/php/build:v1'
-  - 'gcr.io/$PROJECT_ID/gcp/php/build:$COMMIT_SHA'
 
 timeout: '10800s'
 options:

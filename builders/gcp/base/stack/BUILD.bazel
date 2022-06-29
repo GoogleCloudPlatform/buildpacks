@@ -10,7 +10,6 @@ sh_binary(
     data = [
         "build.Dockerfile",
         "parent.Dockerfile",
-        "php.Dockerfile",
         "run.Dockerfile",
         "//licenses:licenses.tar",
     ],
