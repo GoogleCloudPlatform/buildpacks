@@ -81,14 +81,51 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 func runtimeVersion(ctx *gcp.Context) (string, error) {
-	if v := os.Getenv(versionEnv); v != "" {
-		ctx.Logf("Using Python version from %s: %s", versionEnv, v)
-		return v, nil
+	v1, err := versionFromEnv(ctx)
+	if err != nil {
+		return "", err
 	}
-	if v := os.Getenv(env.RuntimeVersion); v != "" {
-		ctx.Logf("Using Python version from %s: %s", env.RuntimeVersion, v)
-		return v, nil
+	v2, err := versionFromFile(ctx)
+	if err != nil {
+		return "", err
 	}
+	if v1 != "" && v2 != "" && v1 != v2 {
+		return "", gcp.UserErrorf("python version %s from %s file and %s from environment variable are inconsistent, pick one of them or set them to the same value",
+			v1, versionFile, v2)
+	}
+	if v1 != "" {
+		return v1, nil
+	}
+	if v2 != "" {
+		return v2, nil
+	}
+
+	// This will use the highest listed at https://dl.google.com/runtimes/python/version.json.
+	ctx.Logf("Python version not specified, using the latest available version.")
+	return "*", nil
+}
+
+func versionFromEnv(ctx *gcp.Context) (string, error) {
+	v1 := os.Getenv(versionEnv)
+	v2 := os.Getenv(env.RuntimeVersion)
+
+	if v1 != "" && v2 != "" && v1 != v2 {
+		return "", gcp.UserErrorf("%s=%s and %s=%s are inconsistent, pick one of them or set them to the same value",
+			versionEnv, v1, env.RuntimeVersion, v2)
+	}
+
+	if v1 != "" {
+		ctx.Logf("Using Python version from %s: %s", versionEnv, v1)
+		return v1, nil
+	}
+	if v2 != "" {
+		ctx.Logf("Using Python version from %s: %s", env.RuntimeVersion, v2)
+		return v2, nil
+	}
+	return "", nil
+}
+
+func versionFromFile(ctx *gcp.Context) (string, error) {
 	versionFileExists, err := ctx.FileExists(versionFile)
 	if err != nil {
 		return "", err
@@ -105,7 +142,5 @@ func runtimeVersion(ctx *gcp.Context) (string, error) {
 		}
 		return "", gcp.UserErrorf("%s exists but does not specify a version", versionFile)
 	}
-	// This will use the highest listed at https://dl.google.com/runtimes/python/version.json.
-	ctx.Logf("Python version not specified, using the test available version.")
-	return "*", nil
+	return "", nil
 }

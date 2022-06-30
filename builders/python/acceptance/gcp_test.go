@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -64,10 +64,11 @@ func TestAcceptancePython(t *testing.T) {
 		},
 		// TODO (b/236138363): convert this one to a unit test
 		{
-			Name:    "runtime version from .python-version",
-			App:     "version",
-			Path:    "/version?want=3.8.1",
-			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+			Name:                       "runtime version from .python-version",
+			VersionInclusionConstraint: "3.8.12", // version is set in the .python-version file
+			App:                        "python_version_file",
+			Path:                       "/version?want=3.8.12",
+			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		{
 			Name:    "python with client-side scripts correctly builds as a python app",
@@ -119,6 +120,12 @@ func TestFailuresPython(t *testing.T) {
 			Name:      "missing entrypoint",
 			App:       "missing_entrypoint",
 			MustMatch: `for Python, an entrypoint must be manually set, either with "GOOGLE_ENTRYPOINT" env var or by creating a "Procfile" file`,
+		},
+		{
+			Name:      "mismatch runtime version between .python-version and env var",
+			App:       "python_version_file", // set to python 3.8.12 via .python-version
+			Env:       []string{"GOOGLE_PYTHON_VERSION=3.8.11"},
+			MustMatch: "are inconsistent, pick one of them or set them to the same value",
 		},
 	}
 
