@@ -9,6 +9,7 @@ builder(
     buildpacks = [
         "//cmd/config/entrypoint:entrypoint.tgz",
         "//cmd/utils/label:label.tgz",
+        "//cmd/utils/nginx:nginx.tgz",
         "//cmd/config/flex:flex.tgz",
         "//cmd/python/webserver:webserver.tgz",
         "//cmd/python/appengine:appengine.tgz",
@@ -65,6 +66,12 @@ builder(
             "//cmd/ruby/bundle:bundle.tgz",
             "//cmd/ruby/rails:rails.tgz",
             "//cmd/ruby/runtime:runtime.tgz",
+        ],
+        "php": [
+            "//cmd/php/composer:composer.tgz",
+            "//cmd/php/composer_install:composer_install.tgz",
+            "//cmd/php/runtime:runtime.tgz",
+            "//cmd/php/webconfig:webconfig.tgz",
         ],
     },
     image = "gcp/base",

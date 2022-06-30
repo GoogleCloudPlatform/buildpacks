@@ -126,6 +126,28 @@ go_test(
 )
 
 go_test(
+    name = "php_test",
+    srcs = ["php_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata/php:generic)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-prefix=gcpbase-php-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gcp/base:builder.tar",
+        "//builders/testdata/php:generic",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//internal/acceptance"],
+)
+
+go_test(
     name = "python_test",
     size = "enormous",
     srcs = ["python_test.go"],

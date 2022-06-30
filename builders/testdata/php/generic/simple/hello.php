@@ -1,5 +1,5 @@
 <?php
-// Copyright 2020 Google LLC
+// Copyright 2022 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,29 +13,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-$endpoints = [
-  'custom',
-  'version',
-  'env',
-];
-
-// Get the request URL and parse it.
-$url = $_SERVER['REQUEST_URI'];
-$parsed_urls = parse_url($url);
-$path = $parsed_urls['path'];
-
-// Figure out which script to load.
-$f = '';
-foreach ($endpoints as $ep) {
-  if ($path == '/' . $ep) {
-    $f = $ep . '.php';
-  }
-}
-
-if ($f == '') {
-  $f = 'hello.php';
-}
-
-// Load the script.
-error_log(sprintf('test router: requiring %s', $f));
-require_once $f;
+echo 'PASS_INDEX';
