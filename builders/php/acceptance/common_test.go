@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2022 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,9 +23,13 @@ func init() {
 }
 
 const (
-	composer         = "google.php.composer"
-	composerGCPBuild = "google.php.composer-gcp-build"
-	composerInstall  = "google.php.composer-install"
-	entrypoint       = "google.config.entrypoint"
-	phpRuntime       = "google.php.runtime"
+	composer          = "google.php.composer"
+	composerGCPBuild  = "google.php.composer-gcp-build"
+	composerInstall   = "google.php.composer-install"
+	entrypoint        = "google.config.entrypoint"
+	phpRuntime        = "google.php.runtime"
+	phpWebConfig      = "google.php.webconfig"
+	utilsNginx        = "google.utils.nginx"
+	functionFramework = "google.php.functions-framework"
+	cloudFunctions    = "google.php.cloudfunctions"
 )

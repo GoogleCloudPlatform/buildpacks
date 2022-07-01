@@ -25,6 +25,10 @@ description = "Unified builder for the PHP runtime"
   uri = "runtime.tgz"
 
 [[buildpacks]]
+  id = "google.php.webconfig"
+  uri = "webconfig.tgz"
+
+[[buildpacks]]
   id = "google.utils.label"
   uri = "label.tgz"
 
@@ -113,10 +117,10 @@ description = "Unified builder for the PHP runtime"
     optional = true
 
   [[order.group]]
-    id = "google.config.entrypoint"
+    id = "google.utils.label"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.php.webconfig"
 
 [stack]
   id = "google.gae.18"

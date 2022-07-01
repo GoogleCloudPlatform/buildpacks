@@ -25,42 +25,26 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:      "entrypoint from procfile web",
+			Name:      "simple path",
 			App:       "simple",
 			MustMatch: "PASS_INDEX",
-			MustUse:   []string{phpRuntime, composerInstall, composer, entrypoint},
+			MustUse:   []string{phpRuntime, composerInstall, composer, phpWebConfig, utilsNginx},
 		},
 		{
-			Name:      "entrypoint from env",
+			Name:      "custom path",
 			App:       "simple",
-			MustMatch: "PASS_INDEX",
-			Env:       []string{"GOOGLE_ENTRYPOINT=php -S 0.0.0.0:8080"},
-			MustUse:   []string{phpRuntime, composerInstall, composer, entrypoint},
-		},
-		{
-			Name:      "entrypoint from env custom",
-			App:       "simple",
-			Path:      "/custom.php",
+			Path:      "/custom",
 			MustMatch: "PASS_CUSTOM",
-			Env:       []string{"GOOGLE_ENTRYPOINT=php -S 0.0.0.0:8080"},
-			MustUse:   []string{phpRuntime, composerInstall, composer, entrypoint},
-		},
-		{
-			Name:      "entrypoint with env var",
-			App:       "simple",
-			Path:      "/env.php?want=bar",
-			MustMatch: "PASS_ENV",
-			Env:       []string{"GOOGLE_ENTRYPOINT=FOO=bar php -S 0.0.0.0:8080"},
-			MustUse:   []string{phpRuntime, composerInstall, composer, entrypoint},
+			MustUse:   []string{phpRuntime, composerInstall, composer, phpWebConfig, utilsNginx},
 		},
 		{
 			Name:      "php ini config",
 			App:       "php_ini_config",
 			MustMatch: "PASS_PHP_INI",
-			Env:       []string{"GOOGLE_ENTRYPOINT=php -S 0.0.0.0:8080"},
-			MustUse:   []string{phpRuntime, entrypoint},
+			MustUse:   []string{phpRuntime, phpWebConfig, utilsNginx},
 		},
 	}
+
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
@@ -68,5 +52,6 @@ func TestAcceptance(t *testing.T) {
 
 			acceptance.TestApp(t, builderImage, runImage, tc)
 		})
+
 	}
 }

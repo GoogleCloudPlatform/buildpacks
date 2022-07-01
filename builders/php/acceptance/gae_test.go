@@ -27,30 +27,31 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:       "symfony app",
 			App:        "symfony",
-			MustUse:    []string{composer, composerInstall},
-			MustNotUse: []string{composerGCPBuild},
+			MustUse:    []string{composer, composerInstall, phpRuntime},
+			MustNotUse: []string{composerGCPBuild, phpWebConfig, functionFramework, cloudFunctions},
 		},
 		{
 			Name:       "composer.json without dependencies",
 			App:        "composer_json_no_dependencies",
-			MustUse:    []string{composer, composerInstall},
-			MustNotUse: []string{composerGCPBuild},
+			MustUse:    []string{composer, composerInstall, phpRuntime},
+			MustNotUse: []string{composerGCPBuild, phpWebConfig, functionFramework, cloudFunctions},
 		},
 		{
 			Name:       "composer.lock respected",
 			App:        "composer_lock",
-			MustUse:    []string{composer, composerInstall},
-			MustNotUse: []string{composerGCPBuild},
+			MustUse:    []string{composer, composerInstall, phpRuntime},
+			MustNotUse: []string{composerGCPBuild, phpWebConfig, functionFramework, cloudFunctions},
 		},
 		{
-			Name:    "composer.json with gcp-build script and no dependencies",
-			App:     "gcp_build_no_dependencies",
-			MustUse: []string{composer, composerGCPBuild, composerInstall},
+			Name:       "composer.json with gcp-build script and no dependencies",
+			App:        "gcp_build_no_dependencies",
+			MustUse:    []string{composer, composerGCPBuild, composerInstall, phpRuntime},
+			MustNotUse: []string{phpWebConfig, functionFramework, cloudFunctions},
 		},
 		{
 			Name:       "no composer.json",
 			App:        "no_composer_json",
-			MustNotUse: []string{composer, composerGCPBuild, composerInstall},
+			MustNotUse: []string{composer, composerGCPBuild, composerInstall, phpWebConfig, functionFramework, cloudFunctions},
 		},
 		// Test that we can build an app with SDK dependencies
 		{

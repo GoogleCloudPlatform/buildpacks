@@ -15,6 +15,7 @@ builder(
         "//cmd/php/cloudfunctions:cloudfunctions.tgz",
         "//cmd/php/composer_install:composer_install.tgz",
         "//cmd/php/runtime:runtime.tgz",
+        "//cmd/php/webconfig:webconfig.tgz",
         "//cmd/utils/archive_source:archive_source.tgz",
         "//cmd/utils/label:label.tgz",
         "//cmd/utils/nginx:nginx.tgz",
