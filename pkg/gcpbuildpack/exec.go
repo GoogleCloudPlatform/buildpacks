@@ -119,12 +119,12 @@ func (ctx *Context) Exec(cmd []string, opts ...ExecOption) *ExecResult {
 	if result != nil {
 		exitCode = result.ExitCode
 	}
-	ctx.Exit(exitCode, err)
+	ctx.Exit(exitCode, err.(*buildererror.Error))
 	return nil
 }
 
 // ExecWithErr runs the given command (with args) under the default configuration, allowing the caller to handle the error.
-func (ctx *Context) ExecWithErr(cmd []string, opts ...ExecOption) (*ExecResult, *buildererror.Error) {
+func (ctx *Context) ExecWithErr(cmd []string, opts ...ExecOption) (*ExecResult, error) {
 	params := execParams{cmd: cmd, messageProducer: KeepCombinedTail}
 	for _, o := range opts {
 		o(&params)

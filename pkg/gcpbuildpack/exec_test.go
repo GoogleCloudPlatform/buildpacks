@@ -227,6 +227,14 @@ func TestExecAsDefaultDoesNotUpdateDuration(t *testing.T) {
 	}
 }
 
+func (ctx *Context) execWithErrCastToBuildError(cmd []string, opts ...ExecOption) (*ExecResult, *buildererror.Error) {
+	result, err := ctx.ExecWithErr(cmd, opts...)
+	if err == nil {
+		return result, nil
+	}
+	return result, err.(*buildererror.Error)
+}
+
 func TestExecAsUserDoesNotReturnStatusInternal(t *testing.T) {
 	testCases := []struct {
 		name string
@@ -240,7 +248,7 @@ func TestExecAsUserDoesNotReturnStatusInternal(t *testing.T) {
 			ctx, cleanUp := simpleContext(t)
 			defer cleanUp()
 
-			result, err := ctx.ExecWithErr([]string{"/bin/bash", "-c", "exit 99"}, tc.opt)
+			result, err := ctx.execWithErrCastToBuildError([]string{"/bin/bash", "-c", "exit 99"}, tc.opt)
 
 			if err.Status == buildererror.StatusInternal {
 				t.Error("unexpected error status StatusInternal")
@@ -269,7 +277,7 @@ func TestExecAsDefaultReturnsStatusInternal(t *testing.T) {
 				opts = append(opts, tc.opt)
 			}
 
-			result, err := ctx.ExecWithErr([]string{"/bin/bash", "-c", "exit 99"}, opts...)
+			result, err := ctx.execWithErrCastToBuildError([]string{"/bin/bash", "-c", "exit 99"}, opts...)
 
 			if got, want := err.Status, buildererror.StatusInternal; got != want {
 				t.Errorf("incorrect error status got %v want %v", got, want)
@@ -323,7 +331,7 @@ func TestExecWithMessageProducer(t *testing.T) {
 	defer cleanUp()
 	wantProducer := func(result *ExecResult) string { return "HELLO" }
 
-	_, gotErr := ctx.ExecWithErr([]string{"/bin/bash", "-c", "exit 99"}, WithMessageProducer(wantProducer))
+	_, gotErr := ctx.execWithErrCastToBuildError([]string{"/bin/bash", "-c", "exit 99"}, WithMessageProducer(wantProducer))
 
 	if got, want := gotErr.Message, "HELLO"; got != want {
 		t.Errorf("incorrect message got=%q want=%q", got, want)
@@ -614,7 +622,7 @@ func TestExecWithErr(t *testing.T) {
 			}()
 			ctx := NewContext()
 
-			result, err := ctx.ExecWithErr(tc.cmd, tc.opts...)
+			result, err := ctx.execWithErrCastToBuildError(tc.cmd, tc.opts...)
 
 			if got, want := err != nil, tc.wantErr; got != want {
 				t.Errorf("got error %t want error %t", got, want)
@@ -663,7 +671,7 @@ func TestExecWithCRLF(t *testing.T) {
 	}
 
 	ctx := NewContext()
-	_, gotErr := ctx.ExecWithErr([]string{f})
+	_, gotErr := ctx.execWithErrCastToBuildError([]string{f})
 	if gotErr == nil {
 		t.Errorf("expected error: %v", gotErr)
 	} else if !strings.Contains(gotErr.Message, "Unix-style LF") {
