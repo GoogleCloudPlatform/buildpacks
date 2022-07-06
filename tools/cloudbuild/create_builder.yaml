@@ -29,6 +29,7 @@ steps:
     args:
       - 'test'
       - '--test_output=errors'
+      - '--flaky_test_attempts=3'
       - '--test_arg=-cloudbuild'
       - '--test_arg=-pull-images=false'
       - '--test_arg=-builder-image=gcp/base'

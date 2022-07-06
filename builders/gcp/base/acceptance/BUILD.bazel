@@ -127,6 +127,7 @@ go_test(
 
 go_test(
     name = "php_test",
+    size = "enormous",
     srcs = ["php_test.go"],
     args = [
         "-test-data=$(location //builders/testdata/php:generic)",
