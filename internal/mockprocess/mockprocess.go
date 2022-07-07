@@ -133,17 +133,13 @@ func mockProcessBinaryPath() (string, error) {
 	// {buildpacksRepo}
 	buildpacksRepo := strings.TrimSuffix(filepath.ToSlash(callingDir), mockprocessSubPath)
 
-	// Full path to currently executing test binary
-	// {bazelRuntimeRoot}/{buildpacksRepo}/{relativePathToTestBinary}
-	executingBinary := filepath.ToSlash(os.Args[0])
-
-	// [{bazelRuntimeRoot}, {relativePathToTestBinary}]
-	split := strings.Split(executingBinary, buildpacksRepo)
-	if len(split) < 2 {
-		return "", fmt.Errorf("unable to determine bazel runtime root, executing test binary: %q, inferred buildpacks repo path: %q, split result: %v", executingBinary, buildpacksRepo, split)
+	// {bazelRuntimeRoot} is the current working directory
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
 	}
 
 	// {bazelRuntimeRoot}/{buildpacksRepo}/internal/mockprocess/cmd/cmd
-	mockProcessBinary := filepath.Join(split[0], buildpacksRepo, "internal", "mockprocess", "cmd", "cmd")
+	mockProcessBinary := filepath.Join(wd, buildpacksRepo, "internal", "mockprocess", "cmd", "cmd")
 	return filepath.FromSlash(mockProcessBinary), nil
 }

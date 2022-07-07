@@ -17,6 +17,7 @@ package testdata
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -32,6 +33,11 @@ import (
 // Since tests may want to call this function when initializing a package level 'var', this function
 // panics on error instead of returning an error or requiring the test to passing a *testing.T.
 func MustGetPath(relativePath string) string {
+	wd, err := os.Getwd()
+	if err != nil {
+		panic(fmt.Sprintf("getting current working directory: %v", err))
+	}
+
 	_, filename, _, ok := runtime.Caller(1)
 	if !ok {
 		panic("unable to get caller information")
@@ -39,5 +45,5 @@ func MustGetPath(relativePath string) string {
 	if !strings.HasSuffix(filename, "_test.go") {
 		panic(fmt.Sprintf("invalid caller source file name '%v': MustGetPath() must be invoked from a test", filepath.Base(filename)))
 	}
-	return filepath.Join(filepath.Dir(filename), relativePath)
+	return filepath.Join(wd, filepath.Dir(filename), relativePath)
 }
