@@ -83,7 +83,9 @@ func buildRuntimeLayer(ctx *gcp.Context, rtVersion string) error {
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", runtimeLayerName, err)
 	}
-	runtime.InstallTarballIfNotCached(ctx, runtime.AspNetCore, rtVersion, rtl)
+	if _, err := runtime.InstallTarballIfNotCached(ctx, runtime.AspNetCore, rtVersion, rtl); err != nil {
+		return err
+	}
 	rtl.LaunchEnvironment.Default("DOTNET_ROOT", rtl.Path)
 	rtl.LaunchEnvironment.Prepend("PATH", string(os.PathListSeparator), rtl.Path)
 	rtl.LaunchEnvironment.Default("DOTNET_RUNNING_IN_CONTAINER", "true")
