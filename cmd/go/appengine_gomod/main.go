@@ -95,7 +95,9 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating srv layer: %w", err)
 	}
 	srvl.BuildEnvironment.Override(golang.BuildDirEnv, srvl.Path)
-	ctx.Exec([]string{"cp", "--dereference", "-R", ".", srvl.Path}, gcp.WithUserTimingAttribution)
+	if _, err := ctx.ExecWithErr([]string{"cp", "--dereference", "-R", ".", srvl.Path}, gcp.WithUserTimingAttribution); err != nil {
+		return err
+	}
 
 	return nil
 }

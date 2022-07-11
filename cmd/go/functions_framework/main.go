@@ -175,9 +175,15 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	}
 	fn.Package = fnPackage
 
-	ctx.Exec([]string{"go", "mod", "init", appModule})
-	ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@v0.0.0", fnMod)})
-	ctx.Exec([]string{"go", "mod", "edit", "-replace", fmt.Sprintf("%s@v0.0.0=%s", fnMod, fn.Source)})
+	if _, err := ctx.ExecWithErr([]string{"go", "mod", "init", appModule}); err != nil {
+		return err
+	}
+	if _, err := ctx.ExecWithErr([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@v0.0.0", fnMod)}); err != nil {
+		return err
+	}
+	if _, err := ctx.ExecWithErr([]string{"go", "mod", "edit", "-replace", fmt.Sprintf("%s@v0.0.0=%s", fnMod, fn.Source)}); err != nil {
+		return err
+	}
 
 	// If the framework is not present in the function's go.mod, we require the current version.
 	version, err := frameworkSpecifiedVersion(ctx, fn.Source)
@@ -237,8 +243,12 @@ func createMainGoModVendored(ctx *gcp.Context, fn fnInfo) error {
 	if err := ctx.MkdirAll(appVendorDir, 0755); err != nil {
 		return err
 	}
-	ctx.Exec([]string{"go", "mod", "init", appModule}, gcp.WithWorkDir(appVendorDir))
-	ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@v0.0.0", fnMod)}, gcp.WithWorkDir(appVendorDir))
+	if _, err := ctx.ExecWithErr([]string{"go", "mod", "init", appModule}, gcp.WithWorkDir(appVendorDir)); err != nil {
+		return err
+	}
+	if _, err := ctx.ExecWithErr([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@v0.0.0", fnMod)}, gcp.WithWorkDir(appVendorDir)); err != nil {
+		return err
+	}
 
 	l.BuildEnvironment.Override(env.Buildable, appModule)
 	l.BuildEnvironment.Override(golang.BuildDirEnv, fn.Source)
@@ -248,7 +258,11 @@ func createMainGoModVendored(ctx *gcp.Context, fn fnInfo) error {
 
 // moduleAndPackageNames extracts the module name and package name of the function.
 func moduleAndPackageNames(ctx *gcp.Context, fn fnInfo) (string, string, error) {
-	fnMod := ctx.Exec([]string{"go", "list", "-m"}, gcp.WithWorkDir(fn.Source), gcp.WithUserAttribution).Stdout
+	result, err := ctx.ExecWithErr([]string{"go", "list", "-m"}, gcp.WithWorkDir(fn.Source), gcp.WithUserAttribution)
+	if err != nil {
+		return "", "", err
+	}
+	fnMod := result.Stdout
 	// golang.org/ref/mod requires that package names in a replace contains at least one dot.
 	if parts := strings.Split(fnMod, "/"); len(parts) > 0 && !strings.Contains(parts[0], ".") {
 		return "", "", gcp.UserErrorf("the module path in the function's go.mod must contain a dot in the first path element before a slash, e.g. example.com/module, found: %s", fnMod)
@@ -313,7 +327,9 @@ func createMainVendored(ctx *gcp.Context, fn fnInfo) error {
 	requestedFrameworkVersion := "v0.0.0"
 	if fnFrameworkVendoredPathExists {
 		ctx.Logf("Found function with vendored dependencies including functions-framework")
-		ctx.Exec([]string{"cp", "-r", fnVendoredPath, appPath}, gcp.WithUserTimingAttribution)
+		if _, err := ctx.ExecWithErr([]string{"cp", "-r", fnVendoredPath, appPath}, gcp.WithUserTimingAttribution); err != nil {
+			return err
+		}
 	} else {
 		// If the framework isn't in the user-provided vendor directory, we need to fetch it ourselves.
 		ctx.Logf("Found function with vendored dependencies excluding functions-framework")
@@ -413,10 +429,13 @@ func extractPackageNameInDir(ctx *gcp.Context, source string) (*parsedPackage, e
 	if err != nil {
 		return nil, fmt.Errorf("creating temp directory: %w", err)
 	}
-	stdout := ctx.Exec([]string{"go", "run", script, "-dir", source}, gcp.WithEnv("GOCACHE="+cacheDir), gcp.WithUserAttribution).Stdout
+	result, err := ctx.ExecWithErr([]string{"go", "run", script, "-dir", source}, gcp.WithEnv("GOCACHE="+cacheDir), gcp.WithUserAttribution)
+	if err != nil {
+		return nil, err
+	}
 
 	var pkg parsedPackage
-	if err := json.Unmarshal([]byte(stdout), &pkg); err != nil {
+	if err := json.Unmarshal([]byte(result.Stdout), &pkg); err != nil {
 		return nil, fmt.Errorf("unable to parse function package: %v", err)
 	}
 

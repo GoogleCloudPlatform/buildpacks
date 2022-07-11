@@ -50,13 +50,21 @@ func validateAppEngineAPIs(ctx *gcp.Context) error {
 		return err
 	}
 
-	if !supportsApis && appEngineInDeps(directDeps(ctx)) {
+	dirDeps, err := directDeps(ctx)
+	if err != nil {
+		return err
+	}
+	if !supportsApis && appEngineInDeps(dirDeps) {
 		// TODO(b/179431689) Change to error.
 		ctx.Warnf(appengine.DepWarning)
 		return nil
 	}
 
-	usingAppEngine := appEngineInDeps(allDeps(ctx))
+	deps, err := allDeps(ctx)
+	if err != nil {
+		return err
+	}
+	usingAppEngine := appEngineInDeps(deps)
 	if supportsApis && !usingAppEngine {
 		ctx.Warnf(appengine.UnusedAPIWarning)
 	}
@@ -82,14 +90,18 @@ func appEngineInDeps(deps []string) bool {
 	return false
 }
 
-func allDeps(ctx *gcp.Context) []string {
-	result := ctx.Exec([]string{"go", "list", "-f", `{{join .Deps "\n"}}`, "./..."}, gcp.WithUserAttribution)
-
-	return strings.Fields(result.Stdout)
+func allDeps(ctx *gcp.Context) ([]string, error) {
+	result, err := ctx.ExecWithErr([]string{"go", "list", "-f", `{{join .Deps "\n"}}`, "./..."}, gcp.WithUserAttribution)
+	if err != nil {
+		return nil, err
+	}
+	return strings.Fields(result.Stdout), nil
 }
 
-func directDeps(ctx *gcp.Context) []string {
-	result := ctx.Exec([]string{"go", "list", "-f", `{{join .Imports "\n" }}`, "./..."}, gcp.WithUserAttribution)
-
-	return strings.Fields(result.Stdout)
+func directDeps(ctx *gcp.Context) ([]string, error) {
+	result, err := ctx.ExecWithErr([]string{"go", "list", "-f", `{{join .Imports "\n" }}`, "./..."}, gcp.WithUserAttribution)
+	if err != nil {
+		return nil, err
+	}
+	return strings.Fields(result.Stdout), nil
 }

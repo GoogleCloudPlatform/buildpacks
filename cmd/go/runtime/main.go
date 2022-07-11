@@ -88,7 +88,9 @@ func buildFn(ctx *gcp.Context) error {
 		// Download and install Go in layer.
 		ctx.Logf("Installing Go v%s", version)
 		command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, grl.Path)
-		ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
+		if _, err := ctx.ExecWithErr([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
 		ctx.SetMetadata(grl, versionKey, version)
 	}
 
@@ -122,7 +124,10 @@ type goReleases []struct {
 
 // latestGoVersion returns the latest version of Go
 func latestGoVersion(ctx *gcp.Context) (string, error) {
-	result := ctx.Exec([]string{"curl", "--fail", "--show-error", "--silent", "--location", goVersionURL}, gcp.WithUserAttribution)
+	result, err := ctx.ExecWithErr([]string{"curl", "--fail", "--show-error", "--silent", "--location", goVersionURL}, gcp.WithUserAttribution)
+	if err != nil {
+		return "", err
+	}
 	return parseVersionJSON(result.Stdout)
 }
 

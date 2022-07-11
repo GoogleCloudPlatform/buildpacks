@@ -85,7 +85,9 @@ func buildFn(ctx *gcp.Context) error {
 	// mindepth=1 excludes '.', '+' collects all file names before running the command.
 	// Exclude serverless_function_source_code and .google* dir e.g. .googlebuild, .googleconfig
 	command := fmt.Sprintf("find . -mindepth 1 -not -name %[1]s -prune -not -name %[2]q -prune -exec mv -t %[1]s {} +", fnSourceDir, ".google*")
-	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserTimingAttribution)
+	if _, err := ctx.ExecWithErr([]string{"bash", "-c", command}, gcp.WithUserTimingAttribution); err != nil {
+		return err
+	}
 
 	fnSource := filepath.Join(ctx.ApplicationRoot(), fnSourceDir)
 	pkgName, err := extractPackageNameInDir(ctx, fnSource)
@@ -135,6 +137,7 @@ ctx.ApplicationRoot()
 ├── go.mod // `module functions.local/app`
 ├── main.go
 └── serverless_function_source_code // assumed to aleady exist
+
 	├── go.mod // `module <user's module name>`
 	├── fn.go
 	└── ...
@@ -189,7 +192,11 @@ func createMainGoModFile(ctx *gcp.Context, fnMod string, goModPath string) error
 
 // moduleAndPackageNames extracts the module name and package name of the function.
 func moduleAndPackageNames(ctx *gcp.Context, fn fnInfo) (string, string, error) {
-	fnMod := ctx.Exec([]string{"go", "list", "-m"}, gcp.WithWorkDir(fn.Source), gcp.WithUserAttribution).Stdout
+	result, err := ctx.ExecWithErr([]string{"go", "list", "-m"}, gcp.WithWorkDir(fn.Source), gcp.WithUserAttribution)
+	if err != nil {
+		return "", "", err
+	}
+	fnMod := result.Stdout
 	// Add the module name to the the package name, such that go build will be able to find it,
 	// if a directory with the package name is not at the app root. Otherwise, assume the package is at the module root.
 	fnPackage := fnMod
@@ -265,5 +272,9 @@ func extractPackageNameInDir(ctx *gcp.Context, source string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("creating temp directory: %w", err)
 	}
-	return ctx.Exec([]string{"go", "run", script, "-dir", source}, gcp.WithEnv("GOCACHE="+cacheDir), gcp.WithUserAttribution).Stdout, nil
+	result, err := ctx.ExecWithErr([]string{"go", "run", script, "-dir", source}, gcp.WithEnv("GOCACHE="+cacheDir), gcp.WithUserAttribution)
+	if err != nil {
+		return "", err
+	}
+	return result.Stdout, nil
 }

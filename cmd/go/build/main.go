@@ -82,7 +82,9 @@ func buildFn(ctx *gcp.Context) error {
 	if workdir == "" {
 		workdir = ctx.ApplicationRoot()
 	}
-	ctx.Exec(bld, gcp.WithEnv("GOCACHE="+cl.Path), gcp.WithWorkDir(workdir), gcp.WithMessageProducer(printTipsAndKeepStderrTail(ctx)), gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr(bld, gcp.WithEnv("GOCACHE="+cl.Path), gcp.WithWorkDir(workdir), gcp.WithMessageProducer(printTipsAndKeepStderrTail(ctx)), gcp.WithUserAttribution); err != nil {
+		return err
+	}
 
 	// Configure the entrypoint for production. Use the full path to save `skaffold debug`
 	// from fetching the remote container image (tens to hundreds of megabytes), which is slow.
@@ -130,7 +132,10 @@ func goBuildable(ctx *gcp.Context) (string, error) {
 // searchBuildables searches the source for all the files that contain
 // a `main()` entrypoint.
 func searchBuildables(ctx *gcp.Context) ([]string, error) {
-	result := ctx.Exec([]string{"go", "list", "-f", `{{if eq .Name "main"}}{{.Dir}}{{end}}`, "./..."}, gcp.WithUserAttribution)
+	result, err := ctx.ExecWithErr([]string{"go", "list", "-f", `{{if eq .Name "main"}}{{.Dir}}{{end}}`, "./..."}, gcp.WithUserAttribution)
+	if err != nil {
+		return nil, err
+	}
 
 	var buildables []string
 

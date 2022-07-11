@@ -511,7 +511,7 @@ func TestNewGoWorkspaceLayerHappyPath(t *testing.T) {
 // mockReadGoVersion mocks the readGoVersion
 func mockReadGoVersion(t *testing.T, goVer string) {
 	origReadGoVersion := readGoVersion
-	readGoVersion = func(*gcp.Context) string { return goVer }
+	readGoVersion = func(*gcp.Context) (string, error) { return goVer, nil }
 	t.Cleanup(func() {
 		readGoVersion = origReadGoVersion
 	})
@@ -529,7 +529,7 @@ func mockReadGoMod(t *testing.T, goMod string) {
 // mockCleanModCache mocks the cleanModCache
 func mockCleanModCache(t *testing.T) {
 	origCleanModCache := cleanModCache
-	cleanModCache = func(*gcp.Context) { return }
+	cleanModCache = func(*gcp.Context) error { return nil }
 	t.Cleanup(func() {
 		cleanModCache = origCleanModCache
 	})
