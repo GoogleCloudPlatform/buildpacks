@@ -78,21 +78,9 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	gradlewExists, err := ctx.FileExists("gradlew")
+	gradle, err := provisionOrDetectGradle(ctx)
 	if err != nil {
 		return err
-	}
-	var gradle string
-	if gradlewExists {
-		gradle = "./gradlew"
-	} else if gradleInstalled(ctx) {
-		gradle = "gradle"
-	} else {
-		var err error
-		gradle, err = installGradle(ctx)
-		if err != nil {
-			return fmt.Errorf("installing Gradle: %w", err)
-		}
 	}
 
 	command := []string{gradle, "clean", "assemble", "-x", "test", "--build-cache"}
@@ -108,7 +96,9 @@ func buildFn(ctx *gcp.Context) error {
 		command = append(command, "--quiet")
 	}
 
-	ctx.Exec(command, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr(command, gcp.WithUserAttribution); err != nil {
+		return err
+	}
 
 	// Store the build steps in a script to be run on each file change.
 	if devmode.Enabled(ctx) {
@@ -118,9 +108,34 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
-func gradleInstalled(ctx *gcp.Context) bool {
-	result := ctx.Exec([]string{"bash", "-c", "command -v gradle || true"})
-	return result.Stdout != ""
+func provisionOrDetectGradle(ctx *gcp.Context) (string, error) {
+	gradlewExists, err := ctx.FileExists("gradlew")
+	if err != nil {
+		return "", err
+	}
+	if gradlewExists {
+		return "./gradlew", nil
+	}
+	installed, err := gradleInstalled(ctx)
+	if err != nil {
+		return "", err
+	}
+	if installed {
+		return "gradle", nil
+	}
+	gradle, err := installGradle(ctx)
+	if err != nil {
+		return "", fmt.Errorf("installing Gradle: %w", err)
+	}
+	return gradle, nil
+}
+
+func gradleInstalled(ctx *gcp.Context) (bool, error) {
+	result, err := ctx.ExecWithErr([]string{"bash", "-c", "command -v gradle || true"})
+	if err != nil {
+		return false, err
+	}
+	return result.Stdout != "", nil
 }
 
 // installGradle installs Gradle and returns the path of the gradle binary
@@ -162,15 +177,21 @@ func installGradle(ctx *gcp.Context) (string, error) {
 	defer ctx.RemoveAll(gradleZip)
 
 	curl := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s --output %s", downloadURL, gradleZip)
-	ctx.Exec([]string{"bash", "-c", curl}, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr([]string{"bash", "-c", curl}, gcp.WithUserAttribution); err != nil {
+		return "", err
+	}
 
 	unzip := fmt.Sprintf("unzip -q %s -d %s", gradleZip, tmpDir)
-	ctx.Exec([]string{"bash", "-c", unzip}, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr([]string{"bash", "-c", unzip}, gcp.WithUserAttribution); err != nil {
+		return "", err
+	}
 
 	gradleExtracted := filepath.Join(tmpDir, fmt.Sprintf("gradle-%s", gradleVersion))
 	defer ctx.RemoveAll(gradleExtracted)
 	install := fmt.Sprintf("mv %s/* %s", gradleExtracted, gradlel.Path)
-	ctx.Exec([]string{"bash", "-c", install}, gcp.WithUserTimingAttribution)
+	if _, err := ctx.ExecWithErr([]string{"bash", "-c", install}, gcp.WithUserTimingAttribution); err != nil {
+		return "", err
+	}
 
 	ctx.SetMetadata(gradlel, versionKey, gradleVersion)
 	return filepath.Join(gradlel.Path, "bin", "gradle"), nil

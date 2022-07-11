@@ -113,7 +113,9 @@ func buildCommandLine(ctx *gcp.Context, buildArgs []string) ([]string, error) {
 	command := fmt.Sprintf("native-image --no-fallback --no-server -H:+StaticExecutableWithDynamicLibC %s %s %s",
 		userArgs, strings.Join(buildArgs, " "), tempImagePath)
 
-	ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
+		return nil, err
+	}
 
 	nativeLayer, err := ctx.Layer("native-image", gcp.LaunchLayer)
 	if err != nil {
@@ -143,7 +145,9 @@ func buildMaven(ctx *gcp.Context, buildProfile string) ([]string, error) {
 		command = append(command, "-P"+buildProfile)
 	}
 
-	ctx.Exec(command, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr(command, gcp.WithUserAttribution); err != nil {
+		return nil, err
+	}
 
 	imagePath, err := findNativeExecutable(ctx)
 	if err != nil {
@@ -173,12 +177,14 @@ func parsePomFile(ctx *gcp.Context) (*java.MavenProject, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx.Exec([]string{
+	if _, err := ctx.ExecWithErr([]string{
 		mvn,
 		"help:effective-pom",
 		"--batch-mode",
 		"-Dhttp.keepAlive=false",
-		"-Doutput=" + effectivePomPath}, gcp.WithUserAttribution)
+		"-Doutput=" + effectivePomPath}, gcp.WithUserAttribution); err != nil {
+		return nil, err
+	}
 
 	// Parse the effective pom.xml.
 	effectivePom, err := ctx.ReadFile(effectivePomPath)
@@ -280,7 +286,9 @@ func classpathAndMainFromSpringBoot(ctx *gcp.Context) (string, string, error) {
 	if err != nil {
 		return "", "", fmt.Errorf("creating temp directory: %w", err)
 	}
-	ctx.Exec([]string{"unzip", "-q", jar, "-d", explodedJarDir}, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr([]string{"unzip", "-q", jar, "-d", explodedJarDir}, gcp.WithUserAttribution); err != nil {
+		return "", "", err
+	}
 
 	classes := filepath.Join(explodedJarDir, "BOOT-INF", "classes")
 	// TODO(chanseok): using '*' gives a different dependency order than the one computed by Maven.

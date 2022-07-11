@@ -148,10 +148,15 @@ func mavenClasspath(ctx *gcp.Context) (string, error) {
 	}
 
 	// Copy the dependencies of the function (`<dependencies>` in pom.xml) into target/dependency.
-	ctx.Exec([]string{mvn, "--batch-mode", "dependency:copy-dependencies", "-Dmdep.prependGroupId", "-DincludeScope=runtime"}, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr([]string{mvn, "--batch-mode", "dependency:copy-dependencies", "-Dmdep.prependGroupId", "-DincludeScope=runtime"}, gcp.WithUserAttribution); err != nil {
+		return "", err
+	}
 
 	// Extract the final jar name from the user's pom.xml definitions.
-	execResult := ctx.Exec([]string{mvn, "help:evaluate", "-q", "-DforceStdout", "-Dexpression=project.build.finalName"}, gcp.WithUserAttribution)
+	execResult, err := ctx.ExecWithErr([]string{mvn, "help:evaluate", "-q", "-DforceStdout", "-Dexpression=project.build.finalName"}, gcp.WithUserAttribution)
+	if err != nil {
+		return "", err
+	}
 	artifactName := strings.TrimSpace(execResult.Stdout)
 	if len(artifactName) == 0 {
 		return "", gcp.UserErrorf("invalid project.build.finalName configured in pom.xml")
@@ -200,10 +205,15 @@ func gradleClasspath(ctx *gcp.Context) (string, error) {
 	}
 
 	// Copy the dependencies of the function (`dependencies {...}` in build.gradle) into build/_javaFunctionDependencies.
-	ctx.Exec([]string{gradle, "--quiet", "_javaFunctionCopyAllDependencies"}, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr([]string{gradle, "--quiet", "_javaFunctionCopyAllDependencies"}, gcp.WithUserAttribution); err != nil {
+		return "", err
+	}
 
 	// Extract the name of the target jar.
-	execResult := ctx.Exec([]string{gradle, "--quiet", "_javaFunctionPrintJarTarget"}, gcp.WithUserAttribution)
+	execResult, err := ctx.ExecWithErr([]string{gradle, "--quiet", "_javaFunctionPrintJarTarget"}, gcp.WithUserAttribution)
+	if err != nil {
+		return "", err
+	}
 	jarName := strings.TrimSpace(execResult.Stdout)
 	jarExists, err := ctx.FileExists(jarName)
 	if err != nil {
@@ -231,14 +241,16 @@ func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) (string, e
 			return "", err
 		}
 		// If the invoker was listed as a dependency in the pom.xml, copy it into target/_javaInvokerDependency.
-		ctx.Exec([]string{
+		if _, err := ctx.ExecWithErr([]string{
 			mvn,
 			"--batch-mode",
 			"dependency:copy-dependencies",
 			"-DoutputDirectory=target/_javaInvokerDependency",
 			"-DincludeGroupIds=com.google.cloud.functions",
 			"-DincludeArtifactIds=java-function-invoker",
-		}, gcp.WithUserAttribution)
+		}, gcp.WithUserAttribution); err != nil {
+			return "", err
+		}
 		jars, err = ctx.Glob("target/_javaInvokerDependency/java-function-invoker-*.jar")
 		if err != nil {
 			return "", fmt.Errorf("finding java-function-invoker jar: %w", err)
