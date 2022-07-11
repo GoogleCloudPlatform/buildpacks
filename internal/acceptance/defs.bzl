@@ -203,7 +203,7 @@ def _build_testdata_target(name, testdata):
     fileset_name = name + "_" + testdata_label
     native.Fileset(
         name = fileset_name,
-        out = name + "/" + testdata_label,
+        out = name + "_generated/" + testdata_label,
         entries = [
             native.FilesetEntry(
                 srcdir = testdata,
