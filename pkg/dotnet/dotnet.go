@@ -45,13 +45,16 @@ var (
 const aspDotnetCore = "Microsoft.AspNetCore.App"
 
 // ProjectFiles finds all project files supported by dotnet.
-func ProjectFiles(ctx *gcp.Context, dir string) []string {
-	result := ctx.Exec([]string{"find", dir, "-regex", `.*\.\(cs\|fs\|vb\)proj`}, gcp.WithUserTimingAttribution).Stdout
-	result = strings.TrimSpace(result)
-	if result == "" {
-		return nil
+func ProjectFiles(ctx *gcp.Context, dir string) ([]string, error) {
+	result, err := ctx.ExecWithErr([]string{"find", dir, "-regex", `.*\.\(cs\|fs\|vb\)proj`}, gcp.WithUserTimingAttribution)
+	if err != nil {
+		return nil, err
 	}
-	return strings.Split(result, "\n")
+	stdout := strings.TrimSpace(result.Stdout)
+	if stdout == "" {
+		return nil, nil
+	}
+	return strings.Split(stdout, "\n"), nil
 }
 
 // Project represents a .NET project file.
@@ -187,13 +190,13 @@ func getSDKChannelForTargetFramework(tfm string) (string, bool) {
 }
 
 // GetSDKVersion returns the appropriate .NET SDK version to use, with the following heuristic:
-// 1. Return value of env variable GOOGLE_RUNTIME_VERSION if present.
-// 2. Return SDK.Version from the .NET global.json file if present.
-// 3. Search for runtimeconfig.json, if present, use the target framework  value in
-//    runtimeOptions.tfm and use the latest compatible SDK version.
-// 3. Get the first target framework version from the Project (csproj) and use the latest
-//    compatible SDK version.
-// 4. Query for the latest LTS version of the SDK via azure web service and return result.
+//  1. Return value of env variable GOOGLE_RUNTIME_VERSION if present.
+//  2. Return SDK.Version from the .NET global.json file if present.
+//  3. Search for runtimeconfig.json, if present, use the target framework  value in
+//     runtimeOptions.tfm and use the latest compatible SDK version.
+//  3. Get the first target framework version from the Project (csproj) and use the latest
+//     compatible SDK version.
+//  4. Query for the latest LTS version of the SDK via azure web service and return result.
 func GetSDKVersion(ctx *gcp.Context) (string, error) {
 	version, ok, err := lookupSpecifiedSDKVersion(ctx)
 	if err != nil {
@@ -301,7 +304,10 @@ func FindProjectFile(ctx *gcp.Context) (string, error) {
 	} else if err != nil {
 		return "", fmt.Errorf("stating %s: %v", proj, err)
 	} else if fi.IsDir() {
-		projFiles := ProjectFiles(ctx, proj)
+		projFiles, err := ProjectFiles(ctx, proj)
+		if err != nil {
+			return "", err
+		}
 		if len(projFiles) != 1 {
 			return "", gcp.UserErrorf("expected to find exactly one project file in directory %s, found %v", proj, projFiles)
 		}

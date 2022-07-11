@@ -46,7 +46,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if _, exists := os.LookupEnv(env.Buildable); exists {
 		return gcp.OptInEnvSet(env.Buildable), nil
 	}
-	if files := dotnet.ProjectFiles(ctx, "."); len(files) != 0 {
+	files, err := dotnet.ProjectFiles(ctx, ".")
+	if err != nil {
+		return nil, err
+	}
+	if len(files) != 0 {
 		return gcp.OptIn("found project files: " + strings.Join(files, ", ")), nil
 	}
 
@@ -77,7 +81,9 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Run restore regardless of cache status because it generates files expected by publish.
 	cmd := []string{"dotnet", "restore", "--packages", pkgLayer.Path, proj}
-	ctx.Exec(cmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr(cmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution); err != nil {
+		return err
+	}
 
 	binLayer, err := ctx.Layer("bin", gcp.BuildLayer, gcp.LaunchLayer)
 	if err != nil {
@@ -102,7 +108,9 @@ func buildFn(ctx *gcp.Context) error {
 		cmd = []string{"/bin/bash", "-c", strings.Join(append(cmd, args), " ")}
 	}
 
-	ctx.Exec(cmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr(cmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution); err != nil {
+		return err
+	}
 
 	// Infer the entrypoint in case an explicit override was not provided.
 	entrypoint := os.Getenv(env.Entrypoint)
@@ -181,7 +189,10 @@ func checkCache(ctx *gcp.Context, l *libcnb.Layer) (bool, error) {
 	// main app only depends on the local binaries, that root project file would change very
 	// infrequently while the associated library files would change significantly more often, as
 	// that's where the primary implementation is done.
-	projectFiles := dotnet.ProjectFiles(ctx, ".")
+	projectFiles, err := dotnet.ProjectFiles(ctx, ".")
+	if err != nil {
+		return false, err
+	}
 	globalJSON := filepath.Join(ctx.ApplicationRoot(), "global.json")
 	globalJSONExists, err := ctx.FileExists(globalJSON)
 	if err != nil {
@@ -190,7 +201,11 @@ func checkCache(ctx *gcp.Context, l *libcnb.Layer) (bool, error) {
 	if globalJSONExists {
 		projectFiles = append(projectFiles, globalJSON)
 	}
-	currentVersion := ctx.Exec([]string{"dotnet", "--version"}).Stdout
+	result, err := ctx.ExecWithErr([]string{"dotnet", "--version"})
+	if err != nil {
+		return false, err
+	}
+	currentVersion := result.Stdout
 
 	hash, err := cache.Hash(ctx, cache.WithStrings(currentVersion), cache.WithFiles(projectFiles...))
 	if err != nil {

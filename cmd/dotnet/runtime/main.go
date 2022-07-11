@@ -43,7 +43,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return result, nil
 	}
 
-	if files := dotnet.ProjectFiles(ctx, "."); len(files) != 0 {
+	files, err := dotnet.ProjectFiles(ctx, ".")
+	if err != nil {
+		return nil, err
+	}
+	if len(files) != 0 {
 		return gcp.OptIn("found project files: " + strings.Join(files, ", ")), nil
 	}
 	rtCfgs, err := dotnet.RuntimeConfigJSONFiles(".")
