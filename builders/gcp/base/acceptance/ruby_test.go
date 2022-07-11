@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,6 +14,9 @@
 package acceptance
 
 import (
+	"os"
+	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
@@ -23,11 +26,33 @@ func init() {
 	acceptance.DefineFlags()
 }
 
+func useBundler1(setupCtx acceptance.SetupContext) error {
+	lockFile := filepath.Join(setupCtx.SrcDir, "Gemfile.lock")
+	content, err := os.ReadFile(lockFile)
+	if err != nil {
+		return err
+	}
+
+	re := regexp.MustCompile("(?s)BUNDLED WITH.*2.1.4")
+	updated := re.ReplaceAllString(string(content), "BUNDLED WITH\n   1.17.3")
+	os.WriteFile(lockFile, []byte(updated), 0644)
+	return nil
+}
+
 func TestAcceptanceRuby(t *testing.T) {
 	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
+		{
+			Name:            "using bundler 1",
+			App:             "simple",
+			MustUse:         []string{rubyRuntime, rubyBundle, entrypoint},
+			EnableCacheTest: true,
+			Setup:           useBundler1,
+			Path:            "/bundler",
+			MustMatch:       "1.17.3",
+		},
 		{
 			Name:            "entrypoint from procfile web",
 			App:             "simple",

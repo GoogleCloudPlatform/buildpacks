@@ -63,6 +63,7 @@ builder(
         ],
         "ruby": [
             "//cmd/ruby/missing_entrypoint:missing_entrypoint.tgz",
+            "//cmd/ruby/rubygems:rubygems.tgz",
             "//cmd/ruby/bundle:bundle.tgz",
             "//cmd/ruby/rails:rails.tgz",
             "//cmd/ruby/runtime:runtime.tgz",

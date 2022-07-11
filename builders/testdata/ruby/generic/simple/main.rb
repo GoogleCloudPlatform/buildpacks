@@ -25,6 +25,10 @@ get "/" do
   "PASS"
 end
 
+get "/bundler" do
+  Bundler::VERSION
+end
+
 get '/env' do
   want = params['want']
   return "FAIL: ?want must not be empty" unless want

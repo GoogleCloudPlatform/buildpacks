@@ -1,0 +1,46 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("//tools:defs.bzl", "buildpack")
+
+licenses(["notice"])
+
+buildpack(
+    name = "rubygems",
+    executables = [
+        ":main",
+    ],
+    visibility = [
+        "//builders:ruby_builders",
+    ],
+)
+
+go_test(
+    name = "main_test",
+    size = "small",
+    srcs = ["main_test.go"],
+    data = glob(["testdata/**"]),
+    embed = [":main"],
+    rundir = ".",
+    deps = [
+        "//internal/buildpacktest",
+        "//internal/mockprocess",
+        "//internal/testserver",
+        "//pkg/testdata",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//pkg/fetch",
+        "//pkg/fileutil",
+        "//pkg/gcpbuildpack",
+        "//pkg/ruby",
+        "@com_github_buildpacks_libcnb//:go_default_library",
+    ],
+)

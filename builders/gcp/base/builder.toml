@@ -141,6 +141,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "ruby/runtime.tgz"
 
 [[buildpacks]]
+  id = "google.ruby.rubygems"
+  uri = "ruby/rubygems.tgz"
+
+[[buildpacks]]
   id = "google.ruby.bundle"
   uri = "ruby/bundle.tgz"
 
@@ -523,6 +527,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 [[order]]
   [[order.group]]
     id = "google.ruby.runtime"
+
+  [[order.group]]
+    id = "google.ruby.rubygems"
+    optional = true
 
   [[order.group]]
     id = "google.ruby.bundle"
