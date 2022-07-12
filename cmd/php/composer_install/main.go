@@ -101,7 +101,11 @@ func buildFn(ctx *gcp.Context) error {
 	expectedSHA := expectedSHABuf.String()
 	// Disable the deprecated warnings inline using -d 'error_reporting=24575' flag while we add php.ini.
 	actualSHACmd := fmt.Sprintf("php -d 'error_reporting=24575' -r \"echo hash_file('sha384', '%s');\"", installer.Name())
-	actualSHA := ctx.Exec([]string{"bash", "-c", actualSHACmd}).Stdout
+	result, err := ctx.ExecWithErr([]string{"bash", "-c", actualSHACmd})
+	if err != nil {
+		return err
+	}
+	actualSHA := result.Stdout
 	if actualSHA != expectedSHA {
 		return fmt.Errorf("invalid composer installer found at %q: checksum for composer installer, %q, does not match expected checksum of %q", composerSetupURL, actualSHA, expectedSHA)
 	}
@@ -113,7 +117,9 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating bin folder: %w", err)
 	}
 	installCmd := fmt.Sprintf("php %s --install-dir %s --filename composer --version %s", installer.Name(), clBin, composerVer)
-	ctx.Exec([]string{"bash", "-c", installCmd})
+	if _, err := ctx.ExecWithErr([]string{"bash", "-c", installCmd}); err != nil {
+		return err
+	}
 
 	ctx.SetMetadata(l, versionKey, composerVer)
 	return nil

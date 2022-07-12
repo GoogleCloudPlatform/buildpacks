@@ -58,12 +58,22 @@ func validateAppEngineAPIs(ctx *gcp.Context) error {
 		return err
 	}
 
-	if !supportsApis && appEngineInDeps(directDeps(ctx)) {
+	dirDeps, err := directDeps(ctx)
+	if err != nil {
+		return err
+	}
+
+	if !supportsApis && appEngineInDeps(dirDeps) {
 		ctx.Warnf("There is a direct dependency on App Engine APIs, but they are not enabled in app.yaml (set the app_engine_apis property)")
 		return nil
 	}
 
-	usingAppEngine := appEngineInDeps(allDeps(ctx))
+	aDeps, err := allDeps(ctx)
+	if err != nil {
+		return err
+	}
+
+	usingAppEngine := appEngineInDeps(aDeps)
 	if supportsApis && !usingAppEngine {
 		ctx.Warnf("App Engine APIs are enabled, but don't appear to be used, causing a possible performance penalty. Delete app_engine_apis from your app's yaml config file.")
 		return nil
@@ -85,14 +95,18 @@ func appEngineInDeps(deps []string) bool {
 	return false
 }
 
-func allDeps(ctx *gcp.Context) []string {
-	result := ctx.Exec([]string{"composer", "show", "-N"}, gcp.WithUserAttribution)
-
-	return strings.Fields(result.Stdout)
+func allDeps(ctx *gcp.Context) ([]string, error) {
+	result, err := ctx.ExecWithErr([]string{"composer", "show", "-N"}, gcp.WithUserAttribution)
+	if err != nil {
+		return nil, err
+	}
+	return strings.Fields(result.Stdout), nil
 }
 
-func directDeps(ctx *gcp.Context) []string {
-	result := ctx.Exec([]string{"composer", "show", "--direct", "-N"}, gcp.WithUserAttribution)
-
-	return strings.Fields(result.Stdout)
+func directDeps(ctx *gcp.Context) ([]string, error) {
+	result, err := ctx.ExecWithErr([]string{"composer", "show", "--direct", "-N"}, gcp.WithUserAttribution)
+	if err != nil {
+		return nil, err
+	}
+	return strings.Fields(result.Stdout), nil
 }

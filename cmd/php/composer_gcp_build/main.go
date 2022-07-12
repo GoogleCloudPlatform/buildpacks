@@ -57,7 +57,9 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("composer install: %w", err)
 	}
 
-	ctx.Exec([]string{"composer", "run-script", "--timeout=600", "--no-dev", "gcp-build"}, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr([]string{"composer", "run-script", "--timeout=600", "--no-dev", "gcp-build"}, gcp.WithUserAttribution); err != nil {
+		return err
+	}
 	if err := ctx.RemoveAll(php.Vendor); err != nil {
 		return err
 	}

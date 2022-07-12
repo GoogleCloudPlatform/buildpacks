@@ -68,7 +68,9 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Syntax check the function code without executing.
 	command := []string{"php", "-l", fnFile}
-	ctx.Exec(command, gcp.WithStdoutTail, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr(command, gcp.WithStdoutTail, gcp.WithUserAttribution); err != nil {
+		return err
+	}
 
 	composerJSONExists, err := ctx.FileExists("composer.json")
 	if err != nil {
@@ -108,7 +110,9 @@ func handleComposerJSON(ctx *gcp.Context) error {
 	// Determine if the function has a dependency on the functions framework.
 	if version, ok := cjs.Require[ffPackage]; !ok {
 		ctx.Logf("Handling function without dependency on functions framework")
-		php.ComposerRequire(ctx, []string{ffPackageWithVersion})
+		if err := php.ComposerRequire(ctx, []string{ffPackageWithVersion}); err != nil {
+			return err
+		}
 	} else {
 		ctx.Logf("Handling function with dependency on functions framework (%s:%s)", ffPackage, version)
 	}
@@ -130,7 +134,9 @@ func handleNoComposerJSON(ctx *gcp.Context) error {
 	if !vendorExists {
 		ctx.Logf("No vendor directory present, installing functions framework")
 		cvt := filepath.Join(ctx.BuildpackRoot(), "converter")
-		ctx.Exec([]string{"cp", filepath.Join(cvt, "composer.json"), filepath.Join(cvt, "composer.lock"), "."})
+		if _, err := ctx.ExecWithErr([]string{"cp", filepath.Join(cvt, "composer.json"), filepath.Join(cvt, "composer.lock"), "."}); err != nil {
+			return err
+		}
 
 		if _, err := php.ComposerInstall(ctx, cacheTag); err != nil {
 			return fmt.Errorf("composer install: %w", err)
@@ -179,7 +185,9 @@ func handleNoComposerJSON(ctx *gcp.Context) error {
 	// All clear to install the functions framework! We'll do this via `composer require`
 	// because we're adding a package to an already existing vendor directory.
 	ctx.Logf("Installing functions framework %s", ffPackageWithVersion)
-	php.ComposerRequire(ctx, []string{ffPackageWithVersion})
+	if err := php.ComposerRequire(ctx, []string{ffPackageWithVersion}); err != nil {
+		return nil
+	}
 
 	return nil
 }

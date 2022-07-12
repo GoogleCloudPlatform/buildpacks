@@ -116,14 +116,20 @@ func ReadComposerJSON(dir string) (*ComposerJSON, error) {
 }
 
 // version returns the installed version of PHP.
-func version(ctx *gcp.Context) string {
-	result := ctx.Exec([]string{"php", "-r", "echo PHP_VERSION;"})
-	return result.Stdout
+func version(ctx *gcp.Context) (string, error) {
+	result, err := ctx.ExecWithErr([]string{"php", "-r", "echo PHP_VERSION;"})
+	if err != nil {
+		return "", err
+	}
+	return result.Stdout, nil
 }
 
 // checkCache checks whether cached dependencies exist and match.
 func checkCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
-	currentPHPVersion := version(ctx)
+	currentPHPVersion, err := version(ctx)
+	if err != nil {
+		return false, err
+	}
 	opts = append(opts, cache.WithStrings(currentPHPVersion))
 	currentDependencyHash, err := cache.Hash(ctx, opts...)
 	if err != nil {
@@ -152,9 +158,12 @@ func checkCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, 
 }
 
 // composerInstall runs `composer install` with the given flags.
-func composerInstall(ctx *gcp.Context, flags []string) {
+func composerInstall(ctx *gcp.Context, flags []string) error {
 	cmd := append([]string{"composer", "install"}, flags...)
-	ctx.Exec(cmd, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr(cmd, gcp.WithUserAttribution); err != nil {
+		return err
+	}
+	return nil
 }
 
 // ComposerInstall runs `composer install`, using the cache iff a lock file is present.
@@ -186,7 +195,9 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 	// to newer versions in the future.
 	if !composerLockExists {
 		ctx.Logf("*** Improve build performance by generating and committing %s.", composerLock)
-		composerInstall(ctx, flags)
+		if err := composerInstall(ctx, flags); err != nil {
+			return nil, err
+		}
 		return l, nil
 	}
 
@@ -198,20 +209,26 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 		ctx.CacheHit(cacheTag)
 
 		// PHP expects the vendor/ directory to be in the application directory.
-		ctx.Exec([]string{"cp", "--archive", layerVendor, Vendor}, gcp.WithUserTimingAttribution)
+		if _, err := ctx.ExecWithErr([]string{"cp", "--archive", layerVendor, Vendor}, gcp.WithUserTimingAttribution); err != nil {
+			return nil, err
+		}
 	} else {
 		ctx.CacheMiss(cacheTag)
 		// Clear layer so we don't end up with outdated dependencies (e.g. something was removed from composer.json).
 		if err := ctx.ClearLayer(l); err != nil {
 			return nil, fmt.Errorf("clearing layer %q: %w", l.Name, err)
 		}
-		composerInstall(ctx, flags)
+		if err := composerInstall(ctx, flags); err != nil {
+			return nil, err
+		}
 
 		// Ensure vendor exists even if no dependencies were installed.
 		if err := ctx.MkdirAll(Vendor, 0755); err != nil {
 			return nil, err
 		}
-		ctx.Exec([]string{"cp", "--archive", Vendor, layerVendor}, gcp.WithUserTimingAttribution)
+		if _, err := ctx.ExecWithErr([]string{"cp", "--archive", Vendor, layerVendor}, gcp.WithUserTimingAttribution); err != nil {
+			return nil, err
+		}
 	}
 
 	return l, nil
@@ -220,9 +237,12 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 // ComposerRequire runs `composer require` with the given packages. It expects packages to
 // be specified as `composer require` would expect them on the command line, for example
 // "myorg/mypackage:^0.7". It does no caching.
-func ComposerRequire(ctx *gcp.Context, packages []string) {
+func ComposerRequire(ctx *gcp.Context, packages []string) error {
 	cmd := append([]string{"composer", "require", "--no-progress", "--no-interaction"}, packages...)
-	ctx.Exec(cmd, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr(cmd, gcp.WithUserAttribution); err != nil {
+		return err
+	}
+	return nil
 }
 
 // ExtractVersion extracts the php version from the environment, composer.json.
