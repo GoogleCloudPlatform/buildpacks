@@ -109,15 +109,23 @@ func buildFn(ctx *gcp.Context) error {
 	localBinDir := filepath.Join(".bundle", "bin")
 
 	// Ensure the GCP runtime platform is present in the lockfile. This is needed for Bundler >= 2.2, in case the user's lockfile is specific to a different platform.
-	ctx.Exec([]string{"bundle", "config", "--local", "without", "development test"}, gcp.WithUserAttribution)
-	ctx.Exec([]string{"bundle", "config", "--local", "path", localGemsDir}, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr([]string{"bundle", "config", "--local", "without", "development test"}, gcp.WithUserAttribution); err != nil {
+		return err
+	}
+	if _, err := ctx.ExecWithErr([]string{"bundle", "config", "--local", "path", localGemsDir}, gcp.WithUserAttribution); err != nil {
+		return err
+	}
 
 	// This line will override user provided BUNDLED WITH in the Gemfile.lock
 	// It'll use the currently activated bundler version instead
 	// This was a change in bundler 2.1+
 	// https://github.com/rubygems/rubygems/issues/5683
-	ctx.Exec([]string{"bundle", "lock", "--add-platform", "x86_64-linux"}, gcp.WithUserAttribution)
-	ctx.Exec([]string{"bundle", "lock", "--add-platform", "ruby"}, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr([]string{"bundle", "lock", "--add-platform", "x86_64-linux"}, gcp.WithUserAttribution); err != nil {
+		return err
+	}
+	if _, err := ctx.ExecWithErr([]string{"bundle", "lock", "--add-platform", "ruby"}, gcp.WithUserAttribution); err != nil {
+		return err
+	}
 	if err := ctx.RemoveAll(".bundle"); err != nil {
 		return err
 	}
@@ -128,12 +136,22 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.CacheMiss(layerName)
 
 		// Install the bundle locally into .bundle/gems
-		ctx.Exec([]string{"bundle", "config", "--local", "deployment", "true"}, gcp.WithUserAttribution)
-		ctx.Exec([]string{"bundle", "config", "--local", "frozen", "true"}, gcp.WithUserAttribution)
-		ctx.Exec([]string{"bundle", "config", "--local", "without", "development test"}, gcp.WithUserAttribution)
-		ctx.Exec([]string{"bundle", "config", "--local", "path", localGemsDir}, gcp.WithUserAttribution)
-		ctx.Exec([]string{"bundle", "install"},
-			gcp.WithEnv("NOKOGIRI_USE_SYSTEM_LIBRARIES=1", "MALLOC_ARENA_MAX=2", "LANG=C.utf8"), gcp.WithUserAttribution)
+		if _, err := ctx.ExecWithErr([]string{"bundle", "config", "--local", "deployment", "true"}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+		if _, err := ctx.ExecWithErr([]string{"bundle", "config", "--local", "frozen", "true"}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+		if _, err := ctx.ExecWithErr([]string{"bundle", "config", "--local", "without", "development test"}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+		if _, err := ctx.ExecWithErr([]string{"bundle", "config", "--local", "path", localGemsDir}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+		if _, err := ctx.ExecWithErr([]string{"bundle", "install"},
+			gcp.WithEnv("NOKOGIRI_USE_SYSTEM_LIBRARIES=1", "MALLOC_ARENA_MAX=2", "LANG=C.utf8"), gcp.WithUserAttribution); err != nil {
+			return err
+		}
 
 		// Find any gem-installed binary directory and symlink as a static path
 		foundBinDirs, err := ctx.Glob(".bundle/gems/ruby/*/bin")
@@ -152,7 +170,9 @@ func buildFn(ctx *gcp.Context) error {
 		if err := ctx.RemoveAll(bundleOutput); err != nil {
 			return err
 		}
-		ctx.Exec([]string{"mv", ".bundle", bundleOutput}, gcp.WithUserTimingAttribution)
+		if _, err := ctx.ExecWithErr([]string{"mv", ".bundle", bundleOutput}, gcp.WithUserTimingAttribution); err != nil {
+			return err
+		}
 	}
 
 	// Always link local .bundle directory to the actual installation stored in the layer.
@@ -165,7 +185,11 @@ func buildFn(ctx *gcp.Context) error {
 
 // checkCache checks whether cached dependencies exist and match.
 func checkCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
-	currentRubyVersion := ctx.Exec([]string{"ruby", "-v"}).Stdout
+	result, err := ctx.ExecWithErr([]string{"ruby", "-v"})
+	if err != nil {
+		return false, err
+	}
+	currentRubyVersion := result.Stdout
 	opts = append(opts, cache.WithStrings(currentRubyVersion))
 	currentDependencyHash, err := cache.Hash(ctx, opts...)
 	if err != nil {
