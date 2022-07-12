@@ -69,9 +69,12 @@ func IsYarn2(rootDir string) (bool, error) {
 }
 
 // HasYarnWorkspacePlugin returns true if this project has Yarn2's workspaces plugin installed.
-func HasYarnWorkspacePlugin(ctx *gcp.Context) bool {
-	res := ctx.Exec([]string{"yarn", "plugin", "runtime"})
-	return strings.Contains(res.Stdout, "plugin-workspace-tools")
+func HasYarnWorkspacePlugin(ctx *gcp.Context) (bool, error) {
+	res, err := ctx.ExecWithErr([]string{"yarn", "plugin", "runtime"})
+	if err != nil {
+		return false, err
+	}
+	return strings.Contains(res.Stdout, "plugin-workspace-tools"), nil
 }
 
 // DetectYarnVersion determines the version of Yarn that should be installed in a Node.js project

@@ -179,10 +179,14 @@ func yarn1InstallModules(ctx *gcp.Context) error {
 
 	// Add the layer's node_modules/.bin to the path so it is available in postinstall scripts.
 	nodeBin := filepath.Join(layerModules, ".bin")
-	ctx.Exec(cmd, gcp.WithUserAttribution, gcp.WithEnv(fmt.Sprintf("PATH=%s:%s", os.Getenv("PATH"), nodeBin)))
+	if _, err := ctx.ExecWithErr(cmd, gcp.WithUserAttribution, gcp.WithEnv(fmt.Sprintf("PATH=%s:%s", os.Getenv("PATH"), nodeBin))); err != nil {
+		return err
+	}
 
 	if gcpBuild {
-		ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution)
+		if _, err := ctx.ExecWithErr([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
 
 		// If there was a gcp-build script we installed all the devDependencies above. We should try to
 		// prune them from the final app image.
@@ -196,7 +200,9 @@ func yarn1InstallModules(ctx *gcp.Context) error {
 			if freezeLockfile {
 				cmd = append(cmd, "--frozen-lockfile")
 			}
-			ctx.Exec(cmd, gcp.WithUserAttribution)
+			if _, err := ctx.ExecWithErr(cmd, gcp.WithUserAttribution); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -216,13 +222,17 @@ func yarn2InstallModules(ctx *gcp.Context) error {
 	if yarnCacheExists {
 		cmd = append(cmd, "--immutable-cache")
 	}
-	ctx.Exec(cmd, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr(cmd, gcp.WithUserAttribution); err != nil {
+		return err
+	}
 
 	// Run the gcp-build script if it exists.
 	if gcpBuild, err := nodejs.HasGCPBuild(ctx.ApplicationRoot()); err != nil {
 		return err
 	} else if gcpBuild {
-		ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution)
+		if _, err := ctx.ExecWithErr([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
 	}
 
 	// If there are no devDependencies, there is nothing to prune. We are done.
@@ -234,12 +244,19 @@ func yarn2InstallModules(ctx *gcp.Context) error {
 	switch {
 	case nodeEnv != nodejs.EnvProduction:
 		ctx.Logf("Retaining devDependencies because NODE_ENV=%q", nodeEnv)
-	case !nodejs.HasYarnWorkspacePlugin(ctx):
-		ctx.Warnf("Keeping devDependencies because the Yarn workspace-tools plugin is not installed. You can add it to your project by running 'yarn plugin import workspace-tools'")
 	default:
+		hasWorkPlugin, err := nodejs.HasYarnWorkspacePlugin(ctx)
+		if err != nil {
+			return err
+		}
+		if !hasWorkPlugin {
+			ctx.Warnf("Keeping devDependencies because the Yarn workspace-tools plugin is not installed. You can add it to your project by running 'yarn plugin import workspace-tools'")
+		}
 		// For Yarn2, dependency pruning is via the workspaces plugin.
 		ctx.Logf("Pruning devDependencies")
-		ctx.Exec([]string{"yarn", "workspaces", "focus", "--all", "--production"}, gcp.WithUserAttribution)
+		if _, err := ctx.ExecWithErr([]string{"yarn", "workspaces", "focus", "--all", "--production"}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
 	}
 
 	return nil

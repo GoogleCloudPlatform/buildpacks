@@ -84,7 +84,9 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Syntax check the function code without executing to prevent run-time errors.
-	ctx.Exec([]string{"node", "--check", fnFile}, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr([]string{"node", "--check", fnFile}, gcp.WithUserAttribution); err != nil {
+		return err
+	}
 
 	l, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 	if err != nil {
@@ -162,7 +164,11 @@ func installLegacyWorker(ctx *gcp.Context, l *libcnb.Layer) error {
 		return fmt.Errorf("clearing layer %q: %w", l.Name, err)
 	}
 
-	ctx.Exec([]string{"cp", "-t", l.Path, pjs, wjs}, gcp.WithUserTimingAttribution)
-	ctx.Exec([]string{"npm", installCmd, "--quiet", "--production", "--prefix", l.Path}, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr([]string{"cp", "-t", l.Path, pjs, wjs}, gcp.WithUserTimingAttribution); err != nil {
+		return err
+	}
+	if _, err := ctx.ExecWithErr([]string{"npm", installCmd, "--quiet", "--production", "--prefix", l.Path}, gcp.WithUserAttribution); err != nil {
+		return err
+	}
 	return nil
 }

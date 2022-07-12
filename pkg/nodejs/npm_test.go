@@ -85,8 +85,8 @@ func TestNPMInstallCommand(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.version, func(t *testing.T) {
-			defer func(fn func(*gcpbuildpack.Context) string) { npmVersion = fn }(npmVersion)
-			npmVersion = func(*gcpbuildpack.Context) string { return tc.version }
+			defer func(fn func(*gcpbuildpack.Context) (string, error)) { npmVersion = fn }(npmVersion)
+			npmVersion = func(*gcpbuildpack.Context) (string, error) { return tc.version, nil }
 
 			got, err := NPMInstallCommand(nil)
 			if err != nil {
@@ -120,8 +120,8 @@ func TestSupportsNPMPrune(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.version, func(t *testing.T) {
-			defer func(fn func(*gcpbuildpack.Context) string) { npmVersion = fn }(npmVersion)
-			npmVersion = func(*gcpbuildpack.Context) string { return tc.version }
+			defer func(fn func(*gcpbuildpack.Context) (string, error)) { npmVersion = fn }(npmVersion)
+			npmVersion = func(*gcpbuildpack.Context) (string, error) { return tc.version, nil }
 
 			got, err := SupportsNPMPrune(nil)
 			if err != nil {

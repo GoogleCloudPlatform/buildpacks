@@ -66,7 +66,9 @@ func EnsureLockfile(ctx *gcp.Context) (string, error) {
 	if !pkgLockExists {
 		ctx.Logf("Generating %s.", PackageLock)
 		ctx.Warnf("*** Improve build performance by generating and committing %s.", PackageLock)
-		ctx.Exec([]string{"npm", "install", "--package-lock-only", "--quiet"}, gcp.WithUserAttribution)
+		if _, err := ctx.ExecWithErr([]string{"npm", "install", "--package-lock-only", "--quiet"}, gcp.WithUserAttribution); err != nil {
+			return "", err
+		}
 	}
 	return PackageLock, nil
 }
@@ -75,7 +77,11 @@ func EnsureLockfile(ctx *gcp.Context) (string, error) {
 // we prefer "npm ci" because it handles transitive dependencies determinstically. See the NPM docs:
 // https://docs.npmjs.com/cli/v6/commands/npm-ci
 func NPMInstallCommand(ctx *gcp.Context) (string, error) {
-	version, err := semver.NewVersion(npmVersion(ctx))
+	npmVer, err := npmVersion(ctx)
+	if err != nil {
+		return "", err
+	}
+	version, err := semver.NewVersion(npmVer)
 	if err != nil {
 		return "", gcp.InternalErrorf("parsing npm version: %v", err)
 	}
@@ -87,14 +93,22 @@ func NPMInstallCommand(ctx *gcp.Context) (string, error) {
 }
 
 // npmVersion returns the version of NPM installed in the system.
-var npmVersion = func(ctx *gcp.Context) string {
-	return strings.TrimSpace(ctx.Exec([]string{"npm", "--version"}).Stdout)
+var npmVersion = func(ctx *gcp.Context) (string, error) {
+	result, err := ctx.ExecWithErr([]string{"npm", "--version"})
+	if err != nil {
+		return "", nil
+	}
+	return strings.TrimSpace(result.Stdout), nil
 }
 
 // SupportsNPMPrune returns true if the version of npm installed in the system supports the prune
 // command.
 func SupportsNPMPrune(ctx *gcp.Context) (bool, error) {
-	version, err := semver.NewVersion(npmVersion(ctx))
+	npmVer, err := npmVersion(ctx)
+	if err != nil {
+		return false, err
+	}
+	version, err := semver.NewVersion(npmVer)
 	if err != nil {
 		return false, gcp.InternalErrorf("parsing npm version: %v", err)
 	}

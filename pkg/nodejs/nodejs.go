@@ -128,15 +128,22 @@ func RequestedNodejsVersion(ctx *gcp.Context, dir string) (string, error) {
 
 // nodeVersion returns the installed version of Node.js.
 // It can be overridden for testing.
-var nodeVersion = func(ctx *gcp.Context) string {
-	result := ctx.Exec([]string{"node", "-v"})
-	return result.Stdout
+var nodeVersion = func(ctx *gcp.Context) (string, error) {
+	result, err := ctx.ExecWithErr([]string{"node", "-v"})
+	if err != nil {
+		return "", err
+	}
+	return result.Stdout, nil
 }
 
 // isPreNode11 returns true if the installed version of Node.js is
 // v10.x.x or older.
 func isPreNode11(ctx *gcp.Context) (bool, error) {
-	version, err := semver.NewVersion(nodeVersion(ctx))
+	nodeVer, err := nodeVersion(ctx)
+	if err != nil {
+		return false, err
+	}
+	version, err := semver.NewVersion(nodeVer)
 	if err != nil {
 		return false, gcp.InternalErrorf("failed to detect valid Node.js version %s: %v", version, err)
 	}
@@ -154,7 +161,10 @@ func NodeEnv() string {
 
 // CheckCache checks whether cached dependencies exist and match.
 func CheckCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
-	currentNodeVersion := nodeVersion(ctx)
+	currentNodeVersion, err := nodeVersion(ctx)
+	if err != nil {
+		return false, err
+	}
 	opts = append(opts, cache.WithStrings(currentNodeVersion))
 	currentDependencyHash, err := cache.Hash(ctx, opts...)
 	if err != nil {
@@ -185,7 +195,11 @@ func CheckCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, 
 // SkipSyntaxCheck returns true if we should skip checking the user's function file for syntax errors
 // if it is impacted by https://github.com/GoogleCloudPlatform/functions-framework-nodejs/issues/407.
 func SkipSyntaxCheck(ctx *gcp.Context, file string) (bool, error) {
-	version, err := semver.NewVersion(nodeVersion(ctx))
+	nodeVer, err := nodeVersion(ctx)
+	if err != nil {
+		return false, err
+	}
+	version, err := semver.NewVersion(nodeVer)
 	if err != nil {
 		return false, gcp.InternalErrorf("failed to detect valid Node.js version %s: %v", version, err)
 	}

@@ -110,9 +110,13 @@ func buildFn(ctx *gcp.Context) error {
 	} else if !skip {
 		// Syntax check the function code without executing to prevent run-time errors.
 		if yarnPnP {
-			ctx.Exec([]string{"yarn", "node", "--check", fnFile}, gcp.WithUserAttribution)
+			if _, err := ctx.ExecWithErr([]string{"yarn", "node", "--check", fnFile}, gcp.WithUserAttribution); err != nil {
+				return err
+			}
 		} else {
-			ctx.Exec([]string{"node", "--check", fnFile}, gcp.WithUserAttribution)
+			if _, err := ctx.ExecWithErr([]string{"node", "--check", fnFile}, gcp.WithUserAttribution); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -200,11 +204,15 @@ func installFunctionsFramework(ctx *gcp.Context, l *libcnb.Layer) error {
 		return fmt.Errorf("clearing layer %q: %w", l.Name, err)
 	}
 	// NPM expects package.json and the lock file in the prefix directory.
-	ctx.Exec([]string{"cp", "-t", l.Path, pjs, pljs}, gcp.WithUserTimingAttribution)
+	if _, err := ctx.ExecWithErr([]string{"cp", "-t", l.Path, pjs, pljs}, gcp.WithUserTimingAttribution); err != nil {
+		return err
+	}
 	if err := ar.GenerateNPMConfig(ctx); err != nil {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
-	ctx.Exec([]string{"npm", installCmd, "--quiet", "--production", "--prefix", l.Path}, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr([]string{"npm", installCmd, "--quiet", "--production", "--prefix", l.Path}, gcp.WithUserAttribution); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -242,6 +250,10 @@ func usingYarnModuleResolution(ctx *gcp.Context) (bool, error) {
 	if err != nil || !yarn2 {
 		return false, nil
 	}
-	linker := ctx.Exec([]string{"yarn", "config", "get", "nodeLinker"}, gcp.WithUserAttribution).Stdout
+	result, err := ctx.ExecWithErr([]string{"yarn", "config", "get", "nodeLinker"}, gcp.WithUserAttribution)
+	if err != nil {
+		return false, err
+	}
+	linker := result.Stdout
 	return linker == "pnp", nil
 }

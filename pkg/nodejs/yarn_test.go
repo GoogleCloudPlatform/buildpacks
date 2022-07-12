@@ -51,8 +51,8 @@ func TestUseFrozenLockfile(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("Node.js %s", tc.version), func(t *testing.T) {
-			defer func(fn func(*gcpbuildpack.Context) string) { nodeVersion = fn }(nodeVersion)
-			nodeVersion = func(*gcpbuildpack.Context) string { return tc.version }
+			defer func(fn func(*gcpbuildpack.Context) (string, error)) { nodeVersion = fn }(nodeVersion)
+			nodeVersion = func(*gcpbuildpack.Context) (string, error) { return tc.version, nil }
 
 			got, err := UseFrozenLockfile(nil)
 			if err != nil {

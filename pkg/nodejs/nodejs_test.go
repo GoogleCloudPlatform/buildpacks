@@ -98,8 +98,8 @@ func TestSkipSyntaxCheck(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			defer func(fn func(*gcp.Context) string) { nodeVersion = fn }(nodeVersion)
-			nodeVersion = func(*gcp.Context) string { return tc.version }
+			defer func(fn func(*gcp.Context) (string, error)) { nodeVersion = fn }(nodeVersion)
+			nodeVersion = func(*gcp.Context) (string, error) { return tc.version, nil }
 
 			home := t.TempDir()
 			ctx := gcp.NewContext(gcp.WithApplicationRoot(home))
