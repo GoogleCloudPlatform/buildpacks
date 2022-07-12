@@ -57,9 +57,12 @@ var (
 )
 
 // Version returns the installed version of Python.
-func Version(ctx *gcp.Context) string {
-	result := ctx.Exec([]string{"python3", "--version"})
-	return strings.TrimSpace(result.Stdout)
+func Version(ctx *gcp.Context) (string, error) {
+	result, err := ctx.ExecWithErr([]string{"python3", "--version"})
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(result.Stdout), nil
 }
 
 // InstallRequirements installs dependencies from the given requirements files in a virtual env.
@@ -123,7 +126,9 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 		// --without-pip and --system-site-packages allow us to use `pip` and other packages from the
 		// build image and avoid reinstalling them, saving about 10MB.
 		// TODO(b/140775593): Use virtualenv pip after FTL is no longer used and remove from build image.
-		ctx.Exec([]string{"python3", "-m", "venv", "--without-pip", "--system-site-packages", l.Path})
+		if _, err := ctx.ExecWithErr([]string{"python3", "-m", "venv", "--without-pip", "--system-site-packages", l.Path}); err != nil {
+			return err
+		}
 		// The VIRTUAL_ENV variable is usually set by the virtual environment's activate script.
 		l.SharedEnvironment.Override("VIRTUAL_ENV", l.Path)
 		// Use the virtual environment python3 for all subsequent commands in this buildpack, for
@@ -155,9 +160,11 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 		if !virtualEnv {
 			cmd = append(cmd, "--user") // Install into user site-packages directory.
 		}
-		ctx.Exec(cmd,
+		if _, err := ctx.ExecWithErr(cmd,
 			gcp.WithEnv("PIP_CACHE_DIR="+cl.Path, "PIP_DISABLE_PIP_VERSION_CHECK=1"),
-			gcp.WithUserAttribution)
+			gcp.WithUserAttribution); err != nil {
+			return err
+		}
 	}
 
 	// Generate deterministic hash-based pycs (https://www.python.org/dev/peps/pep-0552/).
@@ -185,7 +192,10 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 
 // checkCache checks whether cached dependencies exist, match, and have not expired.
 func checkCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
-	currentPythonVersion := Version(ctx)
+	currentPythonVersion, err := Version(ctx)
+	if err != nil {
+		return false, err
+	}
 	opts = append(opts, cache.WithStrings(currentPythonVersion))
 	currentDependencyHash, err := cache.Hash(ctx, opts...)
 	if err != nil {

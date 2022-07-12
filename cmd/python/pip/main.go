@@ -88,8 +88,12 @@ func buildFn(ctx *gcp.Context) error {
 	if result.ExitCode == 0 {
 		return nil
 	}
+	pyVer, err := python.Version(ctx)
+	if err != nil {
+		return err
+	}
 	// HACK: For backwards compatibility on App Engine and Cloud Functions Python 3.7 only report a warning.
-	if strings.HasPrefix(python.Version(ctx), "Python 3.7") {
+	if strings.HasPrefix(pyVer, "Python 3.7") {
 		ctx.Warnf("Found incompatible dependencies: %q", result.Stdout)
 		return nil
 	}
