@@ -48,7 +48,9 @@ func buildFn(ctx *gcp.Context) error {
 	}
 	if br {
 		// Run build runner.
-		ctx.Exec([]string{"dart", "run", "build_runner", "build", "--delete-conflicting-outputs"}, gcp.WithUserAttribution)
+		if _, err := ctx.ExecWithErr([]string{"dart", "run", "build_runner", "build", "--delete-conflicting-outputs"}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
 	}
 	// Create a layer for the compiled binary.  Add it to PATH in case
 	// users wish to invoke the binary manually.
@@ -66,7 +68,9 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Build the application.
 	bld := []string{"dart", "compile", "exe", buildable, "-o", outBin}
-	ctx.Exec(bld, gcp.WithUserAttribution)
+	if _, err := ctx.ExecWithErr(bld, gcp.WithUserAttribution); err != nil {
+		return err
+	}
 
 	ctx.AddWebProcess([]string{"/bin/bash", "-c", outBin})
 	return nil

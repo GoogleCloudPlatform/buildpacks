@@ -57,7 +57,9 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating layer: %w", err)
 	}
 	sp := filepath.Join(sl.Path, archiveName)
-	archiveSource(ctx, sp, ctx.ApplicationRoot())
+	if err := archiveSource(ctx, sp, ctx.ApplicationRoot()); err != nil {
+		return err
+	}
 
 	// Symlink the archive to /workspace/.googlebuild for a stable path; add LABEL to container.
 	googleBuildPath := ".googlebuild"
@@ -74,10 +76,13 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 // archiveSource archives user's source code in a layer
-func archiveSource(ctx *gcp.Context, fileName, dirName string) {
-	ctx.Exec([]string{"tar",
+func archiveSource(ctx *gcp.Context, fileName, dirName string) error {
+	if _, err := ctx.ExecWithErr([]string{"tar",
 		"--create", "--gzip", "--preserve-permissions",
 		"--file=" + fileName,
 		"--directory", dirName,
-		"."}, gcp.WithUserTimingAttribution)
+		"."}, gcp.WithUserTimingAttribution); err != nil {
+		return err
+	}
+	return nil
 }
