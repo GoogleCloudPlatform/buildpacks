@@ -546,6 +546,30 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   [[order.group]]
     id = "google.utils.label"
 
+########
+# PHP  #
+########
+[[order]]
+  [[order.group]]
+    id = "google.php.runtime"
+
+  [[order.group]]
+    id = "google.utils.nginx"
+
+  [[order.group]]
+    id = "google.php.composer-install"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+  [[order.group]]
+    id = "google.php.webconfig"
+
 
 ###########
 # Node.js #
@@ -620,30 +644,6 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.utils.label"
-
-########
-# PHP  #
-########
-[[order]]
-  [[order.group]]
-    id = "google.php.runtime"
-
-  [[order.group]]
-    id = "google.utils.nginx"
-
-  [[order.group]]
-    id = "google.php.composer-install"
-    optional = true
-
-  [[order.group]]
-    id = "google.php.composer"
-    optional = true
-
-  [[order.group]]
-    id = "google.utils.label"
-
-  [[order.group]]
-    id = "google.php.webconfig"
 
 ########
 # C++  #
