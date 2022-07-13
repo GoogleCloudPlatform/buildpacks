@@ -133,24 +133,8 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "webserver.tgz"
 
 [[buildpacks]]
-  id = "google.php.composer"
-  uri = "php/composer.tgz"
-
-[[buildpacks]]
-  id = "google.php.composer-install"
-  uri = "php/composer_install.tgz"
-
-[[buildpacks]]
-  id = "google.php.runtime"
-  uri = "php/runtime.tgz"
-
-[[buildpacks]]
-  id = "google.php.webconfig"
-  uri = "php/webconfig.tgz"
-
-[[buildpacks]]
-  id = "google.utils.nginx"
-  uri = "nginx.tgz"
+  id = "google.php"
+  uri = "php/php.cnb"
 
 ########
 # .NET #
@@ -426,25 +410,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 ########
 [[order]]
   [[order.group]]
-    id = "google.php.runtime"
-
-  [[order.group]]
-    id = "google.utils.nginx"
-
-  [[order.group]]
-    id = "google.php.composer-install"
-    optional = true
-
-  [[order.group]]
-    id = "google.php.composer"
-    optional = true
-
-  [[order.group]]
-    id = "google.utils.label"
-
-  [[order.group]]
-    id = "google.php.webconfig"
-
+    id = "google.php"
 
 ###########
 # Node.js #

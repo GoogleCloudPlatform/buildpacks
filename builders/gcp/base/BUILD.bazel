@@ -61,10 +61,7 @@ builder(
             "//cmd/ruby/runtime:runtime.tgz",
         ],
         "php": [
-            "//cmd/php/composer:composer.tgz",
-            "//cmd/php/composer_install:composer_install.tgz",
-            "//cmd/php/runtime:runtime.tgz",
-            "//cmd/php/webconfig:webconfig.tgz",
+            "//cmd/php:php.cnb",
         ],
     },
     image = "gcp/base",

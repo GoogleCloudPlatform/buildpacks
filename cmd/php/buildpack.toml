@@ -1,0 +1,106 @@
+api = "0.6"
+
+[buildpack]
+  id = "google.php"
+  version = "0.1.0"
+  name = "PHP"
+
+[metadata]
+  include-files = ["buildpack.toml"]
+
+# PHP applications (gcf)
+[[order]]
+  [[order.group]]
+    id = "google.php.runtime"
+    version = "0.0.1"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    version = "0.0.1"
+
+  [[order.group]]
+    id = "google.php.composer-install"
+    version = "0.0.1"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer-gcp-build"
+    version = "0.9.1"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer"
+    version = "0.9.1"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.functions-framework"
+    version = "0.9.6"
+
+  [[order.group]]
+    id = "google.php.cloudfunctions"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.utils.label"
+    version = "0.0.2"
+
+# PHP applications (gae)
+[[order]]
+  [[order.group]]
+    id = "google.php.runtime"
+    version = "0.0.1"
+
+  [[order.group]]
+    id = "google.php.composer-install"
+    version = "0.0.1"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer-gcp-build"
+    version = "0.9.1"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer"
+    version = "0.9.1"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.appengine"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.utils.label"
+    version = "0.0.2"
+
+# PHP applications (gcp and cloud-run)
+[[order]]
+  [[order.group]]
+    id = "google.php.runtime"
+    version = "0.0.1"
+
+  [[order.group]]
+    id = "google.utils.nginx"
+    version = "0.0.1"
+
+  [[order.group]]
+    id = "google.php.composer-install"
+    version = "0.0.1"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer"
+    version = "0.9.1"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+    version = "0.0.2"
+
+  [[order.group]]
+    id = "google.php.webconfig"
+    version = "0.0.1"
+
+[lifecycle]
+  version = "0.13.3"
