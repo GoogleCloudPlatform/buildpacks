@@ -33,28 +33,8 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "dotnet/functions_framework.tgz"
 
 [[buildpacks]]
-  id = "google.go.clear_source"
-  uri = "go/clear_source.tgz"
-
-[[buildpacks]]
-  id = "google.go.runtime"
-  uri = "go/runtime.tgz"
-
-[[buildpacks]]
-  id = "google.go.gomod"
-  uri = "go/gomod.tgz"
-
-[[buildpacks]]
-  id = "google.go.build"
-  uri = "go/build.tgz"
-
-[[buildpacks]]
-  id = "google.go.gopath"
-  uri = "go/gopath.tgz"
-
-[[buildpacks]]
-  id = "google.go.functions-framework"
-  uri = "go/functions_framework.tgz"
+  id = "google.go"
+  uri = "go/go.cnb"
 
 [[buildpacks]]
   id = "google.java.entrypoint"
@@ -171,26 +151,8 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 ######
 
 [[order]]
-
   [[order.group]]
-    id = "google.go.runtime"
-
-  [[order.group]]
-    id = "google.go.functions-framework"
-
-  [[order.group]]
-    id = "google.go.build"
-
-  [[order.group]]
-    id = "google.config.entrypoint"
-    optional = true
-
-  [[order.group]]
-    id = "google.go.clear_source"
-    optional = true
-
-  [[order.group]]
-    id = "google.utils.label"
+    id = "google.go"
 
 [[order]]
 

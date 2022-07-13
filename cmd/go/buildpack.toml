@@ -1,0 +1,177 @@
+api = "0.6"
+
+[buildpack]
+  id = "google.go"
+  version = "0.1.0"
+  name = "Go"
+
+[metadata]
+  include-files = ["buildpack.toml"]
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.appengine_gomod"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.go.gomod"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.go.build"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.go.appengine"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.utils.label"
+    version = "0.0.2"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.appengine_gopath"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.go.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.go.build"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.go.appengine"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.utils.label"
+    version = "0.0.2"
+
+# The GCF go111 order group. The legacy worker is the "functions-framework"
+# buildpack for go111.
+[[order]]
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    version = "0.0.1"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.go.legacy-worker"
+    version = "0.1.0"
+
+  [[order.group]]
+    id = "google.go.build"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.go.clear_source"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+    version = "0.0.2"
+
+# The GCF order group.
+[[order]]
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    version = "0.0.1"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.go.functions-framework"
+    version = "0.9.4"
+
+  [[order.group]]
+    id = "google.go.build"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.go.clear_source"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+    version = "0.0.2"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.go.gomod"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.go.build"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.clear_source"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+    version = "0.0.2"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.go.gopath"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.build"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.clear_source"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+    version = "0.0.2"
+
+[lifecycle]
+  version = "0.13.3"

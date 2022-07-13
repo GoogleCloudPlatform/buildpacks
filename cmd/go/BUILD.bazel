@@ -1,0 +1,26 @@
+# Go Meta Buildpack
+load("//tools:defs.bzl", "meta_buildpack")
+
+licenses(["notice"])
+
+meta_buildpack(
+    name = "go",
+    buildpacks = [
+        "//cmd/config/entrypoint:entrypoint.tgz",
+        "//cmd/go/appengine:appengine.tgz",
+        "//cmd/go/appengine_gomod:appengine_gomod.tgz",
+        "//cmd/go/appengine_gopath:appengine_gopath.tgz",
+        "//cmd/go/build:build.tgz",
+        "//cmd/go/clear_source:clear_source.tgz",
+        "//cmd/go/functions_framework:functions_framework.tgz",
+        "//cmd/go/gomod:gomod.tgz",
+        "//cmd/go/gopath:gopath.tgz",
+        "//cmd/go/legacy_worker:legacy_worker.tgz",
+        "//cmd/go/runtime:runtime.tgz",
+        "//cmd/utils/archive_source:archive_source.tgz",
+        "//cmd/utils/label:label.tgz",
+    ],
+    visibility = [
+        "//builders:go_builders",
+    ],
+)

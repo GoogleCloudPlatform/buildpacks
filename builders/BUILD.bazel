@@ -43,6 +43,7 @@ package_group(
         "//builders/gcf/go116",
         "//builders/gcp/base",
         "//builders/go",
+        "//cmd/go",
     ],
 )
 

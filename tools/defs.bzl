@@ -55,6 +55,69 @@ def buildpack(name, executables, descriptor = "buildpack.toml", srcs = None, ext
         visibility = visibility,
     )
 
+_check_script = "//tools/checktools:main"
+
+def meta_buildpack(name, descriptor = "buildpack.toml", buildpacks = [], visibility = None):
+    """Macro to create a meta-buildpack as a ${name}.cnb file.
+
+      A meta-buildpack is a buildpack that encapsulates other buildpacks and defines order groups
+      for those buildpacks. The primary output of this rule is a target of ${name}.cnb which is a
+      packaged buildpack file.
+
+    Args:
+      name: The base name of all the generated files and rules
+      descriptor: The descriptor file for the meta-buildpack
+      buildpacks: A list of other buildpacks to includes as dependencies
+      visibility: the visibility
+    """
+
+    buildpack_archive_filename = _gen_meta_buildpack_archive(name, descriptor)
+    package_toml_filename = _gen_package_toml(name, buildpack_archive_filename, buildpacks)
+    _package_buildpack(name, buildpack_archive_filename, package_toml_filename, buildpacks, visibility)
+
+# create the ${name}.cnb file
+def _package_buildpack(name, buildpack_archive_filename, package_toml_filename, buildpacks, visibility):
+    script_target = "//tools:buildpack_package"
+    native.genrule(
+        name = name,
+        srcs = [buildpack_archive_filename, package_toml_filename] + buildpacks,
+        outs = [name + ".cnb"],
+        local = 1,
+        tools = [
+            _check_script,
+            script_target,
+        ],
+        cmd = "$(execpath " + _check_script + ") && $(execpath " + script_target + ") $@ $(location " + package_toml_filename + ")",
+        visibility = visibility,
+    )
+
+# generate the package.toml file with relative paths to each of the ${buildpacks}
+def _gen_package_toml(name, buildpack_archive, dependency_buildpacks):
+    script_target = "//tools:create_package_toml"
+    package_toml_name = "package.toml"
+    native.genrule(
+        name = name + "_" + package_toml_name,
+        srcs = [buildpack_archive] + dependency_buildpacks,
+        outs = [package_toml_name],
+        local = 1,
+        tools = [
+            script_target,
+        ],
+        cmd = "$(execpath " + script_target + ") $@ $(execpath " + buildpack_archive + ") $(SRCS)",
+    )
+    return package_toml_name
+
+# generate an archive for the meta buildpack's buildpack.toml
+def _gen_meta_buildpack_archive(name, descriptor):
+    buildpack_archive_name = name + "_archive"
+    pkg_tar(
+        name = buildpack_archive_name,
+        extension = "tgz",
+        srcs = [descriptor],
+        strip_prefix = ".",
+    )
+    return buildpack_archive_name + ".tgz"
+
 def builder(name, image, descriptor = "builder.toml", buildpacks = None, groups = None, visibility = None):
     """Macro to create a set of targets for a builder with specified buildpacks.
 

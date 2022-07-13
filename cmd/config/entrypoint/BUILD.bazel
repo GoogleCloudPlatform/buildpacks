@@ -10,6 +10,7 @@ buildpack(
     ],
     visibility = [
         "//builders:__subpackages__",
+        "//cmd:__subpackages__",
     ],
 )
 

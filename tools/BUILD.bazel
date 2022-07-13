@@ -18,3 +18,13 @@ sh_binary(
     name = "pull_images",
     srcs = ["pull-images.sh"],
 )
+
+sh_binary(
+    name = "buildpack_package",
+    srcs = ["buildpack-package.sh"],
+)
+
+sh_binary(
+    name = "create_package_toml",
+    srcs = ["create-package-toml.sh"],
+)
