@@ -25,10 +25,7 @@ builder(
             "//cmd/dart/sdk:sdk.tgz",
         ],
         "dotnet": [
-            "//cmd/dotnet/functions_framework:functions_framework.tgz",
-            "//cmd/dotnet/publish:publish.tgz",
-            "//cmd/dotnet/runtime:runtime.tgz",
-            "//cmd/dotnet/sdk:sdk.tgz",
+            "//cmd/dotnet:dotnet.cnb",
         ],
         "go": [
             "//cmd/go:go.cnb",
@@ -87,10 +84,7 @@ builder(
             "//cmd/dart/sdk:sdk.tgz",
         ],
         "dotnet": [
-            "//cmd/dotnet/functions_framework:functions_framework.tgz",
-            "//cmd/dotnet/publish:publish.tgz",
-            "//cmd/dotnet/runtime:runtime.tgz",
-            "//cmd/dotnet/sdk:sdk.tgz",
+            "//cmd/dotnet:dotnet.cnb",
         ],
         "go": [
             "//cmd/go:go.cnb",

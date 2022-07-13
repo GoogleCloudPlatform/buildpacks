@@ -17,20 +17,8 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "dart/sdk.tgz"
 
 [[buildpacks]]
-  id = "google.dotnet.runtime"
-  uri = "dotnet/runtime.tgz"
-
-[[buildpacks]]
-  id = "google.dotnet.sdk"
-  uri = "dotnet/sdk.tgz"
-
-[[buildpacks]]
-  id = "google.dotnet.publish"
-  uri = "dotnet/publish.tgz"
-
-[[buildpacks]]
-  id = "google.dotnet.functions-framework"
-  uri = "dotnet/functions_framework.tgz"
+  id = "google.dotnet"
+  uri = "dotnet/dotnet.cnb"
 
 [[buildpacks]]
   id = "google.go"
@@ -97,38 +85,8 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 ########
 
 [[order]]
-
   [[order.group]]
-    id = "google.dotnet.functions-framework"
-    optional = true
-
-  [[order.group]]
-    id = "google.dotnet.sdk"
-
-  [[order.group]]
-    id = "google.dotnet.publish"
-
-  [[order.group]]
-    id = "google.dotnet.runtime"
-
-  [[order.group]]
-    id = "google.config.entrypoint"
-    optional = true
-
-  [[order.group]]
-    id = "google.utils.label"
-
-# Prebuilt .NET applications.
-[[order]]
-
-  [[order.group]]
-    id = "google.dotnet.runtime"
-
-  [[order.group]]
-    id = "google.config.entrypoint"
-
-  [[order.group]]
-    id = "google.utils.label"
+    id = "google.dotnet"
 
 ########
 # Dart #
