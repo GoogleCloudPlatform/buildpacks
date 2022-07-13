@@ -47,7 +47,7 @@ func TestExecEmitsSpan(t *testing.T) {
 	}
 }
 
-func TestExecWithErrInvokesCommand(t *testing.T) {
+func TestExecInvokesCommand(t *testing.T) {
 	cmd := strings.Fields("echo Hello")
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
@@ -61,24 +61,16 @@ func TestExecWithErrInvokesCommand(t *testing.T) {
 	}
 }
 
-func TestExecInvokesCommand(t *testing.T) {
-	cmd := strings.Fields("echo Hello")
-	ctx, cleanUp := simpleContext(t)
-	defer cleanUp()
-	result := ctx.Exec(cmd)
-	want := "Hello"
-	if result.Stdout != want {
-		t.Errorf("Exec(%v) got stdout=%q, want stdout=%q", cmd, result.Stdout, want)
-	}
-}
-
 func TestExecResult(t *testing.T) {
 	cmd := []string{"/bin/bash", "-f", "-c", "printf 'stdout'; printf 'stderr' >&2"}
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
 
-	got := ctx.Exec(cmd)
+	got, err := ctx.ExecWithErr(cmd)
 
+	if err != nil {
+		t.Fatalf("ExecWithErr(%v) got unexpected error: %v", cmd, err)
+	}
 	if got.ExitCode != 0 {
 		t.Error("Exit code got 0, want != 0")
 	}
@@ -189,7 +181,7 @@ func TestExecAsUserUpdatesDuration(t *testing.T) {
 				t.Fatalf("user duration is not zero to start")
 			}
 
-			ctx.Exec(strings.Fields("sleep .1"), tc.opt)
+			ctx.ExecWithErr(strings.Fields("sleep .1"), tc.opt)
 			if ctx.stats.user <= dur {
 				t.Errorf("user duration did not increase")
 			}
@@ -219,7 +211,7 @@ func TestExecAsDefaultDoesNotUpdateDuration(t *testing.T) {
 				t.Fatalf("User duration is not zero to start")
 			}
 
-			ctx.Exec(strings.Fields("sleep .1"), opts...)
+			ctx.ExecWithErr(strings.Fields("sleep .1"), opts...)
 			if ctx.stats.user != 0 {
 				t.Fatalf("Exec(): user duration changed unexpectedly")
 			}
@@ -292,9 +284,13 @@ func TestExecAsDefaultReturnsStatusInternal(t *testing.T) {
 func TestExecWithEnv(t *testing.T) {
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
+	cmd := []string{"/bin/bash", "-c", "echo $FOO"}
 
-	result := ctx.Exec([]string{"/bin/bash", "-c", "echo $FOO"}, WithEnv("A=B", "FOO=bar"))
+	result, err := ctx.ExecWithErr(cmd, WithEnv("A=B", "FOO=bar"))
 
+	if err != nil {
+		t.Fatalf("ExecWithErr(%v) got unexpected error: %v", cmd, err)
+	}
 	if got, want := strings.TrimSpace(result.Stdout), "bar"; got != want {
 		t.Errorf("incorrect output got=%q want=%q", got, want)
 	}
@@ -303,9 +299,13 @@ func TestExecWithEnv(t *testing.T) {
 func TestExecWithEnvMultiple(t *testing.T) {
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
+	cmd := []string{"/bin/bash", "-c", "echo $A $FOO"}
 
-	result := ctx.Exec([]string{"/bin/bash", "-c", "echo $A $FOO"}, WithEnv("A=B", "FOO=bar"), WithEnv("FOO=baz"))
+	result, err := ctx.ExecWithErr(cmd, WithEnv("A=B", "FOO=bar"), WithEnv("FOO=baz"))
 
+	if err != nil {
+		t.Fatalf("ExecWithErr(%v) got unexpected error: %v", cmd, err)
+	}
 	if got, want := strings.TrimSpace(result.Stdout), "B baz"; got != want {
 		t.Errorf("incorrect output got=%q want=%q", got, want)
 	}
@@ -318,9 +318,13 @@ func TestExecWithWorkDir(t *testing.T) {
 	}
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
+	cmd := []string{"/bin/bash", "-c", "echo $PWD"}
 
-	result := ctx.Exec([]string{"/bin/bash", "-c", "echo $PWD"}, WithWorkDir(tdir))
+	result, err := ctx.ExecWithErr(cmd, WithWorkDir(tdir))
 
+	if err != nil {
+		t.Fatalf("ExecWithErr(%v) got unexpected error: %v", cmd, err)
+	}
 	if got, want := strings.TrimSpace(result.Stdout), tdir; got != want {
 		t.Errorf("incorrect output got=%q want=%q", got, want)
 	}
@@ -398,68 +402,6 @@ func TestMessageProducerHelpers(t *testing.T) {
 
 			if got != tc.want {
 				t.Errorf("message got %q want %q", got, tc.want)
-			}
-		})
-	}
-}
-
-func TestExec(t *testing.T) {
-	testCases := []struct {
-		name       string
-		cmd        []string
-		wantCode   int
-		wantResult bool
-		wantErr    bool
-	}{
-		{
-			name:     "nil cmd",
-			wantCode: 1,
-			wantErr:  true,
-		},
-		{
-			name:     "empty cmd",
-			cmd:      []string{},
-			wantCode: 1,
-			wantErr:  true,
-		},
-		{
-			name:     "non-zero exit from cmd",
-			cmd:      []string{"bash", "-c", "exit 99;"},
-			wantCode: 99,
-			wantErr:  true,
-		},
-		{
-			name:       "zero exit from cmd",
-			cmd:        []string{"echo", "hello"},
-			wantResult: true,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			ctx := NewContext()
-			exiter := &fakeExiter{}
-			ctx.exiter = exiter
-
-			result := ctx.Exec(tc.cmd)
-			if got, want := result != nil, tc.wantResult; got != want {
-				t.Fatalf("got result %t want result %t", got, want)
-			}
-
-			if got, want := exiter.err != nil, tc.wantErr; got != want {
-				t.Fatalf("got error %t want result %t", got, want)
-			}
-			if tc.wantErr {
-				if !exiter.called {
-					t.Fatalf("exiter was not called")
-				}
-				if got, want := exiter.code, tc.wantCode; got != want {
-					t.Errorf("incorrect exit code got %d want %d", got, want)
-				}
-			} else {
-				if exiter.called {
-					t.Errorf("exiter was called, but should not have been")
-				}
 			}
 		})
 	}
