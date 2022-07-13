@@ -175,13 +175,13 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	}
 	fn.Package = fnPackage
 
-	if _, err := ctx.ExecWithErr([]string{"go", "mod", "init", appModule}); err != nil {
+	if _, err := ctx.Exec([]string{"go", "mod", "init", appModule}); err != nil {
 		return err
 	}
-	if _, err := ctx.ExecWithErr([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@v0.0.0", fnMod)}); err != nil {
+	if _, err := ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@v0.0.0", fnMod)}); err != nil {
 		return err
 	}
-	if _, err := ctx.ExecWithErr([]string{"go", "mod", "edit", "-replace", fmt.Sprintf("%s@v0.0.0=%s", fnMod, fn.Source)}); err != nil {
+	if _, err := ctx.Exec([]string{"go", "mod", "edit", "-replace", fmt.Sprintf("%s@v0.0.0=%s", fnMod, fn.Source)}); err != nil {
 		return err
 	}
 
@@ -243,10 +243,10 @@ func createMainGoModVendored(ctx *gcp.Context, fn fnInfo) error {
 	if err := ctx.MkdirAll(appVendorDir, 0755); err != nil {
 		return err
 	}
-	if _, err := ctx.ExecWithErr([]string{"go", "mod", "init", appModule}, gcp.WithWorkDir(appVendorDir)); err != nil {
+	if _, err := ctx.Exec([]string{"go", "mod", "init", appModule}, gcp.WithWorkDir(appVendorDir)); err != nil {
 		return err
 	}
-	if _, err := ctx.ExecWithErr([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@v0.0.0", fnMod)}, gcp.WithWorkDir(appVendorDir)); err != nil {
+	if _, err := ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@v0.0.0", fnMod)}, gcp.WithWorkDir(appVendorDir)); err != nil {
 		return err
 	}
 
@@ -258,7 +258,7 @@ func createMainGoModVendored(ctx *gcp.Context, fn fnInfo) error {
 
 // moduleAndPackageNames extracts the module name and package name of the function.
 func moduleAndPackageNames(ctx *gcp.Context, fn fnInfo) (string, string, error) {
-	result, err := ctx.ExecWithErr([]string{"go", "list", "-m"}, gcp.WithWorkDir(fn.Source), gcp.WithUserAttribution)
+	result, err := ctx.Exec([]string{"go", "list", "-m"}, gcp.WithWorkDir(fn.Source), gcp.WithUserAttribution)
 	if err != nil {
 		return "", "", err
 	}
@@ -327,7 +327,7 @@ func createMainVendored(ctx *gcp.Context, fn fnInfo) error {
 	requestedFrameworkVersion := "v0.0.0"
 	if fnFrameworkVendoredPathExists {
 		ctx.Logf("Found function with vendored dependencies including functions-framework")
-		if _, err := ctx.ExecWithErr([]string{"cp", "-r", fnVendoredPath, appPath}, gcp.WithUserTimingAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"cp", "-r", fnVendoredPath, appPath}, gcp.WithUserTimingAttribution); err != nil {
 			return err
 		}
 	} else {
@@ -401,7 +401,7 @@ func createMainGoFile(ctx *gcp.Context, fn fnInfo, main, version string) error {
 
 // If a framework is specified, return the version. If unspecified, return an empty string.
 func frameworkSpecifiedVersion(ctx *gcp.Context, fnSource string) (string, error) {
-	res, err := ctx.ExecWithErr([]string{"go", "list", "-m", "-f", "{{.Version}}", functionsFrameworkModule}, gcp.WithWorkDir(fnSource), gcp.WithUserAttribution)
+	res, err := ctx.Exec([]string{"go", "list", "-m", "-f", "{{.Version}}", functionsFrameworkModule}, gcp.WithWorkDir(fnSource), gcp.WithUserAttribution)
 	if err == nil {
 		v := strings.TrimSpace(res.Stdout)
 		ctx.Logf("Found framework version %s", v)
@@ -429,7 +429,7 @@ func extractPackageNameInDir(ctx *gcp.Context, source string) (*parsedPackage, e
 	if err != nil {
 		return nil, fmt.Errorf("creating temp directory: %w", err)
 	}
-	result, err := ctx.ExecWithErr([]string{"go", "run", script, "-dir", source}, gcp.WithEnv("GOCACHE="+cacheDir), gcp.WithUserAttribution)
+	result, err := ctx.Exec([]string{"go", "run", script, "-dir", source}, gcp.WithEnv("GOCACHE="+cacheDir), gcp.WithUserAttribution)
 	if err != nil {
 		return nil, err
 	}

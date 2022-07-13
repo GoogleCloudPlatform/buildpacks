@@ -46,7 +46,7 @@ const aspDotnetCore = "Microsoft.AspNetCore.App"
 
 // ProjectFiles finds all project files supported by dotnet.
 func ProjectFiles(ctx *gcp.Context, dir string) ([]string, error) {
-	result, err := ctx.ExecWithErr([]string{"find", dir, "-regex", `.*\.\(cs\|fs\|vb\)proj`}, gcp.WithUserTimingAttribution)
+	result, err := ctx.Exec([]string{"find", dir, "-regex", `.*\.\(cs\|fs\|vb\)proj`}, gcp.WithUserTimingAttribution)
 	if err != nil {
 		return nil, err
 	}

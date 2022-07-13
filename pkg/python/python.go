@@ -58,7 +58,7 @@ var (
 
 // Version returns the installed version of Python.
 func Version(ctx *gcp.Context) (string, error) {
-	result, err := ctx.ExecWithErr([]string{"python3", "--version"})
+	result, err := ctx.Exec([]string{"python3", "--version"})
 	if err != nil {
 		return "", err
 	}
@@ -126,7 +126,7 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 		// --without-pip and --system-site-packages allow us to use `pip` and other packages from the
 		// build image and avoid reinstalling them, saving about 10MB.
 		// TODO(b/140775593): Use virtualenv pip after FTL is no longer used and remove from build image.
-		if _, err := ctx.ExecWithErr([]string{"python3", "-m", "venv", "--without-pip", "--system-site-packages", l.Path}); err != nil {
+		if _, err := ctx.Exec([]string{"python3", "-m", "venv", "--without-pip", "--system-site-packages", l.Path}); err != nil {
 			return err
 		}
 		// The VIRTUAL_ENV variable is usually set by the virtual environment's activate script.
@@ -160,7 +160,7 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 		if !virtualEnv {
 			cmd = append(cmd, "--user") // Install into user site-packages directory.
 		}
-		if _, err := ctx.ExecWithErr(cmd,
+		if _, err := ctx.Exec(cmd,
 			gcp.WithEnv("PIP_CACHE_DIR="+cl.Path, "PIP_DISABLE_PIP_VERSION_CHECK=1"),
 			gcp.WithUserAttribution); err != nil {
 			return err
@@ -169,7 +169,7 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 
 	// Generate deterministic hash-based pycs (https://www.python.org/dev/peps/pep-0552/).
 	// Use the unchecked version to skip hash validation at run time (for faster startup).
-	result, cerr := ctx.ExecWithErr([]string{
+	result, cerr := ctx.Exec([]string{
 		"python3", "-m", "compileall",
 		"--invalidation-mode", "unchecked-hash",
 		"-qq", // Do not print any message (matches `pip install` behavior).

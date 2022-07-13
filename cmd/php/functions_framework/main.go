@@ -68,7 +68,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Syntax check the function code without executing.
 	command := []string{"php", "-l", fnFile}
-	if _, err := ctx.ExecWithErr(command, gcp.WithStdoutTail, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec(command, gcp.WithStdoutTail, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 
@@ -134,7 +134,7 @@ func handleNoComposerJSON(ctx *gcp.Context) error {
 	if !vendorExists {
 		ctx.Logf("No vendor directory present, installing functions framework")
 		cvt := filepath.Join(ctx.BuildpackRoot(), "converter")
-		if _, err := ctx.ExecWithErr([]string{"cp", filepath.Join(cvt, "composer.json"), filepath.Join(cvt, "composer.lock"), "."}); err != nil {
+		if _, err := ctx.Exec([]string{"cp", filepath.Join(cvt, "composer.json"), filepath.Join(cvt, "composer.lock"), "."}); err != nil {
 			return err
 		}
 

@@ -74,7 +74,7 @@ func validateAppEngineAPIs(ctx *gcp.Context) error {
 
 func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
 	// Check installed gunicorn version and warn if version is lower than supported
-	result, err := ctx.ExecWithErr([]string{"python3", "-m", "pip", "show", "gunicorn"}, gcp.WithUserTimingAttribution)
+	result, err := ctx.Exec([]string{"python3", "-m", "pip", "show", "gunicorn"}, gcp.WithUserTimingAttribution)
 	if err != nil {
 		if result != nil && result.ExitCode == 1 {
 			return nil, fmt.Errorf("gunicorn not installed: %s", result.Combined)
@@ -105,7 +105,7 @@ func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
 
 func appEngineInDeps(ctx *gcp.Context) (bool, error) {
 	// Check if appengine-python-standard is installed
-	result, err := ctx.ExecWithErr([]string{"python3", "-m", "pip", "show", "appengine-python-standard"}, gcp.WithUserTimingAttribution)
+	result, err := ctx.Exec([]string{"python3", "-m", "pip", "show", "appengine-python-standard"}, gcp.WithUserTimingAttribution)
 	if err != nil {
 		if result != nil && result.ExitCode == 1 {
 			return false, nil

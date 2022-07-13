@@ -117,7 +117,7 @@ func ReadComposerJSON(dir string) (*ComposerJSON, error) {
 
 // version returns the installed version of PHP.
 func version(ctx *gcp.Context) (string, error) {
-	result, err := ctx.ExecWithErr([]string{"php", "-r", "echo PHP_VERSION;"})
+	result, err := ctx.Exec([]string{"php", "-r", "echo PHP_VERSION;"})
 	if err != nil {
 		return "", err
 	}
@@ -160,7 +160,7 @@ func checkCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, 
 // composerInstall runs `composer install` with the given flags.
 func composerInstall(ctx *gcp.Context, flags []string) error {
 	cmd := append([]string{"composer", "install"}, flags...)
-	if _, err := ctx.ExecWithErr(cmd, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 	return nil
@@ -209,7 +209,7 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 		ctx.CacheHit(cacheTag)
 
 		// PHP expects the vendor/ directory to be in the application directory.
-		if _, err := ctx.ExecWithErr([]string{"cp", "--archive", layerVendor, Vendor}, gcp.WithUserTimingAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"cp", "--archive", layerVendor, Vendor}, gcp.WithUserTimingAttribution); err != nil {
 			return nil, err
 		}
 	} else {
@@ -226,7 +226,7 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 		if err := ctx.MkdirAll(Vendor, 0755); err != nil {
 			return nil, err
 		}
-		if _, err := ctx.ExecWithErr([]string{"cp", "--archive", Vendor, layerVendor}, gcp.WithUserTimingAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"cp", "--archive", Vendor, layerVendor}, gcp.WithUserTimingAttribution); err != nil {
 			return nil, err
 		}
 	}
@@ -239,7 +239,7 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 // "myorg/mypackage:^0.7". It does no caching.
 func ComposerRequire(ctx *gcp.Context, packages []string) error {
 	cmd := append([]string{"composer", "require", "--no-progress", "--no-interaction"}, packages...)
-	if _, err := ctx.ExecWithErr(cmd, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 	return nil

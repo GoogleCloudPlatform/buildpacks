@@ -53,7 +53,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Check for syntax errors to prevent failures that would only manifest at run time.
-	if _, err := ctx.ExecWithErr([]string{"python3", "-m", "compileall", "-f", "-q", "."}, gcp.WithStdoutTail, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"python3", "-m", "compileall", "-f", "-q", "."}, gcp.WithStdoutTail, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 

@@ -179,12 +179,12 @@ func yarn1InstallModules(ctx *gcp.Context) error {
 
 	// Add the layer's node_modules/.bin to the path so it is available in postinstall scripts.
 	nodeBin := filepath.Join(layerModules, ".bin")
-	if _, err := ctx.ExecWithErr(cmd, gcp.WithUserAttribution, gcp.WithEnv(fmt.Sprintf("PATH=%s:%s", os.Getenv("PATH"), nodeBin))); err != nil {
+	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution, gcp.WithEnv(fmt.Sprintf("PATH=%s:%s", os.Getenv("PATH"), nodeBin))); err != nil {
 		return err
 	}
 
 	if gcpBuild {
-		if _, err := ctx.ExecWithErr([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution); err != nil {
 			return err
 		}
 
@@ -200,7 +200,7 @@ func yarn1InstallModules(ctx *gcp.Context) error {
 			if freezeLockfile {
 				cmd = append(cmd, "--frozen-lockfile")
 			}
-			if _, err := ctx.ExecWithErr(cmd, gcp.WithUserAttribution); err != nil {
+			if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
 				return err
 			}
 		}
@@ -222,7 +222,7 @@ func yarn2InstallModules(ctx *gcp.Context) error {
 	if yarnCacheExists {
 		cmd = append(cmd, "--immutable-cache")
 	}
-	if _, err := ctx.ExecWithErr(cmd, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 
@@ -230,7 +230,7 @@ func yarn2InstallModules(ctx *gcp.Context) error {
 	if gcpBuild, err := nodejs.HasGCPBuild(ctx.ApplicationRoot()); err != nil {
 		return err
 	} else if gcpBuild {
-		if _, err := ctx.ExecWithErr([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution); err != nil {
 			return err
 		}
 	}
@@ -254,7 +254,7 @@ func yarn2InstallModules(ctx *gcp.Context) error {
 		}
 		// For Yarn2, dependency pruning is via the workspaces plugin.
 		ctx.Logf("Pruning devDependencies")
-		if _, err := ctx.ExecWithErr([]string{"yarn", "workspaces", "focus", "--all", "--production"}, gcp.WithUserAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"yarn", "workspaces", "focus", "--all", "--production"}, gcp.WithUserAttribution); err != nil {
 			return err
 		}
 	}

@@ -153,7 +153,7 @@ func GoModVersion(ctx *gcp.Context) (string, error) {
 // readGoVersion returns the output of `go version`.
 // It can be overridden for testing.
 var readGoVersion = func(ctx *gcp.Context) (string, error) {
-	result, err := ctx.ExecWithErr([]string{"go", "version"})
+	result, err := ctx.Exec([]string{"go", "version"})
 	if err != nil {
 		return "", err
 	}
@@ -165,7 +165,7 @@ var readGoVersion = func(ctx *gcp.Context) (string, error) {
 // to clear layer using ctx.ClearLayer(l) fails with permission denied errors.
 // It can be overridden for testing.
 var cleanModCache = func(ctx *gcp.Context) error {
-	_, err := ctx.ExecWithErr([]string{"go", "clean", "-modcache"})
+	_, err := ctx.Exec([]string{"go", "clean", "-modcache"})
 	return err
 }
 
@@ -247,17 +247,17 @@ func ExecWithGoproxyFallback(ctx *gcp.Context, cmd []string, opts ...gcp.ExecOpt
 	}
 	if supportsGoProxy {
 		opts = append(opts, gcp.WithEnv("GOPROXY=https://proxy.golang.org|direct"))
-		return ctx.ExecWithErr(cmd, opts...)
+		return ctx.Exec(cmd, opts...)
 	}
 
-	result, err := ctx.ExecWithErr(cmd, opts...)
+	result, err := ctx.Exec(cmd, opts...)
 	if err == nil {
 		return result, nil
 	}
 	ctx.Warnf("%q failed. Retrying with GOSUMDB=off GOPROXY=direct. Error: %v", strings.Join(cmd, " "), err)
 
 	opts = append(opts, gcp.WithEnv("GOSUMDB=off", "GOPROXY=direct"))
-	return ctx.ExecWithErr(cmd, opts...)
+	return ctx.Exec(cmd, opts...)
 }
 
 // IsGo111Runtime returns true when the GOOGLE_RUNTIME is go111. This will be

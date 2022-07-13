@@ -89,13 +89,13 @@ func installGraalVM(ctx *gcp.Context) error {
 	command := fmt.Sprintf(
 		"curl --fail --show-error --silent --location %s "+
 			"| tar xz --directory %s --strip-components=1", archiveURL, graalLayer.Path)
-	if _, err := ctx.ExecWithErr([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 
 	// Install native-image component
 	graalUpdater := filepath.Join(graalLayer.Path, "bin", "gu")
-	_, err = ctx.ExecWithErr([]string{graalUpdater, "install", "native-image"}, gcp.WithUserAttribution)
+	_, err = ctx.Exec([]string{graalUpdater, "install", "native-image"}, gcp.WithUserAttribution)
 	if err != nil {
 		return err
 	}

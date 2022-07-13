@@ -187,12 +187,12 @@ func buildFn(ctx *gcp.Context) error {
 		fmt.Sprintf("-DVCPKG_TARGET_TRIPLET=%s", vcpkgTripletName),
 		fmt.Sprintf("-DCMAKE_TOOLCHAIN_FILE=%s/scripts/buildsystems/vcpkg.cmake", vcpkgPath),
 	}
-	if _, err := ctx.ExecWithErr(args, gcp.WithUserAttribution, gcp.WithEnv(
+	if _, err := ctx.Exec(args, gcp.WithUserAttribution, gcp.WithEnv(
 		fmt.Sprintf("VCPKG_DEFAULT_BINARY_CACHE=%s", vcpkgCache.Path),
 		fmt.Sprintf("VCPKG_DEFAULT_HOST_TRIPLET=%s", vcpkgTripletName))); err != nil {
 		return err
 	}
-	if _, err := ctx.ExecWithErr([]string{cmakeExePath, "--build", buildLayer.Path, "--target", "install"}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{cmakeExePath, "--build", buildLayer.Path, "--target", "install"}, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 
@@ -201,7 +201,7 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 func warmupVcpkg(ctx *gcp.Context, vcpkgExePath string) error {
-	exec, err := ctx.ExecWithErr([]string{vcpkgExePath, "install", "--feature-flags=-manifests", "--only-downloads", "functions-framework-cpp"}, gcp.WithUserAttribution)
+	exec, err := ctx.Exec([]string{vcpkgExePath, "install", "--feature-flags=-manifests", "--only-downloads", "functions-framework-cpp"}, gcp.WithUserAttribution)
 	if err != nil {
 		return fmt.Errorf("downloading sources (exit code %d): %v", exec.ExitCode, exec.Combined)
 	}
@@ -209,7 +209,7 @@ func warmupVcpkg(ctx *gcp.Context, vcpkgExePath string) error {
 }
 
 func getToolPath(ctx *gcp.Context, vcpkgExePath string, tool string) (string, error) {
-	exec, err := ctx.ExecWithErr([]string{vcpkgExePath, "fetch", "--feature-flags=-manifests", tool}, gcp.WithUserAttribution)
+	exec, err := ctx.Exec([]string{vcpkgExePath, "fetch", "--feature-flags=-manifests", tool}, gcp.WithUserAttribution)
 	if err != nil {
 		return "", fmt.Errorf("fetching %s tool path (exit code %d): %v", tool, exec.ExitCode, exec.Combined)
 	}
@@ -241,14 +241,14 @@ func installVcpkg(ctx *gcp.Context) (string, error) {
 	ctx.CacheMiss(vcpkgLayerName)
 	ctx.Logf("Installing vcpkg %s", vcpkgVersion)
 	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", vcpkgURL, vcpkg.Path)
-	if _, err := ctx.ExecWithErr([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
 		return "", err
 	}
 
-	if _, err := ctx.ExecWithErr([]string{filepath.Join(vcpkg.Path, "bootstrap-vcpkg.sh")}); err != nil {
+	if _, err := ctx.Exec([]string{filepath.Join(vcpkg.Path, "bootstrap-vcpkg.sh")}); err != nil {
 		return "", err
 	}
-	if _, err := ctx.ExecWithErr([]string{"cp", filepath.Join(ctx.BuildpackRoot(), "converter", "x64-linux-nodebug.cmake"), customTripletPath}); err != nil {
+	if _, err := ctx.Exec([]string{"cp", filepath.Join(ctx.BuildpackRoot(), "converter", "x64-linux-nodebug.cmake"), customTripletPath}); err != nil {
 		return "", err
 	}
 
@@ -321,7 +321,7 @@ func extractFnInfo(fnTarget string, fnSignature string) fnInfo {
 }
 
 func createMainCppSupportFiles(ctx *gcp.Context, main string, buildpackRoot string) error {
-	if _, err := ctx.ExecWithErr([]string{"cp", filepath.Join(buildpackRoot, "converter", "CMakeLists.txt"), filepath.Join(main, "CMakeLists.txt")}); err != nil {
+	if _, err := ctx.Exec([]string{"cp", filepath.Join(buildpackRoot, "converter", "CMakeLists.txt"), filepath.Join(main, "CMakeLists.txt")}); err != nil {
 		return err
 	}
 
@@ -335,7 +335,7 @@ func createMainCppSupportFiles(ctx *gcp.Context, main string, buildpackRoot stri
 	if !vcpkgExists {
 		vcpkgJSONSourceFilename = filepath.Join(buildpackRoot, "converter", "vcpkg.json")
 	}
-	if _, err := ctx.ExecWithErr([]string{"cp", vcpkgJSONSourceFilename, vcpkgJSONDestinationFilename}); err != nil {
+	if _, err := ctx.Exec([]string{"cp", vcpkgJSONSourceFilename, vcpkgJSONDestinationFilename}); err != nil {
 		return err
 	}
 

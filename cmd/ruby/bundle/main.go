@@ -109,10 +109,10 @@ func buildFn(ctx *gcp.Context) error {
 	localBinDir := filepath.Join(".bundle", "bin")
 
 	// Ensure the GCP runtime platform is present in the lockfile. This is needed for Bundler >= 2.2, in case the user's lockfile is specific to a different platform.
-	if _, err := ctx.ExecWithErr([]string{"bundle", "config", "--local", "without", "development test"}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"bundle", "config", "--local", "without", "development test"}, gcp.WithUserAttribution); err != nil {
 		return err
 	}
-	if _, err := ctx.ExecWithErr([]string{"bundle", "config", "--local", "path", localGemsDir}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"bundle", "config", "--local", "path", localGemsDir}, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 
@@ -120,10 +120,10 @@ func buildFn(ctx *gcp.Context) error {
 	// It'll use the currently activated bundler version instead
 	// This was a change in bundler 2.1+
 	// https://github.com/rubygems/rubygems/issues/5683
-	if _, err := ctx.ExecWithErr([]string{"bundle", "lock", "--add-platform", "x86_64-linux"}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"bundle", "lock", "--add-platform", "x86_64-linux"}, gcp.WithUserAttribution); err != nil {
 		return err
 	}
-	if _, err := ctx.ExecWithErr([]string{"bundle", "lock", "--add-platform", "ruby"}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"bundle", "lock", "--add-platform", "ruby"}, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 	if err := ctx.RemoveAll(".bundle"); err != nil {
@@ -136,19 +136,19 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.CacheMiss(layerName)
 
 		// Install the bundle locally into .bundle/gems
-		if _, err := ctx.ExecWithErr([]string{"bundle", "config", "--local", "deployment", "true"}, gcp.WithUserAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"bundle", "config", "--local", "deployment", "true"}, gcp.WithUserAttribution); err != nil {
 			return err
 		}
-		if _, err := ctx.ExecWithErr([]string{"bundle", "config", "--local", "frozen", "true"}, gcp.WithUserAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"bundle", "config", "--local", "frozen", "true"}, gcp.WithUserAttribution); err != nil {
 			return err
 		}
-		if _, err := ctx.ExecWithErr([]string{"bundle", "config", "--local", "without", "development test"}, gcp.WithUserAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"bundle", "config", "--local", "without", "development test"}, gcp.WithUserAttribution); err != nil {
 			return err
 		}
-		if _, err := ctx.ExecWithErr([]string{"bundle", "config", "--local", "path", localGemsDir}, gcp.WithUserAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"bundle", "config", "--local", "path", localGemsDir}, gcp.WithUserAttribution); err != nil {
 			return err
 		}
-		if _, err := ctx.ExecWithErr([]string{"bundle", "install"},
+		if _, err := ctx.Exec([]string{"bundle", "install"},
 			gcp.WithEnv("NOKOGIRI_USE_SYSTEM_LIBRARIES=1", "MALLOC_ARENA_MAX=2", "LANG=C.utf8"), gcp.WithUserAttribution); err != nil {
 			return err
 		}
@@ -170,7 +170,7 @@ func buildFn(ctx *gcp.Context) error {
 		if err := ctx.RemoveAll(bundleOutput); err != nil {
 			return err
 		}
-		if _, err := ctx.ExecWithErr([]string{"mv", ".bundle", bundleOutput}, gcp.WithUserTimingAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"mv", ".bundle", bundleOutput}, gcp.WithUserTimingAttribution); err != nil {
 			return err
 		}
 	}
@@ -185,7 +185,7 @@ func buildFn(ctx *gcp.Context) error {
 
 // checkCache checks whether cached dependencies exist and match.
 func checkCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
-	result, err := ctx.ExecWithErr([]string{"ruby", "-v"})
+	result, err := ctx.Exec([]string{"ruby", "-v"})
 	if err != nil {
 		return false, err
 	}

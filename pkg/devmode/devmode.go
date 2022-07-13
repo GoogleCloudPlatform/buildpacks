@@ -154,7 +154,7 @@ func installFileWatcher(ctx *gcp.Context) error {
 		ctx.Logf("Installing watchexec v%s", watchexecVersion)
 		archiveURL := fmt.Sprintf(watchexecURL, watchexecVersion)
 		command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xJ --directory %s --strip-components=1 --wildcards \"*watchexec\"", archiveURL, binDir)
-		if _, err := ctx.ExecWithErr([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
 			return err
 		}
 		ctx.SetMetadata(wxl, versionKey, watchexecVersion)

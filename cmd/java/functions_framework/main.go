@@ -75,7 +75,7 @@ func buildFn(ctx *gcp.Context) error {
 	// required interfaces, for example. But it eliminates the commonest problem of specifying the wrong target.
 	// We use an ExecUser* method so that the time taken by the javap command is counted as user time.
 	target := os.Getenv(env.FunctionTarget)
-	if result, err := ctx.ExecWithErr([]string{"javap", "-classpath", classpath, target}, gcp.WithUserAttribution); err != nil {
+	if result, err := ctx.Exec([]string{"javap", "-classpath", classpath, target}, gcp.WithUserAttribution); err != nil {
 		// The javap error output will typically be "Error: class not found: foo.Bar".
 		return gcp.UserErrorf("build succeeded but did not produce the class %q specified as the function target: %s", target, result.Combined)
 	}
@@ -148,12 +148,12 @@ func mavenClasspath(ctx *gcp.Context) (string, error) {
 	}
 
 	// Copy the dependencies of the function (`<dependencies>` in pom.xml) into target/dependency.
-	if _, err := ctx.ExecWithErr([]string{mvn, "--batch-mode", "dependency:copy-dependencies", "-Dmdep.prependGroupId", "-DincludeScope=runtime"}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{mvn, "--batch-mode", "dependency:copy-dependencies", "-Dmdep.prependGroupId", "-DincludeScope=runtime"}, gcp.WithUserAttribution); err != nil {
 		return "", err
 	}
 
 	// Extract the final jar name from the user's pom.xml definitions.
-	execResult, err := ctx.ExecWithErr([]string{mvn, "help:evaluate", "-q", "-DforceStdout", "-Dexpression=project.build.finalName"}, gcp.WithUserAttribution)
+	execResult, err := ctx.Exec([]string{mvn, "help:evaluate", "-q", "-DforceStdout", "-Dexpression=project.build.finalName"}, gcp.WithUserAttribution)
 	if err != nil {
 		return "", err
 	}
@@ -205,12 +205,12 @@ func gradleClasspath(ctx *gcp.Context) (string, error) {
 	}
 
 	// Copy the dependencies of the function (`dependencies {...}` in build.gradle) into build/_javaFunctionDependencies.
-	if _, err := ctx.ExecWithErr([]string{gradle, "--quiet", "_javaFunctionCopyAllDependencies"}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{gradle, "--quiet", "_javaFunctionCopyAllDependencies"}, gcp.WithUserAttribution); err != nil {
 		return "", err
 	}
 
 	// Extract the name of the target jar.
-	execResult, err := ctx.ExecWithErr([]string{gradle, "--quiet", "_javaFunctionPrintJarTarget"}, gcp.WithUserAttribution)
+	execResult, err := ctx.Exec([]string{gradle, "--quiet", "_javaFunctionPrintJarTarget"}, gcp.WithUserAttribution)
 	if err != nil {
 		return "", err
 	}
@@ -241,7 +241,7 @@ func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) (string, e
 			return "", err
 		}
 		// If the invoker was listed as a dependency in the pom.xml, copy it into target/_javaInvokerDependency.
-		if _, err := ctx.ExecWithErr([]string{
+		if _, err := ctx.Exec([]string{
 			mvn,
 			"--batch-mode",
 			"dependency:copy-dependencies",
@@ -308,10 +308,7 @@ func isInvokerJar(ctx *gcp.Context, jar string) bool {
 func installFramework(ctx *gcp.Context, layer *libcnb.Layer, version string) error {
 	url := fmt.Sprintf(functionsFrameworkURLTemplate, version)
 	ffName := filepath.Join(layer.Path, "functions-framework.jar")
-	result, err := ctx.ExecWithErr([]string{"curl", "--silent", "--fail", "--show-error", "--output", ffName, url})
-	// We use ExecWithErr rather than plain Exec because if it fails we want to exit with an error message better
-	// than "Failure: curl: (22) The requested URL returned error: 404".
-	// TODO(b/155874677): use plain Exec once it gives sufficient error messages.
+	result, err := ctx.Exec([]string{"curl", "--silent", "--fail", "--show-error", "--output", ffName, url})
 	if err != nil {
 		return gcp.InternalErrorf("fetching functions framework jar: %v\n%s", err, result.Stderr)
 	}

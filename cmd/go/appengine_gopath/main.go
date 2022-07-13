@@ -137,6 +137,6 @@ func buildFn(ctx *gcp.Context) error {
 func copyDir(ctx *gcp.Context, src, dst string) error {
 	// Trailing "/." copies the contents of src directory, but not src itself.
 	src = filepath.Clean(src) + string(filepath.Separator) + "."
-	_, err := ctx.ExecWithErr([]string{"cp", "--dereference", "-R", src, dst}, gcp.WithUserTimingAttribution)
+	_, err := ctx.Exec([]string{"cp", "--dereference", "-R", src, dst}, gcp.WithUserTimingAttribution)
 	return err
 }

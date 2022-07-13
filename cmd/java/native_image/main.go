@@ -113,7 +113,7 @@ func buildCommandLine(ctx *gcp.Context, buildArgs []string) ([]string, error) {
 	command := fmt.Sprintf("native-image --no-fallback --no-server -H:+StaticExecutableWithDynamicLibC %s %s %s",
 		userArgs, strings.Join(buildArgs, " "), tempImagePath)
 
-	if _, err := ctx.ExecWithErr([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
 		return nil, err
 	}
 
@@ -145,7 +145,7 @@ func buildMaven(ctx *gcp.Context, buildProfile string) ([]string, error) {
 		command = append(command, "-P"+buildProfile)
 	}
 
-	if _, err := ctx.ExecWithErr(command, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec(command, gcp.WithUserAttribution); err != nil {
 		return nil, err
 	}
 
@@ -177,7 +177,7 @@ func parsePomFile(ctx *gcp.Context) (*java.MavenProject, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := ctx.ExecWithErr([]string{
+	if _, err := ctx.Exec([]string{
 		mvn,
 		"help:effective-pom",
 		"--batch-mode",
@@ -286,7 +286,7 @@ func classpathAndMainFromSpringBoot(ctx *gcp.Context) (string, string, error) {
 	if err != nil {
 		return "", "", fmt.Errorf("creating temp directory: %w", err)
 	}
-	if _, err := ctx.ExecWithErr([]string{"unzip", "-q", jar, "-d", explodedJarDir}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"unzip", "-q", jar, "-d", explodedJarDir}, gcp.WithUserAttribution); err != nil {
 		return "", "", err
 	}
 

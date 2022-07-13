@@ -101,7 +101,7 @@ func buildFn(ctx *gcp.Context) error {
 	expectedSHA := expectedSHABuf.String()
 	// Disable the deprecated warnings inline using -d 'error_reporting=24575' flag while we add php.ini.
 	actualSHACmd := fmt.Sprintf("php -d 'error_reporting=24575' -r \"echo hash_file('sha384', '%s');\"", installer.Name())
-	result, err := ctx.ExecWithErr([]string{"bash", "-c", actualSHACmd})
+	result, err := ctx.Exec([]string{"bash", "-c", actualSHACmd})
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating bin folder: %w", err)
 	}
 	installCmd := fmt.Sprintf("php %s --install-dir %s --filename composer --version %s", installer.Name(), clBin, composerVer)
-	if _, err := ctx.ExecWithErr([]string{"bash", "-c", installCmd}); err != nil {
+	if _, err := ctx.Exec([]string{"bash", "-c", installCmd}); err != nil {
 		return err
 	}
 

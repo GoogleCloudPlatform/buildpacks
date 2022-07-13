@@ -105,7 +105,7 @@ func buildFn(ctx *gcp.Context) error {
 		command = append(command, "--quiet")
 	}
 
-	if _, err := ctx.ExecWithErr(command, gcp.WithStdoutTail, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec(command, gcp.WithStdoutTail, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 
@@ -173,7 +173,7 @@ func addJvmConfig(ctx *gcp.Context) error {
 }
 
 func mvnInstalled(ctx *gcp.Context) (bool, error) {
-	result, err := ctx.ExecWithErr([]string{"bash", "-c", "command -v mvn || true"})
+	result, err := ctx.Exec([]string{"bash", "-c", "command -v mvn || true"})
 	if err != nil {
 		return false, err
 	}
@@ -210,7 +210,7 @@ func installMaven(ctx *gcp.Context) (string, error) {
 		return "", gcp.UserErrorf("Maven version %s does not exist at %s (status %d).", mavenVersion, archiveURL, code)
 	}
 	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, mvnl.Path)
-	if _, err := ctx.ExecWithErr([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
 		return "", err
 	}
 

@@ -88,7 +88,7 @@ func InstallDartSDK(ctx *gcp.Context, layer *libcnb.Layer, version string) error
 		return err
 	}
 
-	if _, err := ctx.ExecWithErr([]string{"unzip", "-q", zip.Name(), "-d", layer.Path}); err != nil {
+	if _, err := ctx.Exec([]string{"unzip", "-q", zip.Name(), "-d", layer.Path}); err != nil {
 		return fmt.Errorf("extracting Dart SDK: %v", err)
 	}
 

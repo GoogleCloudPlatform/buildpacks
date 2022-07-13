@@ -85,7 +85,7 @@ func buildFn(ctx *gcp.Context) error {
 	// mindepth=1 excludes '.', '+' collects all file names before running the command.
 	// Exclude serverless_function_source_code and .google* dir e.g. .googlebuild, .googleconfig
 	command := fmt.Sprintf("find . -mindepth 1 -not -name %[1]s -prune -not -name %[2]q -prune -exec mv -t %[1]s {} +", fnSourceDir, ".google*")
-	if _, err := ctx.ExecWithErr([]string{"bash", "-c", command}, gcp.WithUserTimingAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserTimingAttribution); err != nil {
 		return err
 	}
 
@@ -192,7 +192,7 @@ func createMainGoModFile(ctx *gcp.Context, fnMod string, goModPath string) error
 
 // moduleAndPackageNames extracts the module name and package name of the function.
 func moduleAndPackageNames(ctx *gcp.Context, fn fnInfo) (string, string, error) {
-	result, err := ctx.ExecWithErr([]string{"go", "list", "-m"}, gcp.WithWorkDir(fn.Source), gcp.WithUserAttribution)
+	result, err := ctx.Exec([]string{"go", "list", "-m"}, gcp.WithWorkDir(fn.Source), gcp.WithUserAttribution)
 	if err != nil {
 		return "", "", err
 	}
@@ -272,7 +272,7 @@ func extractPackageNameInDir(ctx *gcp.Context, source string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("creating temp directory: %w", err)
 	}
-	result, err := ctx.ExecWithErr([]string{"go", "run", script, "-dir", source}, gcp.WithEnv("GOCACHE="+cacheDir), gcp.WithUserAttribution)
+	result, err := ctx.Exec([]string{"go", "run", script, "-dir", source}, gcp.WithEnv("GOCACHE="+cacheDir), gcp.WithUserAttribution)
 	if err != nil {
 		return "", err
 	}

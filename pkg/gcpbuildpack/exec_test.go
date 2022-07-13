@@ -32,7 +32,7 @@ func TestExecEmitsSpan(t *testing.T) {
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
 
-	ctx.ExecWithErr(strings.Fields("echo Hello"))
+	ctx.Exec(strings.Fields("echo Hello"))
 
 	if len(ctx.stats.spans) != 1 {
 		t.Fatalf("Unexpected number of spans, got %d want 1", len(ctx.stats.spans))
@@ -51,13 +51,13 @@ func TestExecInvokesCommand(t *testing.T) {
 	cmd := strings.Fields("echo Hello")
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
-	result, err := ctx.ExecWithErr(cmd)
+	result, err := ctx.Exec(cmd)
 	if err != nil {
-		t.Errorf("Exec2WithErr(%v) got unexpected error: %v", cmd, err)
+		t.Errorf("Exec(%v) got unexpected error: %v", cmd, err)
 	}
 	want := "Hello"
 	if result.Stdout != want {
-		t.Errorf("Exec2WithErr(%v) got stdout=%q, want stdout=%q", cmd, result.Stdout, want)
+		t.Errorf("Exec(%v) got stdout=%q, want stdout=%q", cmd, result.Stdout, want)
 	}
 }
 
@@ -66,10 +66,10 @@ func TestExecResult(t *testing.T) {
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
 
-	got, err := ctx.ExecWithErr(cmd)
+	got, err := ctx.Exec(cmd)
 
 	if err != nil {
-		t.Fatalf("ExecWithErr(%v) got unexpected error: %v", cmd, err)
+		t.Fatalf("Exec(%v) got unexpected error: %v", cmd, err)
 	}
 	if got.ExitCode != 0 {
 		t.Error("Exit code got 0, want != 0")
@@ -181,7 +181,7 @@ func TestExecAsUserUpdatesDuration(t *testing.T) {
 				t.Fatalf("user duration is not zero to start")
 			}
 
-			ctx.ExecWithErr(strings.Fields("sleep .1"), tc.opt)
+			ctx.Exec(strings.Fields("sleep .1"), tc.opt)
 			if ctx.stats.user <= dur {
 				t.Errorf("user duration did not increase")
 			}
@@ -211,7 +211,7 @@ func TestExecAsDefaultDoesNotUpdateDuration(t *testing.T) {
 				t.Fatalf("User duration is not zero to start")
 			}
 
-			ctx.ExecWithErr(strings.Fields("sleep .1"), opts...)
+			ctx.Exec(strings.Fields("sleep .1"), opts...)
 			if ctx.stats.user != 0 {
 				t.Fatalf("Exec(): user duration changed unexpectedly")
 			}
@@ -220,7 +220,7 @@ func TestExecAsDefaultDoesNotUpdateDuration(t *testing.T) {
 }
 
 func (ctx *Context) execWithErrCastToBuildError(cmd []string, opts ...ExecOption) (*ExecResult, *buildererror.Error) {
-	result, err := ctx.ExecWithErr(cmd, opts...)
+	result, err := ctx.Exec(cmd, opts...)
 	if err == nil {
 		return result, nil
 	}
@@ -286,10 +286,10 @@ func TestExecWithEnv(t *testing.T) {
 	defer cleanUp()
 	cmd := []string{"/bin/bash", "-c", "echo $FOO"}
 
-	result, err := ctx.ExecWithErr(cmd, WithEnv("A=B", "FOO=bar"))
+	result, err := ctx.Exec(cmd, WithEnv("A=B", "FOO=bar"))
 
 	if err != nil {
-		t.Fatalf("ExecWithErr(%v) got unexpected error: %v", cmd, err)
+		t.Fatalf("Exec(%v) got unexpected error: %v", cmd, err)
 	}
 	if got, want := strings.TrimSpace(result.Stdout), "bar"; got != want {
 		t.Errorf("incorrect output got=%q want=%q", got, want)
@@ -301,10 +301,10 @@ func TestExecWithEnvMultiple(t *testing.T) {
 	defer cleanUp()
 	cmd := []string{"/bin/bash", "-c", "echo $A $FOO"}
 
-	result, err := ctx.ExecWithErr(cmd, WithEnv("A=B", "FOO=bar"), WithEnv("FOO=baz"))
+	result, err := ctx.Exec(cmd, WithEnv("A=B", "FOO=bar"), WithEnv("FOO=baz"))
 
 	if err != nil {
-		t.Fatalf("ExecWithErr(%v) got unexpected error: %v", cmd, err)
+		t.Fatalf("Exec(%v) got unexpected error: %v", cmd, err)
 	}
 	if got, want := strings.TrimSpace(result.Stdout), "B baz"; got != want {
 		t.Errorf("incorrect output got=%q want=%q", got, want)
@@ -320,10 +320,10 @@ func TestExecWithWorkDir(t *testing.T) {
 	defer cleanUp()
 	cmd := []string{"/bin/bash", "-c", "echo $PWD"}
 
-	result, err := ctx.ExecWithErr(cmd, WithWorkDir(tdir))
+	result, err := ctx.Exec(cmd, WithWorkDir(tdir))
 
 	if err != nil {
-		t.Fatalf("ExecWithErr(%v) got unexpected error: %v", cmd, err)
+		t.Fatalf("Exec(%v) got unexpected error: %v", cmd, err)
 	}
 	if got, want := strings.TrimSpace(result.Stdout), tdir; got != want {
 		t.Errorf("incorrect output got=%q want=%q", got, want)
@@ -407,7 +407,7 @@ func TestMessageProducerHelpers(t *testing.T) {
 	}
 }
 
-func TestExecWithErr(t *testing.T) {
+func TestExec(t *testing.T) {
 	testCases := []struct {
 		name            string
 		cmd             []string

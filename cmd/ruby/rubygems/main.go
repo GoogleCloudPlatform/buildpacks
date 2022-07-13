@@ -127,7 +127,7 @@ func isUsingBundler1(ctx *gcp.Context) (bool, error) {
 // installBundler1 installs bundler {bundler1Version} inside the rubygems layer
 func installBundler1(ctx *gcp.Context, layer *libcnb.Layer) error {
 	ctx.Logf("Installing bundler %s since the Gemfile.lock BUNDLED WITH uses 1.x.x", bundler1Version)
-	_, err := ctx.ExecWithErr([]string{"gem", "install", fmt.Sprintf("bundler:%s", bundler1Version), "--no-document"},
+	_, err := ctx.Exec([]string{"gem", "install", fmt.Sprintf("bundler:%s", bundler1Version), "--no-document"},
 		gcp.WithEnv(fmt.Sprintf("GEM_PATH=%s", layer.Path),
 			fmt.Sprintf("GEM_HOME=%s", layer.Path)),
 		gcp.WithUserAttribution,
@@ -163,7 +163,7 @@ func installRubygems(ctx *gcp.Context, layer *libcnb.Layer) error {
 	}
 
 	// this allows us to ship rubygems and bundler separately from the ruby runtime
-	if _, err = ctx.ExecWithErr([]string{"ruby", "setup.rb", "-E", "--no-document", "--destdir", layer.Path, "--prefix", "/"},
+	if _, err = ctx.Exec([]string{"ruby", "setup.rb", "-E", "--no-document", "--destdir", layer.Path, "--prefix", "/"},
 		gcp.WithWorkDir(tempDir),
 		gcp.WithUserAttribution,
 	); err != nil {

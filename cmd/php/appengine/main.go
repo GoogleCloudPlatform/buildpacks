@@ -96,7 +96,7 @@ func appEngineInDeps(deps []string) bool {
 }
 
 func allDeps(ctx *gcp.Context) ([]string, error) {
-	result, err := ctx.ExecWithErr([]string{"composer", "show", "-N"}, gcp.WithUserAttribution)
+	result, err := ctx.Exec([]string{"composer", "show", "-N"}, gcp.WithUserAttribution)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func allDeps(ctx *gcp.Context) ([]string, error) {
 }
 
 func directDeps(ctx *gcp.Context) ([]string, error) {
-	result, err := ctx.ExecWithErr([]string{"composer", "show", "--direct", "-N"}, gcp.WithUserAttribution)
+	result, err := ctx.Exec([]string{"composer", "show", "--direct", "-N"}, gcp.WithUserAttribution)
 	if err != nil {
 		return nil, err
 	}

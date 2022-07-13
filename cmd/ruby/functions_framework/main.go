@@ -110,7 +110,7 @@ func validateSource(ctx *gcp.Context) (string, error) {
 // frameworkVersion validates framework installation and returns the major and minor components of its version
 func frameworkVersion(ctx *gcp.Context) (*semver.Version, error) {
 	cmd := []string{"bundle", "exec", "functions-framework-ruby", "--version"}
-	result, err := ctx.ExecWithErr(cmd)
+	result, err := ctx.Exec(cmd)
 	// Failure to execute the binary at all implies the functions_framework is
 	// not properly installed in the user's Gemfile.
 	if result == nil || result.ExitCode == 127 {
@@ -135,7 +135,7 @@ func validateTarget(ctx *gcp.Context, source string) error {
 	if fnSig, ok := os.LookupEnv(env.FunctionSignatureType); ok {
 		cmd = append(cmd, "--signature-type", fnSig)
 	}
-	if result, err := ctx.ExecWithErr(cmd, gcp.WithEnv("MALLOC_ARENA_MAX=2", "LANG=C.utf8", "RACK_ENV=production"), gcp.WithUserAttribution); err != nil {
+	if result, err := ctx.Exec(cmd, gcp.WithEnv("MALLOC_ARENA_MAX=2", "LANG=C.utf8", "RACK_ENV=production"), gcp.WithUserAttribution); err != nil {
 		return gcp.UserErrorf("failed to verify function target %q in source %q: %s", target, source, result.Stderr)
 	}
 	return nil

@@ -47,7 +47,7 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating %v layer: %w", pubLayer, err)
 	}
 	ml.BuildEnvironment.Override("PUB_CACHE", ml.Path)
-	if _, err := ctx.ExecWithErr([]string{"dart", "pub", "get"}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"dart", "pub", "get"}, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 	return nil

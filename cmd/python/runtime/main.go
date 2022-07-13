@@ -75,7 +75,7 @@ func buildFn(ctx *gcp.Context) error {
 
 		ctx.Logf("Upgrading pip to the latest version and installing build tools")
 		path := filepath.Join(layer.Path, "bin/python3")
-		if _, err := ctx.ExecWithErr([]string{path, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"}, gcp.WithUserAttribution); err != nil {
+		if _, err := ctx.Exec([]string{path, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"}, gcp.WithUserAttribution); err != nil {
 			return err
 		}
 	}

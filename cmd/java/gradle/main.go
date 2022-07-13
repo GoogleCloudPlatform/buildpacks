@@ -96,7 +96,7 @@ func buildFn(ctx *gcp.Context) error {
 		command = append(command, "--quiet")
 	}
 
-	if _, err := ctx.ExecWithErr(command, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec(command, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 
@@ -131,7 +131,7 @@ func provisionOrDetectGradle(ctx *gcp.Context) (string, error) {
 }
 
 func gradleInstalled(ctx *gcp.Context) (bool, error) {
-	result, err := ctx.ExecWithErr([]string{"bash", "-c", "command -v gradle || true"})
+	result, err := ctx.Exec([]string{"bash", "-c", "command -v gradle || true"})
 	if err != nil {
 		return false, err
 	}
@@ -177,19 +177,19 @@ func installGradle(ctx *gcp.Context) (string, error) {
 	defer ctx.RemoveAll(gradleZip)
 
 	curl := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s --output %s", downloadURL, gradleZip)
-	if _, err := ctx.ExecWithErr([]string{"bash", "-c", curl}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"bash", "-c", curl}, gcp.WithUserAttribution); err != nil {
 		return "", err
 	}
 
 	unzip := fmt.Sprintf("unzip -q %s -d %s", gradleZip, tmpDir)
-	if _, err := ctx.ExecWithErr([]string{"bash", "-c", unzip}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"bash", "-c", unzip}, gcp.WithUserAttribution); err != nil {
 		return "", err
 	}
 
 	gradleExtracted := filepath.Join(tmpDir, fmt.Sprintf("gradle-%s", gradleVersion))
 	defer ctx.RemoveAll(gradleExtracted)
 	install := fmt.Sprintf("mv %s/* %s", gradleExtracted, gradlel.Path)
-	if _, err := ctx.ExecWithErr([]string{"bash", "-c", install}, gcp.WithUserTimingAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"bash", "-c", install}, gcp.WithUserTimingAttribution); err != nil {
 		return "", err
 	}
 

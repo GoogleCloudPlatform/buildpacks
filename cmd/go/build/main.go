@@ -82,7 +82,7 @@ func buildFn(ctx *gcp.Context) error {
 	if workdir == "" {
 		workdir = ctx.ApplicationRoot()
 	}
-	if _, err := ctx.ExecWithErr(bld, gcp.WithEnv("GOCACHE="+cl.Path), gcp.WithWorkDir(workdir), gcp.WithMessageProducer(printTipsAndKeepStderrTail(ctx)), gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec(bld, gcp.WithEnv("GOCACHE="+cl.Path), gcp.WithWorkDir(workdir), gcp.WithMessageProducer(printTipsAndKeepStderrTail(ctx)), gcp.WithUserAttribution); err != nil {
 		return err
 	}
 
@@ -132,7 +132,7 @@ func goBuildable(ctx *gcp.Context) (string, error) {
 // searchBuildables searches the source for all the files that contain
 // a `main()` entrypoint.
 func searchBuildables(ctx *gcp.Context) ([]string, error) {
-	result, err := ctx.ExecWithErr([]string{"go", "list", "-f", `{{if eq .Name "main"}}{{.Dir}}{{end}}`, "./..."}, gcp.WithUserAttribution)
+	result, err := ctx.Exec([]string{"go", "list", "-f", `{{if eq .Name "main"}}{{.Dir}}{{end}}`, "./..."}, gcp.WithUserAttribution)
 	if err != nil {
 		return nil, err
 	}

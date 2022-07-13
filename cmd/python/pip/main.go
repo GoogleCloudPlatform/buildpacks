@@ -81,7 +81,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	ctx.Logf("Checking for incompatible dependencies.")
-	result, err := ctx.ExecWithErr([]string{"python3", "-m", "pip", "check"}, gcp.WithUserAttribution)
+	result, err := ctx.Exec([]string{"python3", "-m", "pip", "check"}, gcp.WithUserAttribution)
 	if result == nil {
 		return fmt.Errorf("pip check: %w", err)
 	}

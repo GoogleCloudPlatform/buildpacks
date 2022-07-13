@@ -77,7 +77,7 @@ func buildFn(ctx *gcp.Context) error {
 
 // archiveSource archives user's source code in a layer
 func archiveSource(ctx *gcp.Context, fileName, dirName string) error {
-	if _, err := ctx.ExecWithErr([]string{"tar",
+	if _, err := ctx.Exec([]string{"tar",
 		"--create", "--gzip", "--preserve-permissions",
 		"--file=" + fileName,
 		"--directory", dirName,

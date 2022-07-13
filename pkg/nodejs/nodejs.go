@@ -129,7 +129,7 @@ func RequestedNodejsVersion(ctx *gcp.Context, dir string) (string, error) {
 // nodeVersion returns the installed version of Node.js.
 // It can be overridden for testing.
 var nodeVersion = func(ctx *gcp.Context) (string, error) {
-	result, err := ctx.ExecWithErr([]string{"node", "-v"})
+	result, err := ctx.Exec([]string{"node", "-v"})
 	if err != nil {
 		return "", err
 	}

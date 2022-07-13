@@ -98,7 +98,7 @@ func (ctx *Context) saveErrorOutput(be *buildererror.Error) {
 		return
 	}
 	fname := filepath.Join(outputDir, builderOutputFilename)
-	if _, err := ctx.ExecWithErr([]string{"mv", "-f", tname, fname}); err != nil {
+	if _, err := ctx.Exec([]string{"mv", "-f", tname, fname}); err != nil {
 		ctx.Warnf("Failed to move %s to %s, skipping structured error output: %v", tname, fname, err)
 		return
 	}

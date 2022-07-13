@@ -85,13 +85,13 @@ func buildFn(ctx *gcp.Context) error {
 	if cached {
 		ctx.CacheHit(cacheTag)
 		// Restore cached node_modules.
-		if _, err := ctx.ExecWithErr([]string{"cp", "--archive", nm, "node_modules"}, gcp.WithUserTimingAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"cp", "--archive", nm, "node_modules"}, gcp.WithUserTimingAttribution); err != nil {
 			return err
 		}
 
 		// Always run npm install to run preinstall/postinstall scripts.
 		// Otherwise it should be a no-op because the lockfile is unchanged.
-		if _, err := ctx.ExecWithErr([]string{"npm", "install", "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"npm", "install", "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution); err != nil {
 			return err
 		}
 	} else {
@@ -105,7 +105,7 @@ func buildFn(ctx *gcp.Context) error {
 			return fmt.Errorf("clearing layer %q: %w", ml.Name, err)
 		}
 
-		if _, err := ctx.ExecWithErr([]string{"npm", installCmd, "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"npm", installCmd, "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution); err != nil {
 			return err
 		}
 
@@ -113,13 +113,13 @@ func buildFn(ctx *gcp.Context) error {
 		if err := ctx.MkdirAll("node_modules", 0755); err != nil {
 			return err
 		}
-		if _, err := ctx.ExecWithErr([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution); err != nil {
 			return err
 		}
 	}
 
 	if gcpBuild {
-		if _, err := ctx.ExecWithErr([]string{"npm", "run", "gcp-build"}, gcp.WithUserAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"npm", "run", "gcp-build"}, gcp.WithUserAttribution); err != nil {
 			return err
 		}
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmGcpBuildUsageCounterID).Increment(1)
@@ -130,7 +130,7 @@ func buildFn(ctx *gcp.Context) error {
 		}
 		if shouldPrune {
 			// npm prune deletes devDependencies from node_modules
-			if _, err := ctx.ExecWithErr([]string{"npm", "prune"}, gcp.WithUserAttribution); err != nil {
+			if _, err := ctx.Exec([]string{"npm", "prune"}, gcp.WithUserAttribution); err != nil {
 				return err
 			}
 		}
@@ -200,7 +200,7 @@ func upgradeNPM(ctx *gcp.Context) error {
 	ctx.ClearLayer(npmLayer)
 	prefix := fmt.Sprintf("--prefix=%s", npmLayer.Path)
 	pkg := fmt.Sprintf("npm@%s", npmVersion)
-	if _, err := ctx.ExecWithErr([]string{"npm", "install", "-g", prefix, pkg}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"npm", "install", "-g", prefix, pkg}, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 	// Set the path here to ensure the version we just installed takes precedence over the npm bundled

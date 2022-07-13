@@ -81,7 +81,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Run restore regardless of cache status because it generates files expected by publish.
 	cmd := []string{"dotnet", "restore", "--packages", pkgLayer.Path, proj}
-	if _, err := ctx.ExecWithErr(cmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec(cmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution); err != nil {
 		return err
 	}
 
@@ -108,7 +108,7 @@ func buildFn(ctx *gcp.Context) error {
 		cmd = []string{"/bin/bash", "-c", strings.Join(append(cmd, args), " ")}
 	}
 
-	if _, err := ctx.ExecWithErr(cmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec(cmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution); err != nil {
 		return err
 	}
 
@@ -201,7 +201,7 @@ func checkCache(ctx *gcp.Context, l *libcnb.Layer) (bool, error) {
 	if globalJSONExists {
 		projectFiles = append(projectFiles, globalJSON)
 	}
-	result, err := ctx.ExecWithErr([]string{"dotnet", "--version"})
+	result, err := ctx.Exec([]string{"dotnet", "--version"})
 	if err != nil {
 		return false, err
 	}

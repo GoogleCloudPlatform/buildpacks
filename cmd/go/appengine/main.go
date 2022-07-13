@@ -91,7 +91,7 @@ func appEngineInDeps(deps []string) bool {
 }
 
 func allDeps(ctx *gcp.Context) ([]string, error) {
-	result, err := ctx.ExecWithErr([]string{"go", "list", "-f", `{{join .Deps "\n"}}`, "./..."}, gcp.WithUserAttribution)
+	result, err := ctx.Exec([]string{"go", "list", "-f", `{{join .Deps "\n"}}`, "./..."}, gcp.WithUserAttribution)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func allDeps(ctx *gcp.Context) ([]string, error) {
 }
 
 func directDeps(ctx *gcp.Context) ([]string, error) {
-	result, err := ctx.ExecWithErr([]string{"go", "list", "-f", `{{join .Imports "\n" }}`, "./..."}, gcp.WithUserAttribution)
+	result, err := ctx.Exec([]string{"go", "list", "-f", `{{join .Imports "\n" }}`, "./..."}, gcp.WithUserAttribution)
 	if err != nil {
 		return nil, err
 	}

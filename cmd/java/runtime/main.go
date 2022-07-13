@@ -97,7 +97,7 @@ func buildFn(ctx *gcp.Context) error {
 		return gcp.UserErrorf("Java feature version %s does not exist at %s (status %d). You can specify the feature version with %s. See available feature runtime versions at https://api.adoptopenjdk.net/v3/info/available_releases", featureVersion, releaseURL, code, env.RuntimeVersion)
 	}
 
-	result, err := ctx.ExecWithErr([]string{"curl", "--fail", "--show-error", "--silent", "--location", releaseURL}, gcp.WithUserAttribution)
+	result, err := ctx.Exec([]string{"curl", "--fail", "--show-error", "--silent", "--location", releaseURL}, gcp.WithUserAttribution)
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.Logf("Installing Java v%s", version)
 
 	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, l.Path)
-	if _, err := ctx.ExecWithErr([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 

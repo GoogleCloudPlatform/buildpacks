@@ -48,7 +48,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 	if br {
 		// Run build runner.
-		if _, err := ctx.ExecWithErr([]string{"dart", "run", "build_runner", "build", "--delete-conflicting-outputs"}, gcp.WithUserAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"dart", "run", "build_runner", "build", "--delete-conflicting-outputs"}, gcp.WithUserAttribution); err != nil {
 			return err
 		}
 	}
@@ -68,7 +68,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Build the application.
 	bld := []string{"dart", "compile", "exe", buildable, "-o", outBin}
-	if _, err := ctx.ExecWithErr(bld, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec(bld, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 

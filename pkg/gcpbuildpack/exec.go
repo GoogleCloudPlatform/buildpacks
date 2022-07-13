@@ -108,8 +108,8 @@ var WithStdoutTail = WithMessageProducer(KeepStdoutTail)
 // WithStdoutHead keeps the head of stdout for the error message.
 var WithStdoutHead = WithMessageProducer(KeepStdoutHead)
 
-// ExecWithErr runs the given command (with args) under the default configuration, allowing the caller to handle the error.
-func (ctx *Context) ExecWithErr(cmd []string, opts ...ExecOption) (*ExecResult, error) {
+// Exec runs the given command (with args) under the default configuration, allowing the caller to handle the error.
+func (ctx *Context) Exec(cmd []string, opts ...ExecOption) (*ExecResult, error) {
 	params := execParams{cmd: cmd, messageProducer: KeepCombinedTail}
 	for _, o := range opts {
 		o(&params)

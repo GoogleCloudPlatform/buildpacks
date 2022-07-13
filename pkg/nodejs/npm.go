@@ -66,7 +66,7 @@ func EnsureLockfile(ctx *gcp.Context) (string, error) {
 	if !pkgLockExists {
 		ctx.Logf("Generating %s.", PackageLock)
 		ctx.Warnf("*** Improve build performance by generating and committing %s.", PackageLock)
-		if _, err := ctx.ExecWithErr([]string{"npm", "install", "--package-lock-only", "--quiet"}, gcp.WithUserAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"npm", "install", "--package-lock-only", "--quiet"}, gcp.WithUserAttribution); err != nil {
 			return "", err
 		}
 	}
@@ -94,7 +94,7 @@ func NPMInstallCommand(ctx *gcp.Context) (string, error) {
 
 // npmVersion returns the version of NPM installed in the system.
 var npmVersion = func(ctx *gcp.Context) (string, error) {
-	result, err := ctx.ExecWithErr([]string{"npm", "--version"})
+	result, err := ctx.Exec([]string{"npm", "--version"})
 	if err != nil {
 		return "", nil
 	}
