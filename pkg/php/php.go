@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+    "strings"
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
