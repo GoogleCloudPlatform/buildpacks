@@ -87,7 +87,6 @@ package_group(
         "//builders/gcf/php81",
         "//builders/gcp/base",
         "//builders/php",
-        "//cmd/php",
     ],
 )
 
