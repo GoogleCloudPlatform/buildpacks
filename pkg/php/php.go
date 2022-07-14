@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-    "strings"
+	"strings"
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
@@ -173,17 +173,17 @@ func composerInstall(ctx *gcp.Context, flags []string) error {
 // It creates a layer, so it returns the layer so that the caller may further modify it
 // if they desire.
 func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
-    var flags []string
-    if composerArgs := os.Getenv(composerArgsEnv); composerArgs != "" {
-        flags = strings.Split(composerArgs, " ")
-    } else {
+	var flags []string
+	if composerArgs := os.Getenv(composerArgsEnv); composerArgs != "" {
+		flags = strings.Split(composerArgs, " ")
+	} else {
 		// We don't install dev dependencies (i.e. we pass --no-dev to composer) because doing so has caused
 		// problems for customers in the past. For more information see these links:
 		//   https://github.com/GoogleCloudPlatform/php-docs-samples/issues/736
 		//   https://github.com/GoogleCloudPlatform/runtimes-common/pull/763
 		//   https://github.com/GoogleCloudPlatform/runtimes-common/commit/6c4970f609d80f9436ac58ae272cfcc6bcd57143
-        flags = []string{"--no-dev", "--no-progress", "--no-interaction", "--optimize-autoloader"}        
-    }
+		flags = []string{"--no-dev", "--no-progress", "--no-interaction", "--optimize-autoloader"}        
+	}
 
 	if err := ctx.RemoveAll(Vendor); err != nil {
 		return nil, err
