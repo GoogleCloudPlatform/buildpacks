@@ -26,7 +26,6 @@ package_group(
         "//builders/gae/dotnet3",
         "//builders/gcf/dotnet3",
         "//builders/gcp/base",
-        "//cmd/dotnet",
     ],
 )
 
