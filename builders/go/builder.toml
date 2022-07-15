@@ -1,12 +1,186 @@
 description = "Unified builder for the Go runtime"
 
 [[buildpacks]]
-  id = "google.go"
-  uri = "go.cnb"
+  id = "google.utils.archive-source"
+  uri = "archive_source.tgz"
+
+[[buildpacks]]
+  id = "google.config.entrypoint"
+  uri = "entrypoint.tgz"
+
+[[buildpacks]]
+  id = "google.go.appengine"
+  uri = "appengine.tgz"
+
+[[buildpacks]]
+  id = "google.go.appengine_gopath"
+  uri = "appengine_gopath.tgz"
+
+[[buildpacks]]
+  id = "google.go.appengine_gomod"
+  uri = "appengine_gomod.tgz"
+
+[[buildpacks]]
+  id = "google.go.clear_source"
+  uri = "clear_source.tgz"
+
+[[buildpacks]]
+  id = "google.go.legacy-worker"
+  uri = "legacy_worker.tgz"
+
+[[buildpacks]]
+  id = "google.go.runtime"
+  uri = "runtime.tgz"
+
+[[buildpacks]]
+  id = "google.go.gomod"
+  uri = "gomod.tgz"
+
+[[buildpacks]]
+  id = "google.go.build"
+  uri = "build.tgz"
+
+[[buildpacks]]
+  id = "google.go.gopath"
+  uri = "gopath.tgz"
+
+[[buildpacks]]
+  id = "google.go.functions-framework"
+  uri = "functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
 
 [[order]]
+
   [[order.group]]
-    id = "google.go"
+    id = "google.go.appengine_gomod"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.gomod"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.go.appengine"
+
+  [[order.group]]
+    id = "google.utils.label"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.appengine_gopath"
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.go.appengine"
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# The GCF go111 order group. The legacy worker is the "functions-framework"
+# buildpack for go111.
+[[order]]
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.legacy-worker"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.go.clear_source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# The GCF order group.
+[[order]]
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.functions-framework"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.go.clear_source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.gomod"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.clear_source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.gopath"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.clear_source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
 
 [stack]
   id = "google.gae.18"

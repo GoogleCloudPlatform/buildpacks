@@ -31,7 +31,12 @@ builder(
             "//cmd/dotnet/sdk:sdk.tgz",
         ],
         "go": [
-            "//cmd/go:go.cnb",
+            "//cmd/go/build:build.tgz",
+            "//cmd/go/clear_source:clear_source.tgz",
+            "//cmd/go/functions_framework:functions_framework.tgz",
+            "//cmd/go/gomod:gomod.tgz",
+            "//cmd/go/gopath:gopath.tgz",
+            "//cmd/go/runtime:runtime.tgz",
         ],
         "java": [
             "//cmd/java/clear_source:clear_source.tgz",
@@ -93,7 +98,12 @@ builder(
             "//cmd/dotnet/sdk:sdk.tgz",
         ],
         "go": [
-            "//cmd/go:go.cnb",
+            "//cmd/go/build:build.tgz",
+            "//cmd/go/clear_source:clear_source.tgz",
+            "//cmd/go/functions_framework:functions_framework.tgz",
+            "//cmd/go/gomod:gomod.tgz",
+            "//cmd/go/gopath:gopath.tgz",
+            "//cmd/go/runtime:runtime.tgz",
         ],
         "java": [
             "//cmd/java/clear_source:clear_source.tgz",
