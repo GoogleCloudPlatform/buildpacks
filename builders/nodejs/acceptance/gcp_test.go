@@ -146,6 +146,12 @@ func TestAcceptance(t *testing.T) {
 			MustUse:                    []string{nodeRuntime, nodeNPM},
 			MustOutput:                 []string{"npm --version\n\n5.5.1"},
 		},
+		{
+			Name:    "Native extensions",
+			App:     "native_extensions",
+			Env:     []string{"GOOGLE_ENTRYPOINT=node hello.js"},
+			MustUse: []string{nodeRuntime, nodeNPM, entrypoint},
+		},
 	}
 
 	for _, tc := range acceptance.FilterTests(t, testCases) {
