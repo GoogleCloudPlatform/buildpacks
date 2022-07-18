@@ -43,6 +43,13 @@ func TestAcceptance(t *testing.T) {
 			MustMatch: "PASS_PHP_INI",
 			MustUse:   []string{phpRuntime, phpWebConfig, utilsNginx},
 		},
+		{
+			Name:       "extension app",
+			App:        "extension",
+			MustMatch:  "PASS_EXT",
+			MustUse:    []string{composer, composerInstall, phpRuntime, phpWebConfig, utilsNginx},
+			MustNotUse: []string{composerGCPBuild, functionFramework, cloudFunctions},
+		},
 	}
 
 	for _, tc := range testCases {
