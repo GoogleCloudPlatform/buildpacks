@@ -73,14 +73,15 @@ type stats struct {
 
 // Context provides contextually aware functions for buildpack authors.
 type Context struct {
-	info            libcnb.BuildpackInfo
-	applicationRoot string
-	buildpackRoot   string
-	debug           bool
-	logger          *log.Logger
-	stats           stats
-	exiter          Exiter
-	warnings        []string
+	info                     libcnb.BuildpackInfo
+	applicationRoot          string
+	buildpackRoot            string
+	debug                    bool
+	logger                   *log.Logger
+	installedRuntimeVersions []string
+	stats                    stats
+	exiter                   Exiter
+	warnings                 []string
 
 	// detect items
 	detectContext libcnb.DetectContext
@@ -360,6 +361,17 @@ func (ctx *Context) Span(label string, start time.Time, status buildererror.Stat
 		ctx.Warnf("Invalid span dropped: %v", err)
 	}
 	ctx.stats.spans = append(ctx.stats.spans, si)
+}
+
+// InstalledRuntimeVersions returns the list of runtime versions installed during build time.
+func (ctx *Context) InstalledRuntimeVersions() []string {
+	return ctx.installedRuntimeVersions
+}
+
+// AddInstalledRuntimeVersion adds a runtime version to the list of installed runtimes. Used
+// for versionless runtimes to provide feedback on the runtime version selected at build time.
+func (ctx *Context) AddInstalledRuntimeVersion(version string) {
+	ctx.installedRuntimeVersions = append(ctx.installedRuntimeVersions, version)
 }
 
 // AddBOMEntry adds an entry to the bill of materials.

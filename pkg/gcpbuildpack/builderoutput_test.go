@@ -264,11 +264,12 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 	populatedMetrics.GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(3)
 
 	testCases := []struct {
-		name       string
-		addMetrics bool
-		initial    *builderoutput.BuilderOutput
-		warnings   []string
-		want       builderoutput.BuilderOutput
+		name                     string
+		addMetrics               bool
+		installedRuntimeVersions []string
+		initial                  *builderoutput.BuilderOutput
+		warnings                 []string
+		want                     builderoutput.BuilderOutput
 	}{
 		{
 			name:       "no file",
@@ -305,6 +306,18 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
 					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
+					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
+				},
+				CustomImage: false,
+			},
+		},
+		{
+			name:                     "propagates InstalledRuntimeVersions",
+			installedRuntimeVersions: []string{"3.2.1", "6.0.3"},
+			want: builderoutput.BuilderOutput{
+				InstalledRuntimeVersions: []string{"3.2.1", "6.0.3"},
+				Metrics:                  buildermetrics.NewBuilderMetrics(),
+				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
 				CustomImage: false,
@@ -460,6 +473,9 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 			}
 			ctx.stats.user = userDur
 			ctx.warnings = tc.warnings
+			for _, version := range tc.installedRuntimeVersions {
+				ctx.AddInstalledRuntimeVersion(version)
+			}
 
 			ctx.saveSuccessOutput(dur)
 

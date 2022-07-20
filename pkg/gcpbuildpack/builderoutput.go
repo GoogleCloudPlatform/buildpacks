@@ -165,6 +165,10 @@ func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 		}
 	}
 
+	if len(ctx.InstalledRuntimeVersions()) > 0 {
+		bo.InstalledRuntimeVersions = ctx.InstalledRuntimeVersions()
+	}
+
 	bo.Stats = append(bo.Stats, builderoutput.BuilderStat{
 		BuildpackID:      ctx.BuildpackID(),
 		BuildpackVersion: ctx.BuildpackVersion(),
