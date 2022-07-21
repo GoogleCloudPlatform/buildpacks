@@ -100,10 +100,21 @@ func readProjectFile(data []byte, proj string) (Project, error) {
 	return p, nil
 }
 
+// BuildableDir returns the directory of the provided GOOGLE_BUILDABLE env var.
+// Buildable is in the form of app, app/app.csproj, or app/app.vbproj.
+func BuildableDir() string {
+	buildable := os.Getenv(env.Buildable)
+	if strings.Contains(filepath.Ext(buildable), "proj") {
+		return filepath.Dir(buildable)
+	}
+	return buildable
+}
+
 // RuntimeConfigJSONFiles returns all runtimeconfig.json files in 'path' (recursive).
 // The runtimeconfig.json file is present for compiled .NET assemblies.
 func RuntimeConfigJSONFiles(path string) ([]string, error) {
 	var files []string
+	var buildableDir = BuildableDir()
 	if err := filepath.WalkDir(path, func(f string, d fs.DirEntry, e error) error {
 		if e != nil {
 			return e
@@ -111,7 +122,8 @@ func RuntimeConfigJSONFiles(path string) ([]string, error) {
 		if d.IsDir() {
 			return nil
 		}
-		if strings.HasSuffix(f, "runtimeconfig.json") {
+
+		if strings.HasSuffix(f, "runtimeconfig.json") && strings.HasPrefix(f, buildableDir) {
 			files = append(files, f)
 		}
 		return nil
@@ -318,19 +330,13 @@ func FindProjectFile(ctx *gcp.Context) (string, error) {
 
 // GetRuntimeVersion returns the Microsoft.AspNetCore.App version
 // in the runtimeconfig.json file.
-func GetRuntimeVersion(ctx *gcp.Context) (string, error) {
-	rtCfgFiles, err := RuntimeConfigJSONFiles(".")
+func GetRuntimeVersion(ctx *gcp.Context, rtCfgFiles []string) (string, error) {
+	rtCfgFile, err := pickRuntimeConfigFile(ctx, rtCfgFiles)
 	if err != nil {
-		return "", fmt.Errorf("finding runtimeconfig.json: %w", err)
+		return "", err
 	}
-	if len(rtCfgFiles) == 0 {
-		return "", fmt.Errorf("runtimeconfig.json does not exist")
-	}
-	// If publish buildpack is called, we have multiple
-	// identical copiesof runtimeconfig.json.
-	rtCfgFile := rtCfgFiles[0]
-	ctx.Logf("Using runtimeconfig file %q", rtCfgFile)
-	rtCfg, err := ReadRuntimeConfigJSON(rtCfgFile)
+
+	rtCfg, err := ReadRuntimeConfigJSON(filepath.Join(ctx.ApplicationRoot(), rtCfgFile))
 	if err != nil {
 		return "", fmt.Errorf("reading runtimeconfig.json: %w", err)
 	}
@@ -343,4 +349,37 @@ func GetRuntimeVersion(ctx *gcp.Context) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("couldn't find runtime version from runtimeconfig.json: %#v", rtCfg)
+}
+
+func pickRuntimeConfigFile(ctx *gcp.Context, rtCfgFiles []string) (string, error) {
+	if len(rtCfgFiles) == 0 {
+		return "", fmt.Errorf("at least one 'runtimeconfig.json' is expected")
+	}
+
+	// This is needed for prebuilt app without ${BUILDABLE}.
+	// To be backward compatible, we don't validate the path when there's only one rtCfgFile.
+	if len(rtCfgFiles) == 1 {
+		return rtCfgFiles[0], nil
+	}
+
+	rtCfgFile := ""
+	buildable := os.Getenv(env.Buildable)
+	buildableDir := BuildableDir()
+	for _, f := range rtCfgFiles {
+		ctx.Logf("Found runtimeconfig.json file: %v", f)
+		if !strings.HasPrefix(f, buildable) {
+			continue
+		}
+
+		if strings.HasPrefix(f, filepath.Join(buildableDir, "bin/Release")) {
+			rtCfgFile = f
+			break
+		}
+	}
+	if rtCfgFile == "" {
+		return "", fmt.Errorf("at least one 'runtimeconfig.json' under ${GOOGLE_BUILDABLE}=%q is expected",
+			buildable)
+	}
+	ctx.Logf("Using runtimeconfig file %q", rtCfgFile)
+	return rtCfgFile, nil
 }

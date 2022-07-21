@@ -50,6 +50,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if len(files) != 0 {
 		return gcp.OptIn("found project files: " + strings.Join(files, ", ")), nil
 	}
+
 	rtCfgs, err := dotnet.RuntimeConfigJSONFiles(".")
 	if err != nil {
 		return nil, fmt.Errorf("finding runtimeconfig.json: %w", err)
@@ -62,7 +63,16 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	runtimeVersion, err := dotnet.GetRuntimeVersion(ctx)
+	rtCfgFiles, err := dotnet.RuntimeConfigJSONFiles(".")
+	if err != nil {
+		return fmt.Errorf("finding runtimeconfig.json: %w", err)
+	}
+	// This invalid state should have been rejected by the detectFn already.
+	if len(rtCfgFiles) == 0 {
+		return fmt.Errorf("runtimeconfig.json does not exist")
+	}
+
+	runtimeVersion, err := dotnet.GetRuntimeVersion(ctx, rtCfgFiles)
 	if err != nil {
 		return err
 	}

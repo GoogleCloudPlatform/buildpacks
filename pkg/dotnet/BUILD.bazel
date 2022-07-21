@@ -26,6 +26,7 @@ go_test(
     embed = [":dotnet"],
     rundir = ".",
     deps = [
+        "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/testdata",
     ],

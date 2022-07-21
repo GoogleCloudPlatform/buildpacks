@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 )
@@ -102,9 +103,11 @@ func TestRuntimeConfigJSONFiles(t *testing.T) {
 			Name:                 "multiple entries",
 			TestDataRelativePath: "",
 			ExpectedResult: []string{
+				"aaa_dir/bin/Release/another.runtimeconfig.json",
 				"another_dir/with_subfolder/another.runtimeconfig.json",
 				"runtimeconfig.json/test.runtimeconfig.json",
 				"subdir/my.runtimeconfig.json",
+				"zzz_dir/bin/Release/another.runtimeconfig.json",
 			},
 		},
 	}
@@ -142,7 +145,7 @@ func TestReadRuntimeConfigJSON(t *testing.T) {
 	}
 }
 
-func TestGetSDKorRuntimeVersion(t *testing.T) {
+func TestGetSDKVersion(t *testing.T) {
 	testCases := []struct {
 		Name                 string
 		RuntimeVersionEnvVar string
@@ -187,6 +190,84 @@ func TestGetSDKorRuntimeVersion(t *testing.T) {
 			}
 			if tc.ExpectedResult != result {
 				t.Fatalf("result mismatch: got %q, want %q", result, tc.ExpectedResult)
+			}
+		})
+	}
+}
+
+func TestGetRuntimeVersion(t *testing.T) {
+	testCases := []struct {
+		Name               string
+		RuntimeConfigFiles []string
+		ApplicationRoot    string
+		Buildable          string
+		ExpectedVersion    string
+		ExpectError        bool
+	}{
+		{
+			Name:               "Should read from runtimeconfig.json",
+			RuntimeConfigFiles: []string{"runtimeconfig/subdir/my.runtimeconfig.json"},
+			ApplicationRoot:    testdata.MustGetPath("testdata/"),
+			ExpectedVersion:    "3.1.0",
+		},
+		{
+			Name:               "Should return error with no runtimeconfig.json",
+			RuntimeConfigFiles: []string{},
+			ApplicationRoot:    testdata.MustGetPath("testdata/"),
+			ExpectError:        true,
+		},
+		{
+			Name: "Pick runtimeconfig.json from aaa_dir",
+			RuntimeConfigFiles: []string{
+				"runtimeconfig/aaa_dir/bin/Release/another.runtimeconfig.json",
+				"runtimeconfig/zzz_dir/bin/Release/another.runtimeconfig.json",
+			},
+			ApplicationRoot: testdata.MustGetPath("testdata/"),
+			Buildable:       "runtimeconfig/aaa_dir",
+			ExpectedVersion: "3.1.0",
+		},
+		{
+			Name: "Pick runtimeconfig.json from zzz_dir",
+			RuntimeConfigFiles: []string{
+				"runtimeconfig/aaa_dir/bin/Release/another.runtimeconfig.json",
+				"runtimeconfig/zzz_dir/bin/Release/another.runtimeconfig.json",
+			},
+			ApplicationRoot: testdata.MustGetPath("testdata/"),
+			Buildable:       "runtimeconfig/zzz_dir",
+			ExpectedVersion: "3.1.11",
+		},
+		{
+			Name: "Mismatch runtimeconfig.json and BUILDABLE env var",
+			RuntimeConfigFiles: []string{
+				"runtimeconfig/aaa_dir/bin/Release/another.runtimeconfig.json",
+				"runtimeconfig/zzz_dir/bin/Release/another.runtimeconfig.json",
+			},
+			ApplicationRoot: testdata.MustGetPath("testdata/"),
+			Buildable:       "runtimeconfig/123_dir",
+			ExpectError:     true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(tc.ApplicationRoot))
+			t.Setenv(env.Buildable, tc.Buildable)
+			runtimeVersion, err := GetRuntimeVersion(ctx, tc.RuntimeConfigFiles)
+
+			if tc.ExpectError == true {
+				if err == nil {
+					t.Fatalf("%s: got no error and expected error", tc.Name)
+				} else {
+					return
+				}
+			}
+			if err != nil {
+				t.Fatalf("GetRuntimeVersion(ctx, %v, %v) got unexpected error: %v",
+					tc.RuntimeConfigFiles, tc.Buildable, err)
+			}
+			if tc.ExpectedVersion != runtimeVersion {
+				t.Errorf("GetRuntimeVersion(ctx, %v, %v) = %v, want %v",
+					tc.RuntimeConfigFiles, tc.Buildable, runtimeVersion, tc.ExpectedVersion)
 			}
 		})
 	}

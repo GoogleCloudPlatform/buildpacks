@@ -41,7 +41,10 @@ func TestGCFAcceptanceDotNet(t *testing.T) {
 		{
 			Name: "cs nested configuration",
 			App:  "cs_nested_configuration",
-			Env:  []string{"GOOGLE_FUNCTION_TARGET=TestFunction.Function"},
+			Env: []string{
+				"GOOGLE_FUNCTION_TARGET=TestFunction.Function",
+				"GOOGLE_BUILDABLE=function/TestFunction.csproj",
+			},
 			Path: "/function",
 		},
 		{
