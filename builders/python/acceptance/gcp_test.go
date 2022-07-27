@@ -76,6 +76,12 @@ func TestAcceptancePython(t *testing.T) {
 			Env:     []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
+		{
+			Name:    "python module dependency using a native extension",
+			App:     "native_extensions",
+			Env:     []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
+			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+		},
 	}
 
 	// Tests for specific versions of Python available on dl.google.com.
