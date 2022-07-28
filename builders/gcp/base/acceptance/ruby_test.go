@@ -113,6 +113,12 @@ func TestAcceptanceRuby(t *testing.T) {
 			MustUse:    []string{rubyRuntime, rubyBundle, entrypoint},
 			MustNotUse: []string{rubyRails},
 		},
+		{
+			Name:            "Ruby native extensions",
+			App:             "native_extensions",
+			MustUse:         []string{rubyRuntime, rubyBundle, entrypoint},
+			EnableCacheTest: false,
+		},
 	}
 	// Tests for specific versions of Ruby available on dl.google.com.
 	// Unlike with the other languages, we control the versions published to GCS.
