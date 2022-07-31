@@ -484,6 +484,12 @@ func TestHasAtLeastOne(t *testing.T) {
 			files:  []string{"*.rb"},
 			want:   false,
 		},
+		{
+			name:   "subfolder_is_ignored_dependency_file",
+			prefix: "node_modules",
+			files:  []string{"*.py"},
+			want:   false,
+		},
 	}
 
 	for _, tc := range testCases {

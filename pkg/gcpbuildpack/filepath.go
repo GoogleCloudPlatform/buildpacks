@@ -22,6 +22,15 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 )
 
+// List of dirs to be skipped when detecting language/runtime versions
+DETECTOR_IGNORED_DIRS := map[string]bool {
+	// Node.js
+	"node_modules": true,
+
+	// Composer (PHP)
+	"vendor": true
+}
+
 // Glob is a pass through for filepath.Glob(...). It returns any error with proper user / system attribution.
 func (ctx *Context) Glob(pattern string) ([]string, error) {
 	matches, err := filepath.Glob(pattern)
@@ -45,6 +54,10 @@ func (ctx *Context) HasAtLeastOne(pattern string) (bool, error) {
 	}
 
 	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() && DETECTOR_IGNORED_DIRS[info.Name()] {
+			fmt.Printf("skipping ignored dir: %+v \n", info.Name())
+			return filepath.SkipDir
+		}
 		if err != nil {
 			return buildererror.Errorf(buildererror.StatusInternal, "walking through %s within %s: %v", path, dir, err)
 		}
