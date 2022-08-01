@@ -33,36 +33,7 @@ func (ctx *Context) Glob(pattern string) ([]string, error) {
 
 // HasAtLeastOne walks through file tree searching for at least one match.
 func (ctx *Context) HasAtLeastOne(pattern string) (bool, error) {
-	dir := ctx.ApplicationRoot()
-
-	errFileMatch := errors.New("File matched")
-	matches, err := ctx.Glob(filepath.Join(dir, pattern))
-	if err != nil {
-		return false, err
-	}
-	if len(matches) > 0 {
-		return true, nil
-	}
-
-	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return buildererror.Errorf(buildererror.StatusInternal, "walking through %s within %s: %v", path, dir, err)
-		}
-		match, err := filepath.Match(pattern, info.Name())
-		if err != nil {
-			return buildererror.Errorf(buildererror.StatusInternal, "matching %s with pattern %s: %v", path, pattern, err)
-		}
-		if match {
-			return errFileMatch
-		}
-		return nil
-	}); err != nil {
-		if err == errFileMatch {
-			return true, nil
-		}
-		return false, buildererror.Errorf(buildererror.StatusInternal, "walking through %s: %v", dir, err)
-	}
-	return false, nil
+	return HasAtLeastOneFiltered(pattern, nil)
 }
 
 type FilepathFilter func(string) bool
