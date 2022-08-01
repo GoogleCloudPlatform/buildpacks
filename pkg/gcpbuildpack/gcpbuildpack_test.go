@@ -483,13 +483,7 @@ func TestHasAtLeastOne(t *testing.T) {
 			prefix: "sub",
 			files:  []string{"*.rb"},
 			want:   false,
-		},
-		{
-			name:   "subfolder_is_ignored_dependency_file",
-			prefix: "node_modules",
-			files:  []string{"*.py"},
-			want:   false,
-		},
+		}
 	}
 
 	for _, tc := range testCases {
@@ -515,6 +509,102 @@ func TestHasAtLeastOne(t *testing.T) {
 			}
 			if got != tc.want {
 				t.Errorf("HasAtLeastOne(%v)=%t, want=%t", pattern, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHasAtLeastOneFiltered(t *testing.T) {
+	testCases := []struct {
+		name   string
+		prefix string
+		files  []string
+		want   bool
+	}{
+		{
+			name:   "empty",
+			prefix: ".",
+			files:  []string{},
+			filter: nil,
+			want:   false,
+		},
+		{
+			name:   "single_file_nil_filter",
+			prefix: ".",
+			files:  []string{"*.py"},
+			want:   true,
+		},
+		{
+			name:   "single_file_wrong_name",
+			prefix: ".",
+			files:  []string{"*.rb"},
+			filter: nil,
+			want:   false,
+		},
+		{
+			name:   "multiple_files_nil_filter",
+			prefix: ".",
+			files:  []string{"*.py", "*.rb"},
+			filter: nil,
+			want:   true,
+		},
+		{
+			name:   "subfolder_contains_file",
+			prefix: "sub",
+			files:  []string{"*.py"},
+			filter: nil,
+			want:   true,
+		},
+		{
+			name:   "subfolder_contains_wrong_name",
+			prefix: "sub",
+			files:  []string{"*.rb"},
+			filter: nil,
+			want:   false,
+		},
+		{
+			name:   "subfolder_respects_false_filter",
+			prefix: "node_modules",
+			files:  []string{"*.py"},
+			filter: func(path){
+				return false
+			},
+			want:   false,
+		},
+		{
+			name:   "subfolder_respects_true_filter",
+			prefix: "node_modules",
+			files:  []string{"*.py"},
+			filter: func(path){
+				return true
+			},
+			want:   true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir, cleanup := buildpacktestenv.TempWorkingDir(t)
+			defer cleanup()
+
+			ctx := NewContext(WithApplicationRoot(dir))
+			for _, f := range tc.files {
+				if err := os.MkdirAll(tc.prefix, 0777); err != nil {
+					t.Fatalf("Error creating %s: %v", tc.prefix, err)
+				}
+				_, err := ioutil.TempFile(tc.prefix, f)
+				if err != nil {
+					t.Fatalf("Creating temp file %s/%s: %v", tc.prefix, f, err)
+				}
+			}
+
+			pattern := "*.py"
+			got, err := ctx.HasAtLeastOneFiltered(pattern, tc.filter)
+			if err != nil {
+				t.Errorf("HasAtLeastOneFiltered(%v) failed unexpectedly; err=%s", pattern, err)
+			}
+			if got != tc.want {
+				t.Errorf("HasAtLeastOneFiltered(%v)=%t, want=%t", pattern, got, tc.want)
 			}
 		})
 	}

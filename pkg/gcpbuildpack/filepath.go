@@ -22,15 +22,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 )
 
-// List of dirs to be skipped when detecting language/runtime versions
-DETECTOR_IGNORED_DIRS := map[string]bool {
-	// Node.js
-	"node_modules": true,
-
-	// Composer (PHP)
-	"vendor": true
-}
-
 // Glob is a pass through for filepath.Glob(...). It returns any error with proper user / system attribution.
 func (ctx *Context) Glob(pattern string) ([]string, error) {
 	matches, err := filepath.Glob(pattern)
@@ -54,8 +45,44 @@ func (ctx *Context) HasAtLeastOne(pattern string) (bool, error) {
 	}
 
 	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() && DETECTOR_IGNORED_DIRS[info.Name()] {
-			fmt.Printf("skipping ignored dir: %+v \n", info.Name())
+		if err != nil {
+			return buildererror.Errorf(buildererror.StatusInternal, "walking through %s within %s: %v", path, dir, err)
+		}
+		match, err := filepath.Match(pattern, info.Name())
+		if err != nil {
+			return buildererror.Errorf(buildererror.StatusInternal, "matching %s with pattern %s: %v", path, pattern, err)
+		}
+		if match {
+			return errFileMatch
+		}
+		return nil
+	}); err != nil {
+		if err == errFileMatch {
+			return true, nil
+		}
+		return false, buildererror.Errorf(buildererror.StatusInternal, "walking through %s: %v", dir, err)
+	}
+	return false, nil
+}
+
+type FilepathFilter func(string) bool
+
+// HasAtLeastOneFiltered is a pass through for filepath.Glob(...) it returns true if there is at least one 
+// file which matches the search pattern and is included by `filter`
+func (ctx *Context) HasAtLeastOneFiltered(pattern string, filter FilepathFilter) (bool, error) {
+	dir := ctx.ApplicationRoot()
+
+	errFileMatch := errors.New("File matched")
+	matches, err := ctx.Glob(filepath.Join(dir, pattern))
+	if err != nil {
+		return false, err
+	}
+	if len(matches) > 0 {
+		return true, nil
+	}
+
+	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if filter != nil && !filter(dir) {
 			return filepath.SkipDir
 		}
 		if err != nil {

@@ -48,7 +48,15 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if composerJSONExists {
 		return gcp.OptInFileFound("composer.json"), nil
 	}
-	atLeastOne, err := ctx.HasAtLeastOne("*.php")
+
+	filterFunc := func (path) {
+		rootedPath := '/' + path;
+
+		// Ignore the `node_modules` folder
+		return !strings.hasSuffix(rootedPath, "/node_modules")
+	}
+
+	atLeastOne, err := ctx.HasAtLeastOneFiltered("*.php", filterFunc)
 	if err != nil {
 		return nil, fmt.Errorf("finding *.php files: %w", err)
 	}
