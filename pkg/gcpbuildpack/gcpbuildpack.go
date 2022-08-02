@@ -140,6 +140,13 @@ func WithLogger(logger *log.Logger) ContextOption {
 	}
 }
 
+// WithStackID sets the StackID in Context.
+func WithStackID(stackID string) ContextOption {
+	return func(ctx *Context) {
+		ctx.buildContext.StackID = stackID
+	}
+}
+
 // NewContext creates a context.
 func NewContext(opts ...ContextOption) *Context {
 	debug, err := env.IsDebugMode()

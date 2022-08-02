@@ -28,8 +28,8 @@ import (
 
 var (
 	dartSdkURL         = "https://storage.googleapis.com/dart-archive/channels/stable/release/%s/sdk/dartsdk-linux-x64-release.zip"
-	googleTarballURL   = "https://dl.google.com/runtimes/%[1]s/%[1]s-%s.tar.gz"
-	runtimeVersionsURL = "https://dl.google.com/runtimes/%s/version.json"
+	googleTarballURL   = "https://dl.google.com/runtimes/%s/%[2]s/%[2]s-%s.tar.gz"
+	runtimeVersionsURL = "https://dl.google.com/runtimes/%s/%s/version.json"
 )
 
 // InstallableRuntime is used to hold runtimes information
@@ -45,6 +45,9 @@ const (
 	Pid1       InstallableRuntime = "pid1"
 	DotnetSDK  InstallableRuntime = "dotnetsdk"
 	AspNetCore InstallableRuntime = "aspnetcore"
+
+	ubuntu1804 string = "ubuntu1804"
+	ubuntu2204 string = "ubuntu2204"
 )
 
 // User friendly display name of all runtime (e.g. for use in error message).
@@ -56,6 +59,13 @@ var runtimeNames = map[InstallableRuntime]string{
 	Nginx:     "Nginx Web Server",
 	Pid1:      "Pid1",
 	DotnetSDK: ".NET SDK",
+}
+
+var stackOSMap = map[string]string{
+	"google":        ubuntu1804,
+	"google.gae.18": ubuntu1804,
+	"google.gae.22": ubuntu2204,
+	"google.min.22": ubuntu2204,
 }
 
 const (
@@ -117,8 +127,15 @@ func InstallDartSDK(ctx *gcp.Context, layer *libcnb.Layer, version string) error
 func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, versionConstraint string, layer *libcnb.Layer) (bool, error) {
 	runtimeName := runtimeNames[runtime]
 	runtimeID := string(runtime)
+	stackID := ctx.StackID()
 
-	version, err := resolveVersion(runtime, versionConstraint)
+	os, ok := stackOSMap[stackID]
+	if !ok {
+		ctx.Warnf("unknown stack ID %q, falling back to Ubuntu 18.04", stackID)
+		os = ubuntu1804
+	}
+
+	version, err := resolveVersion(runtime, versionConstraint, os)
 	if err != nil {
 		return false, err
 	}
@@ -141,10 +158,10 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	ctx.Logf("Installing %s v%s.", runtimeName, version)
 
 	ctx.SetMetadata(layer, versionKey, version)
-	runtimeURL := fmt.Sprintf(googleTarballURL, runtime, version)
+	runtimeURL := fmt.Sprintf(googleTarballURL, os, runtime, version)
 
 	if err := fetch.Tarball(runtimeURL, layer.Path, 0); err != nil {
-		ctx.Warnf("Failed to download %s version %s. You can specify the verison by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version)
+		ctx.Warnf("Failed to download %s version %s os %s. You can specify the verison by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, os)
 		return false, err
 	}
 
@@ -155,16 +172,16 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 
 // resolveVersion returns the newest available version of a runtime that satisfies the provided
 // version constraint.
-func resolveVersion(runtime InstallableRuntime, verConstraint string) (string, error) {
+func resolveVersion(runtime InstallableRuntime, verConstraint, os string) (string, error) {
 	if version.IsExactSemver(verConstraint) {
 		return verConstraint, nil
 	}
 
-	url := fmt.Sprintf(runtimeVersionsURL, runtime)
+	url := fmt.Sprintf(runtimeVersionsURL, os, runtime)
 
 	var versions []string
 	if err := fetch.JSON(url, &versions); err != nil {
-		return "", gcp.InternalErrorf("fetching %s versions: %v", runtimeNames[runtime], err)
+		return "", gcp.InternalErrorf("fetching %s versions %s os: %v", runtimeNames[runtime], os, err)
 	}
 
 	v, err := version.ResolveVersion(verConstraint, versions)
