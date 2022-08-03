@@ -44,15 +44,16 @@ func TestAcceptance(t *testing.T) {
 			MustUse:   []string{phpRuntime, phpWebConfig, utilsNginx},
 		},
 		{
-			Name:       "extension app",
-			App:        "extension",
-			MustMatch:  "PASS_EXT",
-			MustUse:    []string{composer, composerInstall, phpRuntime, phpWebConfig, utilsNginx},
-			MustNotUse: []string{composerGCPBuild, functionFramework, cloudFunctions},
+			Name:                       "extension app",
+			App:                        "extension",
+			MustMatch:                  "PASS_EXT",
+			VersionInclusionConstraint: "< 8.0.0",
+			MustUse:                    []string{composer, composerInstall, phpRuntime, phpWebConfig, utilsNginx},
+			MustNotUse:                 []string{composerGCPBuild, functionFramework, cloudFunctions},
 		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
