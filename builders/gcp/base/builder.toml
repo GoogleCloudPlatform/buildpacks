@@ -546,9 +546,9 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   [[order.group]]
     id = "google.utils.label"
 
-########
-# PHP  #
-########
+#######
+# PHP #
+#######
 [[order]]
   [[order.group]]
     id = "google.php.runtime"
@@ -568,8 +568,11 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.utils.label"
 
   [[order.group]]
-    id = "google.php.webconfig"
+    id = "google.config.entrypoint"
+    optional = true
 
+  [[order.group]]
+    id = "google.php.webconfig"
 
 ###########
 # Node.js #

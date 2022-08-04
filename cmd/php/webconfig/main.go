@@ -22,6 +22,7 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nginx"
 )
@@ -75,21 +76,29 @@ func buildFn(ctx *gcp.Context) error {
 	}
 	defer nginxConfFile.Close()
 
-	cmd := []string{
-		"pid1",
-		"--nginxBinaryPath", defaultNginxBinary,
-		"--nginxConfigPath", filepath.Join(l.Path, nginxConf),
-		"--serverConfigPath", nginxConfFile.Name(),
-		"--nginxErrLogFilePath", filepath.Join(l.Path, nginxLog),
-		"--customAppCmd", fmt.Sprintf("%q", fmt.Sprintf("%s -R --nodaemonize --fpm-config %s", defaultFPMBinary, fpmConfFile.Name())),
-		"--pid1LogFilePath", filepath.Join(l.Path, pid1Log),
-		// ideally, we should be able to use the path of the nginx layer and not hardcode it here.
-		// this needs some investigation on how to pass values between build steps of buildpacks.
-		"--mimeTypesPath", filepath.Join("/layers/google.utils.nginx/nginx", "conf/mime.types"),
-		"--customAppSocket", filepath.Join(l.Path, appSocket),
+	procExists, err := ctx.FileExists("Procfile")
+	if err != nil {
+		return err
 	}
+	_, entrypointExists := os.LookupEnv(env.Entrypoint)
 
-	ctx.AddProcess(gcp.WebProcess, cmd, gcp.AsDefaultProcess())
+	if !procExists && !entrypointExists {
+		cmd := []string{
+			"pid1",
+			"--nginxBinaryPath", defaultNginxBinary,
+			"--nginxConfigPath", filepath.Join(l.Path, nginxConf),
+			"--serverConfigPath", nginxConfFile.Name(),
+			"--nginxErrLogFilePath", filepath.Join(l.Path, nginxLog),
+			"--customAppCmd", fmt.Sprintf("%q", fmt.Sprintf("%s -R --nodaemonize --fpm-config %s", defaultFPMBinary, fpmConfFile.Name())),
+			"--pid1LogFilePath", filepath.Join(l.Path, pid1Log),
+			// ideally, we should be able to use the path of the nginx layer and not hardcode it here.
+			// this needs some investigation on how to pass values between build steps of buildpacks.
+			"--mimeTypesPath", filepath.Join("/layers/google.utils.nginx/nginx", "conf/mime.types"),
+			"--customAppSocket", filepath.Join(l.Path, appSocket),
+		}
+
+		ctx.AddProcess(gcp.WebProcess, cmd, gcp.AsDefaultProcess())
+	}
 
 	return nil
 }

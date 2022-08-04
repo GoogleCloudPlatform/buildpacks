@@ -120,6 +120,10 @@ description = "Unified builder for the PHP runtime"
     id = "google.utils.label"
 
   [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
     id = "google.php.webconfig"
 
 [stack]

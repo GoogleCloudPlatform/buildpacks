@@ -25,23 +25,46 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:      "simple path",
+			Name:       "simple path",
+			App:        "simple",
+			MustMatch:  "PASS_INDEX",
+			MustUse:    []string{phpRuntime, composerInstall, composer, phpWebConfig, utilsNginx},
+			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:      "entrypoint from procfile web",
+			App:       "entrypoint",
+			MustMatch: "PASS_INDEX",
+			MustUse:   []string{phpRuntime, entrypoint, utilsNginx, phpWebConfig, entrypoint},
+		},
+		{
+			Name:       "entrypoint from procfile custom",
+			App:        "entrypoint",
+			MustMatch:  "PASS_CUSTOM",
+			Entrypoint: "custom", // Must match the non-web process in Procfile.
+			MustUse:    []string{phpRuntime, entrypoint, utilsNginx, phpWebConfig},
+		},
+		{
+			Name:      "entrypoint from env",
 			App:       "simple",
 			MustMatch: "PASS_INDEX",
-			MustUse:   []string{phpRuntime, composerInstall, composer, phpWebConfig, utilsNginx},
+			Env:       []string{"GOOGLE_ENTRYPOINT=php -S 0.0.0.0:8080"},
+			MustUse:   []string{phpRuntime, composerInstall, composer, entrypoint, utilsNginx, phpWebConfig},
 		},
 		{
-			Name:      "custom path",
-			App:       "simple",
-			Path:      "/custom",
-			MustMatch: "PASS_CUSTOM",
-			MustUse:   []string{phpRuntime, composerInstall, composer, phpWebConfig, utilsNginx},
+			Name:       "custom path",
+			App:        "simple",
+			Path:       "/custom",
+			MustMatch:  "PASS_CUSTOM",
+			MustUse:    []string{phpRuntime, composerInstall, composer, phpWebConfig, utilsNginx},
+			MustNotUse: []string{entrypoint},
 		},
 		{
-			Name:      "php ini config",
-			App:       "php_ini_config",
-			MustMatch: "PASS_PHP_INI",
-			MustUse:   []string{phpRuntime, phpWebConfig, utilsNginx},
+			Name:       "php ini config",
+			App:        "php_ini_config",
+			MustMatch:  "PASS_PHP_INI",
+			MustUse:    []string{phpRuntime, phpWebConfig, utilsNginx},
+			MustNotUse: []string{entrypoint},
 		},
 		{
 			Name:                       "extension app",
@@ -49,7 +72,7 @@ func TestAcceptance(t *testing.T) {
 			MustMatch:                  "PASS_EXT",
 			VersionInclusionConstraint: "< 8.0.0",
 			MustUse:                    []string{composer, composerInstall, phpRuntime, phpWebConfig, utilsNginx},
-			MustNotUse:                 []string{composerGCPBuild, functionFramework, cloudFunctions},
+			MustNotUse:                 []string{composerGCPBuild, functionFramework, cloudFunctions, entrypoint},
 		},
 	}
 
