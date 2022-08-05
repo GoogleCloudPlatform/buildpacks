@@ -100,10 +100,12 @@ func TestFailures(t *testing.T) {
 		{
 			App:       "fail_broken_dependencies",
 			MustMatch: `functions-framework .* has requirement flask<3\.0,>=1\.0, but you have flask 0\.12\.5`,
+			// this is only a warning in python37
+			VersionInclusionConstraint: ">= 3.8.0",
 		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterFailureTests(t, testCases) {
 		tc := applyStaticFailureTestOptions(tc)
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()

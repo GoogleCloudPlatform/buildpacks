@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -55,6 +55,8 @@ func TestAcceptance(t *testing.T) {
 		{
 			App: "custom_entrypoint",
 			Env: []string{"GOOGLE_ENTRYPOINT=uwsgi --http :$PORT --wsgi-file custom.py --callable app"},
+			// TODO(b/236139199): this should be passing for all python runtimes
+			VersionInclusionConstraint: ">= 3.9.0",
 		},
 		{
 			Name: "custom gunicorn entrypoint",
@@ -76,7 +78,7 @@ func TestAcceptance(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, testCases) {
 		tc := applyStaticTestOptions(tc)
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
@@ -109,10 +111,8 @@ func TestFailures(t *testing.T) {
 
 	for _, tc := range testCases {
 		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gae")
-		tc := tc
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
-			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=python310", "X_GOOGLE_TARGET_PLATFORM=gae")
 			acceptance.TestBuildFailure(t, builderImage, runImage, tc)
 		})
 	}

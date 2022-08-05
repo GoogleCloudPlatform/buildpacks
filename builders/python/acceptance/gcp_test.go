@@ -63,13 +63,13 @@ func TestAcceptancePython(t *testing.T) {
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		// TODO (b/236138363): convert this one to a unit test
-		{
-			Name:                       "runtime version from .python-version",
-			VersionInclusionConstraint: "3.8.12", // version is set in the .python-version file
-			App:                        "python_version_file",
-			Path:                       "/version?want=3.8.12",
-			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
-		},
+		// {
+		// 	Name:                       "runtime version from .python-version",
+		// 	VersionInclusionConstraint: "3.8.12", // version is set in the .python-version file
+		// 	App:                        "python_version_file",
+		// 	Path:                       "/version?want=3.8.12",
+		// 	MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
+		// },
 		{
 			Name:    "python with client-side scripts correctly builds as a python app",
 			App:     "scripts",
@@ -81,21 +81,25 @@ func TestAcceptancePython(t *testing.T) {
 			App:     "native_extensions",
 			Env:     []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+			// numpy requires Python 3.8 or newer.
+			VersionInclusionConstraint: ">= 3.8.0",
 		},
 	}
 
 	// Tests for specific versions of Python available on dl.google.com.
-	for _, v := range []string{"3.7.12", "3.8.12", "3.9.10", "3.10.2"} {
-		testCases = append(testCases, acceptance.Test{
-			Name:    "dl.google.com runtime version " + v,
-			App:     "version",
-			Path:    "/version?want=" + v,
-			Env:     []string{"GOOGLE_PYTHON_VERSION=" + v},
-			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
-		})
-	}
+	// TODO (b/236139199): these are probably no longer necessary. We set GOOGLE_RUNTIME_VERSION in
+	// all acceptance tests now, so at minimum we need to refactor them.
+	// for _, v := range []string{"3.7.12", "3.8.12", "3.9.10", "3.10.2"} {
+	// 	testCases = append(testCases, acceptance.Test{
+	// 		Name:    "dl.google.com runtime version " + v,
+	// 		App:     "version",
+	// 		Path:    "/version?want=" + v,
+	// 		Env:     []string{"GOOGLE_PYTHON_VERSION=" + v},
+	// 		MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+	// 	})
+	// }
 
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
