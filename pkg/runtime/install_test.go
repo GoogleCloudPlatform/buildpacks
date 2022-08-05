@@ -168,6 +168,7 @@ func TestInstallRuby(t *testing.T) {
 				Path:     t.TempDir(),
 				Metadata: map[string]interface{}{},
 			}
+			layer.Cache = true
 			if tc.stackID == "" {
 				tc.stackID = "google.gae.18"
 			}

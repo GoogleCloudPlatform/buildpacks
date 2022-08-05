@@ -146,12 +146,15 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 		Build:    true,
 	})
 
-	if IsCached(ctx, layer, version) {
-		ctx.CacheHit(runtimeID)
-		ctx.Logf("%s v%s cache hit, skipping installation.", runtimeName, version)
-		return true, nil
+	if layer.Cache {
+		if IsCached(ctx, layer, version) {
+			ctx.CacheHit(runtimeID)
+			ctx.Logf("%s v%s cache hit, skipping installation.", runtimeName, version)
+			return true, nil
+		}
+		ctx.CacheMiss(runtimeID)
 	}
-	ctx.CacheMiss(runtimeID)
+
 	if err := ctx.ClearLayer(layer); err != nil {
 		return false, gcp.InternalErrorf("clearing layer %q: %w", layer.Name, err)
 	}

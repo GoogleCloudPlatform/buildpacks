@@ -40,6 +40,10 @@ description = "Unified builder all Python runtimes"
   id = "google.utils.label"
   uri = "label.tgz"
 
+[[buildpacks]]
+  id = "google.python.link-runtime"
+  uri = "link_runtime.tgz"
+
 # Python functions (gcf and gcp).
 [[order]]
 
@@ -66,6 +70,10 @@ description = "Unified builder all Python runtimes"
   [[order.group]]
     id = "google.utils.label"
 
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
+
 # Python applications (gae)
 [[order]]
   [[order.group]]
@@ -84,6 +92,10 @@ description = "Unified builder all Python runtimes"
 
   [[order.group]]
     id = "google.utils.label"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
 
 
 # Python applications (gcp)

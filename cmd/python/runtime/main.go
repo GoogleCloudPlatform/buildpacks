@@ -57,7 +57,9 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	layer, err := ctx.Layer(pythonLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerUnlessSkipRuntimeLaunch)
+	// We don't cache the python runtime because the python/link-runtime buildpack may clobber
+	// everything in the layer directory anyway.
+	layer, err := ctx.Layer(pythonLayer, gcp.BuildLayer, gcp.LaunchLayer)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", pythonLayer, err)
 	}
@@ -65,19 +67,16 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("determining runtime version: %w", err)
 	}
-	isCached, err := runtime.InstallTarballIfNotCached(ctx, runtime.Python, ver, layer)
-	if err != nil {
+	if _, err := runtime.InstallTarballIfNotCached(ctx, runtime.Python, ver, layer); err != nil {
 		return err
 	}
-	if !isCached {
-		// Force stdout/stderr streams to be unbuffered so that log messages appear immediately in the logs.
-		layer.LaunchEnvironment.Default("PYTHONUNBUFFERED", "TRUE")
+	// Force stdout/stderr streams to be unbuffered so that log messages appear immediately in the logs.
+	layer.LaunchEnvironment.Default("PYTHONUNBUFFERED", "TRUE")
 
-		ctx.Logf("Upgrading pip to the latest version and installing build tools")
-		path := filepath.Join(layer.Path, "bin/python3")
-		if _, err := ctx.Exec([]string{path, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"}, gcp.WithUserAttribution); err != nil {
-			return err
-		}
+	ctx.Logf("Upgrading pip to the latest version and installing build tools")
+	path := filepath.Join(layer.Path, "bin/python3")
+	if _, err := ctx.Exec([]string{path, "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"}, gcp.WithUserAttribution); err != nil {
+		return err
 	}
 	return nil
 }
