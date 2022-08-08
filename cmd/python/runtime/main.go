@@ -45,8 +45,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if result := runtime.CheckOverride("python"); result != nil {
 		return result, nil
 	}
-
-	atLeastOne, err := ctx.HasAtLeastOne("*.py")
+	atLeastOne, err := ctx.HasAtLeastOneOutsideDependencyDirectories("*.py")
 	if err != nil {
 		return nil, fmt.Errorf("finding *.py files: %w", err)
 	}

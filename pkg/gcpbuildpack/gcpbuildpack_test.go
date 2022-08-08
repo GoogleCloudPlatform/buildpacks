@@ -514,6 +514,154 @@ func TestHasAtLeastOne(t *testing.T) {
 	}
 }
 
+func TestHasAtLeastOneFiltered(t *testing.T) {
+	testCases := []struct {
+		name   string
+		prefix string
+		files  []string
+		filter filepathFilter
+		want   bool
+	}{
+		{
+			name:   "empty",
+			prefix: ".",
+			files:  []string{},
+			filter: nil,
+			want:   false,
+		},
+		{
+			name:   "single_file_nil_filter",
+			prefix: ".",
+			files:  []string{"*.py"},
+			want:   true,
+		},
+		{
+			name:   "single_file_wrong_name",
+			prefix: ".",
+			files:  []string{"*.rb"},
+			filter: nil,
+			want:   false,
+		},
+		{
+			name:   "multiple_files_nil_filter",
+			prefix: ".",
+			files:  []string{"*.py", "*.rb"},
+			filter: nil,
+			want:   true,
+		},
+		{
+			name:   "subfolder_contains_file",
+			prefix: "sub",
+			files:  []string{"*.py"},
+			filter: nil,
+			want:   true,
+		},
+		{
+			name:   "subfolder_contains_wrong_name",
+			prefix: "sub",
+			files:  []string{"*.rb"},
+			filter: nil,
+			want:   false,
+		},
+		{
+			name:   "subfolder_respects_false_filter",
+			prefix: "node_modules",
+			files:  []string{"*.py"},
+			filter: func(path string) bool {
+				return false
+			},
+			want: false,
+		},
+		{
+			name:   "subfolder_respects_true_filter",
+			prefix: "node_modules",
+			files:  []string{"*.py"},
+			filter: func(path string) bool {
+				return true
+			},
+			want: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir, cleanup := buildpacktestenv.TempWorkingDir(t)
+			defer cleanup()
+
+			ctx := NewContext(WithApplicationRoot(dir))
+			for _, f := range tc.files {
+				prefixDir := filepath.Join(dir, tc.prefix)
+				if err := os.MkdirAll(prefixDir, 0777); err != nil {
+					t.Fatalf("Error creating %s: %v", prefixDir, err)
+				}
+				_, err := ioutil.TempFile(prefixDir, f)
+				if err != nil {
+					t.Fatalf("Creating temp file %s/%s: %v", prefixDir, f, err)
+				}
+			}
+
+			pattern := "*.py"
+			got, err := ctx.HasAtLeastOneFiltered(pattern, tc.filter)
+			if err != nil {
+				t.Errorf("HasAtLeastOneFiltered(%v) failed unexpectedly; err=%s", pattern, err)
+			}
+			if got != tc.want {
+				t.Errorf("HasAtLeastOneFiltered(%v)=%t, want=%t", pattern, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHasAtLeastOneOutsideDependencyDirectories(t *testing.T) {
+	testCases := []struct {
+		name   string
+		prefix string
+		files  []string
+		want   bool
+	}{
+		{
+			name:   "detects_file_in_root",
+			prefix: ".",
+			files:  []string{"*.py"},
+			want:   true,
+		},
+		{
+			name:   "ignores_file_in_node_modules",
+			prefix: "node_modules",
+			files:  []string{"*.py"},
+			want:   false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir, cleanup := buildpacktestenv.TempWorkingDir(t)
+			defer cleanup()
+
+			ctx := NewContext(WithApplicationRoot(dir))
+			for _, f := range tc.files {
+				prefixDir := filepath.Join(dir, tc.prefix)
+				if err := os.MkdirAll(prefixDir, 0777); err != nil {
+					t.Fatalf("Error creating %s: %v", prefixDir, err)
+				}
+				_, err := ioutil.TempFile(prefixDir, f)
+				if err != nil {
+					t.Fatalf("Creating temp file %s/%s: %v", prefixDir, f, err)
+				}
+			}
+
+			pattern := "*.py"
+			got, err := ctx.HasAtLeastOneOutsideDependencyDirectories(pattern)
+			if err != nil {
+				t.Errorf("HasAtLeastOneOutsideDependencyDirectories(%v) failed unexpectedly; err=%s", pattern, err)
+			}
+			if got != tc.want {
+				t.Errorf("HasAtLeastOneOutsideDependencyDirectories(%v)=%t, want=%t", pattern, got, tc.want)
+			}
+		})
+	}
+}
+
 func proc(command, commandType string) libcnb.Process {
 	return libcnb.Process{Command: command, Type: commandType, Default: true, Direct: true}
 }
