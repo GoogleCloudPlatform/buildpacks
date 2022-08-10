@@ -34,7 +34,7 @@ go_test(
 )
 
 go_test(
-    name = "dotnet_test",
+    name = "dotnetsdk_test",
     size = "enormous",
     srcs = ["dotnet_test.go"],
     args = [
