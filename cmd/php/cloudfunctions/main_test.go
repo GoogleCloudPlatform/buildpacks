@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func TestDetect(t *testing.T) {
@@ -53,5 +54,17 @@ func TestDetect(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
 		})
+	}
+}
+
+func TestEntrypoint(t *testing.T) {
+	ep, err := entrypoint(gcp.NewContext())
+	if err != nil {
+		t.Fatalf("unexpected error creating entrypoint: %v", err)
+	}
+
+	want := "serve -enable-dynamic-workers -workers=1024 vendor/bin/router.php"
+	if ep.Command != want {
+		t.Errorf("entrypoint set wrong, got: %q, want: %q", ep.Command, want)
 	}
 }
