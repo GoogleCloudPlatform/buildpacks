@@ -43,6 +43,10 @@ const (
 	// RequirementsFilesEnv is an environment variable containg os-path-separator-separated list of paths to pip requirements files.
 	// The requirements files are processed from left to right, with requirements from the next overriding any conflicts from the previous.
 	RequirementsFilesEnv = "GOOGLE_INTERNAL_REQUIREMENTS_FILES"
+
+	versionFile = ".python-version"
+	versionKey  = "version"
+	versionEnv  = "GOOGLE_PYTHON_VERSION"
 )
 
 var (
@@ -63,6 +67,51 @@ func Version(ctx *gcp.Context) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(result.Stdout), nil
+}
+
+// RuntimeVersion validate and returns the customer requested Python version by inspecting the
+// environment variables and .python-version file.
+func RuntimeVersion(ctx *gcp.Context, dir string) (string, error) {
+	if v := os.Getenv(versionEnv); v != "" {
+		ctx.Logf("Using Python version from %s: %s", versionEnv, v)
+		return v, nil
+	}
+	if v := os.Getenv(env.RuntimeVersion); v != "" {
+		ctx.Logf("Using Python version from %s: %s", env.RuntimeVersion, v)
+		return v, nil
+	}
+	v, err := versionFromFile(ctx, dir)
+	if err != nil {
+		return "", err
+	}
+	if v != "" {
+		return v, nil
+	}
+
+	// This will use the highest listed at https://dl.google.com/runtimes/python/version.json.
+	ctx.Logf("Python version not specified, using the latest available version.")
+	return "*", nil
+}
+
+func versionFromFile(ctx *gcp.Context, dir string) (string, error) {
+	vf := filepath.Join(dir, versionFile)
+	versionFileExists, err := ctx.FileExists(vf)
+	if err != nil {
+		return "", err
+	}
+	if versionFileExists {
+		raw, err := ctx.ReadFile(vf)
+		if err != nil {
+			return "", err
+		}
+		v := strings.TrimSpace(string(raw))
+		if v != "" {
+			ctx.Logf("Using Python version from %s: %s", vf, v)
+			return v, nil
+		}
+		return "", gcp.UserErrorf("%s exists but does not specify a version", vf)
+	}
+	return "", nil
 }
 
 // InstallRequirements installs dependencies from the given requirements files in a virtual env.

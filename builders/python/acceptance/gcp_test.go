@@ -62,14 +62,6 @@ func TestAcceptancePython(t *testing.T) {
 			Env:     []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
-		// TODO (b/236138363): convert this one to a unit test
-		// {
-		// 	Name:                       "runtime version from .python-version",
-		// 	VersionInclusionConstraint: "3.8.12", // version is set in the .python-version file
-		// 	App:                        "python_version_file",
-		// 	Path:                       "/version?want=3.8.12",
-		// 	MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
-		// },
 		{
 			Name:    "python with client-side scripts correctly builds as a python app",
 			App:     "scripts",
@@ -85,19 +77,6 @@ func TestAcceptancePython(t *testing.T) {
 			VersionInclusionConstraint: ">= 3.8.0",
 		},
 	}
-
-	// Tests for specific versions of Python available on dl.google.com.
-	// TODO (b/236139199): these are probably no longer necessary. We set GOOGLE_RUNTIME_VERSION in
-	// all acceptance tests now, so at minimum we need to refactor them.
-	// for _, v := range []string{"3.7.12", "3.8.12", "3.9.10", "3.10.2"} {
-	// 	testCases = append(testCases, acceptance.Test{
-	// 		Name:    "dl.google.com runtime version " + v,
-	// 		App:     "version",
-	// 		Path:    "/version?want=" + v,
-	// 		Env:     []string{"GOOGLE_PYTHON_VERSION=" + v},
-	// 		MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
-	// 	})
-	// }
 
 	for _, tc := range acceptance.FilterTests(t, testCases) {
 		tc := tc
@@ -120,22 +99,10 @@ func TestFailuresPython(t *testing.T) {
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS", "GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustMatch: "invalid Python version specified",
 		},
-		// TODO (b/236138363): convert this one to a unit test
-		{
-			Name:      "python-version empty",
-			App:       "empty_version",
-			MustMatch: ".python-version exists but does not specify a version",
-		},
 		{
 			Name:      "missing entrypoint",
 			App:       "missing_entrypoint",
 			MustMatch: `for Python, an entrypoint must be manually set, either with "GOOGLE_ENTRYPOINT" env var or by creating a "Procfile" file`,
-		},
-		{
-			Name:      "mismatch runtime version between .python-version and env var",
-			App:       "python_version_file", // set to python 3.8.12 via .python-version
-			Env:       []string{"GOOGLE_PYTHON_VERSION=3.8.11"},
-			MustMatch: "are inconsistent, pick one of them or set them to the same value",
 		},
 	}
 

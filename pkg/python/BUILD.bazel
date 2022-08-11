@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 licenses(["notice"])
 
@@ -18,4 +18,12 @@ go_library(
         "//pkg/gcpbuildpack",
         "@com_github_buildpacks_libcnb//:go_default_library",
     ],
+)
+
+go_test(
+    name = "python_test",
+    srcs = ["python_test.go"],
+    embed = [":python"],
+    rundir = ".",
+    deps = ["//pkg/gcpbuildpack"],
 )
