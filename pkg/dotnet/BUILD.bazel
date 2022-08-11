@@ -12,7 +12,6 @@ go_library(
         "//cmd/dotnet:__subpackages__",
     ],
     deps = [
-        "//pkg/dotnet/release/client",
         "//pkg/env",
         "//pkg/gcpbuildpack",
     ],

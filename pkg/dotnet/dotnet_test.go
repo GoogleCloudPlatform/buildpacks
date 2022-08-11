@@ -148,13 +148,27 @@ func TestReadRuntimeConfigJSON(t *testing.T) {
 func TestGetSDKVersion(t *testing.T) {
 	testCases := []struct {
 		Name                 string
+		SDKVersionEnvVar     string
 		RuntimeVersionEnvVar string
 		ApplicationRoot      string
 		ExpectedResult       string
 	}{
 		{
-			Name:                 "Should read from env var",
+			Name:                 "Should read from GOOGLE_RUNTIME_VERSION",
 			RuntimeVersionEnvVar: "2.1.100",
+			ApplicationRoot:      "",
+			ExpectedResult:       "2.1.100",
+		},
+		{
+			Name:             "Should read from GOOGLE_DOTNET_SDK_VERSION",
+			SDKVersionEnvVar: "2.1.100",
+			ApplicationRoot:  "",
+			ExpectedResult:   "2.1.100",
+		},
+		{
+			Name:                 "GOOGLE_DOTNET_SDK_VERSION takes precedence over GOOGLE_RUNTIME_VERSION",
+			SDKVersionEnvVar:     "2.1.100",
+			RuntimeVersionEnvVar: "3.1.100",
 			ApplicationRoot:      "",
 			ExpectedResult:       "2.1.100",
 		},
@@ -181,7 +195,12 @@ func TestGetSDKVersion(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
 			ctx := gcp.NewContext(gcp.WithApplicationRoot(tc.ApplicationRoot))
-			os.Setenv("GOOGLE_RUNTIME_VERSION", tc.RuntimeVersionEnvVar)
+			if tc.SDKVersionEnvVar != "" {
+				t.Setenv(envSdkVersion, tc.SDKVersionEnvVar)
+			}
+			if tc.RuntimeVersionEnvVar != "" {
+				t.Setenv(env.RuntimeVersion, tc.RuntimeVersionEnvVar)
+			}
 
 			result, err := GetSDKVersion(ctx)
 
@@ -268,93 +287,6 @@ func TestGetRuntimeVersion(t *testing.T) {
 			if tc.ExpectedVersion != runtimeVersion {
 				t.Errorf("GetRuntimeVersion(ctx, %v, %v) = %v, want %v",
 					tc.RuntimeConfigFiles, tc.Buildable, runtimeVersion, tc.ExpectedVersion)
-			}
-		})
-	}
-}
-
-func Test_getSDKChannelForTargetFramework(t *testing.T) {
-	testCases := []struct {
-		Name                 string
-		TargetFrameworkValue string
-		ExpectedOK           bool
-		ExpectedResult       string
-	}{
-		{
-			Name:                 "Empty",
-			TargetFrameworkValue: "",
-			ExpectedOK:           false,
-			ExpectedResult:       "",
-		},
-		{
-			Name:                 "NetCore 1.0",
-			TargetFrameworkValue: "netcoreapp1.0",
-			ExpectedOK:           true,
-			ExpectedResult:       "1.0",
-		},
-		{
-			Name:                 "NetCore 2.0",
-			TargetFrameworkValue: "netcoreapp2.0",
-			ExpectedOK:           true,
-			ExpectedResult:       "2.2",
-		},
-		{
-			Name:                 "NetCore 2.1",
-			TargetFrameworkValue: "netcoreapp2.1",
-			ExpectedOK:           true,
-			ExpectedResult:       "2.2",
-		},
-		{
-			Name:                 "NetCore 2.2",
-			TargetFrameworkValue: "netcoreapp2.2",
-			ExpectedOK:           true,
-			ExpectedResult:       "2.2",
-		},
-		{
-			Name:                 "NetCore 3.0",
-			TargetFrameworkValue: "netcoreapp3.0",
-			ExpectedOK:           true,
-			ExpectedResult:       "3.1",
-		},
-		{
-			Name:                 "NetCore 3.1",
-			TargetFrameworkValue: "netcoreapp3.1",
-			ExpectedOK:           true,
-			ExpectedResult:       "3.1",
-		},
-		{
-			Name:                 ".NET 5.0",
-			TargetFrameworkValue: "net5.0",
-			ExpectedOK:           true,
-			ExpectedResult:       "5.0",
-		},
-		{
-			Name:                 ".NET 6.0",
-			TargetFrameworkValue: "net6.0",
-			ExpectedOK:           true,
-			ExpectedResult:       "6.0",
-		},
-		{
-			Name:                 "Future version",
-			TargetFrameworkValue: "net9.0",
-			ExpectedOK:           true,
-			ExpectedResult:       "9.0",
-		},
-		{
-			Name:                 "Garbage value",
-			TargetFrameworkValue: "python3.7",
-			ExpectedOK:           false,
-			ExpectedResult:       "",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.Name, func(t *testing.T) {
-			result, ok := getSDKChannelForTargetFramework(tc.TargetFrameworkValue)
-
-			if ok != tc.ExpectedOK || result != tc.ExpectedResult {
-				t.Errorf("getSDKChannelForTargetFramework(%v) = (%v, %v), want (%v, %v)", tc.TargetFrameworkValue,
-					result, ok, tc.ExpectedResult, tc.ExpectedOK)
 			}
 		})
 	}
