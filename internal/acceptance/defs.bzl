@@ -301,6 +301,7 @@ args:
     -test-data=${testdata} \\
     -builder-source=builder.tar \\
     -builder-image=$${_BUILDER_IMAGE} \\
+    -runtime-name=$${_RUNTIME_LANGUAGE} \\
     -structure-test-config=config.yaml"""
 
 def _build_step(name, bin_name, version, args, testdata_label):
