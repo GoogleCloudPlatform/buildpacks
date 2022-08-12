@@ -55,8 +55,6 @@ func TestAcceptance(t *testing.T) {
 		{
 			App: "custom_entrypoint",
 			Env: []string{"GOOGLE_ENTRYPOINT=uwsgi --http :$PORT --wsgi-file custom.py --callable app"},
-			// TODO(b/236139199): this should be passing for all python runtimes
-			VersionInclusionConstraint: ">= 3.9.0",
 		},
 		{
 			Name: "custom gunicorn entrypoint",

@@ -47,6 +47,11 @@ const (
 	versionFile = ".python-version"
 	versionKey  = "version"
 	versionEnv  = "GOOGLE_PYTHON_VERSION"
+
+	// python37SharedLibDir is the location of the shared Python library when building the python37 runtime.
+	python37SharedLibDir = "/layers/google.python.runtime/python/lib/python3.7/config-3.7m-x86_64-linux-gnu"
+	// python38SharedLibDir is the location of the shared Python library when building the python38 runtime.
+	python38SharedLibDir = "/layers/google.python.runtime/python/lib/python3.8/config-3.8-x86_64-linux-gnu"
 )
 
 var (
@@ -178,6 +183,10 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 		if _, err := ctx.Exec([]string{"python3", "-m", "venv", "--without-pip", "--system-site-packages", l.Path}); err != nil {
 			return err
 		}
+		if err := copySharedLibs(ctx, l); err != nil {
+			return err
+		}
+
 		// The VIRTUAL_ENV variable is usually set by the virtual environment's activate script.
 		l.SharedEnvironment.Override("VIRTUAL_ENV", l.Path)
 		// Use the virtual environment python3 for all subsequent commands in this buildpack, for
@@ -303,4 +312,30 @@ func cacheExpired(ctx *gcp.Context, l *libcnb.Layer) bool {
 func requiresVirtualEnv() bool {
 	runtime := os.Getenv(env.Runtime)
 	return runtime == "python37" || runtime == "python38"
+}
+
+// copySharedLibs moves the shared libs from the runtime layer into pip layer. This is required to
+// support building native extensions in python37 and python38 because virtual env does not copy
+// the correctly.
+func copySharedLibs(ctx *gcp.Context, l *libcnb.Layer) error {
+	var oldPath string
+	var newPath string
+	if os.Getenv(env.Runtime) == "python37" {
+		oldPath = python37SharedLibDir
+		newPath = filepath.Join(l.Path, "lib", "python3.7", filepath.Base(oldPath))
+	}
+	if os.Getenv(env.Runtime) == "python38" {
+		oldPath = python38SharedLibDir
+		newPath = filepath.Join(l.Path, "lib", "python3.8", filepath.Base(oldPath))
+	}
+	exists, err := ctx.FileExists(oldPath)
+	if err != nil {
+		return gcp.InternalErrorf("finding shared libs in %v: %w", oldPath, err)
+	}
+	if exists {
+		if err := os.Symlink(oldPath, newPath); err != nil {
+			return gcp.InternalErrorf("symlinking shared libs from %v to %v: %w", oldPath, newPath, err)
+		}
+	}
+	return nil
 }
