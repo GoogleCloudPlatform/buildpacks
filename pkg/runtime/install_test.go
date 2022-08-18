@@ -174,7 +174,8 @@ func TestInstallRuby(t *testing.T) {
 			}
 			ctx := gcp.NewContext(gcp.WithStackID(tc.stackID))
 			if tc.wantCached {
-				ctx.SetMetadata(layer, "version", "2.2.2")
+				ctx.SetMetadata(layer, versionKey, "2.2.2")
+				ctx.SetMetadata(layer, stackKey, tc.stackID)
 			}
 			isCached, err := InstallTarballIfNotCached(ctx, Ruby, tc.version, layer)
 			if tc.wantCached && !isCached {

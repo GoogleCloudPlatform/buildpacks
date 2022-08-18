@@ -70,6 +70,7 @@ var stackOSMap = map[string]string{
 
 const (
 	versionKey = "version"
+	stackKey   = "stack"
 	// gcpUserAgent is required for the Ruby runtime, but used for others for simplicity.
 	gcpUserAgent = "GCPBuildpacks"
 )
@@ -77,7 +78,8 @@ const (
 // IsCached returns true if the requested version of a runtime is installed in the given layer.
 func IsCached(ctx *gcp.Context, layer *libcnb.Layer, version string) bool {
 	metaVersion := ctx.GetMetadata(layer, versionKey)
-	return metaVersion == version
+	metaStack := ctx.GetMetadata(layer, stackKey)
+	return metaVersion == version && metaStack == ctx.StackID()
 }
 
 // InstallDartSDK downloads a given version of the dart SDK to the specified layer.
@@ -116,6 +118,7 @@ func InstallDartSDK(ctx *gcp.Context, layer *libcnb.Layer, version string) error
 		}
 	}
 
+	ctx.SetMetadata(layer, stackKey, ctx.StackID())
 	ctx.SetMetadata(layer, versionKey, version)
 
 	return nil
@@ -160,7 +163,6 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	}
 	ctx.Logf("Installing %s v%s.", runtimeName, version)
 
-	ctx.SetMetadata(layer, versionKey, version)
 	runtimeURL := fmt.Sprintf(googleTarballURL, os, runtime, version)
 
 	if err := fetch.Tarball(runtimeURL, layer.Path, 0); err != nil {
@@ -168,6 +170,7 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 		return false, err
 	}
 
+	ctx.SetMetadata(layer, stackKey, stackID)
 	ctx.SetMetadata(layer, versionKey, version)
 
 	return false, nil

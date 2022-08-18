@@ -55,6 +55,8 @@ func TestAcceptance(t *testing.T) {
 		{
 			App: "custom_entrypoint",
 			Env: []string{"GOOGLE_ENTRYPOINT=uwsgi --http :$PORT --wsgi-file custom.py --callable app"},
+			// TODO (mattrobertson): remove constraint when acceptance tests use same stack for run and builder.
+			VersionInclusionConstraint: "< 3.10.0",
 		},
 		{
 			Name: "custom gunicorn entrypoint",
