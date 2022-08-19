@@ -130,6 +130,9 @@ const (
 
 	// TargetPlatformFunctions is the functions value for 'X_GOOGLE_TARGET_PLATFORM'
 	TargetPlatformFunctions = "gcf"
+
+	// ComposerArgsEnv is an environment variable used to pass custom composer variables.
+	ComposerArgsEnv = "GOOGLE_COMPOSER_ARGS"
 )
 
 // IsGAE returns true if the buildpack target platform is gae.

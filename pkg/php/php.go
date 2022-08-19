@@ -42,8 +42,6 @@ const (
 	dependencyHashKey = "dependency_hash"
 
 	composerVersionKey = "php"
-	// composerArgsEnv is an environment variable used to pass custom composer variables.
-	composerArgsEnv = "COMPOSER_ARGS"
 
 	// PHPIni is the content of the php.ini config file
 	PHPIni = `
@@ -174,7 +172,7 @@ func composerInstall(ctx *gcp.Context, flags []string) error {
 // if they desire.
 func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 	var flags []string
-	if composerArgs := os.Getenv(composerArgsEnv); composerArgs != "" {
+	if composerArgs := os.Getenv(env.ComposerArgsEnv); composerArgs != "" {
 		flags = strings.Split(composerArgs, " ")
 	} else {
 		// We don't install dev dependencies (i.e. we pass --no-dev to composer) because doing so has caused
