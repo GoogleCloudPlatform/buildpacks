@@ -43,11 +43,12 @@ func (bo BuilderOutput) JSON() ([]byte, error) {
 
 // BuilderOutput contains data about the outcome of a build
 type BuilderOutput struct {
-	Metrics     buildermetrics.BuilderMetrics `json:"metrics"`
-	Error       buildererror.Error            `json:"error"`
-	Stats       []BuilderStat                 `json:"stats"`
-	Warnings    []string                      `json:"warnings"`
-	CustomImage bool                          `json:"customImage"`
+	InstalledRuntimeVersions []string                      `json:"rtVersions,omitempty"`
+	Metrics                  buildermetrics.BuilderMetrics `json:"metrics"`
+	Error                    buildererror.Error            `json:"error"`
+	Stats                    []BuilderStat                 `json:"stats"`
+	Warnings                 []string                      `json:"warnings"`
+	CustomImage              bool                          `json:"customImage"`
 }
 
 // IsSystemError determines if the error type is a SYSTEM-attributed error

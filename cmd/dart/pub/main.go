@@ -18,12 +18,14 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 const (
-	pubLayer = "pub"
+	pubLayer    = "pub"
+	pubCacheEnv = "PUB_CACHE"
 )
 
 func main() {
@@ -46,7 +48,10 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", pubLayer, err)
 	}
-	ml.BuildEnvironment.Override("PUB_CACHE", ml.Path)
+	ml.BuildEnvironment.Override(pubCacheEnv, ml.Path)
+	if err := os.Setenv(pubCacheEnv, ml.Path); err != nil {
+		return fmt.Errorf("setting env %s=%s: %w", pubCacheEnv, pubLayer, err)
+	}
 	if _, err := ctx.Exec([]string{"dart", "pub", "get"}, gcp.WithUserAttribution); err != nil {
 		return err
 	}

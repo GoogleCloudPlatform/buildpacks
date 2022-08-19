@@ -61,6 +61,28 @@ func TestAcceptanceDotNet(t *testing.T) {
 			Env:               []string{"GOOGLE_BUILDABLE=app/app.csproj"},
 		},
 		{
+			Name:                       "pick runtime version from buildable target",
+			VersionInclusionConstraint: "3",
+			App:                        "cs_local_deps_reversed",
+			MustUse:                    []string{dotnetSDK, dotnetRuntime, dotnetPublish},
+			FilesMustNotExist:          []string{sdk},
+			Env:                        []string{"GOOGLE_BUILDABLE=Function/Function.csproj"},
+			BOM: []acceptance.BOMEntry{
+				{
+					Name: "dotnetsdk",
+					Metadata: map[string]interface{}{
+						"version": "3.1.416",
+					},
+				},
+				{
+					Name: "aspnetcore",
+					Metadata: map[string]interface{}{
+						"version": "3.1.0", // Specified by Function/Function.csproj.
+					},
+				},
+			},
+		},
+		{
 			Name:              "build with properties specified",
 			App:               "cs_properties",
 			MustUse:           []string{dotnetSDK, dotnetRuntime, dotnetPublish},

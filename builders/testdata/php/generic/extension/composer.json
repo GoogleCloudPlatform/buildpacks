@@ -1,0 +1,8 @@
+{
+    "require": {
+        "google/cloud-firestore": "^1.24",
+        "ext-gd": "^7.0"
+    },
+    "scripts": {
+    }
+}

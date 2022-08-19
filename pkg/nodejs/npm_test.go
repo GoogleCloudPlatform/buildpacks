@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -70,30 +71,54 @@ func TestRequestedNPMVersion(t *testing.T) {
 
 func TestNPMInstallCommand(t *testing.T) {
 	testCases := []struct {
-		version string
-		want    string
+		name           string
+		npmVersion     string
+		nodeVersion    string
+		want           string
+		targetPlatform string
 	}{
 		{
-			version: "8.3.1",
-			want:    "ci",
+			name:       "8.3.1 should return ci",
+			npmVersion: "8.3.1",
+			want:       "ci",
 		},
 		{
-			version: "5.7.0",
-			want:    "install",
+			name:           "8.3.1 on GAE should return install for backwards compatibility",
+			npmVersion:     "8.3.1",
+			nodeVersion:    "10.24.1",
+			want:           "install",
+			targetPlatform: env.TargetPlatformAppEngine,
+		},
+		{
+			name:           "8.3.1 on GCF should return install for backwards compatibility",
+			npmVersion:     "8.3.1",
+			nodeVersion:    "10.24.1",
+			want:           "install",
+			targetPlatform: env.TargetPlatformFunctions,
+		},
+		{
+			name:       "5.7.0 should return install",
+			npmVersion: "5.7.0",
+			want:       "install",
 		},
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.version, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			defer func(fn func(*gcpbuildpack.Context) (string, error)) { npmVersion = fn }(npmVersion)
-			npmVersion = func(*gcpbuildpack.Context) (string, error) { return tc.version, nil }
+			npmVersion = func(*gcpbuildpack.Context) (string, error) { return tc.npmVersion, nil }
+			defer func(fn func(*gcpbuildpack.Context) (string, error)) { nodeVersion = fn }(nodeVersion)
+			nodeVersion = func(*gcpbuildpack.Context) (string, error) { return tc.nodeVersion, nil }
+			if tc.targetPlatform != "" {
+				t.Setenv(env.XGoogleTargetPlatform, tc.targetPlatform)
+			}
 
 			got, err := NPMInstallCommand(nil)
 			if err != nil {
-				t.Fatalf("Node.js %v: NPMInstallCommand(nil) got error: %v", tc.version, err)
+				t.Fatalf("npm %v: NPMInstallCommand(nil) got error: %v", tc.npmVersion, err)
 			}
 			if got != tc.want {
-				t.Errorf("Node.js %v: NPMInstallCommand(nil) = %q, want %q", tc.version, got, tc.want)
+				t.Errorf("npm %v: NPMInstallCommand(nil) = %q, want %q", tc.npmVersion, got, tc.want)
 			}
 		})
 	}

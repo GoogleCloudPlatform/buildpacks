@@ -17,6 +17,7 @@ package nodejs
 import (
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/Masterminds/semver"
 )
@@ -77,6 +78,16 @@ func EnsureLockfile(ctx *gcp.Context) (string, error) {
 // we prefer "npm ci" because it handles transitive dependencies determinstically. See the NPM docs:
 // https://docs.npmjs.com/cli/v6/commands/npm-ci
 func NPMInstallCommand(ctx *gcp.Context) (string, error) {
+	// b/236758688: For backwards compatibility on GAE & GCF Node.js 10 and older, always use `npm install`.
+	if env.IsGAE() || env.IsGCF() {
+		isOldNode, err := isPreNode11(ctx)
+		if err != nil {
+			return "", err
+		}
+		if isOldNode {
+			return "install", nil
+		}
+	}
 	npmVer, err := npmVersion(ctx)
 	if err != nil {
 		return "", err

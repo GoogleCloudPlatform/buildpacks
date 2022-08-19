@@ -12,7 +12,6 @@ go_library(
         "//cmd/dotnet:__subpackages__",
     ],
     deps = [
-        "//pkg/dotnet/release/client",
         "//pkg/env",
         "//pkg/gcpbuildpack",
     ],
@@ -26,6 +25,7 @@ go_test(
     embed = [":dotnet"],
     rundir = ".",
     deps = [
+        "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/testdata",
     ],

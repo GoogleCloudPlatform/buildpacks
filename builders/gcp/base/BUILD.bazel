@@ -25,10 +25,18 @@ builder(
             "//cmd/dart/sdk:sdk.tgz",
         ],
         "dotnet": [
-            "//cmd/dotnet:dotnet.cnb",
+            "//cmd/dotnet/functions_framework:functions_framework.tgz",
+            "//cmd/dotnet/publish:publish.tgz",
+            "//cmd/dotnet/runtime:runtime.tgz",
+            "//cmd/dotnet/sdk:sdk.tgz",
         ],
         "go": [
-            "//cmd/go:go.cnb",
+            "//cmd/go/build:build.tgz",
+            "//cmd/go/clear_source:clear_source.tgz",
+            "//cmd/go/functions_framework:functions_framework.tgz",
+            "//cmd/go/gomod:gomod.tgz",
+            "//cmd/go/gopath:gopath.tgz",
+            "//cmd/go/runtime:runtime.tgz",
         ],
         "java": [
             "//cmd/java/clear_source:clear_source.tgz",
@@ -61,7 +69,10 @@ builder(
             "//cmd/ruby/runtime:runtime.tgz",
         ],
         "php": [
-            "//cmd/php:php.cnb",
+            "//cmd/php/composer:composer.tgz",
+            "//cmd/php/composer_install:composer_install.tgz",
+            "//cmd/php/runtime:runtime.tgz",
+            "//cmd/php/webconfig:webconfig.tgz",
         ],
     },
     image = "gcp/base",
@@ -81,10 +92,18 @@ builder(
             "//cmd/dart/sdk:sdk.tgz",
         ],
         "dotnet": [
-            "//cmd/dotnet:dotnet.cnb",
+            "//cmd/dotnet/functions_framework:functions_framework.tgz",
+            "//cmd/dotnet/publish:publish.tgz",
+            "//cmd/dotnet/runtime:runtime.tgz",
+            "//cmd/dotnet/sdk:sdk.tgz",
         ],
         "go": [
-            "//cmd/go:go.cnb",
+            "//cmd/go/build:build.tgz",
+            "//cmd/go/clear_source:clear_source.tgz",
+            "//cmd/go/functions_framework:functions_framework.tgz",
+            "//cmd/go/gomod:gomod.tgz",
+            "//cmd/go/gopath:gopath.tgz",
+            "//cmd/go/runtime:runtime.tgz",
         ],
         "java": [
             "//cmd/java/clear_source:clear_source.tgz",

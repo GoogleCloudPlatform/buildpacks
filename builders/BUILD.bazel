@@ -26,7 +26,6 @@ package_group(
         "//builders/gae/dotnet3",
         "//builders/gcf/dotnet3",
         "//builders/gcp/base",
-        "//cmd/dotnet",
     ],
 )
 
@@ -44,7 +43,6 @@ package_group(
         "//builders/gcf/go116",
         "//builders/gcp/base",
         "//builders/go",
-        "//cmd/go",
     ],
 )
 
@@ -87,7 +85,6 @@ package_group(
         "//builders/gcf/php81",
         "//builders/gcp/base",
         "//builders/php",
-        "//cmd/php",
     ],
 )
 

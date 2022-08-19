@@ -241,24 +241,23 @@ func yarn2InstallModules(ctx *gcp.Context) error {
 	}
 
 	nodeEnv := nodejs.NodeEnv()
-	switch {
-	case nodeEnv != nodejs.EnvProduction:
+	if nodeEnv != nodejs.EnvProduction {
 		ctx.Logf("Retaining devDependencies because NODE_ENV=%q", nodeEnv)
-	default:
-		hasWorkPlugin, err := nodejs.HasYarnWorkspacePlugin(ctx)
-		if err != nil {
-			return err
-		}
-		if !hasWorkPlugin {
-			ctx.Warnf("Keeping devDependencies because the Yarn workspace-tools plugin is not installed. You can add it to your project by running 'yarn plugin import workspace-tools'")
-		}
-		// For Yarn2, dependency pruning is via the workspaces plugin.
-		ctx.Logf("Pruning devDependencies")
-		if _, err := ctx.Exec([]string{"yarn", "workspaces", "focus", "--all", "--production"}, gcp.WithUserAttribution); err != nil {
-			return err
-		}
+		return nil
 	}
-
+	hasWorkPlugin, err := nodejs.HasYarnWorkspacePlugin(ctx)
+	if err != nil {
+		return err
+	}
+	if !hasWorkPlugin {
+		ctx.Warnf("Keeping devDependencies because the Yarn workspace-tools plugin is not installed. You can add it to your project by running 'yarn plugin import workspace-tools'")
+		return nil
+	}
+	// For Yarn2, dependency pruning is via the workspaces plugin.
+	ctx.Logf("Pruning devDependencies")
+	if _, err := ctx.Exec([]string{"yarn", "workspaces", "focus", "--all", "--production"}, gcp.WithUserAttribution); err != nil {
+		return err
+	}
 	return nil
 }
 

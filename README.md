@@ -12,28 +12,28 @@ Google Cloud's container platforms:
 ## Quickstart
 
 1. [Install Docker](https://store.docker.com/search?type=edition&offering=community)
-2. [Install the pack tool (a CLI for running Buildpacks)](https://buildpacks.io/docs/install-pack/)
-3. Clone the [sample apps](https://github.com/GoogleCloudPlatform/buildpack-samples):
+1. [Install the pack tool (a CLI for running Buildpacks)](https://buildpacks.io/docs/install-pack/)
+1. Clone the [sample apps](https://github.com/GoogleCloudPlatform/buildpack-samples):
 
     ```
     git clone https://github.com/GoogleCloudPlatform/buildpack-samples.git
     cd buildpack-samples
     ```
 
-4. Pick a sample and build it, for instance with `sample-go`:
+1. Pick a sample and build it, for instance with `sample-go`:
 
     ```
     cd sample-go
     pack build --builder gcr.io/buildpacks/builder:v1 sample-go
     ```
 
-5. Run it with docker, like:
+1. Run it with docker, like:
 
     ```
     docker run --rm -p 8080:8080 sample-go
     ```
    
-6. See it in action
+1. See it in action
 
     ```
     curl localhost:8080
@@ -76,6 +76,7 @@ Supported languages include:
 | Java 8 +          | ✓          | ✓ (11 + only)     |
 | .NET Core 3.1 +   | ✓          | ✓                 |
 | Ruby 2.6 +        | ✓          | ✓                 |
+| PHP 7.4 +         | ✓          |                   |
 
 For Ruby functions, the entrypoint has to be set manually (as seen in the [sample apps](https://github.com/GoogleCloudPlatform/buildpack-samples)).
 
@@ -204,7 +205,7 @@ The following confguration options are supported across runtimes:
 * `GOOGLE_ENTRYPOINT`
   * Specifies the command which is run when the container is executed; equivalent to [entrypoint](https://docs.docker.com/engine/reference/builder/#entrypoint) in a Dockerfile.
   * See the [default entrypoint behavior](#default-entrypoint-behavior) section for default behavior.
-  * **Example:** `gunicorn -p :8080 main:app` for Python. `java -jar target/myjar.jar` for Java.
+  * **Example:** `gunicorn -p :8080 main:app` for Python. `java -jar target/myjar.jar` for Java. `php -S 0.0.0.0:8080 index.php` for PHP.
 * `GOOGLE_RUNTIME`
   * If specified, forces the runtime to opt-in. If the runtime buildpack appears in multiple groups, the first group will be chosen, consistent with the buildpack specification.
   * *(Only applicable to buildpacks install language runtime or toolchain.)*
@@ -349,8 +350,9 @@ variables. These environment variables should be specified without a
       * `java -classpath . <class>`
 * **Node.js**
   * Use `npm start`; see the [npm documentation](https://docs.npmjs.com/cli/start.html).
+  * A custom build step are supported by declaring an npm script called `gcp-build`.
 * **PHP**
-  * Not available in the general builder.
+  * Starts the Nginx web server configured to execute PHP with PHP-FPM and uses `<workspace>` as root and `index.php` as the index.
 * **Python**
   * No default entrypoint logic.
 * **Ruby**
@@ -362,8 +364,9 @@ variables. These environment variables should be specified without a
   * Caching is project-specific, not cross-project. Dependencies, such as the JDK, cannot be shared across projects and need to be redownloaded on first build.
   * Built images have their creation time set to 40 years in the past. See [reproducible builds](https://buildpacks.io/docs/reference/reproducibility/).
 * **Node**:
-  * Custom build steps (e.g. executing the "build" script of package.json) are not supported.
   * Existing `node_modules` directory is deleted and dependencies reinstalled using package.json and a lockfile if present.
+* **PHP**
+  * PHP buildpacks doesn't support installing ad-hoc extensions at build time.
 * **Python**
   * Private dependencies must be vendored. The build does not have access to private repository credentials and cannot pull dependencies at build time.
     Please see the App Engine [instructions](https://cloud.google.com/appengine/docs/standard/python3/specifying-dependencies#private_dependencies).

@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 )
@@ -102,9 +103,11 @@ func TestRuntimeConfigJSONFiles(t *testing.T) {
 			Name:                 "multiple entries",
 			TestDataRelativePath: "",
 			ExpectedResult: []string{
+				"aaa_dir/bin/Release/another.runtimeconfig.json",
 				"another_dir/with_subfolder/another.runtimeconfig.json",
 				"runtimeconfig.json/test.runtimeconfig.json",
 				"subdir/my.runtimeconfig.json",
+				"zzz_dir/bin/Release/another.runtimeconfig.json",
 			},
 		},
 	}
@@ -142,16 +145,30 @@ func TestReadRuntimeConfigJSON(t *testing.T) {
 	}
 }
 
-func TestGetSDKorRuntimeVersion(t *testing.T) {
+func TestGetSDKVersion(t *testing.T) {
 	testCases := []struct {
 		Name                 string
+		SDKVersionEnvVar     string
 		RuntimeVersionEnvVar string
 		ApplicationRoot      string
 		ExpectedResult       string
 	}{
 		{
-			Name:                 "Should read from env var",
+			Name:                 "Should read from GOOGLE_RUNTIME_VERSION",
 			RuntimeVersionEnvVar: "2.1.100",
+			ApplicationRoot:      "",
+			ExpectedResult:       "2.1.100",
+		},
+		{
+			Name:             "Should read from GOOGLE_DOTNET_SDK_VERSION",
+			SDKVersionEnvVar: "2.1.100",
+			ApplicationRoot:  "",
+			ExpectedResult:   "2.1.100",
+		},
+		{
+			Name:                 "GOOGLE_DOTNET_SDK_VERSION takes precedence over GOOGLE_RUNTIME_VERSION",
+			SDKVersionEnvVar:     "2.1.100",
+			RuntimeVersionEnvVar: "3.1.100",
 			ApplicationRoot:      "",
 			ExpectedResult:       "2.1.100",
 		},
@@ -178,7 +195,12 @@ func TestGetSDKorRuntimeVersion(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
 			ctx := gcp.NewContext(gcp.WithApplicationRoot(tc.ApplicationRoot))
-			os.Setenv("GOOGLE_RUNTIME_VERSION", tc.RuntimeVersionEnvVar)
+			if tc.SDKVersionEnvVar != "" {
+				t.Setenv(envSdkVersion, tc.SDKVersionEnvVar)
+			}
+			if tc.RuntimeVersionEnvVar != "" {
+				t.Setenv(env.RuntimeVersion, tc.RuntimeVersionEnvVar)
+			}
 
 			result, err := GetSDKVersion(ctx)
 
@@ -192,88 +214,79 @@ func TestGetSDKorRuntimeVersion(t *testing.T) {
 	}
 }
 
-func Test_getSDKChannelForTargetFramework(t *testing.T) {
+func TestGetRuntimeVersion(t *testing.T) {
 	testCases := []struct {
-		Name                 string
-		TargetFrameworkValue string
-		ExpectedOK           bool
-		ExpectedResult       string
+		Name               string
+		RuntimeConfigFiles []string
+		ApplicationRoot    string
+		Buildable          string
+		ExpectedVersion    string
+		ExpectError        bool
 	}{
 		{
-			Name:                 "Empty",
-			TargetFrameworkValue: "",
-			ExpectedOK:           false,
-			ExpectedResult:       "",
+			Name:               "Should read from runtimeconfig.json",
+			RuntimeConfigFiles: []string{"runtimeconfig/subdir/my.runtimeconfig.json"},
+			ApplicationRoot:    testdata.MustGetPath("testdata/"),
+			ExpectedVersion:    "3.1.0",
 		},
 		{
-			Name:                 "NetCore 1.0",
-			TargetFrameworkValue: "netcoreapp1.0",
-			ExpectedOK:           true,
-			ExpectedResult:       "1.0",
+			Name:               "Should return error with no runtimeconfig.json",
+			RuntimeConfigFiles: []string{},
+			ApplicationRoot:    testdata.MustGetPath("testdata/"),
+			ExpectError:        true,
 		},
 		{
-			Name:                 "NetCore 2.0",
-			TargetFrameworkValue: "netcoreapp2.0",
-			ExpectedOK:           true,
-			ExpectedResult:       "2.2",
+			Name: "Pick runtimeconfig.json from aaa_dir",
+			RuntimeConfigFiles: []string{
+				"runtimeconfig/aaa_dir/bin/Release/another.runtimeconfig.json",
+				"runtimeconfig/zzz_dir/bin/Release/another.runtimeconfig.json",
+			},
+			ApplicationRoot: testdata.MustGetPath("testdata/"),
+			Buildable:       "runtimeconfig/aaa_dir",
+			ExpectedVersion: "3.1.0",
 		},
 		{
-			Name:                 "NetCore 2.1",
-			TargetFrameworkValue: "netcoreapp2.1",
-			ExpectedOK:           true,
-			ExpectedResult:       "2.2",
+			Name: "Pick runtimeconfig.json from zzz_dir",
+			RuntimeConfigFiles: []string{
+				"runtimeconfig/aaa_dir/bin/Release/another.runtimeconfig.json",
+				"runtimeconfig/zzz_dir/bin/Release/another.runtimeconfig.json",
+			},
+			ApplicationRoot: testdata.MustGetPath("testdata/"),
+			Buildable:       "runtimeconfig/zzz_dir",
+			ExpectedVersion: "3.1.11",
 		},
 		{
-			Name:                 "NetCore 2.2",
-			TargetFrameworkValue: "netcoreapp2.2",
-			ExpectedOK:           true,
-			ExpectedResult:       "2.2",
-		},
-		{
-			Name:                 "NetCore 3.0",
-			TargetFrameworkValue: "netcoreapp3.0",
-			ExpectedOK:           true,
-			ExpectedResult:       "3.1",
-		},
-		{
-			Name:                 "NetCore 3.1",
-			TargetFrameworkValue: "netcoreapp3.1",
-			ExpectedOK:           true,
-			ExpectedResult:       "3.1",
-		},
-		{
-			Name:                 ".NET 5.0",
-			TargetFrameworkValue: "net5.0",
-			ExpectedOK:           true,
-			ExpectedResult:       "5.0",
-		},
-		{
-			Name:                 ".NET 6.0",
-			TargetFrameworkValue: "net6.0",
-			ExpectedOK:           true,
-			ExpectedResult:       "6.0",
-		},
-		{
-			Name:                 "Future version",
-			TargetFrameworkValue: "net9.0",
-			ExpectedOK:           true,
-			ExpectedResult:       "9.0",
-		},
-		{
-			Name:                 "Garbage value",
-			TargetFrameworkValue: "python3.7",
-			ExpectedOK:           false,
-			ExpectedResult:       "",
+			Name: "Mismatch runtimeconfig.json and BUILDABLE env var",
+			RuntimeConfigFiles: []string{
+				"runtimeconfig/aaa_dir/bin/Release/another.runtimeconfig.json",
+				"runtimeconfig/zzz_dir/bin/Release/another.runtimeconfig.json",
+			},
+			ApplicationRoot: testdata.MustGetPath("testdata/"),
+			Buildable:       "runtimeconfig/123_dir",
+			ExpectError:     true,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
-			result, ok := getSDKChannelForTargetFramework(tc.TargetFrameworkValue)
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(tc.ApplicationRoot))
+			t.Setenv(env.Buildable, tc.Buildable)
+			runtimeVersion, err := GetRuntimeVersion(ctx, tc.RuntimeConfigFiles)
 
-			if ok != tc.ExpectedOK || result != tc.ExpectedResult {
-				t.Errorf("getSDKChannelForTargetFramework(%v) = (%v, %v), want (%v, %v)", tc.TargetFrameworkValue,
-					result, ok, tc.ExpectedResult, tc.ExpectedOK)
+			if tc.ExpectError == true {
+				if err == nil {
+					t.Fatalf("%s: got no error and expected error", tc.Name)
+				} else {
+					return
+				}
+			}
+			if err != nil {
+				t.Fatalf("GetRuntimeVersion(ctx, %v, %v) got unexpected error: %v",
+					tc.RuntimeConfigFiles, tc.Buildable, err)
+			}
+			if tc.ExpectedVersion != runtimeVersion {
+				t.Errorf("GetRuntimeVersion(ctx, %v, %v) = %v, want %v",
+					tc.RuntimeConfigFiles, tc.Buildable, runtimeVersion, tc.ExpectedVersion)
 			}
 		})
 	}

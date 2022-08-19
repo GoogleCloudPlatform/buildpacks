@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -176,6 +176,30 @@ func TestAcceptanceJava(t *testing.T) {
 			MustNotUse:        []string{javaEntrypoint},
 			FilesMustExist:    []string{"/workspace/build/libs/helloworld-0.1-all.jar"},
 			FilesMustNotExist: []string{"/workspace/src/main/java/example/Application.java", "/workspace/build.gradle"},
+		},
+		{
+			Name:            "Java 8 native extensions",
+			App:             "native_extensions",
+			Env:             []string{"GOOGLE_RUNTIME_VERSION=8"},
+			MustUse:         []string{javaMaven, javaRuntime, javaEntrypoint},
+			MustNotUse:      []string{entrypoint},
+			EnableCacheTest: false,
+		},
+		{
+			Name:            "Java 11 native extensions",
+			App:             "native_extensions",
+			Env:             []string{"GOOGLE_RUNTIME_VERSION=11"},
+			MustUse:         []string{javaMaven, javaRuntime, javaEntrypoint},
+			MustNotUse:      []string{entrypoint},
+			EnableCacheTest: false,
+		},
+		{
+			Name:            "Java 17 native extensionsn",
+			App:             "native_extensions",
+			Env:             []string{"GOOGLE_RUNTIME_VERSION=17"},
+			MustUse:         []string{javaMaven, javaRuntime, javaEntrypoint},
+			MustNotUse:      []string{entrypoint},
+			EnableCacheTest: false,
 		},
 	}
 	for _, tc := range testCases {

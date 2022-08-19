@@ -11,7 +11,7 @@ def nodejsargs():
     args = {
         "8.17.0": nodejs8args(),
         "10.24.1": nodejs10args(),
-        "12.22.9": nodejs12args(),
+        "12.22.12": nodejs12args(),
         "14.18.3": nodejs14args(),
         "16.13.2": nodejs16args(),
     }

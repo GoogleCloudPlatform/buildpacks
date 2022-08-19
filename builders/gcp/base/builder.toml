@@ -25,12 +25,44 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "dart/sdk.tgz"
 
 [[buildpacks]]
-  id = "google.dotnet"
-  uri = "dotnet/dotnet.cnb"
+  id = "google.dotnet.runtime"
+  uri = "dotnet/runtime.tgz"
 
 [[buildpacks]]
-  id = "google.go"
-  uri = "go/go.cnb"
+  id = "google.dotnet.sdk"
+  uri = "dotnet/sdk.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.publish"
+  uri = "dotnet/publish.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.functions-framework"
+  uri = "dotnet/functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.go.clear_source"
+  uri = "go/clear_source.tgz"
+
+[[buildpacks]]
+  id = "google.go.runtime"
+  uri = "go/runtime.tgz"
+
+[[buildpacks]]
+  id = "google.go.gomod"
+  uri = "go/gomod.tgz"
+
+[[buildpacks]]
+  id = "google.go.build"
+  uri = "go/build.tgz"
+
+[[buildpacks]]
+  id = "google.go.gopath"
+  uri = "go/gopath.tgz"
+
+[[buildpacks]]
+  id = "google.go.functions-framework"
+  uri = "go/functions_framework.tgz"
 
 [[buildpacks]]
   id = "google.java.entrypoint"
@@ -133,16 +165,62 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "webserver.tgz"
 
 [[buildpacks]]
-  id = "google.php"
-  uri = "php/php.cnb"
+  id = "google.php.composer"
+  uri = "php/composer.tgz"
+
+[[buildpacks]]
+  id = "google.php.composer-install"
+  uri = "php/composer_install.tgz"
+
+[[buildpacks]]
+  id = "google.php.runtime"
+  uri = "php/runtime.tgz"
+
+[[buildpacks]]
+  id = "google.php.webconfig"
+  uri = "php/webconfig.tgz"
+
+[[buildpacks]]
+  id = "google.utils.nginx"
+  uri = "nginx.tgz"
 
 ########
 # .NET #
 ########
 
 [[order]]
+
   [[order.group]]
-    id = "google.dotnet"
+    id = "google.dotnet.sdk"
+
+  [[order.group]]
+    id = "google.dotnet.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.dotnet.publish"
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# Prebuilt .NET applications.
+[[order]]
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 ########
 # Dart #
@@ -165,8 +243,71 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 ######
 
 [[order]]
+
   [[order.group]]
-    id = "google.go"
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.functions-framework"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.clear_source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.gomod"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.clear_source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.gopath"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.clear_source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
 
 ########
 # Java #
@@ -405,12 +546,33 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   [[order.group]]
     id = "google.utils.label"
 
-########
-# PHP  #
-########
+#######
+# PHP #
+#######
 [[order]]
   [[order.group]]
-    id = "google.php"
+    id = "google.php.runtime"
+
+  [[order.group]]
+    id = "google.utils.nginx"
+
+  [[order.group]]
+    id = "google.php.composer-install"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.webconfig"
 
 ###########
 # Node.js #

@@ -43,6 +43,6 @@ func buildFn(ctx *gcp.Context) error {
 func entrypoint(*gcp.Context) (*appstart.Entrypoint, error) {
 	return &appstart.Entrypoint{
 		Type:    appstart.EntrypointGenerated.String(),
-		Command: "serve " + routerScript,
+		Command: "serve -enable-dynamic-workers -workers=1024 " + routerScript,
 	}, nil
 }

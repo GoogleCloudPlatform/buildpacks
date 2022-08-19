@@ -45,8 +45,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if result := runtime.CheckOverride("go"); result != nil {
 		return result, nil
 	}
-
-	atLeastOne, err := ctx.HasAtLeastOne("*.go")
+	atLeastOne, err := ctx.HasAtLeastOneOutsideDependencyDirectories("*.go")
 	if err != nil {
 		return nil, fmt.Errorf("finding *.go files: %w", err)
 	}

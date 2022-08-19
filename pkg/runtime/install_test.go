@@ -93,6 +93,7 @@ func TestInstallRuby(t *testing.T) {
 		name         string
 		version      string
 		httpStatus   int
+		stackID      string
 		responseFile string
 		wantFile     string
 		wantVersion  string
@@ -136,6 +137,14 @@ func TestInstallRuby(t *testing.T) {
 			httpStatus: http.StatusOK,
 			wantError:  true,
 		},
+		{
+			name:         "successful install - invalid stackID fallback to ubuntu1804",
+			version:      "2.x.x",
+			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
+			wantFile:     "lib/foo.txt",
+			wantVersion:  "2.2.2",
+			stackID:      "some.invalid.stackID",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -159,9 +168,14 @@ func TestInstallRuby(t *testing.T) {
 				Path:     t.TempDir(),
 				Metadata: map[string]interface{}{},
 			}
-			ctx := gcp.NewContext()
+			layer.Cache = true
+			if tc.stackID == "" {
+				tc.stackID = "google.gae.18"
+			}
+			ctx := gcp.NewContext(gcp.WithStackID(tc.stackID))
 			if tc.wantCached {
-				ctx.SetMetadata(layer, "version", "2.2.2")
+				ctx.SetMetadata(layer, versionKey, "2.2.2")
+				ctx.SetMetadata(layer, stackKey, tc.stackID)
 			}
 			isCached, err := InstallTarballIfNotCached(ctx, Ruby, tc.version, layer)
 			if tc.wantCached && !isCached {

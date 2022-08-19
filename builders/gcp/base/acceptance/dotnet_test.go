@@ -72,7 +72,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 		{
 			Name:                "Dev mode",
 			App:                 "simple",
-			Env:                 []string{"GOOGLE_DEVMODE=1"},
+			Env:                 []string{"GOOGLE_DEVMODE=1", "GOOGLE_DOTNET_SDK_VERSION=3.1.x"},
 			MustUse:             []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustExist:      []string{sdk, "/workspace/Startup.cs"},
 			MustRebuildOnChange: "/workspace/Startup.cs",

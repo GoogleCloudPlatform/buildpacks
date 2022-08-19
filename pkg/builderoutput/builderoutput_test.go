@@ -26,6 +26,7 @@ import (
 func TestFromJSON(t *testing.T) {
 	serialized := `
 {
+	"rtVersions": ["6.0.6"],
   "metrics": {"c":{"1":3}},
 	"error": {
 		"buildpackId": "bad-buildpack",
@@ -67,7 +68,8 @@ func TestFromJSON(t *testing.T) {
 	bm := buildermetrics.NewBuilderMetrics()
 	bm.GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(3)
 	want := BuilderOutput{
-		Metrics: bm,
+		InstalledRuntimeVersions: []string{"6.0.6"},
+		Metrics:                  bm,
 		Error: buildererror.Error{
 			BuildpackID:      "bad-buildpack",
 			BuildpackVersion: "vbad",
@@ -106,8 +108,9 @@ func TestJSON(t *testing.T) {
 	bm := buildermetrics.NewBuilderMetrics()
 	bm.GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(3)
 	b := BuilderOutput{
-		Metrics: bm,
-		Error:   buildererror.Error{Status: buildererror.StatusInternal},
+		InstalledRuntimeVersions: []string{"6.0.6"},
+		Metrics:                  bm,
+		Error:                    buildererror.Error{Status: buildererror.StatusInternal},
 	}
 
 	s, err := b.JSON()
@@ -115,11 +118,14 @@ func TestJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to marshal %v: %v", b, err)
 	}
-	if !strings.Contains(string(s), "INTERNAL") {
-		t.Errorf("Expected string 'INTERNAL' not found in %s", s)
+	if want := `"rtVersions":["6.0.6"]`; !strings.Contains(string(s), want) {
+		t.Errorf("Expected string %q not found in %s", want, s)
 	}
-	if !strings.Contains(string(s), `{"c":{"1":3}}`) {
-		t.Errorf(`Expected string '{"c":{"1":3}}' not found in %s`, s)
+	if want := "INTERNAL"; !strings.Contains(string(s), want) {
+		t.Errorf("Expected string %q not found in %s", want, s)
+	}
+	if want := `{"c":{"1":3}}`; !strings.Contains(string(s), want) {
+		t.Errorf(`Expected string %q not found in %s`, want, s)
 	}
 }
 
