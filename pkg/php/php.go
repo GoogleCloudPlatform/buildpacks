@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 	"path/filepath"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
@@ -180,7 +180,7 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 		//   https://github.com/GoogleCloudPlatform/php-docs-samples/issues/736
 		//   https://github.com/GoogleCloudPlatform/runtimes-common/pull/763
 		//   https://github.com/GoogleCloudPlatform/runtimes-common/commit/6c4970f609d80f9436ac58ae272cfcc6bcd57143
-		flags = []string{"--no-dev", "--no-progress", "--no-interaction", "--optimize-autoloader"}        
+		flags = []string{"--no-dev", "--no-progress", "--no-interaction", "--optimize-autoloader"}
 	}
 
 	if err := ctx.RemoveAll(Vendor); err != nil {
