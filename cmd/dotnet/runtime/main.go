@@ -63,27 +63,21 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	rtCfgFiles, err := dotnet.RuntimeConfigJSONFiles(".")
-	if err != nil {
-		return fmt.Errorf("finding runtimeconfig.json: %w", err)
-	}
-	// This invalid state should have been rejected by the detectFn already.
-	if len(rtCfgFiles) == 0 {
-		return fmt.Errorf("runtimeconfig.json does not exist")
-	}
-
-	runtimeVersion, err := dotnet.GetRuntimeVersion(ctx, rtCfgFiles)
-	if err != nil {
-		return err
-	}
 	isDevMode, err := env.IsDevMode()
 	if err != nil {
 		return fmt.Errorf("checking if dev mode is enabled: %w", err)
 	}
-	if !isDevMode {
-		if err := buildRuntimeLayer(ctx, runtimeVersion); err != nil {
-			return fmt.Errorf("building the runtime layer: %w", err)
-		}
+	if isDevMode {
+		// in DevMode we install the SDK into the application image so we don't need the runtime.
+		return nil
+	}
+
+	runtimeVersion, err := dotnet.AspNetRuntimeVersion(ctx)
+	if err != nil {
+		return err
+	}
+	if err := buildRuntimeLayer(ctx, runtimeVersion); err != nil {
+		return fmt.Errorf("building the runtime layer: %w", err)
 	}
 	return nil
 }

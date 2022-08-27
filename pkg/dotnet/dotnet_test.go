@@ -214,6 +214,66 @@ func TestGetSDKVersion(t *testing.T) {
 	}
 }
 
+func TestAspNetRuntimeVersion(t *testing.T) {
+	testCases := []struct {
+		name    string
+		envVar  string
+		configs map[string]string
+		want    string
+	}{
+		{
+			name:   "from env",
+			envVar: "6.x.x",
+			want:   "6.x.x",
+		},
+		{
+			name: "env and config",
+			configs: map[string]string{
+				"somewhere/foo.runtimeconfig.json": `
+				{
+					"runtimeOptions": {
+						"tfm": "netcoreapp3.1",
+						"framework": {
+							"name": "Microsoft.AspNetCore.App",
+							"version": "3.1.0"
+						},
+						"configProperties": {
+							"System.GC.Server": true
+						}
+					}
+				}`,
+			},
+			envVar: "6.x.x",
+			want:   "6.x.x",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.envVar != "" {
+				t.Setenv(envAspNetCoreVersion, tc.envVar)
+			}
+			root := t.TempDir()
+			for fp, c := range tc.configs {
+				path := filepath.Join(root, fp)
+				if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+					t.Fatalf("create dir %s: %v", filepath.Dir(path), err)
+				}
+				if err := os.WriteFile(path, []byte(c), 0744); err != nil {
+					t.Fatalf("writing %s: %v", path, err)
+				}
+			}
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(root))
+			got, err := AspNetRuntimeVersion(ctx)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("AspNetRuntimeVersion() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestGetRuntimeVersion(t *testing.T) {
 	testCases := []struct {
 		Name               string

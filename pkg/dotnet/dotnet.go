@@ -30,8 +30,9 @@ import (
 )
 
 const (
-	aspDotnetCore = "Microsoft.AspNetCore.App"
-	envSdkVersion = "GOOGLE_DOTNET_SDK_VERSION"
+	aspDotnetCore        = "Microsoft.AspNetCore.App"
+	envSdkVersion        = "GOOGLE_DOTNET_SDK_VERSION"
+	envAspNetCoreVersion = "GOOGLE_ASP_NET_CORE_VERSION"
 )
 
 // ProjectFiles finds all project files supported by dotnet.
@@ -206,6 +207,28 @@ func getGlobalJSONOrNil(applicationRoot string) (*globalJSON, error) {
 		return nil, gcp.UserErrorf("unmarshalling global.json: %v", err)
 	}
 	return &gjs, nil
+}
+
+// AspNetRuntimeVersion determines what version of the ASP.NET core runtime should be installed by
+// inspecting the GOOGLE_ASP_NET_CORE_VERSION environment variable. If it is not set it looks for
+// a runtimeconfig.json the directory tree and extracts the version from it.
+func AspNetRuntimeVersion(ctx *gcp.Context) (string, error) {
+	if envVersion := os.Getenv(envAspNetCoreVersion); envVersion != "" {
+		return envVersion, nil
+	}
+	rtCfgFiles, err := RuntimeConfigJSONFiles(".")
+	if err != nil {
+		return "", fmt.Errorf("finding runtimeconfig.json: %w", err)
+	}
+	// This invalid state should have been rejected by the detectFn already.
+	if len(rtCfgFiles) == 0 {
+		return "", fmt.Errorf("runtimeconfig.json does not exist")
+	}
+	runtimeVersion, err := GetRuntimeVersion(ctx, rtCfgFiles)
+	if err != nil {
+		return "", err
+	}
+	return runtimeVersion, nil
 }
 
 // FindProjectFile finds the csproj file using the 'GOOGLE_BUILDABLE' env var and falling back with a search of the current directory.
