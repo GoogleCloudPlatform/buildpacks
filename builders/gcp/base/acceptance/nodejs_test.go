@@ -105,17 +105,21 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			MustNotUse: []string{nodeNPM, nodeYarn},
 		},
 		{
-			Name:       "NPM version specified",
-			App:        "npm_version_specified",
-			MustOutput: []string{"npm --version\n\n8.3.1"},
-			Path:       "/version?want=8.3.1",
+			Name: "NPM version specified",
+			// npm@8 requires nodejs@12+
+			VersionInclusionConstraint: ">= 12.0.0",
+			App:                        "npm_version_specified",
+			MustOutput:                 []string{"npm --version\n\n8.3.1"},
+			Path:                       "/version?want=8.3.1",
 		},
 		{
-			Name:       "old NPM version specified",
-			App:        "old_npm_version_specified",
-			Path:       "/version?want=5.5.1",
-			MustUse:    []string{nodeRuntime, nodeNPM},
-			MustOutput: []string{"npm --version\n\n5.5.1"},
+			Name: "old NPM version specified",
+			// npm@5 requires nodejs@8
+			VersionInclusionConstraint: "8",
+			App:                        "old_npm_version_specified",
+			Path:                       "/version?want=5.5.1",
+			MustUse:                    []string{nodeRuntime, nodeNPM},
+			MustOutput:                 []string{"npm --version\n\n5.5.1"},
 		},
 	}
 	// Tests for specific versions of Node.js available on dl.google.com.
@@ -128,7 +132,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			MustUse: []string{nodeRuntime},
 		})
 	}
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
