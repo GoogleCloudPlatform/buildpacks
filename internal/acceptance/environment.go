@@ -69,7 +69,7 @@ func applyRuntimeVersion(t *testing.T, environment map[string]string, version st
 		// This is needed for GAE and GCF since they are using an overridden run-image which already has the runtime installed.
 		addEnvVar(t, environment, "X_GOOGLE_SKIP_RUNTIME_LAUNCH", "true")
 	}
-	if version == "1.11" {
+	if runtimeName == "go" && strings.HasPrefix(version, "1.11") {
 		addEnvVar(t, environment, "GOPROXY", "https://proxy.golang.org")
 	}
 }
