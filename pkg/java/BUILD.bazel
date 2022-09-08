@@ -15,6 +15,7 @@ go_library(
         "//cmd/java:__subpackages__",
     ],
     deps = [
+        "//pkg/env",
         "//pkg/fetch",
         "//pkg/gcpbuildpack",
         "@com_github_buildpacks_libcnb//:go_default_library",

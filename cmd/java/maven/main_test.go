@@ -28,6 +28,7 @@ func TestDetect(t *testing.T) {
 	testCases := []struct {
 		name  string
 		files map[string]string
+		env   []string
 		want  int
 	}{
 		{
@@ -49,10 +50,18 @@ func TestDetect(t *testing.T) {
 			files: map[string]string{},
 			want:  100,
 		},
+		{
+			name: "use GOOGLE_BUILDABLE",
+			files: map[string]string{
+				"testmodule/pom.xml": "",
+			},
+			env:  []string{"GOOGLE_BUILDABLE=testmodule"},
+			want: 0,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
 		})
 	}
 }

@@ -19,11 +19,13 @@ import (
 	"archive/zip"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
 )
@@ -57,6 +59,10 @@ var (
 
 // ExecutableJar looks for the jar with a Main-Class manifest. If there is not exactly 1 of these jars, throw an error.
 func ExecutableJar(ctx *gcp.Context) (string, error) {
+	var buildable = os.Getenv(env.Buildable)
+	if buildable != "" {
+		jarPaths = append([][]string{[]string{buildable, "target"}}, jarPaths...)
+	}
 	for i, path := range jarPaths {
 		path = append([]string{ctx.ApplicationRoot()}, path...)
 		path = append(path, "*.jar")

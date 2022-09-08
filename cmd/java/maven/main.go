@@ -45,11 +45,11 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	pomExists, err := ctx.FileExists("pom.xml")
+	pomPath, err := pomFilePath(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if pomExists {
+	if pomPath != "" {
 		return gcp.OptInFileFound("pom.xml"), nil
 	}
 	extXMLExists, err := ctx.FileExists(".mvn/extensions.xml")
@@ -93,6 +93,14 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	command := []string{mvn, "clean", "package", "--batch-mode", "-DskipTests", "-Dhttp.keepAlive=false"}
+
+	pomPath, err := pomFilePath(ctx)
+	if err != nil {
+		return err
+	}
+	if pomPath != "" {
+		command = append(command, fmt.Sprintf("-f=%s", pomPath))
+	}
 
 	if buildArgs := os.Getenv(env.BuildArgs); buildArgs != "" {
 		if strings.Contains(buildArgs, "maven.repo.local") {
@@ -240,4 +248,17 @@ func ensureUnixLineEndings(ctx *gcp.Context, file ...string) error {
 		return err
 	}
 	return nil
+}
+
+func pomFilePath(ctx *gcp.Context) (string, error) {
+	buildable := os.Getenv(env.Buildable)
+	pomPath := filepath.Join(buildable, "pom.xml")
+	pomExists, err := ctx.FileExists(pomPath)
+	if err != nil {
+		return "", err
+	}
+	if pomExists {
+		return pomPath, nil
+	}
+	return "", nil
 }

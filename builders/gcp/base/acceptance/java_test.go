@@ -194,12 +194,19 @@ func TestAcceptanceJava(t *testing.T) {
 			EnableCacheTest: false,
 		},
 		{
-			Name:            "Java 17 native extensionsn",
+			Name:            "Java 17 native extensions",
 			App:             "native_extensions",
 			Env:             []string{"GOOGLE_RUNTIME_VERSION=17"},
 			MustUse:         []string{javaMaven, javaRuntime, javaEntrypoint},
 			MustNotUse:      []string{entrypoint},
 			EnableCacheTest: false,
+		},
+		{
+			Name:       "Multi-module",
+			App:        "multi_module",
+			Env:        []string{"GOOGLE_BUILDABLE=hello"},
+			MustUse:    []string{javaMaven, javaRuntime, javaEntrypoint},
+			MustNotUse: []string{entrypoint},
 		},
 	}
 	for _, tc := range testCases {
