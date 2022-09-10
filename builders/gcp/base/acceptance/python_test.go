@@ -88,7 +88,7 @@ func TestAcceptancePython(t *testing.T) {
 		})
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
