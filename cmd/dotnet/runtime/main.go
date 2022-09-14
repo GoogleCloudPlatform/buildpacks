@@ -72,9 +72,9 @@ func buildFn(ctx *gcp.Context) error {
 		return nil
 	}
 
-	runtimeVersion, err := dotnet.AspNetRuntimeVersion(ctx)
+	runtimeVersion, err := dotnet.GetRuntimeVersion(ctx, ctx.ApplicationRoot())
 	if err != nil {
-		return err
+		return fmt.Errorf("getting runtime version: %w", err)
 	}
 	if err := buildRuntimeLayer(ctx, runtimeVersion); err != nil {
 		return fmt.Errorf("building the runtime layer: %w", err)

@@ -26,6 +26,8 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
+	"github.com/google/go-cmp/cmp"
+	"google3/third_party/golang/cmp/cmpopts/cmpopts"
 )
 
 func TestReadProjectFile(t *testing.T) {
@@ -90,25 +92,19 @@ func TestRuntimeConfigJSONFiles(t *testing.T) {
 		ExpectedResult       []string
 	}{
 		{
-			Name:                 "single file in same directory",
-			TestDataRelativePath: "subdir",
-			ExpectedResult:       []string{"subdir/my.runtimeconfig.json"},
+			Name:                 "finds single file in root dir",
+			TestDataRelativePath: "singleRtCfg",
+			ExpectedResult:       []string{"singleRtCfg/my.runtimeconfig.json"},
 		},
 		{
-			Name:                 "single file in sub-directory",
-			TestDataRelativePath: "another_dir",
-			ExpectedResult:       []string{"another_dir/with_subfolder/another.runtimeconfig.json"},
+			Name:                 "doesn't find recursively",
+			TestDataRelativePath: "nestedRtCfg",
+			ExpectedResult:       []string{},
 		},
 		{
-			Name:                 "multiple entries",
-			TestDataRelativePath: "",
-			ExpectedResult: []string{
-				"aaa_dir/bin/Release/another.runtimeconfig.json",
-				"another_dir/with_subfolder/another.runtimeconfig.json",
-				"runtimeconfig.json/test.runtimeconfig.json",
-				"subdir/my.runtimeconfig.json",
-				"zzz_dir/bin/Release/another.runtimeconfig.json",
-			},
+			Name:                 "finds multiples in root dir",
+			TestDataRelativePath: "multipleRtCfg",
+			ExpectedResult:       []string{"multipleRtCfg/my.runtimeconfig.json", "multipleRtCfg/my.second.runtimeconfig.json"},
 		},
 	}
 
@@ -126,7 +122,7 @@ func TestRuntimeConfigJSONFiles(t *testing.T) {
 			for _, val := range tc.ExpectedResult {
 				fullPathExpectedResults = append(fullPathExpectedResults, path.Join(rootDir, val))
 			}
-			if !reflect.DeepEqual(files, fullPathExpectedResults) {
+			if !cmp.Equal(files, fullPathExpectedResults, cmpopts.SortSlices(func(a, b string) bool { return a < b })) {
 				t.Errorf("RuntimeConfigFiles(%v) = %q, want %q", tstDir, files, fullPathExpectedResults)
 			}
 		})
@@ -134,7 +130,7 @@ func TestRuntimeConfigJSONFiles(t *testing.T) {
 }
 
 func TestReadRuntimeConfigJSON(t *testing.T) {
-	path := "testdata/runtimeconfig/subdir/my.runtimeconfig.json"
+	path := "testdata/runtimeconfig/singleRtCfg/my.runtimeconfig.json"
 	rtCfg, err := ReadRuntimeConfigJSON(testdata.MustGetPath(path))
 	if err != nil {
 		t.Fatalf("ReadRuntimeConfigJSON(%v) got error: %v", path, err)
@@ -214,124 +210,55 @@ func TestGetSDKVersion(t *testing.T) {
 	}
 }
 
-func TestAspNetRuntimeVersion(t *testing.T) {
-	testCases := []struct {
-		name    string
-		envVar  string
-		configs map[string]string
-		want    string
-	}{
-		{
-			name:   "from env",
-			envVar: "6.x.x",
-			want:   "6.x.x",
-		},
-		{
-			name: "env and config",
-			configs: map[string]string{
-				"somewhere/foo.runtimeconfig.json": `
-				{
-					"runtimeOptions": {
-						"tfm": "netcoreapp3.1",
-						"framework": {
-							"name": "Microsoft.AspNetCore.App",
-							"version": "3.1.0"
-						},
-						"configProperties": {
-							"System.GC.Server": true
-						}
-					}
-				}`,
-			},
-			envVar: "6.x.x",
-			want:   "6.x.x",
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			if tc.envVar != "" {
-				t.Setenv(envAspNetCoreVersion, tc.envVar)
-			}
-			root := t.TempDir()
-			for fp, c := range tc.configs {
-				path := filepath.Join(root, fp)
-				if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
-					t.Fatalf("create dir %s: %v", filepath.Dir(path), err)
-				}
-				if err := os.WriteFile(path, []byte(c), 0744); err != nil {
-					t.Fatalf("writing %s: %v", path, err)
-				}
-			}
-			ctx := gcp.NewContext(gcp.WithApplicationRoot(root))
-			got, err := AspNetRuntimeVersion(ctx)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if got != tc.want {
-				t.Errorf("AspNetRuntimeVersion() = %q, want %q", got, tc.want)
-			}
-		})
-	}
-}
-
 func TestGetRuntimeVersion(t *testing.T) {
 	testCases := []struct {
-		Name               string
-		RuntimeConfigFiles []string
-		ApplicationRoot    string
-		Buildable          string
-		ExpectedVersion    string
-		ExpectError        bool
+		Name            string
+		RtVersionEnvVar string
+		RtCfgSearchRoot string
+		ExpectedVersion string
+		ExpectError     bool
 	}{
 		{
-			Name:               "Should read from runtimeconfig.json",
-			RuntimeConfigFiles: []string{"runtimeconfig/subdir/my.runtimeconfig.json"},
-			ApplicationRoot:    testdata.MustGetPath("testdata/"),
-			ExpectedVersion:    "3.1.0",
-		},
-		{
-			Name:               "Should return error with no runtimeconfig.json",
-			RuntimeConfigFiles: []string{},
-			ApplicationRoot:    testdata.MustGetPath("testdata/"),
-			ExpectError:        true,
-		},
-		{
-			Name: "Pick runtimeconfig.json from aaa_dir",
-			RuntimeConfigFiles: []string{
-				"runtimeconfig/aaa_dir/bin/Release/another.runtimeconfig.json",
-				"runtimeconfig/zzz_dir/bin/Release/another.runtimeconfig.json",
-			},
-			ApplicationRoot: testdata.MustGetPath("testdata/"),
-			Buildable:       "runtimeconfig/aaa_dir",
+			Name:            "No env var, should read from runtimeconfig.json",
+			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/singleRtCfg/"),
 			ExpectedVersion: "3.1.0",
 		},
 		{
-			Name: "Pick runtimeconfig.json from zzz_dir",
-			RuntimeConfigFiles: []string{
-				"runtimeconfig/aaa_dir/bin/Release/another.runtimeconfig.json",
-				"runtimeconfig/zzz_dir/bin/Release/another.runtimeconfig.json",
-			},
-			ApplicationRoot: testdata.MustGetPath("testdata/"),
-			Buildable:       "runtimeconfig/zzz_dir",
-			ExpectedVersion: "3.1.11",
+			Name:            "Env var should take presidence over runtimeconfig.json",
+			RtVersionEnvVar: "6.0.5",
+			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/singleRtCfg/"),
+			ExpectedVersion: "6.0.5",
 		},
 		{
-			Name: "Mismatch runtimeconfig.json and BUILDABLE env var",
-			RuntimeConfigFiles: []string{
-				"runtimeconfig/aaa_dir/bin/Release/another.runtimeconfig.json",
-				"runtimeconfig/zzz_dir/bin/Release/another.runtimeconfig.json",
-			},
-			ApplicationRoot: testdata.MustGetPath("testdata/"),
-			Buildable:       "runtimeconfig/123_dir",
+			Name:            "No runtimeconfig.json found in root fails",
+			RtCfgSearchRoot: testdata.MustGetPath("testdata/"),
+			ExpectError:     true,
+		},
+		{
+			Name:            "Env var set, but no runtimeconfig.json found in root succeeds",
+			RtVersionEnvVar: "6.0.5",
+			RtCfgSearchRoot: testdata.MustGetPath("testdata/"),
+			ExpectedVersion: "6.0.5",
+		},
+		{
+			Name:            "More than one runtimeconfig.json fails",
+			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/multipleRtCfg"),
+			ExpectError:     true,
+		},
+		{
+			Name:            "Env var set, but more than one runtimeconfig.json succeeds",
+			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/multipleRtCfg"),
 			ExpectError:     true,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
-			ctx := gcp.NewContext(gcp.WithApplicationRoot(tc.ApplicationRoot))
-			t.Setenv(env.Buildable, tc.Buildable)
-			runtimeVersion, err := GetRuntimeVersion(ctx, tc.RuntimeConfigFiles)
+			ctx := gcp.NewContext()
+			if tc.RtVersionEnvVar != "" {
+				t.Setenv(EnvRuntimeVersion, tc.RtVersionEnvVar)
+			}
+			runtimeVersion, err := GetRuntimeVersion(ctx, tc.RtCfgSearchRoot)
 
 			if tc.ExpectError == true {
 				if err == nil {
@@ -341,12 +268,12 @@ func TestGetRuntimeVersion(t *testing.T) {
 				}
 			}
 			if err != nil {
-				t.Fatalf("GetRuntimeVersion(ctx, %v, %v) got unexpected error: %v",
-					tc.RuntimeConfigFiles, tc.Buildable, err)
+				t.Fatalf("GetRuntimeVersion(ctx, %v) got unexpected error: %v",
+					tc.RtCfgSearchRoot, err)
 			}
 			if tc.ExpectedVersion != runtimeVersion {
-				t.Errorf("GetRuntimeVersion(ctx, %v, %v) = %v, want %v",
-					tc.RuntimeConfigFiles, tc.Buildable, runtimeVersion, tc.ExpectedVersion)
+				t.Errorf("GetRuntimeVersion(ctx, %v) = %v, want %v",
+					tc.RtCfgSearchRoot, runtimeVersion, tc.ExpectedVersion)
 			}
 		})
 	}

@@ -20,7 +20,6 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,9 +29,14 @@ import (
 )
 
 const (
-	aspDotnetCore        = "Microsoft.AspNetCore.App"
-	envSdkVersion        = "GOOGLE_DOTNET_SDK_VERSION"
-	envAspNetCoreVersion = "GOOGLE_ASP_NET_CORE_VERSION"
+	aspDotnetCore = "Microsoft.AspNetCore.App"
+	envSdkVersion = "GOOGLE_DOTNET_SDK_VERSION"
+	// EnvRuntimeVersion is the environment variable key for storing the target dotnet runtime version.
+	EnvRuntimeVersion = "GOOGLE_ASP_NET_CORE_VERSION"
+	// PublishLayerName is the name of the directory containing the publish layer
+	PublishLayerName = "publish"
+	// PublishOutputDirName is passed as the output directory for `dotnet publish`.
+	PublishOutputDirName = "bin"
 )
 
 // ProjectFiles finds all project files supported by dotnet.
@@ -101,25 +105,15 @@ func BuildableDir() string {
 	return buildable
 }
 
-// RuntimeConfigJSONFiles returns all runtimeconfig.json files in 'path' (recursive).
+// RuntimeConfigJSONFiles returns all runtimeconfig.json files in 'path'.
 // The runtimeconfig.json file is present for compiled .NET assemblies.
 func RuntimeConfigJSONFiles(path string) ([]string, error) {
-	var files []string
-	var buildableDir = BuildableDir()
-	if err := filepath.WalkDir(path, func(f string, d fs.DirEntry, e error) error {
-		if e != nil {
-			return e
-		}
-		if d.IsDir() {
-			return nil
-		}
-
-		if strings.HasSuffix(f, "runtimeconfig.json") && strings.HasPrefix(f, buildableDir) {
-			files = append(files, f)
-		}
-		return nil
-	}); err != nil {
+	files, err := filepath.Glob(filepath.Join(path, "*runtimeconfig.json"))
+	if err != nil {
 		return nil, err
+	}
+	if files == nil {
+		return []string{}, nil
 	}
 	return files, nil
 }
@@ -209,28 +203,6 @@ func getGlobalJSONOrNil(applicationRoot string) (*globalJSON, error) {
 	return &gjs, nil
 }
 
-// AspNetRuntimeVersion determines what version of the ASP.NET core runtime should be installed by
-// inspecting the GOOGLE_ASP_NET_CORE_VERSION environment variable. If it is not set it looks for
-// a runtimeconfig.json the directory tree and extracts the version from it.
-func AspNetRuntimeVersion(ctx *gcp.Context) (string, error) {
-	if envVersion := os.Getenv(envAspNetCoreVersion); envVersion != "" {
-		return envVersion, nil
-	}
-	rtCfgFiles, err := RuntimeConfigJSONFiles(".")
-	if err != nil {
-		return "", fmt.Errorf("finding runtimeconfig.json: %w", err)
-	}
-	// This invalid state should have been rejected by the detectFn already.
-	if len(rtCfgFiles) == 0 {
-		return "", fmt.Errorf("runtimeconfig.json does not exist")
-	}
-	runtimeVersion, err := GetRuntimeVersion(ctx, rtCfgFiles)
-	if err != nil {
-		return "", err
-	}
-	return runtimeVersion, nil
-}
-
 // FindProjectFile finds the csproj file using the 'GOOGLE_BUILDABLE' env var and falling back with a search of the current directory.
 func FindProjectFile(ctx *gcp.Context) (string, error) {
 	proj := os.Getenv(env.Buildable)
@@ -255,58 +227,57 @@ func FindProjectFile(ctx *gcp.Context) (string, error) {
 	return proj, nil
 }
 
-// GetRuntimeVersion returns the Microsoft.AspNetCore.App version
-// in the runtimeconfig.json file.
-func GetRuntimeVersion(ctx *gcp.Context, rtCfgFiles []string) (string, error) {
-	rtCfgFile, err := pickRuntimeConfigFile(ctx, rtCfgFiles)
-	if err != nil {
-		return "", err
+// GetRuntimeVersion returns the value in GOOGLE_ASP_NET_CORE_VERSION, and if not set, returns
+// Microsoft.AspNetCore.App version in the runtimeconfig.json file found in dir.
+func GetRuntimeVersion(ctx *gcp.Context, dir string) (string, error) {
+	envVarVersion := os.Getenv(EnvRuntimeVersion)
+	if envVarVersion != "" {
+		ctx.Logf("Determined runtime version from %v: %v", EnvRuntimeVersion, envVarVersion)
+		return envVarVersion, nil
 	}
 
-	rtCfg, err := ReadRuntimeConfigJSON(filepath.Join(ctx.ApplicationRoot(), rtCfgFile))
-	if err != nil {
-		return "", fmt.Errorf("reading runtimeconfig.json: %w", err)
+	rtCfgVersion, rtCfgFile, rtCfgErr := getRuntimeVersionFromRtCfgDir(ctx, dir)
+	if rtCfgErr != nil {
+		return "", fmt.Errorf("%v was not set, and getting version failed: %w", EnvRuntimeVersion, rtCfgErr)
 	}
-	if rtCfg.RuntimeOptions.Framework.Name == aspDotnetCore {
-		return rtCfg.RuntimeOptions.Framework.Version, nil
-	}
-	for _, fw := range rtCfg.RuntimeOptions.Frameworks {
-		if fw.Name == aspDotnetCore {
-			return fw.Version, nil
-		}
-	}
-	return "", fmt.Errorf("couldn't find runtime version from runtimeconfig.json: %#v", rtCfg)
+	ctx.Logf("Determined runtime version from %v: %v", rtCfgFile, rtCfgVersion)
+	return rtCfgVersion, nil
 }
 
-func pickRuntimeConfigFile(ctx *gcp.Context, rtCfgFiles []string) (string, error) {
-	if len(rtCfgFiles) == 0 {
-		return "", fmt.Errorf("at least one 'runtimeconfig.json' is expected")
+func getRuntimeVersionFromRtCfgDir(ctx *gcp.Context, dir string) (string, string, error) {
+	rtCfgFiles, err := RuntimeConfigJSONFiles(dir)
+	if err != nil {
+		return "", "", gcp.InternalErrorf("finding runtimeconfig.json: %v", err)
 	}
 
-	// This is needed for prebuilt app without ${BUILDABLE}.
-	// To be backward compatible, we don't validate the path when there's only one rtCfgFile.
-	if len(rtCfgFiles) == 1 {
-		return rtCfgFiles[0], nil
+	if len(rtCfgFiles) > 1 {
+		return "", "", fmt.Errorf("more than one runtimeconfig.json file found: %v", rtCfgFiles)
 	}
 
-	rtCfgFile := ""
-	buildable := os.Getenv(env.Buildable)
-	buildableDir := BuildableDir()
-	for _, f := range rtCfgFiles {
-		ctx.Logf("Found runtimeconfig.json file: %v", f)
-		if !strings.HasPrefix(f, buildable) {
-			continue
+	if len(rtCfgFiles) < 1 {
+		return "", "", fmt.Errorf("no runtimeconfig.json file was found")
+	}
+	ctx.Logf("Found runtimeconfig file %q", rtCfgFiles[0])
+
+	version := ""
+	rtCfg, err := ReadRuntimeConfigJSON(rtCfgFiles[0])
+	if err != nil {
+		return "", rtCfgFiles[0], fmt.Errorf("reading runtimeconfig.json: %w", err)
+	}
+	if rtCfg.RuntimeOptions.Framework.Name == aspDotnetCore {
+		version = rtCfg.RuntimeOptions.Framework.Version
+	} else {
+		for _, fw := range rtCfg.RuntimeOptions.Frameworks {
+			if fw.Name == aspDotnetCore {
+				version = fw.Version
+				break
+			}
 		}
+	}
 
-		if strings.HasPrefix(f, filepath.Join(buildableDir, "bin/Release")) {
-			rtCfgFile = f
-			break
-		}
+	if version == "" {
+		return "", rtCfgFiles[0], fmt.Errorf("couldn't find runtime version from runtimeconfig.json: %#v", rtCfg)
 	}
-	if rtCfgFile == "" {
-		return "", fmt.Errorf("at least one 'runtimeconfig.json' under ${GOOGLE_BUILDABLE}=%q is expected",
-			buildable)
-	}
-	ctx.Logf("Using runtimeconfig file %q", rtCfgFile)
-	return rtCfgFile, nil
+
+	return version, rtCfgFiles[0], nil
 }

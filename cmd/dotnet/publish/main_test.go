@@ -278,3 +278,63 @@ func TestDetect(t *testing.T) {
 		})
 	}
 }
+
+func TestDeleteFolder(t *testing.T) {
+	testCases := []struct {
+		name         string
+		toDelete     string
+		createFolder string
+		createFiles  []string
+		want         bool
+	}{
+		{
+			name:     "target doesn't exist",
+			toDelete: "bin",
+			want:     false,
+		},
+		{
+			name:        "bin file",
+			toDelete:    "bin",
+			createFiles: []string{"bin"},
+			want:        true,
+		},
+		{
+			name:         "empty folder",
+			toDelete:     "bin",
+			createFolder: "bin",
+			want:         true,
+		},
+		{
+			name:         "non-empty folder",
+			toDelete:     "bin",
+			createFolder: "bin",
+			createFiles:  []string{"bin/a", "bin/b"},
+			want:         true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+
+			if tc.createFolder != "" {
+				if err := os.MkdirAll(filepath.Join(dir, tc.createFolder), os.ModePerm); err != nil {
+					t.Fatalf("error making %v dir: %v", tc.createFolder, err)
+				}
+			}
+
+			for _, f := range tc.createFiles {
+				if _, err := os.Create(filepath.Join(dir, f)); err != nil {
+					t.Fatalf("error creating %v: %v", f, err)
+				}
+			}
+
+			deleted, err := deleteFolder(gcp.NewContext(gcp.WithApplicationRoot(dir)), filepath.Join(dir, tc.toDelete))
+			if err != nil {
+				t.Fatalf("an error occurred, but none was expected: %v", err)
+			}
+			if tc.want != deleted {
+				t.Errorf("got %v, want %v", deleted, tc.want)
+			}
+		})
+	}
+}

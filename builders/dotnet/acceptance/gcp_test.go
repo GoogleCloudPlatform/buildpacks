@@ -47,11 +47,18 @@ func TestAcceptanceDotNet(t *testing.T) {
 			Env:               []string{"GOOGLE_BUILDABLE=App"},
 		},
 		{
-			Name:              "app with custom entry point",
+			Name:              "app with custom entry point (legacy)",
 			App:               "cs_custom_entrypoint",
 			MustUse:           []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 			Env:               []string{"GOOGLE_ENTRYPOINT=bin/app --flag=myflag"},
+		},
+		{
+			Name:              "app with custom entry point (on path)",
+			App:               "cs_custom_entrypoint",
+			MustUse:           []string{dotnetSDK, dotnetRuntime, dotnetPublish},
+			FilesMustNotExist: []string{sdk},
+			Env:               []string{"GOOGLE_ENTRYPOINT=app --flag=myflag"},
 		},
 		{
 			Name:              "app with nested directory structure",

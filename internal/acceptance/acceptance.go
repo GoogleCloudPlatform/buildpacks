@@ -570,8 +570,8 @@ func cleanUpImage(t *testing.T, name string) {
 //
 // The 'builderName' return value is the name of the builder image.
 // The 'runName' return value is the name of the run image. This value will be the
-//	empty string when the run image is not override and the builder's default run
-//	image is to be used.
+// empty string when the run image is not override and the builder's default run
+// image is to be used.
 //
 // The 'cleanup' return value is a function which should be run after the tests are
 // complete to clean up the images which are explicitly created. Images that are

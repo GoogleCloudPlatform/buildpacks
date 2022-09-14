@@ -35,7 +35,6 @@ const (
 	cacheTag          = "prod dependencies"
 	dependencyHashKey = "dependency_hash"
 	versionKey        = "version"
-	outputDirectory   = "bin"
 )
 
 func main() {
@@ -85,9 +84,20 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	binLayer, err := ctx.Layer("bin", gcp.BuildLayer, gcp.LaunchLayer)
+	binLayer, err := ctx.Layer(dotnet.PublishLayerName, gcp.BuildLayer, gcp.LaunchLayer)
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
+	}
+
+	outputDirectory := path.Join(binLayer.Path, dotnet.PublishOutputDirName)
+
+	// The existence of a project file indicates this is not prebuilt.  Any uploaded bin folder interferes with publish.
+	deleted, err := deleteFolder(ctx, path.Join(ctx.ApplicationRoot(), dotnet.PublishOutputDirName))
+	if err != nil {
+		return fmt.Errorf("deleting upload bin: %w", err)
+	}
+	if deleted {
+		ctx.Warnf("A project file was uploaded, causing `dotnet publish` to be called, but the output bin folder already existed in application source.  Deleting %v.", outputDirectory)
 	}
 
 	cmd = []string{
@@ -110,6 +120,19 @@ func buildFn(ctx *gcp.Context) error {
 
 	if _, err := ctx.Exec(cmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution); err != nil {
 		return err
+	}
+
+	// Set GOOGLE_ASP_NET_CORE_VERSION, so subsequent buildpacks know which runtime version to install
+	runtimeVersion, err := dotnet.GetRuntimeVersion(ctx, outputDirectory)
+	if err != nil {
+		return gcp.InternalErrorf("getting runtime version: %v", err)
+	}
+	binLayer.BuildEnvironment.Default(dotnet.EnvRuntimeVersion, runtimeVersion)
+
+	// `dotnet publish` output originally went to ctx.ApplicationRoot()/bin/.  This was moved into a
+	// layer, but we create a symlink in the original location for backwards compatability.
+	if err := configureBinSymlink(ctx, outputDirectory); err != nil {
+		return fmt.Errorf("creating symlink: %w", err)
 	}
 
 	// Infer the entrypoint in case an explicit override was not provided.
@@ -245,4 +268,36 @@ func getAssemblyName(ctx *gcp.Context, proj string) (string, error) {
 		return "", gcp.UserErrorf("expected exactly one AssemblyName, found %v", assemblyNames)
 	}
 	return assemblyNames[0], nil
+}
+
+// Returns whether the bin folder was deleted
+func deleteFolder(ctx *gcp.Context, folder string) (bool, error) {
+	exists, err := ctx.FileExists(folder)
+	if err != nil {
+		return false, err
+	}
+	if exists {
+		if err := os.RemoveAll(folder); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+func configureBinSymlink(ctx *gcp.Context, binLayerPath string) error {
+	linkTarget := filepath.Join(ctx.ApplicationRoot(), dotnet.PublishOutputDirName)
+
+	if deleted, err := deleteFolder(ctx, linkTarget); err != nil {
+		return fmt.Errorf("deleting %s: %v", linkTarget, err)
+	} else if deleted {
+		ctx.Warnf("Deleted folder: %v", linkTarget)
+	} else {
+		ctx.Warnf("Not deleting folder: %v", linkTarget)
+	}
+
+	if err := os.Symlink(binLayerPath, linkTarget); err != nil {
+		return fmt.Errorf("linking %s: %v", binLayerPath, err)
+	}
+	return nil
 }

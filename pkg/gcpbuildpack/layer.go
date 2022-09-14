@@ -16,6 +16,7 @@ package gcpbuildpack
 
 import (
 	"os"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -73,6 +74,9 @@ var LaunchLayerUnlessSkipRuntimeLaunch = func(ctx *Context, l *libcnb.Layer) err
 
 // Layer returns a layer, creating its directory.
 func (ctx *Context) Layer(name string, opts ...layerOption) (*libcnb.Layer, error) {
+	if strings.Contains(name, "/") {
+		return nil, buildererror.Errorf(buildererror.StatusInternal, "%v is an invalid layer name; layer names may not contain '/'", name)
+	}
 	l, err := ctx.buildContext.Layers.Layer(name)
 	if err != nil {
 		return nil, buildererror.Errorf(buildererror.StatusInternal, err.Error())
