@@ -174,6 +174,7 @@ def _cloudbuild_targets(name, srcs, structure_test_config, builder, args, deps, 
     if testdata.startswith("//third_party/gcp_buildpacks"):
         _build_cloudbuild_zip(name, bin_name, structure_test_config, builder, testdata)
     _build_cloudbuild_config_target(name, bin_name, builder, args, versions, argsmap, testdata)
+    _build_per_version_cloudbuild_config_targets(name, bin_name, builder, args, versions, argsmap, testdata)
 
 def _build_cloudbuild_zip(name, bin_name, structure_test_config, builder, testdata):
     testdata_fileset_name = _build_testdata_target(name, testdata)
@@ -211,6 +212,17 @@ def _build_testdata_target(name, testdata):
         ],
     )
     return fileset_name
+
+def _build_per_version_cloudbuild_config_targets(name, bin_name, builder, args, versions, argsmap, testdata):
+    if versions != None:
+        for version in versions:
+            version_name = name + "_" + version
+            cloudbuild_config = _build_cloudbuild_config(name, bin_name, builder, args, [version], argsmap, testdata)
+            native.genrule(
+                name = version_name + "_cloudbuild_config",
+                outs = [version_name + "_cloudbuild.yaml"],
+                cmd = "echo '" + cloudbuild_config + "' >> $@",
+            )
 
 def _build_cloudbuild_config_target(name, bin_name, builder, args, versions, argsmap, testdata):
     cloudbuild_config = _build_cloudbuild_config(name, bin_name, builder, args, versions, argsmap, testdata)
