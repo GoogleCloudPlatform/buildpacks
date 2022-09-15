@@ -189,7 +189,7 @@ def _build_cloudbuild_zip(name, bin_name, structure_test_config, builder, testda
     )
 
 def _build_cloudbuild_test_binary(name, srcs, deps):
-    bin_name = name + "cloudbuild_bin"
+    bin_name = name + "_cloudbuild_bin"
     _new_go_test(bin_name, srcs, None, None, deps)
     return bin_name
 
