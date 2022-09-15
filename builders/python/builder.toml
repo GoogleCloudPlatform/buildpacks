@@ -9,12 +9,12 @@ description = "Unified builder all Python runtimes"
   uri = "appengine.tgz"
 
 [[buildpacks]]
-  id = "google.python.functions-framework"
-  uri = "functions_framework.tgz"
-
-[[buildpacks]]
   id = "google.python.functions-framework-compat"
   uri = "functions_framework_compat.tgz"
+
+[[buildpacks]]
+  id = "google.python.functions-framework"
+  uri = "functions_framework.tgz"
 
 [[buildpacks]]
   id = "google.python.missing-entrypoint"
