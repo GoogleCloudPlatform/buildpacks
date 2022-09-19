@@ -17,6 +17,7 @@ package ruby
 import (
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -31,11 +32,12 @@ func TestDetectVersion(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name       string
-		runtimeEnv string
-		want       string
-		lockFiles  []lockFile
-		wantError  bool
+		name         string
+		runtimeEnv   string
+		want         string
+		lockFiles    []lockFile
+		wantError    bool
+		errorContent string
 	}{
 		{
 			name:       "from environment",
@@ -78,7 +80,8 @@ RUBY VERSION
    ruby 2.5.7p206
 `},
 			},
-			wantError: true,
+			wantError:    true,
+			errorContent: "Ruby version \"2.5.7\" in Gemfile.lock can't be overriden to \"3.0.1\" using GOOGLE_RUNTIME_VERSION environment variable",
 		},
 		{
 			name: "from Gemfile.lock without ruby version",
@@ -234,6 +237,10 @@ RUBY VERSION
 
 			if err == nil && tc.wantError {
 				t.Fatal("DetectRubyVersion(ctx) wanted error, got nil")
+			}
+
+			if tc.errorContent != "" && !strings.Contains(err.Error(), tc.errorContent) {
+				t.Fatalf("DetectRubyVersion(ctx) got error: %v, wanted %v", err.Error(), tc.errorContent)
 			}
 
 			if got != tc.want {

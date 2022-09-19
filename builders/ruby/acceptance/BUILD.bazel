@@ -1,0 +1,41 @@
+load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
+
+licenses(["notice"])
+
+exports_files([
+    "config.yaml",
+])
+
+test_suite(
+    # run all tests in this BUILD
+    name = "acceptance_test",
+)
+
+VERSION_RUBY26 = "2.6.10"
+
+VERSION_RUBY27 = "2.7.6"
+
+VERSION_RUBY30 = "3.0.4"
+
+VERSION_RUBY31 = "3.1.0"
+
+VERSIONS_ALL = [
+    VERSION_RUBY26,
+    VERSION_RUBY27,
+    VERSION_RUBY30,
+    VERSION_RUBY31,
+]
+
+VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
+
+acceptance_test_suite(
+    name = "gcp_test",
+    srcs = [
+        "common_test.go",
+        "gcp_test.go",
+    ],
+    builder = "//builders/ruby:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/ruby:generic",
+    versions = VERSIONS_WITH_GCP_SUPPORT,
+)

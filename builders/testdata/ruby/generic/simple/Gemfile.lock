@@ -18,12 +18,9 @@ GEM
 PLATFORMS
   ruby
 
-RUBY VERSION
-  ruby 3.0.3p0
-
 DEPENDENCIES
   sinatra (~> 2.1)
   webrick (~> 1.7)
 
 BUNDLED WITH
-   2.1.4
+   2.3.15

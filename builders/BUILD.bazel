@@ -115,6 +115,7 @@ package_group(
         "//builders/gcf/ruby27",
         "//builders/gcf/ruby30",
         "//builders/gcp/base",
+        "//builders/ruby",
     ],
 )
 

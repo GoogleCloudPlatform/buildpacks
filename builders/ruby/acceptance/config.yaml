@@ -12,7 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-source "https://rubygems.org"
+# Test container structure using a centigrate image with a custom entrypoint.
 
-gem "sinatra", "~> 2.1"
-gem "webrick", "~> 1.7"
+# See https://github.com/GoogleContainerTools/container-structure-test for the configuration format.
+
+schemaVersion: '2.0.0'
+
+metadataTest:
+  env:
+    - key: PORT
+      value: 8080
+  entrypoint: ['/cnb/process/web']
+  cmd: []

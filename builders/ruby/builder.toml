@@ -1,0 +1,67 @@
+description = "Builder for the Ruby runtime"
+
+[[buildpacks]]
+  id = "google.config.entrypoint"
+  uri = "entrypoint.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.runtime"
+  uri = "runtime.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.rubygems"
+  uri = "rubygems.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.bundle"
+  uri = "bundle.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.rails"
+  uri = "rails.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.missing-entrypoint"
+  uri = "missing_entrypoint.tgz"
+
+[[buildpacks]]
+  id = "google.utils.label"
+  uri = "label.tgz"
+
+# The GCP order group.
+[[order]]
+  [[order.group]]
+    id = "google.ruby.runtime"
+
+  [[order.group]]
+    id = "google.ruby.rubygems"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.bundle"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.rails"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# This buildpack group will always fail but with a clear message that the
+# entrypoint is missing. It must be the last group otherwise projects with
+# a single .rb file and no entrypoint will fail
+[[order]]
+  [[order.group]]
+    id = "google.ruby.missing-entrypoint"
+
+[stack]
+  id = "google.gae.18"
+  build-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-gae-18/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-gae-18/run"
+
+[lifecycle]
+  version = "0.13.3"

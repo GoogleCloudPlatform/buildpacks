@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2022 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package acceptance
+package acceptance_test
 
 import (
 	"os"
@@ -39,7 +39,7 @@ func useBundler1(setupCtx acceptance.SetupContext) error {
 	return nil
 }
 
-func TestAcceptanceRuby(t *testing.T) {
+func TestAcceptance(t *testing.T) {
 	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
@@ -83,27 +83,31 @@ func TestAcceptanceRuby(t *testing.T) {
 		{
 			Name:    "runtime version from env",
 			App:     "simple",
-			Path:    "/version?want=2.7.5",
-			Env:     []string{"GOOGLE_RUNTIME_VERSION=2.7.5"},
+			Path:    "/version?want=2.7.6",
 			MustUse: []string{rubyRuntime, rubyBundle, entrypoint},
+			// TODO: Right now, we have no way of getting the version being tested from this point in
+			// code. We should solve this and remove the version constraint here.
+			VersionInclusionConstraint: "2.7.6",
 		},
 		{
 			Name:            "rails",
 			App:             "rails",
-			Env:             []string{"GOOGLE_RUNTIME_VERSION=2.7.5", "GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
+			Env:             []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
 			MustUse:         []string{rubyRuntime, rubyRails, rubyBundle, entrypoint},
 			EnableCacheTest: true,
 		},
 		{
 			Name:    "rails minimal",
 			App:     "rails_minimal",
-			Env:     []string{"GOOGLE_RUNTIME_VERSION=3.1.0", "GOOGLE_ENTRYPOINT=ruby bin/rails server -b 0.0.0.0 -p $PORT"},
+			Env:     []string{"GOOGLE_ENTRYPOINT=ruby bin/rails server -b 0.0.0.0 -p $PORT"},
 			MustUse: []string{rubyRuntime, rubyRails, rubyBundle, entrypoint},
+			// This test is dependent on 'activesupport-7.0.2.2' which requires ruby version >= 2.7.0
+			VersionInclusionConstraint: ">2.7.0",
 		},
 		{
 			Name:       "rails precompiled",
 			App:        "rails_precompiled",
-			Env:        []string{"GOOGLE_RUNTIME_VERSION=2.7.5", "GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			Env:        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 			MustUse:    []string{rubyRuntime, rubyBundle, entrypoint},
 			MustNotUse: []string{rubyRails},
 		},
@@ -114,18 +118,8 @@ func TestAcceptanceRuby(t *testing.T) {
 			EnableCacheTest: false,
 		},
 	}
-	// Tests for specific versions of Ruby available on dl.google.com.
-	// Unlike with the other languages, we control the versions published to GCS.
-	for _, v := range []string{"3.1.0", "3.0.3", "2.7.5", "2.6.9"} {
-		testCases = append(testCases, acceptance.Test{
-			Name:    "runtime version " + v,
-			App:     "simple",
-			Path:    "/version?want=" + v,
-			Env:     []string{"GOOGLE_RUNTIME_VERSION=" + v},
-			MustUse: []string{rubyRuntime, rubyBundle, entrypoint},
-		})
-	}
-	for _, tc := range testCases {
+
+	for _, tc := range acceptance.FilterTests(t, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
@@ -135,7 +129,7 @@ func TestAcceptanceRuby(t *testing.T) {
 	}
 }
 
-func TestFailuresRuby(t *testing.T) {
+func TestFailures(t *testing.T) {
 	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
@@ -153,7 +147,7 @@ func TestFailuresRuby(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterFailureTests(t, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()

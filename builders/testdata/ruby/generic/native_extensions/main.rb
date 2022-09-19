@@ -20,14 +20,14 @@ require 'ffi'
 module Printf
   extend FFI::Library
   # TODO need to update the path if os get updated
-  ffi_lib '/usr/lib/x86_64-linux-gnu/libc++.so.1'
+  ffi_lib '/usr/lib/x86_64-linux-gnu/libstdc++.so.6'
   attach_function :says, :puts, [ :string ], :int
 end
 
 configure do
   set :port, ENV['PORT']
   set :bind, '0.0.0.0'
-end
+end 
 
 get "/" do
   begin
