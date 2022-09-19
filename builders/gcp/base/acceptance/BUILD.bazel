@@ -34,9 +34,9 @@ go_test(
 )
 
 go_test(
-    name = "dotnetsdk_test",
+    name = "dotnet_test",
     size = "enormous",
-    srcs = ["dotnetsdk_test.go"],
+    srcs = ["dotnet_test.go"],
     args = [
         "-test-data=$(location //builders/testdata/dotnet:generic)",
         "-structure-test-config=$(location :config.yaml)",
