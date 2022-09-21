@@ -39,10 +39,11 @@ func TestAcceptanceDotNet(t *testing.T) {
 			EnableCacheTest:   true,
 		},
 		{
-			Name:              "simple dotnet 6.0 app",
-			App:               "simple_dotnet6",
-			MustUse:           []string{dotnetSDK, dotnetRuntime, dotnetPublish},
-			FilesMustNotExist: []string{sdk},
+			Name:                       "simple dotnet 6.0 app",
+			VersionInclusionConstraint: ">=6.0.0 <7.0.0",
+			App:                        "simple_dotnet6",
+			MustUse:                    []string{dotnetSDK, dotnetRuntime, dotnetPublish},
+			FilesMustNotExist:          []string{sdk},
 		},
 		{
 			Name:              "simple dotnet app with runtime version",
@@ -108,7 +109,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 			},
 		},
 	}
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
