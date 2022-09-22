@@ -165,13 +165,16 @@ def _remove_suffix(value, suffix):
         value = value[:-len(suffix)]
     return value
 
+def is_bazel_build(testdata):
+    return not testdata.startswith("//third_party/gcp_buildpacks")
+
 # _cloudbuild_targets builds two rules that can be used to run the acceptance tests in gcloud.
 def _cloudbuild_targets(name, srcs, structure_test_config, builder, args, deps, versions, argsmap, testdata):
     bin_name = _build_cloudbuild_test_binary(name, srcs, deps)
 
-    # this hack is to prevent the tarball from being built in bazel, as _build_testdata_target
-    # makes use of Fileset which is not available in bazel.
-    if testdata.startswith("//third_party/gcp_buildpacks"):
+    # this hack is to conditionally prevent testdata from being zipped in bazel, as
+    # _build_testdata_target makes use of Fileset which is not available in bazel.
+    if not is_bazel_build(testdata):
         _build_cloudbuild_zip(name, bin_name, structure_test_config, builder, testdata)
     _build_cloudbuild_config_target(name, bin_name, builder, args, versions, argsmap, testdata)
     _build_per_version_cloudbuild_config_targets(name, bin_name, builder, args, versions, argsmap, testdata)
@@ -330,3 +333,34 @@ def _build_step(name, bin_name, version, args, testdata_label):
     for a in args:
         result += " \\\n    " + a
     return result
+
+_default_cloudbuild_bin_targets = ["gae_test_cloudbuild_bin", "gcf_test_cloudbuild_bin", "gcp_test_cloudbuild_bin"]
+
+def _build_argo_source_testdata_fileset_target(name, testdata):
+    fileset_name = name + "_testdata"
+    native.Fileset(
+        name = fileset_name,
+        out = "testdata",
+        entries = [
+            native.FilesetEntry(
+                srcdir = testdata,
+            ),
+        ],
+    )
+    return fileset_name
+
+def acceptance_test_argo_source(name, testdata, srcs = [], structure_test_config = ":config.yaml"):
+    # this hack is to conditionally prevent testdata from being zipped in bazel, as
+    # _build_testdata_target makes use of Fileset which is not available in bazel.
+    if is_bazel_build(testdata):
+        return
+
+    testdata_fileset_target = _build_argo_source_testdata_fileset_target(name, testdata)
+    pkg_zip(
+        name = name,
+        srcs = srcs + _default_cloudbuild_bin_targets + [
+            testdata_fileset_target,
+            structure_test_config,
+        ],
+        testonly = 1,
+    )

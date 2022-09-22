@@ -1,4 +1,4 @@
-load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
 load(":args.bzl", "goargs")
 
 licenses(["notice"])
@@ -96,4 +96,12 @@ acceptance_test_suite(
     builder = "//builders/go:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/go:functions",
+)
+
+acceptance_test_argo_source(
+    name = "argo_source",
+    srcs = [
+        ":1.11_gcf_test_cloudbuild_bin",
+    ],
+    testdata = "//builders/testdata:go",
 )

@@ -1,4 +1,4 @@
-load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
 
 licenses(["notice"])
 
@@ -68,4 +68,9 @@ acceptance_test_suite(
     deps = [
         "@com_github_masterminds_semver//:go_default_library",
     ],
+)
+
+acceptance_test_argo_source(
+    name = "argo_source",
+    testdata = "//builders/testdata:dotnet",
 )

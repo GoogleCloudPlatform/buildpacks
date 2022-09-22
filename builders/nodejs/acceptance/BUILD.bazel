@@ -1,4 +1,4 @@
-load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
 load(":args.bzl", "nodejsargs")
 
 licenses(["notice"])
@@ -98,4 +98,12 @@ acceptance_test_suite(
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/nodejs:functions",
+)
+
+acceptance_test_argo_source(
+    name = "argo_source",
+    srcs = [
+        ":8.17.0_gcf_test_cloudbuild_bin",
+    ],
+    testdata = "//builders/testdata:nodejs",
 )
