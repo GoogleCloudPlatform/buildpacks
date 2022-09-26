@@ -96,10 +96,6 @@ func TestAcceptance(t *testing.T) {
 			App:        "fail_broken_dependencies",
 			MustOutput: []string{`WARNING: Found incompatible dependencies: "functions-framework 3.0.0 has requirement flask<3.0,>=1.0, but you have flask 0.12.5."`},
 		},
-		{
-			Name: "function has right number of dependencies",
-			App:  "list_dependencies",
-		},
 	}
 	for _, tc := range testCases {
 		tc := tc

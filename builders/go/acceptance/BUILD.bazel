@@ -49,7 +49,6 @@ acceptance_test_suite(
         "common_test.go",
         "gcf_test.go",
     ],
-    argsmap = goargs(),
     builder = "//builders/go:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/go:functions",
@@ -91,7 +90,6 @@ acceptance_test_suite(
     ],
     args = [
         "-runtime-version=" + VERSION_GCF_LEGACY_WORKER,
-        "-run-image-override=gcr.io/gae-runtimes/buildpacks/go111/run",
     ],
     builder = "//builders/go:builder.tar",
     rundir = ".",

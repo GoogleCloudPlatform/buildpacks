@@ -79,7 +79,6 @@ acceptance_test_suite(
     srcs = [
         "gcf_test.go",
     ],
-    argsmap = nodejsargs(),
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/nodejs:functions",
@@ -93,7 +92,6 @@ acceptance_test_suite(
     ],
     args = [
         "-runtime-version=" + VERSION_GCF_LEGACY_WORKER,
-        "-run-image-override=gcr.io/gae-runtimes/buildpacks/nodejs8/run",
     ],
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",

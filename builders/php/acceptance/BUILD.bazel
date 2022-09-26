@@ -51,7 +51,6 @@ acceptance_test_suite(
         "common_test.go",
         "gcf_test.go",
     ],
-    argsmap = phpargs(),
     builder = "//builders/php:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/php:functions",

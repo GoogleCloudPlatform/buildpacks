@@ -62,7 +62,6 @@ acceptance_test_suite(
     srcs = [
         "gcf_test.go",
     ],
-    argsmap = pythonargs(),
     builder = "//builders/python:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/python:functions",

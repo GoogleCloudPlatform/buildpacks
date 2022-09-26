@@ -24,6 +24,6 @@ def testFunction(request):
   # dependency should be explicitly pinned in the functions_framework and
   # functions_framework_compat buildpacks and the number here should be updated.
   if sys.version_info.minor == 7:
-    return 'PASS' if length == 56 else 'FAIL: received ' + str(length)
+    return 'PASS' if length == 57 else 'FAIL: received ' + str(length)
   else:
-    return 'PASS' if length == 16 else 'FAIL: received ' + str(length)
+    return 'PASS' if length == 17 else 'FAIL: received ' + str(length)
