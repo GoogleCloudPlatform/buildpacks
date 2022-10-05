@@ -64,7 +64,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	layer, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	layer, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerUnlessSkipRuntimeLaunch)
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
 	}

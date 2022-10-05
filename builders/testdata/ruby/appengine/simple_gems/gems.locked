@@ -27,7 +27,6 @@ PLATFORMS
 
 DEPENDENCIES
   sinatra (~> 2.2)
-  toys-core!
   webrick (~> 1.7)
 
 BUNDLED WITH

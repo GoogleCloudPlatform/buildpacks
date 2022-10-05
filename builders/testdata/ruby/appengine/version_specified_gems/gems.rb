@@ -13,5 +13,9 @@
 # limitations under the License.
 
 source "https://rubygems.org"
-gem "sinatra", "~> 2.0"
-ruby '~> 2.5.0'
+gem "webrick", "~> 1.7"
+gem "sinatra", "~> 2.1"
+
+# This file should be pre-processed by substituting the runtime version
+# placeholder with the Ruby version being tested.
+ruby '~> $RUNTIME_VERSION'

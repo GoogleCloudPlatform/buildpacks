@@ -19,6 +19,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -174,6 +176,49 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	ctx.SetMetadata(layer, versionKey, version)
 
 	return false, nil
+}
+
+// PinGemAndBundlerVersion pins the RubyGems versions for GAE and GCF runtime versions to prevent
+// unexpected behaviors with new versions. This is only expected to be called if the target
+// platform is GAE or GCF.
+func PinGemAndBundlerVersion(ctx *gcp.Context, version string, layer *libcnb.Layer) error {
+	rubygemsVersion := "3.1.2"
+	bundler1Version := "1.17.3"
+	bundler2Version := "2.1.4"
+
+	// rubygems 3.1.2 is not supported on 3.x. The oldest version supported is 3.2.3.
+	if strings.HasPrefix(version, "3.") {
+		rubygemsVersion = "3.2.26"
+	}
+
+	rubyBinPath := filepath.Join(layer.Path, "bin")
+	gemPath := filepath.Join(rubyBinPath, "gem")
+
+	// Update RubyGems to a fixed version
+	ctx.Logf("Installing RubyGems %s", rubygemsVersion)
+	_, err := ctx.Exec(
+		[]string{gemPath, "update", "--system", rubygemsVersion}, gcp.WithUserAttribution)
+	if err != nil {
+		return fmt.Errorf("updating rubygems %s, err: %v", rubygemsVersion, err)
+	}
+
+	// Remove any existing bundler versions in the Ruby installation
+	command := []string{"rm", "-f",
+		filepath.Join(rubyBinPath, "bundle"), filepath.Join(rubyBinPath, "bundler")}
+	_, err = ctx.Exec(command, gcp.WithUserAttribution)
+	if err != nil {
+		return fmt.Errorf("removing out-of-box bundler: %v", err)
+	}
+
+	// Install fixed versions of Bundler1 and Bundler2 for backwards compatibility
+	ctx.Logf("Installing bundler %s and %s", bundler1Version, bundler2Version)
+	command = []string{gemPath, "install", "--no-document",
+		fmt.Sprintf("bundler:%s", bundler1Version), fmt.Sprintf("bundler:%s", bundler2Version)}
+	_, err = ctx.Exec(command, gcp.WithUserAttribution)
+	if err != nil {
+		return fmt.Errorf("installing bundler %s and %s: %v", bundler1Version, bundler2Version, err)
+	}
+	return nil
 }
 
 // resolveVersion returns the newest available version of a runtime that satisfies the provided

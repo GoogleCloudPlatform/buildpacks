@@ -327,8 +327,10 @@ func TestBuildFailure(t *testing.T, builderName, runName string, cfg FailureTest
 		t.Errorf("Expected regexp %q not found in stdout or stderr:\n\nstdout:\n\n%s\n\nstderr:\n\n%s", r, outb, errb)
 	}
 	expectedLog := "Expected pattern included in error output: true"
-	if !cfg.SkipBuilderOutputMatch && !strings.Contains(string(errb), expectedLog) {
+	builderOutput := string(errb)
+	if !cfg.SkipBuilderOutputMatch && !strings.Contains(builderOutput, expectedLog) {
 		t.Errorf("Expected regexp %q not found in BUILDER_OUTPUT", r)
+		t.Logf("BUILDER_OUTPUT: %v", builderOutput)
 	}
 }
 

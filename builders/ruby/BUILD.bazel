@@ -9,6 +9,8 @@ builder(
     buildpacks = [
         "//cmd/config/entrypoint:entrypoint.tgz",
         "//cmd/ruby/missing_entrypoint:missing_entrypoint.tgz",
+        "//cmd/ruby/appengine_validation:appengine_validation.tgz",
+        "//cmd/ruby/appengine:appengine.tgz",
         "//cmd/ruby/rubygems:rubygems.tgz",
         "//cmd/ruby/bundle:bundle.tgz",
         "//cmd/ruby/rails:rails.tgz",

@@ -15,12 +15,18 @@
 package runtime
 
 import (
+	"bytes"
+	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/buildpacks/libcnb"
@@ -196,4 +202,110 @@ func TestInstallRuby(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPinGemAndBundlerVersion(t *testing.T) {
+	testCases := []struct {
+		name         string
+		version      string
+		wantRubygems string
+		wantBundler1 string
+		wantBundler2 string
+		fail         bool
+		wantError    string
+		mocks        []*mockprocess.Mock
+	}{
+		{
+			name:         "Ruby 3.x uses rubygems 3.2.26",
+			version:      "3.x.x",
+			wantRubygems: "3.2.26",
+			wantBundler1: "1.17.3",
+			wantBundler2: "2.1.4",
+		},
+		{
+			name:         "Ruby 2.x uses rubygems 3.1.2",
+			version:      "2.x.x",
+			wantRubygems: "3.1.2",
+			wantBundler1: "1.17.3",
+			wantBundler2: "2.1.4",
+		},
+		{
+			name:    "gem update fails",
+			version: "2.7.6",
+			mocks: []*mockprocess.Mock{mockprocess.New(".*gem update.*", mockprocess.WithExitCode(1),
+				mockprocess.WithStderr("internal error reason"))},
+			fail:      true,
+			wantError: "internal error reason",
+		},
+		{
+			name:    "gem install bundle fails",
+			version: "2.7.6",
+			mocks: []*mockprocess.Mock{mockprocess.New(".*gem install.*", mockprocess.WithExitCode(1),
+				mockprocess.WithStderr("Bundle update failure reason"))},
+			fail:      true,
+			wantError: "Bundle update failure reason",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			buf := new(bytes.Buffer)
+			logger := log.New(buf, "", 0)
+
+			opts := []gcp.ContextOption{gcp.WithLogger(logger)}
+
+			eCmd, err := mockprocess.NewExecCmd(tc.mocks...)
+			if err != nil {
+				t.Fatalf("PinGemAndBundlerVersion(ctx, %q, l) - error creating mock exec command: %v",
+					tc.version, err)
+			}
+			opts = append(opts, gcp.WithExecCmd(eCmd))
+
+			ctx := gcpbuildpack.NewContext(opts...)
+
+			layer := &libcnb.Layer{
+				Path:     t.TempDir(),
+				Metadata: map[string]any{},
+			}
+
+			err = PinGemAndBundlerVersion(ctx, tc.version, layer)
+			if err != nil && !tc.fail {
+				t.Errorf("TesPinGemAndBundlerVersion(ctx, %q, l) got error \n%q\n want nil", tc.version, err)
+			}
+			if err == nil && tc.fail {
+				t.Errorf("TestPinGemAndBundlerVersion(ctx, %q, l) got error \nnil\n want %q",
+					tc.version, tc.wantError)
+			}
+
+			logOutput := buf.String()
+
+			if tc.wantRubygems != "" {
+				wantRubygemsLog := fmt.Sprintf("Installing RubyGems %s", tc.wantRubygems)
+
+				if !strings.Contains(logOutput, wantRubygemsLog) {
+					t.Errorf(
+						"PinGemAndBundlerVersion(ctx, %q, l) log output does not contain expected rubygems string: %s",
+						tc.version, wantRubygemsLog)
+				}
+			}
+
+			if tc.wantBundler1 != "" && tc.wantBundler2 != "" {
+				wantBundlerLog := fmt.Sprintf("Installing bundler %s and %s", tc.wantBundler1, tc.wantBundler2)
+
+				if !strings.Contains(logOutput, wantBundlerLog) {
+					t.Errorf(
+						"PinGemAndBundlerVersion(ctx, %q, l) log output does not contain expected bundler string: %s",
+						tc.version, wantBundlerLog)
+				}
+			}
+
+			if tc.wantError != "" {
+				if !strings.Contains(err.Error(), tc.wantError) {
+					t.Errorf("PinGemAndBundlerVersion(ctx, %q, l) error = %s, want %s", tc.version,
+						err.Error(), tc.wantError)
+				}
+			}
+		})
+	}
+
 }

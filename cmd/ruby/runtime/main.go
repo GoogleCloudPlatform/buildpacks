@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
@@ -64,13 +65,22 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("determining runtime version: %w", err)
 	}
-	rl, err := ctx.Layer("ruby", gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	rl, err := ctx.Layer("ruby", gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerUnlessSkipRuntimeLaunch)
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
 	}
 	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.Ruby, version, rl)
 	if err != nil {
 		return err
+	}
+
+	// For GAE and GCF, install RubyGems and Bundler in the same layer to maintain compatibility
+	// with existing builder images.
+	if env.IsGAE() || env.IsGCF() {
+		err = runtime.PinGemAndBundlerVersion(ctx, version, rl)
+		if err != nil {
+			return fmt.Errorf("updating rubygems and bundler: %w", err)
+		}
 	}
 
 	// Ruby sometimes writes to local directories tmp/ and log/, so we link these to writable areas.

@@ -1,15 +1,19 @@
 load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
+load(":args.bzl", "rubyargs")
 
 licenses(["notice"])
 
 exports_files([
     "config.yaml",
+    "args.bzl",
 ])
 
 test_suite(
     # run all tests in this BUILD
     name = "acceptance_test",
 )
+
+VERSION_RUBY25 = "2.5.9"
 
 VERSION_RUBY26 = "2.6.10"
 
@@ -26,6 +30,13 @@ VERSIONS_ALL = [
     VERSION_RUBY31,
 ]
 
+VERSIONS_WITH_GAE_SUPPORT = [
+    VERSION_RUBY25,
+    VERSION_RUBY26,
+    VERSION_RUBY27,
+    VERSION_RUBY30,
+]
+
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
 
 acceptance_test_suite(
@@ -38,4 +49,17 @@ acceptance_test_suite(
     rundir = ".",
     testdata = "//builders/testdata/ruby:generic",
     versions = VERSIONS_WITH_GCP_SUPPORT,
+)
+
+acceptance_test_suite(
+    name = "gae_test",
+    srcs = [
+        "common_test.go",
+        "gae_test.go",
+    ],
+    argsmap = rubyargs(),
+    builder = "//builders/ruby:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/ruby:appengine",
+    versions = VERSIONS_WITH_GAE_SUPPORT,
 )

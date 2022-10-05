@@ -19,8 +19,8 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  sinatra (~> 2.2.0)
+  sinatra (~> 2.2)
   webrick (~> 1.7)
 
 BUNDLED WITH
-   2.3.8
+   1.17.2

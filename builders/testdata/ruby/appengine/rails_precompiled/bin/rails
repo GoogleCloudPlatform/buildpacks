@@ -1,7 +1,8 @@
 #!/opt/ruby/bin/ruby
 case ARGV
 when ["server"]
-  exit 0
+  require_relative "../myapp.rb"
+  Sinatra::Application.set :run, true
 when ["assets:precompile"]
   abort "Wrong RAILS_ENV" unless ENV["RAILS_ENV"] == "production"
   system "mkdir -p public"

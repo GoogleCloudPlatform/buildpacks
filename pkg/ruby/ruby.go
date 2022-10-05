@@ -33,6 +33,13 @@ func DetectVersion(ctx *gcp.Context) (string, error) {
 	// The two lock files have the same format for Ruby version
 	lockFiles := []string{"Gemfile.lock", "gems.locked"}
 
+	// If environment is GAE, skip lock file validation. App Engine specific validation is done
+	// in a different buildpack.
+	if env.IsGAE() && versionFromEnv != "" {
+		ctx.Logf("Using runtime version from environment variable %s: %s", env.RuntimeVersion, versionFromEnv)
+		return versionFromEnv, nil
+	}
+
 	for _, lockFileName := range lockFiles {
 
 		path := filepath.Join(ctx.ApplicationRoot(), lockFileName)
@@ -64,7 +71,8 @@ func DetectVersion(ctx *gcp.Context) (string, error) {
 	}
 
 	if versionFromEnv != "" {
-		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, versionFromEnv)
+		ctx.Logf(
+			"Using runtime version from environment variable %s: %s", env.RuntimeVersion, versionFromEnv)
 		return versionFromEnv, nil
 	}
 

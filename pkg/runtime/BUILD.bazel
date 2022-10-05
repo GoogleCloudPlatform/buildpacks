@@ -32,6 +32,7 @@ go_test(
     embed = [":runtime"],
     rundir = ".",
     deps = [
+        "//internal/mockprocess",
         "//internal/testserver",
         "//pkg/env",
         "//pkg/gcpbuildpack",

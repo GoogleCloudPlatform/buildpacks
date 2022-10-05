@@ -1,6 +1,14 @@
 description = "Builder for the Ruby runtime"
 
 [[buildpacks]]
+  id = "google.ruby.appengine_validation"
+  uri = "appengine_validation.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.appengine"
+  uri = "appengine.tgz"
+
+[[buildpacks]]
   id = "google.config.entrypoint"
   uri = "entrypoint.tgz"
 
@@ -27,6 +35,28 @@ description = "Builder for the Ruby runtime"
 [[buildpacks]]
   id = "google.utils.label"
   uri = "label.tgz"
+
+# The GAE order group.
+[[order]]
+  [[order.group]]
+    id = "google.ruby.runtime"
+
+  [[order.group]]
+    id = "google.ruby.appengine_validation"
+    optional = true
+
+  [[order.group]]
+  id = "google.ruby.bundle"
+
+  [[order.group]]
+    id = "google.ruby.rails"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.appengine"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 # The GCP order group.
 [[order]]

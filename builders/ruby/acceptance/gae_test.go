@@ -11,9 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package acceptance
+package acceptance_test
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
@@ -21,6 +24,28 @@ import (
 
 func init() {
 	acceptance.DefineFlags()
+}
+
+func insertGemfileVersion(setupCtx acceptance.SetupContext) error {
+	gemfilePath := filepath.Join(setupCtx.SrcDir, "Gemfile")
+	gemfileOld, err := os.ReadFile(gemfilePath)
+	if err != nil {
+		return err
+	}
+
+	gemfileNew := strings.ReplaceAll(string(gemfileOld), runtimeVersionPlaceholder, setupCtx.RuntimeVersion)
+	return os.WriteFile(gemfilePath, []byte(gemfileNew), 0644)
+}
+
+func insertGemsRbVersion(setupCtx acceptance.SetupContext) error {
+	gemsRbPath := filepath.Join(setupCtx.SrcDir, "gems.rb")
+	gemsRbOld, err := os.ReadFile(gemsRbPath)
+	if err != nil {
+		return err
+	}
+
+	gemsRbNew := strings.ReplaceAll(string(gemsRbOld), runtimeVersionPlaceholder, setupCtx.RuntimeVersion)
+	return os.WriteFile(gemsRbPath, []byte(gemsRbNew), 0644)
 }
 
 func TestAcceptance(t *testing.T) {
@@ -37,6 +62,7 @@ func TestAcceptance(t *testing.T) {
 			App: "rack_inferred",
 		},
 		{
+			Name:            "rails",
 			App:             "rails",
 			Env:             []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
 			EnableCacheTest: true,
@@ -46,7 +72,7 @@ func TestAcceptance(t *testing.T) {
 		},
 		{
 			App: "rails_precompiled",
-			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec bin/rails server"},
 		},
 		{
 			App:             "simple_gemfile",
@@ -58,20 +84,22 @@ func TestAcceptance(t *testing.T) {
 			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 		},
 		{
-			App: "version_specified_gemfile_27",
-			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			App:   "version_specified_gemfile",
+			Env:   []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			Setup: insertGemfileVersion,
 		},
 		{
-			App: "version_specified_gems_27",
-			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			App:   "version_specified_gems",
+			Env:   []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			Setup: insertGemsRbVersion,
 		},
 	}
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, testCases) {
 		tc := tc
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
 
-			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=ruby27", "X_GOOGLE_TARGET_PLATFORM=gae")
+			tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gae")
 
 			acceptance.TestApp(t, builderImage, runImage, tc)
 		})
@@ -99,12 +127,12 @@ func TestFailures(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterFailureTests(t, testCases) {
 		tc := tc
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
 
-			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=ruby27", "X_GOOGLE_TARGET_PLATFORM=gae")
+			tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gae")
 
 			acceptance.TestBuildFailure(t, builderImage, runImage, tc)
 		})

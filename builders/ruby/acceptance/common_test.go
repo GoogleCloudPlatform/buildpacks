@@ -14,8 +14,9 @@
 package acceptance_test
 
 const (
-	entrypoint  = "google.config.entrypoint"
-	rubyRuntime = "google.ruby.runtime"
-	rubyBundle  = "google.ruby.bundle"
-	rubyRails   = "google.ruby.rails"
+	entrypoint                = "google.config.entrypoint"
+	rubyRuntime               = "google.ruby.runtime"
+	rubyBundle                = "google.ruby.bundle"
+	rubyRails                 = "google.ruby.rails"
+	runtimeVersionPlaceholder = "$RUNTIME_VERSION"
 )

@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -58,11 +58,11 @@ func TestAcceptance(t *testing.T) {
 			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 		},
 		{
-			App: "version_specified_gemfile",
+			App: "version_specified_gemfile_25",
 			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 		},
 		{
-			App: "version_specified_gems",
+			App: "version_specified_gems_25",
 			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 		},
 	}
@@ -71,7 +71,7 @@ func TestAcceptance(t *testing.T) {
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
 
-			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=ruby25")
+			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=ruby25", "X_GOOGLE_TARGET_PLATFORM=gae")
 
 			acceptance.TestApp(t, builderImage, runImage, tc)
 		})
@@ -104,7 +104,7 @@ func TestFailures(t *testing.T) {
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
 
-			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=ruby25")
+			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=ruby25", "X_GOOGLE_TARGET_PLATFORM=gae")
 
 			acceptance.TestBuildFailure(t, builderImage, runImage, tc)
 		})
