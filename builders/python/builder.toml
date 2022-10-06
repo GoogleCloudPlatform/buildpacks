@@ -5,6 +5,10 @@ description = "Unified builder all Python runtimes"
   uri = "entrypoint.tgz"
 
 [[buildpacks]]
+  id = "google.config.flex"
+  uri = "flex.tgz"
+
+[[buildpacks]]
   id = "google.python.appengine"
   uri = "appengine.tgz"
 
@@ -43,6 +47,29 @@ description = "Unified builder all Python runtimes"
 [[buildpacks]]
   id = "google.python.link-runtime"
   uri = "link_runtime.tgz"
+
+# GAE Flex
+[[order]]
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
 
 # Python functions (gcf and gcp).
 [[order]]
