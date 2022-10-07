@@ -14,10 +14,35 @@
 package acceptance
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
+
+func insertGemfileVersion(setupCtx acceptance.SetupContext) error {
+	gemfilePath := filepath.Join(setupCtx.SrcDir, "Gemfile")
+	gemfileOld, err := os.ReadFile(gemfilePath)
+	if err != nil {
+		return err
+	}
+
+	gemfileNew := strings.ReplaceAll(string(gemfileOld), "$RUNTIME_VERSION", "3.0.0")
+	return os.WriteFile(gemfilePath, []byte(gemfileNew), 0644)
+}
+
+func insertGemsRbVersion(setupCtx acceptance.SetupContext) error {
+	gemsRbPath := filepath.Join(setupCtx.SrcDir, "gems.rb")
+	gemsRbOld, err := os.ReadFile(gemsRbPath)
+	if err != nil {
+		return err
+	}
+
+	gemsRbNew := strings.ReplaceAll(string(gemsRbOld), "$RUNTIME_VERSION", "3.0.0")
+	return os.WriteFile(gemsRbPath, []byte(gemsRbNew), 0644)
+}
 
 func init() {
 	acceptance.DefineFlags()
@@ -58,12 +83,14 @@ func TestAcceptance(t *testing.T) {
 			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 		},
 		{
-			App: "version_specified_gemfile_30",
-			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			App:   "version_specified_gemfile",
+			Env:   []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			Setup: insertGemfileVersion,
 		},
 		{
-			App: "version_specified_gems_30",
-			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			App:   "version_specified_gems",
+			Env:   []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			Setup: insertGemsRbVersion,
 		},
 	}
 	for _, tc := range testCases {
