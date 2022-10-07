@@ -1,6 +1,14 @@
 description = "Builder for the Ruby runtime"
 
 [[buildpacks]]
+  id = "google.ruby.functions-framework"
+  uri = "functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source.tgz"
+
+[[buildpacks]]
   id = "google.ruby.appengine_validation"
   uri = "appengine_validation.tgz"
 
@@ -54,6 +62,23 @@ description = "Builder for the Ruby runtime"
 
   [[order.group]]
     id = "google.ruby.appengine"
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# The GCF order group
+[[order]]
+  [[order.group]]
+    id = "google.ruby.runtime"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+
+  [[order.group]]
+    id = "google.ruby.bundle"
+
+  [[order.group]]
+    id = "google.ruby.functions-framework"
 
   [[order.group]]
     id = "google.utils.label"

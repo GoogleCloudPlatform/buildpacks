@@ -16,6 +16,8 @@ builder(
         "//cmd/ruby/rails:rails.tgz",
         "//cmd/ruby/runtime:runtime.tgz",
         "//cmd/utils/label:label.tgz",
+        "//cmd/ruby/functions_framework:functions_framework.tgz",
+        "//cmd/utils/archive_source:archive_source.tgz",
     ],
     image = "gcp/ruby",
 )

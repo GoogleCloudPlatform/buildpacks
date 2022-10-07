@@ -37,6 +37,12 @@ VERSIONS_WITH_GAE_SUPPORT = [
     VERSION_RUBY30,
 ]
 
+VERSIONS_WITH_GCF_SUPPORT = [
+    VERSION_RUBY26,
+    VERSION_RUBY27,
+    VERSION_RUBY30,
+]
+
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
 
 acceptance_test_suite(
@@ -62,4 +68,17 @@ acceptance_test_suite(
     rundir = ".",
     testdata = "//builders/testdata/ruby:appengine",
     versions = VERSIONS_WITH_GAE_SUPPORT,
+)
+
+acceptance_test_suite(
+    name = "gcf_test",
+    srcs = [
+        "common_test.go",
+        "gcf_test.go",
+    ],
+    argsmap = rubyargs(),
+    builder = "//builders/ruby:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/ruby:functions",
+    versions = VERSIONS_WITH_GCF_SUPPORT,
 )
