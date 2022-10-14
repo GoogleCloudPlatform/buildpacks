@@ -31,14 +31,16 @@ import (
 )
 
 // source: https://rubygems.org/pages/download
-var rubygemsURL = "https://rubygems.org/rubygems/rubygems-3.3.15.tgz"
+var (
+	rubygemsURL     = "https://rubygems.org/rubygems/rubygems-3.3.15.tgz"
+	bundler1Version = "1.17.3"
+	bundler2Version = "2.3.15"
+)
 
 const (
 	layerName         = "rubygems"
 	dependencyHashKey = "dependency_hash"
 	rubyVersionKey    = "ruby_version"
-	bundler1Version   = "1.17.3"
-	bundler2Version   = "2.3.15"
 )
 
 func main() {
@@ -157,6 +159,13 @@ func installRubygems(ctx *gcp.Context, layer *libcnb.Layer) error {
 		return fmt.Errorf("creating a temp directory, err: %q", err)
 	}
 	defer os.RemoveAll(tempDir)
+
+	// Since Ruby 2.5.x has issues with the default RubyGems (3.3.15) and Bunder 2 versions,
+	// use an older version to maintain functionality.
+	if ruby.IsRuby25(ctx) {
+		rubygemsURL = "https://rubygems.org/rubygems/rubygems-3.2.26.tgz"
+		bundler2Version = "2.2.26"
+	}
 
 	if err = fetch.Tarball(rubygemsURL, tempDir, 1); err != nil {
 		return fmt.Errorf("fetching rubygems tarball from %s, err: %q", rubygemsURL, err)

@@ -18,6 +18,7 @@ package ruby
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 
@@ -80,4 +81,9 @@ func DetectVersion(ctx *gcp.Context) (string, error) {
 	}
 
 	return defaultVersion, nil
+}
+
+// IsRuby25 returns true if the build environment has Ruby 2.5.x installed.
+func IsRuby25(ctx *gcp.Context) bool {
+	return strings.HasPrefix(os.Getenv(env.RuntimeVersion), "2.5")
 }

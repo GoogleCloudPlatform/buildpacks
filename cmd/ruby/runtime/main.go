@@ -69,6 +69,10 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
 	}
+
+	// Set env.RuntimeVersion for subsequent buildpacks (like RubyGems) that depend on the Ruby version.
+	rl.BuildEnvironment.Override(env.RuntimeVersion, version)
+
 	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.Ruby, version, rl)
 	if err != nil {
 		return err
