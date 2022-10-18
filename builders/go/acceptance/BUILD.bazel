@@ -22,6 +22,7 @@ VERSIONS_ALL_PRODUCTS = [
     "1.15",
     "1.16",
     "1.18",
+    "1.19",
 ]
 
 # The product versions for which there is GAE support.
