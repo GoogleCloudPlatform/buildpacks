@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
@@ -51,6 +52,7 @@ func buildFn(ctx *gcp.Context) error {
 	// We don't cache the python runtime because the python/link-runtime buildpack may clobber
 	// everything in the layer directory anyway.
 	layer, err := ctx.Layer(pythonLayer, gcp.BuildLayer, gcp.LaunchLayer)
+	ctx.Logf("layers path: %s", layer.Path)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", pythonLayer, err)
 	}
@@ -61,6 +63,31 @@ func buildFn(ctx *gcp.Context) error {
 	if _, err := runtime.InstallTarballIfNotCached(ctx, runtime.Python, ver, layer); err != nil {
 		return err
 	}
+	// replace python sysconfig variable prefix from "/opt/python" to "/layers/google.python.runtime/python/" which is the layer.Path
+	// python is installed in /layers/google.python.runtime/python/ for unified builder,
+	// while the python downloaded from debs is installed in "/opt/python".
+	sysconfig, _ := ctx.Exec([]string{"/layers/google.python.runtime/python/bin/python3", "-m", "sysconfig"}, gcp.WithUserAttribution)
+	leftIdentifier := "exec_prefix = \""
+	rightIdentifier := "\""
+	start := strings.Index(sysconfig.Stdout, leftIdentifier)
+	end := strings.Index(sysconfig.Stdout[start:], rightIdentifier)
+	execPrefix := sysconfig.Stdout[start+len(leftIdentifier) : start+end+len(leftIdentifier)]
+	result, _ := ctx.Exec([]string{
+		"grep",
+		"-rlI",
+		execPrefix,
+		layer.Path,
+	}, gcp.WithUserAttribution)
+	paths := strings.Split(result.Stdout, "\n")
+	for _, path := range paths {
+		ctx.Exec([]string{
+			"sed",
+			"-i",
+			"s|" + execPrefix + "|" + layer.Path + "|g",
+			path,
+		}, gcp.WithUserAttribution)
+	}
+
 	// Force stdout/stderr streams to be unbuffered so that log messages appear immediately in the logs.
 	layer.LaunchEnvironment.Default("PYTHONUNBUFFERED", "TRUE")
 
