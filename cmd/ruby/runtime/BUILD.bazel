@@ -6,7 +6,7 @@ load("//tools:defs.bzl", "buildpack")
 licenses(["notice"])
 
 buildpack(
-    name = "runtime",
+    name = "ruby_runtime",
     executables = [
         ":main",
     ],
@@ -26,6 +26,7 @@ go_binary(
     deps = [
         "//pkg/env",
         "//pkg/gcpbuildpack",
+        "//pkg/nodejs",
         "//pkg/ruby",
         "//pkg/runtime",
     ],

@@ -16,6 +16,7 @@
 package ruby
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -86,4 +87,49 @@ func DetectVersion(ctx *gcp.Context) (string, error) {
 // IsRuby25 returns true if the build environment has Ruby 2.5.x installed.
 func IsRuby25(ctx *gcp.Context) bool {
 	return strings.HasPrefix(os.Getenv(env.RuntimeVersion), "2.5")
+}
+
+// NeedsRailsAssetPrecompile detects if asset precompilation is required in a Ruby on Rails app.
+func NeedsRailsAssetPrecompile(ctx *gcp.Context) (bool, error) {
+	isRailsApp, err := ctx.FileExists("bin", "rails")
+	if err != nil {
+		return false, fmt.Errorf("finding bin/rails: %w", err)
+	}
+	if !isRailsApp {
+		return false, nil
+	}
+
+	assetsExists, err := ctx.FileExists("app", "assets")
+	if err != nil {
+		return false, err
+	}
+	if !assetsExists {
+		return false, nil
+	}
+
+	manifestExists, err := ctx.FileExists("public", "assets", "manifest.yml")
+	if err != nil {
+		return false, err
+	}
+	if manifestExists {
+		return false, nil
+	}
+
+	matches, err := ctx.Glob("public/assets/manifest-*.json")
+	if err != nil {
+		return false, fmt.Errorf("finding manifets: %w", err)
+	}
+	if matches != nil {
+		return false, nil
+	}
+
+	matches, err = ctx.Glob("public/assets/.sprockets-manifest-*.json")
+	if err != nil {
+		return false, fmt.Errorf("finding sprockets-manifets: %w", err)
+	}
+	if matches != nil {
+		return false, nil
+	}
+
+	return true, nil
 }

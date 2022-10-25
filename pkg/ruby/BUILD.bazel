@@ -10,6 +10,9 @@ go_library(
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
+        # Ruby on Rails apps require Nodejs and Yarn for precompiling assets
+        "//cmd/nodejs/runtime:__subpackages__",
+        "//cmd/nodejs/yarn:__subpackages__",
         "//cmd/ruby:__subpackages__",
     ],
     deps = [

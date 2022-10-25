@@ -22,7 +22,7 @@ description = "Builder for the Ruby runtime"
 
 [[buildpacks]]
   id = "google.ruby.runtime"
-  uri = "runtime.tgz"
+  uri = "ruby_runtime.tgz"
 
 [[buildpacks]]
   id = "google.ruby.rubygems"
@@ -35,6 +35,14 @@ description = "Builder for the Ruby runtime"
 [[buildpacks]]
   id = "google.ruby.rails"
   uri = "rails.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.runtime"
+  uri = "runtime.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.yarn"
+  uri = "yarn.tgz"
 
 [[buildpacks]]
   id = "google.ruby.missing-entrypoint"
@@ -55,6 +63,14 @@ description = "Builder for the Ruby runtime"
 
   [[order.group]]
   id = "google.ruby.bundle"
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.yarn"
+    optional = true
 
   [[order.group]]
     id = "google.ruby.rails"
@@ -94,6 +110,14 @@ description = "Builder for the Ruby runtime"
 
   [[order.group]]
     id = "google.ruby.bundle"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.yarn"
     optional = true
 
   [[order.group]]

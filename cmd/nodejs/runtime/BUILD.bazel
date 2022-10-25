@@ -12,6 +12,8 @@ buildpack(
     ],
     visibility = [
         "//builders:nodejs_builders",
+        # Ruby on Rails apps require Nodejs and Yarn for precompiling assets
+        "//builders:ruby_builders",
     ],
 )
 
@@ -26,6 +28,7 @@ go_binary(
     deps = [
         "//pkg/gcpbuildpack",
         "//pkg/nodejs",
+        "//pkg/ruby",
         "//pkg/runtime",
     ],
 )

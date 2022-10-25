@@ -21,6 +21,7 @@ import (
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 )
 
@@ -31,7 +32,11 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if result := runtime.CheckOverride("nodejs"); result != nil {
+	result := runtime.CheckOverride("nodejs")
+	isRailsApp, _ := ruby.NeedsRailsAssetPrecompile(ctx)
+
+	// certain Ruby on Rails apps (< 7.x) require Node.js for asset precompilation
+	if !isRailsApp && result != nil {
 		return result, nil
 	}
 

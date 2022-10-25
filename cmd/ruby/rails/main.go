@@ -17,9 +17,8 @@
 package main
 
 import (
-	"fmt"
-
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
 )
 
 func main() {
@@ -34,7 +33,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !railsExists {
 		return gcp.OptOutFileNotFound("bin/rails"), nil
 	}
-	needsPrecompile, err := needsRailsAssetPrecompile(ctx)
+	needsPrecompile, err := ruby.NeedsRailsAssetPrecompile(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -42,42 +41,6 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return gcp.OptOut("Rails assets do not need precompilation"), nil
 	}
 	return gcp.OptIn("found Rails assets to precompile"), nil
-}
-
-func needsRailsAssetPrecompile(ctx *gcp.Context) (bool, error) {
-	assetsExists, err := ctx.FileExists("app", "assets")
-	if err != nil {
-		return false, err
-	}
-	if !assetsExists {
-		return false, nil
-	}
-
-	manifestExists, err := ctx.FileExists("public", "assets", "manifest.yml")
-	if err != nil {
-		return false, err
-	}
-	if manifestExists {
-		return false, nil
-	}
-
-	matches, err := ctx.Glob("public/assets/manifest-*.json")
-	if err != nil {
-		return false, fmt.Errorf("finding manifets: %w", err)
-	}
-	if matches != nil {
-		return false, nil
-	}
-
-	matches, err = ctx.Glob("public/assets/.sprockets-manifest-*.json")
-	if err != nil {
-		return false, fmt.Errorf("finding sprockets-manifets: %w", err)
-	}
-	if matches != nil {
-		return false, nil
-	}
-
-	return true, nil
 }
 
 func buildFn(ctx *gcp.Context) error {

@@ -66,22 +66,26 @@ func TestAcceptance(t *testing.T) {
 			App:             "rails",
 			Env:             []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
 			EnableCacheTest: true,
+			MustUse:         []string{rubyRuntime, rubyRails, rubyBundle, nodeRuntime, nodeYarn},
 		},
 		{
 			App: "rails_inferred",
 		},
 		{
-			App: "rails_precompiled",
-			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec bin/rails server"},
+			App:        "rails_precompiled",
+			Env:        []string{"GOOGLE_ENTRYPOINT=bundle exec bin/rails server"},
+			MustNotUse: []string{nodeRuntime, nodeYarn},
 		},
 		{
 			App:             "simple_gemfile",
 			Env:             []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 			EnableCacheTest: true,
+			MustNotUse:      []string{nodeRuntime, nodeYarn},
 		},
 		{
-			App: "simple_gems",
-			Env: []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			App:        "simple_gems",
+			Env:        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			MustNotUse: []string{nodeRuntime, nodeYarn},
 		},
 		{
 			App:   "version_specified_gemfile",

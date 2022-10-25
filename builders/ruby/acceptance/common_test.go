@@ -16,6 +16,8 @@ package acceptance_test
 const (
 	entrypoint                = "google.config.entrypoint"
 	rubyRuntime               = "google.ruby.runtime"
+	nodeRuntime               = "google.nodejs.runtime"
+	nodeYarn                  = "google.nodejs.yarn"
 	rubyBundle                = "google.ruby.bundle"
 	rubyRails                 = "google.ruby.rails"
 	runtimeVersionPlaceholder = "$RUNTIME_VERSION"

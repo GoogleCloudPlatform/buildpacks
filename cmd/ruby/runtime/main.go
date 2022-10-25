@@ -18,12 +18,19 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+)
+
+const (
+	// Rails apps using the "webpack" gem require Node.js for asset precompilation.
+	railsNodeVersion = "12.22.12"
 )
 
 func main() {
@@ -72,6 +79,12 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Set env.RuntimeVersion for subsequent buildpacks (like RubyGems) that depend on the Ruby version.
 	rl.BuildEnvironment.Override(env.RuntimeVersion, version)
+
+	// Rails asset precompilation needs Node.js installed. Set the version if customer has not set it.
+	if os.Getenv(nodejs.EnvNodeVersion) == "" {
+		ctx.Logf("Setting Nodejs runtime version %s: %s", nodejs.EnvNodeVersion, railsNodeVersion)
+		rl.BuildEnvironment.Override(nodejs.EnvNodeVersion, railsNodeVersion)
+	}
 
 	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.Ruby, version, rl)
 	if err != nil {

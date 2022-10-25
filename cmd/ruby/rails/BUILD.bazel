@@ -23,7 +23,10 @@ go_binary(
         "-s",
         "-w",
     ],
-    deps = ["//pkg/gcpbuildpack"],
+    deps = [
+        "//pkg/gcpbuildpack",
+        "//pkg/ruby",
+    ],
 )
 
 go_test(

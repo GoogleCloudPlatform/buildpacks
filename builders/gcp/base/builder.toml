@@ -138,7 +138,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
 [[buildpacks]]
   id = "google.ruby.runtime"
-  uri = "ruby/runtime.tgz"
+  uri = "ruby/ruby_runtime.tgz"
 
 [[buildpacks]]
   id = "google.ruby.rubygems"

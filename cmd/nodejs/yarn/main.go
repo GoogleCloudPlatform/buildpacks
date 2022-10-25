@@ -25,6 +25,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
 	"github.com/buildpacks/libcnb"
 )
 
@@ -39,13 +40,6 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	yarnLockExists, err := ctx.FileExists(nodejs.YarnLock)
-	if err != nil {
-		return nil, err
-	}
-	if !yarnLockExists {
-		return gcp.OptOutFileNotFound("yarn.lock"), nil
-	}
 	pkgJSONExists, err := ctx.FileExists("package.json")
 	if err != nil {
 		return nil, err
@@ -54,12 +48,36 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return gcp.OptOutFileNotFound("package.json"), nil
 	}
 
+	// certain Ruby on Rails apps require Yarn for asset precompilation.
+	// yarn.lock is not a prerequisite for such apps.
+	isRailsApp, err := ruby.NeedsRailsAssetPrecompile(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if isRailsApp {
+		return gcp.OptIn("detected Ruby on Rails app requiring asset precompilation"), nil
+	}
+
+	yarnLockExists, err := ctx.FileExists(nodejs.YarnLock)
+	if err != nil {
+		return nil, err
+	}
+	if !yarnLockExists {
+		return gcp.OptOutFileNotFound("yarn.lock"), nil
+	}
+
 	return gcp.OptIn("found yarn.lock and package.json"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {
 	if err := installYarn(ctx); err != nil {
 		return fmt.Errorf("installing Yarn: %w", err)
+	}
+
+	// Rails (<7) apps require Yarn to be installed for asset precompilation.
+	// skip installing modules and setting up entrypoint.
+	if isRailsApp, _ := ruby.NeedsRailsAssetPrecompile(ctx); isRailsApp {
+		return nil
 	}
 
 	if yarn2, err := nodejs.IsYarn2(ctx.ApplicationRoot()); err != nil {
