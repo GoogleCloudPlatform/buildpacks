@@ -197,7 +197,7 @@ func PinGemAndBundlerVersion(ctx *gcp.Context, version string, layer *libcnb.Lay
 	// Update RubyGems to a fixed version
 	ctx.Logf("Installing RubyGems %s", rubygemsVersion)
 	_, err := ctx.Exec(
-		[]string{gemPath, "update", "--system", rubygemsVersion}, gcp.WithUserAttribution)
+		[]string{gemPath, "update", "--no-document", "--system", rubygemsVersion}, gcp.WithUserAttribution)
 	if err != nil {
 		return fmt.Errorf("updating rubygems %s, err: %v", rubygemsVersion, err)
 	}
