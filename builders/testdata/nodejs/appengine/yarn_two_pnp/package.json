@@ -1,8 +1,9 @@
 {
   "scripts": {
-	  "start": "node index.js"
+    "start": "node index.js"
   },
   "dependencies": {
     "isexe": "^2.0.0"
-  }
+  },
+  "packageManager": "yarn@3.2.4"
 }

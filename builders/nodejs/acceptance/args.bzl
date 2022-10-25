@@ -1,6 +1,6 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
-"""Module for initializing aruments by nodejs version"""
+"""Module for initializing arguments by nodejs version"""
 
 def nodejsargs():
     """Create a new key-value map of arguments for nodejs test
@@ -14,6 +14,7 @@ def nodejsargs():
         "12.22.12": nodejs12args(),
         "14.18.3": nodejs14args(),
         "16.13.2": nodejs16args(),
+        "18.10.0": nodejs16args(),
     }
     return args
 
@@ -31,6 +32,9 @@ def nodejs14args():
 
 def nodejs16args():
     return newArgs("gcr.io/gae-runtimes/buildpacks/nodejs16/run")
+
+def nodejs18args():
+    return newArgs("gcr.io/gae-runtimes/buildpacks/nodejs18/run")
 
 def newArgs(runImage):
     return {
