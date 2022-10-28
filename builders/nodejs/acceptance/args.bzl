@@ -2,7 +2,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 """Module for initializing arguments by nodejs version"""
 
-def nodejsargs(runImageTag):
+def nodejsargs(runImageTag = ""):
     """Create a new key-value map of arguments for nodejs test
 
     Returns:
@@ -20,5 +20,11 @@ def nodejsargs(runImageTag):
 
 def newArgs(version, runImageTag):
     return {
-        "-run-image-override": "gcr.io/gae-runtimes/buildpacks/nodejs" + version + "/run:" + runImageTag,
+        "-run-image-override": runImage(version, runImageTag),
     }
+
+def runImage(version, runImageTag):
+    if runImageTag != "":
+        return "gcr.io/gae-runtimes-private/buildpacks/nodejs" + version + "/run:" + runImageTag
+    else:
+        return "gcr.io/gae-runtimes/buildpacks/nodejs" + version + "/run"

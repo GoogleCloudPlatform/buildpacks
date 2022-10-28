@@ -72,20 +72,20 @@ acceptance_test_suite(
     versions = VERSIONS_WITH_GCP_SUPPORT,
 )
 
-# Test the run image tagged as latest.
+# Test the run image tagged as latest in gae-runtimes.
 acceptance_test_suite(
     name = "gae_test",
     srcs = [
         "gae_test.go",
     ],
-    argsmap = nodejsargs("latest"),
+    argsmap = nodejsargs(),
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/nodejs:appengine",
     versions = VERSIONS_WITH_GAE_SUPPORT,
 )
 
-# Test the run image tagged as ${_CANDIDATE_NAME}.
+# Test the run image tagged as ${_CANDIDATE_NAME} in gae-runtimes-private.
 acceptance_test_suite(
     name = "gae_candidate_test",
     srcs = [

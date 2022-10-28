@@ -2,7 +2,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 """Module for initializing aruments by GO version"""
 
-def goargs(runImageTag):
+def goargs(runImageTag = ""):
     """Create a new key-value map of arguments for go test
 
     Returns:
@@ -22,5 +22,11 @@ def goargs(runImageTag):
 
 def newArgs(version, runImageTag):
     return {
-        "-run-image-override": "gcr.io/gae-runtimes/buildpacks/go" + version + "/run:" + runImageTag,
+        "-run-image-override": runImage(version, runImageTag),
     }
+
+def runImage(version, runImageTag):
+    if runImageTag != "":
+        return "gcr.io/gae-runtimes-private/buildpacks/go" + version + "/run:" + runImageTag
+    else:
+        return "gcr.io/gae-runtimes/buildpacks/go" + version + "/run"
