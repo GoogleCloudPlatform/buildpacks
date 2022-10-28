@@ -59,5 +59,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	layer, err := ctx.Layer("flex", gcp.BuildLayer)
+	if err != nil {
+		return err
+	}
+	layer.BuildEnvironment.Default(env.FlexEnv, true)
+
 	return nil
 }

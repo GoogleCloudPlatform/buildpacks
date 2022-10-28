@@ -34,6 +34,12 @@ VERSIONS_WITH_GAE_SUPPORT = VERSIONS_ALL
 
 VERSIONS_WITH_GCF_SUPPORT = VERSIONS_ALL
 
+VERSIONS_WITH_FLEX_SUPPORT = [
+    VERSION_PYTHON38,
+    VERSION_PYTHON39,
+    VERSION_PYTHON310,
+]
+
 acceptance_test_suite(
     name = "gcp_test",
     srcs = [
@@ -66,6 +72,15 @@ acceptance_test_suite(
     rundir = ".",
     testdata = "//builders/testdata/python:functions",
     versions = VERSIONS_WITH_GCF_SUPPORT,
+)
+
+acceptance_test_suite(
+    name = "flex_test",
+    srcs = ["flex_test.go"],
+    builder = "//builders/python:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/python:flex",
+    versions = VERSIONS_WITH_FLEX_SUPPORT,
 )
 
 acceptance_test_argo_source(

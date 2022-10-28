@@ -9,5 +9,6 @@ exports_files(
         "appengine",
         "functions",
         "generic",
+        "flex",
     ],
 )

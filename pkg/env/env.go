@@ -133,6 +133,9 @@ const (
 
 	// ComposerArgsEnv is an environment variable used to pass custom composer variables.
 	ComposerArgsEnv = "GOOGLE_COMPOSER_ARGS"
+
+	// FlexEnv is internal env variable to denote a flex application
+	FlexEnv = "GOOGLE_FLEX_APPLICATION"
 )
 
 // IsGAE returns true if the buildpack target platform is gae.
@@ -148,6 +151,12 @@ func IsGCP() bool {
 // IsGCF returns true if the buildpack target platform is gcf.
 func IsGCF() bool {
 	return TargetPlatformFunctions == os.Getenv(XGoogleTargetPlatform)
+}
+
+// IsFlex returns true if the buildpack target platform is flex
+func IsFlex() bool {
+	val, _ := IsPresentAndTrue(FlexEnv)
+	return val
 }
 
 // IsDebugMode returns true if the buildpack debug mode is enabled.
