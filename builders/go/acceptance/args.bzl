@@ -2,41 +2,25 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 """Module for initializing aruments by GO version"""
 
-def goargs():
+def goargs(runImageTag):
     """Create a new key-value map of arguments for go test
 
     Returns:
         A key-value map of the arguments
     """
     args = {
-        "1.11": go111args(),
-        "1.12": go112args(),
-        "1.13": go113args(),
-        "1.14": go114args(),
-        "1.15": go115args(),
-        "1.16": go116args(),
+        "1.11": newArgs("111", runImageTag),
+        "1.12": newArgs("112", runImageTag),
+        "1.13": newArgs("113", runImageTag),
+        "1.14": newArgs("114", runImageTag),
+        "1.15": newArgs("115", runImageTag),
+        "1.16": newArgs("116", runImageTag),
+        "1.18": newArgs("118", runImageTag),
+        "1.19": newArgs("119", runImageTag),
     }
     return args
 
-def go111args():
-    return newArgs("gcr.io/gae-runtimes/buildpacks/go111/run")
-
-def go112args():
-    return newArgs("gcr.io/gae-runtimes/buildpacks/go112/run")
-
-def go113args():
-    return newArgs("gcr.io/gae-runtimes/buildpacks/go113/run")
-
-def go114args():
-    return newArgs("gcr.io/gae-runtimes/buildpacks/go114/run")
-
-def go115args():
-    return newArgs("gcr.io/gae-runtimes/buildpacks/go115/run")
-
-def go116args():
-    return newArgs("gcr.io/gae-runtimes/buildpacks/go116/run")
-
-def newArgs(runImage):
+def newArgs(version, runImageTag):
     return {
-        "-run-image-override": runImage,
+        "-run-image-override": "gcr.io/gae-runtimes/buildpacks/go" + version + "/run:" + runImageTag,
     }

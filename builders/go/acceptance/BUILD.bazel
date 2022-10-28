@@ -9,8 +9,13 @@ exports_files([
 ])
 
 test_suite(
-    # run all tests in this BUILD
     name = "acceptance_test",
+    tests = [
+        "1.11_gcf_test",
+        "gae_test",
+        "gcf_test",
+        "gcp_test",
+    ],
 )
 
 # The union of all versions across all products.
@@ -68,13 +73,28 @@ acceptance_test_suite(
     versions = VERSIONS_GCP_SUPPORT,
 )
 
+# Test the run image tagged as latest.
 acceptance_test_suite(
     name = "gae_test",
     srcs = [
         "common_test.go",
         "gae_test.go",
     ],
-    argsmap = goargs(),
+    argsmap = goargs("latest"),
+    builder = "//builders/go:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/go:appengine",
+    versions = VERSIONS_GAE_SUPPORT,
+)
+
+# Test the run image tagged as ${_CANDIDATE_NAME}.
+acceptance_test_suite(
+    name = "gae_candidate_test",
+    srcs = [
+        "common_test.go",
+        "gae_test.go",
+    ],
+    argsmap = goargs("$${_CANDIDATE_NAME}"),
     builder = "//builders/go:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/go:appengine",

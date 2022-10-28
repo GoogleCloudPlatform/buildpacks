@@ -9,8 +9,13 @@ exports_files([
 ])
 
 test_suite(
-    # run all tests in this BUILD
     name = "acceptance_test",
+    tests = [
+        "8.17.0_gcf_test",
+        "gae_test",
+        "gcf_test",
+        "gcp_test",
+    ],
 )
 
 VERSION_NODEJS8 = "8.17.0"
@@ -67,12 +72,26 @@ acceptance_test_suite(
     versions = VERSIONS_WITH_GCP_SUPPORT,
 )
 
+# Test the run image tagged as latest.
 acceptance_test_suite(
     name = "gae_test",
     srcs = [
         "gae_test.go",
     ],
-    argsmap = nodejsargs(),
+    argsmap = nodejsargs("latest"),
+    builder = "//builders/nodejs:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/nodejs:appengine",
+    versions = VERSIONS_WITH_GAE_SUPPORT,
+)
+
+# Test the run image tagged as ${_CANDIDATE_NAME}.
+acceptance_test_suite(
+    name = "gae_candidate_test",
+    srcs = [
+        "gae_test.go",
+    ],
+    argsmap = nodejsargs("$${_CANDIDATE_NAME}"),
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/nodejs:appengine",
