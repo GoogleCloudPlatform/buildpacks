@@ -34,7 +34,7 @@ const (
 	vcpkgCacheLayerName         = "vcpkg-binary-cache"
 	vcpkgLayerName              = "vcpkg"
 	vcpkgTarballPrefix          = "https://github.com/microsoft/vcpkg/archive"
-	vcpkgVersion                = "83bc451982951fb2a7fc19d75ae1ac9504816471"
+	vcpkgVersion                = "49931943abe2a22dd9d91be2c4928ead56349b14"
 	vcpkgVersionPrefix          = "Vcpkg package management program version "
 	vcpkgTripletName            = "x64-linux-nodebug"
 	installLayerName            = "cpp"
