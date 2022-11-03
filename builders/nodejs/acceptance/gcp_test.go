@@ -57,13 +57,13 @@ func TestAcceptance(t *testing.T) {
 			// Test installs a specific version of node and only needs to be run with a single version
 			VersionInclusionConstraint: "14",
 			App:                        "simple",
-			Env:                        []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=14.17.0"},
+			Env:                        []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=14.19.3"},
 			MustUse:                    []string{nodeRuntime, nodeNPM},
 			BOM: []acceptance.BOMEntry{
 				{
 					Name: "nodejs",
 					Metadata: map[string]interface{}{
-						"version": "14.17.0",
+						"version": "14.19.3",
 					},
 				},
 				{
