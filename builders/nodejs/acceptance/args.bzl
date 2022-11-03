@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 """Module for initializing arguments by nodejs version"""
 
 def nodejsargs(runImageTag = ""):
-    """Create a new key-value map of arguments for nodejs test
+    """Create a new key-value map of arguments for nodejs tests
 
     Returns:
         A key-value map of the arguments
@@ -14,7 +14,7 @@ def nodejsargs(runImageTag = ""):
         "12.22.12": newArgs("12", runImageTag),
         "14.18.3": newArgs("14", runImageTag),
         "16.13.2": newArgs("16", runImageTag),
-        "18.10.0": newArgs("16", runImageTag),
+        "18.10.0": newArgs("18", runImageTag),
     }
     return args
 
