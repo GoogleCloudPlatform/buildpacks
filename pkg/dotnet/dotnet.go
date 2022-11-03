@@ -31,6 +31,7 @@ import (
 const (
 	aspDotnetCore = "Microsoft.AspNetCore.App"
 	envSdkVersion = "GOOGLE_DOTNET_SDK_VERSION"
+	googleMin22   = "google.min.22"
 	// EnvRuntimeVersion is the environment variable key for storing the target dotnet runtime version.
 	EnvRuntimeVersion = "GOOGLE_ASP_NET_CORE_VERSION"
 	// PublishLayerName is the name of the directory containing the publish layer
@@ -280,4 +281,10 @@ func getRuntimeVersionFromRtCfgDir(ctx *gcp.Context, dir string) (string, string
 	}
 
 	return version, rtCfgFiles[0], nil
+}
+
+// RequiresGlobalizationInvariant returns true if the system lacks the OS packages necessary to
+// support .NET globalization.
+func RequiresGlobalizationInvariant(ctx *gcp.Context) bool {
+	return ctx.StackID() == googleMin22
 }

@@ -26,6 +26,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
+	"github.com/buildpacks/libcnb"
 	"github.com/google/go-cmp/cmp"
 	"google3/third_party/golang/cmp/cmpopts/cmpopts"
 )
@@ -274,6 +275,36 @@ func TestGetRuntimeVersion(t *testing.T) {
 			if tc.ExpectedVersion != runtimeVersion {
 				t.Errorf("GetRuntimeVersion(ctx, %v) = %v, want %v",
 					tc.RtCfgSearchRoot, runtimeVersion, tc.ExpectedVersion)
+			}
+		})
+	}
+}
+
+func TestRequiresGlobalizationInvariant(t *testing.T) {
+	testCases := []struct {
+		Stack string
+		Want  bool
+	}{
+		{
+			Stack: googleMin22,
+			Want:  true,
+		},
+		{
+			Stack: "google.gae.22",
+			Want:  false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Stack, func(t *testing.T) {
+			buildCtx := libcnb.BuildContext{
+				StackID: tc.Stack,
+			}
+			ctx := gcp.NewContext(gcp.WithBuildContext(buildCtx))
+
+			got := RequiresGlobalizationInvariant(ctx)
+			if got != tc.Want {
+				t.Errorf("RequiresGlobalizationInvariant(ctx) = %t, want %t", got, tc.Want)
 			}
 		})
 	}

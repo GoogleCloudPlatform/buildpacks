@@ -94,5 +94,8 @@ func buildRuntimeLayer(ctx *gcp.Context, rtVersion string) error {
 	rtl.LaunchEnvironment.Default("DOTNET_ROOT", rtl.Path)
 	rtl.LaunchEnvironment.Prepend("PATH", string(os.PathListSeparator), rtl.Path)
 	rtl.LaunchEnvironment.Default("DOTNET_RUNNING_IN_CONTAINER", "true")
+	if dotnet.RequiresGlobalizationInvariant(ctx) {
+		rtl.LaunchEnvironment.Default("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1")
+	}
 	return nil
 }

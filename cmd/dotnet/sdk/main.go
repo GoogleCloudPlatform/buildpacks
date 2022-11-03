@@ -31,7 +31,6 @@ import (
 const (
 	sdkLayerName = "sdk"
 	versionKey   = "version"
-	googleMin22  = "google.min.22"
 )
 
 func main() {
@@ -102,8 +101,8 @@ func dlAndInstallSDK(ctx *gcp.Context, sdkl *libcnb.Layer, version string, isDev
 }
 
 func setSDKEnvVars(ctx *gcp.Context, sdkl *libcnb.Layer, isDevMode bool) {
-	if ctx.StackID() == googleMin22 {
-		sdkl.BuildEnvironment.Default("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "true")
+	if dotnet.RequiresGlobalizationInvariant(ctx) {
+		sdkl.BuildEnvironment.Default("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1")
 	}
 	if isDevMode {
 		setSDKEnvVarsDevMode(sdkl)
