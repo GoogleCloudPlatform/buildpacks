@@ -5,7 +5,7 @@
 schemaVersion: '2.0.0'
 
 metadataTest:
-  env:
+  envVars:
     - key: PORT
       value: 8080
   exposedPorts: ['8080']

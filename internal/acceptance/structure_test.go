@@ -29,7 +29,7 @@ func TestStructureTestJSON(t *testing.T) {
 		{
 			name:   "empty configuration",
 			checks: StructureTest{},
-			want:   `{"SchemaVersion":"","MetadataTest":{"Env":null,"ExposedPorts":null,"Entrypoint":null,"Cmd":null,"Workdir":""},"FileExistenceTests":null}`,
+			want:   `{"SchemaVersion":"","MetadataTest":{"EnvVars":null,"ExposedPorts":null,"Entrypoint":null,"Cmd":null,"Workdir":""},"FileExistenceTests":null}`,
 		},
 		{
 			name: "check empty cmd",
@@ -38,7 +38,7 @@ func TestStructureTestJSON(t *testing.T) {
 					Cmd: []string{},
 				},
 			},
-			want: `{"SchemaVersion":"","MetadataTest":{"Env":null,"ExposedPorts":null,"Entrypoint":null,"Cmd":[],"Workdir":""},"FileExistenceTests":null}`,
+			want: `{"SchemaVersion":"","MetadataTest":{"EnvVars":null,"ExposedPorts":null,"Entrypoint":null,"Cmd":[],"Workdir":""},"FileExistenceTests":null}`,
 		},
 	}
 	for _, tc := range testCases {

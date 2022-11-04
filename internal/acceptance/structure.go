@@ -23,7 +23,7 @@ type StructureTest struct {
 
 // metadataTest verifies the image's metadata.
 type metadataTest struct {
-	Env          []envVar `yaml:"env"`
+	EnvVars      []envVar `yaml:"envVars"`
 	ExposedPorts []string `yaml:"exposedPorts"`
 	Entrypoint   []string `yaml:"entrypoint"`
 	Cmd          []string `yaml:"cmd"`
