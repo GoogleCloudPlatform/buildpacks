@@ -186,22 +186,16 @@ func installFunctionsFramework(ctx *gcp.Context, l *libcnb.Layer) error {
 	pjs := filepath.Join(cvt, "package.json")
 	pljs := filepath.Join(cvt, nodejs.PackageLock)
 
-	cached, err := nodejs.CheckCache(ctx, l, cache.WithStrings(nodejs.EnvProduction), cache.WithFiles(pjs, pljs))
+	cached, err := nodejs.CheckOrClearCache(ctx, l, cache.WithStrings(nodejs.EnvProduction), cache.WithFiles(pjs, pljs))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
 	if cached {
-		ctx.CacheHit(layerName)
 		return nil
 	}
 	installCmd, err := nodejs.NPMInstallCommand(ctx)
 	if err != nil {
 		return err
-	}
-
-	ctx.CacheMiss(layerName)
-	if err := ctx.ClearLayer(l); err != nil {
-		return fmt.Errorf("clearing layer %q: %w", l.Name, err)
 	}
 	// NPM expects package.json and the lock file in the prefix directory.
 	if _, err := ctx.Exec([]string{"cp", "-t", l.Path, pjs, pljs}, gcp.WithUserTimingAttribution); err != nil {

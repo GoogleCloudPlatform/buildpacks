@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/dotnet"
@@ -30,7 +31,7 @@ import (
 
 const (
 	sdkLayerName = "sdk"
-	versionKey   = "version"
+	devModeKey   = "devmode"
 )
 
 func main() {
@@ -74,29 +75,16 @@ func buildSDKLayer(ctx *gcp.Context, version string, isDevMode bool) error {
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", sdkLayerName, err)
 	}
-	sdkMetaVersion := ctx.GetMetadata(sdkl, versionKey)
-	cacheHitValue := fmt.Sprintf("version:%s,devMode:%t", version, isDevMode)
-	if cacheHitValue == sdkMetaVersion {
-		ctx.CacheHit(sdkLayerName)
-		ctx.Logf(".NET SDK cache hit, skipping installation.")
-		return nil
+	if strconv.FormatBool(isDevMode) != ctx.GetMetadata(sdkl, devModeKey) {
+		if err := ctx.ClearLayer(sdkl); err != nil {
+			return fmt.Errorf("clearing layer %q: %w", sdkl.Name, err)
+		}
 	}
-	ctx.CacheMiss(sdkLayerName)
-	if err := ctx.ClearLayer(sdkl); err != nil {
-		return fmt.Errorf("clearing layer %q: %w", sdkl.Name, err)
-	}
-	if err := dlAndInstallSDK(ctx, sdkl, version, isDevMode); err != nil {
-		return err
-	}
-	ctx.SetMetadata(sdkl, versionKey, cacheHitValue)
-	return nil
-}
-
-func dlAndInstallSDK(ctx *gcp.Context, sdkl *libcnb.Layer, version string, isDevMode bool) error {
 	if _, err := runtime.InstallTarballIfNotCached(ctx, runtime.DotnetSDK, version, sdkl); err != nil {
 		return err
 	}
 	setSDKEnvVars(ctx, sdkl, isDevMode)
+	ctx.SetMetadata(sdkl, devModeKey, strconv.FormatBool(isDevMode))
 	return nil
 }
 

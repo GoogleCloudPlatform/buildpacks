@@ -129,21 +129,9 @@ func yarn1InstallModules(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
 	}
-	cached, err := nodejs.CheckCache(ctx, ml, cache.WithFiles("package.json", nodejs.YarnLock))
+	_, err = nodejs.CheckOrClearCache(ctx, ml, cache.WithFiles("package.json", nodejs.YarnLock))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
-	}
-	if cached {
-		// The yarn.lock hasn't been updated since we last built so the cached node_modules should be
-		// up-to-date.
-		ctx.CacheHit(cacheTag)
-	} else {
-		// The dependencies listed in the yarn.lock file have changed. Clear the layer cache and update
-		// it after we run yarn install
-		ctx.CacheMiss(cacheTag)
-		if err := ctx.ClearLayer(ml); err != nil {
-			return fmt.Errorf("clearing layer %q: %w", ml.Name, err)
-		}
 	}
 
 	// Use Yarn's --modules-folder flag to install directly into the layer and then symlink them into

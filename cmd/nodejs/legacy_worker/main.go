@@ -146,22 +146,17 @@ func installLegacyWorker(ctx *gcp.Context, l *libcnb.Layer) error {
 	pjs := filepath.Join(cvt, "package.json")
 	wjs := filepath.Join(cvt, "worker.js")
 
-	cached, err := nodejs.CheckCache(ctx, l, cache.WithStrings(nodejs.EnvProduction), cache.WithFiles(pjs, wjs))
+	cached, err := nodejs.CheckOrClearCache(ctx, l, cache.WithStrings(nodejs.EnvProduction), cache.WithFiles(pjs, wjs))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
 	if cached {
-		ctx.CacheHit(layerName)
 		return nil
 	}
+	ctx.Logf("Installing worker dependencies.")
 	installCmd, err := nodejs.NPMInstallCommand(ctx)
 	if err != nil {
 		return err
-	}
-
-	ctx.CacheMiss(layerName)
-	if err := ctx.ClearLayer(l); err != nil {
-		return fmt.Errorf("clearing layer %q: %w", l.Name, err)
 	}
 
 	if _, err := ctx.Exec([]string{"cp", "-t", l.Path, pjs, wjs}, gcp.WithUserTimingAttribution); err != nil {

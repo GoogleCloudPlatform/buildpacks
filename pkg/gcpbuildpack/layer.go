@@ -118,6 +118,7 @@ func (ctx *Context) ClearLayer(l *libcnb.Layer) error {
 	if err := ctx.MkdirAll(l.Path, layerMode); err != nil {
 		return err
 	}
+	l.Metadata = make(map[string]interface{})
 	return nil
 }
 

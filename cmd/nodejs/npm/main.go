@@ -78,12 +78,11 @@ func buildFn(ctx *gcp.Context) error {
 	if gcpBuild {
 		nodeEnv = nodejs.EnvDevelopment
 	}
-	cached, err := nodejs.CheckCache(ctx, ml, cache.WithStrings(nodeEnv), cache.WithFiles("package.json", lockfile))
+	cached, err := nodejs.CheckOrClearCache(ctx, ml, cache.WithStrings(nodeEnv), cache.WithFiles("package.json", lockfile))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
 	if cached {
-		ctx.CacheHit(cacheTag)
 		// Restore cached node_modules.
 		if _, err := ctx.Exec([]string{"cp", "--archive", nm, "node_modules"}, gcp.WithUserTimingAttribution); err != nil {
 			return err
@@ -95,14 +94,10 @@ func buildFn(ctx *gcp.Context) error {
 			return err
 		}
 	} else {
+		ctx.Logf("Installing application dependencies.")
 		installCmd, err := nodejs.NPMInstallCommand(ctx)
 		if err != nil {
 			return err
-		}
-		ctx.CacheMiss(cacheTag)
-		// Clear cached node_modules to ensure we don't end up with outdated dependencies after copying.
-		if err := ctx.ClearLayer(ml); err != nil {
-			return fmt.Errorf("clearing layer %q: %w", ml.Name, err)
 		}
 
 		if _, err := ctx.Exec([]string{"npm", installCmd, "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution); err != nil {

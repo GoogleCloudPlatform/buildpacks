@@ -159,8 +159,9 @@ func NodeEnv() string {
 	return nodeEnv
 }
 
-// CheckCache checks whether cached dependencies exist and match.
-func CheckCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
+// CheckOrClearCache checks whether cached dependencies exist and match. If they do not match, the
+// layer is cleared and the layer metadata is updated with the new cache key.
+func CheckOrClearCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
 	currentNodeVersion, err := nodeVersion(ctx)
 	if err != nil {
 		return false, err
@@ -176,6 +177,7 @@ func CheckCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, 
 	ctx.Debugf("Current dependency hash: %q", currentDependencyHash)
 	ctx.Debugf("  Cache dependency hash: %q", metaDependencyHash)
 	if currentDependencyHash == metaDependencyHash {
+		ctx.CacheHit(l.Name)
 		ctx.Logf("Dependencies cache hit, skipping installation.")
 		return true, nil
 	}
@@ -183,7 +185,11 @@ func CheckCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, 
 	if metaDependencyHash == "" {
 		ctx.Debugf("No metadata found from a previous build, skipping cache.")
 	}
-	ctx.Logf("Installing application dependencies.")
+
+	ctx.CacheMiss(l.Name)
+	if err := ctx.ClearLayer(l); err != nil {
+		return false, fmt.Errorf("clearing layer: %v", err)
+	}
 
 	// Update the layer metadata.
 	ctx.SetMetadata(l, dependencyHashKey, currentDependencyHash)
