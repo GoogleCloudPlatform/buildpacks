@@ -25,7 +25,7 @@ func init() {
 }
 
 func TestAcceptance(t *testing.T) {
-	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 
 	t.Cleanup(cleanup)
 
@@ -130,7 +130,7 @@ func TestAcceptance(t *testing.T) {
 
 			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=go116", "X_GOOGLE_TARGET_PLATFORM=gae")
 
-			acceptance.TestApp(t, builderImage, runImage, tc)
+			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
 }

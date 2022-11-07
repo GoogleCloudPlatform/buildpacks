@@ -24,7 +24,7 @@ func init() {
 }
 
 func TestAcceptance(t *testing.T) {
-	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
@@ -78,13 +78,13 @@ func TestAcceptance(t *testing.T) {
 				"/workspace/.googlebuild/source-code.tar.gz",
 			)
 
-			acceptance.TestApp(t, builderImage, runImage, tc)
+			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
 }
 
 func TestFailures(t *testing.T) {
-	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.FailureTest{
@@ -108,7 +108,7 @@ func TestFailures(t *testing.T) {
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
 
-			acceptance.TestBuildFailure(t, builderImage, runImage, tc)
+			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}
 }

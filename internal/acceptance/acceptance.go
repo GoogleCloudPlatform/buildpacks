@@ -185,6 +185,9 @@ type Test struct {
 	// `-runtime-version` flag. When the inclusion constraint or `runtime-version` flag are empty all
 	// tests are included. See semver documentation to learn what is possible.
 	VersionInclusionConstraint string
+	// SkipStacks is slice of buildpack stack IDs that this test case should not be run on. This is
+	// useful for excluding apps that do not compile on the min stack.
+	SkipStacks []string
 }
 
 // SetupContext is passed into the Test.Setup function, it gives the setupFunc implementor access
@@ -197,6 +200,17 @@ type SetupContext struct {
 	Builder string
 	// RuntimeVersion is the version for which this test run will be performed.
 	RuntimeVersion string
+}
+
+// ImageContext holds information about the buildpack stack images used for a test. It is returned
+// by ProvisionImages and must be passed as an argument to TestApp and TestBuildFailure.
+type ImageContext struct {
+	// The ID of the builpack stack.
+	StackID string
+	// The builder image name.
+	BuilderImage string
+	// The run image name.
+	RunImage string
 }
 
 // setupFunc is a function that is called before the test starts and can be used to modify the test source.
@@ -220,7 +234,7 @@ type builderTOML struct {
 }
 
 // TestApp builds and a single application and verifies that it runs and handles requests.
-func TestApp(t *testing.T, builderName, runName string, cfg Test) {
+func TestApp(t *testing.T, imageCtx ImageContext, cfg Test) {
 	t.Helper()
 
 	env := prepareEnvTest(t, cfg)
@@ -228,7 +242,9 @@ func TestApp(t *testing.T, builderName, runName string, cfg Test) {
 	if cfg.Name == "" {
 		cfg.Name = cfg.App
 	}
+
 	// Docker image names may not contain underscores or start with a capital letter.
+	builderName, runName := imageCtx.BuilderImage, imageCtx.RunImage
 	image := fmt.Sprintf("%s-%s", strings.ToLower(specialChars.ReplaceAllString(cfg.Name, "-")), builderName)
 
 	// Delete the docker image and volumes created by pack during the build.
@@ -292,7 +308,7 @@ type FailureTest struct {
 }
 
 // TestBuildFailure runs a build and ensures that it fails. Additionally, it ensures the emitted logs match mustMatch regexps.
-func TestBuildFailure(t *testing.T, builderName, runName string, cfg FailureTest) {
+func TestBuildFailure(t *testing.T, imageCtx ImageContext, cfg FailureTest) {
 	t.Helper()
 
 	env := prepareEnvFailureTest(t, cfg)
@@ -300,6 +316,7 @@ func TestBuildFailure(t *testing.T, builderName, runName string, cfg FailureTest
 	if cfg.Name == "" {
 		cfg.Name = cfg.App
 	}
+	builderName, runName := imageCtx.BuilderImage, imageCtx.RunImage
 	image := fmt.Sprintf("%s-%s", strings.ToLower(specialChars.ReplaceAllString(cfg.Name, "-")), builderName)
 
 	// Delete the docker volumes created by pack during the build.
@@ -578,7 +595,7 @@ func cleanUpImage(t *testing.T, name string) {
 // The 'cleanup' return value is a function which should be run after the tests are
 // complete to clean up the images which are explicitly created. Images that are
 // pulled are not cleaned up to prevent conflicts with other tests.
-func ProvisionImages(t *testing.T) (builderName string, runName string, cleanup func()) {
+func ProvisionImages(t *testing.T) (ImageContext, func()) {
 	t.Helper()
 
 	if err := checktools.Installed(); err != nil {
@@ -588,7 +605,7 @@ func ProvisionImages(t *testing.T) (builderName string, runName string, cleanup 
 		t.Fatalf("Error checking pack version: %v", err)
 	}
 
-	builderName = generateRandomImageName(builderPrefix)
+	builderName := generateRandomImageName(builderPrefix)
 
 	if builderImage != "" {
 		t.Logf("Testing existing builder image: %s", builderImage)
@@ -605,7 +622,16 @@ func ProvisionImages(t *testing.T) (builderName string, runName string, cleanup 
 		if err != nil {
 			t.Fatalf("Error provisioning run image for builder %q: %v", builderName, err)
 		}
-		return builderName, runName, func() {
+		stackID, err := getImageStackID(builderName)
+		if err != nil {
+			t.Fatalf("Getting stack ID from builder %q: %v", builderName, err)
+		}
+		imageCtx := ImageContext{
+			StackID:      stackID,
+			BuilderImage: builderImage,
+			RunImage:     runName,
+		}
+		return imageCtx, func() {
 			cleanUpImage(t, builderName)
 			cleanUpRun(t)
 		}
@@ -657,7 +683,13 @@ func ProvisionImages(t *testing.T) (builderName string, runName string, cleanup 
 	}
 	t.Logf("Successfully created builder: %s (in %s)", builderName, time.Since(start))
 
-	return builderName, runName, func() {
+	imageCtx := ImageContext{
+		StackID:      builderConfig.Stack.ID,
+		BuilderImage: builderName,
+		RunImage:     runName,
+	}
+
+	return imageCtx, func() {
 		cleanUpImage(t, builderName)
 		cleanUpBuilder()
 		cleanUpRun(t)
@@ -1283,10 +1315,10 @@ func PullImages() bool {
 
 // FilterTests returns a new slice with only tests that should be run. Tests are filtered out if
 // their VersionInclusionConstraint does not match the `-runtime-version` flag.
-func FilterTests(t *testing.T, testCases []Test) []Test {
+func FilterTests(t *testing.T, imageCtx ImageContext, testCases []Test) []Test {
 	results := make([]Test, 0)
 	for _, tc := range testCases {
-		if ShouldTestVersion(t, tc.VersionInclusionConstraint) {
+		if ShouldTestVersion(t, tc.VersionInclusionConstraint) && ShouldTestStack(t, imageCtx.StackID, tc.SkipStacks) {
 			results = append(results, tc)
 		}
 	}
@@ -1303,6 +1335,18 @@ func FilterFailureTests(t *testing.T, testCases []FailureTest) []FailureTest {
 		}
 	}
 	return results
+}
+
+// ShouldTestStack returns true if the current test should be included on test runs using the given
+// buildpack stack.
+func ShouldTestStack(t *testing.T, stackID string, skipStacks []string) bool {
+	t.Helper()
+	for _, skipStack := range skipStacks {
+		if skipStack == stackID {
+			return false
+		}
+	}
+	return true
 }
 
 // ShouldTestVersion returns true if the current test run's version is included

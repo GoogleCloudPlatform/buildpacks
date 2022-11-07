@@ -40,7 +40,7 @@ func useBundler1(setupCtx acceptance.SetupContext) error {
 }
 
 func TestAcceptanceRuby(t *testing.T) {
-	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
@@ -130,13 +130,13 @@ func TestAcceptanceRuby(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 
-			acceptance.TestApp(t, builderImage, runImage, tc)
+			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
 }
 
 func TestFailuresRuby(t *testing.T) {
-	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.FailureTest{
@@ -158,7 +158,7 @@ func TestFailuresRuby(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 
-			acceptance.TestBuildFailure(t, builderImage, runImage, tc)
+			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}
 }

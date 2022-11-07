@@ -25,7 +25,7 @@ func init() {
 }
 
 func TestAcceptance(t *testing.T) {
-	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
@@ -129,7 +129,7 @@ func TestAcceptance(t *testing.T) {
 				"X_GOOGLE_TARGET_PLATFORM=gae",
 			)
 
-			acceptance.TestApp(t, builderImage, runImage, tc)
+			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
 }

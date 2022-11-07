@@ -24,7 +24,7 @@ func init() {
 }
 
 func TestAcceptanceNodeJs(t *testing.T) {
-	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
@@ -132,18 +132,18 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			MustUse: []string{nodeRuntime},
 		})
 	}
-	for _, tc := range acceptance.FilterTests(t, testCases) {
+	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 
-			acceptance.TestApp(t, builderImage, runImage, tc)
+			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
 }
 
 func TestFailuresNodeJs(t *testing.T) {
-	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.FailureTest{
@@ -160,7 +160,7 @@ func TestFailuresNodeJs(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 
-			acceptance.TestBuildFailure(t, builderImage, runImage, tc)
+			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}
 }

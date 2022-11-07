@@ -25,7 +25,7 @@ func init() {
 }
 
 func TestAcceptanceDotNet(t *testing.T) {
-	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	sdk := filepath.Join("/layers", dotnetSDK, "sdk")
@@ -109,17 +109,17 @@ func TestAcceptanceDotNet(t *testing.T) {
 			},
 		},
 	}
-	for _, tc := range acceptance.FilterTests(t, testCases) {
+	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-			acceptance.TestApp(t, builderImage, runImage, tc)
+			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
 }
 
 func TestFailuresDotNet(t *testing.T) {
-	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.FailureTest{
@@ -136,7 +136,7 @@ func TestFailuresDotNet(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 
-			acceptance.TestBuildFailure(t, builderImage, runImage, tc)
+			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}
 }

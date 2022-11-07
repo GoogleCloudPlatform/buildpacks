@@ -49,7 +49,7 @@ func goSumSetup(setupCtx acceptance.SetupContext) error {
 }
 
 func TestAcceptance(t *testing.T) {
-	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
@@ -182,13 +182,13 @@ func TestAcceptance(t *testing.T) {
 				"/workspace/.googlebuild/source-code.tar.gz",
 			)
 
-			acceptance.TestApp(t, builderImage, runImage, tc)
+			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
 }
 
 func TestFailures(t *testing.T) {
-	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.FailureTest{
@@ -213,7 +213,7 @@ func TestFailures(t *testing.T) {
 			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=go116")
 			tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
 
-			acceptance.TestBuildFailure(t, builderImage, runImage, tc)
+			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}
 }

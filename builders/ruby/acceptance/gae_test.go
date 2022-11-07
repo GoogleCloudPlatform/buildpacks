@@ -49,7 +49,7 @@ func insertGemsRbVersion(setupCtx acceptance.SetupContext) error {
 }
 
 func TestAcceptance(t *testing.T) {
-	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
@@ -98,20 +98,20 @@ func TestAcceptance(t *testing.T) {
 			Setup: insertGemsRbVersion,
 		},
 	}
-	for _, tc := range acceptance.FilterTests(t, testCases) {
+	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
 
 			tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gae")
 
-			acceptance.TestApp(t, builderImage, runImage, tc)
+			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
 }
 
 func TestFailures(t *testing.T) {
-	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.FailureTest{
@@ -138,7 +138,7 @@ func TestFailures(t *testing.T) {
 
 			tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gae")
 
-			acceptance.TestBuildFailure(t, builderImage, runImage, tc)
+			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}
 }

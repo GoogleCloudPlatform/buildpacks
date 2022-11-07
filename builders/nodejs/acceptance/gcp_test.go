@@ -32,7 +32,7 @@ func init() {
 }
 
 func TestAcceptance(t *testing.T) {
-	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
@@ -147,24 +147,25 @@ func TestAcceptance(t *testing.T) {
 			MustOutput:                 []string{"npm --version\n\n5.5.1"},
 		},
 		{
-			Name:    "Native extensions",
-			App:     "native_extensions",
-			Env:     []string{"GOOGLE_ENTRYPOINT=node hello.js"},
-			MustUse: []string{nodeRuntime, nodeNPM, entrypoint},
+			Name:       "Native extensions",
+			App:        "native_extensions",
+			Env:        []string{"GOOGLE_ENTRYPOINT=node hello.js"},
+			MustUse:    []string{nodeRuntime, nodeNPM, entrypoint},
+			SkipStacks: []string{"google.min.22"},
 		},
 	}
 
-	for _, tc := range acceptance.FilterTests(t, testCases) {
+	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-			acceptance.TestApp(t, builderImage, runImage, tc)
+			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
 }
 
 func TestFailures(t *testing.T) {
-	builderImage, runImage, cleanup := acceptance.ProvisionImages(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.FailureTest{
@@ -182,7 +183,7 @@ func TestFailures(t *testing.T) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-			acceptance.TestBuildFailure(t, builderImage, runImage, tc)
+			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}
 }
