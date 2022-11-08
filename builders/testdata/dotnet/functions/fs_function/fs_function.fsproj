@@ -9,6 +9,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Google.Cloud.Functions.Hosting" Version="[1.0.0-alpha12,)" />
+    <PackageReference Include="Google.Cloud.Functions.Hosting" Version="1.*" />
   </ItemGroup>
 </Project>
