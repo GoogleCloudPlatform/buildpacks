@@ -628,7 +628,7 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 		}
 		imageCtx := ImageContext{
 			StackID:      stackID,
-			BuilderImage: builderImage,
+			BuilderImage: builderName,
 			RunImage:     runName,
 		}
 		return imageCtx, func() {
