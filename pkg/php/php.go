@@ -125,37 +125,18 @@ func version(ctx *gcp.Context) (string, error) {
 	return result.Stdout, nil
 }
 
-// checkCache checks whether cached dependencies exist and match.
-func checkCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
+// composerDependencyHash computes a hash of composer metadata files that is used to check whether
+// or not cached PHP dependencies in a layer should be re-installed.
+func composerDependencyHash(ctx *gcp.Context) (string, error) {
 	currentPHPVersion, err := version(ctx)
 	if err != nil {
-		return false, err
+		return "", err
 	}
-	opts = append(opts, cache.WithStrings(currentPHPVersion))
-	currentDependencyHash, err := cache.Hash(ctx, opts...)
+	currentDependencyHash, err := cache.Hash(ctx, cache.WithFiles(composerJSON, composerLock), cache.WithStrings(currentPHPVersion))
 	if err != nil {
-		return false, fmt.Errorf("computing dependency hash: %v", err)
+		return "", fmt.Errorf("computing dependency hash: %v", err)
 	}
-
-	// Perform install, skipping if the dependency hash matches existing metadata.
-	metaDependencyHash := ctx.GetMetadata(l, dependencyHashKey)
-	ctx.Debugf("Current dependency hash: %q", currentDependencyHash)
-	ctx.Debugf("  Cache dependency hash: %q", metaDependencyHash)
-	if currentDependencyHash == metaDependencyHash {
-		ctx.Logf("Dependencies cache hit, skipping installation.")
-		return true, nil
-	}
-
-	if metaDependencyHash == "" {
-		ctx.Debugf("No metadata found from a previous build, skipping cache.")
-	}
-	ctx.Logf("Installing application dependencies.")
-
-	// Update the layer metadata.
-	ctx.SetMetadata(l, dependencyHashKey, currentDependencyHash)
-	ctx.SetMetadata(l, phpVersionKey, currentPHPVersion)
-
-	return false, nil
+	return currentDependencyHash, nil
 }
 
 // composerInstall runs `composer install` with the given flags.
@@ -207,11 +188,18 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 		return l, nil
 	}
 
-	cached, err := checkCache(ctx, l, cache.WithFiles(composerJSON, composerLock))
+	currentDependencyHash, err := composerDependencyHash(ctx)
 	if err != nil {
 		return l, fmt.Errorf("checking cache: %w", err)
 	}
-	if cached {
+
+	// Perform install, skipping if the dependency hash matches existing metadata.
+	metaDependencyHash := ctx.GetMetadata(l, dependencyHashKey)
+	ctx.Debugf("Current dependency hash: %q", currentDependencyHash)
+	ctx.Debugf("  Cache dependency hash: %q", metaDependencyHash)
+
+	if currentDependencyHash == metaDependencyHash {
+		ctx.Logf("Dependencies cache hit, skipping installation.")
 		ctx.CacheHit(cacheTag)
 
 		// PHP expects the vendor/ directory to be in the application directory.
@@ -220,6 +208,10 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 		}
 	} else {
 		ctx.CacheMiss(cacheTag)
+		if metaDependencyHash == "" {
+			ctx.Debugf("No metadata found from a previous build, skipping cache.")
+		}
+		ctx.Logf("Installing application dependencies.")
 		// Clear layer so we don't end up with outdated dependencies (e.g. something was removed from composer.json).
 		if err := ctx.ClearLayer(l); err != nil {
 			return nil, fmt.Errorf("clearing layer %q: %w", l.Name, err)
@@ -227,6 +219,9 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 		if err := composerInstall(ctx, flags); err != nil {
 			return nil, err
 		}
+
+		// Update the layer metadata.
+		ctx.SetMetadata(l, dependencyHashKey, currentDependencyHash)
 
 		// Ensure vendor exists even if no dependencies were installed.
 		if err := ctx.MkdirAll(Vendor, 0755); err != nil {
