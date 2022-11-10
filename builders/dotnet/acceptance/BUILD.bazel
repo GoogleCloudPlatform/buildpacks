@@ -13,14 +13,18 @@ VERSION_DOTNET3 = "3.1.416"
 
 VERSION_DOTNET6 = "6.0.300"
 
+VERSION_DOTNET7 = "7.0.100"
+
 VERSIONS_ALL = [
     VERSION_DOTNET3,
-    # .NET6 is enabled for testing across all products to prepare for it's release
-    # Delete this comment when dotnet6 or versionless dotnet is released
     VERSION_DOTNET6,
+    VERSION_DOTNET7,
 ]
 
-VERSIONS_WITH_GCF_SUPPORT = VERSIONS_ALL
+VERSIONS_WITH_GCF_SUPPORT = [
+    VERSION_DOTNET3,
+    VERSION_DOTNET6,
+]
 
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
 

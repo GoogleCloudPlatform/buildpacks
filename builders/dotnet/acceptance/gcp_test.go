@@ -126,7 +126,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 			// with 6.0 watch notices that the file has changed but decides that there are
 			// no Hot Swap changes to reload. Disable this test while this is being
 			// investigated.
-			VersionInclusionConstraint: "!= 6.0",
+			VersionInclusionConstraint: "< 6.0",
 			App:                        "simple",
 			Env:                        []string{"GOOGLE_DEVMODE=1"},
 			MustUse:                    []string{dotnetSDK, dotnetRuntime, dotnetPublish},

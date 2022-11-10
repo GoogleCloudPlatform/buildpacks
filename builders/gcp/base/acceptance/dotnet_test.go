@@ -39,6 +39,13 @@ func TestAcceptanceDotNet(t *testing.T) {
 			EnableCacheTest:   true,
 		},
 		{
+			Name:                       "simple dotnet 7.0 app",
+			VersionInclusionConstraint: ">=7.0.0 <8.0.0",
+			App:                        "simple_dotnet7",
+			MustUse:                    []string{dotnetSDK, dotnetRuntime, dotnetPublish},
+			FilesMustNotExist:          []string{sdk},
+		},
+		{
 			Name:                       "simple dotnet 6.0 app",
 			VersionInclusionConstraint: ">=6.0.0 <7.0.0",
 			App:                        "simple_dotnet6",
