@@ -34,6 +34,7 @@ func TestAcceptance(t *testing.T) {
 				"Handling function without composer.json",
 				"No vendor directory present, installing functions framework",
 			},
+			EnableCacheTest: true,
 		},
 		{
 			Name:       "non default source file",

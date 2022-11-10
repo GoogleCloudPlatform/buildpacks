@@ -25,11 +25,12 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:       "simple path",
-			App:        "simple",
-			MustMatch:  "PASS_INDEX",
-			MustUse:    []string{phpRuntime, composerInstall, composer, phpWebConfig, utilsNginx},
-			MustNotUse: []string{entrypoint},
+			Name:            "simple path",
+			App:             "simple",
+			MustMatch:       "PASS_INDEX",
+			MustUse:         []string{phpRuntime, composerInstall, composer, phpWebConfig, utilsNginx},
+			MustNotUse:      []string{entrypoint},
+			EnableCacheTest: true,
 		},
 		{
 			Name:      "entrypoint from procfile web",

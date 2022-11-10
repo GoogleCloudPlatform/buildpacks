@@ -25,10 +25,11 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:       "symfony app",
-			App:        "symfony",
-			MustUse:    []string{composer, composerInstall, phpRuntime},
-			MustNotUse: []string{composerGCPBuild, phpWebConfig, functionFramework, cloudFunctions},
+			Name:            "symfony app",
+			App:             "symfony",
+			MustUse:         []string{composer, composerInstall, phpRuntime},
+			MustNotUse:      []string{composerGCPBuild, phpWebConfig, functionFramework, cloudFunctions},
+			EnableCacheTest: true,
 		},
 		{
 			Name:       "composer.json without dependencies",
