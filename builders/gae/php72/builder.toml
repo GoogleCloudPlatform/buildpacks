@@ -45,4 +45,4 @@ description = "Builder for the GAE PHP 7.2 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/php72/run"
 
 [lifecycle]
-  version = "0.13.3"
+  version = "0.15.1"

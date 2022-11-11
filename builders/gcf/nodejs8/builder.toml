@@ -55,4 +55,4 @@ description = "Builder for the GCF Node.js 8 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/nodejs8/run"
 
 [lifecycle]
-  version = "0.13.3"
+  version = "0.15.1"

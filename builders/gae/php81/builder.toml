@@ -45,4 +45,4 @@ description = "Builder for the GAE PHP 8.1 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/php81/run"
 
 [lifecycle]
-  version = "0.13.3"
+  version = "0.15.1"

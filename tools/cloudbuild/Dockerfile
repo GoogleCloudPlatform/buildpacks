@@ -27,11 +27,11 @@ RUN curl -fsSL https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux6
 # Go is required for go-licenses even when statically compiled.
 RUN mkdir -p /go \
   && mkdir -p /usr/local/go \
-  && curl --silent https://dl.google.com/go/go1.17.13.linux-amd64.tar.gz \
+  && curl --silent https://dl.google.com/go/go1.19.3.linux-amd64.tar.gz \
   | tar xz --strip-components=1 --directory /usr/local/go
 ENV GOPATH=/go
 ENV GOROOT=/usr/local/go/
 ENV PATH=/go/bin:/usr/local/go/bin:${PATH}
 
 WORKDIR /go-licenses
-RUN go mod init tmp; go get github.com/google/go-licenses
+RUN go mod init tmp; go install github.com/google/go-licenses@latest

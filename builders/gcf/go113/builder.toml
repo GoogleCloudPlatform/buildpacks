@@ -36,4 +36,4 @@ description = "Builder for the GCF Go 1.13 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/go113/run"
 
 [lifecycle]
-  version = "0.13.3"
+  version = "0.15.1"
