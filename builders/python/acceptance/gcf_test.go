@@ -64,6 +64,9 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name: "function has right number of dependencies",
 			App:  "list_dependencies",
+			// The list_dependencies app has a dependency on the libexpat OS package which isn't installed
+			// in the min run image.
+			SkipStacks: []string{"google.min.22"},
 		},
 	}
 	for _, tc := range testCases {
