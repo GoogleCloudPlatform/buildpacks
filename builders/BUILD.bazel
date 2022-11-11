@@ -54,6 +54,7 @@ package_group(
         "//builders/gcf/java11",
         "//builders/gcf/java17",
         "//builders/gcp/base",
+        "//builders/java",
     ],
 )
 

@@ -1,0 +1,37 @@
+load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
+
+licenses(["notice"])
+
+exports_files([
+    "config.yaml",
+])
+
+test_suite(
+    # run all tests in this BUILD
+    name = "acceptance_test",
+)
+
+VERSION_JAVA8 = "8"
+
+VERSION_JAVA11 = "11"
+
+VERSION_JAVA17 = "17"
+
+VERSIONS_ALL = [
+    VERSION_JAVA8,
+    VERSION_JAVA11,
+    VERSION_JAVA17,
+]
+
+VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
+
+acceptance_test_suite(
+    name = "gcp_test",
+    srcs = [
+        "gcp_test.go",
+    ],
+    builder = "//builders/java:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/java:generic",
+    versions = VERSIONS_WITH_GCP_SUPPORT,
+)
