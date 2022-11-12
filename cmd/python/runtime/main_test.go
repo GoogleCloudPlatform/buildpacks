@@ -62,3 +62,47 @@ func TestDetect(t *testing.T) {
 		})
 	}
 }
+
+func TestParseExecPrefix(t *testing.T) {
+	testCases := []struct {
+		sysConfig string
+		want      string
+		wantErr   bool
+	}{
+		{
+			sysConfig: "",
+			want:      "",
+			wantErr:   true,
+		},
+		{
+			sysConfig: `installed_base = "/layers/google.python.runtime/python"`,
+			want:      "",
+			wantErr:   true,
+		},
+		{
+			sysConfig: `
+exec_prefix = "/opt/python3.11"
+installed_base = "/layers/google.python.runtime/python"
+			`,
+			want: "/opt/python3.11",
+		},
+		{
+			sysConfig: `
+exec_prefix = "/opt/python3.9"
+installed_base = "/layers/google.python.runtime/python"
+			`,
+			want: "/opt/python3.9",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.sysConfig, func(t *testing.T) {
+			got, err := parseExecPrefix(tc.sysConfig)
+			if (err == nil) == tc.wantErr {
+				t.Errorf("parseExecPrefix() got err: %v, want %v", err, tc.wantErr)
+			}
+			if got != tc.want {
+				t.Errorf("parseExecPrefix(%q) = %q, want %q", tc.sysConfig, got, tc.want)
+			}
+		})
+	}
+}

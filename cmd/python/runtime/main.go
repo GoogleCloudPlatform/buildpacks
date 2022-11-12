@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -30,6 +31,8 @@ import (
 const (
 	pythonLayer = "python"
 )
+
+var execPrefixRegex = regexp.MustCompile(`exec_prefix\s*=\s*"([^"]+)`)
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -67,12 +70,11 @@ func buildFn(ctx *gcp.Context) error {
 	// replace python sysconfig variable prefix from "/opt/python" to "/layers/google.python.runtime/python/" which is the layer.Path
 	// python is installed in /layers/google.python.runtime/python/ for unified builder,
 	// while the python downloaded from debs is installed in "/opt/python".
-	sysconfig, _ := ctx.Exec([]string{"/layers/google.python.runtime/python/bin/python3", "-m", "sysconfig"}, gcp.WithUserAttribution)
-	leftIdentifier := "exec_prefix = \""
-	rightIdentifier := "\""
-	start := strings.Index(sysconfig.Stdout, leftIdentifier)
-	end := strings.Index(sysconfig.Stdout[start:], rightIdentifier)
-	execPrefix := sysconfig.Stdout[start+len(leftIdentifier) : start+end+len(leftIdentifier)]
+	sysconfig, _ := ctx.Exec([]string{filepath.Join(layer.Path, "bin/python3"), "-m", "sysconfig"}, gcp.WithUserAttribution)
+	execPrefix, err := parseExecPrefix(sysconfig.Stdout)
+	if err != nil {
+		return err
+	}
 	result, _ := ctx.Exec([]string{
 		"grep",
 		"-rlI",
@@ -103,4 +105,12 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	return nil
+}
+
+func parseExecPrefix(sysconfig string) (string, error) {
+	match := execPrefixRegex.FindStringSubmatch(sysconfig)
+	if len(match) < 2 {
+		return "", fmt.Errorf("determining Python exec prefix: %v", match)
+	}
+	return match[1], nil
 }
