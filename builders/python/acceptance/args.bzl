@@ -13,6 +13,7 @@ def pythonargs(runImageTag = ""):
         "3.8.12": newArgs("38", runImageTag),
         "3.9.10": newArgs("39", runImageTag),
         "3.10.4": newArgs("310", runImageTag),
+        "3.11.0": newArgs("311", runImageTag),
     }
     return args
 

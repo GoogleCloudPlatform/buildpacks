@@ -51,6 +51,8 @@ func TestAcceptance(t *testing.T) {
 		},
 		{
 			App: "gunicorn_outdated",
+			// This test app is using an old gunicorn version which does not work on Python 3.11+.
+			VersionInclusionConstraint: "< 3.11.0",
 		},
 		{
 			App: "custom_entrypoint",
