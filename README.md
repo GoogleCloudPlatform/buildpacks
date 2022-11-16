@@ -367,9 +367,6 @@ variables. These environment variables should be specified without a
   * Existing `node_modules` directory is deleted and dependencies reinstalled using package.json and a lockfile if present.
 * **PHP**
   * PHP buildpacks doesn't support installing ad-hoc extensions at build time.
-* **Python**
-  * Private dependencies must be vendored. The build does not have access to private repository credentials and cannot pull dependencies at build time.
-    Please see the App Engine [instructions](https://cloud.google.com/appengine/docs/standard/python3/specifying-dependencies#private_dependencies).
 * **Go**
   * Private dependencies must be vendored. The build does not have access to private repository credentials and cannot pull dependencies at build time.
     Please see the App Engine [instructions](https://cloud.google.com/appengine/docs/standard/go/specifying-dependencies#using_private_dependencies)
