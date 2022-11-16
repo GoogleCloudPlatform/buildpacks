@@ -23,7 +23,23 @@ VERSIONS_ALL = [
     VERSION_JAVA17,
 ]
 
+VERSIONS_WITH_GCF_SUPPORT = [
+    VERSION_JAVA11,
+    VERSION_JAVA17,
+]
+
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
+
+acceptance_test_suite(
+    name = "gcf_test",
+    srcs = [
+        "gcf_test.go",
+    ],
+    builder = "//builders/java:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/java:functions",
+    versions = VERSIONS_WITH_GCF_SUPPORT,
+)
 
 acceptance_test_suite(
     name = "gcp_test",
