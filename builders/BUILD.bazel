@@ -32,14 +32,7 @@ package_group(
 package_group(
     name = "go_builders",
     packages = [
-        "//builders/gae/go111",
-        "//builders/gae/go112",
-        "//builders/gae/go113",
-        "//builders/gae/go114",
-        "//builders/gae/go115",
         "//builders/gae/go116",
-        "//builders/gcf/go111",
-        "//builders/gcf/go113",
         "//builders/gcf/go116",
         "//builders/gcp/base",
         "//builders/go",
@@ -124,8 +117,6 @@ package_group(
     name = "function_builders",
     packages = [
         "//builders/gcf/dotnet3",
-        "//builders/gcf/go111",
-        "//builders/gcf/go113",
         "//builders/gcf/go116",
         "//builders/gcf/java11",
         "//builders/gcf/java17",
