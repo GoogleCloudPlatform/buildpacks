@@ -22,5 +22,5 @@ import (
 
 func TestDetect(t *testing.T) {
 	// The buildpack always opts in.
-	buildpacktest.TestDetect(t, detectFn, "no files", map[string]string{}, []string{}, 0)
+	buildpacktest.TestDetect(t, detectFn, "no files", map[string]string{}, []string{"X_GOOGLE_TARGET_PLATFORM=gae"}, 0)
 }

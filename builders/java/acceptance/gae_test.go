@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package acceptance
+package acceptance_test
 
 import (
 	"bytes"
@@ -91,9 +91,15 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput: []string{"WARNING"},
 		},
 		{
-			Name:          "Java17 compat web app",
-			App:           "java17_compat_webapp",
-			MustNotOutput: []string{"WARNING"},
+			VersionInclusionConstraint: ">=11.0.0 <12.0.0",
+			Name:                       "Java11 compat web app",
+			App:                        "java11_compat_webapp",
+			MustNotOutput:              []string{"WARNING"},
+		},
+		{
+			VersionInclusionConstraint: ">=17.0.0 <18.0.0",
+			Name:                       "Java17 compat web app",
+			App:                        "java17_compat_webapp",
 		},
 		{
 			Name:          "hello quarkus maven",
@@ -173,14 +179,14 @@ func TestAcceptance(t *testing.T) {
 			Setup:         updateGradleVersions,
 		},
 	}
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		tc.FlakyBuildAttempts = 3
 
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 
-			tc.Env = append(tc.Env, "GOOGLE_RUNTIME=java17", "X_GOOGLE_TARGET_PLATFORM=gae")
+			tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gae")
 
 			acceptance.TestApp(t, imageCtx, tc)
 		})

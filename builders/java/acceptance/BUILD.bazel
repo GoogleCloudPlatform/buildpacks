@@ -1,9 +1,11 @@
 load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
+load(":args.bzl", "javaargs")
 
 licenses(["notice"])
 
 exports_files([
     "config.yaml",
+    "args.bzl",
 ])
 
 test_suite(
@@ -23,12 +25,26 @@ VERSIONS_ALL = [
     VERSION_JAVA17,
 ]
 
-VERSIONS_WITH_GCF_SUPPORT = [
+VERSIONS_WITH_GAE_SUPPORT = [
     VERSION_JAVA11,
     VERSION_JAVA17,
 ]
 
+VERSIONS_WITH_GCF_SUPPORT = VERSIONS_WITH_GAE_SUPPORT
+
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
+
+acceptance_test_suite(
+    name = "gae_test",
+    srcs = [
+        "gae_test.go",
+    ],
+    argsmap = javaargs(),
+    builder = "//builders/java:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/java:appengine",
+    versions = VERSIONS_WITH_GAE_SUPPORT,
+)
 
 acceptance_test_suite(
     name = "gcf_test",

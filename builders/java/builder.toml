@@ -44,6 +44,42 @@ description = "Builder for the Java runtime"
   id = "google.java.clear_source"
   uri = "java/clear_source.tgz"
 
+# The GAE order group.
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.appengine"
+
+  [[order.group]]
+    id = "google.java.clear_source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.gradle"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.appengine"
+
+  [[order.group]]
+    id = "google.java.clear_source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
 # The GCF order group.
 # We'll use google.java.maven to compile the function code if there is a pom.xml.
 # In that case google.java.functions-framework will inspect the pom.xml to
