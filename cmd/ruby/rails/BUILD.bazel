@@ -25,6 +25,7 @@ go_binary(
     ],
     deps = [
         "//pkg/gcpbuildpack",
+        "//pkg/nodejs",
         "//pkg/ruby",
     ],
 )

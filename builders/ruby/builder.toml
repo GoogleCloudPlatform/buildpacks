@@ -41,10 +41,6 @@ description = "Builder for the Ruby runtime"
   uri = "runtime.tgz"
 
 [[buildpacks]]
-  id = "google.nodejs.yarn"
-  uri = "yarn.tgz"
-
-[[buildpacks]]
   id = "google.ruby.missing-entrypoint"
   uri = "missing_entrypoint.tgz"
 
@@ -66,10 +62,6 @@ description = "Builder for the Ruby runtime"
 
   [[order.group]]
     id = "google.nodejs.runtime"
-    optional = true
-
-  [[order.group]]
-    id = "google.nodejs.yarn"
     optional = true
 
   [[order.group]]
@@ -114,10 +106,6 @@ description = "Builder for the Ruby runtime"
 
   [[order.group]]
     id = "google.nodejs.runtime"
-    optional = true
-
-  [[order.group]]
-    id = "google.nodejs.yarn"
     optional = true
 
   [[order.group]]

@@ -66,7 +66,7 @@ func TestAcceptance(t *testing.T) {
 			App:             "rails",
 			Env:             []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
 			EnableCacheTest: true,
-			MustUse:         []string{rubyRuntime, rubyRails, rubyBundle, nodeRuntime, nodeYarn},
+			MustUse:         []string{rubyRuntime, rubyRails, rubyBundle, nodeRuntime},
 		},
 		{
 			App: "rails_inferred",

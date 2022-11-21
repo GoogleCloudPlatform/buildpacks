@@ -25,14 +25,11 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
-	"github.com/buildpacks/libcnb"
 )
 
 const (
-	cacheTag   = "prod dependencies"
-	yarnLayer  = "yarn_engine"
-	versionKey = "version"
+	cacheTag  = "prod dependencies"
+	yarnLayer = "yarn_engine"
 )
 
 func main() {
@@ -46,16 +43,6 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	}
 	if !pkgJSONExists {
 		return gcp.OptOutFileNotFound("package.json"), nil
-	}
-
-	// certain Ruby on Rails apps require Yarn for asset precompilation.
-	// yarn.lock is not a prerequisite for such apps.
-	isRailsApp, err := ruby.NeedsRailsAssetPrecompile(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if isRailsApp {
-		return gcp.OptIn("detected Ruby on Rails app requiring asset precompilation"), nil
 	}
 
 	yarnLockExists, err := ctx.FileExists(nodejs.YarnLock)
@@ -72,12 +59,6 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 func buildFn(ctx *gcp.Context) error {
 	if err := installYarn(ctx); err != nil {
 		return fmt.Errorf("installing Yarn: %w", err)
-	}
-
-	// Rails (<7) apps require Yarn to be installed for asset precompilation.
-	// skip installing modules and setting up entrypoint.
-	if isRailsApp, _ := ruby.NeedsRailsAssetPrecompile(ctx); isRailsApp {
-		return nil
 	}
 
 	if yarn2, err := nodejs.IsYarn2(ctx.ApplicationRoot()); err != nil {
@@ -268,44 +249,9 @@ func yarn2InstallModules(ctx *gcp.Context) error {
 }
 
 func installYarn(ctx *gcp.Context) error {
-	version, err := nodejs.DetectYarnVersion(ctx.ApplicationRoot())
-	if err != nil {
-		return err
-	}
-
 	yrl, err := ctx.Layer(yarnLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", yarnLayer, err)
 	}
-	// Check the metadata in the cache layer to determine if we need to proceed.
-	metaVersion := ctx.GetMetadata(yrl, versionKey)
-	if version == metaVersion {
-		ctx.CacheHit(yarnLayer)
-		ctx.Logf("Yarn cache hit, skipping installation.")
-	} else {
-		ctx.CacheMiss(yarnLayer)
-		if err := ctx.ClearLayer(yrl); err != nil {
-			return fmt.Errorf("clearing layer %q: %w", yrl.Name, err)
-		}
-		// Download and install yarn in layer.
-		ctx.Logf("Installing Yarn v%s", version)
-		if err := nodejs.InstallYarn(ctx, yrl.Path, version); err != nil {
-			return err
-		}
-	}
-
-	// Store layer flags and metadata.
-	ctx.SetMetadata(yrl, versionKey, version)
-	// We need to update the path here to ensure the version we just installed take precendence over
-	// anything pre-installed in the base image.
-	if err := ctx.Setenv("PATH", filepath.Join(yrl.Path, "bin")+":"+os.Getenv("PATH")); err != nil {
-		return err
-	}
-	ctx.AddBOMEntry(libcnb.BOMEntry{
-		Name:     yarnLayer,
-		Metadata: map[string]interface{}{"version": version},
-		Launch:   true,
-		Build:    true,
-	})
-	return nil
+	return nodejs.InstallYarnLayer(ctx, yrl)
 }

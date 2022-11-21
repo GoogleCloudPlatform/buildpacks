@@ -23,14 +23,16 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/buildpacks/libcnb"
 	"github.com/Masterminds/semver"
 	"gopkg.in/yaml.v2"
 )
 
 var (
-	yarnURL  = "https://yarnpkg.com/downloads/%[1]s/yarn-v%[1]s.tar.gz"
-	yarn2URL = "https://repo.yarnpkg.com/%s/packages/yarnpkg-cli/bin/yarn.js"
-	version2 = semver.MustParse("2.0.0")
+	yarnURL    = "https://yarnpkg.com/downloads/%[1]s/yarn-v%[1]s.tar.gz"
+	yarn2URL   = "https://repo.yarnpkg.com/%s/packages/yarnpkg-cli/bin/yarn.js"
+	version2   = semver.MustParse("2.0.0")
+	versionKey = "version"
 )
 
 const (
@@ -109,6 +111,47 @@ func requestedYarnVersion(applicationRoot string) (string, error) {
 		return "", err
 	}
 	return pjs.Engines.Yarn, nil
+}
+
+// InstallYarnLayer installs Yarn in the given layer if it is not already cached.
+func InstallYarnLayer(ctx *gcp.Context, yarnLayer *libcnb.Layer) error {
+	layerName := yarnLayer.Name
+	version, err := DetectYarnVersion(ctx.ApplicationRoot())
+	if err != nil {
+		return err
+	}
+
+	// Check the metadata in the cache layer to determine if we need to proceed.
+	metaVersion := ctx.GetMetadata(yarnLayer, versionKey)
+	if version == metaVersion {
+		ctx.CacheHit(layerName)
+		ctx.Logf("Yarn cache hit, skipping installation.")
+	} else {
+		ctx.CacheMiss(layerName)
+		if err := ctx.ClearLayer(yarnLayer); err != nil {
+			return fmt.Errorf("clearing layer %q: %w", layerName, err)
+		}
+		// Download and install yarn in layer.
+		ctx.Logf("Installing Yarn v%s", version)
+		if err := InstallYarn(ctx, yarnLayer.Path, version); err != nil {
+			return err
+		}
+	}
+
+	// Store layer flags and metadata.
+	ctx.SetMetadata(yarnLayer, versionKey, version)
+	// We need to update the path here to ensure the version we just installed take precendence over
+	// anything pre-installed in the base image.
+	if err := ctx.Setenv("PATH", filepath.Join(yarnLayer.Path, "bin")+":"+os.Getenv("PATH")); err != nil {
+		return err
+	}
+	ctx.AddBOMEntry(libcnb.BOMEntry{
+		Name:     layerName,
+		Metadata: map[string]interface{}{"version": version},
+		Launch:   yarnLayer.Launch,
+		Build:    yarnLayer.Build,
+	})
+	return nil
 }
 
 // InstallYarn downloads a given version of Yarn into the provided directory.
