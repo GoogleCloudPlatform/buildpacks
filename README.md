@@ -1,4 +1,4 @@
-# Google Cloud Buildpacks
+# Google Cloud's buildpacks
 
 This repository contains a set of builders and buildpacks designed to run on
 Google Cloud's container platforms:
@@ -93,7 +93,7 @@ language has a separate builder.
 
 ## Usage
 
-The Google Cloud Buildpacks project provides builder images suitable for use
+The Google Cloud's buildpacks project provides builder images suitable for use
 with
 [pack](https://github.com/buildpacks/pack),
 [kpack](https://github.com/pivotal/kpack),
@@ -191,7 +191,7 @@ pack build my-app --builder my-builder-image
 
 ### Configuration
 
-Google Cloud Buildpacks support configuration using a set of **environment
+Google Cloud's buildpacks support configuration using a set of **environment
 variables** that are set at build time. For example, when using `pack`:
 
 ```bash
@@ -408,7 +408,7 @@ This command will send the local source directory to Cloud Build, invoke this bu
 
 ## Support
 
-Google Cloud Buildpacks are only officially supported when used with Google Cloud products.
+Google Cloud's buildpacks are only officially supported when used with Google Cloud products.
 Customers of Google Cloud can use [standard support channels](https://cloud.google.com/support-hub)
 for help using buildpacks with Google Cloud Products.
 
