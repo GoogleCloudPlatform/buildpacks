@@ -128,7 +128,10 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.CacheHit(javaLayer)
 		return nil
 	}
-	ctx.CacheMiss(javaLayer)
+	// TODO (mattrobertson) the adoptium endpoint for fetching version is non-deterministic, which
+	// causes our cache enabled acceptance tests to be flaky. We should re-enable this cache miss
+	// logging once we migrate to our dl.google.com endpoint.
+	// ctx.CacheMiss(javaLayer)
 	if err := ctx.ClearLayer(l); err != nil {
 		return fmt.Errorf("clearing layer %q: %w", l.Name, err)
 	}

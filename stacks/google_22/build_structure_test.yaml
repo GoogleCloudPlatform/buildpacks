@@ -1,0 +1,64 @@
+# Copyright 2022 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Container structure test to validate the google.gae.22 build image.
+
+schemaVersion: '2.0.0'
+
+metadataTest:
+  envVars:
+    - key: LANG
+      value: 'en_US.UTF-8'
+    - key: LANGUAGE
+      value: 'en_US:en'
+    - key: LC_ALL
+      value: 'en_US.UTF-8'
+    - key: 'CNB_STACK_ID'
+      value: 'google.22'
+    - key: 'CNB_USER_ID'
+      value: '1000'
+    - key: 'CNB_GROUP_ID'
+      value: '1000'
+  labels:
+    - key: 'io.buildpacks.stack.id'
+      value: 'google.22'
+    - key: 'io.buildpacks.stack.distro.name'
+      value: 'Ubuntu'
+    - key: 'io.buildpacks.stack.distro.version'
+      value: '22.04'
+    - key: 'io.buildpacks.stack.maintainer'
+      value: 'Google'
+    - key: 'io.buildpacks.stack.mixins'
+      value: '[]'
+    - key: 'io.buildpacks.stack.homepage'
+      value: 'https://github.com/GoogleCloudPlatform/buildpacks/stacks/google-22'
+  exposedPorts: []
+  user: "cnb"
+
+fileExistenceTests:
+- name: 'home dir'
+  path: '/home/cnb'
+  shouldExist: true
+  permissions: 'drwxr-x---'
+
+commandTests:
+- name: 'installed packages'
+  command: 'apt'
+  args: ['list', '--installed']
+  expectedOutput: [
+    'ca-certificates',
+    'locales',
+    'openssl',
+    'tzdata',
+  ]

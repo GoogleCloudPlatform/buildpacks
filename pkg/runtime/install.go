@@ -66,6 +66,7 @@ var runtimeNames = map[InstallableRuntime]string{
 var stackOSMap = map[string]string{
 	"google":        ubuntu1804,
 	"google.gae.18": ubuntu1804,
+	"google.22":     ubuntu2204,
 	"google.gae.22": ubuntu2204,
 	"google.min.22": ubuntu2204,
 }
