@@ -32,7 +32,7 @@ Google Cloud's container platforms:
     ```
     docker run --rm -p 8080:8080 sample-go
     ```
-   
+
 1. See it in action
 
     ```
@@ -90,6 +90,26 @@ Compared to the general builder, there are two primary differences. First,
 there are additional buildpacks which add transformations specific to each
 service. Second, in order to optimize execution speed, each
 language has a separate builder.
+
+As an example, in order to build a Docker container image  for Google App Engine
+Java17 runtime you can use:
+
+```bash
+pack build <app-name>  --builder gcr.io/gae-runtimes/buildpacks/java17/builder
+```
+
+If you rely on a custom App Engine entrypoint in your app.yaml, you can use:
+
+```bash
+pack build <app-name>  --builder gcr.io/gae-runtimes/buildpacks/java17/builder  --env GOOGLE_ENTRYPOINT="your entry point command"
+```
+
+The application container image can then be executed locally:
+
+```bash
+docker run --rm -p 8080:8080 <app-name>
+```
+Locally, your application might depend on App Engine [enviroment variables](https://cloud.google.com/appengine/docs/standard/java-gen2/runtime#environment_variables) that would need to be set in the local environment.
 
 ## Usage
 
