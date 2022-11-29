@@ -53,21 +53,26 @@ func TestAcceptanceDotNet(t *testing.T) {
 			FilesMustNotExist:          []string{sdk},
 		},
 		{
-			Name:              "simple dotnet app with runtime version",
+			Name: "simple dotnet app with runtime version",
+			// .NET 3.1 is not supported on Ubuntu 22.04.
+			SkipStacks:        []string{"google.22", "google.min.22", "google.gae.22"},
 			App:               "simple",
-			Path:              "/version?want=3.1.0",
-			Env:               []string{"GOOGLE_RUNTIME_VERSION=3.1.101"},
+			Path:              "/version?want=3.1.30",
+			Env:               []string{"GOOGLE_ASP_NET_CORE_VERSION=3.1.30"},
 			MustUse:           []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 		},
 		{
-			Name:                       "simple prebuilt dotnet app",
-			VersionInclusionConstraint: "3", // simple_prebuilt is a dotnet 3 app.
-			App:                        "simple_prebuilt",
-			Env:                        []string{"GOOGLE_ENTRYPOINT=./simple"},
-			MustUse:                    []string{dotnetRuntime},
-			MustNotUse:                 []string{dotnetSDK, dotnetPublish},
-			FilesMustNotExist:          []string{sdk},
+			Name: "simple prebuilt dotnet app",
+			// simple_prebuilt is a dotnet 3 app.
+			VersionInclusionConstraint: "3",
+			// .NET 3.1 is not supported on Ubuntu 22.04.
+			SkipStacks:        []string{"google.22", "google.min.22", "google.gae.22"},
+			App:               "simple_prebuilt",
+			Env:               []string{"GOOGLE_ENTRYPOINT=./simple"},
+			MustUse:           []string{dotnetRuntime},
+			MustNotUse:        []string{dotnetSDK, dotnetPublish},
+			FilesMustNotExist: []string{sdk},
 			BOM: []acceptance.BOMEntry{
 				{
 					Name: "aspnetcore",
@@ -78,7 +83,9 @@ func TestAcceptanceDotNet(t *testing.T) {
 			},
 		},
 		{
-			Name:                "Dev mode",
+			Name: "Dev mode",
+			// Hot reloading only works on .NET 3.1, which is not supported on Ubuntu 22.04.
+			SkipStacks:          []string{"google.22", "google.min.22", "google.gae.22"},
 			App:                 "simple",
 			Env:                 []string{"GOOGLE_DEVMODE=1", "GOOGLE_DOTNET_SDK_VERSION=3.1.x"},
 			MustUse:             []string{dotnetSDK, dotnetRuntime, dotnetPublish},
@@ -89,14 +96,14 @@ func TestAcceptanceDotNet(t *testing.T) {
 			// This is a separate test case from Dev mode above because it has a fixed runtime version.
 			// Its only purpose is to test that the metadata is set correctly.
 			Name:    "Dev mode metadata",
-			App:     "simple",
-			Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=3.1.409"},
+			App:     "simple_dotnet6",
+			Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=6.0.402"},
 			MustUse: []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			BOM: []acceptance.BOMEntry{
 				{
 					Name: "dotnetsdk",
 					Metadata: map[string]interface{}{
-						"version": "3.1.409",
+						"version": "6.0.402",
 					},
 				},
 				{

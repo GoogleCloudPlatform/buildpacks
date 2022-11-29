@@ -6,30 +6,13 @@ A buildpack stack based on Ubuntu 22.04 LTS (Jammy Jellyfish).
 
 [gcr.io/gae-runtimes/buildpacks/stacks/google-22/run](https://gcr.io/gae-runtimes/buildpacks/stacks/google-22/run)
 
-Installed Packages:
-
-* `ca-certificates`
-* `locales`
-* `openssl`
-* `tzdata`
+Available packages listed in [run-packages.txt](./run-packages.txt).
 
 ## Build Image
 
 [gcr.io/gae-runtimes/buildpacks/stacks/google-22/build](https://gcr.io/gae-runtimes/buildpacks/stacks/google-22/build)
 
-Installed Packages:
-
-* `build-essential`
-* `ca-certificates`
-* `curl`
-* `git`
-* `locales`
-* `openssl`
-* `tar`
-* `tzdata`
-* `unzip`
-* `xz-utils`
-* `zip`
+Available packages listed in [build-packages.txt](./build-packages.txt).
 
 ## Building Images
 

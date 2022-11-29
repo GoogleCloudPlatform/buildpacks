@@ -35,6 +35,14 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			EnableCacheTest: true,
 		},
 		{
+			// Tests a specific versions of Node.js available on dl.google.com.
+			Name:    "runtime version 16.17.1",
+			App:     "simple",
+			Path:    "/version?want=16.17.1",
+			Env:     []string{"GOOGLE_NODEJS_VERSION=16.17.1"},
+			MustUse: []string{nodeRuntime},
+		},
+		{
 			Name:                "Dev mode",
 			App:                 "simple",
 			Env:                 []string{"GOOGLE_DEVMODE=1"},
@@ -93,8 +101,8 @@ func TestAcceptanceNodeJs(t *testing.T) {
 		{
 			Name:    "runtime version with npm ci",
 			App:     "simple",
-			Path:    "/version?want=16.9.1",
-			Env:     []string{"GOOGLE_RUNTIME_VERSION=16.9.1"},
+			Path:    "/version?want=16.18.1",
+			Env:     []string{"GOOGLE_RUNTIME_VERSION=16.18.1"},
 			MustUse: []string{nodeRuntime, nodeNPM},
 		},
 		{
@@ -120,17 +128,9 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			Path:                       "/version?want=5.5.1",
 			MustUse:                    []string{nodeRuntime, nodeNPM},
 			MustOutput:                 []string{"npm --version\n\n5.5.1"},
+			// nodejs@8 is not available on Ubuntu 22.04
+			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22"},
 		},
-	}
-	// Tests for specific versions of Node.js available on dl.google.com.
-	for _, v := range []string{"8.17.0"} {
-		testCases = append(testCases, acceptance.Test{
-			Name:    "runtime version " + v,
-			App:     "simple",
-			Path:    "/version?want=" + v,
-			Env:     []string{"GOOGLE_NODEJS_VERSION=" + v},
-			MustUse: []string{nodeRuntime},
-		})
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc

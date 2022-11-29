@@ -58,15 +58,22 @@ func TestAcceptancePython(t *testing.T) {
 		{
 			Name:    "runtime version from env",
 			App:     "version",
-			Path:    "/version?want=3.8.0",
-			Env:     []string{"GOOGLE_RUNTIME_VERSION=3.8.0"},
+			Path:    "/version?want=3.10.8",
+			Env:     []string{"GOOGLE_RUNTIME_VERSION=3.10.8"},
+			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+		},
+		{
+			Name:    "runtime version from GOOGLE_PYTHON_VERSION env",
+			App:     "version",
+			Path:    "/version?want=3.10.2",
+			Env:     []string{"GOOGLE_RUNTIME_VERSION=3.10.2"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		{
 			Name:                       "runtime version from .python-version",
-			VersionInclusionConstraint: "3.8.12", // version is set in the .python-version file
+			VersionInclusionConstraint: "3.10.7", // version is set in the .python-version file
 			App:                        "python_version_file",
-			Path:                       "/version?want=3.8.12",
+			Path:                       "/version?want=3.10.7",
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		{
@@ -75,17 +82,6 @@ func TestAcceptancePython(t *testing.T) {
 			Env:     []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
-	}
-
-	// Tests for specific versions of Python available on dl.google.com.
-	for _, v := range []string{"3.7.12", "3.8.12", "3.9.10", "3.10.2"} {
-		testCases = append(testCases, acceptance.Test{
-			Name:    "dl.google.com runtime version " + v,
-			App:     "version",
-			Path:    "/version?want=" + v,
-			Env:     []string{"GOOGLE_PYTHON_VERSION=" + v},
-			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
-		})
 	}
 
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {

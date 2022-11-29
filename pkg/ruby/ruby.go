@@ -26,7 +26,7 @@ import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
-const defaultVersion = "3.0.0"
+const defaultVersion = "3.1.*"
 
 // DetectVersion detects ruby version from the environment, Gemfile.lock, gems.locked, or falls
 // back to a default version.

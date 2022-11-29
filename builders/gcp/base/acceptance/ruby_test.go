@@ -45,12 +45,15 @@ func TestAcceptanceRuby(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:            "using bundler 1",
+			Name: "using bundler 1",
+			// Bundler 1 is common with older versions of Ruby which are not supported on Ubuntu 22.04.
+			SkipStacks:      []string{"google.22", "google.min.22", "google.gae.22"},
 			App:             "simple",
 			MustUse:         []string{rubyRuntime, rubyBundle, entrypoint},
 			EnableCacheTest: true,
 			Setup:           useBundler1,
 			Path:            "/bundler",
+			Env:             []string{"GOOGLE_RUNTIME_VERSION=2.7.*"},
 			MustMatch:       "1.17.3",
 		},
 		{
@@ -81,16 +84,16 @@ func TestAcceptanceRuby(t *testing.T) {
 			MustUse: []string{rubyRuntime, rubyBundle, entrypoint},
 		},
 		{
-			Name:    "runtime version from env",
+			Name:    "GOOGLE_RUNTIME_VERSION env",
 			App:     "simple",
-			Path:    "/version?want=2.7.5",
-			Env:     []string{"GOOGLE_RUNTIME_VERSION=2.7.5"},
+			Path:    "/version?want=3.1.0",
+			Env:     []string{"GOOGLE_RUNTIME_VERSION=3.1.0"},
 			MustUse: []string{rubyRuntime, rubyBundle, entrypoint},
 		},
 		{
 			Name:            "rails",
 			App:             "rails",
-			Env:             []string{"GOOGLE_RUNTIME_VERSION=2.7.5", "GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
+			Env:             []string{"GOOGLE_RUNTIME_VERSION=3.1.2", "GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
 			MustUse:         []string{rubyRuntime, rubyRails, rubyBundle, entrypoint},
 			EnableCacheTest: true,
 		},
@@ -103,7 +106,7 @@ func TestAcceptanceRuby(t *testing.T) {
 		{
 			Name:       "rails precompiled",
 			App:        "rails_precompiled",
-			Env:        []string{"GOOGLE_RUNTIME_VERSION=2.7.5", "GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			Env:        []string{"GOOGLE_RUNTIME_VERSION=3.1.2", "GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 			MustUse:    []string{rubyRuntime, rubyBundle, entrypoint},
 			MustNotUse: []string{rubyRails},
 		},
@@ -114,18 +117,7 @@ func TestAcceptanceRuby(t *testing.T) {
 			EnableCacheTest: false,
 		},
 	}
-	// Tests for specific versions of Ruby available on dl.google.com.
-	// Unlike with the other languages, we control the versions published to GCS.
-	for _, v := range []string{"3.1.0", "3.0.3", "2.7.5", "2.6.9"} {
-		testCases = append(testCases, acceptance.Test{
-			Name:    "runtime version " + v,
-			App:     "simple",
-			Path:    "/version?want=" + v,
-			Env:     []string{"GOOGLE_RUNTIME_VERSION=" + v},
-			MustUse: []string{rubyRuntime, rubyBundle, entrypoint},
-		})
-	}
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()

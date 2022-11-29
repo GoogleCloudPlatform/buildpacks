@@ -91,6 +91,8 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
+	ctx.Exec([]string{"ldd", filepath.Join(rl.Path, "lib/ruby/3.1.0/x86_64-linux/psych.so")})
+
 	// For GAE and GCF, install RubyGems and Bundler in the same layer to maintain compatibility
 	// with existing builder images.
 	if env.IsGAE() || env.IsGCF() {

@@ -64,7 +64,7 @@ func TestAcceptance(t *testing.T) {
 
 			tc.Path = "/testFunction"
 			tc.Env = append(tc.Env,
-				"GOOGLE_RUNTIME_VERSION="+"2.7.5",
+				"GOOGLE_RUNTIME_VERSION=3.1.*",
 				"GOOGLE_ENTRYPOINT=bundle exec functions-framework-ruby --target testFunction",
 			)
 

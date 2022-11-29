@@ -58,6 +58,10 @@ commandTests:
   args: ['list', '--installed']
   expectedOutput: [
     'ca-certificates',
+    'libc6',
+    'libexpat1',
+    'libicu70',
+    'libyaml-0-2',
     'locales',
     'openssl',
     'tzdata',
