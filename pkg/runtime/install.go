@@ -47,6 +47,7 @@ const (
 	Pid1       InstallableRuntime = "pid1"
 	DotnetSDK  InstallableRuntime = "dotnetsdk"
 	AspNetCore InstallableRuntime = "aspnetcore"
+	OpenJDK    InstallableRuntime = "openjdk"
 
 	ubuntu1804 string = "ubuntu1804"
 	ubuntu2204 string = "ubuntu2204"
@@ -166,9 +167,13 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	}
 	ctx.Logf("Installing %s v%s.", runtimeName, version)
 
-	runtimeURL := fmt.Sprintf(googleTarballURL, os, runtime, version)
+	runtimeURL := fmt.Sprintf(googleTarballURL, os, runtime, strings.ReplaceAll(version, "+", "_"))
 
-	if err := fetch.Tarball(runtimeURL, layer.Path, 0); err != nil {
+	stripComponents := 0
+	if runtime == OpenJDK {
+		stripComponents = 1
+	}
+	if err := fetch.Tarball(runtimeURL, layer.Path, stripComponents); err != nil {
 		ctx.Warnf("Failed to download %s version %s os %s. You can specify the verison by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, os)
 		return false, err
 	}
