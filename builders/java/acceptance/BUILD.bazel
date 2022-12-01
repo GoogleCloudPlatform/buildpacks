@@ -1,4 +1,4 @@
-load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
 load(":args.bzl", "javaargs")
 
 licenses(["notice"])
@@ -80,4 +80,9 @@ acceptance_test_suite(
     rundir = ".",
     testdata = "//builders/testdata/java:generic",
     versions = VERSIONS_WITH_GCP_SUPPORT,
+)
+
+acceptance_test_argo_source(
+    name = "argo_source",
+    testdata = "//builders/testdata:java",
 )
