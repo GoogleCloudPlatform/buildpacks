@@ -32,6 +32,7 @@ acceptance_test_suite(
     versions = VERSIONS_ALL_PRODUCTS,
 )
 
+# Test the run image tagged as latest in gae-runtimes.
 acceptance_test_suite(
     name = "gae_test",
     srcs = [
@@ -39,6 +40,20 @@ acceptance_test_suite(
         "gae_test.go",
     ],
     argsmap = phpargs(),
+    builder = "//builders/php:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/php:appengine",
+    versions = VERSIONS_ALL_PRODUCTS,
+)
+
+# Test the run image tagged as ${_CANDIDATE_NAME} in gae-runtimes-private.
+acceptance_test_suite(
+    name = "gae_candidate_test",
+    srcs = [
+        "common_test.go",
+        "gae_test.go",
+    ],
+    argsmap = phpargs("$${_CANDIDATE_NAME}"),
     builder = "//builders/php:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/php:appengine",

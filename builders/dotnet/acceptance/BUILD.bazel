@@ -74,6 +74,22 @@ acceptance_test_suite(
     ],
 )
 
+# There are no GAE tests for dotnet as there is no dotnet runtime on GAE. However, the language
+# test framework expects a `gae_candidate_test` target. For that reason this target exists.
+acceptance_test_suite(
+    name = "gae_candidate_test",
+    srcs = [
+        "common_test.go",
+        "gae_test.go",
+    ],
+    builder = "//builders/dotnet:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/dotnet:generic",
+    deps = [
+        "@com_github_masterminds_semver//:go_default_library",
+    ],
+)
+
 acceptance_test_argo_source(
     name = "argo_source",
     testdata = "//builders/testdata:dotnet",

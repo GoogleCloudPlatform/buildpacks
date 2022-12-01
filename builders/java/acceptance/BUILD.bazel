@@ -34,12 +34,26 @@ VERSIONS_WITH_GCF_SUPPORT = VERSIONS_WITH_GAE_SUPPORT
 
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
 
+# Test the run image tagged as latest in gae-runtimes.
 acceptance_test_suite(
     name = "gae_test",
     srcs = [
         "gae_test.go",
     ],
     argsmap = javaargs(),
+    builder = "//builders/java:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/java:appengine",
+    versions = VERSIONS_WITH_GAE_SUPPORT,
+)
+
+# Test the run image tagged as ${_CANDIDATE_NAME} in gae-runtimes-private.
+acceptance_test_suite(
+    name = "gae_candidate_test",
+    srcs = [
+        "gae_test.go",
+    ],
+    argsmap = javaargs("$${_CANDIDATE_NAME}"),
     builder = "//builders/java:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/java:appengine",

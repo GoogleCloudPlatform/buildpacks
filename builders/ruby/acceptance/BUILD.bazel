@@ -58,6 +58,7 @@ acceptance_test_suite(
     versions = VERSIONS_WITH_GCP_SUPPORT,
 )
 
+# Test the run image tagged as latest in gae-runtimes.
 acceptance_test_suite(
     name = "gae_test",
     srcs = [
@@ -65,6 +66,20 @@ acceptance_test_suite(
         "gae_test.go",
     ],
     argsmap = rubyargs(),
+    builder = "//builders/ruby:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/ruby:appengine",
+    versions = VERSIONS_WITH_GAE_SUPPORT,
+)
+
+# Test the run image tagged as ${_CANDIDATE_NAME} in gae-runtimes-private.
+acceptance_test_suite(
+    name = "gae_candidate_test",
+    srcs = [
+        "common_test.go",
+        "gae_test.go",
+    ],
+    argsmap = rubyargs("$${_CANDIDATE_NAME}"),
     builder = "//builders/ruby:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/ruby:appengine",
