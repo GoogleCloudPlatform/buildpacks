@@ -26,14 +26,23 @@ func init() {
 	acceptance.DefineFlags()
 }
 
+func getMajorMinorVersion(version string) string {
+	components := strings.Split(version, ".")
+	major := components[0]
+	minor := components[1]
+
+	// set patch version as 0 to not restrict the patch version for GAE
+	return major + "." + minor + ".0"
+}
+
 func insertGemfileVersion(setupCtx acceptance.SetupContext) error {
 	gemfilePath := filepath.Join(setupCtx.SrcDir, "Gemfile")
 	gemfileOld, err := os.ReadFile(gemfilePath)
 	if err != nil {
 		return err
 	}
-
-	gemfileNew := strings.ReplaceAll(string(gemfileOld), runtimeVersionPlaceholder, setupCtx.RuntimeVersion)
+	minorVersion := getMajorMinorVersion(setupCtx.RuntimeVersion)
+	gemfileNew := strings.ReplaceAll(string(gemfileOld), runtimeVersionPlaceholder, minorVersion)
 	return os.WriteFile(gemfilePath, []byte(gemfileNew), 0644)
 }
 
@@ -43,8 +52,8 @@ func insertGemsRbVersion(setupCtx acceptance.SetupContext) error {
 	if err != nil {
 		return err
 	}
-
-	gemsRbNew := strings.ReplaceAll(string(gemsRbOld), runtimeVersionPlaceholder, setupCtx.RuntimeVersion)
+	minorVersion := getMajorMinorVersion(setupCtx.RuntimeVersion)
+	gemsRbNew := strings.ReplaceAll(string(gemsRbOld), runtimeVersionPlaceholder, minorVersion)
 	return os.WriteFile(gemsRbPath, []byte(gemsRbNew), 0644)
 }
 
