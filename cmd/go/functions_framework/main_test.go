@@ -88,6 +88,19 @@ func TestBuild(t *testing.T) {
 			fnPkgName:    "myfunc",
 			wantCommands: []string{"go mod vendor"},
 		},
+		{
+			name:      "go mod with version",
+			app:       "with_versioned_mod",
+			envs:      []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			fnPkgName: "myfunc",
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`^go list -m$`, mockprocess.WithStdout("example.com/myfunc/v3")),
+			},
+			wantCommands: []string{
+				"go mod edit -require example.com/myfunc/v3@v3",
+				"go mod edit -replace example.com/myfunc/v3=",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -118,5 +131,40 @@ func TestBuild(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestParseModuleVersion(t *testing.T) {
+	testCases := []struct {
+		module string
+		want   string
+	}{
+		{
+			module: "example.com/v2",
+			want:   "v2",
+		},
+		{
+			module: "/v123",
+			want:   "v123",
+		},
+		{
+			module: "/v",
+			want:   "",
+		},
+		{
+			module: "example.com/no/major/version",
+			want:   "",
+		},
+	}
+
+	for _, tc := range testCases {
+		got, err := parseModuleVersion(tc.module)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if got != tc.want {
+			t.Errorf("parsed version mismatch, got: %q, want: %q", got, tc.want)
+		}
 	}
 }

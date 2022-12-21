@@ -138,6 +138,11 @@ func TestAcceptance(t *testing.T) {
 			RequestType: acceptance.BackgroundEventType,
 			Env:         []string{"GOOGLE_FUNCTION_TARGET=Func", "GOOGLE_FUNCTION_SIGNATURE_TYPE=event"},
 		},
+		{
+			Name: "function with versioned module",
+			App:  "with_versioned_mod",
+			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
+		},
 	}
 
 	for _, tc := range testCases {

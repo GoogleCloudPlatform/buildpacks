@@ -22,6 +22,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -175,16 +176,24 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	}
 	fn.Package = fnPackage
 
-	if _, err := ctx.Exec([]string{"go", "mod", "init", appModule}); err != nil {
-		return err
-	}
-	if _, err := ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@v0.0.0", fnMod)}); err != nil {
-		return err
-	}
-	if _, err := ctx.Exec([]string{"go", "mod", "edit", "-replace", fmt.Sprintf("%s@v0.0.0=%s", fnMod, fn.Source)}); err != nil {
+	modVersion, err := parseModuleVersion(fnMod)
+	if err != nil {
 		return err
 	}
 
+	if modVersion == "" {
+		modVersion = "v0"
+	}
+
+	if _, err := ctx.Exec([]string{"go", "mod", "init", appModule}); err != nil {
+		return err
+	}
+	if _, err := ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@%s", fnMod, modVersion)}); err != nil {
+		return err
+	}
+	if _, err := ctx.Exec([]string{"go", "mod", "edit", "-replace", fmt.Sprintf("%s=%s", fnMod, fn.Source)}); err != nil {
+		return err
+	}
 	// If the framework is not present in the function's go.mod, we require the current version.
 	version, err := frameworkSpecifiedVersion(ctx, fn.Source)
 	if err != nil {
@@ -206,9 +215,31 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	// the framework, in which case we want to import that version. For that reason we cannot
 	// include a pre-generated go.sum file.
 	if _, err := golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "tidy"}, gcp.WithUserAttribution); err != nil {
-		return fmt.Errorf("running go mod tiny: %w", err)
+		return fmt.Errorf("running go mod tidy: %w", err)
 	}
 	return nil
+}
+
+// parseModuleVersion parses the major version from the Go module name.
+// If the module does not specify a major version, empty string is returned.
+// "example.com/fn/v2" returns ("v2", nil)
+// "example.com/fn" returns ("", nil)
+func parseModuleVersion(module string) (string, error) {
+	r := regexp.MustCompile(`\/(v\d+)$`)
+	m := r.FindStringSubmatch(module)
+	if m == nil {
+		return "", nil
+	}
+
+	// The first index is the full match, the second index is the submatch of
+	// the group captured by the `()` in the regular expression.
+	// There should be at most one match because the regular expression is anchored
+	// to match only the end of the string `$`.
+	if len(m) != 2 {
+		return "", fmt.Errorf("unexpected result parsing module version, module name: %q, regexp matches: %v", module, m)
+	}
+
+	return m[1], nil
 }
 
 func createMainGoModVendored(ctx *gcp.Context, fn fnInfo) error {
