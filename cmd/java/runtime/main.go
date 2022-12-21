@@ -29,7 +29,7 @@ import (
 
 const (
 	javaLayer             = "java"
-	javaVersionURL        = "https://api.adoptopenjdk.net/v3/assets/feature_releases/%s/ga?architecture=x64&heap_size=normal&image_type=jdk&jvm_impl=hotspot&os=linux&page=0&page_size=1&project=jdk&sort_order=DESC&vendor=adoptopenjdk"
+	javaVersionURL        = "https://api.adoptium.net/v3/assets/feature_releases/%s/ga?architecture=x64&heap_size=normal&image_type=jdk&jvm_impl=hotspot&os=linux&page=0&page_size=1&project=jdk&sort_order=DESC&vendor=eclipse"
 	defaultFeatureVersion = "11"
 	versionKey            = "version"
 )
