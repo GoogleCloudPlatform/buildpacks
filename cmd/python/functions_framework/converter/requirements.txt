@@ -10,6 +10,6 @@ MarkupSafe==2.0.1
 packaging==21.3
 pathtools==0.1.2
 pyparsing==3.0.6
-setuptools==60.3.1
+setuptools==65.5.1
 watchdog==1.0.2
 Werkzeug==2.0.2
