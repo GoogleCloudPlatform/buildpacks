@@ -8,6 +8,7 @@ builder(
     name = "builder",
     buildpacks = [
         "//cmd/config/entrypoint:entrypoint.tgz",
+        "//cmd/config/flex:flex.tgz",
         "//cmd/go/appengine:appengine.tgz",
         "//cmd/go/appengine_gomod:appengine_gomod.tgz",
         "//cmd/go/appengine_gopath:appengine_gopath.tgz",

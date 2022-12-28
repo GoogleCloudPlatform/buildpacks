@@ -9,6 +9,10 @@ description = "Unified builder for the Go runtime"
   uri = "entrypoint.tgz"
 
 [[buildpacks]]
+  id = "google.config.flex"
+  uri = "flex.tgz"
+
+[[buildpacks]]
   id = "google.go.appengine"
   uri = "appengine.tgz"
 
@@ -51,6 +55,23 @@ description = "Unified builder for the Go runtime"
 [[buildpacks]]
   id = "google.utils.label"
   uri = "label.tgz"
+
+# GAE Flex
+[[order]]
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.gomod"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.utils.label"
 
 [[order]]
 
