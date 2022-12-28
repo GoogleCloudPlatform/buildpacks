@@ -84,5 +84,9 @@ acceptance_test_suite(
 
 acceptance_test_argo_source(
     name = "argo_source",
+    srcs = [
+        "//builders/testdata/java:appengine.tgz",
+        "//builders/testdata/java:functions.tgz",
+    ],
     testdata = "//builders/testdata:java",
 )
