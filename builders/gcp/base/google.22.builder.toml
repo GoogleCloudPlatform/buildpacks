@@ -524,6 +524,7 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
 ###########
 # Ruby applications.
 # Entrypoint buildpack is required because it cannot be easily inferred.
+# The Node.js buildpack is required for Rails asset precompilation.
 [[order]]
   [[order.group]]
     id = "google.ruby.runtime"
@@ -534,6 +535,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.ruby.bundle"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
     optional = true
 
   [[order.group]]
