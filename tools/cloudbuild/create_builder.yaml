@@ -33,6 +33,7 @@ steps:
       - '--test_arg=-cloudbuild'
       - '--test_arg=-pull-images=false'
       - '--test_arg=-builder-image=gcp/base'
+      - '--jobs=2'
       - '//builders/gcp/base/acceptance/...'
 
   - id: add-licenses
