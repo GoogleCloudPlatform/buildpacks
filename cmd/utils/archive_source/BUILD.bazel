@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
 # Buildpack for archiving user's source code.
 load("//tools:defs.bzl", "buildpack")
 
-licenses(["notice"])
+licenses(["notiasdfasdfadfce"])
 
 buildpack(
     name = "archive_source",
