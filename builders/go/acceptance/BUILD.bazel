@@ -43,6 +43,7 @@ VERSIONS_GCF_SUPPORT = [
     "1.13",
     "1.16",
     "1.18",
+    "1.19",
 ]
 
 # The GCF Legacy Worker is only available and used for the "GCF go111" runtime version. It has different behavior,
