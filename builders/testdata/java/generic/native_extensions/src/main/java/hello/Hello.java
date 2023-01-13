@@ -25,9 +25,9 @@ import javax.ws.rs.core.MediaType;
 /** PASS text handler */
 public class Hello {
   public interface CLibrary extends Library {
-    // TODO we may need to update the path of libc++ if the os get updated
+    // Loading libjpeg native library to test JNI
     CLibrary INSTANCE =
-        (CLibrary) Native.loadLibrary("/usr/lib/x86_64-linux-gnu/libc++.so.1", CLibrary.class);
+        (CLibrary) Native.loadLibrary("/usr/lib/x86_64-linux-gnu/libjpeg.so.8", CLibrary.class);
 
     void printf(String format, Object... args);
   }
