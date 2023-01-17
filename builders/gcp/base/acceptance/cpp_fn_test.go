@@ -29,6 +29,8 @@ func TestAcceptanceCppFn(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
+			// Cpp is not supported on new stacks starting Ubuntu 22.04.
+			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22"},
 			Name:       "function with additional dependencies",
 			App:        "test_function",
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=test_function", "GOOGLE_FUNCTION_SIGNATURE_TYPE=http"},
@@ -37,6 +39,8 @@ func TestAcceptanceCppFn(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 		{
+			// Cpp is not supported on new stacks starting Ubuntu 22.04.
+			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22"},
 			Name:       "function using declarative configuration",
 			App:        "test_declarative",
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=test_function"},
@@ -45,11 +49,10 @@ func TestAcceptanceCppFn(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 	}
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-
 			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
