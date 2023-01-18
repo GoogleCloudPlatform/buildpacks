@@ -1362,9 +1362,15 @@ func ShouldTestVersion(t *testing.T, inclusionConstraint string) bool {
 	if runtimeVersion == "" || inclusionConstraint == "" {
 		return true
 	}
-	rtVer, err := semver.NewVersion(runtimeVersion)
+	// The format of Go pre-release version e.g. 1.20rc1 doesn't follow the semver rule
+	// that requires a hyphen before the identifier "rc".
+	v := runtimeVersion
+	if strings.Contains(v, "rc") && !strings.Contains(v, "-rc") {
+		v = strings.Replace(v, "rc", "-rc", 1)
+	}
+	rtVer, err := semver.NewVersion(v)
 	if err != nil {
-		t.Fatalf("Unable to use %q as a semver.Version: %v", runtimeVersion, err)
+		t.Fatalf("Unable to use %q as a semver.Version: %v", v, err)
 	}
 	return versionMatches(t, rtVer, inclusionConstraint)
 }

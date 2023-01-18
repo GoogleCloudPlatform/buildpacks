@@ -28,18 +28,21 @@ import (
 
 // CheckOverride returns a Detect result or nil based on the GOOGLE_RUNTIME environment variable value.
 //
-// o If the GOOGLE_RUNTIME environment variable is not set or set to an empty string this returns nil.
-//   Indicates an open source build with no user provided env var value set.
-// o If the GOOGLE_RUNTIME environment variable is set to a value that matches the wantRuntime value
-//   this returns an OptIn result. Indicates an open source build with a specified value set
-//   by the user.
-// o If the GOOGLE_RUNTIME environment variable is set to a value that starts with the wantRuntime
-//   value this returns an OptIn reult. Indicates a gae or gcf build where the environment value
-//   is set to a Google runtime name such ase 'python37' which is supported by the buildpack
-//   performing detection.
-// o If the GOOGLE_RUNTIME environment variable is set to another value this returns an OptOut result..
-//   Indicates a gae or gcf build and the runtime needed for the build is not supported by the
-//   buildpack performing detection.
+//	 o If the GOOGLE_RUNTIME environment variable is not set or set to an empty string this returns nil.
+//		Indicates an open source build with no user provided env var value set.
+//
+//	 o If the GOOGLE_RUNTIME environment variable is set to a value that matches the wantRuntime value
+//		this returns an OptIn result. Indicates an open source build with a specified value set
+//		by the user.
+//
+//	 o If the GOOGLE_RUNTIME environment variable is set to a value that starts with the wantRuntime
+//		value this returns an OptIn reult. Indicates a gae or gcf build where the environment value
+//		is set to a Google runtime name such ase 'python37' which is supported by the buildpack
+//		performing detection.
+//
+//	 o If the GOOGLE_RUNTIME environment variable is set to another value this returns an OptOut result..
+//		Indicates a gae or gcf build and the runtime needed for the build is not supported by the
+//		buildpack performing detection.
 func CheckOverride(wantRuntime string) gcp.DetectResult {
 	envRuntime := strings.ToLower(strings.TrimSpace(os.Getenv(env.Runtime)))
 	if envRuntime == "" {
@@ -64,6 +67,11 @@ func FormatName(languageName, version string) (string, error) {
 }
 
 func formatVersion(languageName, version string) (string, error) {
+	// The format of Go pre-release version e.g. 1.20rc1 doesn't follow the semver rule
+	// that requires a hyphen before the identifier "rc".
+	if strings.Contains(version, "rc") && !strings.Contains(version, "-rc") {
+		version = strings.Replace(version, "rc", "-rc", 1)
+	}
 	semVer, err := semver.NewVersion(version)
 	if err != nil {
 		return "", fmt.Errorf("parsing %q as a semver: %w", version, err)
