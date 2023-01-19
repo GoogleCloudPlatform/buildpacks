@@ -27,6 +27,7 @@ func init() {
 }
 
 const (
+	flex          = "google.config.flex"
 	goBuild       = "google.go.build"
 	goClearSource = "google.go.clear_source"
 	goFF          = "google.go.functions-framework"
@@ -48,8 +49,6 @@ func vendorSetup(setupCtx acceptance.SetupContext) error {
 }
 
 func goSumSetup(setupCtx acceptance.SetupContext) error {
-	// The setup function runs `go mod vendor` to vendor dependencies
-	// specified in go.mod.
 	args := strings.Fields(fmt.Sprintf("docker run --rm -v %s:/workspace -w /workspace -u root %s go mod tidy",
 		setupCtx.SrcDir, setupCtx.Builder))
 	cmd := exec.Command(args[0], args[1:]...)

@@ -12,6 +12,7 @@ test_suite(
     name = "acceptance_test",
     tests = [
         "1.11_gcf_test",
+        "flex_test",
         "gae_test",
         "gcf_test",
         "gcp_test",
@@ -33,6 +34,13 @@ VERSIONS_ALL_PRODUCTS = [
 
 # The product versions for which there is GAE support.
 VERSIONS_GAE_SUPPORT = VERSIONS_ALL_PRODUCTS
+
+# The product versions for which there is GAE Flex support.
+VERSIONS_WITH_FLEX_SUPPORT = [
+    "1.16",
+    "1.18",
+    "1.19",
+]
 
 # The product versions for which there is explicit, tested GCP support. Technically any version is available
 # on GCP, but not all versions are tested.
@@ -118,6 +126,18 @@ acceptance_test_suite(
     builder = "//builders/go:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/go:functions",
+)
+
+acceptance_test_suite(
+    name = "flex_test",
+    srcs = [
+        "common_test.go",
+        "flex_test.go",
+    ],
+    builder = "//builders/go:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/go:flex",
+    versions = VERSIONS_WITH_FLEX_SUPPORT,
 )
 
 acceptance_test_argo_source(
