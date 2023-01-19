@@ -46,6 +46,16 @@ RUN \
   chown www-data:www-data /www-data-home && \
   usermod -d /www-data-home www-data
 
+# Install the following packages separately as putting them in packages.txt will cause "unable to locate packages" error
+RUN export DEBIAN_FRONTEND=noninteractive && \
+  apt-get update -y && \
+  apt-get upgrade -y --no-install-recommends --allow-remove-essential && \
+  apt-get -y -qq --no-install-recommends --allow-remove-essential install \
+    libzip-dev \
+    checkinstall \
+    libmagickwand-dev \
+    libmagickcore-dev
+
 ARG cnb_uid=33
 ARG cnb_gid=33
 USER ${cnb_uid}:${cnb_gid}
