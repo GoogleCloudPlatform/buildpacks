@@ -36,6 +36,40 @@ description = "Builder for the Node.js runtime"
   id = "google.utils.label"
   uri = "label.tgz"
 
+[[buildpacks]]
+  id = "google.config.flex"
+  uri = "flex.tgz"
+
+# GAE Flex for npm
+[[order]]
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.npm"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# GAE Flex for yarn
+[[order]]
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.nodejs.yarn"
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.utils.label"
+
+
 # the GAE order group for yarn
 [[order]]
 

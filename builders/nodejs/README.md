@@ -12,7 +12,7 @@ bazel build //builders/nodejs:builder.image
 To build the sample application [gomod_go_sum](../testdata/nodejs/package_json/), run:
 
 ```bash
-pack build sample-nodejs --builder gcp/nodejs --path builders/testdata/nodejs/package_json/ --trust-builder -v
+pack build sample-nodejs --builder gcp/nodejs --path builders/testdata/nodejs/appengine/package_json/ --trust-builder -v
 ```
 
 ## Acceptance Tests

@@ -8,6 +8,7 @@ builder(
     name = "builder",
     buildpacks = [
         "//cmd/config/entrypoint:entrypoint.tgz",
+        "//cmd/config/flex:flex.tgz",
         "//cmd/nodejs/appengine:appengine.tgz",
         "//cmd/nodejs/functions_framework:functions_framework.tgz",
         "//cmd/nodejs/legacy_worker:legacy_worker.tgz",
