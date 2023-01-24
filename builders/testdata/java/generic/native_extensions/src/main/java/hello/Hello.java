@@ -25,9 +25,9 @@ import javax.ws.rs.core.MediaType;
 /** PASS text handler */
 public class Hello {
   public interface CLibrary extends Library {
-    // Loading libjpeg native library to test JNI
+    // Loading libgmp native library to test JNI
     CLibrary INSTANCE =
-        (CLibrary) Native.loadLibrary("/usr/lib/x86_64-linux-gnu/libjpeg.so.8", CLibrary.class);
+        (CLibrary) Native.loadLibrary("/usr/lib/x86_64-linux-gnu/libgmp.so.10", CLibrary.class);
 
     void printf(String format, Object... args);
   }
