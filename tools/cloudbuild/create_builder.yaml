@@ -11,15 +11,6 @@ steps:
     name: bazel-pack
     args: ['run', '//builders/gcp/base/stack:build']
 
-  - id: pull-stack-images
-    name: gcr.io/cloud-builders/docker
-    entrypoint: /bin/bash
-    args:
-      - -c
-      - >
-        docker pull gcr.io/gae-runtimes/buildpacks/stacks/google-gae-18/build:latest
-        && docker pull gcr.io/gae-runtimes/buildpacks/stacks/google-gae-18/run:latest
-
   - id: create-builder
     name: bazel-pack
     args: ['build', '//builders/gcp/base:builder.image']
