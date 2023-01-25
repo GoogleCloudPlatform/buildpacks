@@ -28,10 +28,15 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 )
 
-const (
-	// Rails apps using the "webpack" gem require Node.js for asset precompilation.
-	railsNodeVersion = "12.22.12"
-)
+var osNodeVersionMap = map[string]string{
+	"ubuntu1804": "12.22.12",
+	"ubuntu2204": "*",
+}
+
+// Rails apps using the "webpack" gem require Node.js for asset precompilation.
+func getRailsNodeVersion(ctx *gcp.Context) string {
+	return osNodeVersionMap[runtime.OSForStack(ctx.StackID())]
+}
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -82,6 +87,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Rails asset precompilation needs Node.js installed. Set the version if customer has not set it.
 	if os.Getenv(nodejs.EnvNodeVersion) == "" {
+		railsNodeVersion := getRailsNodeVersion(ctx)
 		ctx.Logf("Setting Nodejs runtime version %s: %s", nodejs.EnvNodeVersion, railsNodeVersion)
 		rl.BuildEnvironment.Override(nodejs.EnvNodeVersion, railsNodeVersion)
 	}

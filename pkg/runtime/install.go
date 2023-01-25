@@ -64,7 +64,8 @@ var runtimeNames = map[InstallableRuntime]string{
 	DotnetSDK: ".NET SDK",
 }
 
-var stackOSMap = map[string]string{
+// stackToOS contains the mapping of Stack to OS.
+var stackToOS = map[string]string{
 	"google":        ubuntu1804,
 	"google.gae.18": ubuntu1804,
 	"google.22":     ubuntu2204,
@@ -78,6 +79,11 @@ const (
 	// gcpUserAgent is required for the Ruby runtime, but used for others for simplicity.
 	gcpUserAgent = "GCPBuildpacks"
 )
+
+// OSForStack returns the Operating System being used by input stackID.
+func OSForStack(stackID string) string {
+	return stackToOS[stackID]
+}
 
 // IsCached returns true if the requested version of a runtime is installed in the given layer.
 func IsCached(ctx *gcp.Context, layer *libcnb.Layer, version string) bool {
@@ -136,7 +142,7 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	runtimeID := string(runtime)
 	stackID := ctx.StackID()
 
-	os, ok := stackOSMap[stackID]
+	os, ok := stackToOS[stackID]
 	if !ok {
 		ctx.Warnf("unknown stack ID %q, falling back to Ubuntu 18.04", stackID)
 		os = ubuntu1804
