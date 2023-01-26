@@ -59,7 +59,6 @@ pm.max_children = {{.NumWorkers}}
 clear_env = no
 
 catch_workers_output = yes
-decorate_workers_output = no
 `))
 
 // NginxTemplate is a template that produces a snippet of nginx config that sets up the
