@@ -24,6 +24,9 @@ def buildpack(name, executables, descriptor = "buildpack.toml", srcs = None, ext
       visibility: the visibility
     """
 
+    if len(executables) != 1:
+        fail("You must provide exactly one buildpack executable")
+
     pkg_mklink(
         name = "_link_build" + name,
         target = "main",
@@ -35,22 +38,15 @@ def buildpack(name, executables, descriptor = "buildpack.toml", srcs = None, ext
         link_name = "bin/detect",
     )
 
-    # relocate binary into bin/, create symlinks
-    pkg_tar(
-        name = name + "_executables",
-        package_dir = "bin",
-        srcs = executables + [
-            ":_link_build" + name,
-            ":_link_detect" + name,
-        ],
-    )
     if not srcs:
         srcs = []
     pkg_tar(
         name = name,
         extension = extension,
-        srcs = [descriptor] + srcs,
-        deps = [name + "_executables"],
+        srcs = [descriptor, "_link_build" + name, "_link_detect" + name] + srcs,
+        files = {
+            executables[0]: "/bin/main",
+        },
         strip_prefix = strip_prefix,
         visibility = visibility,
     )
