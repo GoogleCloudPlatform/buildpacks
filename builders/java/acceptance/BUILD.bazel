@@ -43,7 +43,7 @@ acceptance_test_suite(
     argsmap = javaargs(),
     builder = "//builders/java:builder.tar",
     rundir = ".",
-    testdata = "//builders/testdata/java:appengine",
+    testdata = "//builders/testdata/java:appengine.tgz",
     versions = VERSIONS_WITH_GAE_SUPPORT,
 )
 
@@ -56,7 +56,7 @@ acceptance_test_suite(
     argsmap = javaargs("$${_CANDIDATE_NAME}"),
     builder = "//builders/java:builder.tar",
     rundir = ".",
-    testdata = "//builders/testdata/java:appengine",
+    testdata = "//builders/testdata/java:appengine.tgz",
     versions = VERSIONS_WITH_GAE_SUPPORT,
 )
 
@@ -67,7 +67,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/java:builder.tar",
     rundir = ".",
-    testdata = "//builders/testdata/java:functions",
+    testdata = "//builders/testdata/java:functions.tgz",
     versions = VERSIONS_WITH_GCF_SUPPORT,
 )
 
