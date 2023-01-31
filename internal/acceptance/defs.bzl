@@ -180,7 +180,10 @@ def _cloudbuild_targets(name, srcs, structure_test_config, builder, args, deps, 
     _build_per_version_cloudbuild_config_targets(name, bin_name, builder, args, versions, argsmap, testdata)
 
 def _build_cloudbuild_zip(name, bin_name, structure_test_config, builder, testdata):
-    testdata_fileset_name = _build_testdata_target(name, testdata)
+    if "java" in testdata:
+        testdata_fileset_name = testdata
+    else:
+        testdata_fileset_name = _build_testdata_target(name, testdata)
     pkg_zip(
         name = name + "_cloudbuild",
         srcs = [
