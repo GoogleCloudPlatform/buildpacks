@@ -17,7 +17,7 @@ def goargs(runImageTag = ""):
         "1.16": newArgs("116", runImageTag),
         "1.18": newArgs("118", runImageTag),
         "1.19": newArgs("119", runImageTag),
-        "1.20rc1": newArgs("120", runImageTag),
+        "1.20": newArgs("120", runImageTag),
     }
     return args
 
