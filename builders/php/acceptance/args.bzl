@@ -13,6 +13,7 @@ def phpargs(runImageTag = ""):
         "7.3": newArgs("73", runImageTag),
         "7.4": newArgs("74", runImageTag),
         "8.1": newArgs("81", runImageTag),
+        "8.2": newArgs("82", runImageTag),
     }
     return args
 

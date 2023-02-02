@@ -13,11 +13,13 @@ VERSIONS_ALL_PRODUCTS = [
     "7.3",
     "7.4",
     "8.1",
+    "8.2",
 ]
 
 VERSIONS_GCF_SUPPORT = [
     "7.4",
     "8.1",
+    "8.2",
 ]
 
 acceptance_test_suite(

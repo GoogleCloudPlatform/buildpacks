@@ -62,11 +62,12 @@ func TestAcceptance(t *testing.T) {
 			MustOutput: []string{"Handling function with dependency on functions framework"},
 		},
 		{
-			Name:       "function with dependencies",
-			App:        "with_dependencies",
-			MustUse:    []string{composer, composerInstall, phpRuntime, functionFramework, cloudFunctions},
-			MustNotUse: []string{composerGCPBuild, phpWebConfig},
-			MustOutput: []string{"Handling function without dependency on functions framework"},
+			Name:                       "function with dependencies",
+			App:                        "with_dependencies",
+			MustUse:                    []string{composer, composerInstall, phpRuntime, functionFramework, cloudFunctions},
+			MustNotUse:                 []string{composerGCPBuild, phpWebConfig},
+			MustOutput:                 []string{"Handling function without dependency on functions framework"},
+			VersionInclusionConstraint: "<8.2.0",
 		},
 		{
 			Name:       "function with gcp-build",
@@ -104,7 +105,7 @@ func TestAcceptance(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()

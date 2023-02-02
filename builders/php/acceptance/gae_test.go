@@ -38,10 +38,11 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{composerGCPBuild, phpWebConfig, functionFramework, cloudFunctions},
 		},
 		{
-			Name:       "composer.lock respected",
-			App:        "composer_lock",
-			MustUse:    []string{composer, composerInstall, phpRuntime},
-			MustNotUse: []string{composerGCPBuild, phpWebConfig, functionFramework, cloudFunctions},
+			Name:                       "composer.lock respected",
+			App:                        "composer_lock",
+			MustUse:                    []string{composer, composerInstall, phpRuntime},
+			MustNotUse:                 []string{composerGCPBuild, phpWebConfig, functionFramework, cloudFunctions},
+			VersionInclusionConstraint: "<8.2.0",
 		},
 		{
 			Name:       "composer.json with gcp-build script and no dependencies",
@@ -75,7 +76,7 @@ func TestAcceptance(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		if tc.Name == "" {
 			tc.Name = tc.App
