@@ -694,8 +694,8 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
 # Currently built with //builders/gcp/base/stack/stack:build.
 [stack]
   id = "google.22"
-  build-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-22/build"
-  run-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-22/run"
+  build-image = "gcr.io/buildpacks/google-22/build"
+  run-image = "gcr.io/buildpacks/google-22/run"
 
 [lifecycle]
   version = "0.15.1"
