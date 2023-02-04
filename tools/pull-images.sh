@@ -26,7 +26,7 @@ readonly product="${1:?product name missing}"
 readonly runtime="${2:?runtime name missing}"
 readonly project="gae-runtimes"
 readonly candidate="latest"
-
+echo "[!] ...."
 echo "Pulling stack images for ${product}/${runtime}"
 if [[ "${product}" == "gcp" ]]; then
   docker pull "gcr.io/buildpacks/${product}/run:${candidate}"
