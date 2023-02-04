@@ -14,6 +14,7 @@ libcurl4
 libcurl4-openssl-dev
 libdb5.3
 libdbus-1-3
+libenchant-2-dev
 libexpat1
 libffi8
 libfftw3-double3
@@ -56,6 +57,7 @@ libmpc3
 libmpdec3
 libmysqlclient21
 libnghttp2-14
+libonig-dev
 libpango-1.0-0
 libpangocairo-1.0-0
 libpng16-16
@@ -70,9 +72,11 @@ libsasl2-2
 libsasl2-modules
 libsasl2-modules-db
 libsnappy1v5
+libsodium-dev
 libsqlite3-0
 libssl3
 libstdc++6
+libtidy-dev
 libtiff5
 libtiffxx5
 libuuid1
