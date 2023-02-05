@@ -35,6 +35,7 @@ const (
 	goURL        = "https://dl.google.com/go/go%s.linux-amd64.tar.gz"
 	goLayer      = "go"
 	versionKey   = "version"
+	envGoVersion = "GOOGLE_GO_VERSION"
 )
 
 func main() {
@@ -104,6 +105,11 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 func runtimeVersion(ctx *gcp.Context) (string, error) {
+	if version := os.Getenv(envGoVersion); version != "" {
+		ctx.Logf("Using runtime version from %s: %s", envGoVersion, version)
+		return version, nil
+	}
+
 	if version := os.Getenv(env.RuntimeVersion); version != "" {
 		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, version)
 		return version, nil

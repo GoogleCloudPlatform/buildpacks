@@ -15,9 +15,11 @@
 package main
 
 import (
+	"os"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func TestDetect(t *testing.T) {
@@ -138,6 +140,39 @@ func TestJSONVersionParse(t *testing.T) {
 			} else if v != tc.want {
 				t.Errorf("parseVersionJSON() = %q, want %q", tc.name, v, tc.want)
 			}
+		})
+	}
+}
+
+func TestRuntimeVersion(t *testing.T) {
+	testCases := []struct {
+		name   string
+		want   string
+		envKey string
+	}{
+		{name: "GOOGLE_GO_VERSION set",
+			envKey: "GOOGLE_GO_VERSION",
+			want:   "1.16",
+		},
+
+		{name: "GOOGLE_RUNTIME_VERSION set",
+			envKey: "GOOGLE_RUNTIME_VERSION",
+			want:   "1.16",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.envKey != "" {
+				os.Setenv(tc.envKey, tc.want)
+			}
+			v, err := runtimeVersion(gcp.NewContext())
+			if err != nil {
+				t.Fatalf("runtimeVersion() failed: %v", err)
+			}
+			if v != tc.want {
+				t.Errorf("runtimeVersion() = %q, want %q", v, tc.want)
+			}
+
 		})
 	}
 }
