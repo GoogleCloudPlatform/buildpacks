@@ -24,24 +24,26 @@ ARG stack_id="google"
 # Required by ruby/runtime: libyaml
 # Required by php/runtime: libtidy5, libpq5, libxml2, libenchant1c2a,
 # libpng16-16, libonig4, libjpeg8, libfreetype6, libxslt1.1, libzip4
-RUN apt-get update && apt-get install -y --no-install-recommends \
-  libexpat1 \
-  libffi6 \
-  libmpdec2 \
-  libicu60 \
-  libc++1-9 \
-  tzdata \
-  libyaml-0-2 \
-  libtidy5 \
-  libpq5 \
-  libxml2 \
-  libenchant1c2a \
-  libpng16-16 \
-  libonig4 \
-  libjpeg8 \
-  libfreetype6 \
-  libxslt1.1 \
-  libzip4 \
+RUN apt-get update -y && \
+  apt-get upgrade -y --no-install-recommends --allow-remove-essential && \
+  apt-get install -y --no-install-recommends --allow-remove-essential \
+    libexpat1 \
+    libffi6 \
+    libmpdec2 \
+    libicu60 \
+    libc++1-9 \
+    tzdata \
+    libyaml-0-2 \
+    libtidy5 \
+    libpq5 \
+    libxml2 \
+    libenchant1c2a \
+    libpng16-16 \
+    libonig4 \
+    libjpeg8 \
+    libfreetype6 \
+    libxslt1.1 \
+    libzip4 \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 LABEL io.buildpacks.stack.id=${stack_id}
