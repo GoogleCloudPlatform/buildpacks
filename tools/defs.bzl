@@ -111,3 +111,90 @@ def builder(name, image, descriptor = "builder.toml", buildpacks = None, groups 
             create_script = "//tools:create_builder",
         ),
     )
+
+def buildpackage(name, buildpacks, descriptor = "buildpack.toml", visibility = None):
+    """Macro to create a set of targets for a meta-buildpack containing the specified buildpacks.
+
+    The result is a meta-builpack packages as a ".cnb" file created via the `pack buildpack package`
+    command.
+
+    `name` and `name.cnb`:
+        Creates meta-buildpack persisted to disk as a ".cnb" file.
+
+    `name.package`:
+        Creates a package TOML file describing the contents of the meta-buildpack.
+
+    `name.tar` and `name.tar.tar`:
+        Creates source tarball for the meta-buildpacks that includes the specified buildpacks, the
+        package TOML, and the buildpack TOML.
+
+    Args:
+      name: the name of the buildpackage to create.
+      descriptor: path to the `buildpack.toml`
+      buildpacks: list of labels to buildpacks (tar or tgz archives)
+      visibility: the visibility
+    """
+
+    files = {
+        descriptor: descriptor,
+        "package.toml": "package.toml",
+    }
+    manifest = '''[buildpack]
+  uri = "./"'''
+
+    for b in buildpacks:
+        # add the buildpack to the tarball fileset at the namespaced filepath
+        files[b] = _buildpack_filepath(b)
+
+        # add the buildpack to manifest at the namespaced filepath
+        manifest += '''
+[[dependencies]]
+  uri = "./{tarname}"'''.format(tarname = _buildpack_filepath(b))
+
+    native.genrule(
+        name = name + ".package",
+        outs = ["package.toml"],
+        cmd = "echo '{manifest}' > $@".format(manifest = manifest),
+    )
+
+    pkg_tar(
+        name = name + ".tar",
+        extension = "tar",
+        files = files,
+        visibility = visibility,
+    )
+
+    # `name.image` and `name.sha` rules.
+    native.genrule(
+        name = name,
+        srcs = [name + ".tar"],
+        outs = [name + ".cnb"],
+        local = 1,
+        tools = [
+            "//tools/checktools:main",
+            "//tools:create_buildpackage",
+        ],
+        cmd = """$(execpath {check_script}) && $(execpath {create_script}) $(execpath {tar}) $@""".format(
+            tar = name + ".tar",
+            check_script = "//tools/checktools:main",
+            create_script = "//tools:create_buildpackage",
+        ),
+    )
+
+def _buildpack_filepath(symbol):
+    """Helper function to convert a symbol pointing to a buildpack into a filepath.
+
+    This prevents collisions by re-using the directory structure inside of the /cmd directory.
+
+    Args:
+      symbol: a build symbol of a buildpack to get a relative filepath for.
+    """
+    paths = symbol.split("/cmd/")
+    if len(paths) != 2:
+        fail("Buildpack symbol was not in cmd/: " + symbol)
+
+    parts = paths[1].split(":")
+    if len(parts) != 2:
+        fail("Buildpack symbol was invalid: " + symbol)
+
+    return parts[0] + ".tgz"

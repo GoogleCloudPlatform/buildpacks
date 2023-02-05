@@ -15,6 +15,11 @@ sh_binary(
 )
 
 sh_binary(
+    name = "create_buildpackage",
+    srcs = ["create-buildpackage.sh"],
+)
+
+sh_binary(
     name = "pull_images",
     srcs = ["pull-images.sh"],
 )
