@@ -6,14 +6,14 @@ exports_files(
 )
 
 package_group(
-    name = "cpp_builders",
+    name = "dart_builders",
     packages = [
         "//builders/gcp/base",
     ],
 )
 
 package_group(
-    name = "dart_builders",
+    name = "cpp_builders",
     packages = [
         "//builders/gcp/base",
     ],
