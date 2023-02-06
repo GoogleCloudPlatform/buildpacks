@@ -194,13 +194,21 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 // unexpected behaviors with new versions. This is only expected to be called if the target
 // platform is GAE or GCF.
 func PinGemAndBundlerVersion(ctx *gcp.Context, version string, layer *libcnb.Layer) error {
-	rubygemsVersion := "3.1.2"
+	rubygemsVersion := "3.3.15"
 	bundler1Version := "1.17.3"
 	bundler2Version := "2.1.4"
+	installBundler1 := false
 
-	// rubygems 3.1.2 is not supported on 3.x. The oldest version supported is 3.2.3.
-	if strings.HasPrefix(version, "3.") {
+	// Bundler 1 is only installed for older versions of Ruby
+	// Older 2.x Ruby versions have been using RubyGems 3.1.2 on GAE/GCF.
+	if strings.HasPrefix(version, "2.") {
+		rubygemsVersion = "3.1.2"
+		installBundler1 = true
+	}
+	// Ruby 3.0 has been using 3.2.26 on GAE/GCF
+	if strings.HasPrefix(version, "3.0") {
 		rubygemsVersion = "3.2.26"
+		installBundler1 = true
 	}
 
 	rubyBinPath := filepath.Join(layer.Path, "bin")
@@ -222,10 +230,14 @@ func PinGemAndBundlerVersion(ctx *gcp.Context, version string, layer *libcnb.Lay
 		return fmt.Errorf("removing out-of-box bundler: %v", err)
 	}
 
-	// Install fixed versions of Bundler1 and Bundler2 for backwards compatibility
-	ctx.Logf("Installing bundler %s and %s", bundler1Version, bundler2Version)
-	command = []string{gemPath, "install", "--no-document",
-		fmt.Sprintf("bundler:%s", bundler1Version), fmt.Sprintf("bundler:%s", bundler2Version)}
+	command = []string{gemPath, "install", "--no-document", fmt.Sprintf("bundler:%s", bundler2Version)}
+	if installBundler1 {
+		// Install fixed versions of Bundler1 and Bundler2 for backwards compatibility
+		command = append(command, fmt.Sprintf("bundler:%s", bundler1Version))
+		ctx.Logf("Installing bundler %s and %s", bundler1Version, bundler2Version)
+	} else {
+		ctx.Logf("Installing bundler %s ", bundler2Version)
+	}
 	_, err = ctx.Exec(command, gcp.WithUserAttribution)
 	if err != nil {
 		return fmt.Errorf("installing bundler %s and %s: %v", bundler1Version, bundler2Version, err)

@@ -216,8 +216,8 @@ func TestPinGemAndBundlerVersion(t *testing.T) {
 		mocks        []*mockprocess.Mock
 	}{
 		{
-			name:         "Ruby 3.x uses rubygems 3.2.26",
-			version:      "3.x.x",
+			name:         "Ruby 3.0.x uses rubygems 3.2.26",
+			version:      "3.0.x",
 			wantRubygems: "3.2.26",
 			wantBundler1: "1.17.3",
 			wantBundler2: "2.1.4",
@@ -227,6 +227,12 @@ func TestPinGemAndBundlerVersion(t *testing.T) {
 			version:      "2.x.x",
 			wantRubygems: "3.1.2",
 			wantBundler1: "1.17.3",
+			wantBundler2: "2.1.4",
+		},
+		{
+			name:         "Ruby 3.2+ uses rubygems 3.3.15",
+			version:      "3.2.x",
+			wantRubygems: "3.3.15",
 			wantBundler2: "2.1.4",
 		},
 		{
@@ -289,9 +295,11 @@ func TestPinGemAndBundlerVersion(t *testing.T) {
 				}
 			}
 
-			if tc.wantBundler1 != "" && tc.wantBundler2 != "" {
-				wantBundlerLog := fmt.Sprintf("Installing bundler %s and %s", tc.wantBundler1, tc.wantBundler2)
-
+			if tc.wantBundler2 != "" {
+				wantBundlerLog := fmt.Sprintf("Installing bundler %s", tc.wantBundler2)
+				if tc.wantBundler1 != "" {
+					wantBundlerLog = fmt.Sprintf("Installing bundler %s and %s", tc.wantBundler1, tc.wantBundler2)
+				}
 				if !strings.Contains(logOutput, wantBundlerLog) {
 					t.Errorf(
 						"PinGemAndBundlerVersion(ctx, %q, l) log output does not contain expected bundler string: %s",
