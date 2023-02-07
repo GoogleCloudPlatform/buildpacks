@@ -5,14 +5,6 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
   uri = "entrypoint.tgz"
 
 [[buildpacks]]
-  id = "google.cpp.clear_source"
-  uri = "cpp/clear_source.tgz"
-
-[[buildpacks]]
-  id = "google.cpp.functions-framework"
-  uri = "cpp/functions_framework.tgz"
-
-[[buildpacks]]
   id = "google.dart.compile"
   uri = "dart/compile.tgz"
 
@@ -649,26 +641,6 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.config.entrypoint"
-
-  [[order.group]]
-    id = "google.utils.label"
-
-########
-# C++  #
-########
-
-# This buildpack group is last in the order because (a) it is the newest one,
-# we do not want to break existing application by having it erronously match
-# an existing application, and (b) it could trigger if the application contains
-# C++ code, but it is not just C++.
-[[order]]
-
-  [[order.group]]
-    id = "google.cpp.functions-framework"
-
-  [[order.group]]
-    id = "google.cpp.clear_source"
-    optional = true
 
   [[order.group]]
     id = "google.utils.label"
