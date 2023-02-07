@@ -78,7 +78,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 				{
 					Name: "dotnetsdk",
 					Metadata: map[string]interface{}{
-						"version": "3.1.416",
+						"version": "3.1.426",
 					},
 				},
 				{

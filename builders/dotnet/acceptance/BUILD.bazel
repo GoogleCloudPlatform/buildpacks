@@ -9,7 +9,7 @@ test_suite(
     name = "acceptance_test",
 )
 
-VERSION_DOTNET3 = "3.1.416"
+VERSION_DOTNET3 = "3.1.426"
 
 VERSION_DOTNET6 = "6.0.300"
 
