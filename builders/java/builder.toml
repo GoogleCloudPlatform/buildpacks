@@ -5,6 +5,10 @@ description = "Builder for the Java runtime"
   uri = "appengine.tgz"
 
 [[buildpacks]]
+  id = "google.config.flex"
+  uri = "flex.tgz"
+
+[[buildpacks]]
   id = "google.utils.archive-source"
   uri = "archive_source.tgz"
 
@@ -43,6 +47,49 @@ description = "Builder for the Java runtime"
 [[buildpacks]]
   id = "google.java.clear_source"
   uri = "java/clear_source.tgz"
+
+# GAE Flex for maven
+[[order]]
+  [[order.group]]
+  id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.entrypoint"
+
+  [[order.group]]
+    id = "google.java.clear_source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
+
+# GAE Flex for gradle
+[[order]]
+  [[order.group]]
+  id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.gradle"
+    optional = true
+  
+  [[order.group]]
+    id = "google.java.entrypoint"
+
+  [[order.group]]
+    id = "google.java.clear_source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label"
 
 # The GAE order group.
 [[order]]
