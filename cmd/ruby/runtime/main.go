@@ -82,9 +82,6 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating layer: %w", err)
 	}
 
-	// Set env.RuntimeVersion for subsequent buildpacks (like RubyGems) that depend on the Ruby version.
-	rl.BuildEnvironment.Override(env.RuntimeVersion, version)
-
 	// Rails asset precompilation needs Node.js installed. Set the version if customer has not set it.
 	if os.Getenv(nodejs.EnvNodeVersion) == "" {
 		railsNodeVersion := getRailsNodeVersion(ctx)
@@ -96,6 +93,10 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
+
+	versionInstalled, _ := runtime.ResolveVersion(runtime.Ruby, version, runtime.OSForStack(ctx.StackID()))
+	// Store the installed Ruby version for subsequent buildpacks (like RubyGems) that depend on it.
+	rl.BuildEnvironment.Override(ruby.RubyVersionKey, versionInstalled)
 
 	ctx.Exec([]string{"ldd", filepath.Join(rl.Path, "lib/ruby/3.1.0/x86_64-linux/psych.so")})
 

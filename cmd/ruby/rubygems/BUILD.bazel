@@ -24,6 +24,7 @@ go_test(
         "//internal/buildpacktest",
         "//internal/mockprocess",
         "//internal/testserver",
+        "//pkg/ruby",
         "//pkg/testdata",
     ],
 )

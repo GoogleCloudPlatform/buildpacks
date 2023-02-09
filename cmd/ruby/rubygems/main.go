@@ -75,13 +75,20 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	usingBundler1, err := isUsingBundler1(ctx)
+	// Install bundler1 for older Ruby runtimes if required. Ruby 3.2+ does not support it.
+	supportsBundler1, err := ruby.SupportsBundler1(ctx)
 	if err != nil {
 		return err
 	}
-	if usingBundler1 {
-		if err = installBundler1(ctx, layer); err != nil {
+	if supportsBundler1 {
+		usingBundler1, err := isUsingBundler1(ctx)
+		if err != nil {
 			return err
+		}
+		if usingBundler1 {
+			if err = installBundler1(ctx, layer); err != nil {
+				return err
+			}
 		}
 	}
 

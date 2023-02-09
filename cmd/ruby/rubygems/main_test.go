@@ -22,6 +22,7 @@ import (
 	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 )
 
@@ -81,6 +82,7 @@ func TestBuild(t *testing.T) {
 		skippedCommands     []string
 		httpStatusInstaller int
 		app                 string
+		rubyVersion         string
 	}{
 		{
 			name: "bundler 1 in Gemfile.lock",
@@ -106,6 +108,23 @@ func TestBuild(t *testing.T) {
 			},
 			tarFile: "testdata/dummy-rubygems.tar.gz",
 			app:     "testdata/bundler2",
+		},
+		{
+			// Bundler 1 does not support Ruby 3.2
+			name: "Ruby32 does not install bundler 1",
+			mocks: []*mockprocess.Mock{
+				mockprocess.New("^ruby"),
+				mockprocess.New("^cp"),
+			},
+			wantCommands: []string{
+				installCommand,
+			},
+			skippedCommands: []string{
+				bundler1InstallCommand,
+			},
+			tarFile:     "testdata/dummy-rubygems.tar.gz",
+			app:         "testdata/bundler1",
+			rubyVersion: "3.2.0",
 		},
 		{
 			name:                "handles download failure",
@@ -158,6 +177,12 @@ func TestBuild(t *testing.T) {
 				opts = append(opts, buildpacktest.WithApp(testdata.MustGetPath(tc.app)))
 			}
 
+			// Set default Ruby version
+			if tc.rubyVersion == "" {
+				tc.rubyVersion = "3.0.5"
+			}
+
+			t.Setenv(ruby.RubyVersionKey, tc.rubyVersion)
 			result, err := buildpacktest.RunBuild(t, buildFn, opts...)
 			if err != nil && tc.wantExitCode == 0 {
 				t.Fatalf("error running build: %v, result: %#v", err, result)

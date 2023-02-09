@@ -52,6 +52,8 @@ func TestAcceptance(t *testing.T) {
 			Setup:           useBundler1,
 			Path:            "/bundler",
 			MustMatch:       "1.17.3",
+			// Bundler 1 is incompatible with Ruby 3.2
+			VersionInclusionConstraint: "< 3.2",
 		},
 		{
 			Name:            "entrypoint from procfile web",

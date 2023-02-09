@@ -22,11 +22,15 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/Masterminds/semver"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 const defaultVersion = "3.1.*"
+
+// RubyVersionKey is the environment variable name used to store the Ruby version installed.
+const RubyVersionKey = "build_ruby_version"
 
 // DetectVersion detects ruby version from the environment, Gemfile.lock, gems.locked, or falls
 // back to a default version.
@@ -86,7 +90,18 @@ func DetectVersion(ctx *gcp.Context) (string, error) {
 
 // IsRuby25 returns true if the build environment has Ruby 2.5.x installed.
 func IsRuby25(ctx *gcp.Context) bool {
-	return strings.HasPrefix(os.Getenv(env.RuntimeVersion), "2.5")
+	return strings.HasPrefix(os.Getenv(RubyVersionKey), "2.5")
+}
+
+// SupportsBundler1 returns true if the installed Ruby version is compatible with Bundler 1.
+// Bundler 1 breaks with Ruby 3.2. This functions returns true for all versions older than 3.2.
+func SupportsBundler1(ctx *gcp.Context) (bool, error) {
+	rubyVersion, err := semver.NewVersion(os.Getenv(RubyVersionKey))
+	if err != nil {
+		return false, err
+	}
+	ruby32Version, _ := semver.NewVersion("3.2.0")
+	return rubyVersion.LessThan(ruby32Version), nil
 }
 
 // NeedsRailsAssetPrecompile detects if asset precompilation is required in a Ruby on Rails app.

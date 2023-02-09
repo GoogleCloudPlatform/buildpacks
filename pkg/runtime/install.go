@@ -148,7 +148,7 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 		os = ubuntu1804
 	}
 
-	version, err := resolveVersion(runtime, versionConstraint, os)
+	version, err := ResolveVersion(runtime, versionConstraint, os)
 	if err != nil {
 		return false, err
 	}
@@ -245,9 +245,9 @@ func PinGemAndBundlerVersion(ctx *gcp.Context, version string, layer *libcnb.Lay
 	return nil
 }
 
-// resolveVersion returns the newest available version of a runtime that satisfies the provided
+// ResolveVersion returns the newest available version of a runtime that satisfies the provided
 // version constraint.
-func resolveVersion(runtime InstallableRuntime, verConstraint, os string) (string, error) {
+func ResolveVersion(runtime InstallableRuntime, verConstraint, os string) (string, error) {
 	if version.IsExactSemver(verConstraint) {
 		return verConstraint, nil
 	}
