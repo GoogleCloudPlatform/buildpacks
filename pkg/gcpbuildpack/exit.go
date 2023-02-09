@@ -45,7 +45,7 @@ func (e defaultExiter) Exit(exitCode int, be *buildererror.Error) {
 		e.ctx.Tipf(divider)
 		e.ctx.Tipf(`Sorry your project couldn't be built.`)
 		e.ctx.Tipf(`Our documentation explains ways to configure Buildpacks to better recognise your project:`)
-		e.ctx.Tipf(` -> https://github.com/GoogleCloudPlatform/buildpacks/blob/main/README.md`)
+		e.ctx.Tipf(` -> https://cloud.google.com/docs/buildpacks/overview`)
 		e.ctx.Tipf(`If you think you've found an issue, please report it:`)
 		e.ctx.Tipf(` -> https://github.com/GoogleCloudPlatform/buildpacks/issues/new`)
 		e.ctx.Tipf(divider)
