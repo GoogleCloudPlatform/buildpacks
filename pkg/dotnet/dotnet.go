@@ -239,7 +239,7 @@ func GetRuntimeVersion(ctx *gcp.Context, dir string) (string, error) {
 
 	rtCfgVersion, rtCfgFile, rtCfgErr := getRuntimeVersionFromRtCfgDir(ctx, dir)
 	if rtCfgErr != nil {
-		return "", fmt.Errorf("%v was not set, and getting version failed: %w", EnvRuntimeVersion, rtCfgErr)
+		return "", fmt.Errorf("%v was not set; when %v absent, getting version from runtimeconfig.json failed: %w", EnvRuntimeVersion, EnvRuntimeVersion, rtCfgErr)
 	}
 	ctx.Logf("Determined runtime version from %v: %v", rtCfgFile, rtCfgVersion)
 	return rtCfgVersion, nil
@@ -265,6 +265,7 @@ func getRuntimeVersionFromRtCfgDir(ctx *gcp.Context, dir string) (string, string
 	if err != nil {
 		return "", rtCfgFiles[0], fmt.Errorf("reading runtimeconfig.json: %w", err)
 	}
+
 	if rtCfg.RuntimeOptions.Framework.Name == aspDotnetCore {
 		version = rtCfg.RuntimeOptions.Framework.Version
 	} else {
@@ -277,7 +278,8 @@ func getRuntimeVersionFromRtCfgDir(ctx *gcp.Context, dir string) (string, string
 	}
 
 	if version == "" {
-		return "", rtCfgFiles[0], fmt.Errorf("couldn't find runtime version from runtimeconfig.json: %#v", rtCfg)
+		return "", rtCfgFiles[0], fmt.Errorf("couldn't find runtime version for framework %s from "+
+			"runtimeconfig.json: %#v", aspDotnetCore, rtCfg)
 	}
 
 	return version, rtCfgFiles[0], nil

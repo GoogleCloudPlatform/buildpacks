@@ -21,6 +21,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -218,6 +219,7 @@ func TestGetRuntimeVersion(t *testing.T) {
 		RtCfgSearchRoot string
 		ExpectedVersion string
 		ExpectError     bool
+		ExpectErrSubStr string
 	}{
 		{
 			Name:            "No env var, should read from runtimeconfig.json",
@@ -251,6 +253,12 @@ func TestGetRuntimeVersion(t *testing.T) {
 			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/multipleRtCfg"),
 			ExpectError:     true,
 		},
+		{
+			Name:            "Env var not set and non-Asp runtimeconfig.json fails",
+			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/nonAspRtCfg"),
+			ExpectError:     true,
+			ExpectErrSubStr: "when GOOGLE_ASP_NET_CORE_VERSION absent, getting version from runtimeconfig.json failed: couldn't find runtime version for framework Microsoft.AspNetCore.App",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -265,6 +273,9 @@ func TestGetRuntimeVersion(t *testing.T) {
 				if err == nil {
 					t.Fatalf("%s: got no error and expected error", tc.Name)
 				} else {
+					if tc.ExpectErrSubStr != "" && !strings.Contains(err.Error(), tc.ExpectErrSubStr) {
+						t.Fatalf("got error message %s and expected substring in error %s", err.Error(), tc.ExpectErrSubStr)
+					}
 					return
 				}
 			}
