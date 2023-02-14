@@ -1,4 +1,4 @@
-api = "0.6"
+api = "0.8"
 
 [buildpack]
 id = "google.php.composer-install"
