@@ -28,7 +28,6 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:       "gomod no dependencies",
 			App:        "gomod",
-			Env:        []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
 			MustOutput: []string{"go.sum not found, generating"},
 			MustUse:    []string{flex},
 		},
@@ -36,17 +35,25 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:          "gomod go.sum",
 			App:           "gomod_go_sum",
-			Env:           []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
 			MustNotOutput: []string{"go.sum not found, generating"},
 			MustUse:       []string{flex},
 		},
 	}
 
 	for _, tc := range testCases {
-		tc := tc
+
+		tc := applyStaticTestOptions(tc)
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
+}
+
+func applyStaticTestOptions(tc acceptance.Test) acceptance.Test {
+	if tc.Name == "" {
+		tc.Name = tc.App
+	}
+	tc.Env = append(tc.Env, []string{"X_GOOGLE_TARGET_PLATFORM=flex", "GAE_APPLICATION_YAML_PATH=app.yaml"}...)
+	return tc
 }

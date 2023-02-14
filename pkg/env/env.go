@@ -131,6 +131,9 @@ const (
 	// TargetPlatformFunctions is the functions value for 'X_GOOGLE_TARGET_PLATFORM'
 	TargetPlatformFunctions = "gcf"
 
+	// TargetPlatformFlex is the flex value for 'X_GOOGLE_TARGET_PLATFORM'
+	TargetPlatformFlex = "flex"
+
 	// ComposerArgsEnv is an environment variable used to pass custom composer variables.
 	ComposerArgsEnv = "GOOGLE_COMPOSER_ARGS"
 
@@ -143,9 +146,9 @@ func IsGAE() bool {
 	return TargetPlatformAppEngine == os.Getenv(XGoogleTargetPlatform)
 }
 
-// IsGCP returns true if the buildpack target platform is neither gae nor gcf.
+// IsGCP returns true if the buildpack target platform is not gae, gcf or flex.
 func IsGCP() bool {
-	return !IsGAE() && !IsGCF()
+	return !IsGAE() && !IsGCF() && !IsFlex()
 }
 
 // IsGCF returns true if the buildpack target platform is gcf.
@@ -156,7 +159,7 @@ func IsGCF() bool {
 // IsFlex returns true if the buildpack target platform is flex
 func IsFlex() bool {
 	val, _ := IsPresentAndTrue(FlexEnv)
-	return val
+	return val || TargetPlatformFlex == os.Getenv(XGoogleTargetPlatform)
 }
 
 // IsDebugMode returns true if the buildpack debug mode is enabled.

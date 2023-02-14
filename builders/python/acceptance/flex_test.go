@@ -33,25 +33,21 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name: "gunicorn with flask entrypoint",
 			App:  "gunicorn_flask_entrypoint",
-			Env:  []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
 		},
 
 		{
 			Name: "python script entrypoint",
 			App:  "python_script",
-			Env:  []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
 		},
 
 		{
 			Name: "gunicorn with django entrypoint",
 			App:  "gunicorn_django_entrypoint",
-			Env:  []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
 		},
 
 		{
 			Name: "uwsgi with flask",
 			App:  "uwsgi_flask",
-			Env:  []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
 		},
 	}
 
@@ -70,8 +66,6 @@ func TestAcceptance(t *testing.T) {
 }
 
 func applyStaticTestOptions(tc acceptance.Test) acceptance.Test {
-	if tc.Name == "" {
-		tc.Name = tc.App
-	}
+	tc.Env = append(tc.Env, []string{"X_GOOGLE_TARGET_PLATFORM=flex", "GAE_APPLICATION_YAML_PATH=app.yaml"}...)
 	return tc
 }

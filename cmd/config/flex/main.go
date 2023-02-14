@@ -34,6 +34,10 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if env.IsFlex() {
+		return gcp.OptInEnvSet(env.XGoogleTargetPlatform), nil
+	}
+
 	path := os.Getenv(env.GaeApplicationYamlPath)
 
 	if path == "" {
