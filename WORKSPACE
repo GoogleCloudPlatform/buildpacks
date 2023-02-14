@@ -34,8 +34,8 @@ gazelle_dependencies()
 go_repository(
     name = "com_github_masterminds_semver",
     importpath = "github.com/Masterminds/semver/v3",
-    sum = "h1:znjIyLfpXEDQjOIEWh+ehwpTU14UzUPub3c3sm36u14=",
-    version = "v3.0.3",
+    sum = "h1:hLg3sBzpNErnxhQtUy/mmLR2I9foDujNK030IGemrRc=",
+    version = "v3.1.1",
 )
 
 go_repository(
@@ -252,8 +252,8 @@ maven_install(
 go_repository(
     name = "com_github_buildpacks_libcnb",
     importpath = "github.com/buildpacks/libcnb",
-    sum = "h1:D8UoXv39+0jkG4M+u/pfxYjLWZMOQv1TH6dZDRFpVsg=",
-    version = "v1.25.5",
+    sum = "h1:Jwp5EDGJWYBLPn902w/648w3S+H2HL7/Xw8FLcrXgAo=",
+    version = "v1.27.0",
 )
 
 go_repository(

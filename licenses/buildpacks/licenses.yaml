@@ -37,6 +37,10 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/buildpacks/github.com/Masterminds/semver/LICENSE.txt
 
+- package: github.com/Masterminds/semver/v3
+  license_name: MIT
+  license_path: /usr/local/share/licenses/buildpacks/github.com/Masterminds/semver/v3/LICENSE.txt
+
 - package: github.com/onsi/gomega/types
   license_name: MIT
   license_path: /usr/local/share/licenses/buildpacks/github.com/onsi/gomega/types/LICENSE
