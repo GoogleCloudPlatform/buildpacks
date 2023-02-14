@@ -9,6 +9,7 @@ package(default_visibility = ["//builders:__subpackages__"])
 exports_files(
     [
         "generic",
+        "flex",
     ],
 )
 

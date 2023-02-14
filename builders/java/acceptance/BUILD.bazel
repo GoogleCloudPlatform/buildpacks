@@ -30,6 +30,11 @@ VERSIONS_WITH_GAE_SUPPORT = [
     VERSION_JAVA17,
 ]
 
+VERSIONS_WITH_FLEX_SUPPORT = [
+    VERSION_JAVA11,
+    VERSION_JAVA17,
+]
+
 VERSIONS_WITH_GCF_SUPPORT = VERSIONS_WITH_GAE_SUPPORT
 
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
@@ -80,6 +85,17 @@ acceptance_test_suite(
     rundir = ".",
     testdata = "//builders/testdata/java:generic",
     versions = VERSIONS_WITH_GCP_SUPPORT,
+)
+
+acceptance_test_suite(
+    name = "flex_test",
+    srcs = [
+        "flex_test.go",
+    ],
+    builder = "//builders/java:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/java:flex",
+    versions = VERSIONS_WITH_FLEX_SUPPORT,
 )
 
 acceptance_test_argo_source(
