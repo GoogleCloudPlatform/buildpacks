@@ -32,7 +32,7 @@ func TestAcceptance(t *testing.T) {
 		// Test that we can build a maven project.
 		{
 			Name:          "maven project springboot",
-			App:           "hellowrld_springboot",
+			App:           "helloworld_springboot",
 			Env:           []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
 			MustNotOutput: []string{"WARNING"},
 			MustUse:       []string{"google.config.flex"},
