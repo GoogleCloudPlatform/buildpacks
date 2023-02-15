@@ -155,4 +155,4 @@ description = "Unified builder all Python runtimes"
   run-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-gae-18/run"
 
 [lifecycle]
-  version = "0.15.1"
+  version = "0.16.0"

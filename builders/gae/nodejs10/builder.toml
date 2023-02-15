@@ -43,4 +43,4 @@ description = "Builder for the GAE Node.js 10 runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/nodejs10/run"
 
 [lifecycle]
-  version = "0.15.1"
+  version = "0.16.0"
