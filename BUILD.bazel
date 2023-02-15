@@ -2,15 +2,7 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 load("//tools/build_defs/license:license.bzl", "license")
 
 # Google Cloud Platform Buildpacks
-package(
-    default_applicable_licenses = ["//:license"],
-    default_visibility = ["//visibility:public"],
-)
-
-license(
-    name = "license",
-    package_name = "gcp_buildpacks",
-)
+package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
 

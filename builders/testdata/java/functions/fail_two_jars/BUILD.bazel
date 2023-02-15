@@ -2,9 +2,7 @@
 
 licenses(["notice"])
 
-package(
-    default_visibility = ["//builders/testdata/java:__pkg__"],
-)
+package(default_visibility = ["//builders/testdata/java:__pkg__"])
 
 genrule(
     name = "fatjar1",

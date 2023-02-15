@@ -1,9 +1,6 @@
 load("//tools:defs.bzl", "builder")
 
-package(
-    default_applicable_licenses = ["//:license"],
-    default_visibility = ["//builders/gcf/python39/acceptance:__pkg__"],
-)
+package(default_visibility = ["//builders/gcf/python39/acceptance:__pkg__"])
 
 licenses(["notice"])
 

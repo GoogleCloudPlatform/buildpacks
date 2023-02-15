@@ -1,8 +1,6 @@
 licenses(["notice"])
 
-package(
-    default_visibility = ["//builders:__subpackages__"],
-)
+package(default_visibility = ["//builders:__subpackages__"])
 
 exports_files(["Main.java"])
 
