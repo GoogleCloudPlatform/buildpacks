@@ -15,7 +15,7 @@ def nodejsargs(runImageTag = ""):
         "14.18.3": newArgs("14", runImageTag),
         "16.13.2": newArgs("16", runImageTag),
         "18.10.0": newArgs("18", runImageTag),
-        "18.12.1": newArgs("20", runImageTag),
+        "19.6.0": newArgs("20", runImageTag),
     }
     return args
 
