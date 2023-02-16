@@ -77,7 +77,7 @@ func TestBuild(t *testing.T) {
 				mockprocess.New(`^go list -m$`, mockprocess.WithStdout("example.com/myfunc")),
 			},
 			wantCommands: []string{
-				fmt.Sprintf("go get %s", functionsFrameworkModule),
+				fmt.Sprintf("go mod edit -require %s", functionsFrameworkModule),
 				"go mod tidy",
 			},
 		},

@@ -200,8 +200,8 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 		return fmt.Errorf("checking for functions framework dependency in go.mod: %w", err)
 	}
 	if version == "" {
-		if _, err := golang.ExecWithGoproxyFallback(ctx, []string{"go", "get", fmt.Sprintf("%s@%s", functionsFrameworkModule, functionsFrameworkVersion)}, gcp.WithUserAttribution); err != nil {
-			return fmt.Errorf("running go get: %w", err)
+		if _, err := ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@%s", functionsFrameworkModule, functionsFrameworkVersion)}); err != nil {
+			return err
 		}
 		version = functionsFrameworkVersion
 	}
