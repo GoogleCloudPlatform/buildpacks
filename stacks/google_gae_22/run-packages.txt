@@ -14,7 +14,7 @@ libcurl4
 libcurl4-openssl-dev
 libdb5.3
 libdbus-1-3
-libenchant-2-dev
+libenchant-2-2
 libexpat1
 libffi8
 libfftw3-double3
