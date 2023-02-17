@@ -22,6 +22,9 @@ def newArgs(version, runImageTag):
         "-run-image-override": runImage(version, runImageTag),
     }
 
+# If an image tag is specified, we get the run image from the 'gae-runtimes-private' repository.
+# This can be used in Rapid pipelines and for local testing.
+# If no 'runImageTag' is provided, we get the latest runtime image being used in PROD.
 def runImage(version, runImageTag):
     if runImageTag != "":
         return "gcr.io/gae-runtimes-private/buildpacks/ruby" + version + "/run:" + runImageTag
