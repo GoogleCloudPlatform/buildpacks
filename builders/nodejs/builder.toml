@@ -46,10 +46,10 @@ description = "Builder for the Node.js runtime"
     id = "google.config.flex"
 
   [[order.group]]
-    id = "google.nodejs.yarn"
+    id = "google.nodejs.runtime"
 
   [[order.group]]
-    id = "google.nodejs.runtime"
+    id = "google.nodejs.yarn"
 
   [[order.group]]
     id = "google.utils.label"

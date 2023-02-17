@@ -31,3 +31,14 @@ Functions, run:
 ```bash
 bazel test //builders/nodejs/acceptance:gcf_test
 ```
+
+### Installing npm/yarn
+You may need to update the yarn.lock files. To do so, run:
+
+```bash
+sudo apt-get install npm
+sudo npm install -g npm
+sudo npm install -g yarn
+```
+
+Then go to your directory that you want to change with the package.json and run `yarn install`. If necessary, change the node version via `nvm install VERSION` and `nvm use VERSION`.

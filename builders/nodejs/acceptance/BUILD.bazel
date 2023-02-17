@@ -12,6 +12,7 @@ test_suite(
     name = "acceptance_test",
     tests = [
         "8.17.0_gcf_test",
+        "flex_test",
         "gae_test",
         "gcf_test",
         "gcp_test",
@@ -24,11 +25,11 @@ VERSION_NODEJS10 = "10.24.1"
 
 VERSION_NODEJS12 = "12.22.12"
 
-VERISON_NODEJS14 = "14.18.3"
+VERSION_NODEJS14 = "14.18.3"
 
-VERISON_NODEJS16 = "16.13.2"
+VERSION_NODEJS16 = "16.13.2"
 
-VERISON_NODEJS18 = "18.10.0"
+VERSION_NODEJS18 = "18.10.0"
 
 VERSION_NODEJS20 = "19.6.0"
 
@@ -36,28 +37,32 @@ VERSIONS_ALL = [
     VERSION_NODEJS8,
     VERSION_NODEJS10,
     VERSION_NODEJS12,
-    VERISON_NODEJS14,
-    VERISON_NODEJS16,
-    VERISON_NODEJS18,
+    VERSION_NODEJS14,
+    VERSION_NODEJS16,
+    VERSION_NODEJS18,
     VERSION_NODEJS20,
 ]
 
 VERSIONS_WITH_GAE_SUPPORT = [
     VERSION_NODEJS10,
     VERSION_NODEJS12,
-    VERISON_NODEJS14,
-    VERISON_NODEJS16,
-    VERISON_NODEJS18,
+    VERSION_NODEJS14,
+    VERSION_NODEJS16,
+    VERSION_NODEJS18,
     VERSION_NODEJS20,
 ]
 
 VERSIONS_WITH_GCF_SUPPORT = [
     VERSION_NODEJS10,
     VERSION_NODEJS12,
-    VERISON_NODEJS14,
-    VERISON_NODEJS16,
-    VERISON_NODEJS18,
+    VERSION_NODEJS14,
+    VERSION_NODEJS16,
+    VERSION_NODEJS18,
     VERSION_NODEJS20,
+]
+
+VERSIONS_WITH_FLEX_SUPPORT = [
+    VERSION_NODEJS18,
 ]
 
 # The GCF Legacy Worker is only available and used for the "GCF nodejs8" runtime version. It has
@@ -133,4 +138,13 @@ acceptance_test_argo_source(
         ":8.17.0_gcf_test_cloudbuild_bin",
     ],
     testdata = "//builders/testdata:nodejs",
+)
+
+acceptance_test_suite(
+    name = "flex_test",
+    srcs = ["flex_test.go"],
+    builder = "//builders/nodejs:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/nodejs:flex",
+    versions = VERSIONS_WITH_FLEX_SUPPORT,
 )
