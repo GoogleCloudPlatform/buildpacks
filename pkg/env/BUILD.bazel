@@ -8,6 +8,7 @@ go_library(
     name = "env",
     srcs = ["env.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = ["//visibility:public"],
 )
 
 go_test(
