@@ -13,7 +13,7 @@ def rubyargs(runImageTag = ""):
         "2.6.10": newArgs("26", runImageTag),
         "2.7.6": newArgs("27", runImageTag),
         "3.0.4": newArgs("30", runImageTag),
-        "3.2.0": newArgs("32", runImageTag),
+        "3.2.1": newArgs("32", runImageTag),
     }
     return args
 
