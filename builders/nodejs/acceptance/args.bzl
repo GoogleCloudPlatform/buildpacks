@@ -12,7 +12,7 @@ def nodejsargs(runImageTag = ""):
         "8.17.0": newArgs("8", runImageTag),
         "10.24.1": newArgs("10", runImageTag),
         "12.22.12": newArgs("12", runImageTag),
-        "14.18.3": newArgs("14", runImageTag),
+        "14.21.2": newArgs("14", runImageTag),
         "16.13.2": newArgs("16", runImageTag),
         "18.10.0": newArgs("18", runImageTag),
         "19.6.0": newArgs("20", runImageTag),
