@@ -261,7 +261,7 @@ func ResolveVersion(runtime InstallableRuntime, verConstraint, os string) (strin
 
 	v, err := version.ResolveVersion(verConstraint, versions)
 	if err != nil {
-		return "", gcp.UserErrorf("invalid %s version specified: %v", runtimeNames[runtime], err)
+		return "", gcp.UserErrorf("invalid %s version specified: %v, , You may need to use a different builder. Please check if the language version specified is supported by the os: %v. You can refer to https://cloud.google.com/docs/buildpacks/builders for a list of compatible runtime languages per builder", runtimeNames[runtime], err, os)
 	}
 	return v, nil
 }
