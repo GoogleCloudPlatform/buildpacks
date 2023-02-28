@@ -258,12 +258,18 @@ func createMainGoModVendored(ctx *gcp.Context, fn fnInfo) error {
 	}
 	fn.Package = fnPackage
 
-	// The function must declare functions framework as a dependency.
+	fnFrameworkVendoredPathExists, err := ctx.FileExists(fn.Source, "vendor", functionsFrameworkPackage)
+	if err != nil {
+		return err
+	}
+
 	version, err := frameworkSpecifiedVersion(ctx, fn.Source)
 	if err != nil {
 		return fmt.Errorf("checking for functions framework dependency in go.mod: %w", err)
 	}
-	if version == "" {
+
+	// The function must declare functions framework as a dependency.
+	if version == "" || !fnFrameworkVendoredPathExists {
 		// Vendored dependencies must include the functions framework. Modifying vendored dependencies
 		// and adding the framework ourselves by merging two vendor directories is brittle and likely
 		// to cause conflicts among the function's and the framework's dependencies.

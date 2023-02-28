@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package htmlreturn has a function that returns a string "PASS"
-package htmlreturn
+// Package myfunc contains a test function.
+package myfunc
 
-// GetReturn returns a string "PASS"
-func GetReturn() string {
-	return "PASS"
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
+)
+
+func init() {
+	functions.HTTP("Func", Func)
+}
+
+// Func declares an HTTP handler.
+func Func(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Hello from Func")
 }

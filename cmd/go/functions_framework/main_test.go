@@ -89,6 +89,25 @@ func TestBuild(t *testing.T) {
 			wantCommands: []string{"go mod vendor"},
 		},
 		{
+			name:      "with framework vendored",
+			app:       "with_framework_vendored",
+			envs:      []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			fnPkgName: "myfunc",
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`^go list -m$`, mockprocess.WithStdout(functionsFrameworkModule)),
+				mockprocess.New(`^go list -m -f {{.Version}}.*`, mockprocess.WithStdout("v1.0.0")),
+			},
+			wantCommands: []string{"go mod edit -require"},
+		},
+		{
+			name:         "without framework vendored",
+			app:          "without_framework_vendored",
+			envs:         []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			fnPkgName:    "myfunc",
+			mocks:        []*mockprocess.Mock{},
+			wantExitCode: 1,
+		},
+		{
 			name:      "go mod with version",
 			app:       "with_versioned_mod",
 			envs:      []string{"GOOGLE_FUNCTION_TARGET=Func"},
@@ -118,13 +137,14 @@ func TestBuild(t *testing.T) {
 			}
 			opts = append(opts, tc.opts...)
 			result, err := bpt.RunBuild(t, buildFn, opts...)
-			if err != nil {
-				t.Fatalf("error running build: %v,logs: %s", err, result.Output)
+			if err != nil && tc.wantExitCode == 0 {
+				t.Fatalf("error running build: %v, logs: %s", err, result.Output)
 			}
 
 			if result.ExitCode != tc.wantExitCode {
 				t.Errorf("build exit code mismatch, got: %d, want: %d", result.ExitCode, tc.wantExitCode)
 			}
+
 			for _, cmd := range tc.wantCommands {
 				if !result.CommandExecuted(cmd) {
 					t.Errorf("expected command %q to be executed, but it was not, build output: %s", cmd, result.Output)

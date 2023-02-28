@@ -145,6 +145,15 @@ func TestAcceptance(t *testing.T) {
 		},
 	}
 
+	if !acceptance.ShouldTestVersion(t, "1.13") {
+		testCases = append(testCases,
+			acceptance.Test{
+				Name: "with framework go mod vendored",
+				App:  "with_framework_vendored",
+				Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			})
+	}
+
 	for _, tc := range testCases {
 		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
 		tc.FilesMustExist = append(tc.FilesMustExist,
@@ -168,16 +177,28 @@ func TestFailures(t *testing.T) {
 
 	testCases := []acceptance.FailureTest{
 		{
+			Name:      "no framework relative",
 			App:       "no_framework_relative",
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			MustMatch: "the module path in the function's go.mod must contain a dot in the first path element before a slash, e.g. example.com/module, found: func",
 		},
 		{
+			Name:      "no framework",
 			App:       "no_framework",
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			Setup:     vendorSetup,
 			MustMatch: "vendored dependencies must include \"github.com/GoogleCloudPlatform/functions-framework-go\"; if your function does not depend on the module, please add a blank import: `_ \"github.com/GoogleCloudPlatform/functions-framework-go/funcframework\"`",
 		},
+	}
+
+	if !acceptance.ShouldTestVersion(t, "1.13") {
+		testCases = append(testCases,
+			acceptance.FailureTest{
+				Name:      "without framework go mod vendored",
+				App:       "without_framework_vendored",
+				Env:       []string{"GOOGLE_FUNCTION_TARGET=Func"},
+				MustMatch: "vendored dependencies must include \"github.com/GoogleCloudPlatform/functions-framework-go\"; if your function does not depend on the module, please add a blank import: `_ \"github.com/GoogleCloudPlatform/functions-framework-go/funcframework\"`",
+			})
 	}
 
 	for _, tc := range testCases {

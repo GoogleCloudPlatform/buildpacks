@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,20 +19,16 @@ import (
 	"fmt"
 	"net/http"
 
-	// Blank-import the framework so that it doesn't get removed by go mod.
+	// Force go mod vendor to retain the dependency on funcframework
 	_ "github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
-
-	// Import from a require/replace directive in go.mod.
-	"example.com/htmlreturn"
-	// Import from a subdirectory.
-	"example.com/myfunc/subdir"
+	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 )
 
-// Func is a test function.
+func init() {
+	functions.HTTP("Func", Func)
+}
+
+// Func declares an HTTP handler.
 func Func(w http.ResponseWriter, r *http.Request) {
-	if subdir.Pass == "PASS" && htmlreturn.GetReturn() == "PASS" {
-		fmt.Fprintf(w, "PASS")
-		return
-	}
-	fmt.Fprintf(w, "FAIL")
+	fmt.Fprintf(w, "Hello from Func")
 }
