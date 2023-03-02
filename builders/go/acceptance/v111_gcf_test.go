@@ -14,16 +14,29 @@
 package acceptance_test
 
 import (
+	"fmt"
 	"net/http"
+	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
+func vendorSetup(setupCtx acceptance.SetupContext) error {
+	// The setup function runs `go mod vendor` to vendor dependencies
+	// specified in go.mod.
+	args := strings.Fields(fmt.Sprintf("docker run --rm -v %s:/workspace -w /workspace -u root %s go mod vendor",
+		setupCtx.SrcDir, setupCtx.Builder))
+	cmd := exec.Command(args[0], args[1:]...)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("vendoring dependencies: %v, output:\n%s", err, out)
+	}
+	return nil
+}
 func TestAcceptance(t *testing.T) {
 	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
-
 	testCases := []acceptance.Test{
 		{
 			Name: "function without deps",
@@ -32,8 +45,8 @@ func TestAcceptance(t *testing.T) {
 			Path: "/Func",
 		},
 		{
-			Name: "vendored function without dependencies",
-			App:  "no_framework_vendored",
+			Name: "vendored function without framework",
+			App:  "no_framework_vendored_no_go_mod",
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			Path: "/Func",
 		},
@@ -56,19 +69,6 @@ func TestAcceptance(t *testing.T) {
 			Path:            "/Func",
 			Setup:           vendorSetup,
 			EnableCacheTest: true,
-		},
-		{
-			Name: "function with old framework",
-			App:  "with_framework_old_version",
-			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			Path: "/Func",
-		},
-		{
-			Name:  "vendored function with old framework",
-			App:   "with_framework_old_version",
-			Env:   []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			Path:  "/Func",
-			Setup: vendorSetup,
 		},
 		{
 			Name: "function at /*",
@@ -108,11 +108,10 @@ func TestAcceptance(t *testing.T) {
 		},
 		{
 			Name: "user module name without dot in path",
-			App:  "no_framework_relative",
+			App:  "no_dot_in_mod_name",
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
 		},
 	}
-
 	for _, tc := range testCases {
 		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
 		tc := tc
@@ -129,11 +128,9 @@ func TestAcceptance(t *testing.T) {
 		})
 	}
 }
-
 func TestFailures(t *testing.T) {
 	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
-
 	testCases := []acceptance.FailureTest{
 		{
 			App: "with_framework",
@@ -143,7 +140,6 @@ func TestFailures(t *testing.T) {
 			MustMatch: "module requires Go 1.13",
 		},
 	}
-
 	for _, tc := range testCases {
 		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
 		tc := tc

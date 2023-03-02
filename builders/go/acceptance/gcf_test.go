@@ -22,7 +22,6 @@ import (
 func TestAcceptance(t *testing.T) {
 	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
-
 	testCases := []acceptance.Test{
 		{
 			Name: "function without deps",
@@ -32,7 +31,7 @@ func TestAcceptance(t *testing.T) {
 		},
 		{
 			Name:       "vendored function without dependencies",
-			App:        "no_framework_vendored",
+			App:        "no_framework_vendored_no_go_mod",
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			Path:       "/Func",
 			MustOutput: []string{"Found function with vendored dependencies excluding functions-framework"},
@@ -47,31 +46,10 @@ func TestAcceptance(t *testing.T) {
 		},
 		{
 			Name:          "function with go.sum",
-			App:           "no_framework",
+			App:           "no_framework_go_sum",
 			Env:           []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			Setup:         goSumSetup,
 			Path:          "/Func",
 			MustNotOutput: []string{"go.sum not found, generating"},
-		},
-		{
-			Name:  "vendored function with framework",
-			App:   "with_framework",
-			Env:   []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			Path:  "/Func",
-			Setup: vendorSetup,
-		},
-		{
-			Name: "function with old framework",
-			App:  "with_framework_old_version",
-			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			Path: "/Func",
-		},
-		{
-			Name:  "vendored function with old framework",
-			App:   "with_framework_old_version",
-			Env:   []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			Path:  "/Func",
-			Setup: vendorSetup,
 		},
 		{
 			Name: "function at /*",
@@ -144,7 +122,6 @@ func TestAcceptance(t *testing.T) {
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
 		},
 	}
-
 	if !acceptance.ShouldTestVersion(t, "1.13") {
 		testCases = append(testCases,
 			acceptance.Test{
@@ -153,7 +130,6 @@ func TestAcceptance(t *testing.T) {
 				Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			})
 	}
-
 	for _, tc := range testCases {
 		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
 		tc.FilesMustExist = append(tc.FilesMustExist,
@@ -163,34 +139,27 @@ func TestAcceptance(t *testing.T) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-			if tc.Setup != nil {
-				t.Skip("TODO: The setup functions require go to be pre-installed which is not true for the unified builder")
-			}
 			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
 }
-
 func TestFailures(t *testing.T) {
 	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
-
 	testCases := []acceptance.FailureTest{
 		{
-			Name:      "no framework relative",
-			App:       "no_framework_relative",
+			Name:      "no dot in mod name",
+			App:       "no_dot_in_mod_name",
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			MustMatch: "the module path in the function's go.mod must contain a dot in the first path element before a slash, e.g. example.com/module, found: func",
 		},
 		{
-			Name:      "no framework",
-			App:       "no_framework",
+			Name:      "go mod and vendor no framework",
+			App:       "without_framework_vendored",
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			Setup:     vendorSetup,
 			MustMatch: "vendored dependencies must include \"github.com/GoogleCloudPlatform/functions-framework-go\"; if your function does not depend on the module, please add a blank import: `_ \"github.com/GoogleCloudPlatform/functions-framework-go/funcframework\"`",
 		},
 	}
-
 	if !acceptance.ShouldTestVersion(t, "1.13") {
 		testCases = append(testCases,
 			acceptance.FailureTest{
@@ -200,15 +169,11 @@ func TestFailures(t *testing.T) {
 				MustMatch: "vendored dependencies must include \"github.com/GoogleCloudPlatform/functions-framework-go\"; if your function does not depend on the module, please add a blank import: `_ \"github.com/GoogleCloudPlatform/functions-framework-go/funcframework\"`",
 			})
 	}
-
 	for _, tc := range testCases {
 		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-			if tc.Setup != nil {
-				t.Skip("TODO: The setup functions require go to be pre-installed which is not true for the unified builder")
-			}
 			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}

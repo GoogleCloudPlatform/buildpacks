@@ -47,7 +47,7 @@ func TestAcceptanceGoFn(t *testing.T) {
 		},
 		{
 			Name: "vendored function without framwork",
-			App:  "no_framework_vendored",
+			App:  "no_framework_vendored_no_go_mod",
 			Path: "/Func",
 			// Use Go 1.13 because Go 1.14 requires a go.mod file.
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func", "GOOGLE_RUNTIME_VERSION=1.13.8"},

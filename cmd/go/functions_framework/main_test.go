@@ -83,7 +83,7 @@ func TestBuild(t *testing.T) {
 		},
 		{
 			name:         "vendored function",
-			app:          "no_framework_vendored",
+			app:          "no_framework_vendored_no_go_mod",
 			envs:         []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			fnPkgName:    "myfunc",
 			wantCommands: []string{"go mod vendor"},

@@ -15,10 +15,6 @@
 package acceptance_test
 
 import (
-	"fmt"
-	"os/exec"
-	"strings"
-
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
@@ -35,25 +31,3 @@ const (
 	goPath        = "google.go.gopath"
 	goRuntime     = "google.go.runtime"
 )
-
-func vendorSetup(setupCtx acceptance.SetupContext) error {
-	// The setup function runs `go mod vendor` to vendor dependencies
-	// specified in go.mod.
-	args := strings.Fields(fmt.Sprintf("docker run --rm -v %s:/workspace -w /workspace -u root %s go mod vendor",
-		setupCtx.SrcDir, setupCtx.Builder))
-	cmd := exec.Command(args[0], args[1:]...)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("vendoring dependencies: %v, output:\n%s", err, out)
-	}
-	return nil
-}
-
-func goSumSetup(setupCtx acceptance.SetupContext) error {
-	args := strings.Fields(fmt.Sprintf("docker run --rm -v %s:/workspace -w /workspace -u root %s go mod tidy",
-		setupCtx.SrcDir, setupCtx.Builder))
-	cmd := exec.Command(args[0], args[1:]...)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("generating go.sum: %v, output:\n%s", err, out)
-	}
-	return nil
-}
