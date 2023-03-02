@@ -149,13 +149,6 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 	}
 	ctx.CacheMiss(l.Name)
 
-	// The cache layer is used as PIP_CACHE_DIR to keep the cache directory across builds in case
-	// we do not get a full cache hit.
-	cl, err := ctx.Layer(cacheName, gcp.CacheLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", cacheName, err)
-	}
-
 	if err := ar.GeneratePythonConfig(ctx); err != nil {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
@@ -210,16 +203,17 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 			"--requirement", req,
 			"--upgrade",
 			"--upgrade-strategy", "only-if-needed",
-			"--no-warn-script-location", // bin is added at run time by lifecycle.
-			"--no-warn-conflicts",       // Needed for python37 which allowed users to override dependencies. For newer versions, we do a separate `pip check`.
-			"--force-reinstall",         // Some dependencies may be in the build image but not run image. Later requirements.txt should override earlier.
-			"--no-compile",              // Prevent default timestamp-based bytecode compilation. Deterministic pycs are generated in a second step below.
+			"--no-warn-script-location",   // bin is added at run time by lifecycle.
+			"--no-warn-conflicts",         // Needed for python37 which allowed users to override dependencies. For newer versions, we do a separate `pip check`.
+			"--force-reinstall",           // Some dependencies may be in the build image but not run image. Later requirements.txt should override earlier.
+			"--no-compile",                // Prevent default timestamp-based bytecode compilation. Deterministic pycs are generated in a second step below.
+			"--disable-pip-version-check", // If we were going to upgrade pip, we would have done it already in the runtime buildpack.
+			"--no-cache-dir",              // We used to save this to a layer, but it made builds slower because it includes http caching of pypi requests.
 		}
 		if !virtualEnv {
 			cmd = append(cmd, "--user") // Install into user site-packages directory.
 		}
 		if _, err := ctx.Exec(cmd,
-			gcp.WithEnv("PIP_CACHE_DIR="+cl.Path, "PIP_DISABLE_PIP_VERSION_CHECK=1"),
 			gcp.WithUserAttribution); err != nil {
 			return err
 		}
