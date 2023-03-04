@@ -26,6 +26,7 @@ go_binary(
         "-w",
     ],
     deps = [
+        "//pkg/ar",
         "//pkg/cache",
         "//pkg/devmode",
         "//pkg/gcpbuildpack",
