@@ -36,8 +36,8 @@ VERSIONS_ALL_PRODUCTS = [
 VERSIONS_GAE_SUPPORT = VERSIONS_ALL_PRODUCTS
 
 # The product versions for which there is GAE Flex support.
+# Note that the app.yamls in the test apps are still hardcoded to at least 1.18.
 VERSIONS_WITH_FLEX_SUPPORT = [
-    "1.16",
     "1.18",
     "1.19",
 ]

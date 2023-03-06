@@ -29,6 +29,10 @@ description = "Unified builder for the Go runtime"
   uri = "clear_source.tgz"
 
 [[buildpacks]]
+  id = "google.go.flex_gomod"
+  uri = "flex_gomod.tgz"
+
+[[buildpacks]]
   id = "google.go.legacy-worker"
   uri = "legacy_worker.tgz"
 
@@ -58,6 +62,10 @@ description = "Unified builder for the Go runtime"
 
 # GAE Flex
 [[order]]
+  [[order.group]]
+    id = "google.go.flex_gomod"
+    optional = true
+
   [[order.group]]
     id = "google.config.flex"
 

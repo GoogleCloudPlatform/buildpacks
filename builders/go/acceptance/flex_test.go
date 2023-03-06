@@ -25,23 +25,38 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		// Test that we can build a gomod app with no dependencies.
+		// This does not include a main package provided by the stager.
 		{
 			Name:       "gomod no dependencies",
 			App:        "gomod",
 			MustOutput: []string{"go.sum not found, generating"},
-			MustUse:    []string{flex},
+			MustUse:    []string{flex, flexGoMod},
 		},
 		// Test that we can build a gomod app with a given go.sum.
 		{
 			Name:          "gomod go.sum",
 			App:           "gomod_go_sum",
 			MustNotOutput: []string{"go.sum not found, generating"},
-			MustUse:       []string{flex},
+			MustUse:       []string{flex, flexGoMod},
+		},
+
+		// Test that GOOGLE_BUILDABLE takes precedence over go-app-stager.
+		{
+			Name:       "gomod GOOGLE_BUILDABLE vs go-app-stager main package",
+			App:        "gomod_wrong_stager_mainpackage",
+			Env:        []string{"GOOGLE_BUILDABLE=./maindir"},
+			MustUse:    []string{flex},
+			MustNotUse: []string{flexGoMod},
+		},
+		// Test that a gomod app can build main package from go-app-stager.
+		{
+			Name:    "gomod stager main",
+			App:     "gomod_stager_mainpackage",
+			MustUse: []string{flex, flexGoMod},
 		},
 	}
 
 	for _, tc := range testCases {
-
 		tc := applyStaticTestOptions(tc)
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()

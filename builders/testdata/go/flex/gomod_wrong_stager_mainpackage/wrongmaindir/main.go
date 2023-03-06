@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package acceptance_test
+// Package main tests precedence of main package paths. This package is specified by go-app-stager's _gopath/main-package-path file; building this package will fail the acceptance test.
+package main
 
 import (
-	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
+	"fmt"
+	"net/http"
+	"os"
 )
 
-func init() {
-	acceptance.DefineFlags()
+func handler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Incorrectly using the main package specified by go-app-stager")
 }
 
-const (
-	flex          = "google.config.flex"
-	flexGoMod     = "google.go.flex_gomod"
-	goBuild       = "google.go.build"
-	goClearSource = "google.go.clear_source"
-	goFF          = "google.go.functions-framework"
-	goMod         = "google.go.gomod"
-	goPath        = "google.go.gopath"
-	goRuntime     = "google.go.runtime"
-)
+func main() {
+	http.HandleFunc("/", handler)
+	http.ListenAndServe(":"+os.Getenv("PORT"), nil)
+}

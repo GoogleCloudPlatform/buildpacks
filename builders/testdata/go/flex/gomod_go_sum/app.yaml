@@ -13,9 +13,9 @@
 # limitations under the License.
 runtime: go
 env: flex
-flexible_runtime_settings:
+runtime_config:
   operating_system: ubuntu22
-  runtime_version: 1.18.0
+  runtime_version: 1.18
 
 # This sample incurs costs to run on the App Engine flexible environment. 
 # The settings below are to reduce costs during testing and are not appropriate
