@@ -23,7 +23,6 @@ package_group(
     name = "dotnet_builders",
     packages = [
         "//builders/dotnet",
-        "//builders/gae/dotnet3",
         "//builders/gcp/base",
     ],
 )
@@ -31,7 +30,6 @@ package_group(
 package_group(
     name = "go_builders",
     packages = [
-        "//builders/gae/go116",
         "//builders/gcp/base",
         "//builders/go",
     ],
@@ -40,8 +38,6 @@ package_group(
 package_group(
     name = "java_builders",
     packages = [
-        "//builders/gae/java11",
-        "//builders/gae/java17",
         "//builders/gcp/base",
         "//builders/java",
     ],
@@ -50,10 +46,6 @@ package_group(
 package_group(
     name = "nodejs_builders",
     packages = [
-        "//builders/gae/nodejs10",
-        "//builders/gae/nodejs12",
-        "//builders/gae/nodejs14",
-        "//builders/gae/nodejs16",
         "//builders/gcp/base",
         "//builders/nodejs",
     ],
@@ -62,10 +54,6 @@ package_group(
 package_group(
     name = "php_builders",
     packages = [
-        "//builders/gae/php72",
-        "//builders/gae/php73",
-        "//builders/gae/php74",
-        "//builders/gae/php81",
         "//builders/gcp/base",
         "//builders/php",
     ],
@@ -74,10 +62,6 @@ package_group(
 package_group(
     name = "python_builders",
     packages = [
-        "//builders/gae/python310",
-        "//builders/gae/python37",
-        "//builders/gae/python38",
-        "//builders/gae/python39",
         "//builders/gcp/base",
         "//builders/python",
     ],
@@ -86,10 +70,6 @@ package_group(
 package_group(
     name = "ruby_builders",
     packages = [
-        "//builders/gae/ruby25",
-        "//builders/gae/ruby26",
-        "//builders/gae/ruby27",
-        "//builders/gae/ruby30",
         "//builders/gcp/base",
         "//builders/ruby",
     ],
