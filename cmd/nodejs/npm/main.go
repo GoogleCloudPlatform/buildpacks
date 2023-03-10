@@ -125,7 +125,7 @@ func buildFn(ctx *gcp.Context) error {
 		}
 		if shouldPrune {
 			// npm prune deletes devDependencies from node_modules
-			if _, err := ctx.Exec([]string{"npm", "prune"}, gcp.WithUserAttribution); err != nil {
+			if _, err := ctx.Exec([]string{"npm", "prune", "--production"}, gcp.WithUserAttribution); err != nil {
 				return err
 			}
 		}
