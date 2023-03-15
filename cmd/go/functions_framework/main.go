@@ -252,7 +252,7 @@ func createMainGoModVendored(ctx *gcp.Context, fn fnInfo) error {
 		return err
 	}
 
-	fnMod, fnPackage, err := moduleAndPackageNames(ctx, fn)
+	_, fnPackage, err := moduleAndPackageNames(ctx, fn)
 	if err != nil {
 		return fmt.Errorf("extracting module and package names: %w", err)
 	}
@@ -278,12 +278,6 @@ func createMainGoModVendored(ctx *gcp.Context, fn fnInfo) error {
 
 	appVendorDir := filepath.Join(fn.Source, "vendor", appModule)
 	if err := ctx.MkdirAll(appVendorDir, 0755); err != nil {
-		return err
-	}
-	if _, err := ctx.Exec([]string{"go", "mod", "init", appModule}, gcp.WithWorkDir(appVendorDir)); err != nil {
-		return err
-	}
-	if _, err := ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@v0.0.0", fnMod)}, gcp.WithWorkDir(appVendorDir)); err != nil {
 		return err
 	}
 

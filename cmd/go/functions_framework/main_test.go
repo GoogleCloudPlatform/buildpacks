@@ -94,10 +94,9 @@ func TestBuild(t *testing.T) {
 			envs:      []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			fnPkgName: "myfunc",
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`^go list -m$`, mockprocess.WithStdout(functionsFrameworkModule)),
+				mockprocess.New(`^go list -m$`, mockprocess.WithStdout("example.com/myfunc")),
 				mockprocess.New(`^go list -m -f {{.Version}}.*`, mockprocess.WithStdout("v1.0.0")),
 			},
-			wantCommands: []string{"go mod edit -require"},
 		},
 		{
 			name:         "without framework vendored",
