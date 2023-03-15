@@ -368,3 +368,148 @@ func TestNpmRegistryRegexp(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerateYarnConfig(t *testing.T) {
+	t.Cleanup(buildermetrics.Reset)
+
+	testCases := []struct {
+		name       string
+		fileExists bool
+		tokenError error
+		projYarnrc string
+		wantConfig string
+	}{
+		{
+			name:       "user .yarnrc.yml already exists",
+			fileExists: true,
+		},
+		{
+			name:       "credential error",
+			tokenError: fmt.Errorf("Error fetching token"),
+			projYarnrc: `npmScopes:
+  scope1:
+    npmRegistryServer: https://registry.npmjs.org/
+    npmAlwaysAuth: true
+`,
+		},
+		{
+			name: "project .yarnrc.yml with npmjs.org config",
+			projYarnrc: `npmScopes:
+  scope1:
+    npmRegistryServer: https://registry.npmjs.org/
+    npmAlwaysAuth: true
+`,
+		},
+		{
+			name: "project .yarnrc.yml with AR config",
+			projYarnrc: `npmScopes:
+  scope1:
+    npmRegistryServer: https://us-central1-npm.pkg.dev/project/repo/
+    npmAlwaysAuth: true
+`,
+			wantConfig: `npmRegistries:
+  https://us-central1-npm.pkg.dev/project/repo/:
+    npmAlwaysAuth: true
+    npmAuthToken: token
+`,
+		},
+		{
+			name: "project .yarnrc.yml with multiple AR configs",
+			projYarnrc: `npmScopes:
+  scope1:
+    npmRegistryServer: https://us-central1-npm.pkg.dev/project/repo/
+    npmAlwaysAuth: true
+  scope2:
+    npmRegistryServer: https://us-west1-npm.pkg.dev/project/repo/
+    npmAlwaysAuth: true
+`,
+			wantConfig: `npmRegistries:
+  https://us-central1-npm.pkg.dev/project/repo/:
+    npmAlwaysAuth: true
+    npmAuthToken: token
+  https://us-west1-npm.pkg.dev/project/repo/:
+    npmAlwaysAuth: true
+    npmAuthToken: token
+`,
+		},
+		{
+			name: "project .yarnrc.yml with AR and non-AR configs",
+			projYarnrc: `npmScopes:
+  scope1:
+    npmRegistryServer: https://us-central1-npm.pkg.dev/project/repo/
+    npmAlwaysAuth: true
+  scope2:
+    npmRegistryServer: https://registry.npmjs.org/
+    npmAlwaysAuth: true
+`,
+			wantConfig: `npmRegistries:
+  https://us-central1-npm.pkg.dev/project/repo/:
+    npmAlwaysAuth: true
+    npmAuthToken: token
+`,
+		},
+		{
+			name: "project with .yarnrc.yml with empty AR config",
+			projYarnrc: `npmScopes:
+  scope1:
+    npmRegistryServer: 
+    npmAlwaysAuth: true
+`,
+		},
+		{
+			name: "project without .yarnrc.yml",
+		},
+		{
+			name: "project with empty .yarnrc.yml",
+			projYarnrc: `
+`,
+		},
+		{
+			name: "project with .yarnrc.yml without npm scopes", // test case adds a different yaml property to project config
+			projYarnrc: `enableColors: true
+`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// stub out the logic for fetching Application Default Credentials
+			origFindDefaultCredentials := findDefaultCredentials
+			findDefaultCredentials = func() (string, error) {
+				return "token", tc.tokenError
+			}
+			defer func() {
+				findDefaultCredentials = origFindDefaultCredentials
+			}()
+
+			// set up the application root dir
+			tempRoot := t.TempDir()
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(tempRoot))
+			file := filepath.Join(tempRoot, ".yarnrc.yml")
+
+			if tc.projYarnrc != "" {
+				os.WriteFile(file, []byte(tc.projYarnrc), 0664)
+			}
+
+			// set up the $HOME dir
+			t.Setenv("HOME", t.TempDir())
+			userConfigFile := filepath.Join(ctx.HomeDir(), ".yarnrc.yml")
+			if tc.fileExists {
+				os.WriteFile(userConfigFile, []byte{}, 0664)
+			}
+
+			if err := GenerateYarnConfig(ctx); err != nil {
+				t.Fatalf("Error generating config: %v", err)
+			}
+
+			config, err := os.ReadFile(userConfigFile)
+			if err != nil && tc.wantConfig != "" {
+				t.Errorf("Reading file %s: %v", userConfigFile, err)
+			}
+
+			if diff := cmp.Diff(tc.wantConfig, string(config)); diff != "" {
+				t.Errorf("unexpected config (+got, -want):\n %v", diff)
+			}
+		})
+	}
+}

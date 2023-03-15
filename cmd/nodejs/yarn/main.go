@@ -203,8 +203,11 @@ func yarn1InstallModules(ctx *gcp.Context) error {
 }
 
 func yarn2InstallModules(ctx *gcp.Context) error {
-	cmd := []string{"yarn", "install", "--immutable"}
+	if err := ar.GenerateYarnConfig(ctx); err != nil {
+		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
+	}
 
+	cmd := []string{"yarn", "install", "--immutable"}
 	yarnCacheExists, err := ctx.FileExists(ctx.ApplicationRoot(), ".yarn", "cache")
 	if err != nil {
 		return err
