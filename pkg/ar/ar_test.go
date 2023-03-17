@@ -371,7 +371,7 @@ func TestNpmRegistryRegexp(t *testing.T) {
 
 func TestGenerateYarnConfig(t *testing.T) {
 	t.Cleanup(buildermetrics.Reset)
-
+	successfulCredGens := int64(0)
 	testCases := []struct {
 		name       string
 		fileExists bool
@@ -509,6 +509,13 @@ func TestGenerateYarnConfig(t *testing.T) {
 
 			if diff := cmp.Diff(tc.wantConfig, string(config)); diff != "" {
 				t.Errorf("unexpected config (+got, -want):\n %v", diff)
+			} else if tc.wantConfig != "" {
+				successfulCredGens++
+			}
+
+			if buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.ArNpmCredsGenCounterID).Value() != successfulCredGens {
+				t.Errorf("TestGenerateYarnConfig incorrect cred gen count: got %v, want %v",
+					buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.ArNpmCredsGenCounterID).Value(), successfulCredGens)
 			}
 		})
 	}

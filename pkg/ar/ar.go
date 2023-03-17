@@ -323,7 +323,7 @@ func GenerateYarnConfig(ctx *gcp.Context) error {
 	if err != nil {
 		// findDefaultCredentials will return an error any time Application Default Credentials are
 		// missing (e.g. running the buildpacks locally outside of GCB). Credentials might not
-		// be required for the npm install to succeed so we should not fail the build here.
+		// be required for the yarn install to succeed so we should not fail the build here.
 		ctx.Warnf("Skipping adding auth token to %s. Unable to find Application Default Credentials: %v", userConfig, err)
 		return nil
 	}
@@ -357,6 +357,7 @@ func GenerateYarnConfig(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
-
+	// Google Cloud Build service account creds are used to access AR during npm install/yarn add for private packages so reusing metric.
+	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(1)
 	return nil
 }
