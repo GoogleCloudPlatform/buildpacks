@@ -105,7 +105,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	// TODO(mattrobertson) remove this check once Nodejs has backported the fix to v16. More info here:
 	// https://github.com/GoogleCloudPlatform/functions-framework-nodejs/issues/407
-	if skip, err := nodejs.SkipSyntaxCheck(ctx, fnFile); err != nil {
+	if skip, err := nodejs.SkipSyntaxCheck(ctx, fnFile, pjs); err != nil {
 		return err
 	} else if !skip {
 		// Syntax check the function code without executing to prevent run-time errors.

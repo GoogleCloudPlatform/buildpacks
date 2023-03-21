@@ -61,7 +61,11 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
 
-	if err := upgradeNPM(ctx); err != nil {
+	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
+	if err != nil {
+		return err
+	}
+	if err := upgradeNPM(ctx, pjs); err != nil {
 		return err
 	}
 
@@ -71,10 +75,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	nodeEnv := nodejs.NodeEnv()
-	gcpBuild, err := nodejs.HasGCPBuild(ctx.ApplicationRoot())
-	if err != nil {
-		return err
-	}
+	gcpBuild := nodejs.HasGCPBuild(pjs)
 	if gcpBuild {
 		nodeEnv = nodejs.EnvDevelopment
 	}
@@ -119,7 +120,7 @@ func buildFn(ctx *gcp.Context) error {
 		}
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmGcpBuildUsageCounterID).Increment(1)
 
-		shouldPrune, err := shouldPrune(ctx)
+		shouldPrune, err := shouldPrune(ctx, pjs)
 		if err != nil {
 			return err
 		}
@@ -158,10 +159,10 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
-func shouldPrune(ctx *gcp.Context) (bool, error) {
+func shouldPrune(ctx *gcp.Context, pjs *nodejs.PackageJSON) (bool, error) {
 	// if there are no devDependencies, there is no need to prune.
-	if devDeps, err := nodejs.HasDevDependencies(ctx.ApplicationRoot()); err != nil || !devDeps {
-		return false, err
+	if !nodejs.HasDevDependencies(pjs) {
+		return false, nil
 	}
 	if nodeEnv := nodejs.NodeEnv(); nodeEnv != nodejs.EnvProduction {
 		ctx.Logf("Retaining devDependencies because $NODE_ENV=%q.", nodeEnv)
@@ -174,8 +175,8 @@ func shouldPrune(ctx *gcp.Context) (bool, error) {
 	return canPrune, err
 }
 
-func upgradeNPM(ctx *gcp.Context) error {
-	npmVersion, err := nodejs.RequestedNPMVersion(ctx.ApplicationRoot())
+func upgradeNPM(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
+	npmVersion, err := nodejs.RequestedNPMVersion(pjs)
 	if err != nil {
 		return err
 	}

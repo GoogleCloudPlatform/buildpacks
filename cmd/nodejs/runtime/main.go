@@ -59,7 +59,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	version, err := nodejs.RequestedNodejsVersion(ctx, ctx.ApplicationRoot())
+	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
+	if err != nil {
+		return err
+	}
+	version, err := nodejs.RequestedNodejsVersion(ctx, pjs)
 	if err != nil {
 		return err
 	}

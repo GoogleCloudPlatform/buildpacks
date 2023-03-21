@@ -58,18 +58,22 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	if err := installYarn(ctx); err != nil {
+	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
+	if err != nil {
+		return err
+	}
+	if err := installYarn(ctx, pjs); err != nil {
 		return fmt.Errorf("installing Yarn: %w", err)
 	}
 
 	if yarn2, err := nodejs.IsYarn2(ctx.ApplicationRoot()); err != nil {
 		return err
 	} else if yarn2 {
-		if err := yarn2InstallModules(ctx); err != nil {
+		if err := yarn2InstallModules(ctx, pjs); err != nil {
 			return err
 		}
 	} else {
-		if err := yarn1InstallModules(ctx); err != nil {
+		if err := yarn1InstallModules(ctx, pjs); err != nil {
 			return err
 		}
 	}
@@ -101,7 +105,7 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
-func yarn1InstallModules(ctx *gcp.Context) error {
+func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 	freezeLockfile, err := nodejs.UseFrozenLockfile(ctx)
 	if err != nil {
 		return err
@@ -159,10 +163,7 @@ func yarn1InstallModules(ctx *gcp.Context) error {
 	if freezeLockfile {
 		cmd = append(cmd, "--frozen-lockfile")
 	}
-	gcpBuild, err := nodejs.HasGCPBuild(ctx.ApplicationRoot())
-	if err != nil {
-		return err
-	}
+	gcpBuild := nodejs.HasGCPBuild(pjs)
 	if gcpBuild {
 		// Setting --production=false causes the devDependencies to be installed regardless of the
 		// NODE_ENV value. The allows the customer's lifecycle hooks to access to them. We purge the
@@ -202,7 +203,7 @@ func yarn1InstallModules(ctx *gcp.Context) error {
 	return nil
 }
 
-func yarn2InstallModules(ctx *gcp.Context) error {
+func yarn2InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 	if err := ar.GenerateYarnConfig(ctx); err != nil {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
@@ -223,17 +224,15 @@ func yarn2InstallModules(ctx *gcp.Context) error {
 	}
 
 	// Run the gcp-build script if it exists.
-	if gcpBuild, err := nodejs.HasGCPBuild(ctx.ApplicationRoot()); err != nil {
-		return err
-	} else if gcpBuild {
+	if nodejs.HasGCPBuild(pjs) {
 		if _, err := ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution); err != nil {
 			return err
 		}
 	}
 
 	// If there are no devDependencies, there is nothing to prune. We are done.
-	if devDeps, err := nodejs.HasDevDependencies(ctx.ApplicationRoot()); err != nil || !devDeps {
-		return err
+	if !nodejs.HasDevDependencies(pjs) {
+		return nil
 	}
 
 	nodeEnv := nodejs.NodeEnv()
@@ -257,10 +256,10 @@ func yarn2InstallModules(ctx *gcp.Context) error {
 	return nil
 }
 
-func installYarn(ctx *gcp.Context) error {
+func installYarn(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 	yrl, err := ctx.Layer(yarnLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", yarnLayer, err)
 	}
-	return nodejs.InstallYarnLayer(ctx, yrl)
+	return nodejs.InstallYarnLayer(ctx, yrl, pjs)
 }

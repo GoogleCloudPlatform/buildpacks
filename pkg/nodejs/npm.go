@@ -38,10 +38,9 @@ var (
 
 // RequestedNPMVersion returns any customer provided NPM version constraint configured in the
 // "engines" section of the package.json file in the given application dir.
-func RequestedNPMVersion(dir string) (string, error) {
-	pjs, err := ReadPackageJSONIfExists(dir)
-	if err != nil || pjs == nil || pjs.Engines.NPM == "" {
-		return "", err
+func RequestedNPMVersion(pjs *PackageJSON) (string, error) {
+	if pjs == nil || pjs.Engines.NPM == "" {
+		return "", nil
 	}
 	version, err := resolvePackageVersion("npm", pjs.Engines.NPM)
 	if err != nil {

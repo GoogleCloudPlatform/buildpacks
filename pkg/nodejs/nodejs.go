@@ -45,6 +45,10 @@ const (
 // semVer11 is the smallest possible semantic version with major version 11.
 var semVer11 = semver.MustParse("11.0.0")
 
+var (
+	cachedPackageJSONs = map[string]*PackageJSON{}
+)
+
 type packageEnginesJSON struct {
 	Node string `json:"node"`
 	NPM  string `json:"npm"`
@@ -90,27 +94,19 @@ func ReadPackageJSONIfExists(dir string) (*PackageJSON, error) {
 
 // HasGCPBuild returns true if the given directory contains a package.json file that includes a
 // non-empty "gcp-build" script.
-func HasGCPBuild(dir string) (bool, error) {
-	p, err := ReadPackageJSONIfExists(dir)
-	if err != nil || p == nil {
-		return false, err
-	}
-	return p.Scripts.GCPBuild != "", nil
+func HasGCPBuild(p *PackageJSON) bool {
+	return p != nil && p.Scripts.GCPBuild != ""
 }
 
 // HasDevDependencies returns true if the given directory contains a package.json file that lists
 // more one or more devDependencies.
-func HasDevDependencies(dir string) (bool, error) {
-	p, err := ReadPackageJSONIfExists(dir)
-	if err != nil || p == nil {
-		return false, err
-	}
-	return len(p.DevDependencies) > 0, nil
+func HasDevDependencies(p *PackageJSON) bool {
+	return p != nil && len(p.DevDependencies) > 0
 }
 
 // RequestedNodejsVersion returns any customer provided Node.js version constraint by inspecting the
 // environment and the package.json.
-func RequestedNodejsVersion(ctx *gcp.Context, dir string) (string, error) {
+func RequestedNodejsVersion(ctx *gcp.Context, pjs *PackageJSON) (string, error) {
 	if version := os.Getenv(EnvNodeVersion); version != "" {
 		ctx.Logf("Using runtime version from %s: %s", EnvNodeVersion, version)
 		return version, nil
@@ -119,9 +115,8 @@ func RequestedNodejsVersion(ctx *gcp.Context, dir string) (string, error) {
 		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, version)
 		return version, nil
 	}
-	pjs, err := ReadPackageJSONIfExists(dir)
-	if err != nil || pjs == nil {
-		return "", err
+	if pjs == nil {
+		return "", nil
 	}
 	return pjs.Engines.Node, nil
 }
@@ -200,7 +195,7 @@ func CheckOrClearCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) 
 
 // SkipSyntaxCheck returns true if we should skip checking the user's function file for syntax errors
 // if it is impacted by https://github.com/GoogleCloudPlatform/functions-framework-nodejs/issues/407.
-func SkipSyntaxCheck(ctx *gcp.Context, file string) (bool, error) {
+func SkipSyntaxCheck(ctx *gcp.Context, file string, pjs *PackageJSON) (bool, error) {
 	nodeVer, err := nodeVersion(ctx)
 	if err != nil {
 		return false, err
@@ -215,8 +210,7 @@ func SkipSyntaxCheck(ctx *gcp.Context, file string) (bool, error) {
 	if strings.HasSuffix(file, ".mjs") {
 		return true, nil
 	}
-	pjs, err := ReadPackageJSONIfExists(ctx.ApplicationRoot())
-	return (pjs != nil && pjs.Type == "module"), err
+	return (pjs != nil && pjs.Type == "module"), nil
 }
 
 // IsNodeJS8Runtime returns true when the GOOGLE_RUNTIME is nodejs8. This will be

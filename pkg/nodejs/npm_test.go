@@ -15,8 +15,7 @@
 package nodejs
 
 import (
-	"io/ioutil"
-	"path/filepath"
+	"encoding/json"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -40,25 +39,20 @@ func TestRequestedNPMVersion(t *testing.T) {
 			packageJSON: `{"engines": {"npm": "2.2.2"}}`,
 			want:        "2.2.2",
 		},
-		{
-			name:        "invalid package.json",
-			packageJSON: `invalid json`,
-			wantErr:     true,
-		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
 			dir := t.TempDir()
+			var pjs *PackageJSON
 			if tc.packageJSON != "" {
-				path := filepath.Join(dir, "package.json")
-				if err := ioutil.WriteFile(path, []byte(tc.packageJSON), 0744); err != nil {
-					t.Fatalf("writing %s: %v", path, err)
+				if err := json.Unmarshal([]byte(tc.packageJSON), &pjs); err != nil {
+					t.Errorf("failed to unmarshal package.json: %q, err: %v", tc.packageJSON, err)
 				}
 			}
 
-			got, err := RequestedNPMVersion(dir)
+			got, err := RequestedNPMVersion(pjs)
 			if tc.wantErr == (err == nil) {
 				t.Errorf("RequestedNPMVersion(%q) got error: %v, want err? %t", dir, err, tc.wantErr)
 			}

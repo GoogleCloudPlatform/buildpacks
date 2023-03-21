@@ -79,16 +79,12 @@ func HasYarnWorkspacePlugin(ctx *gcp.Context) (bool, error) {
 	return strings.Contains(res.Stdout, "plugin-workspace-tools"), nil
 }
 
-// DetectYarnVersion determines the version of Yarn that should be installed in a Node.js project
+// detectYarnVersion determines the version of Yarn that should be installed in a Node.js project
 // by examining the "engines.yarn" constraint specified in package.json and comparing it against all
 // published versions in the NPM registry. If the package.json does not include "engines.yarn" it
 // returns the latest stable version available.
-func DetectYarnVersion(applicationRoot string) (string, error) {
-	requested, err := requestedYarnVersion(applicationRoot)
-	if err != nil {
-		return "", err
-	}
-	if requested == "" {
+func detectYarnVersion(pjs *PackageJSON) (string, error) {
+	if pjs == nil || pjs.Engines.Yarn == "" {
 		version, err := latestPackageVersion("yarn")
 		if err != nil {
 			return "", gcp.InternalErrorf("fetching available Yarn versions: %w", err)
@@ -96,6 +92,7 @@ func DetectYarnVersion(applicationRoot string) (string, error) {
 		return version, nil
 	}
 
+	requested := pjs.Engines.Yarn
 	version, err := resolvePackageVersion("yarn", requested)
 	if err != nil {
 		return "", gcp.UserErrorf("finding Yarn version that matched %q: %w", requested, err)
@@ -103,20 +100,10 @@ func DetectYarnVersion(applicationRoot string) (string, error) {
 	return version, nil
 }
 
-// requestedYarnVersion returns the Yarn version specified in the "engines.yarn" section of the
-// project's package.json.
-func requestedYarnVersion(applicationRoot string) (string, error) {
-	pjs, err := ReadPackageJSONIfExists(applicationRoot)
-	if err != nil || pjs == nil {
-		return "", err
-	}
-	return pjs.Engines.Yarn, nil
-}
-
 // InstallYarnLayer installs Yarn in the given layer if it is not already cached.
-func InstallYarnLayer(ctx *gcp.Context, yarnLayer *libcnb.Layer) error {
+func InstallYarnLayer(ctx *gcp.Context, yarnLayer *libcnb.Layer, pjs *PackageJSON) error {
 	layerName := yarnLayer.Name
-	version, err := DetectYarnVersion(ctx.ApplicationRoot())
+	version, err := detectYarnVersion(pjs)
 	if err != nil {
 		return err
 	}
@@ -125,7 +112,7 @@ func InstallYarnLayer(ctx *gcp.Context, yarnLayer *libcnb.Layer) error {
 	metaVersion := ctx.GetMetadata(yarnLayer, versionKey)
 	if version == metaVersion {
 		ctx.CacheHit(layerName)
-		ctx.Logf("Yarn cache hit, skipping installation.")
+		ctx.Logf("Yarn cache hit: %q, %q, skipping installation.", version, metaVersion)
 	} else {
 		ctx.CacheMiss(layerName)
 		if err := ctx.ClearLayer(yarnLayer); err != nil {

@@ -76,9 +76,13 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 func installYarn(ctx *gcp.Context) error {
+	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
+	if err != nil {
+		return err
+	}
 	yrl, err := ctx.Layer(yarnLayer, gcp.BuildLayer, gcp.CacheLayer)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", yarnLayer, err)
 	}
-	return nodejs.InstallYarnLayer(ctx, yrl)
+	return nodejs.InstallYarnLayer(ctx, yrl, pjs)
 }
