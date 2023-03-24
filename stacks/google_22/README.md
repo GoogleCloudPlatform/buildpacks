@@ -4,13 +4,13 @@ A buildpack stack based on Ubuntu 22.04 LTS (Jammy Jellyfish).
 
 ## Run Image
 
-[gcr.io/gae-runtimes/buildpacks/stacks/google-22/run](https://gcr.io/gae-runtimes/buildpacks/stacks/google-22/run)
+[gcr.io/buildpacks/stacks/google-22/run](https://gcr.io/buildpacks/google-22/run)
 
 Available packages listed in [run-packages.txt](./run-packages.txt).
 
 ## Build Image
 
-[gcr.io/gae-runtimes/buildpacks/stacks/google-22/build](https://gcr.io/gae-runtimes/buildpacks/stacks/google-22/build)
+[gcr.io/buildpacks/stacks/google-22/build](https://gcr.io/buildpacks/google-22/build)
 
 Available packages listed in [build-packages.txt](./build-packages.txt).
 
@@ -26,7 +26,7 @@ To build the run image:
 docker build . \
   --build-arg CANDIDATE_NAME=test \
   --file run.Dockerfile \
-  --tag gcr.io/gae-runtimes/buildpacks/stacks/google-22/run
+  --tag gcr.io/buildpacks/google-22/run
 ```
 
 To build the build image:
@@ -35,7 +35,7 @@ To build the build image:
 docker build . \
   --build-arg CANDIDATE_NAME=test \
   --file build.Dockerfile \
-  --tag gcr.io/gae-runtimes/buildpacks/stacks/google-22/build
+  --tag gcr.io/buildpacks/google-22/build
 ```
 
 ## Run Tests
@@ -47,7 +47,7 @@ To test the run image:
 
 ```
 container-structure-test test \
-  --image gcr.io/gae-runtimes/buildpacks/stacks/google-22/run \
+  --image gcr.io/buildpacks/google-22/run \
   --config run_structure_test.yaml
 ```
 
@@ -55,6 +55,6 @@ To test the build image:
 
 ```
 container-structure-test test \
-  --image gcr.io/gae-runtimes/buildpacks/stacks/google-22/build \
+  --image gcr.io/buildpacks/google-22/build \
   --config build_structure_test.yaml
 ```
