@@ -59,6 +59,11 @@ pm.max_children = {{.NumWorkers}}
 clear_env = no
 
 catch_workers_output = yes
+{{if or (eq .Runtime "php72") (eq .Runtime "php55")}}
+; decorate_workers_output isn't available in {{.Runtime}}
+{{else}}
+decorate_workers_output = no
+{{end}}
 `))
 
 // NginxTemplate is a template that produces a snippet of nginx config that sets up the
@@ -135,6 +140,7 @@ type FPMConfig struct {
 	DynamicWorkers bool
 	NumWorkers     int
 	Username       string
+	Runtime        string
 }
 
 // Config represents the content values of a nginx config file.
