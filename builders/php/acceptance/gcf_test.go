@@ -108,7 +108,8 @@ func TestAcceptance(t *testing.T) {
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the CI server to run out of disk space.
+			// t.Parallel()
 
 			tc.Path = "/testFunction"
 			tc.Env = append(tc.Env, "GOOGLE_FUNCTION_TARGET=testFunction", "X_GOOGLE_TARGET_PLATFORM=gcf")

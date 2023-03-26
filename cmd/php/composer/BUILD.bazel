@@ -10,6 +10,8 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "php",
+    version = "0.9.1",
     visibility = [
         "//builders:php_builders",
     ],

@@ -9,7 +9,7 @@ description = "Builder for the Ruby runtime"
   uri = "archive_source.tgz"
 
 [[buildpacks]]
-  id = "google.ruby.appengine_validation"
+  id = "google.ruby.appengine-validation"
   uri = "appengine_validation.tgz"
 
 [[buildpacks]]
@@ -22,7 +22,7 @@ description = "Builder for the Ruby runtime"
 
 [[buildpacks]]
   id = "google.ruby.runtime"
-  uri = "ruby_runtime.tgz"
+  uri = "runtime.tgz"
 
 [[buildpacks]]
   id = "google.ruby.rubygems"
@@ -38,15 +38,15 @@ description = "Builder for the Ruby runtime"
 
 [[buildpacks]]
   id = "google.nodejs.runtime"
-  uri = "runtime.tgz"
+  uri = "nodejs/runtime.tgz"
 
 [[buildpacks]]
   id = "google.ruby.missing-entrypoint"
   uri = "missing_entrypoint.tgz"
 
 [[buildpacks]]
-  id = "google.utils.label"
-  uri = "label.tgz"
+  id = "google.utils.label-image"
+  uri = "label_image.tgz"
 
 # The GAE order group.
 [[order]]
@@ -54,7 +54,7 @@ description = "Builder for the Ruby runtime"
     id = "google.ruby.runtime"
 
   [[order.group]]
-    id = "google.ruby.appengine_validation"
+    id = "google.ruby.appengine-validation"
     optional = true
 
   [[order.group]]
@@ -72,7 +72,7 @@ description = "Builder for the Ruby runtime"
     id = "google.ruby.appengine"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # The GCF order group
 [[order]]
@@ -89,7 +89,7 @@ description = "Builder for the Ruby runtime"
     id = "google.ruby.functions-framework"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # The GCP order group.
 [[order]]
@@ -116,7 +116,7 @@ description = "Builder for the Ruby runtime"
     id = "google.config.entrypoint"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # This buildpack group will always fail but with a clear message that the
 # entrypoint is missing. It must be the last group otherwise projects with

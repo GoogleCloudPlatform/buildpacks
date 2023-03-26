@@ -17,19 +17,19 @@ description = "Unified builder for the Go runtime"
   uri = "appengine.tgz"
 
 [[buildpacks]]
-  id = "google.go.appengine_gopath"
+  id = "google.go.appengine-gopath"
   uri = "appengine_gopath.tgz"
 
 [[buildpacks]]
-  id = "google.go.appengine_gomod"
+  id = "google.go.appengine-gomod"
   uri = "appengine_gomod.tgz"
 
 [[buildpacks]]
-  id = "google.go.clear_source"
+  id = "google.go.clear-source"
   uri = "clear_source.tgz"
 
 [[buildpacks]]
-  id = "google.go.flex_gomod"
+  id = "google.go.flex-gomod"
   uri = "flex_gomod.tgz"
 
 [[buildpacks]]
@@ -57,13 +57,13 @@ description = "Unified builder for the Go runtime"
   uri = "functions_framework.tgz"
 
 [[buildpacks]]
-  id = "google.utils.label"
-  uri = "label.tgz"
+  id = "google.utils.label-image"
+  uri = "label_image.tgz"
 
 # GAE Flex
 [[order]]
   [[order.group]]
-    id = "google.go.flex_gomod"
+    id = "google.go.flex-gomod"
     optional = true
 
   [[order.group]]
@@ -79,12 +79,12 @@ description = "Unified builder for the Go runtime"
     id = "google.go.build"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [[order]]
 
   [[order.group]]
-    id = "google.go.appengine_gomod"
+    id = "google.go.appengine-gomod"
     optional = true
 
   [[order.group]]
@@ -100,12 +100,12 @@ description = "Unified builder for the Go runtime"
     id = "google.go.appengine"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [[order]]
 
   [[order.group]]
-    id = "google.go.appengine_gopath"
+    id = "google.go.appengine-gopath"
 
   [[order.group]]
     id = "google.go.runtime"
@@ -117,7 +117,7 @@ description = "Unified builder for the Go runtime"
     id = "google.go.appengine"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # The GCF go111 order group. The legacy worker is the "functions-framework"
 # buildpack for go111.
@@ -137,11 +137,11 @@ description = "Unified builder for the Go runtime"
     id = "google.go.build"
 
   [[order.group]]
-    id = "google.go.clear_source"
+    id = "google.go.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # The GCF order group.
 [[order]]
@@ -160,11 +160,11 @@ description = "Unified builder for the Go runtime"
     id = "google.go.build"
 
   [[order.group]]
-    id = "google.go.clear_source"
+    id = "google.go.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [[order]]
 
@@ -182,11 +182,11 @@ description = "Unified builder for the Go runtime"
     optional = true
 
   [[order.group]]
-    id = "google.go.clear_source"
+    id = "google.go.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [[order]]
 
@@ -205,11 +205,11 @@ description = "Unified builder for the Go runtime"
     optional = true
 
   [[order.group]]
-    id = "google.go.clear_source"
+    id = "google.go.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [stack]
   id = "google.gae.18"

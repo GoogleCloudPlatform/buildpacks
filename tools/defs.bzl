@@ -5,7 +5,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 load("@rules_pkg//pkg:mappings.bzl", "pkg_mklink")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
-def buildpack(name, executables, descriptor = "buildpack.toml", srcs = None, extension = "tgz", strip_prefix = ".", visibility = None):
+def buildpack(name, executables, prefix, version, api = "0.8", srcs = None, extension = "tgz", strip_prefix = ".", visibility = None):
     """Macro to create a single buildpack as a tgz or tar archive.
 
     The result is a tar or tgz archive with a buildpack descriptor
@@ -16,8 +16,10 @@ def buildpack(name, executables, descriptor = "buildpack.toml", srcs = None, ext
 
     Args:
       name: the base name of the tar archive
-      descriptor: path to the `buildpack.toml`
       srcs: list of other files to include
+      prefix: the language name or group used as a namespace in the buildpack ID
+      version: the version of the buildpack
+      api: the buildpacks API version
       executables: list of labels of buildpack binaries
       strip_prefix: by default preserves the paths of srcs
       extension: tgz by default
@@ -37,19 +39,80 @@ def buildpack(name, executables, descriptor = "buildpack.toml", srcs = None, ext
         target = "main",
         link_name = "bin/detect",
     )
+    _buildpack_descriptor(
+        name = name + ".descriptor",
+        api = api,
+        version = version,
+        prefix = prefix,
+        bp_name = name,
+        output = "buildpack.toml",
+    )
 
     if not srcs:
         srcs = []
     pkg_tar(
         name = name,
         extension = extension,
-        srcs = [descriptor, "_link_build" + name, "_link_detect" + name] + srcs,
+        srcs = [
+            name + ".descriptor",
+            "_link_build" + name,
+            "_link_detect" + name,
+        ] + srcs,
         files = {
             executables[0]: "/bin/main",
         },
         strip_prefix = strip_prefix,
         visibility = visibility,
     )
+
+def _buildpack_descriptor_impl(ctx):
+    ctx.actions.expand_template(
+        output = ctx.outputs.output,
+        substitutions = {
+            "${API}": ctx.attr.api,
+            "${VERSION}": ctx.attr.version,
+            "${ID}": "google.{prefix}.{name}".format(
+                prefix = ctx.attr.prefix,
+                name = ctx.attr.bp_name.replace("_", "-"),
+            ),
+            "${NAME}": "{prefix} - {name}".format(
+                prefix = _pretty_prefix(ctx.attr.prefix),
+                name = ctx.attr.bp_name.replace("_", " ").title(),
+            ),
+        },
+        template = ctx.file._template,
+    )
+
+_buildpack_descriptor = rule(
+    implementation = _buildpack_descriptor_impl,
+    attrs = {
+        "api": attr.string(mandatory = True),
+        "version": attr.string(mandatory = True),
+        "bp_name": attr.string(mandatory = True),
+        "prefix": attr.string(mandatory = True),
+        "output": attr.output(mandatory = True),
+        "_template": attr.label(
+            default = ":buildpack.toml.template",
+            allow_single_file = True,
+        ),
+    },
+)
+
+def _pretty_prefix(prefix):
+    """Helper function to convert a buildpack prefix into a human readable name.
+
+    Args:
+      prefix: the namespace used in the buildpack id (eg dotnet, nodejs).
+    """
+    if prefix == "dotnet":
+        return ".NET"
+    if prefix == "php":
+        return "PHP"
+    if prefix == "nodejs":
+        return "Node.js"
+    if prefix == "cpp":
+        return "C++"
+    return prefix.title()
 
 def builder(name, image, descriptor = "builder.toml", buildpacks = None, groups = None, visibility = None):
     """Macro to create a set of targets for a builder with specified buildpacks.

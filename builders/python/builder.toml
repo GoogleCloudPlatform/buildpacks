@@ -41,8 +41,8 @@ description = "Unified builder all Python runtimes"
   uri = "archive_source.tgz"
 
 [[buildpacks]]
-  id = "google.utils.label"
-  uri = "label.tgz"
+  id = "google.utils.label-image"
+  uri = "label_image.tgz"
 
 [[buildpacks]]
   id = "google.python.link-runtime"
@@ -69,7 +69,7 @@ description = "Unified builder all Python runtimes"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # Python functions (gcf and gcp).
 [[order]]
@@ -95,7 +95,7 @@ description = "Unified builder all Python runtimes"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
   [[order.group]]
     id = "google.python.link-runtime"
@@ -118,7 +118,7 @@ description = "Unified builder all Python runtimes"
     id = "google.python.appengine"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
   [[order.group]]
     id = "google.python.link-runtime"
@@ -139,7 +139,7 @@ description = "Unified builder all Python runtimes"
     id = "google.config.entrypoint"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # gcp only
 # This buildpack group will always fail but with a clear message that the

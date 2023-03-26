@@ -17,8 +17,8 @@ description = "Builder for the Java runtime"
   uri = "entrypoint.tgz"
 
 [[buildpacks]]
-  id = "google.utils.label"
-  uri = "label.tgz"
+  id = "google.utils.label-image"
+  uri = "label_image.tgz"
 
 [[buildpacks]]
   id = "google.java.entrypoint"
@@ -45,7 +45,7 @@ description = "Builder for the Java runtime"
   uri = "java/runtime.tgz"
 
 [[buildpacks]]
-  id = "google.java.clear_source"
+  id = "google.java.clear-source"
   uri = "java/clear_source.tgz"
 
 # GAE Flex for maven
@@ -63,11 +63,11 @@ description = "Builder for the Java runtime"
     id = "google.java.entrypoint"
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # GAE Flex for gradle
 [[order]]
@@ -85,11 +85,11 @@ description = "Builder for the Java runtime"
     id = "google.java.entrypoint"
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # The GAE order group.
 [[order]]
@@ -103,11 +103,11 @@ description = "Builder for the Java runtime"
     id = "google.java.appengine"
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [[order]]
   [[order.group]]
@@ -121,11 +121,11 @@ description = "Builder for the Java runtime"
     id = "google.java.appengine"
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # The GCF order group.
 # We'll use google.java.maven to compile the function code if there is a pom.xml.
@@ -145,7 +145,7 @@ description = "Builder for the Java runtime"
     id = "google.java.functions-framework"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # We'll use google.java.gradle to compile the function code if there is a build.gradle.
 # In that case google.java.functions-framework will inspect the build.gradle to
@@ -169,7 +169,7 @@ description = "Builder for the Java runtime"
     id = "google.java.functions-framework"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # The GCP order group.
 # Functions have separate groups because entrypoint not supported.
@@ -184,11 +184,11 @@ description = "Builder for the Java runtime"
     id = "google.java.functions-framework"
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [[order]]
   [[order.group]]
@@ -202,11 +202,11 @@ description = "Builder for the Java runtime"
     id = "google.java.functions-framework"
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # Exploded Jars
 [[order]]
@@ -217,7 +217,7 @@ description = "Builder for the Java runtime"
     id = "google.java.exploded-jar"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # Maven applications.
 [[order]]
@@ -231,11 +231,11 @@ description = "Builder for the Java runtime"
     id = "google.config.entrypoint"
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [[order]]
   [[order.group]]
@@ -248,11 +248,11 @@ description = "Builder for the Java runtime"
     id = "google.java.entrypoint"
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # Gradle & Jar-based applications.
 [[order]]
@@ -267,11 +267,11 @@ description = "Builder for the Java runtime"
     id = "google.config.entrypoint"
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [[order]]
   [[order.group]]
@@ -285,11 +285,11 @@ description = "Builder for the Java runtime"
     id = "google.java.entrypoint"
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 
 # Currently built with //builders/gcp/base/stack/stack:build.

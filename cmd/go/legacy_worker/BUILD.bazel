@@ -13,6 +13,8 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "go",
+    version = "0.1.0",
     visibility = [
         "//builders:go_builders",
     ],

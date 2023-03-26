@@ -8,6 +8,8 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "config",
+    version = "0.9.0",
     visibility = [
         "//builders:__subpackages__",
     ],

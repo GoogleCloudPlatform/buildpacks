@@ -5,7 +5,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "entrypoint.tgz"
 
 [[buildpacks]]
-  id = "google.cpp.clear_source"
+  id = "google.cpp.clear-source"
   uri = "cpp/clear_source.tgz"
 
 [[buildpacks]]
@@ -41,7 +41,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "dotnet/functions_framework.tgz"
 
 [[buildpacks]]
-  id = "google.go.clear_source"
+  id = "google.go.clear-source"
   uri = "go/clear_source.tgz"
 
 [[buildpacks]]
@@ -97,7 +97,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "java/runtime.tgz"
 
 [[buildpacks]]
-  id = "google.java.clear_source"
+  id = "google.java.clear-source"
   uri = "java/clear_source.tgz"
 
 [[buildpacks]]
@@ -133,12 +133,12 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "python/missing_entrypoint.tgz"
 
 [[buildpacks]]
-  id = "google.utils.label"
-  uri = "label.tgz"
+  id = "google.utils.label-image"
+  uri = "label_image.tgz"
 
 [[buildpacks]]
   id = "google.ruby.runtime"
-  uri = "ruby/ruby_runtime.tgz"
+  uri = "ruby/runtime.tgz"
 
 [[buildpacks]]
   id = "google.ruby.rubygems"
@@ -208,7 +208,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # Prebuilt .NET applications.
 [[order]]
@@ -220,7 +220,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.config.entrypoint"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 ########
 # Dart #
@@ -258,11 +258,11 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     optional = true
 
   [[order.group]]
-    id = "google.go.clear_source"
+    id = "google.go.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [[order]]
 
@@ -280,11 +280,11 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     optional = true
 
   [[order.group]]
-    id = "google.go.clear_source"
+    id = "google.go.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [[order]]
 
@@ -303,11 +303,11 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     optional = true
 
   [[order.group]]
-    id = "google.go.clear_source"
+    id = "google.go.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 ########
 # Java #
@@ -332,11 +332,11 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     optional = true
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 
 # Functions have separate groups because entrypoint not supported.
@@ -351,11 +351,11 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.java.functions-framework"
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [[order]]
   [[order.group]]
@@ -369,11 +369,11 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.java.functions-framework"
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # Exploded Jars
 [[order]]
@@ -384,7 +384,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.java.exploded-jar"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # Maven applications.
 [[order]]
@@ -398,11 +398,11 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.config.entrypoint"
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [[order]]
   [[order.group]]
@@ -415,11 +415,11 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.java.entrypoint"
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # Gradle & Jar-based applications.
 [[order]]
@@ -434,11 +434,11 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.config.entrypoint"
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [[order]]
   [[order.group]]
@@ -452,11 +452,11 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.java.entrypoint"
 
   [[order.group]]
-    id = "google.java.clear_source"
+    id = "google.java.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 ##############
 # Python 1/2 #
@@ -482,7 +482,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # Python functions.
 [[order]]
@@ -501,7 +501,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # Python applications.
 # Entrypoint buildpack is required because it cannot be easily inferred.
@@ -517,7 +517,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.config.entrypoint"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 ###########
 # Ruby applications #
@@ -549,7 +549,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.config.entrypoint"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 #######
 # PHP #
@@ -570,7 +570,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
   [[order.group]]
     id = "google.config.entrypoint"
@@ -602,7 +602,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [[order]]
   [[order.group]]
@@ -620,7 +620,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # Separate groups for Node.js projects without dependencies.
 # Making both yarn and npm optional in the previous groups leads
@@ -639,7 +639,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # Node.js applications without a package.json.
 # Entrypoint is required because it cannot be read from package.json.
@@ -651,7 +651,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.config.entrypoint"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 ########
 # C++  #
@@ -667,11 +667,11 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.cpp.functions-framework"
 
   [[order.group]]
-    id = "google.cpp.clear_source"
+    id = "google.cpp.clear-source"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 ##############
 # Python 2/2 #

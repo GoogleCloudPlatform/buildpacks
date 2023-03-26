@@ -4,6 +4,7 @@ package(default_visibility = ["//:__subpackages__"])
 
 exports_files([
     "defs.bzl",
+    "buildpack.toml.template",
 ])
 
 # Used in builder macro in defs.bzl.

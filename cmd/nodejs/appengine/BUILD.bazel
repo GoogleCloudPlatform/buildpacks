@@ -10,6 +10,8 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "nodejs",
+    version = "0.9.0",
     visibility = [
         "//builders:nodejs_builders",
     ],

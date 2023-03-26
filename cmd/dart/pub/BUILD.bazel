@@ -10,6 +10,8 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "dart",
+    version = "0.1.0",
     visibility = [
         "//builders:dart_builders",
     ],

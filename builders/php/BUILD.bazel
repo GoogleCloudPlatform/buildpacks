@@ -17,7 +17,7 @@ builder(
         "//cmd/php/runtime:runtime.tgz",
         "//cmd/php/webconfig:webconfig.tgz",
         "//cmd/utils/archive_source:archive_source.tgz",
-        "//cmd/utils/label:label.tgz",
+        "//cmd/utils/label:label_image.tgz",
         "//cmd/utils/nginx:nginx.tgz",
     ],
     image = "gcp/php",

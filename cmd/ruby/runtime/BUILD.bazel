@@ -6,10 +6,12 @@ load("//tools:defs.bzl", "buildpack")
 licenses(["notice"])
 
 buildpack(
-    name = "ruby_runtime",
+    name = "runtime",
     executables = [
         ":main",
     ],
+    prefix = "ruby",
+    version = "0.0.1",
     visibility = [
         "//builders:ruby_builders",
     ],

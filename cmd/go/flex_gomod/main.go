@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements go/flex_gomod buildpack.
-// The flex_gomod buildpack sets up the path of the package to build for gomod applications.
+// Implements go/flex-gomod buildpack.
+// The flex-gomod buildpack sets up the path of the package to build for gomod applications.
 // It is heavily based on the appengine_gomod buildpack but without GAE Standard constraints.
 package main
 

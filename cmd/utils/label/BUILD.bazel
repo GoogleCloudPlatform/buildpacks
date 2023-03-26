@@ -6,10 +6,12 @@ load("//tools:defs.bzl", "buildpack")
 licenses(["notice"])
 
 buildpack(
-    name = "label",
+    name = "label_image",
     executables = [
         ":main",
     ],
+    prefix = "utils",
+    version = "0.0.2",
     visibility = [
         "//builders:__subpackages__",
     ],

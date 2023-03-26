@@ -24,9 +24,9 @@ func init() {
 
 const (
 	flex          = "google.config.flex"
-	flexGoMod     = "google.go.flex_gomod"
+	flexGoMod     = "google.go.flex-gomod"
 	goBuild       = "google.go.build"
-	goClearSource = "google.go.clear_source"
+	goClearSource = "google.go.clear-source"
 	goFF          = "google.go.functions-framework"
 	goMod         = "google.go.gomod"
 	goPath        = "google.go.gopath"

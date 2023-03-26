@@ -1,6 +1,6 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
 
-# Go flex_gomod Buildpack
+# Go flex-gomod Buildpack
 load("//tools:defs.bzl", "buildpack")
 
 licenses(["notice"])
@@ -10,6 +10,8 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "go",
+    version = "0.9.0",
     visibility = [
         "//builders:go_builders",
     ],

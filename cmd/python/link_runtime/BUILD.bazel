@@ -10,6 +10,8 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "python",
+    version = "0.0.1",
     visibility = [
         "//builders:python_builders",
     ],

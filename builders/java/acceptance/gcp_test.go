@@ -22,7 +22,7 @@ import (
 const (
 	// Buildpack identifiers used to verify that buildpacks were or were not used.
 	entrypoint      = "google.config.entrypoint"
-	javaClearSource = "google.java.clear_source"
+	javaClearSource = "google.java.clear-source"
 	javaEntrypoint  = "google.java.entrypoint"
 	javaExplodedJar = "google.java.exploded-jar"
 	javaGradle      = "google.java.gradle"

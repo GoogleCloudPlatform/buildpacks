@@ -10,6 +10,8 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "dotnet",
+    version = "0.9.1",
     visibility = [
         "//builders:dotnet_builders",
     ],

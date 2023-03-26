@@ -15,7 +15,7 @@ builder(
         "//cmd/dotnet/runtime:runtime.tgz",
         "//cmd/dotnet/sdk:sdk.tgz",
         "//cmd/utils/archive_source:archive_source.tgz",
-        "//cmd/utils/label:label.tgz",
+        "//cmd/utils/label:label_image.tgz",
     ],
     image = "gcp/dotnet",
 )

@@ -9,7 +9,7 @@ description = "Unified builder for the .NET runtime"
   uri = "appengine.tgz"
 
 [[buildpacks]]
-  id = "google.dotnet.appengine_main"
+  id = "google.dotnet.appengine-main"
   uri = "appengine_main.tgz"
 
 [[buildpacks]]
@@ -33,8 +33,8 @@ description = "Unified builder for the .NET runtime"
   uri = "archive_source.tgz"
 
 [[buildpacks]]
-  id = "google.utils.label"
-  uri = "label.tgz"
+  id = "google.utils.label-image"
+  uri = "label_image.tgz"
 
 # AppEngine order group
 [[order]]
@@ -43,7 +43,7 @@ description = "Unified builder for the .NET runtime"
     id = "google.dotnet.sdk"
 
   [[order.group]]
-    id = "google.dotnet.appengine_main"
+    id = "google.dotnet.appengine-main"
     optional = true
 
   [[order.group]]
@@ -57,7 +57,7 @@ description = "Unified builder for the .NET runtime"
     id = "google.dotnet.appengine"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # GCF order group
 [[order]]
@@ -78,7 +78,7 @@ description = "Unified builder for the .NET runtime"
     id = "google.dotnet.runtime"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # Cloud Run / General purpose order group
 [[order]]
@@ -101,7 +101,7 @@ description = "Unified builder for the .NET runtime"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # Prebuilt .NET applications.
 [[order]]
@@ -113,7 +113,7 @@ description = "Unified builder for the .NET runtime"
     id = "google.config.entrypoint"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [stack]
   id = "google.gae.18"

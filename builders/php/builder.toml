@@ -29,8 +29,8 @@ description = "Unified builder for the PHP runtime"
   uri = "webconfig.tgz"
 
 [[buildpacks]]
-  id = "google.utils.label"
-  uri = "label.tgz"
+  id = "google.utils.label-image"
+  uri = "label_image.tgz"
 
 [[buildpacks]]
   id = "google.utils.nginx"
@@ -75,7 +75,7 @@ description = "Unified builder for the PHP runtime"
     id = "google.php.cloudfunctions"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # PHP applications (gae)
 [[order]]
@@ -98,7 +98,7 @@ description = "Unified builder for the PHP runtime"
     id = "google.php.appengine"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # PHP applications (gcp and cloud-run)
 [[order]]
@@ -117,7 +117,7 @@ description = "Unified builder for the PHP runtime"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
   [[order.group]]
     id = "google.config.entrypoint"

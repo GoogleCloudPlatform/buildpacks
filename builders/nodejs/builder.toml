@@ -33,8 +33,8 @@ description = "Builder for the Node.js runtime"
   uri = "yarn.tgz"
 
 [[buildpacks]]
-  id = "google.utils.label"
-  uri = "label.tgz"
+  id = "google.utils.label-image"
+  uri = "label_image.tgz"
 
 [[buildpacks]]
   id = "google.config.flex"
@@ -52,7 +52,7 @@ description = "Builder for the Node.js runtime"
     id = "google.nodejs.yarn"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # GAE Flex for npm
 [[order]]
@@ -67,7 +67,7 @@ description = "Builder for the Node.js runtime"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # the GAE order group for yarn
 [[order]]
@@ -82,7 +82,7 @@ description = "Builder for the Node.js runtime"
     id = "google.nodejs.appengine"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # the GAE order group for npm
 [[order]]
@@ -98,7 +98,7 @@ description = "Builder for the Node.js runtime"
     id = "google.nodejs.appengine"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # The GCF order group for nodejs8 and yarn, this group must be before any
 # order with functions-framework marked as optional.
@@ -119,7 +119,7 @@ description = "Builder for the Node.js runtime"
     id = "google.nodejs.legacy-worker"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # The GCF order group for nodejs8 and npm, this group must be before any
 # order with functions-framework marked as optional.
@@ -139,7 +139,7 @@ description = "Builder for the Node.js runtime"
     id = "google.nodejs.legacy-worker"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # The GCP / GCF order group for yarn
 [[order]]
@@ -163,7 +163,7 @@ description = "Builder for the Node.js runtime"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # The GCP / GCF order group for npm
 [[order]]
@@ -187,7 +187,7 @@ description = "Builder for the Node.js runtime"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # Separate groups for Node.js projects without dependencies.
 # Making both yarn and npm optional in the previous groups leads
@@ -211,7 +211,7 @@ description = "Builder for the Node.js runtime"
     optional = true
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 # The GCP order group for Node.js applications without a package.json.
 # Entrypoint is required because it cannot be read from package.json.
@@ -223,7 +223,7 @@ description = "Builder for the Node.js runtime"
     id = "google.config.entrypoint"
 
   [[order.group]]
-    id = "google.utils.label"
+    id = "google.utils.label-image"
 
 [stack]
   id = "google.gae.18"
