@@ -17,22 +17,13 @@
 package main
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
-
-const (
-	bundleIndicator  = "Gemfile.lock"
-	bundle2Indicator = "gems.locked"
-	railsIndicator   = "bin/rails"
-	railsCommand     = "bin/rails server"
-	rackIndicator    = "config.ru"
-	rackCommand      = "rackup --port $PORT"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
 )
 
 func main() {
@@ -72,7 +63,7 @@ func buildFn(ctx *gcp.Context) error {
 func entrypoint(ctx *gcp.Context, srcDir string) (*appstart.Entrypoint, error) {
 	var ep string
 	ctx.Logf("WARNING: No entrypoint specified. Attempting to infer entrypoint, but it is recommended to set an explicit `entrypoint` in app.yaml.")
-	ep, err := inferEntrypoint(ctx, srcDir)
+	ep, err := ruby.InferEntrypoint(ctx, srcDir)
 	if err != nil {
 		return nil, err
 	}
@@ -81,34 +72,4 @@ func entrypoint(ctx *gcp.Context, srcDir string) (*appstart.Entrypoint, error) {
 		Type:    appstart.EntrypointGenerated.String(),
 		Command: ep,
 	}, nil
-}
-
-func inferEntrypoint(ctx *gcp.Context, srcDir string) (string, error) {
-	indicatorCmds := map[string]string{
-		railsIndicator: railsCommand,
-		rackIndicator:  rackCommand,
-	}
-	for indc, cmd := range indicatorCmds {
-		exists, err := ctx.FileExists(srcDir, indc)
-		if err != nil {
-			return "", err
-		}
-		if exists {
-			return maybeBundle(ctx, srcDir, cmd)
-		}
-	}
-	return "", gcp.UserErrorf("unable to infer entrypoint, please set the `entrypoint` field in app.yaml: https://cloud.google.com/appengine/docs/standard/ruby/runtime#application_startup")
-}
-
-func maybeBundle(ctx *gcp.Context, srcDir, cmd string) (string, error) {
-	for _, indc := range []string{bundleIndicator, bundle2Indicator} {
-		exists, err := ctx.FileExists(srcDir, indc)
-		if err != nil {
-			return "", err
-		}
-		if exists {
-			return fmt.Sprintf("bundle exec %s", cmd), nil
-		}
-	}
-	return cmd, nil
 }

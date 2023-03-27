@@ -5,6 +5,7 @@ licenses(["notice"])
 go_library(
     name = "ruby",
     srcs = [
+        "entrypoint.go",
         "gemfile.go",
         "ruby.go",
     ],
@@ -25,6 +26,7 @@ go_library(
 go_test(
     name = "ruby_test",
     srcs = [
+        "entrypoint_test.go",
         "gemfile_test.go",
         "ruby_test.go",
     ],

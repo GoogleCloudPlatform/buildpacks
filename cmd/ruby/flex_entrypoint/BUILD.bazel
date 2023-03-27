@@ -1,12 +1,12 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
-# Buildpack for Ruby on App Engine.
+# Go flex_gomod Buildpack
 load("//tools:defs.bzl", "buildpack")
 
 licenses(["notice"])
 
 buildpack(
-    name = "appengine",
+    name = "flex_entrypoint",
     executables = [
         ":main",
     ],
@@ -26,23 +26,9 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/appengine",
-        "//pkg/appstart",
+        "//pkg/appyaml",
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/ruby",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = [
-        "//internal/buildpacktest",
-        "//pkg/appstart",
-        "//pkg/gcpbuildpack",
     ],
 )

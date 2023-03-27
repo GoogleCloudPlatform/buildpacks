@@ -5,6 +5,10 @@ description = "Builder for the Ruby runtime"
   uri = "functions_framework.tgz"
 
 [[buildpacks]]
+  id = "google.config.flex"
+  uri = "flex.tgz"
+
+[[buildpacks]]
   id = "google.utils.archive-source"
   uri = "archive_source.tgz"
 
@@ -15,6 +19,10 @@ description = "Builder for the Ruby runtime"
 [[buildpacks]]
   id = "google.ruby.appengine"
   uri = "appengine.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.flex-entrypoint"
+  uri = "flex_entrypoint.tgz"
 
 [[buildpacks]]
   id = "google.config.entrypoint"
@@ -47,6 +55,31 @@ description = "Builder for the Ruby runtime"
 [[buildpacks]]
   id = "google.utils.label-image"
   uri = "label_image.tgz"
+
+# The GAE Flex order group.
+[[order]]
+    [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.ruby.runtime"
+
+  [[order.group]]
+    id = "google.ruby.bundle"
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.rails"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.flex-entrypoint"
+
+    [[order.group]]
+    id = "google.utils.label-image"
 
 # The GAE order group.
 [[order]]

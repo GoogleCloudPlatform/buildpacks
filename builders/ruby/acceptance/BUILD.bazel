@@ -49,6 +49,12 @@ VERSIONS_WITH_GCF_SUPPORT = [
     VERSION_RUBY32,
 ]
 
+VERSIONS_WITH_FLEX_SUPPORT = [
+    VERSION_RUBY27,
+    VERSION_RUBY30,
+    VERSION_RUBY32,
+]
+
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
 
 acceptance_test_suite(
@@ -102,6 +108,17 @@ acceptance_test_suite(
     rundir = ".",
     testdata = "//builders/testdata/ruby:functions",
     versions = VERSIONS_WITH_GCF_SUPPORT,
+)
+
+acceptance_test_suite(
+    name = "flex_test",
+    srcs = [
+        "flex_test.go",
+    ],
+    builder = "//builders/ruby:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/ruby:flex",
+    versions = VERSIONS_WITH_FLEX_SUPPORT,
 )
 
 acceptance_test_argo_source(
