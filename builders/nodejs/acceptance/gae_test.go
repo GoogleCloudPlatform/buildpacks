@@ -86,6 +86,11 @@ func TestAcceptance(t *testing.T) {
 			MustOutputCached: []string{"Already up-to-date."},
 		},
 		{
+			App:     "typescript",
+			MustUse: []string{npm},
+			Env:     []string{"GOOGLE_EXPERIMENTAL_NODEJS_NPM_BUILD_ENABLED=true"},
+		},
+		{
 			App:        "gcp_build_npm",
 			MustUse:    []string{npm},
 			MustNotUse: []string{yarn},

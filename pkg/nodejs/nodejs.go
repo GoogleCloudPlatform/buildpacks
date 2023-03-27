@@ -31,6 +31,8 @@ import (
 )
 
 const (
+	// EnvNodeEnv is the name of the NODE_ENV environment variable.
+	EnvNodeEnv = "NODE_ENV"
 	// EnvDevelopment represents a NODE_ENV development value.
 	EnvDevelopment = "development"
 	// EnvProduction represents a NODE_ENV production value.
@@ -58,6 +60,7 @@ type packageEnginesJSON struct {
 type packageScriptsJSON struct {
 	Start    string `json:"start"`
 	GCPBuild string `json:"gcp-build"`
+	Build    string `json:"build"`
 }
 
 // PackageJSON represents the contents of a package.json file.
@@ -147,7 +150,7 @@ func isPreNode11(ctx *gcp.Context) (bool, error) {
 
 // NodeEnv returns the value of NODE_ENV or `production`.
 func NodeEnv() string {
-	nodeEnv := os.Getenv("NODE_ENV")
+	nodeEnv := os.Getenv(EnvNodeEnv)
 	if nodeEnv == "" {
 		nodeEnv = EnvProduction
 	}

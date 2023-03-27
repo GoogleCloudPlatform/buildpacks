@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
@@ -30,7 +32,9 @@ import (
 )
 
 const (
-	cacheTag = "prod dependencies"
+	cacheTag                = "prod dependencies"
+	googleNodeRunScriptsEnv = "GOOGLE_NODE_RUN_SCRIPTS"
+	nodejsNPMBuildEnv       = "GOOGLE_EXPERIMENTAL_NODEJS_NPM_BUILD_ENABLED"
 )
 
 func main() {
@@ -74,10 +78,17 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	nodeEnv := nodejs.NodeEnv()
-	gcpBuild := nodejs.HasGCPBuild(pjs)
-	if gcpBuild {
-		nodeEnv = nodejs.EnvDevelopment
+	buildCmds := determineBuildCommands(pjs)
+	// Respect the user's NODE_ENV value if it's set
+	nodeEnv, nodeEnvPresent := os.LookupEnv(nodejs.EnvNodeEnv)
+	if !nodeEnvPresent {
+		if len(buildCmds) > 0 {
+			// Assume that dev dependencies are required to run build scripts to
+			// support the most use cases possible.
+			nodeEnv = nodejs.EnvDevelopment
+		} else {
+			nodeEnv = nodejs.EnvProduction
+		}
 	}
 	cached, err := nodejs.CheckOrClearCache(ctx, ml, cache.WithStrings(nodeEnv), cache.WithFiles("package.json", lockfile))
 	if err != nil {
@@ -114,11 +125,15 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	}
 
-	if gcpBuild {
-		if _, err := ctx.Exec([]string{"npm", "run", "gcp-build"}, gcp.WithUserAttribution); err != nil {
-			return err
+	if len(buildCmds) > 0 {
+		// If there are multiple build scripts to run, run them one-by-one so the logs are
+		// easier to understand.
+		for _, cmd := range buildCmds {
+			split := strings.Split(cmd, " ")
+			if _, err := ctx.Exec(split, gcp.WithUserAttribution); err != nil {
+				return err
+			}
 		}
-		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmGcpBuildUsageCounterID).Increment(1)
 
 		shouldPrune, err := shouldPrune(ctx, pjs)
 		if err != nil {
@@ -137,7 +152,7 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating layer: %w", err)
 	}
 	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
-	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
+	el.SharedEnvironment.Default("NODE_ENV", nodeEnv)
 
 	// Configure the entrypoint for production.
 	cmd := []string{"npm", "start"}
@@ -157,6 +172,49 @@ func buildFn(ctx *gcp.Context) error {
 	devmode.AddSyncMetadata(ctx, devmode.NodeSyncRules)
 
 	return nil
+}
+
+// determineBuildCommands returns a list of "npm run" commands to be executed during the build.
+// Users can specify npm scripts to run in three ways, with the following order of precedence:
+// 1. GOOGLE_NODE_RUN_SCRIPTS env var
+// 2. "gcp-build" script in package.json
+// 3. "build" script in package.json
+func determineBuildCommands(pjs *nodejs.PackageJSON) []string {
+	cmds := []string{}
+	envScript, envScriptPresent := os.LookupEnv(googleNodeRunScriptsEnv)
+	if envScriptPresent {
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmGoogleNodeRunScriptsUsageCounterID).Increment(1)
+		// Setting `GOOGLE_NODE_RUN_SCRIPTS=` preserves legacy behavior where "npm run build" was NOT
+		// run, even though "build" was provided.
+		if strings.TrimSpace(envScript) == "" {
+			return []string{}
+		}
+
+		scripts := strings.Split(envScript, ",")
+		for _, s := range scripts {
+			cmds = append(cmds, fmt.Sprintf("npm run %s", strings.TrimSpace(s)))
+		}
+
+		return cmds
+	}
+
+	if nodejs.HasGCPBuild(pjs) {
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmGcpBuildUsageCounterID).Increment(1)
+		return []string{"npm run gcp-build"}
+	}
+
+	if pjs != nil && pjs.Scripts.Build != "" {
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmBuildUsageCounterID).Increment(1)
+
+		// Env var guards an experimental feature to run "npm run build" by default.
+		shouldBuild, err := strconv.ParseBool(os.Getenv(nodejsNPMBuildEnv))
+		// If there was an error reading the env var, don't run the script.
+		if err == nil && shouldBuild {
+			return []string{"npm run build"}
+		}
+	}
+
+	return []string{}
 }
 
 func shouldPrune(ctx *gcp.Context, pjs *nodejs.PackageJSON) (bool, error) {

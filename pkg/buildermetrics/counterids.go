@@ -31,10 +31,13 @@ type CounterID string
 // the buildermetrics package will be able to track a new Counter metric.
 //
 // Intended usage:
-//   buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.MyNewMetric).Increment(1)
+//
+//	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.MyNewMetric).Increment(1)
 const (
-	ArNpmCredsGenCounterID    CounterID = "1"
-	NpmGcpBuildUsageCounterID CounterID = "2"
+	ArNpmCredsGenCounterID                CounterID = "1"
+	NpmGcpBuildUsageCounterID             CounterID = "2"
+	NpmBuildUsageCounterID                CounterID = "3"
+	NpmGoogleNodeRunScriptsUsageCounterID CounterID = "4"
 )
 
 var (
@@ -46,6 +49,14 @@ var (
 		NpmGcpBuildUsageCounterID: Descriptor{
 			"npm_gcp_build_script_uses",
 			"The number of times the gcp-build script is used by npm developers",
+		},
+		NpmBuildUsageCounterID: Descriptor{
+			"npm_build_script_uses",
+			"The number of times an npm build script is used by npm developers",
+		},
+		NpmGoogleNodeRunScriptsUsageCounterID: Descriptor{
+			"npm_google_node_run_script_uses",
+			"The number of times the GOOGLE_NODE_RUN_SCRIPTS env var is used by npm developers",
 		},
 	}
 )
