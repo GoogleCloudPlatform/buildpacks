@@ -21,7 +21,6 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -92,8 +91,8 @@ func buildFn(ctx *gcp.Context) error {
 			"--nginxErrLogFilePath", filepath.Join(l.Path, nginxLog),
 			"--customAppCmd", fmt.Sprintf("%q", fmt.Sprintf("%s -R --nodaemonize --fpm-config %s", defaultFPMBinary, fpmConfFile.Name())),
 			"--pid1LogFilePath", filepath.Join(l.Path, pid1Log),
-			// Ideally, we should be able to use the path of the nginx layer and not hardcode it here.
-			// This needs some investigation on how to pass values between build steps of buildpacks.
+			// ideally, we should be able to use the path of the nginx layer and not hardcode it here.
+			// this needs some investigation on how to pass values between build steps of buildpacks.
 			"--mimeTypesPath", filepath.Join("/layers/google.utils.nginx/nginx", "conf/mime.types"),
 			"--customAppSocket", filepath.Join(l.Path, appSocket),
 		}
@@ -133,7 +132,6 @@ func fpmConfig(l string) (nginx.FPMConfig, error) {
 		ListenAddress:  filepath.Join(l, appSocket),
 		DynamicWorkers: defaultDynamicWorkers,
 		Username:       user.Username,
-		Runtime:        strings.ToLower(strings.TrimSpace(os.Getenv(env.Runtime))),
 	}
 
 	return fpm, nil
