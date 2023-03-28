@@ -27,6 +27,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 )
@@ -209,7 +210,16 @@ func determineBuildCommands(pjs *nodejs.PackageJSON) []string {
 		// Env var guards an experimental feature to run "npm run build" by default.
 		shouldBuild, err := strconv.ParseBool(os.Getenv(nodejsNPMBuildEnv))
 		// If there was an error reading the env var, don't run the script.
-		if err == nil && shouldBuild {
+		if err != nil {
+			return []string{}
+		}
+
+		// If using the OSS builder, run "npm run build" by default.
+		if os.Getenv(env.XGoogleTargetPlatform) == "" {
+			shouldBuild = true
+		}
+
+		if shouldBuild {
 			return []string{"npm run build"}
 		}
 	}

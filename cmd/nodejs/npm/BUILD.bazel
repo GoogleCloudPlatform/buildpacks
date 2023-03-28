@@ -30,6 +30,7 @@ go_binary(
         "//pkg/buildermetrics",
         "//pkg/cache",
         "//pkg/devmode",
+        "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/nodejs",
     ],
@@ -50,6 +51,7 @@ go_test(
     deps = [
         "//internal/buildpacktest",
         "//internal/mockprocess",
+        "//pkg/env",
         "//pkg/nodejs",
         "@com_github_google_go-cmp//cmp:go_default_library",
     ],

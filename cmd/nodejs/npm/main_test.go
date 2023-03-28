@@ -23,6 +23,7 @@ import (
 
 	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 )
 
@@ -184,6 +185,7 @@ func TestDetermineBuildCommands(t *testing.T) {
 		nodeRunScriptSet           bool
 		nodeRunScriptValue         string // ignored if `nodeRunScriptSet == false`
 		nodejsNPMBuildExperimentOn bool
+		targetPlatformSet          bool
 		want                       []string
 	}{
 		{
@@ -219,6 +221,7 @@ func TestDetermineBuildCommands(t *testing.T) {
 				}
 			}`,
 			nodejsNPMBuildExperimentOn: true,
+			targetPlatformSet:          true,
 			want:                       []string{"npm run build"},
 		},
 		{
@@ -230,7 +233,20 @@ func TestDetermineBuildCommands(t *testing.T) {
 				}
 			}`,
 			nodejsNPMBuildExperimentOn: false,
+			targetPlatformSet:          true,
 			want:                       []string{},
+		},
+		{
+			name: "experiment only matters if target platform is set",
+			pjs: `{
+				"scripts": {
+					"build": "tsc --build",
+					"clean": "tsc --build --clean"
+				}
+			}`,
+			nodejsNPMBuildExperimentOn: true,
+			targetPlatformSet:          false,
+			want:                       []string{"npm run build"},
 		},
 		{
 			name: "gcp-build script",
@@ -285,6 +301,10 @@ func TestDetermineBuildCommands(t *testing.T) {
 
 			if tc.nodejsNPMBuildExperimentOn {
 				t.Setenv(nodejsNPMBuildEnv, "true")
+			}
+
+			if tc.targetPlatformSet {
+				t.Setenv(env.XGoogleTargetPlatform, env.TargetPlatformAppEngine)
 			}
 
 			var pjs *nodejs.PackageJSON
