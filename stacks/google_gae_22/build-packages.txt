@@ -4,6 +4,7 @@ blt-dev
 build-essential
 bzip2
 ca-certificates
+checkinstall
 curl
 debhelper
 dpkg-dev
@@ -48,6 +49,8 @@ libldap-2.5-0
 libldap-common
 libldap2-dev
 liblzma-dev
+libmagickcore-dev
+libmagickwand-dev
 libmemcached-dev
 libmpdec-dev
 libmysqlclient-dev
@@ -76,6 +79,7 @@ libwebp-dev
 libxml2-dev
 libxslt1-dev
 libyaml-dev
+libzip-dev
 locales
 lsb-release
 mime-support
