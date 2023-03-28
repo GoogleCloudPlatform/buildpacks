@@ -21,7 +21,12 @@ COPY build-packages.txt /tmp/packages.txt
 
 # Version identifier of the image.
 ARG CANDIDATE_NAME
-RUN \
+RUN --mount=type=secret,id=pro-attach-config \
+  apt-get update -y && \
+  # Here we install `pro` (ubuntu-advantage-tools) as well as ca-certificates,
+  # which is required to talk to the Ubuntu Pro authentication server securely.
+  apt-get install --no-install-recommends -y ubuntu-advantage-tools ca-certificates && \
+  (pro attach --attach-config /run/secrets/pro-attach-config || true) && \
   # Write version information
   mkdir -p /usr/local/versions && \
     echo ${CANDIDATE_NAME} > /usr/local/versions/run_base && \
@@ -35,10 +40,12 @@ RUN \
   apt-get upgrade -y --no-install-recommends --allow-remove-essential && \
   xargs -a /tmp/packages.txt \
     apt-get -y -qq --no-install-recommends --allow-remove-essential install && \
+  apt-get purge --auto-remove -y ubuntu-advantage-tools && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/* && \
   rm /tmp/packages.txt && \
   unset DEBIAN_FRONTEND && \
+  rm -rf /run/ubuntu-advantage && \
   # Restore universe and multiverse repositories to ease extending our stacks
   mv /etc/apt/sources.list.universe /etc/apt/sources.list && \
   # Configure the system locale
