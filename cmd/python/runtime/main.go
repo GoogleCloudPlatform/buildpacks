@@ -90,20 +90,12 @@ func buildFn(ctx *gcp.Context) error {
 			path,
 		}, gcp.WithUserAttribution)
 	}
-
 	// Set the PYTHONHOME for flex apps because of uwsgi
 	if env.IsFlex() {
 		layer.LaunchEnvironment.Default("PYTHONHOME", layer.Path)
 	}
-
 	// Force stdout/stderr streams to be unbuffered so that log messages appear immediately in the logs.
 	layer.LaunchEnvironment.Default("PYTHONUNBUFFERED", "TRUE")
-	ctx.Logf("Upgrading pip to the latest version and installing build tools")
-	path := filepath.Join(layer.Path, "bin/python3")
-	if _, err := ctx.Exec([]string{path, "-m", "pip", "install", "--upgrade", "pip", "setuptools==v64.0.0", "wheel"}, gcp.WithUserAttribution); err != nil {
-		return err
-	}
-
 	return nil
 }
 
