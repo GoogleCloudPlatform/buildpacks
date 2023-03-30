@@ -24,6 +24,10 @@ set -euo pipefail
 if [[ -v KOKORO_ARTIFACTS_DIR ]]; then
   cd "${KOKORO_ARTIFACTS_DIR}/git/buildpacks"
   use_bazel.sh 4.1.0
+
+  # Move docker storage location to scratch disk so we don't run out of space.
+  echo 'DOCKER_OPTS="${DOCKER_OPTS} --data-root=/tmpfs/docker"' | sudo tee --append /etc/default/docker
+  sudo service docker restart
 else
   export KOKORO_ARTIFACTS_DIR="$(mktemp -d)"
   echo "Setting KOKORO_ARTIFACTS_DIR=$KOKORO_ARTIFACTS_DIR"
