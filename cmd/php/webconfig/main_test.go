@@ -15,9 +15,14 @@
 package main
 
 import (
+	"io/ioutil"
+	"os"
+	"strings"
 	"testing"
 
 	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func TestDetect(t *testing.T) {
@@ -50,6 +55,54 @@ func TestDetect(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			bpt.TestDetect(t, detectFn, tc.name, tc.files, nil, tc.want)
+		})
+	}
+}
+
+func TestPhpFpm_DisableDecorateWorkersOutput_ForPhp_Gt_php72(t *testing.T) {
+	testCases := []struct {
+		name                             string
+		runtime                          string
+		wantDecorateWorkersOutputEqualNo bool
+	}{
+		{
+			name:                             "runtime is php55, decorate_workers_output unset",
+			runtime:                          "php55",
+			wantDecorateWorkersOutputEqualNo: false,
+		},
+		{
+			name:                             "runtime is php72, decorate_workers_output unset",
+			runtime:                          "php72",
+			wantDecorateWorkersOutputEqualNo: false,
+		},
+		{
+			name:                             "runtime is php73, decorate_workers_output set to no",
+			runtime:                          "php73",
+			wantDecorateWorkersOutputEqualNo: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcpbuildpack.NewContext()
+			os.Setenv(env.Runtime, tc.runtime)
+
+			f, err := writeFpmConfig(ctx, os.TempDir())
+			if err != nil {
+				t.Fatalf("Encountered an error generating FPM config: %v", err)
+			}
+			filename := f.Name()
+			f.Close()
+
+			cfgBytes, err := ioutil.ReadFile(filename)
+			if err != nil {
+				t.Fatalf("Could not read conf file, %v: %v", filename, err)
+			}
+			got := strings.Contains(string(cfgBytes), "decorate_workers_output = no")
+			if got != tc.wantDecorateWorkersOutputEqualNo {
+				t.Errorf("Incorrect `strings.Contains(string(cfgBytes), \"decorate_workers_output = no\")` value for runtime %v. got: %v, want: %v", tc.runtime, got, tc.wantDecorateWorkersOutputEqualNo)
+			}
+			os.Remove(filename)
 		})
 	}
 }
