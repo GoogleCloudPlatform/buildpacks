@@ -180,13 +180,13 @@ func TestBuild(t *testing.T) {
 
 func TestDetermineBuildCommands(t *testing.T) {
 	testsCases := []struct {
-		name                       string
-		pjs                        string
-		nodeRunScriptSet           bool
-		nodeRunScriptValue         string // ignored if `nodeRunScriptSet == false`
-		nodejsNPMBuildExperimentOn bool
-		targetPlatformSet          bool
-		want                       []string
+		name                   string
+		pjs                    string
+		nodeRunScriptSet       bool
+		nodeRunScriptValue     string // ignored if `nodeRunScriptSet == false`
+		nodejsNpmbuildEnvValue string
+		targetPlatformSet      bool
+		want                   []string
 	}{
 		{
 			name:             "no build",
@@ -220,9 +220,9 @@ func TestDetermineBuildCommands(t *testing.T) {
 					"clean": "tsc --build --clean"
 				}
 			}`,
-			nodejsNPMBuildExperimentOn: true,
-			targetPlatformSet:          true,
-			want:                       []string{"npm run build"},
+			nodejsNpmbuildEnvValue: "true",
+			targetPlatformSet:      true,
+			want:                   []string{"npm run build"},
 		},
 		{
 			name: "build script experiment off",
@@ -232,9 +232,9 @@ func TestDetermineBuildCommands(t *testing.T) {
 					"clean": "tsc --build --clean"
 				}
 			}`,
-			nodejsNPMBuildExperimentOn: false,
-			targetPlatformSet:          true,
-			want:                       []string{},
+			nodejsNpmbuildEnvValue: "false",
+			targetPlatformSet:      true,
+			want:                   []string{},
 		},
 		{
 			name: "experiment only matters if target platform is set",
@@ -244,9 +244,21 @@ func TestDetermineBuildCommands(t *testing.T) {
 					"clean": "tsc --build --clean"
 				}
 			}`,
-			nodejsNPMBuildExperimentOn: true,
-			targetPlatformSet:          false,
-			want:                       []string{"npm run build"},
+			nodejsNpmbuildEnvValue: "true",
+			targetPlatformSet:      false,
+			want:                   []string{"npm run build"},
+		},
+		{
+			name: "error parsing experiment env var ignored if target platform is set",
+			pjs: `{
+				"scripts": {
+					"build": "tsc --build",
+					"clean": "tsc --build --clean"
+				}
+			}`,
+			nodejsNpmbuildEnvValue: "",
+			targetPlatformSet:      false,
+			want:                   []string{"npm run build"},
 		},
 		{
 			name: "gcp-build script",
@@ -299,8 +311,8 @@ func TestDetermineBuildCommands(t *testing.T) {
 				t.Setenv(googleNodeRunScriptsEnv, tc.nodeRunScriptValue)
 			}
 
-			if tc.nodejsNPMBuildExperimentOn {
-				t.Setenv(nodejsNPMBuildEnv, "true")
+			if tc.nodejsNpmbuildEnvValue != "" {
+				t.Setenv(nodejsNPMBuildEnv, tc.nodejsNpmbuildEnvValue)
 			}
 
 			if tc.targetPlatformSet {
