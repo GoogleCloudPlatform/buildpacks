@@ -100,6 +100,16 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{phpRuntime, phpWebConfig, utilsNginx},
 			MustNotUse: []string{entrypoint},
 		},
+		{
+			// Ubuntu 22 only supports php82 which is still being released.
+			// Need to enable this test back once php82 is released.
+			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22"},
+			Name:       "composer.json with gcp-build script and no dependencies",
+			App:        "gcp_build_no_dependencies",
+			MustMatch:  "PASS_PHP_GCP_BUILD",
+			MustUse:    []string{composer, composerGCPBuild, composerInstall, phpRuntime, phpWebConfig, utilsNginx},
+			MustNotUse: []string{entrypoint},
+		},
 	}
 
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {

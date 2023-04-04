@@ -71,6 +71,7 @@ builder(
         "php": [
             "//cmd/php/composer:composer.tgz",
             "//cmd/php/composer_install:composer_install.tgz",
+            "//cmd/php/composer_gcp_build:composer_gcp_build.tgz",
             "//cmd/php/runtime:runtime.tgz",
             "//cmd/php/webconfig:webconfig.tgz",
         ],
@@ -146,6 +147,7 @@ builder(
         "php": [
             "//cmd/php/composer:composer.tgz",
             "//cmd/php/composer_install:composer_install.tgz",
+            "//cmd/php/composer_gcp_build:composer_gcp_build.tgz",
             "//cmd/php/runtime:runtime.tgz",
             "//cmd/php/webconfig:webconfig.tgz",
         ],

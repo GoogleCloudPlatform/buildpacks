@@ -75,6 +75,13 @@ func TestAcceptance(t *testing.T) {
 			MustUse:                    []string{composer, composerInstall, phpRuntime, phpWebConfig, utilsNginx},
 			MustNotUse:                 []string{composerGCPBuild, functionFramework, cloudFunctions, entrypoint},
 		},
+		{
+			Name:       "composer.json with gcp-build script and no dependencies",
+			App:        "gcp_build_no_dependencies",
+			MustMatch:  "PASS_PHP_GCP_BUILD",
+			MustUse:    []string{composer, composerGCPBuild, composerInstall, phpRuntime, phpWebConfig, utilsNginx},
+			MustNotUse: []string{functionFramework, cloudFunctions, entrypoint},
+		},
 	}
 
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {

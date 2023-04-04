@@ -165,6 +165,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
   uri = "php/composer_install.tgz"
 
 [[buildpacks]]
+   id = "google.php.composer-gcp-build"
+   uri = "php/composer_gcp_build.tgz"
+
+[[buildpacks]]
   id = "google.php.runtime"
   uri = "php/runtime.tgz"
 
@@ -555,6 +559,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.php.composer-install"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer-gcp-build"
     optional = true
 
   [[order.group]]
