@@ -36,8 +36,8 @@ import (
 //		by the user.
 //
 //	 o If the GOOGLE_RUNTIME environment variable is set to a value that starts with the wantRuntime
-//		value this returns an OptIn result. Indicates a gae or gcf build where the environment value
-//		is set to a Google runtime name such as 'python37' which is supported by the buildpack
+//		value this returns an OptIn reult. Indicates a gae or gcf build where the environment value
+//		is set to a Google runtime name such ase 'python37' which is supported by the buildpack
 //		performing detection.
 //
 //	 o If the GOOGLE_RUNTIME environment variable is set to another value this returns an OptOut result..
