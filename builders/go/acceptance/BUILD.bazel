@@ -40,6 +40,7 @@ VERSIONS_GAE_SUPPORT = VERSIONS_ALL_PRODUCTS
 VERSIONS_WITH_FLEX_SUPPORT = [
     "1.18",
     "1.19",
+    "1.20",
 ]
 
 # The product versions for which there is explicit, tested GCP support. Technically any version is available
