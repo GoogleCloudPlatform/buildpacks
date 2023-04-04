@@ -5,12 +5,20 @@ description = "Unified builder for the .NET runtime"
   uri = "entrypoint.tgz"
 
 [[buildpacks]]
+  id = "google.config.flex"
+  uri = "flex.tgz"
+
+[[buildpacks]]
   id = "google.dotnet.appengine"
   uri = "appengine.tgz"
 
 [[buildpacks]]
   id = "google.dotnet.appengine-main"
   uri = "appengine_main.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.flex"
+  uri = "dotnet/flex.tgz"
 
 [[buildpacks]]
   id = "google.dotnet.functions-framework"
@@ -36,7 +44,28 @@ description = "Unified builder for the .NET runtime"
   id = "google.utils.label-image"
   uri = "label_image.tgz"
 
-# AppEngine order group
+# GAE Flex order group
+[[order]]
+
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.dotnet.flex"
+
+  [[order.group]]
+    id = "google.dotnet.sdk"
+
+  [[order.group]]
+    id = "google.dotnet.publish"
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# GAE Standard order group
 [[order]]
 
   [[order.group]]

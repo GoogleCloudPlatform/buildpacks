@@ -28,10 +28,8 @@ import (
 )
 
 const (
-	runtimeLayerName         = "runtime"
-	aspnetRuntimeURL         = "https://dotnetcli.azureedge.net/dotnet/aspnetcore/Runtime/%[1]s/aspnetcore-runtime-%[1]s-linux-x64.tar.gz"
-	uncachedAspnetRuntimeURL = "https://dotnetcli.blob.core.windows.net/dotnet/aspnetcore/Runtime/%[1]s/aspnetcore-runtime-%[1]s-linux-x64.tar.gz"
-	versionKey               = "version"
+	runtimeLayerName = "runtime"
+	versionKey       = "version"
 )
 
 func main() {

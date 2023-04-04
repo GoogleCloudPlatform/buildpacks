@@ -8,6 +8,7 @@ builder(
     name = "builder",
     buildpacks = [
         "//cmd/config/entrypoint:entrypoint.tgz",
+        "//cmd/config/flex:flex.tgz",
         "//cmd/dotnet/appengine:appengine.tgz",
         "//cmd/dotnet/appengine_main:appengine_main.tgz",
         "//cmd/dotnet/functions_framework:functions_framework.tgz",
@@ -17,5 +18,10 @@ builder(
         "//cmd/utils/archive_source:archive_source.tgz",
         "//cmd/utils/label:label_image.tgz",
     ],
+    groups = {
+        "dotnet": [
+            "//cmd/dotnet/flex:flex.tgz",
+        ],
+    },
     image = "gcp/dotnet",
 )

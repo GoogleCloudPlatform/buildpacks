@@ -151,15 +151,7 @@ func TestDetect(t *testing.T, detectFn gcp.DetectFn, testName string, files map[
 // A child process will be started that looks for that test name. The child
 // process will run a buildpack phase instead of the test again, however.
 func TestDetectWithStack(t *testing.T, detectFn gcp.DetectFn, testName string, files map[string]string, envs []string, stack string, want int) {
-	result, err := runBuildpackPhaseForTest(t, &config{
-		buildpackPhase: detectPhase,
-		detectFn:       detectFn,
-		testName:       testName,
-		files:          files,
-		envs:           envs,
-		stack:          stack,
-		want:           want,
-	})
+	result, err := RunDetectPhaseForTest(t, detectFn, testName, files, envs, stack, want)
 
 	if result.ExitCode != want {
 		t.Errorf("unexpected exit status %d, want %d", result.ExitCode, want)
@@ -188,6 +180,19 @@ func RunBuild(t *testing.T, buildFn gcp.BuildFn, opts ...Option) (*Result, error
 	}
 
 	return runBuildpackPhaseForTest(t, cfg)
+}
+
+// RunDetectPhaseForTest runs a detect phase and reports the outcome.
+func RunDetectPhaseForTest(t *testing.T, detectFn gcp.DetectFn, testName string, files map[string]string, envs []string, stack string, want int) (*Result, error) {
+	return runBuildpackPhaseForTest(t, &config{
+		buildpackPhase: detectPhase,
+		detectFn:       detectFn,
+		testName:       testName,
+		files:          files,
+		envs:           envs,
+		stack:          stack,
+		want:           want,
+	})
 }
 
 // runBuildpackPhaseForTest runs a buildpack phase as a separate child process.
