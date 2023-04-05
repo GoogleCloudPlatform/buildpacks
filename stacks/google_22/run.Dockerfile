@@ -50,7 +50,10 @@ RUN \
   # Nothing in this image requires an additional license, but we need to add an
   # empty license.yaml so the license validation doesn't fail.
   mkdir -p /.google/usr/local/share/licenses/base_runtime/ && \
-  touch /.google/usr/local/share/licenses/base_runtime/licenses.yaml
+  touch /.google/usr/local/share/licenses/base_runtime/licenses.yaml && \
+  # Remove /var/log/* because nginx attempts to write to it.
+  chmod a+w /var/log && \
+  rm -rf /var/log/*
 
 USER cnb
 

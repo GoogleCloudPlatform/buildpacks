@@ -1,6 +1,9 @@
 ca-certificates
 libexpat1
 libicu70
+libonig5
+libsqlite3-0
+libxml2
 libyaml-0-2
 locales
 openssl
