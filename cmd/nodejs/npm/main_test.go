@@ -187,6 +187,7 @@ func TestDetermineBuildCommands(t *testing.T) {
 		nodejsNpmbuildEnvValue string
 		targetPlatformSet      bool
 		want                   []string
+		wantIsCustomBuild      bool
 	}{
 		{
 			name:             "no build",
@@ -199,18 +200,21 @@ func TestDetermineBuildCommands(t *testing.T) {
 			nodeRunScriptSet:   true,
 			nodeRunScriptValue: "lint,clean,build",
 			want:               []string{"npm run lint", "npm run clean", "npm run build"},
+			wantIsCustomBuild:  true,
 		},
 		{
 			name:               "GOOGLE_NODE_RUN_SCRIPTS single value",
 			nodeRunScriptSet:   true,
 			nodeRunScriptValue: "lint",
 			want:               []string{"npm run lint"},
+			wantIsCustomBuild:  true,
 		},
 		{
 			name:               "GOOGLE_NODE_RUN_SCRIPTS trim whitespace",
 			nodeRunScriptSet:   true,
 			nodeRunScriptValue: "    	lint	,	 build",
 			want:               []string{"npm run lint", "npm run build"},
+			wantIsCustomBuild:  true,
 		},
 		{
 			name: "build script",
@@ -268,7 +272,8 @@ func TestDetermineBuildCommands(t *testing.T) {
 					"clean": "tsc --build --clean"
 				}
 			}`,
-			want: []string{"npm run gcp-build"},
+			want:              []string{"npm run gcp-build"},
+			wantIsCustomBuild: true,
 		},
 		{
 			name: "GOOGLE_NODE_RUN_SCRIPTS highest precedence",
@@ -281,6 +286,7 @@ func TestDetermineBuildCommands(t *testing.T) {
 			nodeRunScriptSet:   true,
 			nodeRunScriptValue: "from-env",
 			want:               []string{"npm run from-env"},
+			wantIsCustomBuild:  true,
 		},
 		{
 			name: "gcp-build higher precedence than build",
@@ -290,7 +296,8 @@ func TestDetermineBuildCommands(t *testing.T) {
 					"gcp-build": "tsc --build"
 				}
 			}`,
-			want: []string{"npm run gcp-build"},
+			want:              []string{"npm run gcp-build"},
+			wantIsCustomBuild: true,
 		},
 		{
 			name: "setting empty GOOGLE_NODE_RUN_SCRIPTS runs nothing",
@@ -303,6 +310,7 @@ func TestDetermineBuildCommands(t *testing.T) {
 			nodeRunScriptSet:   true,
 			nodeRunScriptValue: "",
 			want:               []string{},
+			wantIsCustomBuild:  true,
 		},
 	}
 	for _, tc := range testsCases {
@@ -325,9 +333,13 @@ func TestDetermineBuildCommands(t *testing.T) {
 					t.Fatalf("failed to unmarshal package.json: %s, error: %v", tc.pjs, err)
 				}
 			}
-			got := determineBuildCommands(pjs)
+			got, isCustomBuild := determineBuildCommands(pjs)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("determineBuildCommands() mismatch (-want +got):\n%s", diff)
+			}
+
+			if isCustomBuild != tc.wantIsCustomBuild {
+				t.Errorf("determineBuildCommands() is custom build mismatch, got: %t, want: %t", isCustomBuild, tc.wantIsCustomBuild)
 			}
 		})
 	}

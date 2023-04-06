@@ -79,7 +79,7 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	buildCmds := determineBuildCommands(pjs)
+	buildCmds, isCustomBuild := determineBuildCommands(pjs)
 	// Respect the user's NODE_ENV value if it's set
 	nodeEnv, nodeEnvPresent := os.LookupEnv(nodejs.EnvNodeEnv)
 	if !nodeEnvPresent {
@@ -132,6 +132,9 @@ func buildFn(ctx *gcp.Context) error {
 		for _, cmd := range buildCmds {
 			split := strings.Split(cmd, " ")
 			if _, err := ctx.Exec(split, gcp.WithUserAttribution); err != nil {
+				if !isCustomBuild {
+					ctx.Logf("NOTE: Running the default build script can be skipped by passing the empty environment variable `%s=` to the build.", googleNodeRunScriptsEnv)
+				}
 				return err
 			}
 		}
@@ -175,12 +178,15 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
-// determineBuildCommands returns a list of "npm run" commands to be executed during the build.
+// determineBuildCommands returns a list of "npm run" commands to be executed during the build
+// and a bool representing whether this is a "custom build" (user-specified build scripts)
+// or a system build step (default build behavior).
+//
 // Users can specify npm scripts to run in three ways, with the following order of precedence:
 // 1. GOOGLE_NODE_RUN_SCRIPTS env var
 // 2. "gcp-build" script in package.json
 // 3. "build" script in package.json
-func determineBuildCommands(pjs *nodejs.PackageJSON) []string {
+func determineBuildCommands(pjs *nodejs.PackageJSON) ([]string, bool) {
 	cmds := []string{}
 	envScript, envScriptPresent := os.LookupEnv(googleNodeRunScriptsEnv)
 	if envScriptPresent {
@@ -188,7 +194,7 @@ func determineBuildCommands(pjs *nodejs.PackageJSON) []string {
 		// Setting `GOOGLE_NODE_RUN_SCRIPTS=` preserves legacy behavior where "npm run build" was NOT
 		// run, even though "build" was provided.
 		if strings.TrimSpace(envScript) == "" {
-			return []string{}
+			return []string{}, true
 		}
 
 		scripts := strings.Split(envScript, ",")
@@ -196,12 +202,12 @@ func determineBuildCommands(pjs *nodejs.PackageJSON) []string {
 			cmds = append(cmds, fmt.Sprintf("npm run %s", strings.TrimSpace(s)))
 		}
 
-		return cmds
+		return cmds, true
 	}
 
 	if nodejs.HasGCPBuild(pjs) {
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmGcpBuildUsageCounterID).Increment(1)
-		return []string{"npm run gcp-build"}
+		return []string{"npm run gcp-build"}, true
 	}
 
 	if pjs != nil && pjs.Scripts.Build != "" {
@@ -209,22 +215,22 @@ func determineBuildCommands(pjs *nodejs.PackageJSON) []string {
 
 		// If using the OSS builder, run "npm run build" by default.
 		if os.Getenv(env.XGoogleTargetPlatform) == "" {
-			return []string{"npm run build"}
+			return []string{"npm run build"}, false
 		}
 
 		// Env var guards an experimental feature to run "npm run build" by default.
 		shouldBuild, err := strconv.ParseBool(os.Getenv(nodejsNPMBuildEnv))
 		// If there was an error reading the env var, don't run the script.
 		if err != nil {
-			return []string{}
+			return []string{}, false
 		}
 
 		if shouldBuild {
-			return []string{"npm run build"}
+			return []string{"npm run build"}, false
 		}
 	}
 
-	return []string{}
+	return []string{}, false
 }
 
 func shouldPrune(ctx *gcp.Context, pjs *nodejs.PackageJSON) (bool, error) {
