@@ -69,7 +69,14 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
 	}
-	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.PHP, version, phpl)
+
+	// Selecting PHPMin runtime only for Google-22 Builder.
+	phpRuntime := runtime.PHP
+	if ctx.StackID() == "google.22" {
+		phpRuntime = runtime.PHPMin
+	}
+
+	_, err = runtime.InstallTarballIfNotCached(ctx, phpRuntime, version, phpl)
 	if err != nil {
 		return err
 	}

@@ -41,6 +41,7 @@ type InstallableRuntime string
 const (
 	Nodejs     InstallableRuntime = "nodejs"
 	PHP        InstallableRuntime = "php"
+	PHPMin     InstallableRuntime = "phpmin"
 	Python     InstallableRuntime = "python"
 	Ruby       InstallableRuntime = "ruby"
 	Nginx      InstallableRuntime = "nginx"

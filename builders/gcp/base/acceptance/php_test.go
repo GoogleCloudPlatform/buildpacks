@@ -30,9 +30,6 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			// Ubuntu 22 only supports php82 which is still being released.
-			// Need to enable this test back once php82 is released.
-			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22"},
 			Name:       "simple path",
 			App:        "simple",
 			MustMatch:  "PASS_INDEX",
@@ -40,18 +37,12 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 		{
-			// Ubuntu 22 only supports php82 which is still being released.
-			// Need to enable this test back once php82 is released.
-			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22"},
-			Name:       "entrypoint from procfile web",
-			App:        "entrypoint",
-			MustMatch:  "PASS_INDEX",
-			MustUse:    []string{phpRuntime, entrypoint, utilsNginx, phpWebConfig},
+			Name:      "entrypoint from procfile web",
+			App:       "entrypoint",
+			MustMatch: "PASS_INDEX",
+			MustUse:   []string{phpRuntime, entrypoint, utilsNginx, phpWebConfig},
 		},
 		{
-			// Ubuntu 22 only supports php82 which is still being released.
-			// Need to enable this test back once php82 is released.
-			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22"},
 			Name:       "entrypoint from procfile custom",
 			App:        "entrypoint",
 			MustMatch:  "PASS_CUSTOM",
@@ -59,19 +50,13 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{phpRuntime, entrypoint, utilsNginx, phpWebConfig},
 		},
 		{
-			// Ubuntu 22 only supports php82 which is still being released.
-			// Need to enable this test back once php82 is released.
-			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22"},
-			Name:       "entrypoint from env",
-			App:        "simple",
-			MustMatch:  "PASS_INDEX",
-			Env:        []string{"GOOGLE_ENTRYPOINT=php -S 0.0.0.0:8080"},
-			MustUse:    []string{phpRuntime, composerInstall, composer, entrypoint, utilsNginx, phpWebConfig},
+			Name:      "entrypoint from env",
+			App:       "simple",
+			MustMatch: "PASS_INDEX",
+			Env:       []string{"GOOGLE_ENTRYPOINT=php -S 0.0.0.0:8080"},
+			MustUse:   []string{phpRuntime, composerInstall, composer, entrypoint, utilsNginx, phpWebConfig},
 		},
 		{
-			// Ubuntu 22 only supports php82 which is still being released.
-			// Need to enable this test back once php82 is released.
-			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22"},
 			Name:       "custom path",
 			App:        "simple",
 			Path:       "/custom",
@@ -80,9 +65,6 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 		{
-			// Ubuntu 22 only supports php82 which is still being released.
-			// Need to enable this test back once php82 is released.
-			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22"},
 			Name:       "php ini config",
 			App:        "php_ini_config",
 			MustMatch:  "PASS_PHP_INI",
@@ -101,9 +83,6 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 		{
-			// Ubuntu 22 only supports php82 which is still being released.
-			// Need to enable this test back once php82 is released.
-			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22"},
 			Name:       "composer.json with gcp-build script and no dependencies",
 			App:        "gcp_build_no_dependencies",
 			MustMatch:  "PASS_PHP_GCP_BUILD",
