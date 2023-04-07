@@ -2,19 +2,21 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 """Module for initializing aruments by PHP version"""
 
+load(":runtime.bzl", "gae_runtimes", "gcf_runtimes")
+
+# php55 is gen1 runtime so excluding it from the list.
+gae_php_runtime_versions = [v[3] + "." + v[4:] for v in gae_runtimes if v.startswith("php") and v != "php55"]
+gcf_php_runtime_versions = [v[3] + "." + v[4:] for v in gcf_runtimes if v.startswith("php")]
+
 def phpargs(runImageTag = ""):
     """Create a new key-value map of arguments for php test
 
     Returns:
         A key-value map of the arguments
     """
-    args = {
-        "7.2": newArgs("72", runImageTag),
-        "7.3": newArgs("73", runImageTag),
-        "7.4": newArgs("74", runImageTag),
-        "8.1": newArgs("81", runImageTag),
-        "8.2": newArgs("82", runImageTag),
-    }
+    args = {}
+    for version in gae_php_runtime_versions:
+        args[version] = newArgs(version.replace(".", ""), runImageTag)
     return args
 
 def newArgs(version, runImageTag):

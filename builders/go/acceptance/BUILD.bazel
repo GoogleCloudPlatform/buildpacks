@@ -1,5 +1,5 @@
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
-load(":args.bzl", "goargs")
+load(":args.bzl", "gae_go_runtime_versions", "gcf_go_runtime_versions", "goargs")
 
 licenses(["notice"])
 
@@ -20,17 +20,7 @@ test_suite(
 )
 
 # The union of all versions across all products.
-VERSIONS_ALL_PRODUCTS = [
-    "1.11",
-    "1.12",
-    "1.13",
-    "1.14",
-    "1.15",
-    "1.16",
-    "1.18",
-    "1.19",
-    "1.20",
-]
+VERSIONS_ALL_PRODUCTS = gae_go_runtime_versions
 
 # The product versions for which there is GAE support.
 VERSIONS_GAE_SUPPORT = VERSIONS_ALL_PRODUCTS
@@ -49,13 +39,7 @@ VERSIONS_GCP_SUPPORT = VERSIONS_ALL_PRODUCTS
 
 # The product versions for which there is GCF support. The GCF tests are expensive to run so only the released
 # versions are tested.
-VERSIONS_GCF_SUPPORT = [
-    "1.13",
-    "1.16",
-    "1.18",
-    "1.19",
-    "1.20",
-]
+VERSIONS_GCF_SUPPORT = gcf_go_runtime_versions
 
 # The GCF Legacy Worker is only available and used for the "GCF go111" runtime version. It has different behavior,
 # a unique order group, and is tested seperately.

@@ -1,5 +1,5 @@
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
-load(":args.bzl", "phpargs")
+load(":args.bzl", "gae_php_runtime_versions", "gcf_php_runtime_versions", "phpargs")
 
 licenses(["notice"])
 
@@ -8,19 +8,9 @@ exports_files([
     "args.bzl",
 ])
 
-VERSIONS_ALL_PRODUCTS = [
-    "7.2",
-    "7.3",
-    "7.4",
-    "8.1",
-    "8.2",
-]
+VERSIONS_ALL_PRODUCTS = gae_php_runtime_versions
 
-VERSIONS_GCF_SUPPORT = [
-    "7.4",
-    "8.1",
-    "8.2",
-]
+VERSIONS_GCF_SUPPORT = gcf_php_runtime_versions
 
 acceptance_test_suite(
     name = "gcp_test",

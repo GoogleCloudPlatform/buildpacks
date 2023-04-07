@@ -2,23 +2,24 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 """Module for initializing aruments by GO version"""
 
+load(":runtime.bzl", "gae_runtimes", "gcf_runtimes")
+
+gae_go_runtime_versions = [v[2] + "." + v[3:] for v in gae_runtimes if v.startswith("go")]
+
+# GCF Legacy Worker is only available and used for the "GCF go111" runtime version so it needs to
+# be handled separately.
+gcf_go_runtime_versions = [v[2] + "." + v[3:] for v in gcf_runtimes if v.startswith("go") and v != "go111"]
+
 def goargs(runImageTag = ""):
     """Create a new key-value map of arguments for go test
 
     Returns:
         A key-value map of the arguments
     """
-    args = {
-        "1.11": newArgs("111", runImageTag),
-        "1.12": newArgs("112", runImageTag),
-        "1.13": newArgs("113", runImageTag),
-        "1.14": newArgs("114", runImageTag),
-        "1.15": newArgs("115", runImageTag),
-        "1.16": newArgs("116", runImageTag),
-        "1.18": newArgs("118", runImageTag),
-        "1.19": newArgs("119", runImageTag),
-        "1.20": newArgs("120", runImageTag),
-    }
+    args = {}
+    for version in gae_go_runtime_versions:
+        args[version] = newArgs(version.replace(".", ""), runImageTag)
+
     return args
 
 def newArgs(version, runImageTag):
