@@ -57,11 +57,14 @@ type packageEnginesJSON struct {
 	Yarn string `json:"yarn"`
 }
 
-type packageScriptsJSON struct {
-	Start    string `json:"start"`
-	GCPBuild string `json:"gcp-build"`
-	Build    string `json:"build"`
-}
+const (
+	// ScriptBuild is the name of npm build scripts.
+	ScriptBuild = "build"
+	// ScriptStart is the name of npm start scripts.
+	ScriptStart = "start"
+	// ScriptGCPBuild is the name of "gcp-build" scripts.
+	ScriptGCPBuild = "gcp-build"
+)
 
 // PackageJSON represents the contents of a package.json file.
 type PackageJSON struct {
@@ -69,7 +72,7 @@ type PackageJSON struct {
 	Type            string             `json:"type"`
 	Version         string             `json:"version"`
 	Engines         packageEnginesJSON `json:"engines"`
-	Scripts         packageScriptsJSON `json:"scripts"`
+	Scripts         map[string]string  `json:"scripts"`
 	Dependencies    map[string]string  `json:"dependencies"`
 	DevDependencies map[string]string  `json:"devDependencies"`
 }
@@ -95,10 +98,18 @@ func ReadPackageJSONIfExists(dir string) (*PackageJSON, error) {
 	return &pjs, nil
 }
 
-// HasGCPBuild returns true if the given directory contains a package.json file that includes a
-// non-empty "gcp-build" script.
+// HasGCPBuild returns true if the given package.json file includes a "gcp-build" script.
 func HasGCPBuild(p *PackageJSON) bool {
-	return p != nil && p.Scripts.GCPBuild != ""
+	return HasScript(p, ScriptGCPBuild)
+}
+
+// HasScript returns true if the given package.json file defines a script with the given name.
+func HasScript(p *PackageJSON, name string) bool {
+	if p == nil {
+		return false
+	}
+	_, ok := p.Scripts[name]
+	return ok
 }
 
 // HasDevDependencies returns true if the given directory contains a package.json file that lists

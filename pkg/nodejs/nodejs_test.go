@@ -30,8 +30,8 @@ func TestReadPackageJSONIfExists(t *testing.T) {
 			Node: "my-node",
 			NPM:  "my-npm",
 		},
-		Scripts: packageScriptsJSON{
-			Start: "my-start",
+		Scripts: map[string]string{
+			"start": "my-start",
 		},
 		Dependencies: map[string]string{
 			"a": "1.0",
@@ -121,38 +121,51 @@ func TestSkipSyntaxCheck(t *testing.T) {
 	}
 }
 
-func TestHasGCPBuild(t *testing.T) {
+func TestHasScript(t *testing.T) {
 	testCases := []struct {
 		name        string
 		packageJSON *PackageJSON
+		script      string
 		want        bool
 	}{
 		{
-			name:        "nil package",
+			name:        "nil package.json",
 			packageJSON: nil,
 			want:        false,
 		},
 		{
-			name: "has gcp-build",
+			name: "matching script",
 			packageJSON: &PackageJSON{
-				Scripts: packageScriptsJSON{
-					GCPBuild: "my-script",
+				Scripts: map[string]string{
+					"gcp-build": "my-script",
 				},
 			},
-			want: true,
+			script: "gcp-build",
+			want:   true,
 		},
 		{
-			name: "no gcp-build",
+			name: "mismatching script",
 			packageJSON: &PackageJSON{
-				Scripts: packageScriptsJSON{},
+				Scripts: map[string]string{
+					"gcp-build": "my-script",
+				},
 			},
-			want: false,
+			script: "build",
+			want:   false,
+		},
+		{
+			name: "matching empty script",
+			packageJSON: &PackageJSON{
+				Scripts: map[string]string{"gcp-build": ""},
+			},
+			script: "gcp-build",
+			want:   true,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := HasGCPBuild(tc.packageJSON)
+			got := HasScript(tc.packageJSON, tc.script)
 			if got != tc.want {
 				t.Errorf("HasGCPBuild(%v) = %t, want %t", tc.packageJSON, got, tc.want)
 			}

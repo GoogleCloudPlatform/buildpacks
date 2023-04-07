@@ -300,6 +300,17 @@ func TestDetermineBuildCommands(t *testing.T) {
 			wantIsCustomBuild: true,
 		},
 		{
+			name: "empty gcp-build higher precedence than build",
+			pjs: `{
+				"scripts": {
+					"build": "tsc --build --clean",
+					"gcp-build": ""
+				}
+			}`,
+			want:              []string{"npm run gcp-build"},
+			wantIsCustomBuild: true,
+		},
+		{
 			name: "setting empty GOOGLE_NODE_RUN_SCRIPTS runs nothing",
 			pjs: `{
 				"scripts": {

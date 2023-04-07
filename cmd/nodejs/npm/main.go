@@ -210,7 +210,7 @@ func determineBuildCommands(pjs *nodejs.PackageJSON) ([]string, bool) {
 		return []string{"npm run gcp-build"}, true
 	}
 
-	if pjs != nil && pjs.Scripts.Build != "" {
+	if nodejs.HasScript(pjs, nodejs.ScriptBuild) {
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmBuildUsageCounterID).Increment(1)
 
 		// If using the OSS builder, run "npm run build" by default.
