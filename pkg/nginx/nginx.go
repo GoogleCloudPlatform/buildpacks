@@ -59,6 +59,9 @@ pm.max_children = {{.NumWorkers}}
 clear_env = no
 
 catch_workers_output = yes
+{{if .AddNoDecorateWorkers}}
+decorate_workers_output = no
+{{end}}
 `))
 
 // NginxTemplate is a template that produces a snippet of nginx config that sets up the
@@ -130,11 +133,12 @@ server {
 
 // FPMConfig represents the content values of a php-fpm config file.
 type FPMConfig struct {
-	PidPath        string
-	ListenAddress  string
-	DynamicWorkers bool
-	NumWorkers     int
-	Username       string
+	PidPath              string
+	ListenAddress        string
+	DynamicWorkers       bool
+	NumWorkers           int
+	Username             string
+	AddNoDecorateWorkers bool
 }
 
 // Config represents the content values of a nginx config file.

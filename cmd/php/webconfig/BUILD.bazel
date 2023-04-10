@@ -29,6 +29,9 @@ go_binary(
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/nginx",
+        "//pkg/php",
+        "//pkg/runtime",
+        "@com_github_masterminds_semver//:go_default_library",
     ],
 )
 
@@ -38,5 +41,9 @@ go_test(
     srcs = ["main_test.go"],
     embed = [":main"],
     rundir = ".",
-    deps = ["//internal/buildpacktest"],
+    deps = [
+        "//internal/buildpacktest",
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+    ],
 )

@@ -35,7 +35,7 @@ var osNodeVersionMap = map[string]string{
 
 // Rails apps using the "webpack" gem require Node.js for asset precompilation.
 func getRailsNodeVersion(ctx *gcp.Context) string {
-	return osNodeVersionMap[runtime.OSForStack(ctx.StackID())]
+	return osNodeVersionMap[runtime.OSForStack(ctx)]
 }
 
 func main() {
@@ -94,7 +94,7 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	versionInstalled, _ := runtime.ResolveVersion(runtime.Ruby, version, runtime.OSForStack(ctx.StackID()))
+	versionInstalled, _ := runtime.ResolveVersion(runtime.Ruby, version, runtime.OSForStack(ctx))
 	// Store the installed Ruby version for subsequent buildpacks (like RubyGems) that depend on it.
 	rl.BuildEnvironment.Override(ruby.RubyVersionKey, versionInstalled)
 

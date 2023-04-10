@@ -27,6 +27,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/buildpacks/libcnb"
 )
 
@@ -244,6 +245,15 @@ func ComposerRequire(ctx *gcp.Context, packages []string) error {
 		return err
 	}
 	return nil
+}
+
+// GetInstallableRuntime returns the installable runtime prefix.
+func GetInstallableRuntime(ctx *gcp.Context) runtime.InstallableRuntime {
+	// Selecting PHPMin runtime only for Google-22 Builder.
+	if ctx.StackID() == "google.22" {
+		return runtime.PHPMin
+	}
+	return runtime.PHP
 }
 
 // ExtractVersion extracts the php version from the environment, composer.json.

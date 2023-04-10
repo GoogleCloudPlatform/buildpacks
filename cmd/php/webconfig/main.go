@@ -25,6 +25,9 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nginx"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/Masterminds/semver"
 )
 
 const (
@@ -91,8 +94,8 @@ func buildFn(ctx *gcp.Context) error {
 			"--nginxErrLogFilePath", filepath.Join(l.Path, nginxLog),
 			"--customAppCmd", fmt.Sprintf("%q", fmt.Sprintf("%s -R --nodaemonize --fpm-config %s", defaultFPMBinary, fpmConfFile.Name())),
 			"--pid1LogFilePath", filepath.Join(l.Path, pid1Log),
-			// ideally, we should be able to use the path of the nginx layer and not hardcode it here.
-			// this needs some investigation on how to pass values between build steps of buildpacks.
+			// Ideally, we should be able to use the path of the nginx layer and not hardcode it here.
+			// This needs some investigation on how to pass values between build steps of buildpacks.
 			"--mimeTypesPath", filepath.Join("/layers/google.utils.nginx/nginx", "conf/mime.types"),
 			"--customAppSocket", filepath.Join(l.Path, appSocket),
 		}
@@ -103,8 +106,46 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
+func getInstalledPhpVersion(ctx *gcp.Context) (string, error) {
+	version, err := php.ExtractVersion(ctx)
+	if err != nil {
+		return "", fmt.Errorf("determining runtime version: %w", err)
+	}
+
+	resolvedVersion, err := runtime.ResolveVersion(php.GetInstallableRuntime(ctx), version, runtime.OSForStack(ctx))
+	if err != nil {
+		return "", fmt.Errorf("resolving runtime version: %w", err)
+	}
+
+	return resolvedVersion, nil
+}
+
+func supportsDecorateWorkersOutput(ctx *gcp.Context) (bool, error) {
+	v, err := getInstalledPhpVersion(ctx)
+	if err != nil {
+		return false, err
+	}
+	c, err := semver.NewConstraint(">= 7.3.0")
+	if err != nil {
+		return false, err
+	}
+	sv, err := semver.NewVersion(v)
+	if err != nil {
+		return false, fmt.Errorf("parsing semver: %w", err)
+	}
+	return c.Check(sv), nil
+}
+
 func writeFpmConfig(ctx *gcp.Context, path string) (*os.File, error) {
-	conf, err := fpmConfig(path)
+	// For php >= 7.3.0, the directive decorate_workers_output prevents php from prepending a warning
+	// message to all logged entries.  Prior to 7.3.0, decorate_workers_output was not available, and
+	// these warning messages are prepended to all logged entries.  Here we choose to set
+	// decorate_workers_output if the runtime version is >= 7.3.0.
+	addNoDecorateWorkers, err := supportsDecorateWorkersOutput(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conf, err := fpmConfig(path, addNoDecorateWorkers)
 	if err != nil {
 		return nil, err
 	}
@@ -120,18 +161,19 @@ func writeFpmConfig(ctx *gcp.Context, path string) (*os.File, error) {
 	return fpmConfFile, nil
 }
 
-func fpmConfig(l string) (nginx.FPMConfig, error) {
+func fpmConfig(l string, addNoDecorateWorkers bool) (nginx.FPMConfig, error) {
 	user, err := user.Current()
 	if err != nil {
 		return nginx.FPMConfig{}, fmt.Errorf("getting current user: %w", err)
 	}
 
 	fpm := nginx.FPMConfig{
-		PidPath:        filepath.Join(l, phpFpmPid),
-		NumWorkers:     defaultFPMWorkers,
-		ListenAddress:  filepath.Join(l, appSocket),
-		DynamicWorkers: defaultDynamicWorkers,
-		Username:       user.Username,
+		PidPath:              filepath.Join(l, phpFpmPid),
+		NumWorkers:           defaultFPMWorkers,
+		ListenAddress:        filepath.Join(l, appSocket),
+		DynamicWorkers:       defaultDynamicWorkers,
+		Username:             user.Username,
+		AddNoDecorateWorkers: addNoDecorateWorkers,
 	}
 
 	return fpm, nil

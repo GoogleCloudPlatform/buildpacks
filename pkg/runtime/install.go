@@ -82,8 +82,13 @@ const (
 )
 
 // OSForStack returns the Operating System being used by input stackID.
-func OSForStack(stackID string) string {
-	return stackToOS[stackID]
+func OSForStack(ctx *gcp.Context) string {
+	os, ok := stackToOS[ctx.StackID()]
+	if !ok {
+		ctx.Warnf("unknown stack ID %q, falling back to Ubuntu 18.04", ctx.StackID())
+		os = ubuntu1804
+	}
+	return os
 }
 
 // IsCached returns true if the requested version of a runtime is installed in the given layer.
@@ -141,13 +146,7 @@ func InstallDartSDK(ctx *gcp.Context, layer *libcnb.Layer, version string) error
 func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, versionConstraint string, layer *libcnb.Layer) (bool, error) {
 	runtimeName := runtimeNames[runtime]
 	runtimeID := string(runtime)
-	stackID := ctx.StackID()
-
-	os, ok := stackToOS[stackID]
-	if !ok {
-		ctx.Warnf("unknown stack ID %q, falling back to Ubuntu 18.04", stackID)
-		os = ubuntu1804
-	}
+	os := OSForStack(ctx)
 
 	version, err := ResolveVersion(runtime, versionConstraint, os)
 	if err != nil {
@@ -185,7 +184,7 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 		return false, err
 	}
 
-	ctx.SetMetadata(layer, stackKey, stackID)
+	ctx.SetMetadata(layer, stackKey, ctx.StackID())
 	ctx.SetMetadata(layer, versionKey, version)
 
 	return false, nil

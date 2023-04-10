@@ -71,12 +71,9 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Selecting PHPMin runtime only for Google-22 Builder.
-	phpRuntime := runtime.PHP
-	if ctx.StackID() == "google.22" {
-		phpRuntime = runtime.PHPMin
-	}
+	phpInstallableRuntime := php.GetInstallableRuntime(ctx)
 
-	_, err = runtime.InstallTarballIfNotCached(ctx, phpRuntime, version, phpl)
+	_, err = runtime.InstallTarballIfNotCached(ctx, phpInstallableRuntime, version, phpl)
 	if err != nil {
 		return err
 	}
