@@ -85,12 +85,11 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse:       []string{npm},
 			MustOutputCached: []string{"Already up-to-date."},
 		},
-		// TODO: re-enable this test after npm build changes have made it into prod builder image
-		// {
-		// 	App:     "typescript",
-		// 	MustUse: []string{npm},
-		// 	Env:     []string{"GOOGLE_EXPERIMENTAL_NODEJS_NPM_BUILD_ENABLED=true"},
-		// },
+		{
+			App:     "typescript",
+			MustUse: []string{npm},
+			Env:     []string{"GOOGLE_EXPERIMENTAL_NODEJS_NPM_BUILD_ENABLED=true"},
+		},
 		{
 			App:        "gcp_build_npm",
 			MustUse:    []string{npm},
