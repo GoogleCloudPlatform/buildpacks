@@ -21,12 +21,31 @@ VERSIONS_ALL = [
     VERSION_DOTNET7,
 ]
 
+VERSIONS_WITH_FLEX_SUPPORT = [
+    VERSION_DOTNET6,
+]
+
 VERSIONS_WITH_GCF_SUPPORT = [
     VERSION_DOTNET3,
     VERSION_DOTNET6,
 ]
 
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
+
+acceptance_test_suite(
+    name = "flex_test",
+    srcs = [
+        "common_test.go",
+        "flex_test.go",
+    ],
+    builder = "//builders/dotnet:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/dotnet:flex",
+    versions = VERSIONS_WITH_FLEX_SUPPORT,
+    deps = [
+        "@com_github_masterminds_semver//:go_default_library",
+    ],
+)
 
 acceptance_test_suite(
     name = "gcf_test",

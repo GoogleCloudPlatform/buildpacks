@@ -29,6 +29,10 @@ func init() {
 	acceptance.DefineFlags()
 }
 
+const (
+	flexBuildpack = "google.config.flex"
+)
+
 // setupTargetFramework modifies the .NET framework version in the project or runtimeconfig file
 // for a given test application such that it will specify a value that is associated with the
 // acceptance.runtimeVersion parameter.
