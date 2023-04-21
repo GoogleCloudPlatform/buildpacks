@@ -22,7 +22,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"text/template"
 
@@ -89,7 +88,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	fnTarget := os.Getenv(env.FunctionTarget)
 
-	// Move the function source code into a subdirectory in order to construct the app in the main application root.
+	// Move the function source code into a subdirectory.
 	if err := ctx.RemoveAll(fnSourceDir); err != nil {
 		return err
 	}
@@ -170,43 +169,31 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 		}
 	}
 
-	fnMod, fnPackage, err := moduleAndPackageNames(ctx, fn)
+	_, fnPackage, err := moduleAndPackageNames(ctx, fn)
 	if err != nil {
 		return fmt.Errorf("extracting module and package names: %w", err)
 	}
 	fn.Package = fnPackage
 
-	modVersion, err := parseModuleVersion(fnMod)
-	if err != nil {
-		return err
-	}
-
-	if modVersion == "" {
-		modVersion = "v0"
-	}
-
-	if _, err := ctx.Exec([]string{"go", "mod", "init", appModule}); err != nil {
-		return err
-	}
-	if _, err := ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@%s", fnMod, modVersion)}); err != nil {
-		return err
-	}
-	if _, err := ctx.Exec([]string{"go", "mod", "edit", "-replace", fmt.Sprintf("%s=%s", fnMod, fn.Source)}); err != nil {
-		return err
-	}
 	// If the framework is not present in the function's go.mod, we require the current version.
 	version, err := frameworkSpecifiedVersion(ctx, fn.Source)
 	if err != nil {
 		return fmt.Errorf("checking for functions framework dependency in go.mod: %w", err)
 	}
 	if version == "" {
-		if _, err := ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@%s", functionsFrameworkModule, functionsFrameworkVersion)}); err != nil {
+		if _, err := ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@%s", functionsFrameworkModule, functionsFrameworkVersion)}, gcp.WithWorkDir(fn.Source)); err != nil {
 			return err
 		}
 		version = functionsFrameworkVersion
 	}
 
-	if err := createMainGoFile(ctx, fn, filepath.Join(ctx.ApplicationRoot(), "main.go"), version); err != nil {
+	mainPackageDirectory := filepath.Join(fn.Source, appModule)
+	if err := ctx.MkdirAll(mainPackageDirectory, 0755); err != nil {
+		return err
+	}
+
+	fnSourceMain := filepath.Join(mainPackageDirectory, "main.go")
+	if err := createMainGoFile(ctx, fn, fnSourceMain, version); err != nil {
 		return err
 	}
 
@@ -214,32 +201,15 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	// We generate a go.mod file dynamically since the function may request a specific version of
 	// the framework, in which case we want to import that version. For that reason we cannot
 	// include a pre-generated go.sum file.
-	if _, err := golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "tidy"}, gcp.WithUserAttribution); err != nil {
+	if _, err := golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "tidy"}, gcp.WithUserAttribution, gcp.WithWorkDir(fn.Source)); err != nil {
 		return fmt.Errorf("running go mod tidy: %w", err)
 	}
+
+	// Make function's source the work directory when running go build
+	l.BuildEnvironment.Override(golang.BuildDirEnv, fn.Source)
+	// Specify what to build in the go build buildpack
+	l.BuildEnvironment.Override(env.Buildable, mainPackageDirectory)
 	return nil
-}
-
-// parseModuleVersion parses the major version from the Go module name.
-// If the module does not specify a major version, empty string is returned.
-// "example.com/fn/v2" returns ("v2", nil)
-// "example.com/fn" returns ("", nil)
-func parseModuleVersion(module string) (string, error) {
-	r := regexp.MustCompile(`\/(v\d+)$`)
-	m := r.FindStringSubmatch(module)
-	if m == nil {
-		return "", nil
-	}
-
-	// The first index is the full match, the second index is the submatch of
-	// the group captured by the `()` in the regular expression.
-	// There should be at most one match because the regular expression is anchored
-	// to match only the end of the string `$`.
-	if len(m) != 2 {
-		return "", fmt.Errorf("unexpected result parsing module version, module name: %q, regexp matches: %v", module, m)
-	}
-
-	return m[1], nil
 }
 
 func createMainGoModVendored(ctx *gcp.Context, fn fnInfo) error {

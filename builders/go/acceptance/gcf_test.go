@@ -121,6 +121,14 @@ func TestAcceptance(t *testing.T) {
 			App:  "with_versioned_mod",
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
 		},
+		// TODO: re-enable this test after change allowing go.mod directives to be used reaches prod.
+		// {
+		// 	Name:                "function with go.mod using replace directive",
+		// 	App:                 "declarative_with_replace",
+		// 	Env:                 []string{"GOOGLE_FUNCTION_TARGET=Func"},
+		// 	MustMatchStatusCode: 200,
+		// 	MustMatch:           "PASS",
+		// },
 	}
 	if !acceptance.ShouldTestVersion(t, "1.13") {
 		testCases = append(testCases,
@@ -128,7 +136,8 @@ func TestAcceptance(t *testing.T) {
 				Name: "with framework go mod vendored",
 				App:  "with_framework_vendored",
 				Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
-			})
+			},
+		)
 	}
 	for _, tc := range testCases {
 		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
