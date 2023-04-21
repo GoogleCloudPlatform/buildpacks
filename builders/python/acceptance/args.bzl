@@ -2,19 +2,20 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 """Module for initializing aruments by python version"""
 
+load(":runtime.bzl", "gae_runtimes", "gcf_runtimes")
+
+gae_python_runtime_versions = [v for n, v in gae_runtimes.items() if n != "python27"]
+gcf_python_runtime_versions = [v for n, v in gcf_runtimes.items()]
+
 def pythonargs(runImageTag = ""):
     """Create a new key-value map of arguments for python test
 
     Returns:
         A key-value map of the arguments
     """
-    args = {
-        "3.7.16": newArgs("37", runImageTag),
-        "3.8.16": newArgs("38", runImageTag),
-        "3.9.16": newArgs("39", runImageTag),
-        "3.10.10": newArgs("310", runImageTag),
-        "3.11.2": newArgs("311", runImageTag),
-    }
+    args = {}
+    for n, v in gae_runtimes.items():
+        args[v] = newArgs(n.replace("python", ""), runImageTag)
     return args
 
 def newArgs(version, runImageTag):

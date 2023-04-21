@@ -1,5 +1,6 @@
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
-load(":args.bzl", "nodejsargs")
+load(":args.bzl", "gae_nodejs_runtime_versions", "gcf_nodejs_runtime_versions", "nodejsargs")
+load("runtime.bzl", "gcf_runtimes")
 
 licenses(["notice"])
 
@@ -11,7 +12,7 @@ exports_files([
 test_suite(
     name = "acceptance_test",
     tests = [
-        "8.17.0_gcf_test",
+        gcf_runtimes["nodejs8"] + "_gcf_test",
         "flex_test",
         "gae_test",
         "gcf_test",
@@ -19,55 +20,21 @@ test_suite(
     ],
 )
 
-VERSION_NODEJS8 = "8.17.0"
+VERSIONS_ALL = gae_nodejs_runtime_versions
 
-VERSION_NODEJS10 = "10.24.1"
+# nodejs8 is decommissioned for GAE
+VERSIONS_WITH_GAE_SUPPORT = [v for v in gae_nodejs_runtime_versions if not v.startswith("8")]
 
-VERSION_NODEJS12 = "12.22.12"
-
-VERSION_NODEJS14 = "14.21.2"
-
-VERSION_NODEJS16 = "16.13.2"
-
-VERSION_NODEJS18 = "18.10.0"
-
-VERSION_NODEJS20 = "19.6.0"
-
-VERSIONS_ALL = [
-    VERSION_NODEJS8,
-    VERSION_NODEJS10,
-    VERSION_NODEJS12,
-    VERSION_NODEJS14,
-    VERSION_NODEJS16,
-    VERSION_NODEJS18,
-    VERSION_NODEJS20,
-]
-
-VERSIONS_WITH_GAE_SUPPORT = [
-    VERSION_NODEJS10,
-    VERSION_NODEJS12,
-    VERSION_NODEJS14,
-    VERSION_NODEJS16,
-    VERSION_NODEJS18,
-    VERSION_NODEJS20,
-]
-
-VERSIONS_WITH_GCF_SUPPORT = [
-    VERSION_NODEJS10,
-    VERSION_NODEJS12,
-    VERSION_NODEJS14,
-    VERSION_NODEJS16,
-    VERSION_NODEJS18,
-    VERSION_NODEJS20,
-]
+# nodejs8 will be decommissioned for GCF on June 5, 2023
+VERSIONS_WITH_GCF_SUPPORT = [v for v in gcf_nodejs_runtime_versions if not v.startswith("8")]
 
 VERSIONS_WITH_FLEX_SUPPORT = [
-    VERSION_NODEJS18,
+    gcf_runtimes["nodejs18"],
 ]
 
 # The GCF Legacy Worker is only available and used for the "GCF nodejs8" runtime version. It has
 # different behavior, a unique order group, and is tested seperately.
-VERSION_GCF_LEGACY_WORKER = VERSION_NODEJS8
+VERSION_GCF_LEGACY_WORKER = gcf_runtimes["nodejs8"]
 
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
 
@@ -148,3 +115,5 @@ acceptance_test_suite(
     testdata = "//builders/testdata/nodejs:flex",
     versions = VERSIONS_WITH_FLEX_SUPPORT,
 )
+
+exports_files(["runtime.bzl"])

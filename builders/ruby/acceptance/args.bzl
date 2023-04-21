@@ -2,19 +2,20 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 """Module for initializing arguments by Ruby version"""
 
+load(":runtime.bzl", "gae_runtimes", "gcf_runtimes")
+
+gae_ruby_runtime_versions = [v for n, v in gae_runtimes.items()]
+gcf_ruby_runtime_versions = [v for n, v in gcf_runtimes.items()]
+
 def rubyargs(runImageTag = ""):
     """Create a new key-value map of arguments for Ruby acceptance tests
 
     Returns:
         A key-value map of the arguments
     """
-    args = {
-        "2.5.9": newArgs("25", runImageTag),
-        "2.6.10": newArgs("26", runImageTag),
-        "2.7.6": newArgs("27", runImageTag),
-        "3.0.4": newArgs("30", runImageTag),
-        "3.2.1": newArgs("32", runImageTag),
-    }
+    args = {}
+    for n, v in gae_runtimes.items():
+        args[v] = newArgs(n.replace("ruby", ""), runImageTag)
     return args
 
 def newArgs(version, runImageTag):

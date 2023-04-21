@@ -1,4 +1,5 @@
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
+load("runtime.bzl", "gcf_runtimes")
 
 licenses(["notice"])
 
@@ -9,25 +10,18 @@ test_suite(
     name = "acceptance_test",
 )
 
-VERSION_DOTNET3 = "3.1.426"
-
-VERSION_DOTNET6 = "6.0.300"
-
+# We wanted to support dotnet 7 if someone in the OSS community wanted to build against it,
+# but we also don't want to target dotnet 7 explicitly -- it is not a LTS release, only STS.
 VERSION_DOTNET7 = "7.0.100"
 
-VERSIONS_ALL = [
-    VERSION_DOTNET3,
-    VERSION_DOTNET6,
+VERSIONS_WITH_GCF_SUPPORT = [v for n, v in gcf_runtimes.items() if n != "dotnet"]
+
+VERSIONS_ALL = VERSIONS_WITH_GCF_SUPPORT + [
     VERSION_DOTNET7,
 ]
 
 VERSIONS_WITH_FLEX_SUPPORT = [
-    VERSION_DOTNET6,
-]
-
-VERSIONS_WITH_GCF_SUPPORT = [
-    VERSION_DOTNET3,
-    VERSION_DOTNET6,
+    gcf_runtimes["dotnet6"],
 ]
 
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
@@ -113,3 +107,5 @@ acceptance_test_argo_source(
     name = "argo_source",
     testdata = "//builders/testdata:dotnet",
 )
+
+exports_files(["runtime.bzl"])

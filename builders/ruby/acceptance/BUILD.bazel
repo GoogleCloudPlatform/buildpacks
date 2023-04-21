@@ -1,5 +1,6 @@
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
-load(":args.bzl", "rubyargs")
+load(":args.bzl", "gae_ruby_runtime_versions", "gcf_ruby_runtime_versions", "rubyargs")
+load(":runtime.bzl", "gae_runtimes")
 
 licenses(["notice"])
 
@@ -13,46 +14,20 @@ test_suite(
     name = "acceptance_test",
 )
 
-VERSION_RUBY25 = "2.5.9"
-
-VERSION_RUBY26 = "2.6.10"
-
-VERSION_RUBY27 = "2.7.6"
-
-VERSION_RUBY30 = "3.0.4"
-
 VERSION_RUBY31 = "3.1.0"
 
-VERSION_RUBY32 = "3.2.1"
-
-VERSIONS_ALL = [
-    VERSION_RUBY25,
-    VERSION_RUBY26,
-    VERSION_RUBY27,
-    VERSION_RUBY30,
+VERSIONS_ALL = gae_ruby_runtime_versions + [
     VERSION_RUBY31,
-    VERSION_RUBY32,
 ]
 
-VERSIONS_WITH_GAE_SUPPORT = [
-    VERSION_RUBY25,
-    VERSION_RUBY26,
-    VERSION_RUBY27,
-    VERSION_RUBY30,
-    VERSION_RUBY32,
-]
+VERSIONS_WITH_GAE_SUPPORT = gae_ruby_runtime_versions
 
-VERSIONS_WITH_GCF_SUPPORT = [
-    VERSION_RUBY26,
-    VERSION_RUBY27,
-    VERSION_RUBY30,
-    VERSION_RUBY32,
-]
+VERSIONS_WITH_GCF_SUPPORT = gcf_ruby_runtime_versions
 
 VERSIONS_WITH_FLEX_SUPPORT = [
-    VERSION_RUBY27,
-    VERSION_RUBY30,
-    VERSION_RUBY32,
+    gae_runtimes["ruby27"],
+    gae_runtimes["ruby30"],
+    gae_runtimes["ruby32"],
 ]
 
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
@@ -114,3 +89,5 @@ acceptance_test_argo_source(
     name = "argo_source",
     testdata = "//builders/testdata:ruby",
 )
+
+exports_files(["runtime.bzl"])

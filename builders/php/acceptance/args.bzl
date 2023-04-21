@@ -5,8 +5,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 load(":runtime.bzl", "gae_runtimes", "gcf_runtimes")
 
 # php55 is gen1 runtime so excluding it from the list.
-gae_php_runtime_versions = [v[3] + "." + v[4:] for v in gae_runtimes if v.startswith("php") and v != "php55"]
-gcf_php_runtime_versions = [v[3] + "." + v[4:] for v in gcf_runtimes if v.startswith("php")]
+gae_php_runtime_versions = [v[3] + "." + v[4:] for v in gae_runtimes if v != "php55"]
+gcf_php_runtime_versions = [v[3] + "." + v[4:] for v in gcf_runtimes]
 
 def phpargs(runImageTag = ""):
     """Create a new key-value map of arguments for php test

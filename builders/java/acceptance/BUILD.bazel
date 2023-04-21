@@ -1,5 +1,5 @@
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
-load(":args.bzl", "javaargs")
+load(":args.bzl", "gae_java_runtime_versions", "javaargs")
 
 licenses(["notice"])
 
@@ -13,22 +13,14 @@ test_suite(
     name = "acceptance_test",
 )
 
-VERSION_JAVA8 = "8"
+VERSIONS_ALL = gae_java_runtime_versions
+
+# java8 is gen1 runtime so it's not using buildpacks
+VERSIONS_WITH_GAE_SUPPORT = [v for v in gae_java_runtime_versions if v != "8"]
 
 VERSION_JAVA11 = "11"
 
 VERSION_JAVA17 = "17"
-
-VERSIONS_ALL = [
-    VERSION_JAVA8,
-    VERSION_JAVA11,
-    VERSION_JAVA17,
-]
-
-VERSIONS_WITH_GAE_SUPPORT = [
-    VERSION_JAVA11,
-    VERSION_JAVA17,
-]
 
 VERSIONS_WITH_FLEX_SUPPORT = [
     VERSION_JAVA11,
@@ -106,3 +98,5 @@ acceptance_test_argo_source(
     ],
     testdata = "//builders/testdata:java",
 )
+
+exports_files(["runtime.bzl"])

@@ -1,5 +1,6 @@
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
-load(":args.bzl", "pythonargs")
+load(":args.bzl", "gae_python_runtime_versions", "pythonargs")
+load(":runtime.bzl", "gae_runtimes")
 
 licenses(["notice"])
 
@@ -13,23 +14,7 @@ test_suite(
     name = "acceptance_test",
 )
 
-VERSION_PYTHON37 = "3.7.16"
-
-VERSION_PYTHON38 = "3.8.16"
-
-VERSION_PYTHON39 = "3.9.16"
-
-VERSION_PYTHON310 = "3.10.10"
-
-VERSION_PYTHON311 = "3.11.2"
-
-VERSIONS_ALL = [
-    VERSION_PYTHON37,
-    VERSION_PYTHON38,
-    VERSION_PYTHON39,
-    VERSION_PYTHON310,
-    VERSION_PYTHON311,
-]
+VERSIONS_ALL = gae_python_runtime_versions
 
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
 
@@ -38,9 +23,9 @@ VERSIONS_WITH_GAE_SUPPORT = VERSIONS_ALL
 VERSIONS_WITH_GCF_SUPPORT = VERSIONS_ALL
 
 VERSIONS_WITH_FLEX_SUPPORT = [
-    VERSION_PYTHON38,
-    VERSION_PYTHON39,
-    VERSION_PYTHON310,
+    gae_runtimes["python38"],
+    gae_runtimes["python39"],
+    gae_runtimes["python310"],
 ]
 
 acceptance_test_suite(
@@ -103,3 +88,5 @@ acceptance_test_suite(
     testdata = "//builders/testdata/python:appengine",
     versions = VERSIONS_WITH_GAE_SUPPORT,
 )
+
+exports_files(["runtime.bzl"])

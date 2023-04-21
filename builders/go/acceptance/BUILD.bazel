@@ -132,3 +132,5 @@ acceptance_test_argo_source(
     ],
     testdata = "//builders/testdata:go",
 )
+
+exports_files(["runtime.bzl"])
