@@ -24,7 +24,13 @@ import (
 )
 
 type appYaml struct {
-	Entrypoint string `yaml:"entrypoint"`
+	Entrypoint    string        `yaml:"entrypoint"`
+	RuntimeConfig RuntimeConfig `yaml:"runtime_config"`
+}
+
+// RuntimeConfig The runtime_config specified in users app.yaml.
+type RuntimeConfig struct {
+	DocumentRoot string `yaml:"document_root"`
 }
 
 // appYamlIfExists looks up the app.yaml file specified by env var and returns its content if exists.
@@ -77,4 +83,18 @@ func EntrypointIfExists(root string) (string, error) {
 		return "", gcp.UserErrorf("Couldn't find entrypoint from app.yaml: %s", err)
 	}
 	return a.Entrypoint, nil
+}
+
+// PhpConfiguration returns the PHP configuration in runtime_config
+// for GAE Flexible
+func PhpConfiguration(root string) (RuntimeConfig, error) {
+	a, err := appYamlIfExists(root)
+	if err != nil {
+		return RuntimeConfig{}, err
+	}
+	if a == nil {
+		return RuntimeConfig{}, nil
+	}
+
+	return a.RuntimeConfig, nil
 }

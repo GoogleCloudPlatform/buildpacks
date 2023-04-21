@@ -8,6 +8,7 @@ builder(
     name = "builder",
     buildpacks = [
         "//cmd/config/entrypoint:entrypoint.tgz",
+        "//cmd/config/flex:flex.tgz",
         "//cmd/php/appengine:appengine.tgz",
         "//cmd/php/composer:composer.tgz",
         "//cmd/php/composer_gcp_build:composer_gcp_build.tgz",
@@ -20,5 +21,10 @@ builder(
         "//cmd/utils/label:label_image.tgz",
         "//cmd/utils/nginx:nginx.tgz",
     ],
+    groups = {
+        "php": [
+            "//cmd/php/flex:flex.tgz",
+        ],
+    },
     image = "gcp/php",
 )

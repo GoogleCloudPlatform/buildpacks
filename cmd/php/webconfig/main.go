@@ -42,13 +42,11 @@ const (
 	defaultRoot            = "/workspace"
 	nginxConf              = "nginx.conf"
 	nginxLog               = "nginx.log"
-	nginxServerConf        = "nginxserver.conf"
 
 	// php-fpm
 	defaultDynamicWorkers = false
 	defaultFPMBinary      = "php-fpm"
 	defaultFPMWorkers     = 2
-	phpFpmConf            = "php-fpm.conf"
 	phpFpmPid             = "php-fpm.pid"
 )
 
@@ -66,7 +64,6 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
 	}
-
 	fpmConfFile, err := writeFpmConfig(ctx, l.Path)
 	if err != nil {
 		return err
@@ -149,16 +146,7 @@ func writeFpmConfig(ctx *gcp.Context, path string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	fpmConfFilePath := filepath.Join(path, phpFpmConf)
-	fpmConfFile, err := os.Create(fpmConfFilePath)
-	if err != nil {
-		return nil, err
-	}
-	if err := nginx.PHPFpmTemplate.Execute(fpmConfFile, conf); err != nil {
-		return nil, fmt.Errorf("writing php-fpm config file: %w", err)
-	}
-	return fpmConfFile, nil
+	return nginx.WriteFpmConfigToPath(path, conf)
 }
 
 func fpmConfig(l string, addNoDecorateWorkers bool) (nginx.FPMConfig, error) {
@@ -191,15 +179,6 @@ func nginxConfig(l string) nginx.Config {
 }
 
 func writeNginxConfig(ctx *gcp.Context, path string) (*os.File, error) {
-	nginxConfFilePath := filepath.Join(path, nginxServerConf)
-	nginxConfFile, err := os.Create(nginxConfFilePath)
-	if err != nil {
-		return nil, err
-	}
-
 	conf := nginxConfig(path)
-	if err := nginx.NginxTemplate.Execute(nginxConfFile, conf); err != nil {
-		return nil, fmt.Errorf("writing nginx config file: %w", err)
-	}
-	return nginxConfFile, nil
+	return nginx.WriteNginxConfigToPath(path, conf)
 }

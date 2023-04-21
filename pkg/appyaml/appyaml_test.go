@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-func TestGetField(t *testing.T) {
+func TestGetEntrypointIfExists(t *testing.T) {
 	testCases := []struct {
 		name    string
 		env     []string
@@ -75,14 +75,7 @@ func TestGetField(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			tempRoot := t.TempDir()
-			if tc.path != "" {
-				fp := filepath.Join(tempRoot, tc.path)
-				os.WriteFile(fp, []byte(tc.content), 0664)
-				for _, env := range tc.env {
-					v := strings.Split(env, "=")
-					t.Setenv(v[0], filepath.Join(tempRoot, v[1]))
-				}
-			}
+			writeFile(tc.path, tempRoot, tc.content, tc.env, t)
 
 			got, err := EntrypointIfExists(tempRoot)
 
@@ -93,5 +86,59 @@ func TestGetField(t *testing.T) {
 				t.Errorf("EntrypointIfExists returns %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestPhpConfiguration(t *testing.T) {
+	testCases := []struct {
+		name    string
+		env     []string
+		path    string
+		content []byte
+		want    RuntimeConfig
+		wantErr bool
+	}{
+		{
+			name: "valid runtime_config",
+			env:  []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
+			path: "app.yaml",
+			content: []byte(`
+runtime_config:
+ document_root: web
+`),
+			want: RuntimeConfig{DocumentRoot: "web"},
+		},
+		{
+			name: "missing runtime_config",
+			env:  []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
+			path: "app.yaml",
+			want: RuntimeConfig{},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tempRoot := t.TempDir()
+			writeFile(tc.path, tempRoot, tc.content, tc.env, t)
+
+			got, err := PhpConfiguration(tempRoot)
+
+			if err != nil != tc.wantErr {
+				t.Fatalf("got err=%t, want err=%t: %v", err != nil, tc.wantErr, err)
+			}
+			if got != tc.want {
+				t.Errorf("PhpConfiguration returns %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func writeFile(path, root string, content []byte, envs []string, t *testing.T) {
+	if path != "" {
+		fp := filepath.Join(root, path)
+		os.WriteFile(fp, []byte(content), 0664)
+		for _, env := range envs {
+			v := strings.Split(env, "=")
+			t.Setenv(v[0], filepath.Join(root, v[1]))
+		}
 	}
 }

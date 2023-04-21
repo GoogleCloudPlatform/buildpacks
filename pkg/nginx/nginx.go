@@ -16,6 +16,9 @@
 package nginx
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"text/template"
 )
 
@@ -147,4 +150,38 @@ type Config struct {
 	Root                  string
 	AppListenAddress      string
 	FrontControllerScript string
+}
+
+const (
+	// nginx
+	nginxServerConf = "nginxserver.conf"
+	// php-fpm
+	phpFpmConf = "php-fpm.conf"
+)
+
+// WriteNginxConfigToPath writes the configuration for the nginx server to the given path.
+func WriteNginxConfigToPath(path string, conf Config) (*os.File, error) {
+	nginxConfFilePath := filepath.Join(path, nginxServerConf)
+	nginxConfFile, err := os.Create(nginxConfFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := NginxTemplate.Execute(nginxConfFile, conf); err != nil {
+		return nil, fmt.Errorf("writing nginx config file: %w", err)
+	}
+	return nginxConfFile, nil
+}
+
+// WriteFpmConfigToPath writes the fpm configuration file to the given path.
+func WriteFpmConfigToPath(path string, conf FPMConfig) (*os.File, error) {
+	fpmConfFilePath := filepath.Join(path, phpFpmConf)
+	fpmConfFile, err := os.Create(fpmConfFilePath)
+	if err != nil {
+		return nil, err
+	}
+	if err := PHPFpmTemplate.Execute(fpmConfFile, conf); err != nil {
+		return nil, fmt.Errorf("writing php-fpm config file: %w", err)
+	}
+	return fpmConfFile, nil
 }
