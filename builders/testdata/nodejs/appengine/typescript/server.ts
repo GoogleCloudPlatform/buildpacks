@@ -22,10 +22,13 @@ const PORT = Number(process.env.PORT) || 8080;
 import * as polka from 'polka';
 
 polka()
-  .get('/', (req, res) => {
-    res.end('PASS');
-  })
-  .listen(PORT, () => {
-    console.log(`App listening on port ${PORT}`);
-  });
-
+    .get(
+        '/',
+        (req, res) => {
+          if (process.env.NODE_ENV == 'production') {
+            res.end('PASS');
+          }
+        })
+    .listen(PORT, () => {
+      console.log(`App listening on port ${PORT}`);
+    });

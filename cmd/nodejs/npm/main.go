@@ -81,17 +81,17 @@ func buildFn(ctx *gcp.Context) error {
 
 	buildCmds, isCustomBuild := determineBuildCommands(pjs)
 	// Respect the user's NODE_ENV value if it's set
-	nodeEnv, nodeEnvPresent := os.LookupEnv(nodejs.EnvNodeEnv)
+	buildNodeEnv, nodeEnvPresent := os.LookupEnv(nodejs.EnvNodeEnv)
 	if !nodeEnvPresent {
 		if len(buildCmds) > 0 {
 			// Assume that dev dependencies are required to run build scripts to
 			// support the most use cases possible.
-			nodeEnv = nodejs.EnvDevelopment
+			buildNodeEnv = nodejs.EnvDevelopment
 		} else {
-			nodeEnv = nodejs.EnvProduction
+			buildNodeEnv = nodejs.EnvProduction
 		}
 	}
-	cached, err := nodejs.CheckOrClearCache(ctx, ml, cache.WithStrings(nodeEnv), cache.WithFiles("package.json", lockfile))
+	cached, err := nodejs.CheckOrClearCache(ctx, ml, cache.WithStrings(buildNodeEnv), cache.WithFiles("package.json", lockfile))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
 	}
@@ -103,7 +103,7 @@ func buildFn(ctx *gcp.Context) error {
 
 		// Always run npm install to run preinstall/postinstall scripts.
 		// Otherwise it should be a no-op because the lockfile is unchanged.
-		if _, err := ctx.Exec([]string{"npm", "install", "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"npm", "install", "--quiet"}, gcp.WithEnv("NODE_ENV="+buildNodeEnv), gcp.WithUserAttribution); err != nil {
 			return err
 		}
 	} else {
@@ -113,7 +113,7 @@ func buildFn(ctx *gcp.Context) error {
 			return err
 		}
 
-		if _, err := ctx.Exec([]string{"npm", installCmd, "--quiet"}, gcp.WithEnv("NODE_ENV="+nodeEnv), gcp.WithUserAttribution); err != nil {
+		if _, err := ctx.Exec([]string{"npm", installCmd, "--quiet"}, gcp.WithEnv("NODE_ENV="+buildNodeEnv), gcp.WithUserAttribution); err != nil {
 			return err
 		}
 
@@ -156,7 +156,7 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating layer: %w", err)
 	}
 	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
-	el.SharedEnvironment.Default("NODE_ENV", nodeEnv)
+	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
 
 	// Configure the entrypoint for production.
 	cmd := []string{"npm", "start"}
