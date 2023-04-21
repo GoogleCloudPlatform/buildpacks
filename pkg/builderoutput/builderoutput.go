@@ -51,6 +51,13 @@ type BuilderOutput struct {
 	CustomImage              bool                          `json:"customImage"`
 }
 
+// New constructs a BuilderOutput and returns a pointer.
+func New() *BuilderOutput {
+	return &BuilderOutput{
+		Metrics: buildermetrics.NewBuilderMetrics(),
+	}
+}
+
 // IsSystemError determines if the error type is a SYSTEM-attributed error
 func (bo BuilderOutput) IsSystemError() bool {
 	return bo.Error.Type == buildererror.StatusInternal

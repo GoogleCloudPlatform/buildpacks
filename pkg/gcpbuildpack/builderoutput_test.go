@@ -260,8 +260,11 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 	dur := 30 * time.Second
 	userDur := 5 * time.Second
 	buildpackID, buildpackVersion := "my-id", "my-version"
-	populatedMetrics := buildermetrics.NewBuilderMetrics()
-	populatedMetrics.GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(3)
+	metrics3 := buildermetrics.NewBuilderMetrics()
+	metrics3.GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(3)
+
+	metrics6 := buildermetrics.NewBuilderMetrics()
+	metrics6.GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(6)
 
 	testCases := []struct {
 		name                     string
@@ -273,9 +276,9 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 	}{
 		{
 			name:       "no file",
-			addMetrics: true,
+			addMetrics: true, // adds 3
 			want: builderoutput.BuilderOutput{
-				Metrics: populatedMetrics,
+				Metrics: metrics3,
 				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
@@ -293,16 +296,20 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 			},
 		},
 		{
-			name:       "existing file",
-			addMetrics: true,
+			name: "existing file",
 			initial: &builderoutput.BuilderOutput{
+				InstalledRuntimeVersions: []string{"1.0.0"},
+				Metrics:                  metrics3,
 				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
 					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
 				},
 			},
+			installedRuntimeVersions: []string{"3.2.1", "6.0.3"},
+			addMetrics:               true, // adds 3
 			want: builderoutput.BuilderOutput{
-				Metrics: populatedMetrics,
+				InstalledRuntimeVersions: []string{"1.0.0", "3.2.1", "6.0.3"},
+				Metrics:                  metrics6,
 				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
 					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
@@ -479,12 +486,11 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 
 			ctx.saveSuccessOutput(dur)
 
-			var got builderoutput.BuilderOutput
 			content, err := ioutil.ReadFile(fname)
 			if err != nil {
 				t.Fatalf("Failed to read %s: %v", fname, err)
 			}
-			got, err = builderoutput.FromJSON(content)
+			got, err := builderoutput.FromJSON(content)
 			if err != nil {
 				t.Fatalf("Failed to unmarshal: %v", err)
 			}

@@ -29,7 +29,7 @@ func (c *Counter) Increment(addend int64) {
 	atomic.AddInt64(&c.value, addend)
 }
 
-// Value retreives the value of a Counter
+// Value retrieves the value of a Counter
 func (c *Counter) Value() int64 {
 	return atomic.LoadInt64(&c.value)
 }
@@ -39,7 +39,7 @@ func (c *Counter) MarshalJSON() ([]byte, error) {
 	return json.Marshal(c.value)
 }
 
-// UnmarshalJSON unserializes json into a Counter
+// UnmarshalJSON deserializes json into a Counter
 func (c *Counter) UnmarshalJSON(b []byte) error {
 	var val int64
 	if err := json.Unmarshal(b, &val); err != nil {

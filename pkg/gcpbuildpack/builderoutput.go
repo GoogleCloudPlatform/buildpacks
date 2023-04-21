@@ -143,7 +143,7 @@ func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 		return
 	}
 
-	var bo builderoutput.BuilderOutput
+	bo := builderoutput.New()
 	fname := filepath.Join(outputDir, builderOutputFilename)
 
 	fnameExists, err := ctx.FileExists(fname)
@@ -158,7 +158,8 @@ func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 			ctx.Warnf("Failed to read %s, skipping statistics: %v", fname, err)
 			return
 		}
-		bo, err = builderoutput.FromJSON(content)
+		bofj, err := builderoutput.FromJSON(content)
+		bo = &bofj
 		if err != nil {
 			ctx.Warnf("Failed to unmarshal %s, skipping statistics: %v", fname, err)
 			return
@@ -166,7 +167,7 @@ func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 	}
 
 	if len(ctx.InstalledRuntimeVersions()) > 0 {
-		bo.InstalledRuntimeVersions = ctx.InstalledRuntimeVersions()
+		bo.InstalledRuntimeVersions = append(bo.InstalledRuntimeVersions, ctx.InstalledRuntimeVersions()...)
 	}
 
 	bo.Stats = append(bo.Stats, builderoutput.BuilderStat{
@@ -178,7 +179,10 @@ func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 	bo.Warnings = append(bo.Warnings, ctx.warnings...)
 
 	bm := buildermetrics.GlobalBuilderMetrics()
-	bo.Metrics = *bm
+	bm.ForEachCounter(func(id buildermetrics.CounterID, c *buildermetrics.Counter) {
+		count := bo.Metrics.GetCounter(id)
+		count.Increment(c.Value())
+	})
 
 	var content []byte
 	// Make sure the message is smaller than the maximum allowed size.
