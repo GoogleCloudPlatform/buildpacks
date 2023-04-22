@@ -133,7 +133,8 @@ func buildFn(ctx *gcp.Context) error {
 			split := strings.Split(cmd, " ")
 			if _, err := ctx.Exec(split, gcp.WithUserAttribution); err != nil {
 				if !isCustomBuild {
-					ctx.Logf("NOTE: Running the default build script can be skipped by passing the empty environment variable `%s=` to the build.", googleNodeRunScriptsEnv)
+					return fmt.Errorf(`%w
+NOTE: Running the default build script can be skipped by passing the empty environment variable "%s=" to the build`, err, googleNodeRunScriptsEnv)
 				}
 				return err
 			}
