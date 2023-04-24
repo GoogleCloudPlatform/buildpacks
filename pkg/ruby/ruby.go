@@ -27,7 +27,7 @@ import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
-const defaultVersion = "3.1.*"
+const defaultVersion = "3.2.*"
 
 // RubyVersionKey is the environment variable name used to store the Ruby version installed.
 const RubyVersionKey = "build_ruby_version"
