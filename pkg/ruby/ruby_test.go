@@ -141,6 +141,33 @@ RUBY VERSION
 			name: "default version",
 			want: defaultVersion,
 		},
+		{
+			name: "both Gemfile.lock and .ruby-version are present",
+			lockFiles: []lockFile{
+				lockFile{
+					name:    ".ruby-version",
+					content: `3.0.5`,
+				},
+				lockFile{
+					name: "Gemfile.lock",
+					content: `
+RUBY VERSION
+		ruby 3.0.5p34
+`,
+				},
+			},
+			want: "3.0.5",
+		},
+		{
+			name: "ruby-version is present",
+			lockFiles: []lockFile{
+				lockFile{
+					name:    ".ruby-version",
+					content: `3.2.2`,
+				},
+			},
+			want: "3.2.2",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -200,6 +227,33 @@ RUBY VERSION
 `},
 			},
 			errorContent: "Ruby version \"2.5.7\" in Gemfile.lock can't be overriden to \"3.0.1\" using GOOGLE_RUNTIME_VERSION environment variable",
+		},
+		{
+			name:       "from .ruby-version with different version on env",
+			runtimeEnv: "3.0.1",
+			lockFiles: []lockFile{
+				lockFile{
+					name:    ".ruby-version",
+					content: `3.0.5`,
+				},
+			},
+			errorContent: "There is a conflict between Ruby versions specified in .ruby-version file and the GOOGLE_RUNTIME_VERSION environment variable. Please resolve the conflict by choosing only one way to specify the ruby version",
+		},
+		{
+			name: "from Gemfile.lock with different version in .ruby-version",
+			lockFiles: []lockFile{
+				lockFile{
+					name: "Gemfile.lock",
+					content: `
+RUBY VERSION
+   ruby 2.5.7p206
+`},
+				lockFile{
+					name:    ".ruby-version",
+					content: `3.0.5`,
+				},
+			},
+			errorContent: "There is a conflict between the Ruby version \"2.5.7\" in Gemfile.lock and \"3.0.5\" in .ruby-version file.Please resolve the conflict by choosing only one way to specify the ruby version.",
 		},
 		{
 			name: "from Gemfile.lock with jruby",

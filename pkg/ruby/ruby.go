@@ -49,6 +49,17 @@ func DetectVersion(ctx *gcp.Context) (string, error) {
 		}
 	}
 
+	versionFromRubyVersion, err := getVersionFromRubyVersion(ctx)
+	if err != nil {
+		return "", err
+	}
+	if versionFromEnv != "" && versionFromRubyVersion != "" && versionFromRubyVersion != versionFromEnv {
+		return "", gcp.UserErrorf(
+			"There is a conflict between Ruby versions specified in .ruby-version file and the %s environment variable. "+
+				"Please resolve the conflict by choosing only one way to specify the ruby version.",
+			env.RuntimeVersion)
+	}
+
 	for _, lockFileName := range lockFiles {
 
 		path := filepath.Join(ctx.ApplicationRoot(), lockFileName)
@@ -75,6 +86,12 @@ func DetectVersion(ctx *gcp.Context) (string, error) {
 					"Ruby version %q in %s can't be overriden to %q using %s environment variable",
 					lockedVersion, lockFileName, versionFromEnv, env.RuntimeVersion)
 			}
+			if versionFromRubyVersion != "" && lockedVersion != versionFromRubyVersion {
+				return "", gcp.UserErrorf(
+					"There is a conflict between the Ruby version %q in %s and %q in .ruby-version file."+
+						"Please resolve the conflict by choosing only one way to specify the ruby version.",
+					lockedVersion, lockFileName, versionFromRubyVersion)
+			}
 			return lockedVersion, err
 		}
 	}
@@ -83,6 +100,11 @@ func DetectVersion(ctx *gcp.Context) (string, error) {
 		ctx.Logf(
 			"Using runtime version from environment variable %s: %s", env.RuntimeVersion, versionFromEnv)
 		return versionFromEnv, nil
+	}
+	if versionFromRubyVersion != "" {
+		ctx.Logf(
+			"Using runtime version from .ruby-version file: %s", versionFromRubyVersion)
+		return versionFromRubyVersion, nil
 	}
 
 	return defaultVersion, nil
@@ -147,4 +169,21 @@ func NeedsRailsAssetPrecompile(ctx *gcp.Context) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// Function to get the ruby version from .ruby-version file.
+func getVersionFromRubyVersion(ctx *gcp.Context) (string, error) {
+	path := filepath.Join(ctx.ApplicationRoot(), ".ruby-version")
+	pathExists, err := ctx.FileExists(path)
+	if err != nil {
+		return "", err
+	}
+	if pathExists {
+		version, err := os.ReadFile(path)
+		if err != nil {
+			return "", gcp.UserErrorf("Error %q in: %s", err, ".ruby-version")
+		}
+		return string(version), nil
+	}
+	return "", nil
 }
