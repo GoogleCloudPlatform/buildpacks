@@ -10,6 +10,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nginx"
 )
@@ -51,17 +52,12 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
-	yamlConfig, err := appyaml.PhpConfiguration(ctx.ApplicationRoot())
+	runtimeConfig, err := appyaml.PhpConfiguration(ctx.ApplicationRoot())
 	if err != nil {
 		return err
 	}
 
-	nginxConfFile, err := writeNginxConfig(l.Path, yamlConfig)
-	if err != nil {
-		return err
-	}
-
-	fpmConfFile, err := writeFpmConfig(l.Path, yamlConfig)
+	fpmConfFile, err := writeFpmConfig(l.Path, runtimeConfig)
 	if err != nil {
 		return err
 	}
@@ -69,8 +65,6 @@ func buildFn(ctx *gcp.Context) error {
 	cmd := []string{
 		"pid1",
 		"--nginxBinaryPath", defaultNginxBinary,
-		"--nginxConfigPath", filepath.Join(l.Path, nginxConf),
-		"--serverConfigPath", nginxConfFile.Name(),
 		"--nginxErrLogFilePath", filepath.Join(l.Path, nginxLog),
 		"--customAppCmd", fmt.Sprintf("%q", fmt.Sprintf("%s -R --nodaemonize --fpm-config %s", defaultFPMBinary, fpmConfFile.Name())),
 		"--pid1LogFilePath", filepath.Join(l.Path, pid1Log),
@@ -79,30 +73,41 @@ func buildFn(ctx *gcp.Context) error {
 		"--mimeTypesPath", filepath.Join("/layers/google.utils.nginx/nginx", "conf/mime.types"),
 		"--customAppSocket", filepath.Join(l.Path, appSocket),
 	}
+	nginxArgs, err := nginxConfCmdArgs(ctx.ApplicationRoot(), l.Path, runtimeConfig)
+	if err != nil {
+		return err
+	}
+	cmd = append(cmd, nginxArgs...)
 
 	ctx.AddProcess(gcp.WebProcess, cmd, gcp.AsDefaultProcess())
 
 	return nil
 }
 
-func nginxConfig(l string, yamlConfig appyaml.RuntimeConfig) nginx.Config {
+func nginxConfig(l string, runtimeConfig appyaml.RuntimeConfig) nginx.Config {
+	frontController := defaultFrontController
+	if runtimeConfig.FrontControllerFile != "" {
+		frontController = runtimeConfig.FrontControllerFile
+	}
+
 	nginx := nginx.Config{
 		Port:                  defaultNginxPort,
-		FrontControllerScript: defaultFrontController,
-		Root:                  filepath.Join(defaultRoot, yamlConfig.DocumentRoot),
+		FrontControllerScript: frontController,
+		Root:                  filepath.Join(defaultRoot, runtimeConfig.DocumentRoot),
 		AppListenAddress:      filepath.Join(l, appSocket),
 	}
 
 	return nginx
 }
 
-func writeNginxConfig(path string, yamlConfig appyaml.RuntimeConfig) (*os.File, error) {
-	nginxConf := nginxConfig(path, yamlConfig)
+func writeNginxServerConfig(root, path string, runtimeConfig appyaml.RuntimeConfig) (string, error) {
+
+	nginxConf := nginxConfig(path, runtimeConfig)
 	nginxConfFile, err := nginx.WriteNginxConfigToPath(path, nginxConf)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return nginxConfFile, nil
+	return nginxConfFile.Name(), nil
 }
 
 func fpmConfig(l string) (nginx.FPMConfig, error) {
@@ -122,10 +127,30 @@ func fpmConfig(l string) (nginx.FPMConfig, error) {
 
 	return fpm, nil
 }
-func writeFpmConfig(path string, yamlConfig appyaml.RuntimeConfig) (*os.File, error) {
+func writeFpmConfig(path string, runtimeConfig appyaml.RuntimeConfig) (*os.File, error) {
 	conf, err := fpmConfig(path)
 	if err != nil {
 		return nil, err
 	}
 	return nginx.WriteFpmConfigToPath(path, conf)
+}
+
+func nginxConfCmdArgs(root, path string, runtimeConfig appyaml.RuntimeConfig) ([]string, error) {
+	if overrideConf := runtimeConfig.NginxConfOverride; overrideConf != "" {
+		dest := filepath.Join(path, overrideConf)
+		err := fileutil.MaybeCopyPathContents(filepath.Join(root, overrideConf), dest, fileutil.AllPaths)
+		if err != nil {
+			return nil, err
+		}
+		return []string{"--nginxConfigPath", dest}, nil
+
+	}
+	nginxServerConfFileName, err := writeNginxServerConfig(root, path, runtimeConfig)
+	if err != nil {
+		return nil, err
+	}
+	return []string{
+		"--nginxConfigPath", filepath.Join(path, nginxConf),
+		"--serverConfigPath", nginxServerConfFileName,
+	}, nil
 }

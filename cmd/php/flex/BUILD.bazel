@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
 load("//tools:defs.bzl", "buildpack")
 
 licenses(["notice"])
@@ -26,7 +26,21 @@ go_binary(
     deps = [
         "//pkg/appyaml",
         "//pkg/env",
+        "//pkg/fileutil",
         "//pkg/gcpbuildpack",
         "//pkg/nginx",
+    ],
+)
+
+go_test(
+    name = "main_test",
+    size = "small",
+    srcs = ["main_test.go"],
+    embed = [":main"],
+    rundir = ".",
+    deps = [
+        "//pkg/appyaml",
+        "//pkg/nginx",
+        "@com_github_google_go-cmp//cmp:go_default_library",
     ],
 )
