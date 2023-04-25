@@ -85,6 +85,17 @@ acceptance_test_suite(
     versions = VERSIONS_WITH_GCF_SUPPORT,
 )
 
+acceptance_test_suite(
+    name = "flex_test",
+    srcs = [
+        "flex_test.go",
+    ],
+    builder = "//builders/ruby:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/ruby:flex",
+    versions = VERSIONS_WITH_FLEX_SUPPORT,
+)
+
 acceptance_test_argo_source(
     name = "argo_source",
     testdata = "//builders/testdata:ruby",
