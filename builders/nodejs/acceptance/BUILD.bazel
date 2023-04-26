@@ -1,6 +1,6 @@
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
-load(":args.bzl", "gae_nodejs_runtime_versions", "gcf_nodejs_runtime_versions", "nodejsargs")
-load("runtime.bzl", "gcf_runtimes")
+load(":args.bzl", "nodejsargs")
+load("runtime.bzl", "gae_runtimes", "gcf_runtimes")
 
 licenses(["notice"])
 
@@ -20,17 +20,15 @@ test_suite(
     ],
 )
 
-VERSIONS_ALL = gae_nodejs_runtime_versions
+VERSIONS_ALL = gae_runtimes
 
 # nodejs8 is decommissioned for GAE
-VERSIONS_WITH_GAE_SUPPORT = [v for v in gae_nodejs_runtime_versions if not v.startswith("8")]
+VERSIONS_WITH_GAE_SUPPORT = {n: v for n, v in gae_runtimes.items() if not v.startswith("8")}
 
 # nodejs8 will be decommissioned for GCF on June 5, 2023
-VERSIONS_WITH_GCF_SUPPORT = [v for v in gcf_nodejs_runtime_versions if not v.startswith("8")]
+VERSIONS_WITH_GCF_SUPPORT = {n: v for n, v in gcf_runtimes.items() if not v.startswith("8")}
 
-VERSIONS_WITH_FLEX_SUPPORT = [
-    gcf_runtimes["nodejs18"],
-]
+VERSIONS_WITH_FLEX_SUPPORT = {n: v for n, v in gcf_runtimes.items() if n.startswith("nodejs18")}
 
 # The GCF Legacy Worker is only available and used for the "GCF nodejs8" runtime version. It has
 # different behavior, a unique order group, and is tested seperately.

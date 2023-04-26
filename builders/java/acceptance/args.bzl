@@ -4,8 +4,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 load(":runtime.bzl", "gae_runtimes", "gcf_runtimes")
 
-gae_java_runtime_versions = [v.replace("java", "") for v in gae_runtimes]
-gcf_java_runtime_versions = [v.replace("java", "") for v in gcf_runtimes]
+gae_java_runtime_versions = {n: n.replace("java", "") for n in gae_runtimes}
+gcf_java_runtime_versions = {n: n.replace("java", "") for n in gcf_runtimes}
 
 def javaargs(runImageTag = ""):
     """Create a new key-value map of arguments for java test
@@ -14,7 +14,7 @@ def javaargs(runImageTag = ""):
         A key-value map of the arguments
     """
     args = {}
-    for version in gae_java_runtime_versions:
+    for _n, version in gae_java_runtime_versions.items():
         args[version] = newArgs(version, runImageTag)
 
     return args

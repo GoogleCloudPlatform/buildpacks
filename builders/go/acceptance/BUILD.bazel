@@ -27,11 +27,11 @@ VERSIONS_GAE_SUPPORT = VERSIONS_ALL_PRODUCTS
 
 # The product versions for which there is GAE Flex support.
 # Note that the app.yamls in the test apps are still hardcoded to at least 1.18.
-VERSIONS_WITH_FLEX_SUPPORT = [
-    "1.18",
-    "1.19",
-    "1.20",
-]
+VERSIONS_WITH_FLEX_SUPPORT = {
+    "go118": "1.18",
+    "go119": "1.19",
+    "go120": "1.20",
+}
 
 # The product versions for which there is explicit, tested GCP support. Technically any version is available
 # on GCP, but not all versions are tested.

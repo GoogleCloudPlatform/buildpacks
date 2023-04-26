@@ -14,15 +14,15 @@ test_suite(
 # but we also don't want to target dotnet 7 explicitly -- it is not a LTS release, only STS.
 VERSION_DOTNET7 = "7.0.100"
 
-VERSIONS_WITH_GCF_SUPPORT = [v for n, v in gcf_runtimes.items() if n != "dotnet"]
+VERSIONS_WITH_GCF_SUPPORT = {n: v for n, v in gcf_runtimes.items() if n != "dotnet"}
 
-VERSIONS_ALL = VERSIONS_WITH_GCF_SUPPORT + [
-    VERSION_DOTNET7,
-]
+VERSIONS_ALL = {n: v for n, v in VERSIONS_WITH_GCF_SUPPORT.items()}
 
-VERSIONS_WITH_FLEX_SUPPORT = [
-    gcf_runtimes["dotnet6"],
-]
+VERSIONS_ALL["dotnet7"] = VERSION_DOTNET7
+
+VERSIONS_WITH_FLEX_SUPPORT = {
+    "dotnet6": gcf_runtimes["dotnet6"],
+}
 
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
 

@@ -16,16 +16,16 @@ test_suite(
 VERSIONS_ALL = gae_java_runtime_versions
 
 # java8 is gen1 runtime so it's not using buildpacks
-VERSIONS_WITH_GAE_SUPPORT = [v for v in gae_java_runtime_versions if v != "8"]
+VERSIONS_WITH_GAE_SUPPORT = {n: v for n, v in gae_java_runtime_versions.items() if v != "8"}
 
 VERSION_JAVA11 = "11"
 
 VERSION_JAVA17 = "17"
 
-VERSIONS_WITH_FLEX_SUPPORT = [
-    VERSION_JAVA11,
-    VERSION_JAVA17,
-]
+VERSIONS_WITH_FLEX_SUPPORT = {
+    "java11": VERSION_JAVA11,
+    "java17": VERSION_JAVA17,
+}
 
 VERSIONS_WITH_GCF_SUPPORT = VERSIONS_WITH_GAE_SUPPORT
 

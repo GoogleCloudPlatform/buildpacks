@@ -1,5 +1,5 @@
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
-load(":args.bzl", "gae_python_runtime_versions", "pythonargs")
+load(":args.bzl", "pythonargs")
 load(":runtime.bzl", "gae_runtimes")
 
 licenses(["notice"])
@@ -14,7 +14,7 @@ test_suite(
     name = "acceptance_test",
 )
 
-VERSIONS_ALL = gae_python_runtime_versions
+VERSIONS_ALL = {n: v for n, v in gae_runtimes.items() if n != "python27"}
 
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
 
@@ -22,11 +22,11 @@ VERSIONS_WITH_GAE_SUPPORT = VERSIONS_ALL
 
 VERSIONS_WITH_GCF_SUPPORT = VERSIONS_ALL
 
-VERSIONS_WITH_FLEX_SUPPORT = [
-    gae_runtimes["python38"],
-    gae_runtimes["python39"],
-    gae_runtimes["python310"],
-]
+VERSIONS_WITH_FLEX_SUPPORT = {
+    "python38": gae_runtimes["python38"],
+    "python39": gae_runtimes["python39"],
+    "python310": gae_runtimes["python310"],
+}
 
 acceptance_test_suite(
     name = "gcp_test",
