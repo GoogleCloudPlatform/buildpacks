@@ -59,6 +59,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	if ver, present := os.LookupEnv(env.ComposerVersion); present {
+		composerVer = ver
+	}
+
 	l, err := ctx.Layer(composerLayer, gcp.BuildLayer, gcp.CacheLayer)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", composerLayer, err)

@@ -96,6 +96,7 @@ func TestBuild(t *testing.T) {
 		wantExitCode        int // 0 if unspecified
 		wantCommands        []string
 		skippedCommands     []string
+		env                 []string
 		httpStatusInstaller int
 		httpStatusSignature int
 	}{
@@ -108,6 +109,20 @@ func TestBuild(t *testing.T) {
 			wantCommands: []string{
 				actualHashCmd,
 				runInstallerCmd,
+				"composer --version " + composerVer,
+			},
+		},
+		{
+			name: "custom composer version",
+			mocks: []*mockprocess.Mock{
+				mockprocess.New("sha384", mockprocess.WithStdout(expectedHash)),
+				mockprocess.New("--filename composer", mockprocess.WithExitCode(0)),
+			},
+			env: []string{
+				"GOOGLE_COMPOSER_VERSION=2.2.21",
+			},
+			wantCommands: []string{
+				"composer --version 2.2.21",
 			},
 		},
 		{
@@ -187,6 +202,7 @@ func TestBuild(t *testing.T) {
 			opts := []bpt.Option{
 				bpt.WithTestName(tc.name),
 				bpt.WithExecMocks(tc.mocks...),
+				bpt.WithEnvs(tc.env...),
 			}
 
 			result, err := bpt.RunBuild(t, buildFn, opts...)

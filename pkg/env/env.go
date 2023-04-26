@@ -137,6 +137,9 @@ const (
 	// ComposerArgsEnv is an environment variable used to pass custom composer variables.
 	ComposerArgsEnv = "GOOGLE_COMPOSER_ARGS"
 
+	// ComposerVersion is used to determine which version for composer to install.
+	ComposerVersion = "GOOGLE_COMPOSER_VERSION"
+
 	// FlexEnv is internal env variable to denote a flex application
 	FlexEnv = "GOOGLE_FLEX_APPLICATION"
 )
