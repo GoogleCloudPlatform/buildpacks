@@ -187,8 +187,7 @@ NOTE: Running the default build script can be skipped by passing the empty envir
 // 1. GOOGLE_NODE_RUN_SCRIPTS env var
 // 2. "gcp-build" script in package.json
 // 3. "build" script in package.json
-func determineBuildCommands(pjs *nodejs.PackageJSON) ([]string, bool) {
-	cmds := []string{}
+func determineBuildCommands(pjs *nodejs.PackageJSON) (cmds []string, isCustomBuild bool) {
 	envScript, envScriptPresent := os.LookupEnv(googleNodeRunScriptsEnv)
 	if envScriptPresent {
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmGoogleNodeRunScriptsUsageCounterID).Increment(1)
@@ -208,25 +207,27 @@ func determineBuildCommands(pjs *nodejs.PackageJSON) ([]string, bool) {
 
 	if nodejs.HasGCPBuild(pjs) {
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmGcpBuildUsageCounterID).Increment(1)
+		if gcpBuild := pjs.Scripts[nodejs.ScriptGCPBuild]; strings.TrimSpace(gcpBuild) == "" {
+			return []string{}, true
+		}
 		return []string{"npm run gcp-build"}, true
 	}
 
 	if nodejs.HasScript(pjs, nodejs.ScriptBuild) {
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmBuildUsageCounterID).Increment(1)
 
-		// If using the OSS builder, run "npm run build" by default.
-		if os.Getenv(env.XGoogleTargetPlatform) == "" {
-			return []string{"npm run build"}, false
-		}
-
 		// Env var guards an experimental feature to run "npm run build" by default.
 		shouldBuild, err := strconv.ParseBool(os.Getenv(nodejsNPMBuildEnv))
 		// If there was an error reading the env var, don't run the script.
 		if err != nil {
-			return []string{}, false
+			shouldBuild = false
 		}
 
-		if shouldBuild {
+		// If experiment is enabled or it's the OSS builder, run "npm run build" by default.
+		if shouldBuild || os.Getenv(env.XGoogleTargetPlatform) == "" {
+			if build := pjs.Scripts[nodejs.ScriptBuild]; strings.TrimSpace(build) == "" {
+				return []string{}, false
+			}
 			return []string{"npm run build"}, false
 		}
 	}
