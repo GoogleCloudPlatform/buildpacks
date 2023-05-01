@@ -65,6 +65,11 @@ catch_workers_output = yes
 {{if .AddNoDecorateWorkers}}
 decorate_workers_output = no
 {{end}}
+
+{{- if .ConfOverride}}
+include {{.ConfOverride}}
+{{- end}}
+
 `))
 
 // NginxTemplate is a template that produces a snippet of nginx config that sets up the
@@ -131,6 +136,10 @@ server {
 		fastcgi_param X_FORWARDED_PROTO $http_x_forwarded_proto;
 		fastcgi_param FORWARDED $http_forwarded;
 	}
+
+	{{- if .NginxConfInclude}}
+	include {{.NginxConfInclude}};
+	{{- end}}
 }
 `))
 
@@ -142,6 +151,7 @@ type FPMConfig struct {
 	NumWorkers           int
 	Username             string
 	AddNoDecorateWorkers bool
+	ConfOverride         string
 }
 
 // Config represents the content values of a nginx config file.
@@ -150,6 +160,7 @@ type Config struct {
 	Root                  string
 	AppListenAddress      string
 	FrontControllerScript string
+	NginxConfInclude      string
 }
 
 const (

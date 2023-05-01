@@ -10,7 +10,6 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nginx"
 )
@@ -73,7 +72,7 @@ func buildFn(ctx *gcp.Context) error {
 		"--mimeTypesPath", filepath.Join("/layers/google.utils.nginx/nginx", "conf/mime.types"),
 		"--customAppSocket", filepath.Join(l.Path, appSocket),
 	}
-	nginxArgs, err := nginxConfCmdArgs(ctx.ApplicationRoot(), l.Path, runtimeConfig)
+	nginxArgs, err := nginxConfCmdArgs(l.Path, runtimeConfig)
 	if err != nil {
 		return err
 	}
@@ -97,10 +96,14 @@ func nginxConfig(l string, runtimeConfig appyaml.RuntimeConfig) nginx.Config {
 		AppListenAddress:      filepath.Join(l, appSocket),
 	}
 
+	if runtimeConfig.NginxConfInclude != "" {
+		nginx.NginxConfInclude = filepath.Join(defaultRoot, runtimeConfig.NginxConfInclude)
+	}
+
 	return nginx
 }
 
-func writeNginxServerConfig(root, path string, runtimeConfig appyaml.RuntimeConfig) (string, error) {
+func writeNginxServerConfig(path string, runtimeConfig appyaml.RuntimeConfig) (string, error) {
 
 	nginxConf := nginxConfig(path, runtimeConfig)
 	nginxConfFile, err := nginx.WriteNginxConfigToPath(path, nginxConf)
@@ -110,7 +113,7 @@ func writeNginxServerConfig(root, path string, runtimeConfig appyaml.RuntimeConf
 	return nginxConfFile.Name(), nil
 }
 
-func fpmConfig(l string) (nginx.FPMConfig, error) {
+func fpmConfig(l string, runtimeConfig appyaml.RuntimeConfig) (nginx.FPMConfig, error) {
 	user, err := user.Current()
 	if err != nil {
 		return nginx.FPMConfig{}, fmt.Errorf("getting current user: %w", err)
@@ -125,32 +128,39 @@ func fpmConfig(l string) (nginx.FPMConfig, error) {
 		AddNoDecorateWorkers: true,
 	}
 
+	if runtimeConfig.PHPFPMConfOverride != "" {
+		fpm.ConfOverride = filepath.Join(defaultRoot, runtimeConfig.PHPFPMConfOverride)
+	}
+
 	return fpm, nil
 }
 func writeFpmConfig(path string, runtimeConfig appyaml.RuntimeConfig) (*os.File, error) {
-	conf, err := fpmConfig(path)
+	conf, err := fpmConfig(path, runtimeConfig)
 	if err != nil {
 		return nil, err
 	}
 	return nginx.WriteFpmConfigToPath(path, conf)
 }
 
-func nginxConfCmdArgs(root, path string, runtimeConfig appyaml.RuntimeConfig) ([]string, error) {
+func nginxConfCmdArgs(path string, runtimeConfig appyaml.RuntimeConfig) ([]string, error) {
 	if overrideConf := runtimeConfig.NginxConfOverride; overrideConf != "" {
-		dest := filepath.Join(path, overrideConf)
-		err := fileutil.MaybeCopyPathContents(filepath.Join(root, overrideConf), dest, fileutil.AllPaths)
-		if err != nil {
-			return nil, err
-		}
+		dest := filepath.Join(defaultRoot, overrideConf)
 		return []string{"--nginxConfigPath", dest}, nil
 
 	}
-	nginxServerConfFileName, err := writeNginxServerConfig(root, path, runtimeConfig)
+	nginxServerConfFileName, err := writeNginxServerConfig(path, runtimeConfig)
 	if err != nil {
 		return nil, err
 	}
-	return []string{
+
+	args := []string{
 		"--nginxConfigPath", filepath.Join(path, nginxConf),
 		"--serverConfigPath", nginxServerConfFileName,
-	}, nil
+	}
+
+	if runtimeConfig.NginxConfHTTPInclude != "" {
+		args = append(args, "--httpIncludeConfigPath", filepath.Join(defaultRoot, runtimeConfig.NginxConfHTTPInclude))
+	}
+
+	return args, nil
 }

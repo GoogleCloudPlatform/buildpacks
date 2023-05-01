@@ -30,9 +30,12 @@ type appYaml struct {
 
 // RuntimeConfig The runtime_config specified in users app.yaml.
 type RuntimeConfig struct {
-	DocumentRoot        string `yaml:"document_root"`
-	FrontControllerFile string `yaml:"front_controller_file"`
-	NginxConfOverride   string `yaml:"nginx_conf_override"`
+	DocumentRoot         string `yaml:"document_root"`
+	FrontControllerFile  string `yaml:"front_controller_file"`
+	NginxConfOverride    string `yaml:"nginx_conf_override"`
+	NginxConfInclude     string `yaml:"nginx_conf_include"`
+	NginxConfHTTPInclude string `yaml:"nginx_conf_http_include"`
+	PHPFPMConfOverride   string `yaml:"php_fpm_conf_override"`
 }
 
 // appYamlIfExists looks up the app.yaml file specified by env var and returns its content if exists.
