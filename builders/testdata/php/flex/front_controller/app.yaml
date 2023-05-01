@@ -1,0 +1,6 @@
+runtime: php
+env: flex
+
+runtime_config:
+  document_root: web
+  front_controller_file: app.php

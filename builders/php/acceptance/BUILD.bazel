@@ -1,5 +1,5 @@
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
-load(":args.bzl", "gae_php_runtime_versions", "gcf_php_runtime_versions", "phpargs")
+load(":args.bzl", "flex_php_runtime_versions", "gae_php_runtime_versions", "gcf_php_runtime_versions", "phpargs")
 
 licenses(["notice"])
 
@@ -11,6 +11,8 @@ exports_files([
 VERSIONS_ALL_PRODUCTS = gae_php_runtime_versions
 
 VERSIONS_GCF_SUPPORT = gcf_php_runtime_versions
+
+VERSIONS_FLEX_SUPPORT = flex_php_runtime_versions
 
 acceptance_test_suite(
     name = "gcp_test",
@@ -62,6 +64,18 @@ acceptance_test_suite(
     rundir = ".",
     testdata = "//builders/testdata/php:functions",
     versions = VERSIONS_GCF_SUPPORT,
+)
+
+acceptance_test_suite(
+    name = "flex_test",
+    srcs = [
+        "common_test.go",
+        "flex_test.go",
+    ],
+    builder = "//builders/php:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/php:flex",
+    versions = VERSIONS_FLEX_SUPPORT,
 )
 
 acceptance_test_argo_source(
