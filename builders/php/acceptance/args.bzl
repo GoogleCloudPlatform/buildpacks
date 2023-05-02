@@ -9,7 +9,7 @@ gae_php_runtime_versions = {n: n[3] + "." + n[4:] for n in gae_runtimes if n != 
 gcf_php_runtime_versions = {n: n[3] + "." + n[4:] for n in gcf_runtimes}
 
 # flex uses php 8+ with the same runtimes as gcf.
-flex_php_runtime_versions = [v[3] + "." + v[4:] for v in gcf_runtimes if v != "php74"]
+flex_php_runtime_versions = {n: n[3] + "." + n[4:] for n in gcf_runtimes if n != "php74"}
 
 def phpargs(runImageTag = ""):
     """Create a new key-value map of arguments for php test
