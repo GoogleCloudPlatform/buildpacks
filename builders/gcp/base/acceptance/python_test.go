@@ -56,6 +56,20 @@ func TestAcceptancePython(t *testing.T) {
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		{
+			Name:    "runtime version 3.9",
+			App:     "version",
+			Path:    "/version?want=3.9.16",
+			Env:     []string{"GOOGLE_RUNTIME_VERSION=3.9.16"},
+			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+		},
+		{
+			Name:    "runtime version 3.8",
+			App:     "version",
+			Path:    "/version?want=3.8.16",
+			Env:     []string{"GOOGLE_RUNTIME_VERSION=3.8.16"},
+			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+		},
+		{
 			Name:    "runtime version from env",
 			App:     "version",
 			Path:    "/version?want=3.10.8",
