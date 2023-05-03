@@ -6,8 +6,13 @@ licenses(["notice"])
 exports_files(["config.yaml"])
 
 test_suite(
-    # run all tests in this BUILD
     name = "acceptance_test",
+    tests = [
+        "flex_test",
+        "gae_test",
+        "gcf_test",
+        "gcp_test",
+    ],
 )
 
 # We wanted to support dotnet 7 if someone in the OSS community wanted to build against it,

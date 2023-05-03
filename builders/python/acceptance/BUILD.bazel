@@ -10,8 +10,13 @@ exports_files([
 ])
 
 test_suite(
-    # run all tests in this BUILD
     name = "acceptance_test",
+    tests = [
+        "flex_test",
+        "gae_test",
+        "gcf_test",
+        "gcp_test",
+    ],
 )
 
 VERSIONS_ALL = {n: v for n, v in gae_runtimes.items() if n != "python27"}

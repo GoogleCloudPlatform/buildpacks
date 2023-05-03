@@ -8,6 +8,16 @@ exports_files([
     "args.bzl",
 ])
 
+test_suite(
+    name = "acceptance_test",
+    tests = [
+        "flex_test",
+        "gae_test",
+        "gcf_test",
+        "gcp_test",
+    ],
+)
+
 VERSIONS_ALL_PRODUCTS = gae_php_runtime_versions
 
 VERSIONS_GCF_SUPPORT = gcf_php_runtime_versions
