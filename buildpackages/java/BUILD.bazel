@@ -1,0 +1,27 @@
+load("//tools:defs.bzl", "buildpackage")
+
+licenses(["notice"])
+
+package(default_visibility = [
+    "//builders:__subpackages__",
+    "//buildpackages/java:__subpackages__",
+])
+
+buildpackage(
+    name = "buildpackage",
+    buildpacks = [
+        "//cmd/config/entrypoint:entrypoint.tgz",
+        "//cmd/utils/label:label_image.tgz",
+        "//cmd/config/flex:flex.tgz",
+        "//cmd/java/appengine:appengine.tgz",
+        "//cmd/utils/archive_source:archive_source.tgz",
+        # Java Specific Buildpacks
+        "//cmd/java/clear_source:clear_source.tgz",
+        "//cmd/java/entrypoint:entrypoint.tgz",
+        "//cmd/java/exploded_jar:exploded_jar.tgz",
+        "//cmd/java/functions_framework:functions_framework.tgz",
+        "//cmd/java/gradle:gradle.tgz",
+        "//cmd/java/maven:maven.tgz",
+        "//cmd/java/runtime:runtime.tgz",
+    ],
+)

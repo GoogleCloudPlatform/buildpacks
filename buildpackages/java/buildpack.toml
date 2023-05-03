@@ -1,0 +1,317 @@
+# Meta Buildpack for unitifed Java 
+api = "0.8"
+
+# Buildpack ID and metadata
+[buildpack]
+  id = "google.buildpackages.java"
+  version = "0.0.1"
+  name = "Unified Java Meta Buildpack"
+  homepage = "https://github.com/GoogleCloudPlatform/buildpacks/buildpackages/java"
+
+# GAE Flex for maven
+[[order]]
+  [[order.group]]
+  id = "google.config.flex"
+  version = "0.9.1"
+
+  [[order.group]]
+    id = "google.java.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.java.maven"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.java.entrypoint"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+    version = "0.0.2"
+
+# GAE Flex for gradle
+[[order]]
+  [[order.group]]
+  id = "google.config.flex"
+  version = "0.9.1"
+
+  [[order.group]]
+    id = "google.java.runtime"
+    version = "0.9.1"
+    
+  [[order.group]]
+    id = "google.java.gradle"
+    version = "0.9.0"
+    optional = true
+  
+  [[order.group]]
+    id = "google.java.entrypoint"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+    version = "0.0.2"
+
+# The GAE order group.
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.java.maven"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.java.appengine"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+    version = "0.0.2"
+
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.java.gradle"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.appengine"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+    version = "0.0.2"
+
+# The GCF order group.
+# We'll use google.java.maven to compile the function code if there is a pom.xml.
+# In that case google.java.functions-framework will inspect the pom.xml to
+# determine what should be in the classpath of the final function.
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    version = "0.0.1"
+
+  [[order.group]]
+    id = "google.java.maven"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.java.functions-framework"
+    version = "1.1.0"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+    version = "0.0.2"
+
+# We'll use google.java.gradle to compile the function code if there is a build.gradle.
+# In that case google.java.functions-framework will inspect the build.gradle to
+# determine what should be in the classpath of the final function. Since
+# google.java.gradle is optional, google.java.functions-framework will also run
+# if there is neither a pom.xml nor a build.gradle. In that case, it expects
+# there is an already-compiled jar file and that's what it will put in the
+# classpath.
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    version = "0.0.1"
+
+  [[order.group]]
+    id = "google.java.gradle"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.functions-framework"
+    version = "1.1.0"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+    version = "0.0.2"
+
+# The GCP order group.
+# Functions have separate groups because entrypoint not supported.
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.java.maven"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.java.functions-framework"
+    version = "1.1.0"
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+    version = "0.0.2"
+
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.java.gradle"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.functions-framework"
+    version = "1.1.0"
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+    version = "0.0.2"
+
+# Exploded Jars
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.java.exploded-jar"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+    version = "0.0.2"
+
+# Maven applications.
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.java.maven"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+    version = "0.0.2"
+
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.java.maven"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.java.entrypoint"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+    version = "0.0.2"
+
+# Gradle & Jar-based applications.
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.java.gradle"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+    version = "0.0.2"
+
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+    version = "0.9.1"
+
+  [[order.group]]
+    id = "google.java.gradle"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.entrypoint"
+    version = "0.9.0"
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    version = "0.9.0"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+    version = "0.0.2"
