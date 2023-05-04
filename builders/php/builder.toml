@@ -56,6 +56,35 @@ description = "Unified builder for the PHP runtime"
   id = "google.utils.archive-source"
   uri = "archive_source.tgz"
 
+# PHP applications (flex)
+[[order]]
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.php.runtime"
+
+  [[order.group]]
+    id = "google.php.flex"
+
+  [[order.group]]
+    id = "google.php.composer-install"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.nginx"
+
+  [[order.group]]
+    id = "google.php.composer"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer-gcp-build"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
 # PHP applications (gcf)
 [[order]]
   [[order.group]]
@@ -104,35 +133,6 @@ description = "Unified builder for the PHP runtime"
 
   [[order.group]]
     id = "google.php.appengine"
-
-  [[order.group]]
-    id = "google.utils.label-image"
-
-# PHP applications (flex)
-[[order]]
-  [[order.group]]
-    id = "google.config.flex"
-
-  [[order.group]]
-    id = "google.php.runtime"
-
-  [[order.group]]
-    id = "google.php.composer-install"
-    optional = true
-
-  [[order.group]]
-    id = "google.utils.nginx"
-
-  [[order.group]]
-    id = "google.php.composer-gcp-build"
-    optional = true
-
-  [[order.group]]
-    id = "google.php.composer"
-    optional = true
-
-  [[order.group]]
-    id = "google.php.flex"
 
   [[order.group]]
     id = "google.utils.label-image"

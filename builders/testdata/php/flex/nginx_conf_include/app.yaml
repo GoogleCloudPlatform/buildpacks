@@ -1,0 +1,6 @@
+runtime: php
+env: flex
+
+runtime_config:
+  document_root: .
+  nginx_conf_include: nginx-app.conf

@@ -12,6 +12,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nginx"
+	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -47,7 +48,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	l, err := ctx.Layer("flex", gcp.CacheLayer, gcp.LaunchLayerUnlessSkipRuntimeLaunch)
+	l, err := ctx.Layer("flex", gcp.CacheLayer, gcp.LaunchLayerUnlessSkipRuntimeLaunch, gcp.BuildLayer)
 	if err != nil {
 		return err
 	}
@@ -55,6 +56,8 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
+
+	setEnvVariables(l, runtimeConfig)
 
 	fpmConfFile, err := writeFpmConfig(l.Path, runtimeConfig)
 	if err != nil {
@@ -163,4 +166,14 @@ func nginxConfCmdArgs(path string, runtimeConfig appyaml.RuntimeConfig) ([]strin
 	}
 
 	return args, nil
+}
+
+func setEnvVariables(l *libcnb.Layer, runtimeConfig appyaml.RuntimeConfig) {
+	if runtimeConfig.ComposerFlags != "" {
+		l.BuildEnvironment.Override(env.ComposerArgsEnv, runtimeConfig.ComposerFlags)
+	}
+
+	if runtimeConfig.PHPIniOverride != "" {
+		l.LaunchEnvironment.Override("PHPRC", filepath.Join(defaultRoot, runtimeConfig.PHPIniOverride))
+	}
 }

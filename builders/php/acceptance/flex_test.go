@@ -20,6 +20,18 @@ func TestAcceptance(t *testing.T) {
 			App:     "front_controller",
 			MustUse: []string{flex, composer},
 		},
+		{
+			Name:      "php ini override",
+			App:       "php_ini",
+			MustMatch: "PASS_PHP_INI",
+			MustUse:   []string{flex},
+		},
+		{
+			Name:      "nginx server config included",
+			App:       "nginx_conf_include",
+			MustUse:   []string{flex, utilsNginx},
+			MustMatch: "app.php",
+		},
 	}
 
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
