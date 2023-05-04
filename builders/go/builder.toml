@@ -60,7 +60,7 @@ description = "Unified builder for the Go runtime"
   id = "google.utils.label-image"
   uri = "label_image.tgz"
 
-# GAE Flex
+# GAE Flex with go.mod
 [[order]]
   [[order.group]]
     id = "google.go.flex-gomod"
@@ -74,6 +74,24 @@ description = "Unified builder for the Go runtime"
 
   [[order.group]]
     id = "google.go.gomod"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# GAE Flex without go.mod
+[[order]]
+
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.go.appengine-gopath"
+
+  [[order.group]]
+    id = "google.go.runtime"
 
   [[order.group]]
     id = "google.go.build"

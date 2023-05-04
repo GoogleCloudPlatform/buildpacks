@@ -25,7 +25,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
@@ -35,8 +34,8 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !env.IsGAE() {
-		return appengine.OptOutTargetPlatformNotGAE(), nil
+	if !env.IsGAE() && !env.IsFlex() {
+		return gcp.OptOut("not a GAE Standard or Flex app."), nil
 	}
 	goModExists, err := ctx.FileExists("go.mod")
 	if err != nil {
