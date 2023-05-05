@@ -12,7 +12,6 @@ buildpack(
     version = "0.1.0",
     visibility = [
         "//builders:java_builders",
-        "//buildpackages:__subpackages__",
     ],
 )
 
