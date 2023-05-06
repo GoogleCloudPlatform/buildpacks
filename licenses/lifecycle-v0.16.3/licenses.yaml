@@ -13,6 +13,10 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/cloud.google.com/go/compute/metadata/LICENSE
 
+- package: github.com/agext/levenshtein
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/agext/levenshtein/LICENSE
+
 - package: github.com/apex/log
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/apex/log/LICENSE
@@ -169,17 +173,9 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/typeurl/LICENSE
 
-- package: github.com/coreos/etcd/raft/raftpb
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/coreos/etcd/raft/raftpb/LICENSE
-
 - package: github.com/coreos/go-systemd/v22/dbus
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/coreos/go-systemd/v22/dbus/LICENSE
-
-- package: github.com/cyphar/filepath-securejoin
-  license_name: BSD-3-Clause
-  license_path: /usr/local/share/licenses/lifecycle/github.com/cyphar/filepath-securejoin/LICENSE
 
 - package: github.com/dimchansky/utfbom
   license_name: Apache-2.0
@@ -217,17 +213,9 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/docker/go-units/LICENSE
 
-- package: github.com/docker/swarmkit
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/docker/swarmkit/LICENSE
-
 - package: github.com/ePirat/docker-credential-gitlabci/pkg/credhelper
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/ePirat/docker-credential-gitlabci/pkg/credhelper/LICENSE
-
-- package: github.com/fsnotify/fsnotify
-  license_name: BSD-3-Clause
-  license_path: /usr/local/share/licenses/lifecycle/github.com/fsnotify/fsnotify/LICENSE
 
 - package: github.com/godbus/dbus/v5
   license_name: BSD-2-Clause
@@ -329,6 +317,14 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/moby/locker/LICENSE
 
+- package: github.com/moby/patternmatcher
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/moby/patternmatcher/LICENSE
+
+- package: github.com/moby/swarmkit/v2
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/moby/swarmkit/v2/LICENSE
+
 - package: github.com/moby/sys/mount
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/moby/sys/mount/LICENSE
@@ -336,6 +332,14 @@
 - package: github.com/moby/sys/mountinfo
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/moby/sys/mountinfo/LICENSE
+
+- package: github.com/moby/sys/sequential
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/moby/sys/sequential/LICENSE
+
+- package: github.com/moby/sys/signal
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/moby/sys/signal/LICENSE
 
 - package: github.com/moby/sys/symlink
   license_name: Apache-2.0
@@ -397,6 +401,10 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/prometheus/procfs/LICENSE
 
+- package: github.com/rootless-containers/rootlesskit/pkg
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/rootless-containers/rootlesskit/pkg/LICENSE
+
 - package: github.com/sirupsen/logrus
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/sirupsen/logrus/LICENSE
@@ -405,10 +413,6 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/spf13/afero/LICENSE.txt
 
-- package: github.com/syndtr/gocapability/capability
-  license_name: BSD-2-Clause
-  license_path: /usr/local/share/licenses/lifecycle/github.com/syndtr/gocapability/capability/LICENSE
-
 - package: github.com/tonistiigi/fsutil
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/tonistiigi/fsutil/LICENSE
@@ -416,6 +420,10 @@
 - package: github.com/vbatts/tar-split
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/github.com/vbatts/tar-split/LICENSE
+
+- package: go.etcd.io/etcd/raft/v3/raftpb
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/go.etcd.io/etcd/raft/v3/raftpb/LICENSE
 
 - package: golang.org/x/crypto/pkcs12
   license_name: BSD-3-Clause

@@ -235,4 +235,4 @@ description = "Unified builder for the Go runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-gae-18/run"
 
 [lifecycle]
-  version = "0.16.0"
+  version = "0.16.3"
