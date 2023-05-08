@@ -28,7 +28,7 @@ VERSIONS_WITH_GAE_SUPPORT = {n: v for n, v in gae_runtimes.items() if not v.star
 # nodejs8 will be decommissioned for GCF on June 5, 2023
 VERSIONS_WITH_GCF_SUPPORT = {n: v for n, v in gcf_runtimes.items() if not v.startswith("8")}
 
-VERSIONS_WITH_FLEX_SUPPORT = {n: v for n, v in gcf_runtimes.items() if n.startswith("nodejs18")}
+VERSIONS_WITH_FLEX_SUPPORT = {n: v for n, v in gcf_runtimes.items() if (n.startswith("nodejs18") or n.startswith("nodejs20"))}
 
 # The GCF Legacy Worker is only available and used for the "GCF nodejs8" runtime version. It has
 # different behavior, a unique order group, and is tested seperately.
