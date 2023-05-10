@@ -52,13 +52,13 @@ As an example, in order to build a Docker container image  for Google App Engine
 Java17 runtime you can use:
 
 ```bash
-pack build <app-name>  --builder gcr.io/gae-runtimes/buildpacks/java17/builder
+pack build <app-name>  --builder gcr.io/gae-runtimes/buildpacks/google-gae-22/java/builder
 ```
 
 If you rely on a custom App Engine entrypoint in your app.yaml, you can use:
 
 ```bash
-pack build <app-name>  --builder gcr.io/gae-runtimes/buildpacks/java17/builder  --env GOOGLE_ENTRYPOINT="your entry point command"
+pack build <app-name>  --builder gcr.io/gae-runtimes/buildpacks/google-gae-22/java/builder  --env GOOGLE_ENTRYPOINT="your entry point command"
 ```
 
 The application container image can then be executed locally:
