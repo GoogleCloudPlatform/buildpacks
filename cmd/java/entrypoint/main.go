@@ -17,8 +17,11 @@ package main
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 )
@@ -32,6 +35,11 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	if entrypoint := os.Getenv(env.Entrypoint); env.IsFlex() && entrypoint != "" {
+		appengine.Build(ctx, "java", nil)
+		return nil
+	}
+
 	executable, err := java.ExecutableJar(ctx)
 	if err != nil {
 		return fmt.Errorf("finding executable jar: %w", err)
