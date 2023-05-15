@@ -23,9 +23,25 @@ import (
 	"github.com/Masterminds/semver"
 )
 
-// ResolveVersion finds the largest version in a list of semantic versions that satisifies the
-// provided constraint. If no version in the list statisfies the constraint it returns an error.
-func ResolveVersion(constraint string, versions []string) (string, error) {
+type resolveParams struct {
+	noSanitize bool
+}
+
+// ResolveVersionOption configures ResolveVersion.
+type ResolveVersionOption func(o *resolveParams)
+
+// WithoutSanitization indicates the return value should not have any prefix trimmed or 0s appended.
+var WithoutSanitization = func(o *resolveParams) {
+	o.noSanitize = true
+}
+
+// ResolveVersion finds the largest version in a list of semantic versions that satisfies the
+// provided constraint. If no version in the list satisfies the constraint it returns an error.
+func ResolveVersion(constraint string, versions []string, opts ...ResolveVersionOption) (string, error) {
+	params := resolveParams{}
+	for _, o := range opts {
+		o(&params)
+	}
 	if constraint == "" {
 		// use the latest version if no constraint was provided
 		constraint = "*"
@@ -44,11 +60,14 @@ func ResolveVersion(constraint string, versions []string) (string, error) {
 		semvers[i] = s
 	}
 
-	// Sort in descending order so that the first version in the list to satisify a constraint will be
+	// Sort in descending order so that the first version in the list to satisfy a constraint will be
 	// the highest possible version.
 	sort.Sort(sort.Reverse(semver.Collection(semvers)))
 	for _, s := range semvers {
 		if c.Check(s) {
+			if params.noSanitize {
+				return s.Original(), nil
+			}
 			return s.String(), nil
 		}
 	}

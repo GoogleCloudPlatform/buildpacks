@@ -8,13 +8,15 @@ go_library(
     srcs = ["golang.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
-        "//cmd/go:__subpackages__",
+        "//:__subpackages__",
     ],
     deps = [
         "//pkg/appengine",
         "//pkg/cache",
         "//pkg/env",
+        "//pkg/fetch",
         "//pkg/gcpbuildpack",
+        "//pkg/version",
         "@com_github_buildpacks_libcnb//:go_default_library",
         "@com_github_masterminds_semver//:go_default_library",
     ],
@@ -28,6 +30,7 @@ go_test(
     embed = [":golang"],
     rundir = ".",
     deps = [
+        "//internal/testserver",
         "//pkg/gcpbuildpack",
         "//pkg/testdata",
         "@com_github_buildpacks_libcnb//:go_default_library",

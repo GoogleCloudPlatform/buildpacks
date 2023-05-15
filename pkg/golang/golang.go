@@ -25,7 +25,9 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/version"
 	"github.com/buildpacks/libcnb"
 	"github.com/Masterminds/semver"
 )
@@ -47,7 +49,16 @@ var (
 
 	// goModVersionRegexp is used to get correct declaration of Go version from go.mod file.
 	goModVersionRegexp = regexp.MustCompile(`(?m)^\s*go\s+(\d+(\.\d+){1,2})\s*$`)
+
+	// goVersionsURL can be use to download a list of available, stable versions of Go.
+	goVersionsURL = "https://go.dev/dl/?mode=json"
 )
+
+// goRelease represents an entry on the go.dev downloads page.
+type goRelease struct {
+	Version string `json:"version"`
+	Stable  bool   `json:"stable"`
+}
 
 // SupportsAppEngineApis is a Go buildpack specific function that returns true if App Engine API access is enabled
 func SupportsAppEngineApis(ctx *gcp.Context) (bool, error) {
@@ -264,4 +275,39 @@ func ExecWithGoproxyFallback(ctx *gcp.Context, cmd []string, opts ...gcp.ExecOpt
 // true when using GCF or GAE with go 1.11.
 func IsGo111Runtime() bool {
 	return os.Getenv(env.Runtime) == "go111"
+}
+
+// ResolveGoVersion finds the latest version of Go that matches the provided semver constraint.
+func ResolveGoVersion(verConstraint string) (string, error) {
+	if isExactGoSemver(verConstraint) {
+		return verConstraint, nil
+	}
+	var releases []goRelease
+	if err := fetch.JSON(goVersionsURL, &releases); err != nil {
+		return "", gcp.InternalErrorf("fetching Go releases: %v", err)
+	}
+	var versions []string
+	for _, r := range releases {
+		if r.Stable {
+			versions = append(versions, strings.TrimPrefix(r.Version, "go"))
+		}
+	}
+	v, err := version.ResolveVersion(verConstraint, versions, version.WithoutSanitization)
+	if err != nil {
+		return "", gcp.UserErrorf("invalid Go version specified: %v, You can refer to %s for a list of stable Go releases.", goVersionsURL, err)
+	}
+	return v, nil
+}
+
+// isExactGoSemver returns true if a given string is a precisely specified go version. That is, it
+// is not a version constraint. The logic for this is unique for Go because new major releases do
+// not include a trailing zero (e.g. go1.20).
+func isExactGoSemver(constraint string) bool {
+	if c := strings.Count(constraint, "."); c != 1 && c != 2 {
+		// The constraint must include the major, minor, and patch segments to be exact. By default,
+		// semver.NewVersion will set these to zero so we must validate this separately.
+		return false
+	}
+	_, err := semver.NewVersion(constraint)
+	return err == nil
 }

@@ -41,7 +41,7 @@ func TestAcceptanceGo(t *testing.T) {
 			App:        "simple_gomod",
 			MustUse:    []string{goRuntime, goBuild, goMod},
 			MustNotUse: []string{goPath},
-			MustOutput: []string{"Using latest runtime version:"},
+			MustOutput: []string{"Using latest stable Go version"},
 		},
 		{
 			Name:       "Go.mod package",
@@ -130,7 +130,7 @@ func TestFailuresGo(t *testing.T) {
 			Name:      "bad runtime version",
 			App:       "simple",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
-			MustMatch: "Runtime version BAD_NEWS_BEARS does not exist",
+			MustMatch: "invalid Go version specified:",
 		},
 		{
 			Name:                   "no Go files in root (Go 1.12)",

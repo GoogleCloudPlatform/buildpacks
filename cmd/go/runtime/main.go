@@ -17,24 +17,16 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
-	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/buildpacks/libcnb"
 )
 
 const (
-	// goVersionURL is a URL to a JSON file that contains the latest Go version names.
-	goVersionURL = "https://golang.org/dl/?mode=json"
-	goURL        = "https://dl.google.com/go/go%s.linux-amd64.tar.gz"
 	goLayer      = "go"
-	versionKey   = "version"
 	envGoVersion = "GOOGLE_GO_VERSION"
 )
 
@@ -65,43 +57,8 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
 	}
-
-	// Check metadata layer to see if correct version of Go is already installed.
-	metaVersion := ctx.GetMetadata(grl, versionKey)
-	if version == metaVersion {
-		ctx.CacheHit(goLayer)
-	} else {
-		ctx.CacheMiss(goLayer)
-		if err := ctx.ClearLayer(grl); err != nil {
-			return fmt.Errorf("clearing layer %q: %w", grl.Name, err)
-		}
-
-		archiveURL := fmt.Sprintf(goURL, version)
-		code, err := ctx.HTTPStatus(archiveURL)
-		if err != nil {
-			return err
-		}
-		if code != http.StatusOK {
-			return gcp.UserErrorf("Runtime version %s does not exist at %s (status %d). You can specify the version with %s.", version, archiveURL, code, env.RuntimeVersion)
-		}
-
-		// Download and install Go in layer.
-		ctx.Logf("Installing Go v%s", version)
-		command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, grl.Path)
-		if _, err := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
-			return err
-		}
-		ctx.SetMetadata(grl, versionKey, version)
-	}
-
-	ctx.AddBOMEntry(libcnb.BOMEntry{
-		Name:     goLayer,
-		Metadata: map[string]interface{}{"version": version},
-		Launch:   true,
-		Build:    true,
-	})
-
-	return nil
+	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.Go, version, grl)
+	return err
 }
 
 func runtimeVersion(ctx *gcp.Context) (string, error) {
@@ -114,41 +71,6 @@ func runtimeVersion(ctx *gcp.Context) (string, error) {
 		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, version)
 		return version, nil
 	}
-	version, err := latestGoVersion(ctx)
-	if err != nil {
-		return "", fmt.Errorf("getting latest version: %w", err)
-	}
-	ctx.Logf("Using latest runtime version: %s", version)
-	return version, nil
-}
-
-type goReleases []struct {
-	Version string `json:"version"`
-	Stable  bool   `json:"stable"`
-}
-
-// latestGoVersion returns the latest version of Go
-func latestGoVersion(ctx *gcp.Context) (string, error) {
-	result, err := ctx.Exec([]string{"curl", "--fail", "--show-error", "--silent", "--location", goVersionURL}, gcp.WithUserAttribution)
-	if err != nil {
-		return "", err
-	}
-	return parseVersionJSON(result.Stdout)
-}
-
-func parseVersionJSON(jsonStr string) (string, error) {
-	releases := goReleases{}
-	if err := json.Unmarshal([]byte(jsonStr), &releases); err != nil {
-		return "", fmt.Errorf("parsing JSON response from URL %q: %v", goVersionURL, err)
-	}
-
-	for _, release := range releases {
-		if !release.Stable {
-			continue
-		}
-		if v := strings.TrimPrefix(release.Version, "go"); v != "" {
-			return v, nil
-		}
-	}
-	return "", fmt.Errorf("parsing latest stable version from %q", goVersionURL)
+	ctx.Logf("Using latest stable Go version")
+	return "", nil
 }

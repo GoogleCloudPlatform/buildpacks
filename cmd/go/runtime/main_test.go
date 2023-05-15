@@ -87,63 +87,6 @@ func TestDetect(t *testing.T) {
 	}
 }
 
-func TestJSONVersionParse(t *testing.T) {
-	testCases := []struct {
-		name string
-		want string
-		json string
-	}{
-		{
-			name: "all_stable",
-			want: "1.16",
-			json: `
-[
- {
-  "version": "go1.16",
-  "stable": true
- },
- {
-  "version": "go1.15.3",
-  "stable": true
- },
- {
-  "version": "go1.12.12",
-  "stable": true
- }
-]`,
-		},
-		{
-			name: "recent_unstable",
-			want: "1.15.3",
-			json: `
-[
- {
-  "version": "go1.15.4",
-  "stable": false
- },
- {
-  "version": "go1.15.3",
-  "stable": true
- },
- {
-  "version": "go1.12.12",
-  "stable": true
- }
-]`,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			if v, err := parseVersionJSON(tc.json); err != nil {
-				t.Fatalf("parseVersionJSON() failed: %v", tc.name, err)
-			} else if v != tc.want {
-				t.Errorf("parseVersionJSON() = %q, want %q", tc.name, v, tc.want)
-			}
-		})
-	}
-}
-
 func TestRuntimeVersion(t *testing.T) {
 	testCases := []struct {
 		name   string

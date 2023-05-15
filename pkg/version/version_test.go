@@ -22,6 +22,7 @@ func TestResolveVersion(t *testing.T) {
 	testCases := []struct {
 		name       string
 		constraint string
+		opts       []ResolveVersionOption
 		versions   []string
 		want       string
 		wantError  bool
@@ -56,6 +57,20 @@ func TestResolveVersion(t *testing.T) {
 			want:       "10.1.1",
 		},
 		{
+			name:       "no santization prefix",
+			opts:       []ResolveVersionOption{WithoutSanitization},
+			constraint: "v10.1.1",
+			versions:   []string{"v10.1.1"},
+			want:       "v10.1.1",
+		},
+		{
+			name:       "no santization zero padding",
+			opts:       []ResolveVersionOption{WithoutSanitization},
+			constraint: "*",
+			versions:   []string{"1.16"},
+			want:       "1.16",
+		},
+		{
 			name:       "invalid constraint",
 			constraint: "xyz",
 			versions:   []string{"v10.1.1"},
@@ -71,7 +86,7 @@ func TestResolveVersion(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := ResolveVersion(tc.constraint, tc.versions)
+			got, err := ResolveVersion(tc.constraint, tc.versions, tc.opts...)
 			if tc.wantError != (err != nil) {
 				t.Errorf("ResolveVersion(%q, %v) got error: %v, want error?: %v", tc.constraint, tc.versions, err, tc.wantError)
 			}

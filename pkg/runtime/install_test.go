@@ -315,5 +315,4 @@ func TestPinGemAndBundlerVersion(t *testing.T) {
 			}
 		})
 	}
-
 }

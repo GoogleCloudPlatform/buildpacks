@@ -24,6 +24,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/version"
 	"github.com/buildpacks/libcnb"
 )
@@ -32,6 +33,9 @@ var (
 	dartSdkURL         = "https://storage.googleapis.com/dart-archive/channels/stable/release/%s/sdk/dartsdk-linux-x64-release.zip"
 	googleTarballURL   = "https://dl.google.com/runtimes/%s/%[2]s/%[2]s-%s.tar.gz"
 	runtimeVersionsURL = "https://dl.google.com/runtimes/%s/%s/version.json"
+	// goTarballURL is the location from which we download Go. This is different from other runtimes
+	// because the Go team already provides re-built tarballs on the same CDN.
+	goTarballURL = "https://dl.google.com/go/go%s.linux-amd64.tar.gz"
 )
 
 // InstallableRuntime is used to hold runtimes information
@@ -49,6 +53,7 @@ const (
 	DotnetSDK  InstallableRuntime = "dotnetsdk"
 	AspNetCore InstallableRuntime = "aspnetcore"
 	OpenJDK    InstallableRuntime = "openjdk"
+	Go         InstallableRuntime = "go"
 
 	ubuntu1804 string = "ubuntu1804"
 	ubuntu2204 string = "ubuntu2204"
@@ -63,6 +68,7 @@ var runtimeNames = map[InstallableRuntime]string{
 	Nginx:     "Nginx Web Server",
 	Pid1:      "Pid1",
 	DotnetSDK: ".NET SDK",
+	Go:        "Go",
 }
 
 // stackToOS contains the mapping of Stack to OS.
@@ -173,10 +179,10 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	}
 	ctx.Logf("Installing %s v%s.", runtimeName, version)
 
-	runtimeURL := fmt.Sprintf(googleTarballURL, os, runtime, strings.ReplaceAll(version, "+", "_"))
+	runtimeURL := tarballDownloadURL(runtime, os, version)
 
 	stripComponents := 0
-	if runtime == OpenJDK {
+	if runtime == OpenJDK || runtime == Go {
 		stripComponents = 1
 	}
 	if err := fetch.Tarball(runtimeURL, layer.Path, stripComponents); err != nil {
@@ -188,6 +194,13 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	ctx.SetMetadata(layer, versionKey, version)
 
 	return false, nil
+}
+
+func tarballDownloadURL(runtime InstallableRuntime, os, version string) string {
+	if runtime == Go {
+		return fmt.Sprintf(goTarballURL, version)
+	}
+	return fmt.Sprintf(googleTarballURL, os, runtime, strings.ReplaceAll(version, "+", "_"))
 }
 
 // PinGemAndBundlerVersion pins the RubyGems versions for GAE and GCF runtime versions to prevent
@@ -248,6 +261,10 @@ func PinGemAndBundlerVersion(ctx *gcp.Context, version string, layer *libcnb.Lay
 // ResolveVersion returns the newest available version of a runtime that satisfies the provided
 // version constraint.
 func ResolveVersion(runtime InstallableRuntime, verConstraint, os string) (string, error) {
+	if runtime == Go {
+		// Go provides its own version manifest so it has its own version resolution logic.
+		return golang.ResolveGoVersion(verConstraint)
+	}
 	if version.IsExactSemver(verConstraint) {
 		return verConstraint, nil
 	}

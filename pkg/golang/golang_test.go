@@ -17,10 +17,12 @@ package golang
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/buildpacks/libcnb"
 
@@ -503,6 +505,86 @@ func TestNewGoWorkspaceLayerHappyPath(t *testing.T) {
 				if val != expectedVal {
 					t.Errorf("env var %q value mismatch: got %q, want %q", envVar, val, expectedVal)
 				}
+			}
+		})
+	}
+}
+
+func TestResolveGoVersion(t *testing.T) {
+	testCases := []struct {
+		name       string
+		constraint string
+		want       string
+		json       string
+	}{
+		{
+			name: "all_stable",
+			want: "1.16",
+			json: `
+[
+ {
+  "version": "go1.16",
+  "stable": true
+ },
+ {
+  "version": "go1.15.3",
+  "stable": true
+ },
+ {
+  "version": "go1.12.12",
+  "stable": true
+ }
+]`,
+		},
+		{
+			name: "recent_unstable",
+			want: "1.15.3",
+			json: `
+[
+ {
+  "version": "go1.15.4",
+  "stable": false
+ },
+ {
+  "version": "go1.15.3",
+  "stable": true
+ },
+ {
+  "version": "go1.12.12",
+  "stable": true
+ }
+]`,
+		},
+		{
+			name:       "old exact major version",
+			constraint: "1.12",
+			want:       "1.12",
+			json: `
+[
+ {
+  "version": "go1.15.4",
+  "stable": false
+ },
+ {
+  "version": "go1.15.3",
+  "stable": true
+ }
+]`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testserver.New(
+				t,
+				testserver.WithStatus(http.StatusOK),
+				testserver.WithJSON(tc.json),
+				testserver.WithMockURL(&goVersionsURL),
+			)
+			if v, err := ResolveGoVersion(tc.constraint); err != nil {
+				t.Fatalf("resolveGoVersion(%q) failed: %v", tc.constraint, err)
+			} else if v != tc.want {
+				t.Errorf("resolveGoVersion(%q) = %q, want %q", tc.constraint, v, tc.want)
 			}
 		})
 	}

@@ -143,7 +143,7 @@ func TestFailures(t *testing.T) {
 			VersionInclusionConstraint: "1.16",
 			App:                        "simple",
 			Env:                        []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
-			MustMatch:                  "Runtime version BAD_NEWS_BEARS does not exist",
+			MustMatch:                  "invalid Go version specified:",
 		},
 	}
 
