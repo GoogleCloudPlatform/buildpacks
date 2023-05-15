@@ -70,7 +70,7 @@ func buildFn(ctx *gcp.Context) error {
 	// replace python sysconfig variable prefix from "/opt/python" to "/layers/google.python.runtime/python/" which is the layer.Path
 	// python is installed in /layers/google.python.runtime/python/ for unified builder,
 	// while the python downloaded from debs is installed in "/opt/python".
-	sysconfig, _ := ctx.Exec([]string{filepath.Join(layer.Path, "bin/python3"), "-m", "sysconfig"}, gcp.WithUserAttribution)
+	sysconfig, _ := ctx.Exec([]string{filepath.Join(layer.Path, "bin/python3"), "-m", "sysconfig"})
 	execPrefix, err := parseExecPrefix(sysconfig.Stdout)
 	if err != nil {
 		return err
@@ -80,7 +80,7 @@ func buildFn(ctx *gcp.Context) error {
 		"-rlI",
 		execPrefix,
 		layer.Path,
-	}, gcp.WithUserAttribution)
+	})
 	paths := strings.Split(result.Stdout, "\n")
 	for _, path := range paths {
 		ctx.Exec([]string{
@@ -88,7 +88,7 @@ func buildFn(ctx *gcp.Context) error {
 			"-i",
 			"s|" + execPrefix + "|" + layer.Path + "|g",
 			path,
-		}, gcp.WithUserAttribution)
+		})
 	}
 	// Set the PYTHONHOME for flex apps because of uwsgi
 	if env.IsFlex() {
