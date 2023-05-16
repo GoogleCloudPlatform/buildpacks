@@ -121,14 +121,13 @@ func TestAcceptance(t *testing.T) {
 			App:  "with_versioned_mod",
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
 		},
-		// TODO: re-enable this test after change allowing go.mod directives to be used reaches prod.
-		// {
-		// 	Name:                "function with go.mod using replace directive",
-		// 	App:                 "declarative_with_replace",
-		// 	Env:                 []string{"GOOGLE_FUNCTION_TARGET=Func"},
-		// 	MustMatchStatusCode: 200,
-		// 	MustMatch:           "PASS",
-		// },
+		{
+			Name:                "function with go.mod using replace directive",
+			App:                 "declarative_with_replace",
+			Env:                 []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			MustMatchStatusCode: 200,
+			MustMatch:           "PASS",
+		},
 	}
 	if !acceptance.ShouldTestVersion(t, "1.13") {
 		testCases = append(testCases,
