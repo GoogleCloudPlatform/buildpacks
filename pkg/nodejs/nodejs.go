@@ -55,6 +55,7 @@ type packageEnginesJSON struct {
 	Node string `json:"node"`
 	NPM  string `json:"npm"`
 	Yarn string `json:"yarn"`
+	PNPM string `json:"pnpm"`
 }
 
 const (

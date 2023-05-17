@@ -43,7 +43,23 @@ func Tarball(url, dir string, stripComponents int) error {
 	return untar(dir, response.Body, stripComponents)
 }
 
-// JSON fetches a JSON payload from a URL and unmarshalls it into the value pointed to by v.
+// File downloads a file from a URL and writes it to the provided path.
+func File(url, outPath string) error {
+	out, err := os.Create(outPath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	response, err := doGet(url)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	_, err = io.Copy(out, response.Body)
+	return err
+}
+
+// JSON fetches a JSON payload from a URL and unmarshals it into the value pointed to by v.
 func JSON(url string, v interface{}) error {
 	response, err := doGet(url)
 	if err != nil {

@@ -7,6 +7,7 @@ go_library(
     srcs = [
         "nodejs.go",
         "npm.go",
+        "pnpm.go",
         "registry.go",
         "yarn.go",
     ],
@@ -34,6 +35,7 @@ go_test(
     srcs = [
         "nodejs_test.go",
         "npm_test.go",
+        "pnpm_test.go",
         "registry_test.go",
         "yarn_test.go",
     ],
@@ -45,6 +47,7 @@ go_test(
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/testdata",
+        "@com_github_buildpacks_libcnb//:go_default_library",
         "@com_github_google_go-cmp//cmp:go_default_library",
     ],
 )
