@@ -54,6 +54,7 @@ builder(
             "//cmd/nodejs/npm:npm.tgz",
             "//cmd/nodejs/runtime:runtime.tgz",
             "//cmd/nodejs/yarn:yarn.tgz",
+            "//cmd/nodejs/pnpm:pnpm.tgz",
         ],
         "python": [
             "//cmd/python/functions_framework:functions_framework.tgz",
@@ -130,6 +131,7 @@ builder(
             "//cmd/nodejs/npm:npm.tgz",
             "//cmd/nodejs/runtime:runtime.tgz",
             "//cmd/nodejs/yarn:yarn.tgz",
+            "//cmd/nodejs/pnpm:pnpm.tgz",
         ],
         "python": [
             "//cmd/python/functions_framework:functions_framework.tgz",
@@ -198,6 +200,7 @@ builder(
             "//cmd/nodejs/npm:npm.tgz",
             "//cmd/nodejs/runtime:runtime.tgz",
             "//cmd/nodejs/yarn:yarn.tgz",
+            "//cmd/nodejs/pnpm:pnpm.tgz",
         ],
     },
     image = "google-min-22/builder",

@@ -105,6 +105,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "nodejs/yarn.tgz"
 
 [[buildpacks]]
+  id = "google.nodejs.pnpm"
+  uri = "nodejs/pnpm.tgz"
+
+[[buildpacks]]
   id = "google.nodejs.functions-framework"
   uri = "nodejs/functions_framework.tgz"
 
@@ -399,6 +403,24 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.nodejs.yarn"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.pnpm"
 
   [[order.group]]
     id = "google.nodejs.functions-framework"
