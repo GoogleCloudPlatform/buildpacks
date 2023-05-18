@@ -15,8 +15,12 @@
 package nodejs
 
 import (
+	"fmt"
+	"os"
+	"strconv"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/Masterminds/semver"
@@ -27,6 +31,11 @@ const (
 	PackageLock = "package-lock.json"
 	// NPMShrinkwrap is the name of the npm shrinkwrap file.
 	NPMShrinkwrap = "npm-shrinkwrap.json"
+	// GoogleNodeRunScriptsEnv is the env var that can be used to configure a list of package.json
+	// scripts that should be run during the build process.
+	GoogleNodeRunScriptsEnv = "GOOGLE_NODE_RUN_SCRIPTS"
+	// nodejsNPMBuildEnv is an env var that enables running `npm run build` by default.
+	nodejsNPMBuildEnv = "GOOGLE_EXPERIMENTAL_NODEJS_NPM_BUILD_ENABLED"
 )
 
 var (
@@ -123,4 +132,64 @@ func SupportsNPMPrune(ctx *gcp.Context) (bool, error) {
 		return false, gcp.InternalErrorf("parsing npm version: %v", err)
 	}
 	return !version.LessThan(minPruneVersion), nil
+}
+
+// DetermineBuildCommands returns a list of "npm run" commands to be executed during the build
+// and a bool representing whether this is a "custom build" (user-specified build scripts)
+// or a system build step (default build behavior).
+//
+// Users can specify npm scripts to run in three ways, with the following order of precedence:
+// 1. GOOGLE_NODE_RUN_SCRIPTS env var
+// 2. "gcp-build" script in package.json
+// 3. "build" script in package.json
+func DetermineBuildCommands(pjs *PackageJSON, pkgTool string) (cmds []string, isCustomBuild bool) {
+	envScript, envScriptPresent := os.LookupEnv(GoogleNodeRunScriptsEnv)
+	if envScriptPresent {
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmGoogleNodeRunScriptsUsageCounterID).Increment(1)
+		// Setting `GOOGLE_NODE_RUN_SCRIPTS=` preserves legacy behavior where "npm run build" was NOT
+		// run, even though "build" was provided.
+		if strings.TrimSpace(envScript) == "" {
+			return []string{}, true
+		}
+
+		scripts := strings.Split(envScript, ",")
+		for _, s := range scripts {
+			cmds = append(cmds, runCommand(pkgTool, s))
+		}
+
+		return cmds, true
+	}
+
+	if HasGCPBuild(pjs) {
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmGcpBuildUsageCounterID).Increment(1)
+		if gcpBuild := pjs.Scripts[ScriptGCPBuild]; strings.TrimSpace(gcpBuild) == "" {
+			return []string{}, true
+		}
+		return []string{runCommand(pkgTool, "gcp-build")}, true
+	}
+
+	if HasScript(pjs, ScriptBuild) {
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmBuildUsageCounterID).Increment(1)
+
+		// Env var guards an experimental feature to run "npm run build" by default.
+		shouldBuild, err := strconv.ParseBool(os.Getenv(nodejsNPMBuildEnv))
+		// If there was an error reading the env var, don't run the script.
+		if err != nil {
+			shouldBuild = false
+		}
+
+		// If experiment is enabled or it's the OSS builder, run "npm run build" by default.
+		if shouldBuild || os.Getenv(env.XGoogleTargetPlatform) == "" {
+			if build := pjs.Scripts[ScriptBuild]; strings.TrimSpace(build) == "" {
+				return []string{}, false
+			}
+			return []string{runCommand(pkgTool, "build")}, false
+		}
+	}
+
+	return []string{}, false
+}
+
+func runCommand(pkgTool, command string) string {
+	return fmt.Sprintf("%s run %s", pkgTool, strings.TrimSpace(command))
 }

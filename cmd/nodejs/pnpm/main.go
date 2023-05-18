@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//	 http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,6 +19,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
@@ -79,9 +80,39 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 func pnpmInstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
+	buildCmds, _ := nodejs.DetermineBuildCommands(pjs, "pnpm")
+	// Respect the user's NODE_ENV value if it's set
+	buildNodeEnv, nodeEnvPresent := os.LookupEnv(nodejs.EnvNodeEnv)
+	if !nodeEnvPresent {
+		if len(buildCmds) > 0 {
+			// Assume that dev dependencies are required to run build scripts to
+			// support the most use cases possible.
+			buildNodeEnv = nodejs.EnvDevelopment
+		} else {
+			buildNodeEnv = nodejs.EnvProduction
+		}
+	}
 	cmd := []string{"pnpm", "install"}
-	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution, gcp.WithEnv("CI=true")); err != nil {
+	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution, gcp.WithEnv("CI=true"), gcp.WithEnv("NODE_ENV="+buildNodeEnv)); err != nil {
 		return gcp.UserErrorf("installing pnpm dependencies: %w", err)
+	}
+	if len(buildCmds) > 0 {
+		// If there are multiple build scripts to run, run them one-by-one so the logs are
+		// easier to understand.
+		for _, cmd := range buildCmds {
+			split := strings.Split(cmd, " ")
+			if _, err := ctx.Exec(split, gcp.WithUserAttribution); err != nil {
+				return err
+			}
+		}
+	}
+	if buildNodeEnv == nodejs.EnvDevelopment && !nodeEnvPresent && nodejs.HasDevDependencies(pjs) {
+		// If we installed dependencies with NODE_ENV=development and the user didn't explicitly set
+		// NODE_ENV we should prune the devDependencies from the final app image.
+		cmd := []string{"pnpm", "prune", "--prod"}
+		if _, err := ctx.Exec(cmd, gcp.WithUserAttribution, gcp.WithEnv("CI=true")); err != nil {
+			return gcp.UserErrorf("pruning devDependencies: %w", err)
+		}
 	}
 	return nil
 }

@@ -20,6 +20,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestRequestedNPMVersion(t *testing.T) {
@@ -148,6 +149,196 @@ func TestSupportsNPMPrune(t *testing.T) {
 			}
 			if got != tc.want {
 				t.Errorf("npm %v: SupportsNPMPrune(nil) = %v, want %v", tc.version, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestDetermineBuildCommands(t *testing.T) {
+	testsCases := []struct {
+		name                   string
+		pjs                    string
+		nodeRunScriptSet       bool
+		nodeRunScriptValue     string // ignored if `nodeRunScriptSet == false`
+		nodejsNpmbuildEnvValue string
+		targetPlatformSet      bool
+		want                   []string
+		wantIsCustomBuild      bool
+	}{
+		{
+			name:             "no build",
+			pjs:              "",
+			nodeRunScriptSet: false,
+			want:             []string{},
+		},
+		{
+			name:               "GOOGLE_NODE_RUN_SCRIPTS",
+			nodeRunScriptSet:   true,
+			nodeRunScriptValue: "lint,clean,build",
+			want:               []string{"npm run lint", "npm run clean", "npm run build"},
+			wantIsCustomBuild:  true,
+		},
+		{
+			name:               "GOOGLE_NODE_RUN_SCRIPTS single value",
+			nodeRunScriptSet:   true,
+			nodeRunScriptValue: "lint",
+			want:               []string{"npm run lint"},
+			wantIsCustomBuild:  true,
+		},
+		{
+			name:               "GOOGLE_NODE_RUN_SCRIPTS trim whitespace",
+			nodeRunScriptSet:   true,
+			nodeRunScriptValue: "    	lint	,	 build",
+			want:               []string{"npm run lint", "npm run build"},
+			wantIsCustomBuild:  true,
+		},
+		{
+			name: "build script",
+			pjs: `{
+				"scripts": {
+					"build": "tsc --build",
+					"clean": "tsc --build --clean"
+				}
+			}`,
+			nodejsNpmbuildEnvValue: "true",
+			targetPlatformSet:      true,
+			want:                   []string{"npm run build"},
+		},
+		{
+			name: "build script experiment off",
+			pjs: `{
+				"scripts": {
+					"build": "tsc --build",
+					"clean": "tsc --build --clean"
+				}
+			}`,
+			nodejsNpmbuildEnvValue: "false",
+			targetPlatformSet:      true,
+			want:                   []string{},
+		},
+		{
+			name: "experiment only matters if target platform is set",
+			pjs: `{
+				"scripts": {
+					"build": "tsc --build",
+					"clean": "tsc --build --clean"
+				}
+			}`,
+			nodejsNpmbuildEnvValue: "true",
+			targetPlatformSet:      false,
+			want:                   []string{"npm run build"},
+		},
+		{
+			name: "error parsing experiment env var ignored if target platform is set",
+			pjs: `{
+				"scripts": {
+					"build": "tsc --build",
+					"clean": "tsc --build --clean"
+				}
+			}`,
+			nodejsNpmbuildEnvValue: "",
+			targetPlatformSet:      false,
+			want:                   []string{"npm run build"},
+		},
+		{
+			name: "gcp-build script",
+			pjs: `{
+				"scripts": {
+					"gcp-build": "tsc --build",
+					"clean": "tsc --build --clean"
+				}
+			}`,
+			want:              []string{"npm run gcp-build"},
+			wantIsCustomBuild: true,
+		},
+		{
+			name: "GOOGLE_NODE_RUN_SCRIPTS highest precedence",
+			pjs: `{
+				"scripts": {
+					"build": "tsc --build --clean",
+					"gcp-build": "tsc --build"
+				}
+			}`,
+			nodeRunScriptSet:   true,
+			nodeRunScriptValue: "from-env",
+			want:               []string{"npm run from-env"},
+			wantIsCustomBuild:  true,
+		},
+		{
+			name: "gcp-build higher precedence than build",
+			pjs: `{
+				"scripts": {
+					"build": "tsc --build --clean",
+					"gcp-build": "tsc --build"
+				}
+			}`,
+			want:              []string{"npm run gcp-build"},
+			wantIsCustomBuild: true,
+		},
+		{
+			name: "empty gcp-build higher precedence than build and runs nothing",
+			pjs: `{
+				"scripts": {
+					"build": "tsc --build --clean",
+					"gcp-build": "  "
+				}
+			}`,
+			want:              []string{},
+			wantIsCustomBuild: true,
+		},
+		{
+			name: "empty build runs nothing",
+			pjs: `{
+				"scripts": {
+					"build": ""
+				}
+			}`,
+			nodejsNpmbuildEnvValue: "true",
+			targetPlatformSet:      true,
+			want:                   []string{},
+			wantIsCustomBuild:      false,
+		},
+		{
+			name: "setting empty GOOGLE_NODE_RUN_SCRIPTS runs nothing",
+			pjs: `{
+				"scripts": {
+					"build": "tsc --build --clean",
+					"gcp-build": "tsc --build"
+				}
+			}`,
+			nodeRunScriptSet:   true,
+			nodeRunScriptValue: "",
+			want:               []string{},
+			wantIsCustomBuild:  true,
+		},
+	}
+	for _, tc := range testsCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.nodeRunScriptSet {
+				t.Setenv(GoogleNodeRunScriptsEnv, tc.nodeRunScriptValue)
+			}
+
+			if tc.nodejsNpmbuildEnvValue != "" {
+				t.Setenv(nodejsNPMBuildEnv, tc.nodejsNpmbuildEnvValue)
+			}
+
+			if tc.targetPlatformSet {
+				t.Setenv(env.XGoogleTargetPlatform, env.TargetPlatformAppEngine)
+			}
+
+			var pjs *PackageJSON
+			if tc.pjs != "" {
+				if err := json.Unmarshal([]byte(tc.pjs), &pjs); err != nil {
+					t.Fatalf("failed to unmarshal package.json: %s, error: %v", tc.pjs, err)
+				}
+			}
+			got, isCustomBuild := DetermineBuildCommands(pjs, "npm")
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("DetermineBuildCommands() mismatch (-want +got):\n%s", diff)
+			}
+
+			if isCustomBuild != tc.wantIsCustomBuild {
+				t.Errorf("DetermineBuildCommands() is custom build mismatch, got: %t, want: %t", isCustomBuild, tc.wantIsCustomBuild)
 			}
 		})
 	}

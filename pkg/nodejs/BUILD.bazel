@@ -18,6 +18,7 @@ go_library(
         "//cmd/ruby:__subpackages__",
     ],
     deps = [
+        "//pkg/buildermetrics",
         "//pkg/cache",
         "//pkg/env",
         "//pkg/fetch",
