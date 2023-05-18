@@ -48,24 +48,6 @@ RUN --mount=type=secret,id=pro-attach-config,target=/etc/secrets/pro-attach-conf
   # Configure the system locale
   locale-gen en_US.UTF-8 && \
   update-locale LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8 && \
-  # Install the start and serve binaries.
-  mkdir /usr/lib/pid1 && mkdir /usr/lib/serve && \
-  curl -A GCPBuildpacks https://dl.google.com/runtimes/serve/serve-1.0.1.tar.gz \
-    | tar xvz -C /usr/lib/serve && \
-  curl -A GCPBuildpacks https://dl.google.com/runtimes/pid1/pid1-1.0.4.tar.gz \
-    | tar xvz -C /usr/lib/pid1 && \
-  # These invoked as start, serve, /start and /serve in some places.
-  cp /usr/lib/pid1/pid1 /usr/bin/pid1 && \
-  cp /usr/lib/serve/main /usr/bin/serve && \
-  ln -s /usr/bin/pid1 /start && \ 
-  ln -s /usr/bin/pid1 /usr/bin/start && \
-  ln -s /usr/bin/serve /serve && \
-  # Copy pid1 and serve license information into the directory that the license
-  # validation will look for them.
-  mkdir -p /usr/local/share/licenses/pid1/ && \
-  cp /usr/lib/pid1/licenses.yaml /usr/local/share/licenses/pid1/ && \
-  mkdir -p /usr/local/share/licenses/serve/ && \
-  cp /usr/lib/serve/licenses.yaml /usr/local/share/licenses/serve/ && \
   # Configure the user's home directory
   mkdir /www-data-home && \
   chown www-data:www-data /www-data-home && \
@@ -89,6 +71,26 @@ RUN --mount=type=secret,id=pro-attach-config,target=/etc/secrets/pro-attach-conf
   # Remove /var/log/* because nginx attempts to write to it.
   chmod a+w /var/log && \
   rm -rf /var/log/*
+
+
+# Install the start and serve binaries.
+RUN mkdir /usr/lib/pid1 && mkdir /usr/lib/serve && \
+  curl -A GCPBuildpacks https://dl.google.com/runtimes/serve/serve-1.0.1.tar.gz \
+    | tar xvz -C /usr/lib/serve && \
+  curl -A GCPBuildpacks https://dl.google.com/runtimes/pid1/pid1-1.0.4.tar.gz \
+    | tar xvz -C /usr/lib/pid1 && \
+  # These invoked as start, serve, /start and /serve in some places.
+  cp /usr/lib/pid1/pid1 /usr/bin/pid1 && \
+  cp /usr/lib/serve/main /usr/bin/serve && \
+  ln -s /usr/bin/pid1 /start && \
+  ln -s /usr/bin/pid1 /usr/bin/start && \
+  ln -s /usr/bin/serve /serve && \
+  # Copy pid1 and serve license information into the directory that the license
+  # validation will look for them.
+  mkdir -p /usr/local/share/licenses/pid1/ && \
+  cp /usr/lib/pid1/licenses.yaml /usr/local/share/licenses/pid1/ && \
+  mkdir -p /usr/local/share/licenses/serve/ && \
+  cp /usr/lib/serve/licenses.yaml /usr/local/share/licenses/serve/
 
 # Workdir must be set to the resolved symlink path. While Docker resolves the
 # symlink at startup, the App Engine dataplane reads the workdir from the image
