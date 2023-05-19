@@ -3,6 +3,7 @@ curl
 file
 fontconfig
 git
+imagemagick
 iputils-ping
 libblas3
 libbz2-1.0
