@@ -195,7 +195,6 @@ func TestExecAsDefaultDoesNotUpdateDuration(t *testing.T) {
 		opt  func(*execParams)
 	}{
 		{name: "default"},
-		{name: "WithUserFailureAttribution", opt: WithUserFailureAttribution}, // WithUserFailureAttribution should not impact timing attribution.
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -232,7 +231,6 @@ func TestExecAsUserDoesNotReturnStatusInternal(t *testing.T) {
 		name string
 		opt  func(*execParams)
 	}{
-		{name: "WithUserFailureAttribution", opt: WithUserFailureAttribution},
 		{name: "WithUserAttribution", opt: WithUserAttribution},
 	}
 	for _, tc := range testCases {
@@ -453,13 +451,6 @@ func TestExec(t *testing.T) {
 			wantMinUserDur: 500 * time.Millisecond,
 		},
 		{
-			name:           "successful cmd with user failure attribution",
-			cmd:            []string{"sleep", ".5"},
-			opts:           []ExecOption{WithUserFailureAttribution},
-			wantResult:     &ExecResult{},
-			wantUserTiming: false,
-		},
-		{
 			name:            "failing cmd with user attribution",
 			cmd:             []string{"bash", "-c", "sleep .5; exit 99"},
 			opts:            []ExecOption{WithUserAttribution},
@@ -477,15 +468,6 @@ func TestExec(t *testing.T) {
 			wantErr:        true,
 			wantUserTiming: true,
 			wantMinUserDur: 500 * time.Millisecond,
-		},
-		{
-			name:            "failing cmd with user failure attribution",
-			cmd:             []string{"bash", "-c", "sleep .5; exit 99"},
-			opts:            []ExecOption{WithUserFailureAttribution},
-			wantResult:      &ExecResult{ExitCode: 99},
-			wantErr:         true,
-			wantUserTiming:  false,
-			wantUserFailure: true,
 		},
 		{
 			name:           "enoent cmd with user failure attribution",

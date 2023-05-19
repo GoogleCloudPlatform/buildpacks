@@ -45,7 +45,7 @@ type execParams struct {
 	dir string
 	env []string
 
-	userFailure     bool
+	userAttribution bool
 	userTiming      bool
 	messageProducer MessageProducer
 }
@@ -69,18 +69,13 @@ func WithWorkDir(dir string) ExecOption {
 
 // WithUserAttribution indicates that failure and timing both are attributed to the user.
 var WithUserAttribution = func(o *execParams) {
-	o.userFailure = true
+	o.userAttribution = true
 	o.userTiming = true
 }
 
 // WithUserTimingAttribution indicates that only timing is attributed to the user.
 var WithUserTimingAttribution = func(o *execParams) {
 	o.userTiming = true
-}
-
-// WithUserFailureAttribution indicates that only failure is attributed to the user.
-var WithUserFailureAttribution = func(o *execParams) {
-	o.userFailure = true
 }
 
 // WithMessageProducer sets a custom MessageProducer to produce the error message.
@@ -133,7 +128,7 @@ func (ctx *Context) Exec(cmd []string, opts ...ExecOption) (*ExecResult, error) 
 	}
 
 	var be *buildererror.Error
-	if params.userFailure {
+	if params.userAttribution {
 		be = UserErrorf(message)
 	} else {
 		be = buildererror.Errorf(buildererror.StatusInternal, message)
@@ -152,7 +147,7 @@ func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
 	}
 
 	shouldLog := true
-	if !params.userFailure && !ctx.debug {
+	if !params.userAttribution && !ctx.debug {
 		// For "system" commands, we will only log if the debug flag is present.
 		shouldLog = false
 	}
