@@ -15,6 +15,8 @@ package acceptance
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
@@ -26,6 +28,7 @@ func init() {
 
 const (
 	npm  = "google.nodejs.npm"
+	pnpm = "google.nodejs.pnpm"
 	yarn = "google.nodejs.yarn"
 )
 
@@ -149,6 +152,12 @@ func TestAcceptance(t *testing.T) {
 			MustUse:                    []string{yarn},
 			MustNotUse:                 []string{npm},
 		},
+		{
+			Name:       "function with pnpm and typescript",
+			App:        "pnpm_typescript",
+			MustUse:    []string{pnpm},
+			MustNotUse: []string{npm, yarn},
+		},
 	}
 
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
@@ -179,18 +188,26 @@ func TestFailures(t *testing.T) {
 
 	testCases := []acceptance.FailureTest{
 		{
+			Name:      "syntax error",
 			App:       "fail_syntax_error",
 			MustMatch: "SyntaxError:",
 		},
 		{
+			Name:      "wrong main",
 			App:       "fail_wrong_main",
 			MustMatch: "function.js does not exist",
+		},
+		{
+			Name:      "pnpm without framework",
+			App:       "no_framework",
+			Setup:     addPNPMLock,
+			MustMatch: "This project is using pnpm",
 		},
 	}
 
 	for _, tc := range testCases {
 		tc := applyStaticFailureTestOptions(tc)
-		t.Run(tc.App, func(t *testing.T) {
+		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
@@ -203,4 +220,11 @@ func applyStaticFailureTestOptions(tc acceptance.FailureTest) acceptance.Failure
 		"X_GOOGLE_TARGET_PLATFORM=gcf",
 	)
 	return tc
+}
+
+// addPNPMLock adds an empty pnpm lock file to the test project
+func addPNPMLock(setupCtx acceptance.SetupContext) error {
+	fp := filepath.Join(setupCtx.SrcDir, "pnpm-lock.yaml")
+	_, err := os.Create(fp)
+	return err
 }

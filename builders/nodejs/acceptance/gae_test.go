@@ -25,6 +25,7 @@ func init() {
 
 const (
 	npm       = "google.nodejs.npm"
+	pnpm      = "google.nodejs.pnpm"
 	yarn      = "google.nodejs.yarn"
 	appEngine = "google.nodejs.appengine"
 )
@@ -99,6 +100,11 @@ func TestAcceptance(t *testing.T) {
 			App:        "gcp_build_yarn",
 			MustUse:    []string{yarn},
 			MustNotUse: []string{npm},
+		},
+		{
+			App:        "gcp_build_pnpm",
+			MustUse:    []string{pnpm},
+			MustNotUse: []string{npm, yarn},
 		},
 		{
 			App:        "gcp_build_npm_no_dependencies",

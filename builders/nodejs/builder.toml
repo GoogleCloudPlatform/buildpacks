@@ -33,6 +33,10 @@ description = "Builder for the Node.js runtime"
   uri = "yarn.tgz"
 
 [[buildpacks]]
+  id = "google.nodejs.pnpm"
+  uri = "pnpm.tgz"
+
+[[buildpacks]]
   id = "google.utils.label-image"
   uri = "label_image.tgz"
 
@@ -50,6 +54,20 @@ description = "Builder for the Node.js runtime"
 
   [[order.group]]
     id = "google.nodejs.yarn"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# GAE Flex for pnpm
+[[order]]
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.pnpm"
 
   [[order.group]]
     id = "google.utils.label-image"
@@ -77,6 +95,21 @@ description = "Builder for the Node.js runtime"
 
   [[order.group]]
     id = "google.nodejs.yarn"
+
+  [[order.group]]
+    id = "google.nodejs.appengine"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# the GAE order group for pnpm
+[[order]]
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.pnpm"
 
   [[order.group]]
     id = "google.nodejs.appengine"
@@ -153,6 +186,30 @@ description = "Builder for the Node.js runtime"
 
   [[order.group]]
     id = "google.nodejs.yarn"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# The GCP / GCF order group for pnpm
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    # archive source is marked as optional so that this order group can be used by GCP
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.pnpm"
 
   [[order.group]]
     id = "google.nodejs.functions-framework"

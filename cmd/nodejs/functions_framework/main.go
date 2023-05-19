@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Implements nodejs/functions_framework buildpack.
-// The functions_framework buildpack converts a functionn into an application and sets up the execution environment.
+// The functions_framework buildpack converts a function into an application and sets up the execution environment.
 package main
 
 import (
@@ -101,6 +101,14 @@ func buildFn(ctx *gcp.Context) error {
 
 	if yarnPnP && !hasFrameworkDependency {
 		return gcp.UserErrorf("This project is using Yarn Plug'n'Play but you have not included the Functions Framework in your dependencies. Please add it by running: 'yarn add @google-cloud/functions-framework'.")
+	}
+
+	pnpmLockExists, err := ctx.FileExists(nodejs.PNPMLock)
+	if err != nil {
+		return err
+	}
+	if pnpmLockExists && !hasFrameworkDependency {
+		return gcp.UserErrorf("This project is using pnpm but you have not included the Functions Framework in your dependencies. Please add it by running: 'pnpm add @google-cloud/functions-framework'.")
 	}
 
 	// TODO(mattrobertson) remove this check once Nodejs has backported the fix to v16. More info here:
