@@ -2,9 +2,14 @@ ca-certificates
 curl
 file
 fontconfig
+fonts-liberation
 git
 imagemagick
 iputils-ping
+libasound2
+libatk-bridge2.0-0
+libatk1.0-0
+libatspi2.0-0
 libblas3
 libbz2-1.0
 libc-bin
@@ -15,6 +20,7 @@ libcurl4
 libcurl4-openssl-dev
 libdb5.3
 libdbus-1-3
+libdrm2
 libenchant-2-2
 libexpat1
 libffi8
@@ -23,6 +29,7 @@ libflac8
 libfontconfig1
 libfontenc1
 libfreetype6
+libgbm1
 libgcc-s1
 libgcrypt20
 libgd3
@@ -58,6 +65,8 @@ libmpc3
 libmpdec3
 libmysqlclient21
 libnghttp2-14
+libnspr4
+libnss3
 libonig-dev
 libpango-1.0-0
 libpangocairo-1.0-0
@@ -85,8 +94,13 @@ libvpx7
 libwebp7
 libx11-6
 libxcb1
+libxcomposite1
+libxdamage1
 libxext6
+libxfixes3
+libxkbcommon0
 libxml2
+libxrandr2
 libxrender1
 libxslt1.1
 libyaml-0-2
@@ -101,4 +115,5 @@ tzdata
 unzip
 uuid-runtime
 wget
+xdg-utils
 zlib1g
