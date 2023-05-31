@@ -21,7 +21,7 @@
 # that serves as a unique identifier of the images:
 #
 #   $ gcloud builds submit --config=tools/cloudbuild/create_stacks.yaml \
-#      --substitutions _CANDIDATE_NAME=my-local-build
+#      --substitutions _CANDIDATE_NAME=my-local-build _ACCOUNT_NAME=cosign-svc-account
 
 steps:
   - id: build-bazel-pack-image
@@ -118,6 +118,58 @@ steps:
         && docker tag google-22/builder gcr.io/$PROJECT_ID/google-22/builder:$COMMIT_SHA
         && docker tag google-22/builder gcr.io/$PROJECT_ID/builder:google-22
 
+  - id: push_google22_builder
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/google-22/builder:latest']
+
+  - id: google22_builder_sbom
+    name: docker.io/anchore/syft
+    args:
+      - packages
+      - gcr.io/$PROJECT_ID/google-22/builder
+      - '-o=spdx-json'
+      - '--file=/workspace/google22_builder_sbom.json'
+    waitFor:
+      - push_google22_builder
+
+  - id: sign_google22_builder
+    name: gcr.io/projectsigstore/cosign
+    env:
+      - REGISTRY=gcr.io
+      - TUF_ROOT=/tmp
+      - COSIGN_EXPERIMENTAL=1
+      - GOOGLE_SERVICE_ACCOUNT_NAME=${_ACCOUNT_NAME}@$PROJECT_ID.iam.gserviceaccount.com
+    entrypoint: sh
+    args:
+      - '-c'
+      - |
+        cosign sign -y gcr.io/$PROJECT_ID/google-22/builder
+    waitFor:
+      - push_google22_builder
+
+  - name: gcr.io/projectsigstore/cosign
+    entrypoint: sh
+    args:
+      - '-c'
+      - |
+        cosign attach sbom --sbom=/workspace/google22_builder_sbom.json gcr.io/$PROJECT_ID/google-22/builder
+    waitFor:
+      - google22_builder_sbom
+
+  - name: gcr.io/projectsigstore/cosign
+    env:
+      - REGISTRY=gcr.io
+      - TUF_ROOT=/tmp
+      - COSIGN_EXPERIMENTAL=1
+      - GOOGLE_SERVICE_ACCOUNT_NAME=${_ACCOUNT_NAME}@$PROJECT_ID.iam.gserviceaccount.com
+    entrypoint: sh
+    args:
+      - '-c'
+      - |
+        cosign attest --predicate=/workspace/google22_builder_sbom.json -y --type=spdxjson gcr.io/$PROJECT_ID/google-22/builder
+    waitFor:
+      - google22_builder_sbom
+
 # Even though a :latest tag is published, it may be unstable and may be phased out eventually.
 # We recommend using the :v1 tag.
 images:
@@ -140,7 +192,13 @@ images:
 
 substitutions:
   _CANDIDATE_NAME: localbuild
+  _ACCOUNT_NAME: keyless
 
 timeout: '10800s'
+
 options:
   machineType: 'N1_HIGHCPU_32'
+  logging: CLOUD_LOGGING_ONLY
+
+serviceAccount:
+  projects/$PROJECT_ID/serviceAccounts/${_ACCOUNT_NAME}@$PROJECT_ID.iam.gserviceaccount.com
