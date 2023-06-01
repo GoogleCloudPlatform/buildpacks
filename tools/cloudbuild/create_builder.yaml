@@ -21,7 +21,7 @@
 # that serves as a unique identifier of the images:
 #
 #   $ gcloud builds submit --config=tools/cloudbuild/create_stacks.yaml \
-#      --substitutions _CANDIDATE_NAME=my-local-build _ACCOUNT_NAME=cosign-svc-account
+#      --substitutions _CANDIDATE_NAME=my-local-build _ACCOUNT_NAME=keyless
 
 steps:
   - id: build-bazel-pack-image
