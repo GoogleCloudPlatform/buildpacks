@@ -38,7 +38,11 @@ type packageMetadata struct {
 	DistTags struct {
 		Latest string `json:"latest"`
 	} `json:"dist-tags"`
-	Versions map[string]interface{} `json:"versions"`
+	Versions map[string]struct {
+		Name       string `json:"name"`
+		Version    string `json:"version"`
+		Deprecated string `json:"deprecated"`
+	} `json:"versions"`
 }
 
 type yarnTags struct {
@@ -49,7 +53,7 @@ type yarnTags struct {
 	Tags []string `json:"tags"`
 }
 
-// latestPackageVersion returns latest available verion of an NPM package.
+// latestPackageVersion returns latest available version of an NPM package.
 func latestPackageVersion(pkg string) (string, error) {
 	metadata, err := fetchPackageMetadata(pkg)
 	if err != nil {
@@ -82,8 +86,11 @@ func resolvePackageVersion(pkg, verConstraint string) (string, error) {
 	}
 
 	versions := make([]string, 0, len(metadata.Versions)+len(extraVersions))
-	for v := range metadata.Versions {
-		versions = append(versions, v)
+	for v, meta := range metadata.Versions {
+		// If metadata includes a deprecated field, it was pulled from registry and should be ignored.
+		if meta.Deprecated == "" {
+			versions = append(versions, v)
+		}
 	}
 	for _, v := range extraVersions {
 		versions = append(versions, v)

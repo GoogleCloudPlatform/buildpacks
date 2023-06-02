@@ -156,6 +156,30 @@ func TestResolvePackageVersion(t *testing.T) {
 			wantError: true,
 		},
 		{
+			name:       "deprecated version",
+			pkg:        "npm",
+			constraint: "<9.0.0",
+			response: `{
+				"name": "npm",
+				"dist-tags": {
+					"latest": "8.2.0"
+				},
+				"versions": {
+					"8.4.0": {
+						"name": "npm",
+						"version": "8.4.0",
+						"deprecated": "this version is deprecated for some reason"
+					},
+					"8.2.0": {
+						"name": "npm",
+						"version": "8.2.0"
+					}
+				},
+				"modified": "2022-01-27T21:10:55.626Z"
+			}`,
+			want: "8.2.0",
+		},
+		{
 			name:       "yarn 1",
 			pkg:        "yarn",
 			constraint: "1.x.x",
