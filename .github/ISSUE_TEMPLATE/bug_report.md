@@ -21,7 +21,12 @@ How are you using GCP buildpacks?
 - [ ] App Engine Standard
 - [ ] App Engine Flex
 
-What language is your project primarily written in?
+
+**Did this used to work?**
+*(Yes/No)*
+Was this working before? When did you start noticing these errors?
+
+**What language is your project primarily written in?**
 *(Python/Java/Node.js/Go/etc.)*
 
 **Steps To Reproduce**
@@ -33,5 +38,6 @@ A clear and concise description of what you expected to happen.
 
 **Actual behavior**
 What actually happened?
+
 
 If applicable, add screenshots / logs / error messages
