@@ -13,12 +13,16 @@ description = "Unified builder for the PHP runtime"
   uri = "composer_install.tgz"
 
 [[buildpacks]]
-  id = "google.php.flex"
-  uri = "php/flex.tgz"
+  id = "google.php.supervisor"
+  uri = "php/supervisor.tgz"
 
 [[buildpacks]]
   id = "google.config.flex"
   uri = "flex.tgz"
+
+[[buildpacks]]
+  id = "google.python.runtime"
+  uri = "python/runtime.tgz"
 
 [[buildpacks]]
   id = "google.php.composer-gcp-build"
@@ -56,7 +60,7 @@ description = "Unified builder for the PHP runtime"
   id = "google.utils.archive-source"
   uri = "archive_source.tgz"
 
-# PHP applications (flex)
+# PHP Flex supervisor
 [[order]]
   [[order.group]]
     id = "google.config.flex"
@@ -65,7 +69,39 @@ description = "Unified builder for the PHP runtime"
     id = "google.php.runtime"
 
   [[order.group]]
-    id = "google.php.flex"
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.php.supervisor"
+
+  [[order.group]]
+    id = "google.php.composer-install"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.nginx"
+
+  [[order.group]]
+    id = "google.php.composer"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer-gcp-build"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# PHP Flex pid1
+[[order]]
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.php.runtime"
+
+  [[order.group]]
+    id = "google.php.webconfig"
 
   [[order.group]]
     id = "google.php.composer-install"

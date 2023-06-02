@@ -23,7 +23,10 @@ builder(
     ],
     groups = {
         "php": [
-            "//cmd/php/flex:flex.tgz",
+            "//cmd/php/supervisor:supervisor.tgz",
+        ],
+        "python": [
+            "//cmd/python/runtime:runtime.tgz",
         ],
     },
     image = "gcp/php",

@@ -67,7 +67,7 @@ decorate_workers_output = no
 {{end}}
 
 {{- if .ConfOverride}}
-include {{.ConfOverride}}
+include = {{.ConfOverride}}
 {{- end}}
 
 `))

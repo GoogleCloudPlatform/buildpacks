@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/flex"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
@@ -39,6 +40,10 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if flex.NeedsSupervisorPackage(ctx) {
+		return gcp.OptIn("supervisor package is required"), nil
+	}
+
 	if result := runtime.CheckOverride("python"); result != nil {
 		return result, nil
 	}

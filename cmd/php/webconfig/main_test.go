@@ -17,12 +17,15 @@ package main
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/webconfig"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestDetect(t *testing.T) {
@@ -98,7 +101,7 @@ func TestPhpFpm_DisableDecorateWorkersOutput_ForPhp_Gte_730(t *testing.T) {
 
 			os.Setenv(env.RuntimeVersion, tc.version)
 
-			f, err := writeFpmConfig(ctx, os.TempDir())
+			f, err := writeFpmConfig(ctx, os.TempDir(), webconfig.OverrideProperties{})
 			if err != nil {
 				t.Fatalf("Encountered an error generating FPM config: %v", err)
 			}
@@ -116,4 +119,52 @@ func TestPhpFpm_DisableDecorateWorkersOutput_ForPhp_Gte_730(t *testing.T) {
 			os.Remove(filename)
 		})
 	}
+}
+
+func TestAddNginxConfCmdArgs(t *testing.T) {
+	tempDir := t.TempDir()
+	testCases := []struct {
+		name      string
+		overrides webconfig.OverrideProperties
+		want      []string
+	}{
+		{
+			name: "nginx config overrides the path",
+
+			overrides: webconfig.OverrideProperties{NginxConfOverride: true, NginxConfOverrideFileName: "override.conf"},
+			want:      []string{"--nginxConfigPath", "override.conf"},
+		},
+		{
+			name:      "default settings",
+			overrides: webconfig.OverrideProperties{},
+			want: []string{
+				"--nginxConfigPath", filepath.Join(tempDir, "nginx.conf"),
+				"--serverConfigPath", filepath.Join(tempDir, "nginxserver.conf"),
+			},
+		},
+		{
+			name:      "nginx http conf included",
+			overrides: webconfig.OverrideProperties{NginxHTTPInclude: true, NginxHTTPIncludeFileName: "include.conf"},
+			want: []string{
+				"--nginxConfigPath", filepath.Join(tempDir, "nginx.conf"),
+				"--serverConfigPath", filepath.Join(tempDir, "nginxserver.conf"),
+				"--httpIncludeConfigPath", "include.conf",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := addNginxConfCmdArgs(tempDir, filepath.Join(tempDir, "nginxserver.conf"), tc.overrides)
+			if err != nil {
+				t.Fatalf("nginxConfCmdArgs(%v, %v) failed with err: %v", tempDir, tc.overrides, err)
+			}
+
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("nginxConfCmdArgs(%v, %v) returned unexpected difference in args (-want, +got):\n%s", tempDir, tc.overrides, diff)
+			}
+
+		})
+	}
+
 }

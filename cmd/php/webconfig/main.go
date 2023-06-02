@@ -22,11 +22,13 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nginx"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/webconfig"
 	"github.com/Masterminds/semver"
 )
 
@@ -50,6 +52,10 @@ const (
 	phpFpmPid             = "php-fpm.pid"
 )
 
+var (
+	overrides = webconfig.OverrideProperties{}
+)
+
 func main() {
 	gcp.Main(detectFn, buildFn)
 }
@@ -64,17 +70,27 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
 	}
-	fpmConfFile, err := writeFpmConfig(ctx, l.Path)
+
+	if env.IsFlex() {
+		runtimeConfig, err := appyaml.PhpConfiguration(ctx.ApplicationRoot())
+		if err != nil {
+			return err
+		}
+		overrides = webconfig.OverriddenProperties(ctx, runtimeConfig)
+		webconfig.SetEnvVariables(l, overrides)
+	}
+
+	fpmConfFile, err := writeFpmConfig(ctx, l.Path, overrides)
 	if err != nil {
 		return err
 	}
 	defer fpmConfFile.Close()
 
-	nginxConfFile, err := writeNginxConfig(ctx, l.Path)
+	nginxServerConfFile, err := writeNginxServerConfig(l.Path, overrides)
 	if err != nil {
 		return err
 	}
-	defer nginxConfFile.Close()
+	defer nginxServerConfFile.Close()
 
 	procExists, err := ctx.FileExists("Procfile")
 	if err != nil {
@@ -86,8 +102,6 @@ func buildFn(ctx *gcp.Context) error {
 		cmd := []string{
 			"pid1",
 			"--nginxBinaryPath", defaultNginxBinary,
-			"--nginxConfigPath", filepath.Join(l.Path, nginxConf),
-			"--serverConfigPath", nginxConfFile.Name(),
 			"--nginxErrLogFilePath", filepath.Join(l.Path, nginxLog),
 			"--customAppCmd", fmt.Sprintf("%q", fmt.Sprintf("%s -R --nodaemonize --fpm-config %s", defaultFPMBinary, fpmConfFile.Name())),
 			"--pid1LogFilePath", filepath.Join(l.Path, pid1Log),
@@ -96,6 +110,11 @@ func buildFn(ctx *gcp.Context) error {
 			"--mimeTypesPath", filepath.Join("/layers/google.utils.nginx/nginx", "conf/mime.types"),
 			"--customAppSocket", filepath.Join(l.Path, appSocket),
 		}
+		addArgs, err := addNginxConfCmdArgs(l.Path, nginxServerConfFile.Name(), overrides)
+		if err != nil {
+			return err
+		}
+		cmd = append(cmd, addArgs...)
 
 		ctx.AddProcess(gcp.WebProcess, cmd, gcp.AsDefaultProcess())
 	}
@@ -133,7 +152,7 @@ func supportsDecorateWorkersOutput(ctx *gcp.Context) (bool, error) {
 	return c.Check(sv), nil
 }
 
-func writeFpmConfig(ctx *gcp.Context, path string) (*os.File, error) {
+func writeFpmConfig(ctx *gcp.Context, path string, overrides webconfig.OverrideProperties) (*os.File, error) {
 	// For php >= 7.3.0, the directive decorate_workers_output prevents php from prepending a warning
 	// message to all logged entries.  Prior to 7.3.0, decorate_workers_output was not available, and
 	// these warning messages are prepended to all logged entries.  Here we choose to set
@@ -142,43 +161,78 @@ func writeFpmConfig(ctx *gcp.Context, path string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	conf, err := fpmConfig(path, addNoDecorateWorkers)
+	conf, err := fpmConfig(path, addNoDecorateWorkers, overrides)
 	if err != nil {
 		return nil, err
 	}
 	return nginx.WriteFpmConfigToPath(path, conf)
 }
 
-func fpmConfig(l string, addNoDecorateWorkers bool) (nginx.FPMConfig, error) {
+func fpmConfig(layer string, addNoDecorateWorkers bool, overrides webconfig.OverrideProperties) (nginx.FPMConfig, error) {
 	user, err := user.Current()
 	if err != nil {
 		return nginx.FPMConfig{}, fmt.Errorf("getting current user: %w", err)
 	}
 
 	fpm := nginx.FPMConfig{
-		PidPath:              filepath.Join(l, phpFpmPid),
+		PidPath:              filepath.Join(layer, phpFpmPid),
 		NumWorkers:           defaultFPMWorkers,
-		ListenAddress:        filepath.Join(l, appSocket),
+		ListenAddress:        filepath.Join(layer, appSocket),
 		DynamicWorkers:       defaultDynamicWorkers,
 		Username:             user.Username,
 		AddNoDecorateWorkers: addNoDecorateWorkers,
 	}
 
+	if overrides.PHPFPMOverride {
+		fpm.ConfOverride = overrides.PHPFPMOverrideFileName
+	}
+
 	return fpm, nil
 }
 
-func nginxConfig(l string) nginx.Config {
+func addNginxConfCmdArgs(path, nginxServerConfFileName string, overrides webconfig.OverrideProperties) ([]string, error) {
+	if overrides.NginxConfOverride {
+		return []string{"--nginxConfigPath", overrides.NginxConfOverrideFileName}, nil
+	}
+
+	args := []string{
+		"--nginxConfigPath", filepath.Join(path, nginxConf),
+		"--serverConfigPath", nginxServerConfFileName,
+	}
+
+	if overrides.NginxHTTPInclude {
+		args = append(args, "--httpIncludeConfigPath", overrides.NginxHTTPIncludeFileName)
+	}
+
+	return args, nil
+}
+
+func nginxConfig(layer string, overrides webconfig.OverrideProperties) nginx.Config {
+	frontController := defaultFrontController
+	if overrides.FrontController != "" {
+		frontController = overrides.FrontController
+	}
+
+	root := defaultRoot
+	if overrides.DocumentRoot != "" {
+		root = filepath.Join(defaultRoot, overrides.DocumentRoot)
+	}
+
 	nginx := nginx.Config{
 		Port:                  defaultNginxPort,
-		FrontControllerScript: defaultFrontController,
-		Root:                  defaultRoot,
-		AppListenAddress:      filepath.Join(l, appSocket),
+		FrontControllerScript: frontController,
+		Root:                  root,
+		AppListenAddress:      filepath.Join(layer, appSocket),
+	}
+
+	if overrides.NginxServerConfInclude {
+		nginx.NginxConfInclude = overrides.NginxServerConfIncludeFileName
 	}
 
 	return nginx
 }
 
-func writeNginxConfig(ctx *gcp.Context, path string) (*os.File, error) {
-	conf := nginxConfig(path)
+func writeNginxServerConfig(path string, overrides webconfig.OverrideProperties) (*os.File, error) {
+	conf := nginxConfig(path, overrides)
 	return nginx.WriteNginxConfigToPath(path, conf)
 }

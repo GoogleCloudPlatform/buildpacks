@@ -1,7 +1,7 @@
 // for open-source
 module github.com/GoogleCloudPlatform/buildpacks
 
-go 1.17
+go 1.19
 
 require (
 	github.com/buildpacks/libcnb v1.27.0

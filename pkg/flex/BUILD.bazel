@@ -1,0 +1,31 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "flex",
+    srcs = [
+        "nginx.go",
+        "supervisor.go",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//cmd/php:__subpackages__",
+        "//cmd/python/runtime:__subpackages__",
+    ],
+    deps = [
+        "//pkg/appyaml",
+        "//pkg/gcpbuildpack",
+        "@com_github_buildpacks_libcnb//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "flex_test",
+    srcs = ["supervisor_test.go"],
+    embed = [":flex"],
+    rundir = ".",
+    deps = [
+        "//pkg/appyaml",
+        "//pkg/gcpbuildpack",
+        "@com_github_google_go-cmp//cmp:go_default_library",
+    ],
+)

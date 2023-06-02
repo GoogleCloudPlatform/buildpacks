@@ -77,6 +77,10 @@ func Version(ctx *gcp.Context) (string, error) {
 // RuntimeVersion validate and returns the customer requested Python version by inspecting the
 // environment variables and .python-version file.
 func RuntimeVersion(ctx *gcp.Context, dir string) (string, error) {
+	if v := os.Getenv(env.Runtime); v != "" && !strings.HasPrefix(v, "python") {
+		return "*", nil
+	}
+
 	if v := os.Getenv(versionEnv); v != "" {
 		ctx.Logf("Using Python version from %s: %s", versionEnv, v)
 		return v, nil
