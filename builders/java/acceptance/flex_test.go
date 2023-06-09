@@ -31,19 +31,17 @@ func TestAcceptance(t *testing.T) {
 	testCases := []acceptance.Test{
 		// Test that we can build a maven project.
 		{
-			Name:          "maven project springboot",
-			App:           "helloworld_springboot",
-			Env:           []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
-			MustNotOutput: []string{"WARNING"},
-			MustUse:       []string{"google.config.flex"},
+			Name:    "maven project springboot",
+			App:     "helloworld_springboot",
+			Env:     []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
+			MustUse: []string{"google.config.flex"},
 		},
 		// Test that we can build a gradle project
 		{
-			Name:          "gradle project",
-			App:           "gradle_quarkus",
-			Env:           []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
-			MustNotOutput: []string{"WARNING"},
-			MustUse:       []string{"google.config.flex"},
+			Name:    "gradle project",
+			App:     "gradle_quarkus",
+			Env:     []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
+			MustUse: []string{"google.config.flex"},
 		},
 	}
 

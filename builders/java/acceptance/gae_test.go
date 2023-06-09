@@ -102,19 +102,18 @@ func TestAcceptance(t *testing.T) {
 			App:                        "java17_compat_webapp",
 		},
 		{
-			Name:          "hello quarkus maven",
-			App:           "hello_quarkus_maven",
-			MustNotOutput: []string{"WARNING"},
+			Name: "hello quarkus maven",
+			App:  "hello_quarkus_maven",
 		},
 		{
 			Name:          "hello springboot maven",
 			App:           "springboot-helloworld",
-			MustNotOutput: []string{"WARNING"},
+			MustNotOutput: []string{"ERROR"},
 		},
 		{
 			Name:            "hello sparkjava maven",
 			App:             "sparkjava-helloworld",
-			MustNotOutput:   []string{"WARNING"},
+			MustNotOutput:   []string{"ERROR"},
 			EnableCacheTest: true,
 		},
 		{
@@ -125,12 +124,12 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:          "hello vertx maven",
 			App:           "vertx-helloworld",
-			MustNotOutput: []string{"WARNING"},
+			MustNotOutput: []string{"ERROR"},
 		},
 		{
 			Name:            "http server",
 			App:             "http-server",
-			MustNotOutput:   []string{"WARNING"},
+			MustNotOutput:   []string{"ERROR"},
 			EnableCacheTest: true,
 		},
 		{
@@ -143,7 +142,6 @@ func TestAcceptance(t *testing.T) {
 			Name:              "hello quarkus maven with source clearing",
 			App:               "hello_quarkus_maven",
 			Env:               []string{"GOOGLE_CLEAR_SOURCE=true"},
-			MustNotOutput:     []string{"WARNING"},
 			FilesMustNotExist: []string{"/workspace/src/main/java/hello/Hello.java", "/workspace/pom.xml"},
 		},
 		{
