@@ -23,7 +23,7 @@ func TestNginxConfig(t *testing.T) {
 				Port:                  8080,
 				FrontControllerScript: "index.php",
 				Root:                  "/workspace/web",
-				AppListenAddress:      "app.sock",
+				AppListenAddress:      defaultAddress,
 			},
 		},
 		{
@@ -33,7 +33,7 @@ func TestNginxConfig(t *testing.T) {
 				Port:                  8080,
 				FrontControllerScript: "app.php",
 				Root:                  "/workspace/web",
-				AppListenAddress:      "app.sock",
+				AppListenAddress:      defaultAddress,
 			},
 		},
 		{
@@ -43,7 +43,7 @@ func TestNginxConfig(t *testing.T) {
 				Port:                  8080,
 				FrontControllerScript: "index.php",
 				Root:                  "/workspace",
-				AppListenAddress:      "app.sock",
+				AppListenAddress:      defaultAddress,
 			},
 		},
 		{
@@ -54,7 +54,7 @@ func TestNginxConfig(t *testing.T) {
 				Port:                  8080,
 				FrontControllerScript: "index.php",
 				Root:                  "/workspace/web",
-				AppListenAddress:      "app.sock",
+				AppListenAddress:      defaultAddress,
 				NginxConfInclude:      "/workspace/include.conf",
 			},
 		},

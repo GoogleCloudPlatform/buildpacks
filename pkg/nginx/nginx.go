@@ -81,7 +81,7 @@ fastcgi_read_timeout 24h;
 # proxy_* are not set for PHP because fastcgi is used.
 
 upstream fast_cgi_app {
-	server         unix:{{.AppListenAddress}} fail_timeout=0;
+	server         {{.AppListenAddress}} fail_timeout=0;
 }
 
 server {

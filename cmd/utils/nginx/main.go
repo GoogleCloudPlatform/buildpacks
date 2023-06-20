@@ -59,13 +59,14 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
-	pl.LaunchEnvironment.Append("PATH", string(os.PathListSeparator), pl.Path)
+
+	pl.BuildEnvironment.Default("PID1_DIR", pl.Path)
 
 	return nil
 }
 
 func install(ctx *gcp.Context, name, verConstraint string, ir runtime.InstallableRuntime) (*libcnb.Layer, error) {
-	l, err := ctx.Layer(name, gcp.CacheLayer, gcp.LaunchLayer)
+	l, err := ctx.Layer(name, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 	if err != nil {
 		return nil, fmt.Errorf("creating layer: %w", err)
 	}

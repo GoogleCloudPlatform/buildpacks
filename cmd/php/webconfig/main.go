@@ -37,6 +37,8 @@ const (
 	appSocket = "app.sock"
 	pid1Log   = "pid1.log"
 
+	defaultFlexAddress = "127.0.0.1:9000"
+
 	// nginx
 	defaultFrontController = "index.php"
 	defaultNginxBinary     = "nginx"
@@ -100,7 +102,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	if !procExists && !entrypointExists {
 		cmd := []string{
-			"pid1",
+			filepath.Join(os.Getenv("PID1_DIR"), "pid1"),
 			"--nginxBinaryPath", defaultNginxBinary,
 			"--nginxErrLogFilePath", filepath.Join(l.Path, nginxLog),
 			"--customAppCmd", fmt.Sprintf("%q", fmt.Sprintf("%s -R --nodaemonize --fpm-config %s", defaultFPMBinary, fpmConfFile.Name())),
@@ -108,7 +110,6 @@ func buildFn(ctx *gcp.Context) error {
 			// Ideally, we should be able to use the path of the nginx layer and not hardcode it here.
 			// This needs some investigation on how to pass values between build steps of buildpacks.
 			"--mimeTypesPath", filepath.Join("/layers/google.utils.nginx/nginx", "conf/mime.types"),
-			"--customAppSocket", filepath.Join(l.Path, appSocket),
 		}
 		addArgs, err := addNginxConfCmdArgs(l.Path, nginxServerConfFile.Name(), overrides)
 		if err != nil {
@@ -183,6 +184,10 @@ func fpmConfig(layer string, addNoDecorateWorkers bool, overrides webconfig.Over
 		AddNoDecorateWorkers: addNoDecorateWorkers,
 	}
 
+	if env.IsFlex() {
+		fpm.ListenAddress = defaultFlexAddress
+	}
+
 	if overrides.PHPFPMOverride {
 		fpm.ConfOverride = overrides.PHPFPMOverrideFileName
 	}
@@ -191,14 +196,21 @@ func fpmConfig(layer string, addNoDecorateWorkers bool, overrides webconfig.Over
 }
 
 func addNginxConfCmdArgs(path, nginxServerConfFileName string, overrides webconfig.OverrideProperties) ([]string, error) {
-	if overrides.NginxConfOverride {
-		return []string{"--nginxConfigPath", overrides.NginxConfOverrideFileName}, nil
+	var args []string
+	if env.IsFlex() {
+		args = []string{"--customAppPort", "9000"}
+	} else {
+		args = []string{"--customAppSocket", filepath.Join(path, appSocket)}
 	}
 
-	args := []string{
+	if overrides.NginxConfOverride {
+		return append(args, "--nginxConfigPath", overrides.NginxConfOverrideFileName), nil
+	}
+
+	args = append(args,
 		"--nginxConfigPath", filepath.Join(path, nginxConf),
 		"--serverConfigPath", nginxServerConfFileName,
-	}
+	)
 
 	if overrides.NginxHTTPInclude {
 		args = append(args, "--httpIncludeConfigPath", overrides.NginxHTTPIncludeFileName)
@@ -222,7 +234,11 @@ func nginxConfig(layer string, overrides webconfig.OverrideProperties) nginx.Con
 		Port:                  defaultNginxPort,
 		FrontControllerScript: frontController,
 		Root:                  root,
-		AppListenAddress:      filepath.Join(layer, appSocket),
+		AppListenAddress:      "unix:" + filepath.Join(layer, appSocket),
+	}
+
+	if env.IsFlex() {
+		nginx.AppListenAddress = defaultFlexAddress
 	}
 
 	if overrides.NginxServerConfInclude {

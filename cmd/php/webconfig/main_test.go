@@ -124,20 +124,33 @@ func TestPhpFpm_DisableDecorateWorkersOutput_ForPhp_Gte_730(t *testing.T) {
 func TestAddNginxConfCmdArgs(t *testing.T) {
 	tempDir := t.TempDir()
 	testCases := []struct {
+		isFlex    bool
 		name      string
 		overrides webconfig.OverrideProperties
 		want      []string
 	}{
 		{
-			name: "nginx config overrides the path",
-
+			name:      "nginx config overrides the path",
 			overrides: webconfig.OverrideProperties{NginxConfOverride: true, NginxConfOverrideFileName: "override.conf"},
-			want:      []string{"--nginxConfigPath", "override.conf"},
+			want: []string{
+				"--customAppSocket", filepath.Join(tempDir, "app.sock"),
+				"--nginxConfigPath", "override.conf"},
 		},
 		{
 			name:      "default settings",
 			overrides: webconfig.OverrideProperties{},
 			want: []string{
+				"--customAppSocket", filepath.Join(tempDir, "app.sock"),
+				"--nginxConfigPath", filepath.Join(tempDir, "nginx.conf"),
+				"--serverConfigPath", filepath.Join(tempDir, "nginxserver.conf"),
+			},
+		},
+		{
+			name:      "default settings for flex applications",
+			isFlex:    true,
+			overrides: webconfig.OverrideProperties{},
+			want: []string{
+				"--customAppPort", "9000",
 				"--nginxConfigPath", filepath.Join(tempDir, "nginx.conf"),
 				"--serverConfigPath", filepath.Join(tempDir, "nginxserver.conf"),
 			},
@@ -146,6 +159,7 @@ func TestAddNginxConfCmdArgs(t *testing.T) {
 			name:      "nginx http conf included",
 			overrides: webconfig.OverrideProperties{NginxHTTPInclude: true, NginxHTTPIncludeFileName: "include.conf"},
 			want: []string{
+				"--customAppSocket", filepath.Join(tempDir, "app.sock"),
 				"--nginxConfigPath", filepath.Join(tempDir, "nginx.conf"),
 				"--serverConfigPath", filepath.Join(tempDir, "nginxserver.conf"),
 				"--httpIncludeConfigPath", "include.conf",
@@ -155,10 +169,15 @@ func TestAddNginxConfCmdArgs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.isFlex {
+				os.Setenv("X_GOOGLE_TARGET_PLATFORM", "flex")
+			}
 			got, err := addNginxConfCmdArgs(tempDir, filepath.Join(tempDir, "nginxserver.conf"), tc.overrides)
 			if err != nil {
 				t.Fatalf("nginxConfCmdArgs(%v, %v) failed with err: %v", tempDir, tc.overrides, err)
 			}
+
+			os.Setenv("X_GOOGLE_TARGET_PLATFORM", "")
 
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("nginxConfCmdArgs(%v, %v) returned unexpected difference in args (-want, +got):\n%s", tempDir, tc.overrides, diff)

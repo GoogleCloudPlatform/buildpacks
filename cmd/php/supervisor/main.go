@@ -17,9 +17,6 @@ import (
 )
 
 const (
-	// pid1
-	appSocket = "app.sock"
-	pid1Log   = "pid1.log"
 
 	// nginx
 	defaultFrontController      = "index.php"
@@ -30,6 +27,7 @@ const (
 	defaultNginxConfHTTPInclude = "nginx-http.conf"
 	defaultNginxConf            = "nginx.conf"
 	nginxLog                    = "nginx.log"
+	defaultAddress              = "127.0.0.1:9000"
 
 	// php-fpm
 	defaultPHPFPMConfOverride = "php-fpm.conf"
@@ -168,7 +166,7 @@ func nginxConfig(layer string, overrides webconfig.OverrideProperties) nginx.Con
 		Port:                  defaultNginxPort,
 		FrontControllerScript: frontController,
 		Root:                  filepath.Join(defaultRoot, overrides.DocumentRoot),
-		AppListenAddress:      filepath.Join(layer, appSocket),
+		AppListenAddress:      defaultAddress,
 	}
 
 	if overrides.NginxServerConfInclude {
@@ -199,7 +197,7 @@ func fpmConfig(layer string, overrides webconfig.OverrideProperties) (nginx.FPMC
 	fpm := nginx.FPMConfig{
 		PidPath:              filepath.Join(layer, phpFpmPid),
 		NumWorkers:           defaultFPMWorkers,
-		ListenAddress:        filepath.Join(layer, appSocket),
+		ListenAddress:        defaultAddress,
 		DynamicWorkers:       defaultDynamicWorkers,
 		Username:             user.Username,
 		AddNoDecorateWorkers: true,
