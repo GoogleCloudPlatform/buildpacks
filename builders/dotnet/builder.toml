@@ -150,4 +150,4 @@ description = "Unified builder for the .NET runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-gae-18/run"
 
 [lifecycle]
-  version = "0.16.3"
+  version = "0.16.4"
