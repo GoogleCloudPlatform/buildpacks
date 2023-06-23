@@ -60,6 +60,7 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
+	pl.LaunchEnvironment.Append("PATH", string(os.PathListSeparator), pl.Path)
 	pl.BuildEnvironment.Default("PID1_DIR", pl.Path)
 
 	return nil
