@@ -340,7 +340,7 @@ def _build_step(name, bin_name, version, args, testdata_label):
         result += " \\\n    " + a
     return result
 
-_default_cloudbuild_bin_targets = ["gae_test_cloudbuild_bin", "gcf_test_cloudbuild_bin", "gcp_test_cloudbuild_bin"]
+_default_cloudbuild_bin_targets = ["flex_test_cloudbuild_bin", "gae_test_cloudbuild_bin", "gcf_test_cloudbuild_bin", "gcp_test_cloudbuild_bin"]
 
 def _build_argo_source_testdata_fileset_target(name, testdata):
     fileset_name = name + "_testdata"
