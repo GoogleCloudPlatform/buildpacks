@@ -107,7 +107,6 @@ steps:
         && docker tag gcr.io/buildpacks/gcp/build:v1 gcr.io/$PROJECT_ID/gcp/build:latest
         && docker tag gcr.io/buildpacks/gcp/build:v1 gcr.io/$PROJECT_ID/gcp/build:v1
         && docker tag gcr.io/buildpacks/gcp/build:v1 gcr.io/$PROJECT_ID/gcp/build:$COMMIT_SHA
-        && docker tag gcp/base gcr.io/$PROJECT_ID/builder:latest
         && docker tag gcp/base gcr.io/$PROJECT_ID/builder:v1
         && docker tag gcp/base gcr.io/$PROJECT_ID/builder:$COMMIT_SHA
         && docker tag gcr.io/buildpacks/google-22/run:latest gcr.io/$PROJECT_ID/google-22/run:latest
@@ -117,6 +116,7 @@ steps:
         && docker tag google-22/builder gcr.io/$PROJECT_ID/google-22/builder:latest
         && docker tag google-22/builder gcr.io/$PROJECT_ID/google-22/builder:$COMMIT_SHA
         && docker tag google-22/builder gcr.io/$PROJECT_ID/builder:google-22
+        && docker tag google-22/builder gcr.io/$PROJECT_ID/builder:latest
 
   - id: push_google22_builder
     name: 'gcr.io/cloud-builders/docker'
