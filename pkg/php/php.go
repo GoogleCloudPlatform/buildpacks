@@ -81,6 +81,15 @@ zend.assertions = -1
 upload_max_filesize = 32M
 post_max_size = 32M
 `
+
+	// ComposerArgsEnv is an environment variable used to pass custom composer variables.
+	ComposerArgsEnv = "GOOGLE_COMPOSER_ARGS"
+
+	// ComposerVersion is used to determine which version for composer to install.
+	ComposerVersion = "GOOGLE_COMPOSER_VERSION"
+
+	// CustomNginxConfig is an environment variable to pass a custom nginx configuration.
+	CustomNginxConfig = "GOOGLE_CUSTOM_NGINX_CONFIG"
 )
 
 type composerScriptsJSON struct {
@@ -154,7 +163,7 @@ func composerInstall(ctx *gcp.Context, flags []string) error {
 // if they desire.
 func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 	var flags []string
-	if composerArgs := os.Getenv(env.ComposerArgsEnv); composerArgs != "" {
+	if composerArgs := os.Getenv(ComposerArgsEnv); composerArgs != "" {
 		flags = strings.Split(composerArgs, " ")
 	} else {
 		// We don't install dev dependencies (i.e. we pass --no-dev to composer) because doing so has caused

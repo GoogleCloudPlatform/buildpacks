@@ -26,6 +26,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
 	"github.com/buildpacks/libcnb"
 )
 
@@ -59,7 +60,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	if ver, present := os.LookupEnv(env.ComposerVersion); present {
+	if ver, present := os.LookupEnv(php.ComposerVersion); present {
 		composerVer = ver
 	}
 

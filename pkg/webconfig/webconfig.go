@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
 	"github.com/buildpacks/libcnb"
 )
 
@@ -97,7 +97,7 @@ func overrideProperties(ctx *gcp.Context, configValue, defaultFile string) (bool
 // SetEnvVariables sets the env variables necessary for configuring the overrides.
 func SetEnvVariables(l *libcnb.Layer, props OverrideProperties) {
 	if props.ComposerFlags != "" {
-		l.BuildEnvironment.Override(env.ComposerArgsEnv, props.ComposerFlags)
+		l.BuildEnvironment.Override(php.ComposerArgsEnv, props.ComposerFlags)
 	}
 
 	if props.PHPIniOverride {

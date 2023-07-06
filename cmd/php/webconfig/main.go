@@ -82,6 +82,11 @@ func buildFn(ctx *gcp.Context) error {
 		webconfig.SetEnvVariables(l, overrides)
 	}
 
+	if customNginxConf, present := os.LookupEnv(php.CustomNginxConfig); present {
+		overrides.NginxConfOverride = true
+		overrides.NginxConfOverrideFileName = filepath.Join(defaultRoot, customNginxConf)
+	}
+
 	fpmConfFile, err := writeFpmConfig(ctx, l.Path, overrides)
 	if err != nil {
 		return err
