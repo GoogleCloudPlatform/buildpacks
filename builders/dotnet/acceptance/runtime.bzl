@@ -5,8 +5,6 @@ Generated bzl file. Do not update manually.
 """
 
 gae_runtimes = {
-    "dotnet3": "3.1.426",
-    "dotnet6": "6.0.411",
 }
 
 gcf_runtimes = {
