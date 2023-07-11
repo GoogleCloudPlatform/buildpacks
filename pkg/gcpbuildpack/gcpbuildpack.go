@@ -435,7 +435,7 @@ func (ctx *Context) AddProcess(name string, cmd []string, opts ...processOption)
 func (ctx *Context) HTTPStatus(url string) (int, error) {
 	res, err := http.Head(url)
 	if err != nil {
-		return 0, UserErrorf("getting status code for %s: %v", url, err)
+		return 0, InternalErrorf("getting status code for %s: %v", url, err)
 	}
 	return res.StatusCode, nil
 }

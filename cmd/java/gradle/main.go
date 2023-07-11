@@ -177,19 +177,19 @@ func installGradle(ctx *gcp.Context) (string, error) {
 	defer ctx.RemoveAll(gradleZip)
 
 	curl := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s --output %s", downloadURL, gradleZip)
-	if _, err := ctx.Exec([]string{"bash", "-c", curl}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"bash", "-c", curl}); err != nil {
 		return "", err
 	}
 
 	unzip := fmt.Sprintf("unzip -q %s -d %s", gradleZip, tmpDir)
-	if _, err := ctx.Exec([]string{"bash", "-c", unzip}, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"bash", "-c", unzip}); err != nil {
 		return "", err
 	}
 
 	gradleExtracted := filepath.Join(tmpDir, fmt.Sprintf("gradle-%s", gradleVersion))
 	defer ctx.RemoveAll(gradleExtracted)
 	install := fmt.Sprintf("mv %s/* %s", gradleExtracted, gradlel.Path)
-	if _, err := ctx.Exec([]string{"bash", "-c", install}, gcp.WithUserTimingAttribution); err != nil {
+	if _, err := ctx.Exec([]string{"bash", "-c", install}); err != nil {
 		return "", err
 	}
 
