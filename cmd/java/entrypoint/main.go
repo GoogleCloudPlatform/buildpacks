@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -35,7 +36,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	if entrypoint := os.Getenv(env.Entrypoint); env.IsFlex() && entrypoint != "" {
+	if entrypoint := getEntrypoint(ctx); env.IsFlex() && entrypoint != "" {
+		ctx.Setenv(env.Entrypoint, entrypoint)
 		appengine.Build(ctx, "java", nil)
 		return nil
 	}
@@ -64,4 +66,12 @@ func buildFn(ctx *gcp.Context) error {
 	// Configure the entrypoint for production.
 	ctx.AddWebProcess(command)
 	return nil
+}
+
+func getEntrypoint(ctx *gcp.Context) string {
+	if entrypoint := os.Getenv(env.Entrypoint); entrypoint != "" {
+		return entrypoint
+	}
+	entrypoint, _ := appyaml.EntrypointIfExists(ctx.ApplicationRoot())
+	return entrypoint
 }

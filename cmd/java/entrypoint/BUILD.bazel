@@ -27,6 +27,7 @@ go_binary(
     ],
     deps = [
         "//pkg/appengine",
+        "//pkg/appyaml",
         "//pkg/devmode",
         "//pkg/env",
         "//pkg/gcpbuildpack",
