@@ -17,7 +17,6 @@ package nodejs
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
@@ -170,21 +169,10 @@ func DetermineBuildCommands(pjs *PackageJSON, pkgTool string) (cmds []string, is
 
 	if HasScript(pjs, ScriptBuild) {
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmBuildUsageCounterID).Increment(1)
-
-		// Env var guards an experimental feature to run "npm run build" by default.
-		shouldBuild, err := strconv.ParseBool(os.Getenv(nodejsNPMBuildEnv))
-		// If there was an error reading the env var, don't run the script.
-		if err != nil {
-			shouldBuild = false
+		if build := pjs.Scripts[ScriptBuild]; strings.TrimSpace(build) == "" {
+			return []string{}, false
 		}
-
-		// If experiment is enabled or it's the OSS builder, run "npm run build" by default.
-		if shouldBuild || os.Getenv(env.XGoogleTargetPlatform) == "" {
-			if build := pjs.Scripts[ScriptBuild]; strings.TrimSpace(build) == "" {
-				return []string{}, false
-			}
-			return []string{runCommand(pkgTool, "build")}, false
-		}
+		return []string{runCommand(pkgTool, "build")}, false
 	}
 
 	return []string{}, false
