@@ -89,6 +89,7 @@ func TestAcceptance(t *testing.T) {
 		{
 			App:     "typescript",
 			MustUse: []string{npm},
+			Env:     []string{"GOOGLE_EXPERIMENTAL_NODEJS_NPM_BUILD_ENABLED=true"},
 		},
 		{
 			App:        "gcp_build_npm",
