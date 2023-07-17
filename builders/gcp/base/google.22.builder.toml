@@ -503,8 +503,7 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
   [[order.group]]
     id = "google.utils.label-image"
 
-# Python applications.
-# Entrypoint buildpack is required because it cannot be easily inferred.
+# Python applications with default entrypoint or fail with a message.
 [[order]]
   [[order.group]]
     id = "google.python.runtime"
@@ -678,13 +677,24 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
 ##############
 # Python 2/2 #
 ##############
-
-# This buildpack group will always fail but with a clear message that the
-# entrypoint is missing. It must be the last group otherwise projects with
-# a single .py file and no entrypoint will fail
+# Python applications with default entrypoint or fail with a message.
 [[order]]
   [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
     id = "google.python.missing-entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
 
 # This buildpack group will always fail but with a clear message that the
 # entrypoint is missing. It must be the last group otherwise projects with

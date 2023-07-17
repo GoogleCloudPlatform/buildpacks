@@ -99,11 +99,6 @@ func TestFailuresPython(t *testing.T) {
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS", "GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustMatch: "invalid Python version specified",
 		},
-		{
-			Name:      "missing entrypoint",
-			App:       "missing_entrypoint",
-			MustMatch: `for Python, an entrypoint must be manually set, either with "GOOGLE_ENTRYPOINT" env var or by creating a "Procfile" file`,
-		},
 	}
 
 	for _, tc := range testCases {

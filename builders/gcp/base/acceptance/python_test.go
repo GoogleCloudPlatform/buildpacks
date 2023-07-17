@@ -56,6 +56,11 @@ func TestAcceptancePython(t *testing.T) {
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		{
+			Name:    "missing entrypoint",
+			App:     "missing_entrypoint",
+			MustUse: []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
+		},
+		{
 			Name:    "runtime version 3.9",
 			App:     "version",
 			Path:    "/version?want=3.9.16",
@@ -120,9 +125,9 @@ func TestFailuresPython(t *testing.T) {
 			MustMatch: "invalid Python version specified",
 		},
 		{
-			Name:      "missing entrypoint",
-			App:       "missing_entrypoint",
-			MustMatch: `for Python, an entrypoint must be manually set, either with "GOOGLE_ENTRYPOINT" env var or by creating a "Procfile" file`,
+			Name:      "missing main",
+			App:       "missing_main",
+			MustMatch: `for Python, provide a main.py file or set an entrypoint with "GOOGLE_ENTRYPOINT" env var or by creating a "Procfile" file`,
 		},
 	}
 

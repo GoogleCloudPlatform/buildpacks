@@ -19,6 +19,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -45,5 +46,17 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	return fmt.Errorf("for Python, an entrypoint must be manually set, either with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
+	hasMain, err := ctx.HasAtLeastOne("main.py")
+	if err != nil {
+		return fmt.Errorf("finding main.py files: %w", err)
+	}
+	if !hasMain {
+		return fmt.Errorf("for Python, provide a main.py file or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
+	}
+
+	cmd := []string{"gunicorn", "-b", ":8080", "main:app"}
+	ctx.Logf("Setting default entrypoint: %q", strings.Join(cmd, " "))
+	ctx.AddProcess(gcp.WebProcess, cmd, gcp.AsDefaultProcess())
+
+	return nil
 }
