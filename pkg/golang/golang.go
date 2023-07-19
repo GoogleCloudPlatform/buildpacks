@@ -279,7 +279,7 @@ func IsGo111Runtime() bool {
 
 // ResolveGoVersion finds the latest version of Go that matches the provided semver constraint.
 func ResolveGoVersion(verConstraint string) (string, error) {
-	if isExactGoSemver(verConstraint) {
+	if isSupportedUnstableGoVersion(verConstraint) || isExactGoSemver(verConstraint) {
 		return verConstraint, nil
 	}
 	var releases []goRelease
@@ -297,6 +297,15 @@ func ResolveGoVersion(verConstraint string) (string, error) {
 		return "", gcp.UserErrorf("invalid Go version specified: %v, You can refer to %s for a list of stable Go releases.", goVersionsURL, err)
 	}
 	return v, nil
+}
+
+// When launching a new runtime, we need to test with RC candidate which will eventually be replaced
+// by a stable candidate. Till then, we will support these unstable releases in the QA for testing.
+func isSupportedUnstableGoVersion(constraint string) bool {
+	if strings.Count(constraint, ".") == 1 && strings.Count(constraint, "rc") == 1 {
+		return true
+	}
+	return false
 }
 
 // isExactGoSemver returns true if a given string is a precisely specified go version. That is, it
