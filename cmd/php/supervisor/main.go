@@ -56,6 +56,8 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
+	l.LaunchEnvironment.Default("APP_DIR", defaultRoot)
+
 	runtimeConfig, err := appyaml.PhpConfiguration(ctx.ApplicationRoot())
 	if err != nil {
 		return err
