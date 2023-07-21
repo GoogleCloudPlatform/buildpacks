@@ -99,6 +99,7 @@ func untar(dir string, r io.Reader, stripComponents int) error {
 	}
 	defer gzr.Close()
 
+	madeDir := map[string]bool{}
 	tr := tar.NewReader(gzr)
 
 	for {
@@ -124,8 +125,21 @@ func untar(dir string, r io.Reader, stripComponents int) error {
 				if err := os.Mkdir(target, os.FileMode(header.Mode)); err != nil {
 					return gcp.InternalErrorf("creating directory %q: %v", target, err)
 				}
+				madeDir[target] = true
 			}
 		case tar.TypeReg, tar.TypeRegA:
+			// Make the directory. This is redundant because it should
+			// already be made by a directory entry in the tar
+			// beforehand. Thus, don't check for errors; the next
+			// write will fail with the same error.
+			dir := filepath.Dir(target)
+			if !madeDir[dir] {
+				if err := os.MkdirAll(dir, 0755); err != nil {
+					return gcp.InternalErrorf("creating directory %q: %v", target, err)
+				}
+				madeDir[dir] = true
+			}
+
 			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 			if err != nil {
 				return gcp.InternalErrorf("opening file %q: %v", target, err)
