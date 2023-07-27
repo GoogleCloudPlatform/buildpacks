@@ -38,11 +38,10 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{composerGCPBuild, phpWebConfig, functionFramework, cloudFunctions},
 		},
 		{
-			Name:                       "composer.lock respected",
-			App:                        "composer_lock",
-			MustUse:                    []string{composer, composerInstall, phpRuntime},
-			MustNotUse:                 []string{composerGCPBuild, phpWebConfig, functionFramework, cloudFunctions},
-			VersionInclusionConstraint: "<8.2.0",
+			Name:       "composer.lock respected",
+			App:        "composer_lock",
+			MustUse:    []string{composer, composerInstall, phpRuntime},
+			MustNotUse: []string{composerGCPBuild, phpWebConfig, functionFramework, cloudFunctions},
 		},
 		{
 			Name:       "composer.json with gcp-build script and no dependencies",
