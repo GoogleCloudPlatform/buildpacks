@@ -73,6 +73,7 @@ machine europe-west8-python.pkg.dev login oauth2accesstoken password token
 machine europe-west9-python.pkg.dev login oauth2accesstoken password token
 machine europe-west12-python.pkg.dev login oauth2accesstoken password token
 machine me-central1-python.pkg.dev login oauth2accesstoken password token
+machine me-central2-python.pkg.dev login oauth2accesstoken password token
 machine me-west1-python.pkg.dev login oauth2accesstoken password token
 machine northamerica-northeast1-python.pkg.dev login oauth2accesstoken password token
 machine northamerica-northeast2-python.pkg.dev login oauth2accesstoken password token

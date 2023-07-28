@@ -70,6 +70,7 @@ var locations = []string{
 	"europe-west9",
 	"europe-west12",
 	"me-central1",
+	"me-central2",
 	"me-west1",
 	"northamerica-northeast1",
 	"northamerica-northeast2",
