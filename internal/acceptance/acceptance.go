@@ -178,6 +178,8 @@ type Test struct {
 	RequestType requestType
 	// BOM specifies the list of bill-of-material entries expected in the built image metadata.
 	BOM []BOMEntry
+	// Map from label name to expected value.
+	Labels map[string]string
 	// Setup is a function that sets up the source directory before test.
 	Setup setupFunc
 	// VersionInclusionConstraint is a 'semver' inclusion filter for runtime versions. The FilterTest
@@ -282,6 +284,7 @@ func testAppWithCache(t *testing.T, src, image, builderName, runName string, env
 func testApp(t *testing.T, src, image, builderName, runName string, env map[string]string, cacheEnabled bool, checks *StructureTest, cfg Test) {
 	buildApp(t, src, image, builderName, runName, env, cacheEnabled, cfg)
 	verifyBuildMetadata(t, image, cfg.MustUse, cfg.MustNotUse, cfg.BOM)
+	verifyLabelValues(t, image, cfg.Labels)
 	verifyStructure(t, image, builderName, cacheEnabled, checks)
 	invokeApp(t, cfg, image, cacheEnabled)
 }
@@ -1093,6 +1096,23 @@ func verifyStructure(t *testing.T, image, builder string, cache bool, checks *St
 		t.Fatalf("Error running structure tests: %v, logs:\n%s", err, outb.String())
 	}
 	t.Logf("Successfully ran structure tests on %s (in %s)", image, time.Since(start))
+}
+
+func verifyLabelValues(t *testing.T, image string, labels map[string]string) {
+	t.Helper()
+
+	start := time.Now()
+
+	for label, value := range labels {
+		out, err := runOutput("docker", "inspect", fmt.Sprintf("--format={{index .Config.Labels %q}}", label), image)
+		if err != nil {
+			t.Errorf("Error reading label %v: %v", label, err)
+		} else if out != value {
+			t.Errorf("Unexpected value for label %v\ngot: %v\nwant %v", label, out, value)
+		}
+	}
+
+	t.Logf("Finished verifying label values (in %s)", time.Since(start))
 }
 
 // verifyBuildMetadata verifies the image was built with correct buildpacks.

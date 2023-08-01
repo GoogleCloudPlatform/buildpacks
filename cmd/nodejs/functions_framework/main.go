@@ -19,11 +19,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cloudfunctions"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
@@ -37,6 +39,8 @@ const (
 	// nodeJSHeadroomMB is the amount of memory we'll set aside before computing the max memory size.
 	nodeJSHeadroomMB int = 64
 )
+
+var functionsFrameworkNodeModulePath = path.Join("node_modules", functionsFrameworkPackage)
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -147,12 +151,17 @@ func buildFn(ctx *gcp.Context) error {
 		// In order for node module resolution to work in Yarn Plug'n'Play mode, we must invoke yarn to
 		// start the Functions Framework.
 		ff = "yarn functions-framework"
+		cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
+			Runtime: "nodejs",
+			Version: "yarn",
+		})
 	} else if hasFrameworkDependency {
 		ctx.Logf("Handling functions with dependency on functions-framework.")
 		if err := ctx.ClearLayer(l); err != nil {
 			return fmt.Errorf("clearing layer %q: %w", l.Name, err)
 		}
 		ff = filepath.Join("node_modules", ff)
+		addFrameworkVersionLabel(ctx, functionsFrameworkNodeModulePath, false)
 	} else {
 		ctx.Logf("Handling functions without dependency on functions-framework.")
 
@@ -161,6 +170,7 @@ func buildFn(ctx *gcp.Context) error {
 		}
 
 		ff = filepath.Join(l.Path, "node_modules", ff)
+		addFrameworkVersionLabel(ctx, filepath.Join(l.Path, functionsFrameworkNodeModulePath), true)
 
 		nm := filepath.Join(ctx.ApplicationRoot(), "node_modules")
 		nmExists, err := ctx.FileExists(nm)
@@ -236,6 +246,24 @@ func getMaxOldSpaceSize() (int, error) {
 	}
 
 	return memHint - nodeJSHeadroomMB, nil
+}
+
+// tryAddFrameworkVersionLabel attempts to identify the functions framework
+// version being used by reading the functions-framework package's manifest.
+// If the version is detected it is added to the generated image.
+func addFrameworkVersionLabel(ctx *gcp.Context, ffPackageJSON string, injected bool) {
+	version := "unknown"
+	packageInfo, err := nodejs.ReadPackageJSONIfExists(ffPackageJSON)
+	if err != nil {
+		ctx.Logf("Could not detect installed functions framework version: %v", err)
+	} else {
+		version = packageInfo.Version
+	}
+	cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
+		Runtime:  "nodejs",
+		Version:  version,
+		Injected: injected,
+	})
 }
 
 // usingYarnModuleResolution returns true if this project was built using a new version of Yarn that

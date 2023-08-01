@@ -32,6 +32,7 @@ go_binary(
     deps = [
         "//pkg/ar",
         "//pkg/cache",
+        "//pkg/cloudfunctions",
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/nodejs",

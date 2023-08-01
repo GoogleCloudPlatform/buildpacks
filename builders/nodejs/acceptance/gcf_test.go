@@ -40,6 +40,9 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name: "function without package",
 			App:  "no_package",
+			Labels: map[string]string{
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.2.0\",\"injected\":true}",
+			},
 		},
 		{
 			Name: "function without package and with yarn",
@@ -48,6 +51,9 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name: "declarative http function",
 			App:  "declarative_http",
+			Labels: map[string]string{
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"2.1.1\",\"injected\":false}",
+			},
 		},
 		{
 			Name:                "declarative CloudEvent function",
@@ -61,6 +67,9 @@ func TestAcceptance(t *testing.T) {
 			MustUse:         []string{npm},
 			MustNotUse:      []string{yarn},
 			EnableCacheTest: true,
+			Labels: map[string]string{
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.2.0\",\"injected\":true}",
+			},
 		},
 		{
 			Name:       "function without framework and with yarn",
@@ -73,6 +82,9 @@ func TestAcceptance(t *testing.T) {
 			App:        "with_framework",
 			MustUse:    []string{npm},
 			MustNotUse: []string{yarn},
+			Labels: map[string]string{
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"1.3.2\",\"injected\":false}",
+			},
 		},
 		{
 			Name:       "function with framework and with yarn",
@@ -86,24 +98,36 @@ func TestAcceptance(t *testing.T) {
 			MustUse:         []string{npm},
 			MustNotUse:      []string{yarn},
 			EnableCacheTest: true,
+			Labels: map[string]string{
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.2.0\",\"injected\":true}",
+			},
 		},
 		{
 			Name:       "function with dependencies and with yarn",
 			App:        "with_dependencies_yarn",
 			MustUse:    []string{yarn},
 			MustNotUse: []string{npm},
+			Labels: map[string]string{
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.2.0\",\"injected\":true}",
+			},
 		},
 		{
 			Name:       "function with local dependency",
 			App:        "local_dependency",
 			MustUse:    []string{npm},
 			MustNotUse: []string{yarn},
+			Labels: map[string]string{
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.2.0\",\"injected\":true}",
+			},
 		},
 		{
 			Name:       "function with local dependency and with yarn",
 			App:        "local_dependency_yarn",
 			MustUse:    []string{yarn},
 			MustNotUse: []string{npm},
+			Labels: map[string]string{
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.2.0\",\"injected\":true}",
+			},
 		},
 		{
 			Name:       "function with gcp-build",
@@ -151,6 +175,9 @@ func TestAcceptance(t *testing.T) {
 			App:                        "yarn_two_pnp",
 			MustUse:                    []string{yarn},
 			MustNotUse:                 []string{npm},
+			Labels: map[string]string{
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"yarn\",\"injected\":false}",
+			},
 		},
 		{
 			Name:       "function with pnpm and typescript",
