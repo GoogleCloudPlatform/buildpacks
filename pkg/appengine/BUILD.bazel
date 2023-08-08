@@ -9,7 +9,6 @@ go_library(
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
-        "//builders:__subpackages__",
         "//cmd/config/entrypoint:__subpackages__",
         "//cmd/dotnet:__subpackages__",
         "//cmd/go:__subpackages__",
