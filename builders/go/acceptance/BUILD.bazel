@@ -31,6 +31,7 @@ VERSIONS_WITH_FLEX_SUPPORT = {
     "go118": "1.18",
     "go119": "1.19",
     "go120": "1.20",
+    "go121": "1.21.0",
 }
 
 # The product versions for which there is explicit, tested GCP support. Technically any version is available
