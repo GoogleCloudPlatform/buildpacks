@@ -164,4 +164,4 @@ description = "Builder for the Ruby runtime"
   run-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-gae-18/run"
 
 [lifecycle]
-  version = "0.16.5"
+  version = "0.17.0"
