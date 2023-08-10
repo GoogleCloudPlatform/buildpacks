@@ -71,6 +71,7 @@ machine europe-west5-python.pkg.dev login oauth2accesstoken password token
 machine europe-west6-python.pkg.dev login oauth2accesstoken password token
 machine europe-west8-python.pkg.dev login oauth2accesstoken password token
 machine europe-west9-python.pkg.dev login oauth2accesstoken password token
+machine europe-west10-python.pkg.dev login oauth2accesstoken password token
 machine europe-west12-python.pkg.dev login oauth2accesstoken password token
 machine me-central1-python.pkg.dev login oauth2accesstoken password token
 machine me-central2-python.pkg.dev login oauth2accesstoken password token

@@ -68,6 +68,7 @@ var locations = []string{
 	"europe-west6",
 	"europe-west8",
 	"europe-west9",
+	"europe-west10",
 	"europe-west12",
 	"me-central1",
 	"me-central2",
