@@ -10,6 +10,7 @@ libxml2
 libyaml-0-2
 locales
 openssl
+python3
 tar
 tzdata
 unzip
