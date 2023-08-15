@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cloudfunctions"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
@@ -35,6 +37,11 @@ const (
 	functionsFrameworkURLTemplate = javaFunctionInvokerURLBase + "%[1]s/java-function-invoker-%[1]s.jar"
 	versionKey                    = "version"
 	invokerMain                   = "com.google.cloud.functions.invoker.runner.Invoker"
+	implementationVersionKey      = "Implementation-Version"
+)
+
+var (
+	frameworkVersionRegex = regexp.MustCompile("java-function-invoker-((\\d+\\.)*\\d+)")
 )
 
 func main() {
@@ -274,8 +281,10 @@ func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) (string, e
 		}
 		// No need to cache the layer because we aren't downloading the framework.
 		layer.Cache = false
+		addFrameworkVersionLabel(ctx, layer, jars[0])
 		return jars[0], nil
 	}
+	ctx.Warnf("Failed to find vendored functions-framework dependency. Installing version %s:\n%v", defaultFrameworkVersion, err)
 
 	frameworkVersion := defaultFrameworkVersion
 
@@ -288,11 +297,17 @@ func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) (string, e
 		if err := ctx.ClearLayer(layer); err != nil {
 			return "", fmt.Errorf("clearing layer %q: %w", layer.Name, err)
 		}
-		if err := installFramework(ctx, layer, frameworkVersion); err != nil {
+		if err := downloadFramework(ctx, layer, frameworkVersion); err != nil {
 			return "", err
 		}
 		ctx.SetMetadata(layer, versionKey, frameworkVersion)
 	}
+	cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
+		Runtime:  "java",
+		Version:  frameworkVersion,
+		Injected: true,
+	})
+
 	return filepath.Join(layer.Path, "functions-framework.jar"), nil
 }
 
@@ -300,12 +315,33 @@ func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) (string, e
 // that the manifest's Main-Class matches an expected value.
 func isInvokerJar(ctx *gcp.Context, jar string) bool {
 	main, err := java.MainManifestEntry(jar)
-	ctx.Warnf("Failed to identify functions framework invoker dependency. Installing version %s:\n%v", defaultFrameworkVersion, err)
 	return err == nil && main == invokerMain
 }
 
-// installFramework downloads the functions framework invoker jar and saves it in the provided layer.
-func installFramework(ctx *gcp.Context, layer *libcnb.Layer, version string) error {
+func addFrameworkVersionLabel(ctx *gcp.Context, layer *libcnb.Layer, frameworkJar string) {
+	version, err := java.FindManifestValueFromJar(frameworkJar, implementationVersionKey)
+	if err != nil {
+		ctx.Logf("Functions framework manifest could not be read: %v", err)
+	}
+	if version == "" {
+		// If version isn't found the ff version may predate setting implementationVersionKey.
+		// In these cases a regex match is the best way to identify the framework version.
+		if matches := frameworkVersionRegex.FindStringSubmatch(frameworkJar); matches != nil {
+			version = matches[1]
+		} else {
+			ctx.Logf("Unable to identify functions framework version from %v", frameworkJar)
+			version = "unknown"
+		}
+	}
+	cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
+		Runtime:  "java",
+		Version:  version,
+		Injected: false,
+	})
+}
+
+// downloadFramework downloads the functions framework invoker jar and saves it in the provided layer.
+func downloadFramework(ctx *gcp.Context, layer *libcnb.Layer, version string) error {
 	url := fmt.Sprintf(functionsFrameworkURLTemplate, version)
 	ffName := filepath.Join(layer.Path, "functions-framework.jar")
 	result, err := ctx.Exec([]string{"curl", "--silent", "--fail", "--show-error", "--output", ffName, url})

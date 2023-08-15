@@ -38,12 +38,18 @@ func TestAcceptance(t *testing.T) {
 			Env:             []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
 			FilesMustExist:  []string{ffJarPath},
 			EnableCacheTest: true,
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"java","version":"1.3.0","injected":true}`,
+			},
 		},
 		{
 			Name:           "function with build.finalName setting in pom.xml",
 			App:            "maven_custom_name",
 			Env:            []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
 			FilesMustExist: []string{ffJarPath},
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"java","version":"1.3.0","injected":true}`,
+			},
 		},
 		{
 			Name:              "function with invoker as maven dependency",
@@ -51,6 +57,9 @@ func TestAcceptance(t *testing.T) {
 			Env:               []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
 			FilesMustExist:    []string{"/workspace/target/_javaInvokerDependency/java-function-invoker-1.0.2.jar"},
 			FilesMustNotExist: []string{ffJarPath},
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"java","version":"1.0.2","injected":false}`,
+			},
 		},
 		{
 			Name:            "function with gradle",
@@ -58,6 +67,9 @@ func TestAcceptance(t *testing.T) {
 			Env:             []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
 			FilesMustExist:  []string{ffJarPath},
 			EnableCacheTest: true,
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"java","version":"1.3.0","injected":true}`,
+			},
 		},
 		{
 			Name:              "function with invoker as gradle dependency",
@@ -65,6 +77,9 @@ func TestAcceptance(t *testing.T) {
 			Env:               []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
 			FilesMustExist:    []string{"/workspace/build/_javaFunctionDependencies/java-function-invoker-1.0.2.jar"},
 			FilesMustNotExist: []string{ffJarPath},
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"java","version":"1.0.2","injected":false}`,
+			},
 		},
 		{
 			Name: "prebuilt jar",
