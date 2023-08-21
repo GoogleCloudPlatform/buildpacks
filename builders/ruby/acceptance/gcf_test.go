@@ -32,15 +32,24 @@ func TestAcceptance(t *testing.T) {
 			Name:            "function with dependencies",
 			App:             "with_dependencies",
 			EnableCacheTest: true,
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"ruby","version":"1.2.0","injected":false}`,
+			},
 		},
 		{
 			Name: "function with platform-specific dependencies",
 			App:  "with_platform_dependencies",
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"ruby","version":"1.1.0","injected":false}`,
+			},
 		},
 		{
 			Name:   "function with runtime env var",
 			App:    "with_env_var",
 			RunEnv: []string{"FOO=foo"},
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"ruby","version":"1.1.0","injected":false}`,
+			},
 		},
 		{
 			Name: "function in fn_source file",
@@ -50,6 +59,9 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name: "function using framework older than 0.7",
 			App:  "with_legacy_framework",
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"ruby","version":"0.2.0","injected":false}`,
+			},
 		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {

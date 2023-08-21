@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cloudfunctions"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/Masterminds/semver"
@@ -81,6 +82,12 @@ func buildFn(ctx *gcp.Context) error {
 	if version.LessThan(recommendedVersion) {
 		ctx.Warnf("Found a deprecated version of functions-framework (%s); consider updating your Gemfile to use functions_framework %s or later.", version, recommendedVersion)
 	}
+
+	cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
+		Runtime:  "ruby",
+		Version:  version.String(),
+		Injected: false,
+	})
 
 	ctx.AddWebProcess([]string{"bundle", "exec", "functions-framework-ruby"})
 
