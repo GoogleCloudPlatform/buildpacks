@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cloudfunctions"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
@@ -31,9 +32,13 @@ const (
 	// to the functions framework under the vendor directory, so it's used in both senses.
 	ffPackage = "google/cloud-functions-framework"
 
+	// ffVersion is the default version of functions framework to install in the container.
+	// This value must match the version specified by converter/composer.json
+	ffVersion = "^1.1"
+
 	// ffPackageWithVersion is the package that we `composer require` when adding the functions
 	// framework to an existing vendor directory.
-	ffPackageWithVersion = ffPackage + ":^1.1"
+	ffPackageWithVersion = ffPackage + ":" + ffVersion
 
 	ffGitHubURL    = "https://github.com/GoogleCloudPlatform/functions-framework-php"
 	ffPackagistURL = "https://packagist.org/packages/google/cloud-functions-framework"
@@ -113,8 +118,18 @@ func handleComposerJSON(ctx *gcp.Context) error {
 		if err := php.ComposerRequire(ctx, []string{ffPackageWithVersion}); err != nil {
 			return err
 		}
+		cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
+			Runtime:  "php",
+			Version:  ffVersion,
+			Injected: true,
+		})
 	} else {
 		ctx.Logf("Handling function with dependency on functions framework (%s:%s)", ffPackage, version)
+		cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
+			Runtime:  "php",
+			Version:  version,
+			Injected: false,
+		})
 	}
 
 	return nil
@@ -142,6 +157,12 @@ func handleNoComposerJSON(ctx *gcp.Context) error {
 			return fmt.Errorf("composer install: %w", err)
 		}
 
+		cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
+			Runtime:  "php",
+			Version:  ffVersion,
+			Injected: true,
+		})
+
 		return nil
 	}
 
@@ -163,6 +184,12 @@ func handleNoComposerJSON(ctx *gcp.Context) error {
 		if !routerScriptExists {
 			return gcp.UserErrorf("functions framework router script %s is not present", routerScript)
 		}
+
+		cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
+			Runtime:  "php",
+			Version:  "unknown-vendored",
+			Injected: false,
+		})
 
 		return nil
 	}
@@ -188,6 +215,12 @@ func handleNoComposerJSON(ctx *gcp.Context) error {
 	if err := php.ComposerRequire(ctx, []string{ffPackageWithVersion}); err != nil {
 		return nil
 	}
+
+	cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
+		Runtime:  "php",
+		Version:  ffVersion,
+		Injected: true,
+	})
 
 	return nil
 }

@@ -35,6 +35,9 @@ func TestAcceptance(t *testing.T) {
 				"No vendor directory present, installing functions framework",
 			},
 			EnableCacheTest: true,
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"php","version":"^1.1","injected":true}`,
+			},
 		},
 		{
 			Name:       "non default source file",
@@ -46,6 +49,9 @@ func TestAcceptance(t *testing.T) {
 				"Handling function without composer.json",
 				"No vendor directory present, installing functions framework",
 			},
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"php","version":"^1.1","injected":true}`,
+			},
 		},
 		{
 			Name:       "function without framework dependency",
@@ -53,6 +59,9 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{composer, composerInstall, phpRuntime, functionFramework, cloudFunctions},
 			MustNotUse: []string{composerGCPBuild, phpWebConfig},
 			MustOutput: []string{"Handling function without dependency on functions framework"},
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"php","version":"^1.1","injected":true}`,
+			},
 		},
 		{
 			Name:       "function with framework dependency",
@@ -60,6 +69,9 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{composer, composerInstall, phpRuntime, functionFramework, cloudFunctions},
 			MustNotUse: []string{composerGCPBuild, phpWebConfig},
 			MustOutput: []string{"Handling function with dependency on functions framework"},
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"php","version":"^1.0","injected":false}`,
+			},
 		},
 		{
 			Name:                       "function with dependencies",
@@ -86,6 +98,9 @@ func TestAcceptance(t *testing.T) {
 				// The version spec of the functions framework follows this string.
 				// Omitting it here so we don't fail when it's upgraded.
 				"Installing functions framework google/cloud-functions-framework:",
+			},
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"php","version":"^1.1","injected":true}`,
 			},
 		},
 		{
