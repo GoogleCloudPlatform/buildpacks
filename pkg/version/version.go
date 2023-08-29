@@ -17,6 +17,7 @@ package version
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -84,4 +85,13 @@ func IsExactSemver(constraint string) bool {
 	}
 	_, err := semver.NewVersion(constraint)
 	return err == nil
+}
+
+// IsReleaseCandidate returns true if given string is a RC candidate version.
+// When launching a new runtime, we need to test with RC candidate which will eventually be replaced
+// by a stable candidate. Till then, we will support these unstable releases in the QA for testing.
+// Example python rc candidate - 3.12.0rc1
+func IsReleaseCandidate(constraint string) bool {
+	m := regexp.MustCompile(`(.+)\.(.+)\.(.*)rc(.*)`)
+	return m.MatchString(constraint)
 }

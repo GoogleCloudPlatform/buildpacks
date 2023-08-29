@@ -265,7 +265,7 @@ func ResolveVersion(runtime InstallableRuntime, verConstraint, os string) (strin
 		// Go provides its own version manifest so it has its own version resolution logic.
 		return golang.ResolveGoVersion(verConstraint)
 	}
-	if version.IsExactSemver(verConstraint) {
+	if version.IsExactSemver(verConstraint) || version.IsReleaseCandidate(verConstraint) {
 		return verConstraint, nil
 	}
 

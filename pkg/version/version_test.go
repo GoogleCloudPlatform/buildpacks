@@ -141,3 +141,32 @@ func TestIsExactSemver(t *testing.T) {
 		})
 	}
 }
+
+func TestIsReleaseCandidate(t *testing.T) {
+	testCases := []struct {
+		version string
+		want    bool
+	}{
+		{
+			version: "3.12.0rc1",
+			want:    true,
+		},
+		{
+			version: "3.12.0",
+			want:    false,
+		},
+		{
+			version: "3.12",
+			want:    false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.version, func(t *testing.T) {
+			got := IsReleaseCandidate(tc.version)
+			if got != tc.want {
+				t.Errorf("IsReleaseCandidate(%q) = %t, want %t", tc.version, got, tc.want)
+			}
+		})
+	}
+}
