@@ -6,6 +6,7 @@ go_library(
     name = "cloudfunctions",
     srcs = [
         "cloudfunctions.go",
+        "env.go",
         "labels.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
