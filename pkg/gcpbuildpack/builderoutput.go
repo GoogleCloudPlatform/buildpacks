@@ -15,6 +15,7 @@
 package gcpbuildpack
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -65,7 +66,11 @@ var KeepStdoutTail = func(result *ExecResult) string { return keepTail(result.St
 var KeepStdoutHead = func(result *ExecResult) string { return keepHead(result.Stdout) }
 
 // saveErrorOutput saves to the builder output file, if appropriate.
-func (ctx *Context) saveErrorOutput(be *buildererror.Error) {
+func (ctx *Context) saveErrorOutput(err error) {
+	var be *buildererror.Error
+	if !errors.As(err, &be) {
+		be = buildererror.Errorf(buildererror.StatusInternal, err.Error())
+	}
 	outputDir := os.Getenv(builderOutputEnv)
 	if outputDir == "" {
 		return

@@ -40,10 +40,7 @@ type Error struct {
 }
 
 func (e *Error) Error() string {
-	if e.ID == "" {
-		return e.Message
-	}
-	return fmt.Sprintf("%s [id:%s]", e.Message, e.ID)
+	return fmt.Sprintf("(error ID: %s):\n%s", e.ID, e.Message)
 }
 
 // Errorf constructs an Error.

@@ -127,7 +127,7 @@ func TestFailuresPython(t *testing.T) {
 		{
 			Name:      "missing main",
 			App:       "missing_main",
-			MustMatch: `for Python, provide a main.py file or set an entrypoint with "GOOGLE_ENTRYPOINT" env var or by creating a "Procfile" file`,
+			MustMatch: `.*for Python, provide a main.py file or set an entrypoint with "GOOGLE_ENTRYPOINT" env var or by creating a "Procfile" file`,
 		},
 	}
 

@@ -165,8 +165,8 @@ func TestDetectNilResult(t *testing.T) {
 	}, libcnb.WithExitHandler(handler))
 
 	// Tests that the function does not panic when both result and error are nil.
-	if want, got := "detect did not return a result or an error", handler.err.Error(); !strings.HasPrefix(got, want) {
-		t.Errorf("ExitHandler.err = %q, want prefix %q", got, want)
+	if want, got := "detect did not return a result or an error", handler.err.Error(); !strings.Contains(got, want) {
+		t.Errorf("ExitHandler.err = %q, should contain %q", got, want)
 	}
 }
 

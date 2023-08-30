@@ -99,7 +99,6 @@ func TestBuild(t *testing.T) {
 		{
 			name: "build script",
 			app:  "typescript",
-			envs: []string{"GOOGLE_EXPERIMENTAL_NODEJS_NPM_BUILD_ENABLED=true"},
 			mocks: []*mockprocess.Mock{
 				mockprocess.New(`^npm --version$`, mockprocess.WithStdout("0.0.0")),
 			},

@@ -289,13 +289,12 @@ func (gcpb gcpbuilder) Build(lbctx libcnb.BuildContext) (libcnb.BuildResult, err
 	}(time.Now())
 
 	if err := gcpb.buildFn(ctx); err != nil {
-		msg := fmt.Sprintf("Failed to run /bin/build: %v", err)
 		var be *buildererror.Error
 		if errors.As(err, &be) {
 			status = be.Status
-			ctx.Exit(1, be)
 		}
-		ctx.Exit(1, buildererror.Errorf(status, msg))
+		err := fmt.Errorf("failed to build: %w", err)
+		ctx.Exit(1, err)
 	}
 
 	status = buildererror.StatusOk
@@ -314,8 +313,8 @@ func build(buildFn BuildFn) {
 }
 
 // Exit causes the buildpack to exit with the given exit code and message.
-func (ctx *Context) Exit(exitCode int, be *buildererror.Error) {
-	ctx.exiter.Exit(exitCode, be)
+func (ctx *Context) Exit(exitCode int, err error) {
+	ctx.exiter.Exit(exitCode, err)
 }
 
 // Logf emits a structured logging line.
