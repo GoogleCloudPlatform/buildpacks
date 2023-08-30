@@ -15,6 +15,7 @@ go_library(
     ],
     deps = [
         "//pkg/appstart",
+        "//pkg/buildererror",
         "//pkg/env",
         "//pkg/gcpbuildpack",
     ],

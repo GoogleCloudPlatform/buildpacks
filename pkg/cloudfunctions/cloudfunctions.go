@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
+	be "github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
@@ -43,6 +44,19 @@ func getConfig(ctx *gcp.Context, runtime string, eg appstart.EntrypointGenerator
 
 	ctx.Debugf("Using config %#v", c)
 	return c, nil
+}
+
+// AssertFrameworkInjectionAllowed returns an error if framework injection is disabled.
+func AssertFrameworkInjectionAllowed() error {
+	shouldSkipFrameworkInjection, err := IsSkipFrameworkInjectionEnabled()
+	if err != nil {
+		return err
+	}
+	if shouldSkipFrameworkInjection {
+		return be.Errorf(be.StatusFailedPrecondition, "Functions Framework must be set as a dependency when skipping automatic framework injection has been enabled via %s", SkipFrameworkInjection)
+	}
+
+	return nil
 }
 
 // Build serves as a common builder for Cloud Functions buildpacks.
