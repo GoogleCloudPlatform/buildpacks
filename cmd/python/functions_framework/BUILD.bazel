@@ -29,6 +29,7 @@ go_binary(
         "-w",
     ],
     deps = [
+        "//pkg/cloudfunctions",
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/python",
@@ -39,7 +40,16 @@ go_test(
     name = "main_test",
     size = "small",
     srcs = ["main_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata/python:functions)",
+    ],
+    data = [
+        "//builders/testdata/python:functions",
+    ],
     embed = [":main"],
     rundir = ".",
-    deps = ["//internal/buildpacktest"],
+    deps = [
+        "//internal/buildpacktest",
+        "//internal/mockprocess",
+    ],
 )

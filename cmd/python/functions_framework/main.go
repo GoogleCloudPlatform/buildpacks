@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cloudfunctions"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
@@ -83,6 +84,9 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	} else {
 		ctx.Logf("Handling functions without dependency on functions-framework.")
+		if err := cloudfunctions.AssertFrameworkInjectionAllowed(); err != nil {
+			return err
+		}
 
 		// The pip install is performed by the pip buildpack; see python.InstallRequirements.
 		ctx.Debugf("Adding functions-framework requirements.txt to the list of requirements files to install.")

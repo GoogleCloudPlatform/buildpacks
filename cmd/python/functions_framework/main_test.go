@@ -17,7 +17,8 @@ package main
 import (
 	"testing"
 
-	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 )
 
 func TestContainsFF(t *testing.T) {
@@ -63,6 +64,77 @@ func TestContainsFF(t *testing.T) {
 			got := containsFF(tc.str)
 			if got != tc.want {
 				t.Errorf("containsFF() got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestBuild(t *testing.T) {
+	testCases := []struct {
+		name         string
+		app          string
+		envs         []string
+		opts         []buildpacktest.Option
+		mocks        []*mockprocess.Mock
+		wantExitCode int // 0 if unspecified
+		wantCommands []string
+	}{
+		{
+			name: "with framework",
+			app:  "with_framework",
+		},
+		{
+			name: "with framework without injection",
+			app:  "with_framework",
+			envs: []string{
+				"GOOGLE_SKIP_FRAMEWORK_INJECTION=True",
+			},
+		},
+		{
+			name: "without framework",
+			app:  "without_framework",
+		},
+		{
+			name: "without framework without injection",
+			app:  "without_framework",
+			envs: []string{
+				"GOOGLE_SKIP_FRAMEWORK_INJECTION=True",
+			},
+			wantExitCode: 1,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			envs := []string{
+				"GOOGLE_FUNCTION_TARGET=testFunction",
+			}
+			envs = append(envs, tc.envs...)
+			mocks := []*mockprocess.Mock{
+				mockprocess.New(`^python3 -m compileall -f -q .$`),
+			}
+			mocks = append(mocks, tc.mocks...)
+
+			opts := []buildpacktest.Option{
+				buildpacktest.WithTestName(tc.name),
+				buildpacktest.WithApp(tc.app),
+				buildpacktest.WithEnvs(envs...),
+				buildpacktest.WithExecMocks(mocks...),
+			}
+			opts = append(opts, tc.opts...)
+			result, err := buildpacktest.RunBuild(t, buildFn, opts...)
+			if err != nil && tc.wantExitCode == 0 {
+				t.Fatalf("error running build: %v, logs: %s", err, result.Output)
+			}
+
+			if result.ExitCode != tc.wantExitCode {
+				t.Errorf("build exit code mismatch, got: %d, want: %d", result.ExitCode, tc.wantExitCode)
+			}
+
+			for _, cmd := range tc.wantCommands {
+				if !result.CommandExecuted(cmd) {
+					t.Errorf("expected command %q to be executed, but it was not, build output: %s", cmd, result.Output)
+				}
 			}
 		})
 	}

@@ -34,6 +34,12 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput: []string{`WARNING: You are using pip version`},
 		},
 		{
+			Name:          "function without framework and allow injection",
+			App:           "without_framework",
+			Env:           []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=False"},
+			MustNotOutput: []string{`WARNING: You are using pip version`},
+		},
+		{
 			Name:            "function with dependencies",
 			App:             "with_dependencies",
 			EnableCacheTest: true,
@@ -105,6 +111,12 @@ func TestFailures(t *testing.T) {
 			MustMatch: `functions-framework .* has requirement flask<3\.0,>=1\.0, but you have flask 0\.12\.5`,
 			// this is only a warning in python37
 			VersionInclusionConstraint: ">= 3.8.0",
+		},
+		{
+			Name:      "function without dependencies or injection",
+			App:       "without_framework",
+			Env:       []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=True"},
+			MustMatch: "skipping automatic framework injection has been enabled",
 		},
 	}
 
