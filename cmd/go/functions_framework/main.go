@@ -181,6 +181,7 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 	if err != nil {
 		return fmt.Errorf("checking for functions framework dependency in go.mod: %w", err)
 	}
+	injected := false
 	if version == "" {
 		if err := cloudfunctions.AssertFrameworkInjectionAllowed(); err != nil {
 			return err
@@ -189,7 +190,13 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 			return err
 		}
 		version = functionsFrameworkVersion
+		injected = true
 	}
+	cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
+		Runtime:  "go",
+		Version:  version,
+		Injected: injected,
+	})
 
 	mainPackageDirectory := filepath.Join(fn.Source, appModule)
 	if err := ctx.MkdirAll(mainPackageDirectory, 0755); err != nil {
@@ -249,6 +256,12 @@ func createMainGoModVendored(ctx *gcp.Context, fn fnInfo) error {
 		// to cause conflicts among the function's and the framework's dependencies.
 		return gcp.UserErrorf("vendored dependencies must include %q; if your function does not depend on the module, please add a blank import: `_ %q`", functionsFrameworkModule, functionsFrameworkPackage)
 	}
+
+	cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
+		Runtime:  "go",
+		Version:  version,
+		Injected: false,
+	})
 
 	appVendorDir := filepath.Join(fn.Source, "vendor", appModule)
 	if err := ctx.MkdirAll(appVendorDir, 0755); err != nil {
@@ -330,6 +343,7 @@ func createMainVendored(ctx *gcp.Context, fn fnInfo) error {
 	// can't really tell. This won't matter for Go 1.14+, since for those we'll have a go.mod file
 	// regardless.
 	requestedFrameworkVersion := "v0.0.0"
+	injected := false
 	if fnFrameworkVendoredPathExists {
 		ctx.Logf("Found function with vendored dependencies including functions-framework")
 		if _, err := ctx.Exec([]string{"cp", "-r", fnVendoredPath, appPath}, gcp.WithUserTimingAttribution); err != nil {
@@ -370,7 +384,14 @@ func createMainVendored(ctx *gcp.Context, fn fnInfo) error {
 
 		// Since the user didn't pin it, we want the current version of the framework.
 		requestedFrameworkVersion = functionsFrameworkVersion
+		injected = true
 	}
+
+	cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
+		Runtime:  "go",
+		Version:  requestedFrameworkVersion,
+		Injected: injected,
+	})
 
 	return createMainGoFile(ctx, fn, filepath.Join(appPath, "main.go"), requestedFrameworkVersion)
 }

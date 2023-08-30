@@ -35,6 +35,9 @@ func TestAcceptance(t *testing.T) {
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			Path:       "/Func",
 			MustOutput: []string{"Found function with vendored dependencies excluding functions-framework"},
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"go","version":"v1.7.0","injected":true}`,
+			},
 		},
 		{
 			Name:            "function without framework",
@@ -43,6 +46,9 @@ func TestAcceptance(t *testing.T) {
 			Path:            "/Func",
 			MustOutput:      []string{"go.sum not found, generating"},
 			EnableCacheTest: true,
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"go","version":"v1.7.0","injected":true}`,
+			},
 		},
 		{
 			Name:          "function with go.sum",
@@ -50,6 +56,9 @@ func TestAcceptance(t *testing.T) {
 			Env:           []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			Path:          "/Func",
 			MustNotOutput: []string{"go.sum not found, generating"},
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"go","version":"v1.7.0","injected":true}`,
+			},
 		},
 		{
 			Name: "function at /*",
@@ -120,6 +129,9 @@ func TestAcceptance(t *testing.T) {
 			Name: "function with versioned module",
 			App:  "with_versioned_mod",
 			Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"go","version":"v1.6.1","injected":false}`,
+			},
 		},
 		{
 			Name:                "function with go.mod using replace directive",
@@ -127,6 +139,9 @@ func TestAcceptance(t *testing.T) {
 			Env:                 []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			MustMatchStatusCode: 200,
 			MustMatch:           "PASS",
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"go","version":"v1.7.0","injected":false}`,
+			},
 		},
 	}
 	if !acceptance.ShouldTestVersion(t, "1.13") {
@@ -135,6 +150,9 @@ func TestAcceptance(t *testing.T) {
 				Name: "with framework go mod vendored",
 				App:  "with_framework_vendored",
 				Env:  []string{"GOOGLE_FUNCTION_TARGET=Func"},
+				Labels: map[string]string{
+					"google.functions-framework-version": `{"runtime":"go","version":"v1.6.1","injected":false}`,
+				},
 			},
 		)
 	}
