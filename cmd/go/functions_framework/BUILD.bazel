@@ -36,6 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
+        "//pkg/cloudfunctions",
         "//pkg/env",
         "//pkg/fileutil",
         "//pkg/gcpbuildpack",

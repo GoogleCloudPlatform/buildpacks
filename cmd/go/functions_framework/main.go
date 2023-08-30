@@ -25,6 +25,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cloudfunctions"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -181,6 +182,9 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 		return fmt.Errorf("checking for functions framework dependency in go.mod: %w", err)
 	}
 	if version == "" {
+		if err := cloudfunctions.AssertFrameworkInjectionAllowed(); err != nil {
+			return err
+		}
 		if _, err := ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@%s", functionsFrameworkModule, functionsFrameworkVersion)}, gcp.WithWorkDir(fn.Source)); err != nil {
 			return err
 		}
@@ -334,12 +338,15 @@ func createMainVendored(ctx *gcp.Context, fn fnInfo) error {
 	} else {
 		// If the framework isn't in the user-provided vendor directory, we need to fetch it ourselves.
 		ctx.Logf("Found function with vendored dependencies excluding functions-framework")
-		ctx.Warnf("Your vendored dependencies do not contain the functions framework (%s). If there are conflicts between the vendored packages and the dependencies of the framework, you may encounter unexpected issues.", functionsFrameworkPackage)
+		if err := cloudfunctions.AssertFrameworkInjectionAllowed(); err != nil {
+			return err
+		}
 
 		// Install the functions framework. Use `go mod vendor` to do this because that allows the
 		// versions of all of the framework's dependencies to be pinned as specified in the framework's
 		// go.mod. Using `go get` -- the usual way to install packages in GOPATH -- downloads each
 		// repository at HEAD, which can lead to breakages.
+		ctx.Warnf("Your vendored dependencies don't contain the functions-framework (%s) so a version will be auto-injected. Versioning conflicts might cause unexpected issues or crashes with your function. Fix this by adding a dependency on functions-framework (%s) and vendoring again.", functionsFrameworkPackage, functionsFrameworkPackage)
 		ffDepsDir, err := ctx.TempDir("ffdeps")
 		if err != nil {
 			return fmt.Errorf("creating temp directory: %w", err)

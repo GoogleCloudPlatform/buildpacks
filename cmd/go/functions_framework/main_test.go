@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"testing"
 
-	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 )
 
@@ -42,7 +42,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			bpt.TestDetectWithStack(t, detectFn, tc.name, tc.files, tc.env, tc.stack, tc.want)
+			buildpacktest.TestDetectWithStack(t, detectFn, tc.name, tc.files, tc.env, tc.stack, tc.want)
 		})
 	}
 }
@@ -53,7 +53,7 @@ func TestBuild(t *testing.T) {
 		app          string
 		envs         []string
 		fnPkgName    string
-		opts         []bpt.Option
+		opts         []buildpacktest.Option
 		mocks        []*mockprocess.Mock
 		wantExitCode int // 0 if unspecified
 		wantCommands []string
@@ -61,7 +61,6 @@ func TestBuild(t *testing.T) {
 		{
 			name:      "go mod function with framework",
 			app:       "with_framework",
-			envs:      []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			fnPkgName: "myfunc",
 			mocks: []*mockprocess.Mock{
 				mockprocess.New(`^go list -m$`, mockprocess.WithStdout("example.com/myfunc")),
@@ -69,9 +68,21 @@ func TestBuild(t *testing.T) {
 			wantCommands: []string{fmt.Sprintf("go mod tidy")},
 		},
 		{
+			name: "go mod function with framework without injection",
+			app:  "with_framework",
+			envs: []string{
+				"GOOGLE_SKIP_FRAMEWORK_INJECTION=True",
+			},
+			fnPkgName: "myfunc",
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`^go list -m$`, mockprocess.WithStdout("example.com/myfunc")),
+				mockprocess.New(`^go list -m -f {{.Version}}.*`, mockprocess.WithStdout("v1.0.0")),
+			},
+			wantCommands: []string{fmt.Sprintf("go mod tidy")},
+		},
+		{
 			name:      "go mod function without framework",
 			app:       "no_framework",
-			envs:      []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			fnPkgName: "myfunc",
 			mocks: []*mockprocess.Mock{
 				mockprocess.New(`^go list -m$`, mockprocess.WithStdout("example.com/myfunc")),
@@ -82,16 +93,47 @@ func TestBuild(t *testing.T) {
 			},
 		},
 		{
+			name: "go mod function without framework without injection",
+			app:  "no_framework",
+			envs: []string{
+				"GOOGLE_SKIP_FRAMEWORK_INJECTION=True",
+			},
+			fnPkgName: "myfunc",
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`^go list -m$`, mockprocess.WithStdout("example.com/myfunc")),
+			},
+			wantExitCode: 1,
+		},
+		{
 			name:         "vendored function",
 			app:          "no_framework_vendored_no_go_mod",
-			envs:         []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			fnPkgName:    "myfunc",
 			wantCommands: []string{"go mod vendor"},
 		},
 		{
+			name: "vendored function without injection",
+			app:  "no_framework_vendored_no_go_mod",
+			envs: []string{
+				"GOOGLE_SKIP_FRAMEWORK_INJECTION=True",
+			},
+			fnPkgName:    "myfunc",
+			wantExitCode: 1,
+		},
+		{
 			name:      "with framework vendored",
 			app:       "with_framework_vendored",
-			envs:      []string{"GOOGLE_FUNCTION_TARGET=Func"},
+			fnPkgName: "myfunc",
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`^go list -m$`, mockprocess.WithStdout("example.com/myfunc")),
+				mockprocess.New(`^go list -m -f {{.Version}}.*`, mockprocess.WithStdout("v1.0.0")),
+			},
+		},
+		{
+			name: "with framework vendored without injection",
+			app:  "with_framework_vendored",
+			envs: []string{
+				"GOOGLE_SKIP_FRAMEWORK_INJECTION=True",
+			},
 			fnPkgName: "myfunc",
 			mocks: []*mockprocess.Mock{
 				mockprocess.New(`^go list -m$`, mockprocess.WithStdout("example.com/myfunc")),
@@ -101,7 +143,6 @@ func TestBuild(t *testing.T) {
 		{
 			name:         "without framework vendored",
 			app:          "without_framework_vendored",
-			envs:         []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			fnPkgName:    "myfunc",
 			mocks:        []*mockprocess.Mock{},
 			wantExitCode: 1,
@@ -110,19 +151,23 @@ func TestBuild(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			envs := []string{
+				"GOOGLE_FUNCTION_TARGET=Func",
+			}
+			envs = append(envs, tc.envs...)
 			mocks := []*mockprocess.Mock{
 				mockprocess.New("get_package", mockprocess.WithStdout(fmt.Sprintf(`{"name":"%s"}`, tc.fnPkgName))),
 			}
 			mocks = append(mocks, tc.mocks...)
 
-			opts := []bpt.Option{
-				bpt.WithTestName(tc.name),
-				bpt.WithApp(tc.app),
-				bpt.WithEnvs(tc.envs...),
-				bpt.WithExecMocks(mocks...),
+			opts := []buildpacktest.Option{
+				buildpacktest.WithTestName(tc.name),
+				buildpacktest.WithApp(tc.app),
+				buildpacktest.WithEnvs(envs...),
+				buildpacktest.WithExecMocks(mocks...),
 			}
 			opts = append(opts, tc.opts...)
-			result, err := bpt.RunBuild(t, buildFn, opts...)
+			result, err := buildpacktest.RunBuild(t, buildFn, opts...)
 			if err != nil && tc.wantExitCode == 0 {
 				t.Fatalf("error running build: %v, logs: %s", err, result.Output)
 			}

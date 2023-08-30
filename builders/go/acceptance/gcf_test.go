@@ -158,14 +158,24 @@ func TestFailures(t *testing.T) {
 		{
 			Name:      "no dot in mod name",
 			App:       "no_dot_in_mod_name",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			MustMatch: "the module path in the function's go.mod must contain a dot in the first path element before a slash, e.g. example.com/module, found: func",
 		},
 		{
 			Name:      "go mod and vendor no framework",
 			App:       "without_framework_vendored",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			MustMatch: "vendored dependencies must include \"github.com/GoogleCloudPlatform/functions-framework-go\"; if your function does not depend on the module, please add a blank import: `_ \"github.com/GoogleCloudPlatform/functions-framework-go/funcframework\"`",
+		},
+		{
+			Name:      "vendored function without dependencies or injection",
+			App:       "no_framework_vendored_no_go_mod",
+			Env:       []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=True"},
+			MustMatch: "skipping automatic framework injection has been enabled",
+		},
+		{
+			Name:      "go mod function without dependencies or injection",
+			App:       "no_framework",
+			Env:       []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=True"},
+			MustMatch: "skipping automatic framework injection has been enabled",
 		},
 	}
 	if !acceptance.ShouldTestVersion(t, "1.13") {
@@ -173,12 +183,14 @@ func TestFailures(t *testing.T) {
 			acceptance.FailureTest{
 				Name:      "without framework go mod vendored",
 				App:       "without_framework_vendored",
-				Env:       []string{"GOOGLE_FUNCTION_TARGET=Func"},
 				MustMatch: "vendored dependencies must include \"github.com/GoogleCloudPlatform/functions-framework-go\"; if your function does not depend on the module, please add a blank import: `_ \"github.com/GoogleCloudPlatform/functions-framework-go/funcframework\"`",
 			})
 	}
 	for _, tc := range testCases {
-		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gcf")
+		tc.Env = append(tc.Env,
+			"GOOGLE_FUNCTION_TARGET=Func",
+			"X_GOOGLE_TARGET_PLATFORM=gcf",
+		)
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
