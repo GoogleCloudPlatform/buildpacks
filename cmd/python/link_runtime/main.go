@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -85,9 +86,17 @@ func pythonSystemDir(ctx *gcp.Context) (string, error) {
 	if err != nil {
 		return "", gcp.InternalErrorf("getting python version: %w", err)
 	}
-	semver, err := semver.NewVersion(strings.TrimPrefix(ver, "Python "))
+	trimmedVer := versionWithoutRCSuffix(strings.TrimPrefix(ver, "Python "))
+	semver, err := semver.NewVersion(trimmedVer)
 	if err != nil {
 		return "", gcp.InternalErrorf("parsing python version %q: %w", ver, err)
 	}
 	return filepath.Join("/opt", fmt.Sprintf("python%d.%d", semver.Major(), semver.Minor())), nil
+}
+
+// Supporting RC candidate as an interim for Alpha release until final release is out.
+// Example RC Candidate - 3.12.0rc1
+func versionWithoutRCSuffix(version string) string {
+	m := regexp.MustCompile("rc(.*)")
+	return m.ReplaceAllString(version, "")
 }
