@@ -80,7 +80,7 @@ func OptOutFileNotFound(file string, opts ...DetectResultOption) DetectResult {
 	return OptOut(file+" not found", opts...)
 }
 
-// OptOutEnvNotSet is used to opt into the build process based on env var absence.
+// OptOutEnvNotSet is used to opt out of the build process based on env var absence.
 func OptOutEnvNotSet(env string, opts ...DetectResultOption) DetectResult {
 	return OptOut(fmt.Sprintf("%s not set", env), opts...)
 }

@@ -17,6 +17,7 @@
 package buildpacktest
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -212,6 +213,12 @@ func runBuildpackPhaseForTest(t *testing.T, cfg *config) (*Result, error) {
 		// the env var that signals the buildpack phase should be run (args[0]
 		// is the current running binary).
 		testBinary := filepath.Join(testDir, os.Args[0])
+		// Allows Unit Tests to work with Debug mode,
+		// which has a different directory structure (ideally neither of these would be hardcoded)
+		if _, err := os.Stat(testBinary); errors.Is(err, os.ErrNotExist) {
+			testCommand := filepath.Base(os.Args[0])
+			testBinary = filepath.Join(testDir, "../..", testCommand)
+		}
 		args := []string{fmt.Sprintf("-test.run=Test%s/^%s$", cfg.buildpackPhase, strings.ReplaceAll(cfg.testName, " ", "_"))}
 		// Forward the `buildpacktest` flags to the child process.
 		args = append(args, os.Args[1:]...)
