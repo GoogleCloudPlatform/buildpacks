@@ -164,6 +164,9 @@ func buildFn(ctx *gcp.Context) error {
 		addFrameworkVersionLabel(ctx, functionsFrameworkNodeModulePath, false)
 	} else {
 		ctx.Logf("Handling functions without dependency on functions-framework.")
+		if err := cloudfunctions.AssertFrameworkInjectionAllowed(); err != nil {
+			return err
+		}
 
 		if err := installFunctionsFramework(ctx, l); err != nil {
 			return fmt.Errorf("installing funtions-framework: %w", err)

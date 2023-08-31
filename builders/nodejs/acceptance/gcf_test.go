@@ -230,6 +230,12 @@ func TestFailures(t *testing.T) {
 			Setup:     addPNPMLock,
 			MustMatch: "This project is using pnpm",
 		},
+		{
+			Name:      "function without framework or injection",
+			App:       "no_framework",
+			Env:       []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=True"},
+			MustMatch: "skipping automatic framework injection has been enabled",
+		},
 	}
 
 	for _, tc := range testCases {
