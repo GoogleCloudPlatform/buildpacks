@@ -13,7 +13,6 @@ go_library(
     visibility = [
         # Ruby on Rails apps require Nodejs and Yarn for precompiling assets
         "//cmd/nodejs/runtime:__subpackages__",
-        "//cmd/nodejs/yarn:__subpackages__",
         "//cmd/ruby:__subpackages__",
     ],
     deps = [
