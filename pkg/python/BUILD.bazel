@@ -8,10 +8,7 @@ go_library(
         "python.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//cmd/php/flex:__subpackages__",
-        "//cmd/python:__subpackages__",
-    ],
+    visibility = ["//cmd/python:__subpackages__"],
     deps = [
         "//pkg/ar",
         "//pkg/cache",
