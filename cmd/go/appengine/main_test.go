@@ -116,10 +116,10 @@ func TestValidateAppEngineAPIsShouldWarn(t *testing.T) {
 // depsMockExecCmd enables controlling the results of directDeps(...) and allDeps(...).
 func depsMockExecCmd(t *testing.T, allDepsResult, directDepsResult string) func(name string, args ...string) *exec.Cmd {
 	return func(name string, args ...string) *exec.Cmd {
-		if len(args) != 4 {
+		if len(args) != 5 {
 			t.Fatalf("Unexpected arguments size: %v", args)
 		}
-		joinArg := args[2]
+		joinArg := args[3]
 		var output string
 		if strings.Contains(joinArg, ".Deps") {
 			output = allDepsResult
