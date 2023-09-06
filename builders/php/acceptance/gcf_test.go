@@ -64,6 +64,14 @@ func TestAcceptance(t *testing.T) {
 			},
 		},
 		{
+			Name:       "function without framework dependency and allow injection",
+			App:        "no_framework",
+			Env:        []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=False"},
+			MustUse:    []string{composer, composerInstall, phpRuntime, functionFramework, cloudFunctions},
+			MustNotUse: []string{composerGCPBuild, phpWebConfig},
+			MustOutput: []string{"Handling function without dependency on functions framework"},
+		},
+		{
 			Name:       "function with framework dependency",
 			App:        "with_framework",
 			MustUse:    []string{composer, composerInstall, phpRuntime, functionFramework, cloudFunctions},
@@ -154,6 +162,12 @@ func TestFailures(t *testing.T) {
 		{
 			App:       "fail_vendored_no_framework_no_installed_json",
 			MustMatch: `vendor/composer/installed\.json is not present, so it appears that Composer was not used to install dependencies\.`,
+		},
+		{
+			Name:      "function without framework dependency or injection",
+			App:       "no_framework",
+			Env:       []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=True"},
+			MustMatch: "skipping automatic framework injection has been enabled",
 		},
 		{
 			App:       "fail_wrong_file",

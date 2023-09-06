@@ -115,6 +115,9 @@ func handleComposerJSON(ctx *gcp.Context) error {
 	// Determine if the function has a dependency on the functions framework.
 	if version, ok := cjs.Require[ffPackage]; !ok {
 		ctx.Logf("Handling function without dependency on functions framework")
+		if err := cloudfunctions.AssertFrameworkInjectionAllowed(); err != nil {
+			return err
+		}
 		if err := php.ComposerRequire(ctx, []string{ffPackageWithVersion}); err != nil {
 			return err
 		}
@@ -194,19 +197,22 @@ func handleNoComposerJSON(ctx *gcp.Context) error {
 		return nil
 	}
 
+	if err := cloudfunctions.AssertFrameworkInjectionAllowed(); err != nil {
+		return err
+	}
+
 	// The user did not vendor the functions framework. Before installing it, let's see if they used
 	// Composer to install their deps. If so we can safely `composer require` the framework even
 	// without composer.json; vendor/composer/installed.json contains the info required to resolve
 	// a working set of dependencies.
-	ctx.Logf("Functions framework is not present at %s", ffPath)
+	ctx.Warnf("Functions framework is not present at %s, so automatic injection will be attempted. Please add a dependency on it to avoid unexpected conflicts or breakages that result from this. See %s and %s", ffPath, ffGitHubURL, ffPackagistURL)
 	installed := filepath.Join(php.Vendor, "composer", "installed.json")
 	installedExists, err := ctx.FileExists(installed)
 	if err != nil {
 		return err
 	}
 	if !installedExists {
-		return gcp.UserErrorf("%s is not present, so it appears that Composer was not used to install dependencies. "+
-			"Please install the functions framework at %s. See %s and %s.", installed, ffPath, ffGitHubURL, ffPackagistURL)
+		return gcp.UserErrorf("%s is not present, so it appears that Composer was not used to install dependencies.", installed)
 	}
 
 	// All clear to install the functions framework! We'll do this via `composer require`
