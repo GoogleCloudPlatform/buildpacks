@@ -346,12 +346,12 @@ func (ctx *Context) Tipf(format string, args ...interface{}) {
 
 // CacheHit records a cache hit debug message. This is used in acceptance test validation.
 func (ctx *Context) CacheHit(tag string) {
-	ctx.Debugf("%s %q", cacheHitMessage, tag)
+	ctx.Logf("%s %q", cacheHitMessage, tag)
 }
 
 // CacheMiss records a cache miss debug message. This is used in acceptance test validation.
 func (ctx *Context) CacheMiss(tag string) {
-	ctx.Debugf("%s %q", cacheMissMessage, tag)
+	ctx.Logf("%s %q", cacheMissMessage, tag)
 }
 
 // Span emits a structured Stackdriver span.
@@ -412,7 +412,7 @@ func (ctx *Context) AddProcess(name string, cmd []string, opts ...processOption)
 	ctx.buildResult.Processes = []libcnb.Process{}
 	for _, p := range current {
 		if p.Type == name {
-			ctx.Debugf("Overwriting existing %s process %q.", name, p.Command)
+			ctx.Logf("Overwriting existing %s process %q.", name, p.Command)
 			continue // Do not add this item back to the ctx.processes; we are overwriting it.
 		}
 		ctx.buildResult.Processes = append(ctx.buildResult.Processes, p)

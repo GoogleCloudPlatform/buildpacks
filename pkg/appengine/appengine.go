@@ -55,7 +55,7 @@ func getEntrypoint(ctx *gcp.Context, eg appstart.EntrypointGenerator) (*appstart
 func getConfig(ctx *gcp.Context, runtime string, eg appstart.EntrypointGenerator) (appstart.Config, error) {
 	var c appstart.Config
 	if val := os.Getenv(env.Runtime); val != "" {
-		ctx.Debugf("Using %s: %s", env.Runtime, val)
+		ctx.Logf("Using %s: %s", env.Runtime, val)
 		c.Runtime = val
 	} else {
 		ctx.Debugf("Using runtime: %s", runtime)
@@ -69,10 +69,10 @@ func getConfig(ctx *gcp.Context, runtime string, eg appstart.EntrypointGenerator
 	c.Entrypoint = *ep
 
 	if val := os.Getenv(env.GAEMain); val != "" {
-		ctx.Debugf("Using %s: %s", env.GAEMain, val)
+		ctx.Logf("Using %s: %s", env.GAEMain, val)
 		c.MainExecutable = val
 	}
-	ctx.Debugf("Using config %#v", c)
+	ctx.Logf("Using config %#v", c)
 	return c, nil
 }
 

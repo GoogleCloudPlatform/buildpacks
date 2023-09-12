@@ -29,10 +29,10 @@ import (
 func getConfig(ctx *gcp.Context, runtime string, eg appstart.EntrypointGenerator) (appstart.Config, error) {
 	var c appstart.Config
 	if val := os.Getenv(env.Runtime); val != "" {
-		ctx.Debugf("Using %s: %s", env.Runtime, val)
+		ctx.Logf("Using %s: %s", env.Runtime, val)
 		c.Runtime = val
 	} else {
-		ctx.Debugf("Using runtime: %s", runtime)
+		ctx.Logf("Using runtime: %s", runtime)
 		c.Runtime = runtime
 	}
 
@@ -42,7 +42,7 @@ func getConfig(ctx *gcp.Context, runtime string, eg appstart.EntrypointGenerator
 	}
 	c.Entrypoint = *ep
 
-	ctx.Debugf("Using config %#v", c)
+	ctx.Logf("Using config %#v", c)
 	return c, nil
 }
 

@@ -89,7 +89,7 @@ func (ctx *Context) IsWritable(elem ...string) (bool, error) {
 // Note: this only sets an env var for the current script invocation. If you need an env var that
 // persists through the build environment or the launch environment, use ctx.PrependBuildEnv,...
 func (ctx *Context) Setenv(key, value string) error {
-	ctx.Debugf("Setting environment variable %s=%s", key, value)
+	ctx.Logf("Setting environment variable %s=%s", key, value)
 	if err := os.Setenv(key, value); err != nil {
 		return buildererror.Errorf(buildererror.StatusInternal, "setting env var %s: %v", key, err)
 	}
