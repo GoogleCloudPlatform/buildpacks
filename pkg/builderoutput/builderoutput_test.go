@@ -99,7 +99,7 @@ func TestFromJSON(t *testing.T) {
 		CustomImage: true,
 	}
 
-	if diff := cmp.Diff(got, want, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{})); diff != "" {
+	if diff := cmp.Diff(got, want, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{}, buildererror.Error{})); diff != "" {
 		t.Errorf("builder output parsing failed.  diff: %v", diff)
 	}
 }

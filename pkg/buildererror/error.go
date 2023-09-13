@@ -37,30 +37,36 @@ type Error struct {
 	Status           Status `json:"canonicalCode"`
 	ID               ID     `json:"errorId"`
 	Message          string `json:"errorMessage"`
+	internalError    error  `json:"-"`
 }
 
 func (e *Error) Error() string {
 	return fmt.Sprintf("(error ID: %s):\n%s", e.ID, e.Message)
 }
 
+func (e *Error) Unwrap() error {
+	return e.internalError
+}
+
 // Errorf constructs an Error.
-func Errorf(status Status, format string, args ...interface{}) *Error {
-	msg := fmt.Sprintf(format, args...)
+func Errorf(status Status, format string, args ...any) *Error {
+	err := fmt.Errorf(format, args...)
 	return &Error{
-		Type:    status,
-		Status:  status,
-		ID:      GenerateErrorID(msg),
-		Message: msg,
+		Type:          status,
+		Status:        status,
+		ID:            GenerateErrorID(err.Error()),
+		Message:       err.Error(),
+		internalError: err,
 	}
 }
 
 // InternalErrorf constructs an Error with status StatusInternal (Google-attributed SLO).
-func InternalErrorf(format string, args ...interface{}) *Error {
+func InternalErrorf(format string, args ...any) *Error {
 	return Errorf(StatusInternal, format, args...)
 }
 
 // UserErrorf constructs an Error with status StatusUnknown (user-attributed SLO).
-func UserErrorf(format string, args ...interface{}) *Error {
+func UserErrorf(format string, args ...any) *Error {
 	return Errorf(StatusUnknown, format, args...)
 }
 

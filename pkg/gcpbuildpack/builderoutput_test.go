@@ -78,7 +78,7 @@ func TestSaveErrorOutput(t *testing.T) {
 		},
 	}
 
-	if !cmp.Equal(got, want, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{})) {
+	if !cmp.Equal(got, want, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{}, buildererror.Error{})) {
 		t.Errorf("TestSaveErrorOutput expected output does not match\ngot:\n%#v\nwant:\n%#v", got, want)
 	}
 }
@@ -495,7 +495,7 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 				t.Fatalf("Failed to unmarshal: %v", err)
 			}
 
-			if !cmp.Equal(got, tc.want, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{})) {
+			if !cmp.Equal(got, tc.want, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{}, buildererror.Error{})) {
 				t.Errorf("%v: Expected stats do not match got %#v, want %#v", tc.name, got, tc.want)
 				t.Errorf("saveBuilderSuccessOutput metrics proto: got: %v, want: %v", got.Metrics, tc.want.Metrics)
 			}

@@ -15,6 +15,7 @@
 package buildererror
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -27,5 +28,39 @@ func TestGenerateErrorId(t *testing.T) {
 	result2 := GenerateErrorID("abc")
 	if result2 == result1 {
 		t.Errorf("error IDs are not unique to different inputs")
+	}
+}
+
+type externalErrorType struct {
+	msg string
+}
+
+func (e externalErrorType) Error() string {
+	return e.msg
+}
+
+// TestWrappedErrors tests that the custom error type works with wrapped errors and the %w printing
+// directive. The %w directive is only supported by fmt.Errorf and is used to wrap errors with more
+// context while still preserving the inner errors message and type. In other contexts, %w is the
+// same as %v and will print a struct instead of a string.64
+func TestWrappedErrors(t *testing.T) {
+	externalError := externalErrorType{msg: "external error"}
+	innerError := InternalErrorf("inner error: %w", externalError)
+	outerError := InternalErrorf("outer error: %w", innerError)
+
+	got := outerError.Error()
+	want := "(error ID: 189e479d):\nouter error: (error ID: 028d0ed8):\ninner error: external error"
+
+	if got != want {
+		t.Errorf("Error() = %q, want %q", got, want)
+	}
+
+	if !errors.Is(outerError, externalError) {
+		t.Errorf("errors.Is() did not match type: %#v", externalErrorType{})
+	}
+
+	var placeholder externalErrorType
+	if !errors.As(outerError, &placeholder) {
+		t.Errorf("errors.As() did not match type: %#v", externalErrorType{})
 	}
 }
