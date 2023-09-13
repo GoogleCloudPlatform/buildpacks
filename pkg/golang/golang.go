@@ -221,7 +221,7 @@ func NewGoWorkspaceLayer(ctx *gcp.Context) (*libcnb.Layer, error) {
 		return l, nil
 	}
 
-	sha, err := cache.Hash(ctx, cache.WithFiles(goModPath(ctx)))
+	hash, cached, err := cache.HashAndCheck(ctx, l, goModCacheKey, cache.WithFiles(goModPath(ctx)))
 	if err != nil {
 		if os.IsNotExist(err) {
 			// when go.mod doesn't exist, clear any previously cached bits and return an empty layer
@@ -231,15 +231,12 @@ func NewGoWorkspaceLayer(ctx *gcp.Context) (*libcnb.Layer, error) {
 		}
 		return nil, err
 	}
-	shaStr := fmt.Sprintf("%x", sha)
-	if shaStr == ctx.GetMetadata(l, goModCacheKey) {
-		ctx.Logf("GOPATH layer cache hit")
-		ctx.CacheHit(goPathLayerName)
+	if cached {
 		return l, nil
 	}
 	ctx.Debugf("go.mod SHA has changed: clearing GOPATH layer's cache")
 	cleanModCache(ctx)
-	ctx.SetMetadata(l, goModCacheKey, shaStr)
+	cache.Add(ctx, l, goModCacheKey, hash)
 	return l, nil
 }
 

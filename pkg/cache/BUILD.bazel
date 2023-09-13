@@ -8,7 +8,10 @@ go_library(
     name = "cache",
     srcs = ["cache.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    deps = ["//pkg/gcpbuildpack"],
+    deps = [
+        "//pkg/gcpbuildpack",
+        "@com_github_buildpacks_libcnb//:go_default_library",
+    ],
 )
 
 go_test(

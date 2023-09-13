@@ -177,32 +177,21 @@ func CheckOrClearCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) 
 		return false, err
 	}
 	opts = append(opts, cache.WithStrings(currentNodeVersion))
-	currentDependencyHash, err := cache.Hash(ctx, opts...)
+	hash, cached, err := cache.HashAndCheck(ctx, l, dependencyHashKey, opts...)
 	if err != nil {
-		return false, fmt.Errorf("computing dependency hash: %v", err)
+		return false, err
 	}
 
-	// Perform install, skipping if the dependency hash matches existing metadata.
-	metaDependencyHash := ctx.GetMetadata(l, dependencyHashKey)
-	ctx.Debugf("Current dependency hash: %q", currentDependencyHash)
-	ctx.Debugf("  Cache dependency hash: %q", metaDependencyHash)
-	if currentDependencyHash == metaDependencyHash {
-		ctx.CacheHit(l.Name)
-		ctx.Logf("Dependencies cache hit, skipping installation.")
+	if cached {
 		return true, nil
 	}
 
-	if metaDependencyHash == "" {
-		ctx.Debugf("No metadata found from a previous build, skipping cache.")
-	}
-
-	ctx.CacheMiss(l.Name)
 	if err := ctx.ClearLayer(l); err != nil {
 		return false, fmt.Errorf("clearing layer: %v", err)
 	}
 
 	// Update the layer metadata.
-	ctx.SetMetadata(l, dependencyHashKey, currentDependencyHash)
+	cache.Add(ctx, l, dependencyHashKey, hash)
 	ctx.SetMetadata(l, nodeVersionKey, currentNodeVersion)
 
 	return false, nil

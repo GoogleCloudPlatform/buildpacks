@@ -18,7 +18,10 @@ package cache
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io/ioutil"
+
+	"github.com/buildpacks/libcnb"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
@@ -50,8 +53,8 @@ func WithFiles(files ...string) Option {
 	}
 }
 
-// Hash creates a sha256 hash from the given cache options.
-func Hash(ctx *gcp.Context, opts ...Option) (result string, err error) {
+// hash creates a sha256 hash from the given cache options.
+func hash(ctx *gcp.Context, opts ...Option) (string, error) {
 	h := sha256.New()
 
 	h.Write([]byte(ctx.BuildpackID()))
@@ -67,5 +70,37 @@ func Hash(ctx *gcp.Context, opts ...Option) (result string, err error) {
 		}
 	}
 
-	return hex.EncodeToString(h.Sum(nil)), nil
+	hash := hex.EncodeToString(h.Sum(nil))
+	return hash, nil
+}
+
+// Add adds the key-value to the cache for the given layer for future builds.
+func Add(ctx *gcp.Context, l *libcnb.Layer, key string, value string) {
+	ctx.SetMetadata(l, key, value)
+}
+
+// HashAndCheck computes a hash value according to the cache options provided and checks if there is
+// a cache hit or miss by looking at the provided layer; returns the computed hash and if there
+// was a cache.
+func HashAndCheck(ctx *gcp.Context, l *libcnb.Layer, key string, opts ...Option) (string, bool, error) {
+	currHash, err := hash(ctx, opts...)
+	if err != nil {
+		return "", false, fmt.Errorf("computing dependency hash: %w", err)
+	}
+
+	prevHash := ctx.GetMetadata(l, key)
+	ctx.Debugf("Current dependency hash: %q", currHash)
+	ctx.Debugf("  Cache dependency hash: %q", prevHash)
+
+	if prevHash == "" {
+		ctx.Debugf("No cache metadata found from a previous build for key: %q, skipping cache.", key)
+	}
+
+	cached := currHash == prevHash
+	if cached {
+		ctx.CacheHit(l.Name)
+	} else {
+		ctx.CacheMiss(l.Name)
+	}
+	return currHash, cached, nil
 }

@@ -142,16 +142,37 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 		return nil
 	}
 
-	// Check if we can use the cached-layer as is without reinstalling dependencies.
-	cached, err := checkCache(ctx, l, cache.WithFiles(reqs...))
+	currentPythonVersion, err := Version(ctx)
 	if err != nil {
-		return fmt.Errorf("checking cache: %w", err)
+		return err
 	}
-	if cached {
-		ctx.CacheHit(l.Name)
+	hash, cached, err := cache.HashAndCheck(ctx, l, dependencyHashKey,
+		cache.WithFiles(reqs...),
+		cache.WithStrings(currentPythonVersion))
+	if err != nil {
+		return err
+	}
+
+	// Check cache expiration to pick up new versions of dependencies that are not pinned.
+	expired := cacheExpired(ctx, l)
+
+	if cached && !expired {
 		return nil
 	}
-	ctx.CacheMiss(l.Name)
+
+	if expired {
+		ctx.Debugf("Dependencies cache expired, clearing layer.")
+	}
+
+	if err := ctx.ClearLayer(l); err != nil {
+		return fmt.Errorf("clearing layer %q: %w", l.Name, err)
+	}
+
+	ctx.Logf("Installing application dependencies.")
+	cache.Add(ctx, l, dependencyHashKey, hash)
+	// Update the layer metadata.
+	ctx.SetMetadata(l, pythonVersionKey, currentPythonVersion)
+	ctx.SetMetadata(l, expiryTimestampKey, time.Now().Add(expirationTime).Format(dateFormat))
 
 	if err := ar.GeneratePythonConfig(ctx); err != nil {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
@@ -244,47 +265,6 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 	}
 
 	return nil
-}
-
-// checkCache checks whether cached dependencies exist, match, and have not expired.
-func checkCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
-	currentPythonVersion, err := Version(ctx)
-	if err != nil {
-		return false, err
-	}
-	opts = append(opts, cache.WithStrings(currentPythonVersion))
-	currentDependencyHash, err := cache.Hash(ctx, opts...)
-	if err != nil {
-		return false, fmt.Errorf("computing dependency hash: %v", err)
-	}
-
-	metaDependencyHash := ctx.GetMetadata(l, dependencyHashKey)
-	// Check cache expiration to pick up new versions of dependencies that are not pinned.
-	expired := cacheExpired(ctx, l)
-
-	// Perform install, skipping if the dependency hash matches existing metadata.
-	ctx.Debugf("Current dependency hash: %q", currentDependencyHash)
-	ctx.Debugf("  Cache dependency hash: %q", metaDependencyHash)
-	if currentDependencyHash == metaDependencyHash && !expired {
-		ctx.Logf("Dependencies cache hit, skipping installation.")
-		return true, nil
-	}
-
-	if metaDependencyHash == "" {
-		ctx.Debugf("No metadata found from a previous build, skipping cache.")
-	}
-
-	if err := ctx.ClearLayer(l); err != nil {
-		return false, fmt.Errorf("clearing layer %q: %w", l.Name, err)
-	}
-
-	ctx.Logf("Installing application dependencies.")
-	// Update the layer metadata.
-	ctx.SetMetadata(l, dependencyHashKey, currentDependencyHash)
-	ctx.SetMetadata(l, pythonVersionKey, currentPythonVersion)
-	ctx.SetMetadata(l, expiryTimestampKey, time.Now().Add(expirationTime).Format(dateFormat))
-
-	return false, nil
 }
 
 // cacheExpired returns true when the cache is past expiration.

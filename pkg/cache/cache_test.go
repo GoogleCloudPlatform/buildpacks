@@ -25,6 +25,98 @@ import (
 	"github.com/buildpacks/libcnb"
 )
 
+func TestHashAndCheck(t *testing.T) {
+	testCases := []struct {
+		name         string
+		prevEntries  map[string]any
+		key          string
+		cacheOpts    []Option
+		wantHash     string
+		wantCacheHit bool
+	}{
+		{
+			name: "cacheHit",
+			prevEntries: map[string]any{
+				"testKey": "75e3d0ce18615f1fcca84513474b0040ec223ceac07e0079a0221a7e1704caa6",
+			},
+			key:          "testKey",
+			cacheOpts:    []Option{WithStrings("my-string")},
+			wantHash:     "75e3d0ce18615f1fcca84513474b0040ec223ceac07e0079a0221a7e1704caa6",
+			wantCacheHit: true,
+		},
+		{
+			name: "cacheMissValueChanged",
+			prevEntries: map[string]any{
+				"testKey": "old-value",
+			},
+			key:          "testKey",
+			cacheOpts:    []Option{WithStrings("my-string")},
+			wantHash:     "75e3d0ce18615f1fcca84513474b0040ec223ceac07e0079a0221a7e1704caa6",
+			wantCacheHit: false,
+		},
+		{
+			name:         "cacheMissNoPreviousEntry",
+			key:          "testKey",
+			cacheOpts:    []Option{WithStrings("my-string", "my-other-string")},
+			wantHash:     "2896169f03a0b3756a77cd30c84e949e9bcde7af0869e291e06aaebbb97b6d11",
+			wantCacheHit: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext(gcp.WithBuildpackInfo(libcnb.BuildpackInfo{ID: "id", Version: "version"}))
+			if tc.prevEntries == nil {
+				tc.prevEntries = map[string]any{}
+			}
+			l := &libcnb.Layer{
+				Metadata: tc.prevEntries,
+			}
+			hash, cached, err := HashAndCheck(ctx, l, tc.key, tc.cacheOpts...)
+			if err != nil {
+				t.Fatalf("HashAndCheck(%v, %v, %v) got err=%v, want err=nil", ctx, l, tc.key, err)
+			}
+			if cached != tc.wantCacheHit {
+				t.Errorf("HashAndCheck() cache result = %t, want %t", cached, tc.wantCacheHit)
+			}
+			if hash != tc.wantHash {
+				t.Errorf("HashAndCheck() hash result = %q, want %q", hash, tc.wantHash)
+			}
+		})
+	}
+}
+
+func TestAdd(t *testing.T) {
+	testCases := []struct {
+		key   string
+		value string
+	}{
+		{
+			key:   "testKey",
+			value: "testValue",
+		},
+		{
+			key:   "",
+			value: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.key, func(t *testing.T) {
+			ctx := gcp.NewContext(gcp.WithBuildpackInfo(libcnb.BuildpackInfo{ID: "id", Version: "version"}))
+			l := &libcnb.Layer{
+				Metadata: map[string]any{},
+			}
+			Add(ctx, l, tc.key, tc.value)
+
+			got := ctx.GetMetadata(l, tc.key)
+			if got != tc.value {
+				t.Errorf("Add() failed to add cache entry, got = %q, want %q", got, tc.value)
+			}
+		})
+	}
+}
+
 func TestWithStrings(t *testing.T) {
 	testCases := []struct {
 		name    string
@@ -52,7 +144,7 @@ func TestWithStrings(t *testing.T) {
 			ctx := gcp.NewContext(gcp.WithBuildpackInfo(libcnb.BuildpackInfo{ID: "id", Version: "version"}))
 
 			option := WithStrings(tc.strings...)
-			got, err := Hash(ctx, option)
+			got, err := hash(ctx, option)
 			if err != nil {
 				t.Fatalf("Hash(WithStrings(%v)) got err=%v, want err=nil", tc.strings, err)
 			}
@@ -115,7 +207,7 @@ func TestWithFiles(t *testing.T) {
 			ctx := gcp.NewContext(gcp.WithBuildpackInfo(libcnb.BuildpackInfo{ID: "id", Version: "version"}))
 
 			option := WithFiles(names...)
-			got, err := Hash(ctx, option)
+			got, err := hash(ctx, option)
 			if err != nil {
 				t.Fatalf("Hash(WithFiles(%v)) got err=%v, want err=nil", names, err)
 			}
@@ -130,7 +222,7 @@ func TestWithFilesError(t *testing.T) {
 	ctx := gcp.NewContext()
 
 	option := WithFiles("/does/not/exist")
-	_, err := Hash(ctx, option)
+	_, err := hash(ctx, option)
 	if err == nil {
 		t.Fatalf("Hash() got err=nil, want err")
 	}
@@ -210,7 +302,7 @@ func writeFile(t *testing.T, tempDir, name, contents string) string {
 
 func computeHash(t *testing.T, ctx *gcp.Context, opts ...Option) string {
 	t.Helper()
-	h, err := Hash(ctx, opts...)
+	h, err := hash(ctx, opts...)
 	if err != nil {
 		t.Fatalf("Hash() got err=%v, want err=nil", err)
 	}
