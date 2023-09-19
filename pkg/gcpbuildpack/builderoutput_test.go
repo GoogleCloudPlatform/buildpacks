@@ -388,7 +388,7 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 				},
 				Warnings: []string{
 					"Test warning about a conflicting file.",
-					strings.Repeat("x", 2676) + "...",
+					strings.Repeat("x", 48676) + "...",
 				},
 				CustomImage: false,
 			},
@@ -396,7 +396,7 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 		{
 			name: "warnings trim last short",
 			warnings: []string{"Test warning about a conflicting file.",
-				strings.Repeat("x", 2676-4), // Four bytes shorter than the maximum which should leave exactly one character for the second warning.
+				strings.Repeat("x", 48676-4), // Four bytes shorter than the maximum which should leave exactly one character for the second warning.
 				strings.Repeat("y", maxMessageBytes),
 			},
 			want: builderoutput.BuilderOutput{
@@ -406,7 +406,7 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 				},
 				Warnings: []string{
 					"Test warning about a conflicting file.",
-					strings.Repeat("x", 2672),
+					strings.Repeat("x", 48672),
 					"y...",
 				},
 				CustomImage: false,
@@ -415,7 +415,7 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 		{
 			name: "warnings drop last short",
 			warnings: []string{"Test warning about a conflicting file.",
-				strings.Repeat("x", 2676-3), // Three bytes shorter than the maximum, which would leave 3 characters for the last warning so we drop it.
+				strings.Repeat("x", 48676-3), // Three bytes shorter than the maximum, which would leave 3 characters for the last warning so we drop it.
 				strings.Repeat("y", maxMessageBytes),
 			},
 			want: builderoutput.BuilderOutput{
@@ -425,7 +425,7 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 				},
 				Warnings: []string{
 					"Test warning about a conflicting file.",
-					strings.Repeat("x", 2673),
+					strings.Repeat("x", 48673),
 				},
 				CustomImage: false,
 			},
@@ -443,7 +443,7 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 				},
 				Warnings: []string{
 					"Test warning about a conflicting file.",
-					strings.Repeat("x", 2676) + "...",
+					strings.Repeat("x", 48676) + "...",
 				},
 				CustomImage: false,
 			},

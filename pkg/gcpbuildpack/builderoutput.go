@@ -37,7 +37,8 @@ const (
 )
 
 var (
-	maxMessageBytes = 3000
+	// maxMessageBytes limits the size of the exported BuilderOutputs
+	maxMessageBytes = 49000
 	// InternalErrorf constructs an Error with status StatusInternal (Google-attributed SLO).
 	InternalErrorf = buildererror.InternalErrorf
 	// UserErrorf constructs an Error with status StatusUnknown (user-attributed SLO).
