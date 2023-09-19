@@ -10,5 +10,5 @@ gae_runtimes = {
 gcf_runtimes = {
     "dotnet": "",
     "dotnet3": "3.1.426",
-    "dotnet6": "6.0.413",
+    "dotnet6": "6.0.414",
 }
