@@ -45,9 +45,11 @@ type execParams struct {
 	dir string
 	env []string
 
-	userAttribution bool
-	userTiming      bool
-	messageProducer MessageProducer
+	userAttribution    bool
+	userTiming         bool
+	messageProducer    MessageProducer
+	logCommandOverride *bool
+	logOutputOverride  *bool
 }
 
 // ExecOption configures Exec functions.
@@ -82,6 +84,22 @@ var WithUserTimingAttribution = func(o *execParams) {
 func WithMessageProducer(mp MessageProducer) ExecOption {
 	return func(o *execParams) {
 		o.messageProducer = mp
+	}
+}
+
+// WithLogCommand logs or silences the shell command itself from being printed. This takes
+// precedence over any other options.
+func WithLogCommand(shouldLog bool) ExecOption {
+	return func(o *execParams) {
+		o.logCommandOverride = &shouldLog
+	}
+}
+
+// WithLogOutput logs or silences the shell command's output from being printed. This takes
+// precedence over any other options.
+func WithLogOutput(shouldLog bool) ExecOption {
+	return func(o *execParams) {
+		o.logOutputOverride = &shouldLog
 	}
 }
 
@@ -146,17 +164,10 @@ func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
 		return nil, fmt.Errorf("empty command provided")
 	}
 
-	shouldLog := true
+	defaultShouldLog := true
 	if !params.userAttribution && !ctx.debug {
 		// For "system" commands, we will only log if the debug flag is present.
-		shouldLog = false
-	}
-
-	optionalLogf := func(format string, args ...interface{}) {
-		if !shouldLog {
-			return
-		}
-		ctx.Logf(format, args...)
+		defaultShouldLog = false
 	}
 
 	readableCmd := strings.Join(params.cmd, " ")
@@ -164,8 +175,15 @@ func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
 		env := strings.Join(params.env, " ")
 		readableCmd = fmt.Sprintf("%s (%s)", readableCmd, env)
 	}
-	optionalLogf(divider)
-	optionalLogf("Running %q", readableCmd)
+
+	logCmd := defaultShouldLog
+	if params.logCommandOverride != nil {
+		logCmd = *params.logCommandOverride
+	}
+	if logCmd {
+		ctx.Logf(divider)
+		ctx.Logf("Running %q", readableCmd)
+	}
 
 	status := buildererror.StatusInternal
 	defer func(start time.Time) {
@@ -173,7 +191,10 @@ func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
 		if len(truncated) > 60 {
 			truncated = truncated[:60] + "..."
 		}
-		optionalLogf("Done %q (%v)", truncated, time.Since(start))
+
+		if logCmd {
+			ctx.Logf("Done %q (%v)", truncated, time.Since(start))
+		}
 		ctx.Span(ctx.createSpanName(params.cmd), start, status)
 	}(time.Now())
 
@@ -188,8 +209,12 @@ func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
 		ecmd.Env = append(append(ecmd.Env, os.Environ()...), params.env...)
 	}
 
+	logOutput := defaultShouldLog
+	if params.logOutputOverride != nil {
+		logOutput = *params.logOutputOverride
+	}
 	var outb, errb bytes.Buffer
-	combinedb := lockingBuffer{log: shouldLog}
+	combinedb := lockingBuffer{ctx: ctx, log: logOutput}
 	ecmd.Stdout = io.MultiWriter(&outb, &combinedb)
 	ecmd.Stderr = io.MultiWriter(&errb, &combinedb)
 
@@ -233,13 +258,14 @@ type lockingBuffer struct {
 
 	// log tells the buffer to also log the output to stderr.
 	log bool
+	ctx *Context
 }
 
 func (lb *lockingBuffer) Write(p []byte) (int, error) {
 	lb.Lock()
 	defer lb.Unlock()
 	if lb.log {
-		os.Stderr.Write(p)
+		lb.ctx.Logf(string(p))
 	}
 	return lb.buf.Write(p)
 }

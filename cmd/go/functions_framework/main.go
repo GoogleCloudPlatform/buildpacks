@@ -186,7 +186,7 @@ func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
 		if err := cloudfunctions.AssertFrameworkInjectionAllowed(); err != nil {
 			return err
 		}
-		if _, err := ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@%s", functionsFrameworkModule, functionsFrameworkVersion)}, gcp.WithWorkDir(fn.Source)); err != nil {
+		if _, err := ctx.Exec([]string{"go", "mod", "edit", "-require", fmt.Sprintf("%s@%s", functionsFrameworkModule, functionsFrameworkVersion)}, gcp.WithWorkDir(fn.Source), gcp.WithLogCommand(true)); err != nil {
 			return err
 		}
 		version = functionsFrameworkVersion

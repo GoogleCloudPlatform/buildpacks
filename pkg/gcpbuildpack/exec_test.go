@@ -15,10 +15,11 @@
 package gcpbuildpack
 
 import (
+	"bytes"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
@@ -26,6 +27,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestExecEmitsSpan(t *testing.T) {
@@ -416,6 +418,7 @@ func TestExec(t *testing.T) {
 		wantUserTiming  bool
 		wantMinUserDur  time.Duration
 		wantUserFailure bool
+		wantLogged      []string
 	}{
 		{
 			name:           "nil cmd",
@@ -441,6 +444,9 @@ func TestExec(t *testing.T) {
 			wantResult:     &ExecResult{},
 			wantUserTiming: true,
 			wantMinUserDur: 500 * time.Millisecond,
+			wantLogged: []string{
+				`Running "sleep .5"`,
+			},
 		},
 		{
 			name:           "successful cmd with user timing attribution",
@@ -459,6 +465,9 @@ func TestExec(t *testing.T) {
 			wantUserTiming:  true,
 			wantMinUserDur:  500 * time.Millisecond,
 			wantUserFailure: true,
+			wantLogged: []string{
+				`Running "bash -c sleep .5; exit 99"`,
+			},
 		},
 		{
 			name:           "failing cmd with user timing attribution",
@@ -482,6 +491,10 @@ func TestExec(t *testing.T) {
 			wantErr:         true,
 			wantUserTiming:  true,
 			wantUserFailure: true,
+			wantLogged: []string{
+				`Running "cat /tmp/does-not-exist-123456"`,
+				"No such file or directory",
+			},
 		},
 		{
 			name:       "WithEnv",
@@ -535,6 +548,39 @@ func TestExec(t *testing.T) {
 			wantErrMessage: "foo...",
 			wantResult:     &ExecResult{ExitCode: 99, Stderr: "foo------", Combined: "foo------"},
 		},
+		{
+			name:       "WithLogCommand true overrides system attribution",
+			cmd:        []string{"bash", "-c", "echo foo------"},
+			opts:       []ExecOption{WithLogCommand(true)},
+			wantResult: &ExecResult{ExitCode: 0, Stdout: "foo------", Combined: "foo------"},
+			wantLogged: []string{
+				`Running "bash -c echo foo------"`,
+			},
+		},
+		{
+			name:           "WithLogOutput true overrides system attribution",
+			cmd:            []string{"cat", "/tmp/does-not-exist-123456"},
+			opts:           []ExecOption{WithLogOutput(true)},
+			wantErrMessage: "...ory", // Last few characters of message below due to maxMessageBytes setting in main test below.
+			wantResult: &ExecResult{
+				ExitCode: 1,
+				Stderr:   "cat: /tmp/does-not-exist-123456: No such file or directory",
+				Combined: "cat: /tmp/does-not-exist-123456: No such file or directory",
+			},
+			wantErr: true,
+			wantLogged: []string{
+				"No such file or directory",
+			},
+		},
+		{
+			// These don't have to be used together, but it's easier to test when both are on.
+			name:           "WithLogCommand false WithLogOutput false overrides user attribution",
+			cmd:            []string{"sleep", ".5"},
+			opts:           []ExecOption{WithUserAttribution, WithLogCommand(false), WithLogOutput(false)},
+			wantResult:     &ExecResult{},
+			wantUserTiming: true,
+			wantMinUserDur: 500 * time.Millisecond,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -544,15 +590,17 @@ func TestExec(t *testing.T) {
 			defer func() {
 				maxMessageBytes = oldMaxMessageBytes
 			}()
-			ctx := NewContext()
+			// Capture stderr for test
+			buf := new(bytes.Buffer)
+			logger := log.New(buf, "", 0)
+			ctx := NewContext(WithLogger(logger))
 
 			result, err := ctx.execWithErrCastToBuildError(tc.cmd, tc.opts...)
-
 			if got, want := err != nil, tc.wantErr; got != want {
 				t.Errorf("got error %t want error %t", got, want)
 			}
-			if !reflect.DeepEqual(result, tc.wantResult) {
-				t.Errorf("incorrect result got %#v want %#v", result, tc.wantResult)
+			if diff := cmp.Diff(tc.wantResult, result); diff != "" {
+				t.Errorf("Exec() mismatch (-want +got):\n%s", diff)
 			}
 
 			if tc.wantUserTiming && ctx.stats.user < tc.wantMinUserDur {
@@ -560,6 +608,17 @@ func TestExec(t *testing.T) {
 			}
 			if !tc.wantUserTiming && ctx.stats.user > 0 {
 				t.Error("got user timing > 0, want user timing 0")
+			}
+
+			gotOut := buf.String()
+			if tc.wantLogged == nil && gotOut != "" {
+				t.Errorf("expected Exec() to be silent, but got logs: %s", gotOut)
+			}
+
+			for _, want := range tc.wantLogged {
+				if !strings.Contains(gotOut, want) {
+					t.Errorf("Exec() missing expected logs, got logs: %s\nshould contain: %q", gotOut, want)
+				}
 			}
 
 			if tc.wantErr {
