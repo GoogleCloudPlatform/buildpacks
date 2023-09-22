@@ -32,6 +32,11 @@ const (
 	yarn = "google.nodejs.yarn"
 )
 
+// Setup node_modules directory for testing
+func setupNodeModules(setupCtx acceptance.SetupContext) error {
+	return os.Rename(filepath.Join(setupCtx.SrcDir, "lib"), filepath.Join(setupCtx.SrcDir, "node_modules"))
+}
+
 func TestAcceptance(t *testing.T) {
 	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
@@ -184,6 +189,15 @@ func TestAcceptance(t *testing.T) {
 			App:        "pnpm_typescript",
 			MustUse:    []string{pnpm},
 			MustNotUse: []string{npm, yarn},
+		},
+		{
+			Name:          "function with vendored deps",
+			App:           "vendor_dependencies",
+			MustUse:       []string{npm},
+			MustNotOutput: []string{"npm ci --quiet (NODE_ENV=production)"},
+			MustOutput:    []string{"npm rebuild"},
+			Env:           []string{"GOOGLE_VENDOR_NPM_DEPENDENCIES=true"},
+			Setup:         setupNodeModules,
 		},
 	}
 

@@ -169,7 +169,12 @@ func buildFn(ctx *gcp.Context) error {
 		}
 
 		if err := installFunctionsFramework(ctx, l); err != nil {
-			return fmt.Errorf("installing funtions-framework: %w", err)
+			vendorError := ""
+			if nodejs.IsUsingVendoredDependencies() {
+				vendorError = "Vendored dependencies detected, please make sure you have functions-framework installed locally to avoid the installation error by following: https://github.com/GoogleCloudPlatform/functions-framework-nodejs#installation."
+			}
+
+			return fmt.Errorf("%s installing functions-framework: %w", vendorError, err)
 		}
 
 		ff = filepath.Join(l.Path, "node_modules", ff)

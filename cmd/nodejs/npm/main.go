@@ -54,8 +54,11 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating layer: %w", err)
 	}
 	nm := filepath.Join(ml.Path, "node_modules")
-	if err := ctx.RemoveAll("node_modules"); err != nil {
-		return err
+	vendorNpmDeps := nodejs.IsUsingVendoredDependencies()
+	if !vendorNpmDeps {
+		if err := ctx.RemoveAll("node_modules"); err != nil {
+			return err
+		}
 	}
 	if err := ar.GenerateNPMConfig(ctx); err != nil {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
@@ -66,7 +69,11 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 	if err := upgradeNPM(ctx, pjs); err != nil {
-		return err
+		vendorError := ""
+		if vendorNpmDeps {
+			vendorError = "Vendored dependencies detected, please remove the npm version from your package.json to avoid installing npm and instead use the bundled npm"
+		}
+		return fmt.Errorf("%s Error: %w", vendorError, err)
 	}
 
 	lockfile, err := nodejs.EnsureLockfile(ctx)
@@ -86,39 +93,45 @@ func buildFn(ctx *gcp.Context) error {
 			buildNodeEnv = nodejs.EnvProduction
 		}
 	}
-	cached, err := nodejs.CheckOrClearCache(ctx, ml, cache.WithStrings(buildNodeEnv), cache.WithFiles("package.json", lockfile))
-	if err != nil {
-		return fmt.Errorf("checking cache: %w", err)
-	}
-	if cached {
-		// Restore cached node_modules.
-		if _, err := ctx.Exec([]string{"cp", "--archive", nm, "node_modules"}, gcp.WithUserTimingAttribution); err != nil {
-			return err
-		}
 
-		// Always run npm install to run preinstall/postinstall scripts.
-		// Otherwise it should be a no-op because the lockfile is unchanged.
-		if _, err := ctx.Exec([]string{"npm", "install", "--quiet"}, gcp.WithEnv("NODE_ENV="+buildNodeEnv), gcp.WithUserAttribution); err != nil {
+	if vendorNpmDeps {
+		if _, err := ctx.Exec([]string{"npm", "rebuild"}, gcp.WithEnv("NODE_ENV="+buildNodeEnv), gcp.WithUserAttribution); err != nil {
 			return err
 		}
 	} else {
-		ctx.Logf("Installing application dependencies.")
-		installCmd, err := nodejs.NPMInstallCommand(ctx)
+		cached, err := nodejs.CheckOrClearCache(ctx, ml, cache.WithStrings(buildNodeEnv), cache.WithFiles("package.json", lockfile))
 		if err != nil {
-			return err
+			return fmt.Errorf("checking cache: %w", err)
 		}
+		if cached {
+			// Restore cached node_modules.
+			if _, err := ctx.Exec([]string{"cp", "--archive", nm, "node_modules"}, gcp.WithUserTimingAttribution); err != nil {
+				return err
+			}
 
-		if _, err := ctx.Exec([]string{"npm", installCmd, "--quiet"}, gcp.WithEnv("NODE_ENV="+buildNodeEnv), gcp.WithUserAttribution); err != nil {
-			return err
-		}
+			// Always run npm install to run preinstall/postinstall scripts.
+			// Otherwise it should be a no-op because the lockfile is unchanged.
+			if _, err := ctx.Exec([]string{"npm", "install", "--quiet"}, gcp.WithEnv("NODE_ENV="+buildNodeEnv), gcp.WithUserAttribution); err != nil {
+				return err
+			}
+		} else {
+			ctx.Logf("Installing application dependencies.")
+			installCmd, err := nodejs.NPMInstallCommand(ctx)
+			if err != nil {
+				return err
+			}
 
-		// Ensure node_modules exists even if no dependencies were installed.
-		if err := ctx.MkdirAll("node_modules", 0755); err != nil {
-			return err
+			if _, err := ctx.Exec([]string{"npm", installCmd, "--quiet"}, gcp.WithEnv("NODE_ENV="+buildNodeEnv), gcp.WithUserAttribution); err != nil {
+				return err
+			}
 		}
-		if _, err := ctx.Exec([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution); err != nil {
-			return err
-		}
+	}
+	// Ensure node_modules exists even if no dependencies were installed.
+	if err := ctx.MkdirAll("node_modules", 0755); err != nil {
+		return err
+	}
+	if _, err := ctx.Exec([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution); err != nil {
+		return err
 	}
 
 	if len(buildCmds) > 0 {
@@ -175,6 +188,11 @@ NOTE: Running the default build script can be skipped by passing the empty envir
 }
 
 func shouldPrune(ctx *gcp.Context, pjs *nodejs.PackageJSON) (bool, error) {
+	// if we are vendoring dependencies, we do not need to prune
+	if nodejs.IsUsingVendoredDependencies() {
+		return false, nil
+	}
+
 	// if there are no devDependencies, there is no need to prune.
 	if !nodejs.HasDevDependencies(pjs) {
 		return false, nil

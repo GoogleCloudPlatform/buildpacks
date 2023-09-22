@@ -35,6 +35,8 @@ const (
 	GoogleNodeRunScriptsEnv = "GOOGLE_NODE_RUN_SCRIPTS"
 	// nodejsNPMBuildEnv is an env var that enables running `npm run build` by default.
 	nodejsNPMBuildEnv = "GOOGLE_EXPERIMENTAL_NODEJS_NPM_BUILD_ENABLED"
+	// VendorNpmDeps for vendoring npm dependencies
+	VendorNpmDeps = "GOOGLE_VENDOR_NPM_DEPENDENCIES"
 )
 
 var (
@@ -176,6 +178,12 @@ func DetermineBuildCommands(pjs *PackageJSON, pkgTool string) (cmds []string, is
 	}
 
 	return []string{}, false
+}
+
+// IsUsingVendoredDependencies returns true if the builder should be using the vendored dependencies.
+func IsUsingVendoredDependencies() bool {
+	val, _ := env.IsPresentAndTrue(VendorNpmDeps)
+	return val
 }
 
 func runCommand(pkgTool, command string) string {

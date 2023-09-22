@@ -63,6 +63,7 @@ func TestBuild(t *testing.T) {
 		wantExitCode      int // 0 if unspecified
 		wantCommands      []string
 		doNotWantCommands []string
+		files             map[string]string
 	}{
 		{
 			name: "package-lock.json",
@@ -136,6 +137,22 @@ func TestBuild(t *testing.T) {
 			doNotWantCommands: []string{
 				"npm run build",
 				"npm run gcp-build",
+			},
+		},
+		{
+			name: "node rebuild for vendored deps",
+			envs: []string{"GOOGLE_VENDOR_NPM_DEPENDENCIES=true"},
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`^npm --version$`, mockprocess.WithStdout("0.0.0")),
+			},
+			wantCommands: []string{
+				"npm rebuild",
+			},
+			doNotWantCommands: []string{
+				"npm ci",
+			},
+			files: map[string]string{
+				"node_modules/index.js": "",
 			},
 		},
 	}
