@@ -30,7 +30,10 @@ go_library(
 go_test(
     name = "acceptance_test",
     size = "small",
-    srcs = ["structure_test.go"],
+    srcs = [
+        "acceptance_test.go",
+        "structure_test.go",
+    ],
     embed = [":acceptance"],
     rundir = ".",
 )

@@ -918,6 +918,12 @@ func buildCommand(srcDir, image, builderName, runName string, env map[string]str
 	args := strings.Fields(fmt.Sprintf("%s build %s --builder %s --path %s --pull-policy never --verbose --no-color --trust-builder", packBin, image, builderName, srcDir))
 	if runName != "" {
 		args = append(args, "--run-image", runName)
+		if hasRuntimePreinstalled(runName) {
+			// This skips adding the language runtime downloaded during the build to the final
+			// image as a launch layer. For non-generic run images, the language runtime is already
+			// included in the base image.
+			args = append(args, "--env", "X_GOOGLE_SKIP_RUNTIME_LAUNCH=true")
+		}
 	}
 	if !cache {
 		args = append(args, "--clear-cache")
@@ -932,6 +938,23 @@ func buildCommand(srcDir, image, builderName, runName string, env map[string]str
 	args = append(args, "--env", "GOOGLE_RANDOM="+randString(8), "--env", "GOOGLE_DEBUG=true")
 	log.Printf("Running %v\n", args)
 	return args
+}
+
+// hasRuntimePreinstalled returns whether or not the image is the "generic" run image that does not
+// contain the language runtime built in. For containers built on the generic run image, the
+// language runtime is added dynamically during the build instead. The OSS builder and GAE Flex
+// build on the generic run images. GCF and GAE standard use language-specific run images to allow
+// the language runtime to be updated during automatic base image updates.
+func hasRuntimePreinstalled(runName string) bool {
+	// Generic run image example (should match):
+	// gcr.io/gae-runtimes/buildpacks/google-gae-22/nodejs/run
+	// gcr.io/${PROJECT}/buildpacks/${STACK}/${LANGUAGE}/run
+	//
+	// Non-generic run image example (should NOT match):
+	// gcr.io/gae-runtimes/buildpacks/nodejs14/run
+	// gcr.io/${PROJECT}/buildpacks/${RUNTIME}/run
+	re := regexp.MustCompile(`/buildpacks/[^/]+\d+/run`)
+	return re.MatchString(runName)
 }
 
 // buildApp builds an application image from source.
