@@ -38,6 +38,7 @@ const (
 	NpmGcpBuildUsageCounterID             CounterID = "2"
 	NpmBuildUsageCounterID                CounterID = "3"
 	NpmGoogleNodeRunScriptsUsageCounterID CounterID = "4"
+	PipVendorDependenciesCounterID        CounterID = "5"
 )
 
 var (
@@ -57,6 +58,10 @@ var (
 		NpmGoogleNodeRunScriptsUsageCounterID: Descriptor{
 			"npm_google_node_run_script_uses",
 			"The number of times the GOOGLE_NODE_RUN_SCRIPTS env var is used by npm developers",
+		},
+		PipVendorDependenciesCounterID: Descriptor{
+			"vendor_pip_dependencies_uses",
+			"The number of times GOOGLE_VENDOR_PIP_DEPENDENCIES is used by developers",
 		},
 	}
 )

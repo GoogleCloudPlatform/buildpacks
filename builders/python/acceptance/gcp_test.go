@@ -76,6 +76,12 @@ func TestAcceptancePython(t *testing.T) {
 			// numpy requires Python 3.8 or newer.
 			VersionInclusionConstraint: ">= 3.8.0",
 		},
+		{
+			Name:    "pip vendored dependencies",
+			App:     "pip_vendored_dependencies",
+			Env:     []string{"GOOGLE_VENDOR_PIP_DEPENDENCIES=package"},
+			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+		},
 	}
 
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {

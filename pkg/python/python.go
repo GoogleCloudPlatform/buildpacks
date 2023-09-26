@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -43,6 +44,9 @@ const (
 	// RequirementsFilesEnv is an environment variable containg os-path-separator-separated list of paths to pip requirements files.
 	// The requirements files are processed from left to right, with requirements from the next overriding any conflicts from the previous.
 	RequirementsFilesEnv = "GOOGLE_INTERNAL_REQUIREMENTS_FILES"
+
+	// VendorPipDepsEnv is the envar used to opt using vendored pip dependencies
+	VendorPipDepsEnv = "GOOGLE_VENDOR_PIP_DEPENDENCIES"
 
 	versionFile = ".python-version"
 	versionKey  = "version"
@@ -234,6 +238,11 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 			"--no-compile",                // Prevent default timestamp-based bytecode compilation. Deterministic pycs are generated in a second step below.
 			"--disable-pip-version-check", // If we were going to upgrade pip, we would have done it already in the runtime buildpack.
 			"--no-cache-dir",              // We used to save this to a layer, but it made builds slower because it includes http caching of pypi requests.
+		}
+		vendorDir, isVendored := os.LookupEnv(VendorPipDepsEnv)
+		if isVendored {
+			cmd = append(cmd, "--no-index", "--find-links", vendorDir)
+			buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.PipVendorDependenciesCounterID).Increment(1)
 		}
 		if !virtualEnv {
 			cmd = append(cmd, "--user") // Install into user site-packages directory.
