@@ -15,7 +15,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -105,7 +104,7 @@ func TestMainPath(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			dir, err := ioutil.TempDir("", "TestMainPath-")
+			dir, err := os.MkdirTemp("", "TestMainPath-")
 			if err != nil {
 				t.Fatalf("Creating temporary directory: %v", err)
 			}
@@ -118,7 +117,7 @@ func TestMainPath(t *testing.T) {
 			ctx := gcp.NewContext(gcp.WithApplicationRoot(dir))
 
 			if tc.stagerFileContents != "" {
-				if err = ioutil.WriteFile(filepath.Join(dir, "_main-package-path"), []byte(tc.stagerFileContents), 0755); err != nil {
+				if err = os.WriteFile(filepath.Join(dir, "_main-package-path"), []byte(tc.stagerFileContents), 0755); err != nil {
 					t.Fatalf("Creating file in temporary directory: %v", err)
 				}
 			}

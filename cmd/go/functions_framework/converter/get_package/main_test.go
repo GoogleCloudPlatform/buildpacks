@@ -16,7 +16,6 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -109,7 +108,7 @@ func init() {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			dir, err := ioutil.TempDir("", "golang_bp_test")
+			dir, err := os.MkdirTemp("", "golang_bp_test")
 			if err != nil {
 				t.Fatalf("creating temp dir: %v", err)
 			}
@@ -121,7 +120,7 @@ func init() {
 			}()
 
 			for f, c := range tc.files {
-				if err := ioutil.WriteFile(filepath.Join(dir, f), []byte(c), 0644); err != nil {
+				if err := os.WriteFile(filepath.Join(dir, f), []byte(c), 0644); err != nil {
 					t.Fatalf("writing file %s: %v", f, err)
 				}
 			}
@@ -159,7 +158,7 @@ func TestExtractFailures(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			dir, err := ioutil.TempDir("", "golang_bp_test")
+			dir, err := os.MkdirTemp("", "golang_bp_test")
 			if err != nil {
 				t.Fatalf("creating temp dir: %v", err)
 			}
@@ -171,7 +170,7 @@ func TestExtractFailures(t *testing.T) {
 			}()
 
 			for f, c := range tc.files {
-				if err := ioutil.WriteFile(filepath.Join(dir, f), []byte(c), 0644); err != nil {
+				if err := os.WriteFile(filepath.Join(dir, f), []byte(c), 0644); err != nil {
 					t.Fatalf("writing file %s: %v", f, err)
 				}
 			}

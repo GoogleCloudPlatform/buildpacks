@@ -15,7 +15,7 @@
 package ruby
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -181,7 +181,7 @@ RUBY VERSION
 			if len(tc.lockFiles) > 0 {
 				for _, lockFile := range tc.lockFiles {
 					path := filepath.Join(tempRoot, lockFile.name)
-					if err := ioutil.WriteFile(path, []byte(lockFile.content), 0644); err != nil {
+					if err := os.WriteFile(path, []byte(lockFile.content), 0644); err != nil {
 						t.Fatalf("writing file %s: %v", path, err)
 					}
 				}
@@ -316,7 +316,7 @@ RUBY VERSION
 			if len(tc.lockFiles) > 0 {
 				for _, lockFile := range tc.lockFiles {
 					path := filepath.Join(tempRoot, lockFile.name)
-					if err := ioutil.WriteFile(path, []byte(lockFile.content), 0644); err != nil {
+					if err := os.WriteFile(path, []byte(lockFile.content), 0644); err != nil {
 						t.Fatalf("writing file %s: %v", path, err)
 					}
 				}

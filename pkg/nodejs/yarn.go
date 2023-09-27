@@ -16,7 +16,6 @@ package nodejs
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -55,7 +54,7 @@ func UseFrozenLockfile(ctx *gcp.Context) (bool, error) {
 
 // IsYarn2 detects whether the given lockfile was generated with Yarn 2.
 func IsYarn2(rootDir string) (bool, error) {
-	data, err := ioutil.ReadFile(filepath.Join(rootDir, YarnLock))
+	data, err := os.ReadFile(filepath.Join(rootDir, YarnLock))
 	if err != nil {
 		return false, gcp.InternalErrorf("reading yarn.lock: %v", err)
 	}

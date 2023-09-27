@@ -19,7 +19,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/buildpacks/libcnb"
 
@@ -43,7 +43,7 @@ func WithFiles(files ...string) Option {
 	return func() ([]string, error) {
 		var strings []string
 		for _, f := range files {
-			b, err := ioutil.ReadFile(f)
+			b, err := os.ReadFile(f)
 			if err != nil {
 				return nil, err
 			}

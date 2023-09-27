@@ -18,7 +18,6 @@ package dart
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -83,7 +82,7 @@ func fetchLatestSdkVersion() (string, error) {
 // dependency on build_runner.
 func HasBuildRunner(dir string) (bool, error) {
 	f := filepath.Join(dir, "pubspec.yaml")
-	rawpjs, err := ioutil.ReadFile(f)
+	rawpjs, err := os.ReadFile(f)
 	if os.IsNotExist(err) {
 		// If there is no pubspec.yaml, there is no build_runner dependency.
 		return false, nil

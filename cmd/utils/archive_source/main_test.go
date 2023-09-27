@@ -16,7 +16,6 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -125,7 +124,7 @@ func TestArchiveSource(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			appDir, err := ioutil.TempDir("", "app")
+			appDir, err := os.MkdirTemp("", "app")
 			if err != nil {
 				t.Fatalf("creating temp dir: %v", err)
 			}
@@ -143,7 +142,7 @@ func TestArchiveSource(t *testing.T) {
 
 				// File can be a normal file, symlink, or an empty directory.
 				if f.Content != "" {
-					if err := ioutil.WriteFile(fn, []byte(f.Content), 0644); err != nil {
+					if err := os.WriteFile(fn, []byte(f.Content), 0644); err != nil {
 						t.Fatalf("writing file %s: %v", fn, err)
 					}
 				} else if f.SymLink != "" {
@@ -159,7 +158,7 @@ func TestArchiveSource(t *testing.T) {
 			}
 
 			// Archive the files in the app directory.
-			srcDir, err := ioutil.TempDir("", "src")
+			srcDir, err := os.MkdirTemp("", "src")
 			if err != nil {
 				t.Fatalf("creating temp dir: %v", err)
 			}
@@ -211,11 +210,11 @@ func TestArchiveSource(t *testing.T) {
 
 				// Compare file content if they are not directories.
 				if !afi.IsDir() {
-					ac, err := ioutil.ReadFile(af)
+					ac, err := os.ReadFile(af)
 					if err != nil {
 						t.Fatalf("reading file %s: %v", af, err)
 					}
-					sc, err := ioutil.ReadFile(sf)
+					sc, err := os.ReadFile(sf)
 					if err != nil {
 						t.Fatalf("reading file %s: %v", sf, err)
 					}

@@ -15,7 +15,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"strconv"
 	"testing"
@@ -102,7 +101,7 @@ func TestCrLfRewrite(t *testing.T) {
 
 			ensureUnixLineEndings(gcp.NewContext(), tmpFile.Name())
 
-			newContent, err := ioutil.ReadFile(tmpFile.Name())
+			newContent, err := os.ReadFile(tmpFile.Name())
 			if err != nil {
 				t.Fatal("Error reading updated temporary file", err)
 			}

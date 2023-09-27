@@ -19,7 +19,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -174,7 +173,7 @@ func addJvmConfig(ctx *gcp.Context) error {
 		return nil
 	}
 	jvmOptions := "--add-opens java.base/java.lang=ALL-UNNAMED"
-	if err := ioutil.WriteFile(configFile, []byte(jvmOptions), 0644); err != nil {
+	if err := os.WriteFile(configFile, []byte(jvmOptions), 0644); err != nil {
 		ctx.Logf("Could not create %s, reflection warnings may not be disabled: %v", configFile, err)
 	}
 	return nil

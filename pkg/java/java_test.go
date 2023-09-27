@@ -17,7 +17,6 @@ package java
 import (
 	"archive/zip"
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -273,7 +272,7 @@ func setupTestLayer(t *testing.T, ctx *gcp.Context) (string, *libcnb.Layer) {
 func setupTestManifest(t *testing.T, mfContent []byte) string {
 	t.Helper()
 	mfPath := filepath.Join(t.TempDir(), "TEST.MF")
-	if err := ioutil.WriteFile(mfPath, mfContent, 0644); err != nil {
+	if err := os.WriteFile(mfPath, mfContent, 0644); err != nil {
 		t.Fatalf("writing to file %s: %v", mfPath, err)
 	}
 	return mfPath
@@ -300,7 +299,7 @@ func setupTestJar(t *testing.T, mfContent []byte) string {
 	}
 
 	jarPath := filepath.Join(t.TempDir(), "test.jar")
-	if err := ioutil.WriteFile(jarPath, buff.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(jarPath, buff.Bytes(), 0644); err != nil {
 		t.Fatalf("writing to file %s: %v", jarPath, err)
 	}
 	return jarPath

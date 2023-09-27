@@ -17,7 +17,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
-	"io/ioutil"
+	"os"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -194,7 +194,7 @@ func setupTestJar(t *testing.T, mfContent []byte) string {
 	}
 
 	jarPath := filepath.Join(t.TempDir(), "test.jar")
-	if err := ioutil.WriteFile(jarPath, buff.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(jarPath, buff.Bytes(), 0644); err != nil {
 		t.Fatalf("failed to write to file %s: %v", jarPath, err)
 	}
 	return jarPath

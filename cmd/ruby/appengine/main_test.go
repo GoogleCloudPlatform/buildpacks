@@ -15,7 +15,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -116,7 +115,7 @@ func TestEntrypoint(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tempDir, err := ioutil.TempDir("", "test-entrypoint-")
+			tempDir, err := os.MkdirTemp("", "test-entrypoint-")
 			if err != nil {
 				t.Fatalf("creating temp dir: %v", err)
 			}
@@ -131,7 +130,7 @@ func TestEntrypoint(t *testing.T) {
 				if err := os.MkdirAll(path.Dir(fn), 0755); err != nil {
 					t.Fatalf("creating dir %s: %v", path.Dir(fn), err)
 				}
-				if err := ioutil.WriteFile(fn, []byte("content"), 0644); err != nil {
+				if err := os.WriteFile(fn, []byte("content"), 0644); err != nil {
 					t.Fatalf("writing file %s: %v", fn, err)
 				}
 			}

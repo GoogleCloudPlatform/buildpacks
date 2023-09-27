@@ -16,7 +16,7 @@ package gcpbuildpack
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -36,29 +36,38 @@ func (ctx *Context) TempDir(name string) (string, error) {
 	return directory, nil
 }
 
-// WriteFile is a pass through for ioutil.WriteFile(...) and returns any error with proper user / system attribution
+// WriteFile is a pass through for os.WriteFile(...) and returns any error with proper user / system attribution
 func (ctx *Context) WriteFile(filename string, data []byte, perm os.FileMode) error {
-	if err := ioutil.WriteFile(filename, data, perm); err != nil {
+	if err := os.WriteFile(filename, data, perm); err != nil {
 		return buildererror.Errorf(buildererror.StatusInternal, "writing file %q: %v", filename, err)
 	}
 	return nil
 }
 
-// ReadFile is a pass through for ioutil.ReadFile(...) and returns any error with proper user / system attribution
+// ReadFile is a pass through for os.ReadFile(...) and returns any error with proper user / system attribution
 func (ctx *Context) ReadFile(filename string) ([]byte, error) {
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, buildererror.Errorf(buildererror.StatusInternal, "reading file %q: %v", filename, err)
 	}
 	return data, nil
 }
 
-// ReadDir is a pass through for ioutil.ReadDir(...) and returns any error with proper user / system attribution
+// ReadDir is a pass through for os.ReadDir(...) and returns any error with proper user / system attribution
 func (ctx *Context) ReadDir(elem ...string) ([]os.FileInfo, error) {
 	n := filepath.Join(elem...)
-	files, err := ioutil.ReadDir(n)
+	entries, err := os.ReadDir(n)
 	if err != nil {
 		return nil, buildererror.Errorf(buildererror.StatusInternal, "reading directory %q: %v", n, err)
 	}
-	return files, nil
+	infos := make([]fs.FileInfo, 0, len(entries))
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if err != nil {
+			return nil, buildererror.Errorf(buildererror.StatusInternal, "reading directory %q: %v", n, err)
+		}
+		infos = append(infos, info)
+	}
+
+	return infos, nil
 }

@@ -16,7 +16,6 @@ package gcpbuildpack
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -223,7 +222,7 @@ func TestBuildEmitsSpan(t *testing.T) {
 }
 
 func TestBuildEmitsSuccessOutput(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "build-emits-success-output-")
+	tempDir, err := os.MkdirTemp("", "build-emits-success-output-")
 	if err != nil {
 		t.Fatalf("Creating temp dir: %v", err)
 	}
@@ -242,7 +241,7 @@ func TestBuildEmitsSuccessOutput(t *testing.T) {
 
 	fname := filepath.Join(tempDir, builderOutputFilename)
 	var got builderoutput.BuilderOutput
-	content, err := ioutil.ReadFile(fname)
+	content, err := os.ReadFile(fname)
 	if err != nil {
 		t.Fatalf("Failed to read %s: %v", fname, err)
 	}
@@ -496,7 +495,7 @@ func TestHasAtLeastOne(t *testing.T) {
 				if err := os.MkdirAll(tc.prefix, 0777); err != nil {
 					t.Fatalf("Error creating %s: %v", tc.prefix, err)
 				}
-				_, err := ioutil.TempFile(tc.prefix, f)
+				_, err := os.CreateTemp(tc.prefix, f)
 				if err != nil {
 					t.Fatalf("Creating temp file %s/%s: %v", tc.prefix, f, err)
 				}
@@ -594,7 +593,7 @@ func TestHasAtLeastOneFiltered(t *testing.T) {
 				if err := os.MkdirAll(prefixDir, 0777); err != nil {
 					t.Fatalf("Error creating %s: %v", prefixDir, err)
 				}
-				_, err := ioutil.TempFile(prefixDir, f)
+				_, err := os.CreateTemp(prefixDir, f)
 				if err != nil {
 					t.Fatalf("Creating temp file %s/%s: %v", prefixDir, f, err)
 				}
@@ -644,7 +643,7 @@ func TestHasAtLeastOneOutsideDependencyDirectories(t *testing.T) {
 				if err := os.MkdirAll(prefixDir, 0777); err != nil {
 					t.Fatalf("Error creating %s: %v", prefixDir, err)
 				}
-				_, err := ioutil.TempFile(prefixDir, f)
+				_, err := os.CreateTemp(prefixDir, f)
 				if err != nil {
 					t.Fatalf("Creating temp file %s/%s: %v", prefixDir, f, err)
 				}
