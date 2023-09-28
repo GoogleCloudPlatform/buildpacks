@@ -15,13 +15,17 @@ package acceptance_test
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
-const ffJarPath = "/layers/google.java.functions-framework/functions-framework/functions-framework.jar"
+const (
+	ffJarPath        = "/layers/google.java.functions-framework/functions-framework/functions-framework.jar"
+	defaultFfversion = "1.3.1"
+)
 
 func init() {
 	acceptance.DefineFlags()
@@ -39,7 +43,7 @@ func TestAcceptance(t *testing.T) {
 			FilesMustExist:  []string{ffJarPath},
 			EnableCacheTest: true,
 			Labels: map[string]string{
-				"google.functions-framework-version": `{"runtime":"java","version":"1.3.0","injected":true}`,
+				"google.functions-framework-version": fmt.Sprintf(`{"runtime":"java","version":"%v","injected":true}`, defaultFfversion),
 			},
 		},
 		{
@@ -48,7 +52,7 @@ func TestAcceptance(t *testing.T) {
 			Env:            []string{"GOOGLE_FUNCTION_TARGET=functions.HelloWorld"},
 			FilesMustExist: []string{ffJarPath},
 			Labels: map[string]string{
-				"google.functions-framework-version": `{"runtime":"java","version":"1.3.0","injected":true}`,
+				"google.functions-framework-version": fmt.Sprintf(`{"runtime":"java","version":"%v","injected":true}`, defaultFfversion),
 			},
 		},
 		{
@@ -68,7 +72,7 @@ func TestAcceptance(t *testing.T) {
 			FilesMustExist:  []string{ffJarPath},
 			EnableCacheTest: true,
 			Labels: map[string]string{
-				"google.functions-framework-version": `{"runtime":"java","version":"1.3.0","injected":true}`,
+				"google.functions-framework-version": fmt.Sprintf(`{"runtime":"java","version":"%v","injected":true}`, defaultFfversion),
 			},
 		},
 		{
