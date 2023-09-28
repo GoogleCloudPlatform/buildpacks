@@ -609,7 +609,6 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 	}
 
 	builderName := generateRandomImageName(builderPrefix)
-
 	if builderImage != "" {
 		t.Logf("Testing existing builder image: %s", builderImage)
 		if pullImages {
@@ -946,14 +945,15 @@ func buildCommand(srcDir, image, builderName, runName string, env map[string]str
 // build on the generic run images. GCF and GAE standard use language-specific run images to allow
 // the language runtime to be updated during automatic base image updates.
 func hasRuntimePreinstalled(runName string) bool {
-	// Generic run image example (should match):
+	// Generic run image example (should NOT match):
 	// gcr.io/gae-runtimes/buildpacks/google-gae-22/nodejs/run
-	// gcr.io/${PROJECT}/buildpacks/${STACK}/${LANGUAGE}/run
+	// gcr.io/gae-runtimes/stacks/google-gae-18/run
+	// gcr.io/buildpacks/google-18/run
 	//
-	// Non-generic run image example (should NOT match):
+	// Non-generic run image example (should match):
 	// gcr.io/gae-runtimes/buildpacks/nodejs14/run
 	// gcr.io/${PROJECT}/buildpacks/${RUNTIME}/run
-	re := regexp.MustCompile(`/buildpacks/[^/]+\d+/run`)
+	re := regexp.MustCompile(`/buildpacks/(?:go|nodejs|dotnet|java|php|ruby|python)\d+/run`)
 	return re.MatchString(runName)
 }
 

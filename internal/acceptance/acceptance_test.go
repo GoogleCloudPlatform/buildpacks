@@ -80,6 +80,16 @@ func TestHasRuntimePreinstalled(t *testing.T) {
 			hasRuntimePreinstalled: false,
 		},
 		{
+			name:                   "genericRunImageFromBuilderTOML",
+			image:                  "gcr.io/gae-runtimes/stacks/google-gae-18/run",
+			hasRuntimePreinstalled: false,
+		},
+		{
+			name:                   "genericRunImageFromBuilderImage",
+			image:                  "gcr.io/buildpacks/google-18/run",
+			hasRuntimePreinstalled: false,
+		},
+		{
 			name:                   "someCustomImage",
 			image:                  "us.gcr.io/some-random/custom/image:latest",
 			hasRuntimePreinstalled: false,
