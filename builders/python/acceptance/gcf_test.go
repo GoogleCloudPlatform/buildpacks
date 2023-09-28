@@ -118,6 +118,12 @@ func TestFailures(t *testing.T) {
 			Env:       []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=True"},
 			MustMatch: "skipping automatic framework injection has been enabled",
 		},
+		{
+			Name:      "use pip vendored deps - framework not vendored",
+			App:       "without_framework",
+			Env:       []string{"GOOGLE_VENDOR_PIP_DEPENDENCIES=vendor"},
+			MustMatch: "Vendored dependencies detected, please add functions-framework to requirements.txt and download it using pip",
+		},
 	}
 
 	for _, tc := range acceptance.FilterFailureTests(t, testCases) {
