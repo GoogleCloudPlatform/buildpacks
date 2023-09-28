@@ -39,6 +39,8 @@ const (
 	NpmBuildUsageCounterID                CounterID = "3"
 	NpmGoogleNodeRunScriptsUsageCounterID CounterID = "4"
 	PipVendorDependenciesCounterID        CounterID = "5"
+	NpmNodeModulesCounterID               CounterID = "6"
+	NpmVendorDependenciesCounterID        CounterID = "7"
 )
 
 var (
@@ -62,6 +64,14 @@ var (
 		PipVendorDependenciesCounterID: Descriptor{
 			"vendor_pip_dependencies_uses",
 			"The number of times GOOGLE_VENDOR_PIP_DEPENDENCIES is used by developers",
+		},
+		NpmNodeModulesCounterID: Descriptor{
+			"npm_node_modules_uses",
+			"The number of times node_modules directory exist in source code",
+		},
+		NpmVendorDependenciesCounterID: Descriptor{
+			"vendor_npm_dependencies_uses",
+			"The number of times GOOGLE_VENDOR_NPM_DEPENDENCIES is used by developers",
 		},
 	}
 )

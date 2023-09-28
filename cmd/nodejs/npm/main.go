@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -54,6 +55,10 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating layer: %w", err)
 	}
 	nm := filepath.Join(ml.Path, "node_modules")
+	if nmExists, _ := ctx.FileExists("node_modules"); nmExists {
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmNodeModulesCounterID).Increment(1)
+
+	}
 	vendorNpmDeps := nodejs.IsUsingVendoredDependencies()
 	if !vendorNpmDeps {
 		if err := ctx.RemoveAll("node_modules"); err != nil {
@@ -95,6 +100,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	if vendorNpmDeps {
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmVendorDependenciesCounterID).Increment(1)
 		if _, err := ctx.Exec([]string{"npm", "rebuild"}, gcp.WithEnv("NODE_ENV="+buildNodeEnv), gcp.WithUserAttribution); err != nil {
 			return err
 		}
