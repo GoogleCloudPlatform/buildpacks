@@ -215,7 +215,6 @@ func shouldPrune(ctx *gcp.Context, pjs *nodejs.PackageJSON) (bool, error) {
 }
 
 func upgradeNPM(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
-	npmHashKey := "version"
 	npmVersion, err := nodejs.RequestedNPMVersion(pjs)
 	if err != nil {
 		return err
@@ -228,11 +227,9 @@ func upgradeNPM(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
 	}
-	hash, cached, err := cache.HashAndCheck(ctx, npmLayer, npmHashKey, cache.WithStrings(npmVersion))
-	if err != nil {
-		return err
-	}
-	if cached {
+	metaVersion := ctx.GetMetadata(npmLayer, "version")
+	if metaVersion == npmVersion {
+		ctx.Logf("npm@%s cache hit, skipping installation.", npmVersion)
 		return nil
 	}
 	ctx.ClearLayer(npmLayer)
@@ -246,6 +243,5 @@ func upgradeNPM(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 	if err := ctx.Setenv("PATH", filepath.Join(npmLayer.Path, "bin")+":"+os.Getenv("PATH")); err != nil {
 		return err
 	}
-	cache.Add(ctx, npmLayer, npmHashKey, hash)
 	return nil
 }
