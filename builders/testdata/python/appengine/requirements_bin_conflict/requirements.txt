@@ -1,4 +1,4 @@
 flask==2.0.3
 gunicorn==20.0.4  # gunicorn installs an executable into bin.
-spacy==3.2.1  # spacy installs executables into bin and site-packages/bin.
+spacy==3.7.0  # spacy installs executables into bin and site-packages/bin.
 Werkzeug==2.2.2 # Flask 2.x incompatible with latest Werkzeug 3.x as of 10/2023
