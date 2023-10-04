@@ -114,7 +114,15 @@ def _pretty_prefix(prefix):
         return "C++"
     return prefix.title()
 
-def builder(name, image, descriptor = "builder.toml", buildpacks = None, groups = None, visibility = None):
+def builder(
+        name,
+        image,
+        descriptor = "builder.toml",
+        buildpacks = None,
+        groups = None,
+        visibility = None,
+        builder_template = None,
+        stack = None):
     """Macro to create a set of targets for a builder with specified buildpacks.
 
     `name` and `name.tar`:
@@ -137,8 +145,30 @@ def builder(name, image, descriptor = "builder.toml", buildpacks = None, groups 
       groups: dict(name -> list of labels to buildpacks);
         the buildpacks are grouped under a single-level directory named <key>
       visibility: the visibility
+      builder_template: if builder.toml needs to be generated for input stack
+      stack: Either of google.gae.22 or google.gae.18 representing ubuntu-22 or ubuntu-18 stacks
     """
-    srcs = [descriptor]
+    srcs = []
+
+    # Generating builder.toml from template and stack
+    if builder_template and stack:
+        gae_stack = "google-gae-18"
+        if stack == "google.gae.22":
+            gae_stack = "google-gae-22"
+        image_prefix = "gcr.io/gae-runtimes/buildpacks/stacks/{}/".format(gae_stack)
+        build_image = image_prefix + "build"
+        run_image = image_prefix + "run"
+        _builder_descriptor(
+            name = name + ".descriptor",
+            stack_id = stack,
+            stack_build_image = build_image,
+            stack_run_image = run_image,
+            template = builder_template,
+            output = name + "/" + descriptor,
+        )
+        srcs.append(name + ".descriptor")
+    else:
+        srcs.append(descriptor)
     if buildpacks:
         srcs += buildpacks
     deps = []
@@ -174,6 +204,31 @@ def builder(name, image, descriptor = "builder.toml", buildpacks = None, groups 
             create_script = "//tools:create_builder",
         ),
     )
+
+def _builder_descriptor_impl(ctx):
+    ctx.actions.expand_template(
+        output = ctx.outputs.output,
+        substitutions = {
+            "${STACK_ID}": ctx.attr.stack_id,
+            "${STACK_BUILD_IMAGE}": ctx.attr.stack_build_image,
+            "${STACK_RUN_IMAGE}": ctx.attr.stack_run_image,
+        },
+        template = ctx.file.template,
+    )
+
+_builder_descriptor = rule(
+    implementation = _builder_descriptor_impl,
+    attrs = {
+        "stack_id": attr.string(mandatory = True),
+        "stack_build_image": attr.string(mandatory = True),
+        "stack_run_image": attr.string(mandatory = True),
+        "template": attr.label(
+            default = ":buildpack.toml.template",
+            allow_single_file = True,
+        ),
+        "output": attr.output(mandatory = True),
+    },
+)
 
 def buildpackage(name, buildpacks, descriptor = "buildpack.toml", visibility = None):
     """Macro to create a set of targets for a meta-buildpack containing the specified buildpacks.

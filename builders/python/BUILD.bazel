@@ -4,21 +4,39 @@ package(default_visibility = ["//builders/python/acceptance:__pkg__"])
 
 licenses(["notice"])
 
+exports_files([
+    "builder.toml.template",
+])
+
+BUILDPACKS = [
+    "//cmd/config/entrypoint:entrypoint.tgz",
+    "//cmd/python/appengine:appengine.tgz",
+    "//cmd/config/flex:flex.tgz",
+    "//cmd/python/functions_framework:functions_framework.tgz",
+    "//cmd/python/functions_framework_compat:functions_framework_compat.tgz",
+    "//cmd/python/link_runtime:link_runtime.tgz",
+    "//cmd/python/missing_entrypoint:missing_entrypoint.tgz",
+    "//cmd/python/pip:pip.tgz",
+    "//cmd/python/runtime:runtime.tgz",
+    "//cmd/python/webserver:webserver.tgz",
+    "//cmd/utils/archive_source:archive_source.tgz",
+    "//cmd/utils/label:label_image.tgz",
+]
+
 builder(
     name = "builder",
-    buildpacks = [
-        "//cmd/config/entrypoint:entrypoint.tgz",
-        "//cmd/python/appengine:appengine.tgz",
-        "//cmd/config/flex:flex.tgz",
-        "//cmd/python/functions_framework:functions_framework.tgz",
-        "//cmd/python/functions_framework_compat:functions_framework_compat.tgz",
-        "//cmd/python/link_runtime:link_runtime.tgz",
-        "//cmd/python/missing_entrypoint:missing_entrypoint.tgz",
-        "//cmd/python/pip:pip.tgz",
-        "//cmd/python/runtime:runtime.tgz",
-        "//cmd/python/webserver:webserver.tgz",
-        "//cmd/utils/archive_source:archive_source.tgz",
-        "//cmd/utils/label:label_image.tgz",
-    ],
+    builder_template = ":builder.toml.template",
+    buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
     image = "gcp/python",
+    stack = "google.gae.18",
+)
+
+builder(
+    name = "builder_22",
+    builder_template = ":builder.toml.template",
+    buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
+    image = "gcp/python",
+    stack = "google.gae.22",
 )

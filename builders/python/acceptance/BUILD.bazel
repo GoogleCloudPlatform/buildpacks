@@ -45,6 +45,17 @@ acceptance_test_suite(
 )
 
 acceptance_test_suite(
+    name = "gcp_test_builder_22",
+    srcs = [
+        "gcp_test.go",
+    ],
+    builder = "//builders/python:builder_22.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/python:generic",
+    versions = {"python311": "3.11.6"},
+)
+
+acceptance_test_suite(
     name = "gae_test",
     srcs = [
         "gae_test.go",
