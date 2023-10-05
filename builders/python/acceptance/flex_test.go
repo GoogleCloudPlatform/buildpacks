@@ -48,10 +48,14 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name: "uwsgi with flask",
 			App:  "uwsgi_flask",
+			// uwsgi fails to build on 3.12.0 python version
+			// This is becuase of usage of deprecated method - PySys_SetArgv
+			// Reference - https://github.com/unbit/uwsgi/blob/a282bbf22540e5ff307b9cc93e1db62e43e63f58/plugins/python/pyutils.c#L391
+			VersionInclusionConstraint: "< 3.12.0",
 		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 
 		// returns a copy of the struct
 		// need this for parallelization otherwise it will build the same name

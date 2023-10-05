@@ -31,6 +31,8 @@ VERSIONS_WITH_FLEX_SUPPORT = {
     "python38": gae_runtimes["python38"],
     "python39": gae_runtimes["python39"],
     "python310": gae_runtimes["python310"],
+    "python311": gae_runtimes["python311"],
+    "python312": gae_runtimes["python312"],
 }
 
 acceptance_test_suite(
