@@ -9,11 +9,11 @@
     <properties>
         <ktor.version>1.5.3</ktor.version>
         <kotlin.code.style>official</kotlin.code.style>
-        <kotlin_version>1.4.30</kotlin_version>
+        <kotlin_version>1.6.21</kotlin_version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <kotlin.compiler.jvmTarget>11</kotlin.compiler.jvmTarget>
         <main.class>io.ktor.server.netty.EngineMain</main.class>
-        <logback_version>1.2.3</logback_version>
+        <logback_version>1.2.9</logback_version>
     </properties>
 
     <repositories>
@@ -90,7 +90,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>2.6</version>
+                <version>3.3.0</version>
                 <configuration>
                     <archive>
                         <manifest>
@@ -103,7 +103,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>2.6</version>
+                <version>3.4.2</version>
                 <executions>
                     <execution>
                         <id>make-assembly</id>
