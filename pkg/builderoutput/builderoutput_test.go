@@ -27,7 +27,7 @@ func TestFromJSON(t *testing.T) {
 	serialized := `
 {
 	"rtVersions": ["6.0.6"],
-  "metrics": {"c":{"1":3}},
+  "metrics": {"c":{"1":3},"f":{"2":18.3}},
 	"error": {
 		"buildpackId": "bad-buildpack",
 		"buildpackVersion": "vbad",
@@ -67,6 +67,7 @@ func TestFromJSON(t *testing.T) {
 
 	bm := buildermetrics.NewBuilderMetrics()
 	bm.GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(3)
+	bm.GetFloatDP(buildermetrics.ComposerInstallLatencyID).Add(18.3)
 	want := BuilderOutput{
 		InstalledRuntimeVersions: []string{"6.0.6"},
 		Metrics:                  bm,
@@ -99,7 +100,7 @@ func TestFromJSON(t *testing.T) {
 		CustomImage: true,
 	}
 
-	if diff := cmp.Diff(got, want, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{}, buildererror.Error{})); diff != "" {
+	if diff := cmp.Diff(got, want, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{}, buildermetrics.FloatDP{}, buildererror.Error{})); diff != "" {
 		t.Errorf("builder output parsing failed.  diff: %v", diff)
 	}
 }

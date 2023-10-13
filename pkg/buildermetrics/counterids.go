@@ -76,12 +76,6 @@ var (
 	}
 )
 
-// Descriptor provides details about a metric
-type Descriptor struct {
-	Name        string
-	Description string
-}
-
 // Descriptor returns the Descriptor for a CounterID
 func (c CounterID) Descriptor() (Descriptor, error) {
 	desc, ok := counterDescriptors[c]
@@ -92,5 +86,4 @@ func (c CounterID) Descriptor() (Descriptor, error) {
 		return Descriptor{}, fmt.Errorf("Descriptor %q (for CounterID %q) must have both a Name and a Description", desc, c)
 	}
 	return desc, nil
-
 }

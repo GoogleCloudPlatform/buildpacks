@@ -10,6 +10,9 @@ go_library(
         "buildermetrics.go",
         "counter.go",
         "counterids.go",
+        "descriptor.go",
+        "floatdp.go",
+        "floatdpids.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = ["//visibility:public"],
@@ -21,6 +24,8 @@ go_test(
     srcs = [
         "buildermetrics_test.go",
         "counter_test.go",
+        "floatdp_test.go",
+        "floatdpids_test.go",
     ],
     embed = [":buildermetrics"],
     rundir = ".",
