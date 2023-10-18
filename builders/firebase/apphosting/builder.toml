@@ -1,0 +1,43 @@
+description = "Builder for Firebase App Hosting"
+
+[[buildpacks]]
+  id = "google.nodejs.npm"
+  uri = "npm.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.runtime"
+  uri = "runtime.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.yarn"
+  uri = "yarn.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.pnpm"
+  uri = "pnpm.tgz"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.npm"
+
+[stack]
+  id = "google.min.22"
+  build-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-min-22/build"
+  run-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-min-22/run"
+
+[lifecycle]
+  version = "0.17.0"
