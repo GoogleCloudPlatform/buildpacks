@@ -40,4 +40,4 @@ description = "Builder for Firebase App Hosting"
   run-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-min-22/run"
 
 [lifecycle]
-  version = "0.17.0"
+  version = "0.17.2"
