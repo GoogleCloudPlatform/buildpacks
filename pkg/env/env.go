@@ -136,6 +136,9 @@ const (
 
 	// FlexEnv is internal env variable to denote a flex application
 	FlexEnv = "GOOGLE_FLEX_APPLICATION"
+
+	// RuntimeImageRegion is the region to fetch runtime images.
+	RuntimeImageRegion = "GOOGLE_RUNTIME_IMAGE_REGION"
 )
 
 // IsGAE returns true if the buildpack target platform is gae.

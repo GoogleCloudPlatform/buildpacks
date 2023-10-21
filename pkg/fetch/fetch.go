@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/hashicorp/go-retryablehttp"
 )
 
@@ -41,6 +42,28 @@ func Tarball(url, dir string, stripComponents int) error {
 	}
 	defer response.Body.Close()
 	return untar(dir, response.Body, stripComponents)
+}
+
+// ARImage downloads tarball from images in artifact registry.
+func ARImage(url, dir string, stripComponents int) error {
+	image, err := crane.Pull(url)
+	if err != nil {
+		return err
+	}
+	layers, err := image.Layers()
+	if err != nil {
+		return err
+	}
+	if len(layers) < 1 {
+		return gcp.InternalErrorf("runtime image has no layer")
+	}
+	l := layers[0]
+	rc, err := l.Compressed()
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
+	return untar(dir, rc, stripComponents)
 }
 
 // File downloads a file from a URL and writes it to the provided path.

@@ -21,9 +21,33 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/buildpacks/github.com/BurntSushi/toml/COPYING
 
+- package: github.com/containerd/stargz-snapshotter/estargz
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/github.com/containerd/stargz-snapshotter/estargz/LICENSE
+
+- package: github.com/docker/cli/cli/config
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/github.com/docker/cli/cli/config/LICENSE
+
+- package: github.com/docker/distribution/registry/client/auth/challenge
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/github.com/docker/distribution/registry/client/auth/challenge/LICENSE
+
+- package: github.com/docker/docker-credential-helpers
+  license_name: MIT
+  license_path: /usr/local/share/licenses/buildpacks/github.com/docker/docker-credential-helpers/LICENSE
+
+- package: github.com/docker/docker/pkg/homedir
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/github.com/docker/docker/pkg/homedir/LICENSE
+
 - package: github.com/GoogleCloudPlatform/buildpacks
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/buildpacks/github.com/GoogleCloudPlatform/buildpacks/LICENSE
+
+- package: github.com/google/go-containerregistry
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/github.com/google/go-containerregistry/LICENSE
 
 - package: github.com/hashicorp/go-cleanhttp
   license_name: MPL-2.0
@@ -33,6 +57,18 @@
   license_name: MPL-2.0
   license_path: /usr/local/share/licenses/buildpacks/github.com/hashicorp/go-retryablehttp/LICENSE
 
+- package: github.com/klauspost/compress
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/github.com/klauspost/compress/LICENSE
+
+- package: github.com/klauspost/compress/internal/snapref
+  license_name: BSD-3-Clause
+  license_path: /usr/local/share/licenses/buildpacks/github.com/klauspost/compress/internal/snapref/LICENSE
+
+- package: github.com/klauspost/compress/zstd/internal/xxhash
+  license_name: MIT
+  license_path: /usr/local/share/licenses/buildpacks/github.com/klauspost/compress/zstd/internal/xxhash/LICENSE.txt
+
 - package: github.com/Masterminds/semver
   license_name: MIT
   license_path: /usr/local/share/licenses/buildpacks/github.com/Masterminds/semver/LICENSE.txt
@@ -41,21 +77,45 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/buildpacks/github.com/Masterminds/semver/v3/LICENSE.txt
 
+- package: github.com/mitchellh/go-homedir
+  license_name: MIT
+  license_path: /usr/local/share/licenses/buildpacks/github.com/mitchellh/go-homedir/LICENSE
+
 - package: github.com/onsi/gomega/types
   license_name: MIT
   license_path: /usr/local/share/licenses/buildpacks/github.com/onsi/gomega/types/LICENSE
+
+- package: github.com/opencontainers/go-digest
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/github.com/opencontainers/go-digest/LICENSE
+
+- package: github.com/opencontainers/image-spec/specs-go
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/github.com/opencontainers/image-spec/specs-go/LICENSE
+
+- package: github.com/pkg/errors
+  license_name: BSD-2-Clause
+  license_path: /usr/local/share/licenses/buildpacks/github.com/pkg/errors/LICENSE
 
 - package: github.com/rs/xid
   license_name: MIT
   license_path: /usr/local/share/licenses/buildpacks/github.com/rs/xid/LICENSE
 
-- package: golang.org/x/net/context/ctxhttp
+- package: github.com/sirupsen/logrus
+  license_name: MIT
+  license_path: /usr/local/share/licenses/buildpacks/github.com/sirupsen/logrus/LICENSE
+
+- package: github.com/vbatts/tar-split/archive/tar
   license_name: BSD-3-Clause
-  license_path: /usr/local/share/licenses/buildpacks/golang.org/x/net/context/ctxhttp/LICENSE
+  license_path: /usr/local/share/licenses/buildpacks/github.com/vbatts/tar-split/archive/tar/LICENSE
 
 - package: golang.org/x/oauth2
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/buildpacks/golang.org/x/oauth2/LICENSE
+
+- package: golang.org/x/sync/errgroup
+  license_name: BSD-3-Clause
+  license_path: /usr/local/share/licenses/buildpacks/golang.org/x/sync/errgroup/LICENSE
 
 - package: golang.org/x/sys
   license_name: BSD-3-Clause
