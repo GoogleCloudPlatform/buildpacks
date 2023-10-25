@@ -30,6 +30,8 @@ steps:
 
   - id: google-18-build-stack-images
     name: bazel-pack
+    env:
+      - 'DOCKER_BUILDKIT=0'
     args: ['run', '//builders/gcp/base/stack:build']
 
   - id: google-18-create-builder
