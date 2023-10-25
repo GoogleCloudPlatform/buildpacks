@@ -7,12 +7,13 @@ package(default_visibility = [
 ])
 
 builder(
-    name = "builder",
+    name = "firebase_app_hosting_22_builder",
     buildpacks = [
+        "//cmd/nodejs/runtime:runtime.tgz",
         "//cmd/nodejs/npm:npm.tgz",
         "//cmd/nodejs/pnpm:pnpm.tgz",
-        "//cmd/nodejs/runtime:runtime.tgz",
         "//cmd/nodejs/yarn:yarn.tgz",
     ],
+    descriptor = "firebase.apphosting.22.builder.toml",
     image = "firebase/apphosting",
 )

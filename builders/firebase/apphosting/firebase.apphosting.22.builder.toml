@@ -1,12 +1,12 @@
-description = "Builder for Firebase App Hosting"
-
-[[buildpacks]]
-  id = "google.nodejs.npm"
-  uri = "npm.tgz"
+description = "Builder for Firebase App Hosting based on google.22"
 
 [[buildpacks]]
   id = "google.nodejs.runtime"
   uri = "runtime.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.npm"
+  uri = "npm.tgz"
 
 [[buildpacks]]
   id = "google.nodejs.yarn"
@@ -35,9 +35,9 @@ description = "Builder for Firebase App Hosting"
     id = "google.nodejs.npm"
 
 [stack]
-  id = "google.min.22"
-  build-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-min-22/build"
-  run-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-min-22/run"
+  id = "google.22"
+  build-image = "gcr.io/buildpacks/google-22/build"
+  run-image = "gcr.io/buildpacks/google-22/run"
 
 [lifecycle]
   version = "0.17.2"
