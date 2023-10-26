@@ -66,7 +66,7 @@ The application container image can then be executed locally:
 ```bash
 docker run --rm -p 8080:8080 <app-name>
 ```
-Locally, your application might depend on App Engine [enviroment variables](https://cloud.google.com/appengine/docs/standard/java-gen2/runtime#environment_variables) that would need to be set in the local environment.
+Locally, your application might depend on App Engine [environment variables](https://cloud.google.com/appengine/docs/standard/java-gen2/runtime#environment_variables) that would need to be set in the local environment.
 
 ## Learn more about Cloud Native Buildpacks
 
