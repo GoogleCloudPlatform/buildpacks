@@ -40,6 +40,7 @@ var (
 	goTarballURL          = "https://dl.google.com/go/go%s.linux-amd64.tar.gz"
 	runtimeImageARURL     = "%s-docker.pkg.dev/gae-runtimes/runtimes-%s/%s:%s"
 	runtimeImageARRepoURL = "%s-docker.pkg.dev/gae-runtimes/runtimes-%s/%s"
+	fallbackRegion        = "us"
 )
 
 // InstallableRuntime is used to hold runtimes information
@@ -191,8 +192,9 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	}
 	region, present := os.LookupEnv(env.RuntimeImageRegion)
 	if present && runtime == Python {
-		runtimeImageURL := runtimeImageURL(runtime, osName, version, region)
-		if err := fetch.ARImage(runtimeImageURL, layer.Path, stripComponents); err != nil {
+		url := runtimeImageURL(runtime, osName, version, region)
+		fallbackURL := runtimeImageURL(runtime, osName, version, fallbackRegion)
+		if err := fetch.ARImage(url, fallbackURL, layer.Path, stripComponents, ctx); err != nil {
 			ctx.Warnf("Failed to download %s version %s osName %s from artifact registry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
 			return false, err
 		}
