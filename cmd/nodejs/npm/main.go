@@ -130,14 +130,14 @@ func buildFn(ctx *gcp.Context) error {
 			if _, err := ctx.Exec([]string{"npm", installCmd, "--quiet"}, gcp.WithEnv("NODE_ENV="+buildNodeEnv), gcp.WithUserAttribution); err != nil {
 				return err
 			}
+			// Ensure node_modules exists even if no dependencies were installed.
+			if err := ctx.MkdirAll("node_modules", 0755); err != nil {
+				return err
+			}
+			if _, err := ctx.Exec([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution); err != nil {
+				return err
+			}
 		}
-	}
-	// Ensure node_modules exists even if no dependencies were installed.
-	if err := ctx.MkdirAll("node_modules", 0755); err != nil {
-		return err
-	}
-	if _, err := ctx.Exec([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution); err != nil {
-		return err
 	}
 
 	if len(buildCmds) > 0 {
