@@ -164,6 +164,18 @@ func TestIsReleaseCandidate(t *testing.T) {
 			want:    true,
 		},
 		{
+			version: "8.3.0RC4",
+			want:    true,
+		},
+		{
+			version: "8.0.100-rc.1",
+			want:    true,
+		},
+		{
+			version: "3.2.0-rc1",
+			want:    true,
+		},
+		{
 			version: "3.12.0",
 			want:    false,
 		},
