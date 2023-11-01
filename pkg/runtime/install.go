@@ -83,6 +83,7 @@ var stackToOS = map[string]string{
 	"google.22":     ubuntu2204,
 	"google.gae.22": ubuntu2204,
 	"google.min.22": ubuntu2204,
+	"firebase.22":   ubuntu2204,
 }
 
 const (

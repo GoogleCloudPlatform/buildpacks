@@ -15,7 +15,7 @@ $ bazel build //builders/firebase/apphosting:firebase_app_hosting_22_builder.ima
 To build the sample application [generic/simple](../../testdata/nodejs/generic/simple/), run:
 
 ```bash
-pack build sample-nodejs --builder firebase/apphosting --path builders/testdata/nodejs/generic/simple/ --trust-builder -v
+$ pack build sample-nodejs --builder firebase/apphosting --path builders/testdata/nodejs/generic/simple/ --trust-builder -v
 ```
 
 ## Acceptance Tests

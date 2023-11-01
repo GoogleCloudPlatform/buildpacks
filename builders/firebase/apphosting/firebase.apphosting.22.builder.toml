@@ -1,4 +1,4 @@
-description = "Builder for Firebase App Hosting based on google.22"
+description = "Builder for Firebase App Hosting"
 
 [[buildpacks]]
   id = "google.nodejs.runtime"
@@ -35,9 +35,9 @@ description = "Builder for Firebase App Hosting based on google.22"
     id = "google.nodejs.npm"
 
 [stack]
-  id = "google.22"
-  build-image = "gcr.io/buildpacks/google-22/build"
-  run-image = "gcr.io/buildpacks/google-22/run"
+  id = "firebase.apphosting.22"
+  build-image = "gcr.io/buildpacks/firebase-app-hosting-22/build"
+  run-image = "gcr.io/buildpacks/firebase-app-hosting-22/run"
 
 [lifecycle]
   version = "0.17.2"
