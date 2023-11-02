@@ -36,6 +36,32 @@ var (
 	supportedLabelTypes = []labelType{Bool, Int, String}
 )
 
+func labelListsMatch(ll1, ll2 []Label) bool {
+	if len(ll1) != len(ll2) {
+		return false
+	}
+	seen1 := make(map[Label]int)
+	seen2 := make(map[Label]int)
+	for _, l1 := range ll1 {
+		seen1[l1]++
+	}
+	for _, l2 := range ll2 {
+		seen2[l2]++
+	}
+
+	if len(seen1) != len(seen2) {
+		return false
+	}
+
+	for s1k, s1v := range seen1 {
+		s2v, found := seen2[s1k]
+		if !found || s1v != s2v {
+			return false
+		}
+	}
+	return true
+}
+
 // Field defines an additional field to be attached to a metric.
 type Field struct {
 	Label Label `json:"l,omitempty"`

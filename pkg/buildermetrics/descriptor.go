@@ -14,8 +14,43 @@
 
 package buildermetrics
 
+import (
+	"fmt"
+)
+
+// MetricID is a unique identifier for a metric.
+type MetricID string
+
+// Descriptor returns the registered Descriptor for a given MetricID
+func (m MetricID) Descriptor() (Descriptor, error) {
+	desc, ok := descriptors[m]
+	if !ok {
+		return Descriptor{}, fmt.Errorf("Descriptor for MetricID %q not found", m)
+	}
+	if desc.Name == "" || desc.Description == "" {
+		return Descriptor{}, fmt.Errorf("Descriptor %q (for MetricID %q) must have both a Name and a Description", desc, m)
+	}
+	return desc, nil
+}
+
 // Descriptor provides details about a metric
 type Descriptor struct {
+	ID          MetricID // This is useful to have for encoding, to avoid looping through all descriptors to lookup for each stream
 	Name        string
 	Description string
+	Labels      []Label
+}
+
+func (d1 Descriptor) equal(d2 Descriptor) bool {
+	return d1.ID == d2.ID && d1.Name == d2.Name && d1.Description == d2.Description && labelListsMatch(d1.Labels, d2.Labels)
+}
+
+// newDescriptor creates a new Descriptor.
+func newDescriptor(id MetricID, name string, description string, labels ...Label) Descriptor {
+	return Descriptor{
+		ID:          id,
+		Name:        name,
+		Description: description,
+		Labels:      labels,
+	}
 }

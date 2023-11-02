@@ -52,56 +52,56 @@ func TestBuilderMetricsUnmarshalJSON(t *testing.T) {
 			name:  "empty",
 			input: []byte(`{}`),
 			want: BuilderMetrics{
-				map[CounterID]*Counter{},
-				map[FloatDPID]*FloatDP{},
+				map[MetricID]*Counter{},
+				map[MetricID]*FloatDP{},
 			},
 		},
 		{
 			name:  "basic counter",
 			input: []byte(`{"c":{"1":3}}`),
 			want: BuilderMetrics{
-				map[CounterID]*Counter{"1": &Counter{3}},
-				map[FloatDPID]*FloatDP{},
+				map[MetricID]*Counter{"1": &Counter{3}},
+				map[MetricID]*FloatDP{},
 			},
 		},
 		{
 			name:  "multiple counter",
 			input: []byte(`{"c":{"1":3,"2":18}}`),
 			want: BuilderMetrics{
-				map[CounterID]*Counter{"1": &Counter{3}, "2": &Counter{18}},
-				map[FloatDPID]*FloatDP{},
+				map[MetricID]*Counter{"1": &Counter{3}, "2": &Counter{18}},
+				map[MetricID]*FloatDP{},
 			},
 		},
 		{
 			name:  "basic float",
 			input: []byte(`{"f":{"1":3}}`),
 			want: BuilderMetrics{
-				map[CounterID]*Counter{},
-				map[FloatDPID]*FloatDP{"1": &FloatDP{3}},
+				map[MetricID]*Counter{},
+				map[MetricID]*FloatDP{"1": &FloatDP{3}},
 			},
 		},
 		{
 			name:  "multiple float",
 			input: []byte(`{"f":{"1":3.3,"2":18.18}}`),
 			want: BuilderMetrics{
-				map[CounterID]*Counter{},
-				map[FloatDPID]*FloatDP{"1": &FloatDP{3.3}, "2": &FloatDP{18.18}},
+				map[MetricID]*Counter{},
+				map[MetricID]*FloatDP{"1": &FloatDP{3.3}, "2": &FloatDP{18.18}},
 			},
 		},
 		{
 			name:  "both",
 			input: []byte(`{"c":{"1":3}, "f":{"1":3.3,"2":18.18}}`),
 			want: BuilderMetrics{
-				map[CounterID]*Counter{"1": &Counter{3}},
-				map[FloatDPID]*FloatDP{"1": &FloatDP{3.3}, "2": &FloatDP{18.18}},
+				map[MetricID]*Counter{"1": &Counter{3}},
+				map[MetricID]*FloatDP{"1": &FloatDP{3.3}, "2": &FloatDP{18.18}},
 			},
 		},
 		{
 			name:  "unordered",
 			input: []byte(`{"f":{"1":3.3,"2":18.18}, "c":{"1":3}}`),
 			want: BuilderMetrics{
-				map[CounterID]*Counter{"1": &Counter{3}},
-				map[FloatDPID]*FloatDP{"1": &FloatDP{3.3}, "2": &FloatDP{18.18}},
+				map[MetricID]*Counter{"1": &Counter{3}},
+				map[MetricID]*FloatDP{"1": &FloatDP{3.3}, "2": &FloatDP{18.18}},
 			},
 		},
 	}
@@ -129,32 +129,32 @@ func TestBuilderMetricsMarshalJSON(t *testing.T) {
 	}{
 		{
 			name:  "empty",
-			input: BuilderMetrics{map[CounterID]*Counter{}, map[FloatDPID]*FloatDP{}},
+			input: BuilderMetrics{map[MetricID]*Counter{}, map[MetricID]*FloatDP{}},
 			want:  []byte(`{}`),
 		},
 		{
 			name:  "basic counter",
-			input: BuilderMetrics{map[CounterID]*Counter{"1": &Counter{3}}, map[FloatDPID]*FloatDP{}},
+			input: BuilderMetrics{map[MetricID]*Counter{"1": &Counter{3}}, map[MetricID]*FloatDP{}},
 			want:  []byte(`{"c":{"1":3}}`),
 		},
 		{
 			name:  "multiple counter",
-			input: BuilderMetrics{map[CounterID]*Counter{"1": &Counter{3}, "2": &Counter{18}}, map[FloatDPID]*FloatDP{}},
+			input: BuilderMetrics{map[MetricID]*Counter{"1": &Counter{3}, "2": &Counter{18}}, map[MetricID]*FloatDP{}},
 			want:  []byte(`{"c":{"1":3,"2":18}}`),
 		},
 		{
 			name:  "basic float",
-			input: BuilderMetrics{map[CounterID]*Counter{}, map[FloatDPID]*FloatDP{"1": &FloatDP{3.3}}},
+			input: BuilderMetrics{map[MetricID]*Counter{}, map[MetricID]*FloatDP{"1": &FloatDP{3.3}}},
 			want:  []byte(`{"f":{"1":3.3}}`),
 		},
 		{
 			name:  "multiple float",
-			input: BuilderMetrics{map[CounterID]*Counter{}, map[FloatDPID]*FloatDP{"1": &FloatDP{3.3}, "2": &FloatDP{18.18}}},
+			input: BuilderMetrics{map[MetricID]*Counter{}, map[MetricID]*FloatDP{"1": &FloatDP{3.3}, "2": &FloatDP{18.18}}},
 			want:  []byte(`{"f":{"1":3.3,"2":18.18}}`),
 		},
 		{
 			name:  "both",
-			input: BuilderMetrics{map[CounterID]*Counter{"1": &Counter{3}}, map[FloatDPID]*FloatDP{"1": &FloatDP{3.3}, "2": &FloatDP{18.18}}},
+			input: BuilderMetrics{map[MetricID]*Counter{"1": &Counter{3}}, map[MetricID]*FloatDP{"1": &FloatDP{3.3}, "2": &FloatDP{18.18}}},
 			want:  []byte(`{"c":{"1":3},"f":{"1":3.3,"2":18.18}}`),
 		},
 	}
@@ -182,7 +182,7 @@ func TestForEachCounter(t *testing.T) {
 	c2.Increment(5)
 	c3.Increment(8)
 	sum := int64(0)
-	b.ForEachCounter(func(id CounterID, c *Counter) {
+	b.ForEachCounter(func(id MetricID, c *Counter) {
 		sum += c.Value()
 	})
 	want := c1.Value() + c2.Value() + c3.Value()
@@ -200,7 +200,7 @@ func TestForEachFloatDPMetric(t *testing.T) {
 	f2.Add(5.5)
 	f3.Add(8.8)
 	sum := float64(0)
-	b.ForEachFloatDP(func(id FloatDPID, f *FloatDP) {
+	b.ForEachFloatDP(func(id MetricID, f *FloatDP) {
 		sum += f.Value()
 	})
 	want := f1.Value() + f2.Value() + f3.Value()

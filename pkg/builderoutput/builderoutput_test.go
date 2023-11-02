@@ -27,7 +27,7 @@ func TestFromJSON(t *testing.T) {
 	serialized := `
 {
 	"rtVersions": ["6.0.6"],
-  "metrics": {"c":{"1":3},"f":{"2":18.3}},
+  "metrics": {"c":{"1":3},"f":{"9":18.3}},
 	"error": {
 		"buildpackId": "bad-buildpack",
 		"buildpackVersion": "vbad",

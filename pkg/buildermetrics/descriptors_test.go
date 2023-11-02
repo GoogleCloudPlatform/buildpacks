@@ -18,11 +18,11 @@ import (
 	"testing"
 )
 
-// This test validates the descriptors that are defined in counterDescriptors
+// This test validates the descriptors defined in descriptors.go.
 func TestValidateDescriptors(t *testing.T) {
-	for k, v := range counterDescriptors {
-		if v.Name == "" || v.Description == "" {
-			t.Errorf("Descriptor %q (for CounterID %q) must have both a Name and a Description", v, k)
+	for id, d := range descriptors {
+		if err := validateDescriptor(id, d); err != nil {
+			t.Errorf("failed to validate Descriptor %v: %v", d.Name, err)
 		}
 	}
 }
