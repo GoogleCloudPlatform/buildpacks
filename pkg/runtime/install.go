@@ -278,6 +278,11 @@ func PinGemAndBundlerVersion(ctx *gcp.Context, version string, layer *libcnb.Lay
 	return nil
 }
 
+// IsReleaseCandidate returns true if given string is a RC candidate version.
+func IsReleaseCandidate(verConstraint string) bool {
+	return version.IsReleaseCandidate(verConstraint)
+}
+
 // ResolveVersion returns the newest available version of a runtime that satisfies the provided
 // version constraint.
 func ResolveVersion(runtime InstallableRuntime, verConstraint, osName string) (string, error) {
@@ -285,7 +290,7 @@ func ResolveVersion(runtime InstallableRuntime, verConstraint, osName string) (s
 		// Go provides its own version manifest so it has its own version resolution logic.
 		return golang.ResolveGoVersion(verConstraint)
 	}
-	if version.IsExactSemver(verConstraint) || version.IsReleaseCandidate(verConstraint) {
+	if version.IsExactSemver(verConstraint) || IsReleaseCandidate(verConstraint) {
 		return verConstraint, nil
 	}
 

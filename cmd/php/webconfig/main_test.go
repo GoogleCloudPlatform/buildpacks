@@ -93,6 +93,11 @@ func TestPhpFpm_DisableDecorateWorkersOutput_ForPhp_Gte_730(t *testing.T) {
 			version:                          "8.1.0",
 			wantDecorateWorkersOutputEqualNo: true,
 		},
+		{
+			name:                             "runtime is 8.3.0RC4, decorate_workers_output set to no",
+			version:                          "8.3.0RC4",
+			wantDecorateWorkersOutputEqualNo: true,
+		},
 	}
 
 	for _, tc := range testCases {
