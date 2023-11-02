@@ -44,6 +44,14 @@ const (
 
 	// FFJarPathEnv is an environment variable which is used to store the path to the functions framework invoker jar.
 	FFJarPathEnv = "GOOGLE_INTERNAL_FUNCTIONS_FRAMEWORK_JAR"
+
+	// GradleBuildArgs is an env var used to append arguments to the gradle build command.
+	// Example: `clean assemble` for Maven apps run "gradle clean assemble" command.
+	GradleBuildArgs = "GOOGLE_GRADLE_BUILD_ARGS"
+
+	// MavenBuildArgs is an env var used to append arguments to the mvn build command.
+	// Example: `clean package` for Maven apps run "mvn clean package" command.
+	MavenBuildArgs = "GOOGLE_MAVEN_BUILD_ARGS"
 )
 
 var (

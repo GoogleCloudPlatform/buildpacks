@@ -109,6 +109,10 @@ func buildFn(ctx *gcp.Context) error {
 		command = append(command, strings.Fields(buildArgs)...)
 	}
 
+	if mvnBuildArgs := os.Getenv(java.MavenBuildArgs); mvnBuildArgs != "" {
+		command = append([]string{mvn}, strings.Fields(mvnBuildArgs)...)
+	}
+
 	if !ctx.Debug() && !devmode.Enabled(ctx) {
 		command = append(command, "--quiet")
 	}

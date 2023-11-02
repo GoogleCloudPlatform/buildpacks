@@ -92,6 +92,10 @@ func buildFn(ctx *gcp.Context) error {
 		command = append(command, buildArgs)
 	}
 
+	if gradleBuildArgs := os.Getenv(java.GradleBuildArgs); gradleBuildArgs != "" {
+		command = append([]string{gradle}, strings.Fields(gradleBuildArgs)...)
+	}
+
 	if !ctx.Debug() && !devmode.Enabled(ctx) {
 		command = append(command, "--quiet")
 	}
