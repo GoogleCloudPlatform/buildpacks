@@ -19,7 +19,7 @@ import (
 )
 
 // This test validates the descriptors that are defined in floatDPDescriptors
-func TestValidateDescriptors(t *testing.T) {
+func TestValidateFloatDPDescriptors(t *testing.T) {
 	for k, v := range floatDPDescriptors {
 		if v.Name == "" || v.Description == "" {
 			t.Errorf("Descriptor %q (for FloatDPID %q) must have both a Name and a Description", v, k)

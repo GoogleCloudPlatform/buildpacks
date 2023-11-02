@@ -13,6 +13,7 @@ go_library(
         "descriptor.go",
         "floatdp.go",
         "floatdpids.go",
+        "metricfield.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = ["//visibility:public"],
@@ -24,18 +25,12 @@ go_test(
     srcs = [
         "buildermetrics_test.go",
         "counter_test.go",
+        "counterids_test.go",
         "floatdp_test.go",
         "floatdpids_test.go",
+        "metricfield_test.go",
     ],
     embed = [":buildermetrics"],
     rundir = ".",
     deps = ["@com_github_google_go-cmp//cmp:go_default_library"],
-)
-
-go_test(
-    name = "counterids_test",
-    size = "small",
-    srcs = ["counterids_test.go"],
-    embed = [":buildermetrics"],
-    rundir = ".",
 )
