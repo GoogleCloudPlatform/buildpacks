@@ -7,7 +7,6 @@ IMPORTANT: Firebase "App Hosting" is a new product name from Firebase and unrela
 To build the builder image, run:
 
 ```bash
-$ docker pull gcr.io/buildpacks/google-22/build
 $ bazel build //builders/firebase/apphosting:firebase_app_hosting_22_builder.image
 ```
 
@@ -22,5 +21,5 @@ $ pack build sample-nodejs --builder firebase/apphosting --path builders/testdat
 To run the acceptance tests across all the products, run:
 
 ```bash
-bazel test //builders/firebase/apphosting/acceptance:nodejs_test
+$ bazel test //builders/firebase/apphosting/acceptance:nodejs_test
 ```
