@@ -290,7 +290,9 @@ func ResolveVersion(runtime InstallableRuntime, verConstraint, osName string) (s
 		// Go provides its own version manifest so it has its own version resolution logic.
 		return golang.ResolveGoVersion(verConstraint)
 	}
-	if version.IsExactSemver(verConstraint) || IsReleaseCandidate(verConstraint) {
+	// Some release candidates do not follow the convention for semver
+	// Specifically php. example - 8.3.0RC4.
+	if IsReleaseCandidate(verConstraint) || version.IsExactSemver(verConstraint) {
 		return verConstraint, nil
 	}
 
