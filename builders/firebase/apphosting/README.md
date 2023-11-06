@@ -7,7 +7,7 @@ IMPORTANT: Firebase "App Hosting" is a new product name from Firebase and unrela
 To build the builder image, run:
 
 ```bash
-$ bazel build //builders/firebase/apphosting:firebase_app_hosting_22_builder.image
+$ bazel build //builders/firebase/apphosting:builder.image
 ```
 
 ## Build a Test Application

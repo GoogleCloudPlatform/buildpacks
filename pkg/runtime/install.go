@@ -78,12 +78,12 @@ var runtimeNames = map[InstallableRuntime]string{
 
 // stackToOS contains the mapping of Stack to OS.
 var stackToOS = map[string]string{
-	"google":        ubuntu1804,
-	"google.gae.18": ubuntu1804,
-	"google.22":     ubuntu2204,
-	"google.gae.22": ubuntu2204,
-	"google.min.22": ubuntu2204,
-	"firebase.22":   ubuntu2204,
+	"google":                 ubuntu1804,
+	"google.gae.18":          ubuntu1804,
+	"google.22":              ubuntu2204,
+	"google.gae.22":          ubuntu2204,
+	"google.min.22":          ubuntu2204,
+	"firebase.apphosting.22": ubuntu2204,
 }
 
 const (
