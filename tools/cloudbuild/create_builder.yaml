@@ -112,7 +112,7 @@ steps:
 
   - id: firebase-app-hosting-22-builder-image
     name: bazel-pack
-    args: ['build', '//builders/firebase/apphosting:firebase_app_hosting_22_builder.image']
+    args: ['build', '//builders/firebase/apphosting:builder.image']
 
   - id: firebase-app-hosting-22-run-acceptance-tests
     name: bazel-pack
