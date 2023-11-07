@@ -48,6 +48,14 @@ RUN \
   groupadd cnb --gid ${cnb_gid} && \
   useradd --uid ${cnb_uid} --gid ${cnb_gid} -m -s /bin/bash cnb
 
+# Install the following packages separately as putting them in packages.txt 
+# will cause "unable to locate packages" error
+RUN export DEBIAN_FRONTEND=noninteractive && \
+  apt-get update -y && \
+  apt-get upgrade -y --no-install-recommends --allow-remove-essential && \
+  apt-get -y -qq --no-install-recommends --allow-remove-essential install \
+    libzip4
+
 USER cnb
 
 ENV LANG="en_US.UTF-8"
