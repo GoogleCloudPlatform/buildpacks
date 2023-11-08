@@ -147,6 +147,13 @@ func supportsDecorateWorkersOutput(ctx *gcp.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	// Only latest php versions post 8.3 version are tested with RC candidate
+	// and will support the below constraint (>= 7.3.0).
+	if runtime.IsReleaseCandidate(v) {
+		return true, nil
+	}
+
 	c, err := semver.NewConstraint(">= 7.3.0")
 	if err != nil {
 		return false, err

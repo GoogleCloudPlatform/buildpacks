@@ -26,6 +26,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
@@ -204,6 +205,86 @@ func TestInstallRuby(t *testing.T) {
 	}
 }
 
+func TestInstallSource(t *testing.T) {
+	testCases := []struct {
+		name               string
+		runtime            InstallableRuntime
+		version            string
+		httpStatus         int
+		stackID            string
+		responseFile       string
+		runtimeImageRegion string
+		wantFile           string
+		wantVersion        string
+		wantError          bool
+	}{
+		{
+			name:         "install with lorry",
+			runtime:      Ruby,
+			version:      "2.x.x",
+			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
+			wantFile:     "lib/foo.txt",
+			wantVersion:  "2.2.2",
+		},
+		{
+			name:               "install with artifact registry",
+			runtime:            Python,
+			version:            "2.x.x",
+			runtimeImageRegion: "us-west1",
+			wantError:          true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// stub the file server
+			testserver.New(
+				t,
+				testserver.WithStatus(tc.httpStatus),
+				testserver.WithFile(testdata.MustGetPath(tc.responseFile)),
+				testserver.WithMockURL(&googleTarballURL))
+
+			// stub the version manifest
+			testserver.New(
+				t,
+				testserver.WithStatus(http.StatusOK),
+				testserver.WithJSON(`["1.1.1","3.3.3","2.2.2"]`),
+				testserver.WithMockURL(&runtimeVersionsURL),
+			)
+
+			layer := &libcnb.Layer{
+				Path:     t.TempDir(),
+				Metadata: map[string]any{},
+			}
+
+			layer.Cache = true
+			if tc.stackID == "" {
+				tc.stackID = "google.gae.18"
+			}
+			ctx := gcp.NewContext(gcp.WithStackID(tc.stackID))
+			if tc.runtimeImageRegion != "" {
+				t.Setenv(env.RuntimeImageRegion, tc.runtimeImageRegion)
+			}
+			_, err := InstallTarballIfNotCached(ctx, tc.runtime, tc.version, layer)
+			if tc.wantError == (err == nil) {
+				t.Fatalf("InstallTarballIfNotCached(ctx, %q, %q) got error: %v, want error? %v", Python, tc.version, err, tc.wantError)
+			}
+
+			if !tc.wantError {
+				if tc.wantFile != "" {
+					fp := filepath.Join(layer.Path, tc.wantFile)
+					if _, err := os.Stat(fp); err != nil {
+						t.Errorf("Failed to extract. Missing file: %s (%v)", fp, err)
+					}
+				}
+				if tc.wantVersion != "" && layer.Metadata["version"] != tc.wantVersion {
+					t.Errorf("Layer Metadata.version = %q, want %q", layer.Metadata["version"], tc.wantVersion)
+				}
+			}
+		})
+	}
+}
+
 func TestPinGemAndBundlerVersion(t *testing.T) {
 	testCases := []struct {
 		name         string
@@ -312,6 +393,48 @@ func TestPinGemAndBundlerVersion(t *testing.T) {
 					t.Errorf("PinGemAndBundlerVersion(ctx, %q, l) error = %s, want %s", tc.version,
 						err.Error(), tc.wantError)
 				}
+			}
+		})
+	}
+}
+
+func TestRuntimeImageURL(t *testing.T) {
+	testCases := []struct {
+		runtime InstallableRuntime
+		osName  string
+		version string
+		region  string
+		want    string
+	}{
+		{
+			runtime: "python",
+			osName:  "ubuntu1804",
+			version: "3.7.2",
+			region:  "us",
+			want:    "us-docker.pkg.dev/gae-runtimes/runtimes-ubuntu1804/python:3.7.2",
+		},
+		{
+			runtime: "nodejs",
+			osName:  "ubuntu2204",
+			version: "18.18.1",
+			region:  "eu",
+			want:    "eu-docker.pkg.dev/gae-runtimes/runtimes-ubuntu2204/nodejs:18.18.1",
+		},
+		{
+			runtime: "php",
+			osName:  "ubuntu2204",
+			version: "8.2.0",
+			region:  "us-west1",
+			want:    "us-west1-docker.pkg.dev/gae-runtimes/runtimes-ubuntu2204/php:8.2.0",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("%s-%s-%s-%s", tc.runtime, tc.osName, tc.version, tc.region), func(t *testing.T) {
+			runtimeImageURL := runtimeImageURL(tc.runtime, tc.osName, tc.version, tc.region)
+
+			if runtimeImageURL != tc.want {
+				t.Errorf("runtimeImageURL got %s, want %s", runtimeImageURL, tc.want)
 			}
 		})
 	}

@@ -1,0 +1,34 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+exports_files(["config.yaml"])
+
+go_library(
+    name = "acceptance",
+    srcs = ["acceptance.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+)
+
+go_test(
+    name = "nodejs_test",
+    size = "enormous",
+    srcs = ["nodejs_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata/nodejs:generic)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/firebase/apphosting:builder.tar)",
+        "-builder-prefix=firebase-apphosting-nodejs-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/firebase/apphosting:builder.tar",
+        "//builders/testdata/nodejs:generic",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//internal/acceptance"],
+)

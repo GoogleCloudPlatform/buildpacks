@@ -11,7 +11,7 @@ buildpack(
         ":main",
     ],
     prefix = "nodejs",
-    version = "1.0.0",
+    version = "1.0.1",
     visibility = [
         "//builders:nodejs_builders",
     ],
@@ -27,6 +27,7 @@ go_binary(
     ],
     deps = [
         "//pkg/ar",
+        "//pkg/buildermetrics",
         "//pkg/cache",
         "//pkg/devmode",
         "//pkg/gcpbuildpack",

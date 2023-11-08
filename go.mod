@@ -6,6 +6,7 @@ go 1.19
 require (
 	github.com/buildpacks/libcnb v1.27.0
 	github.com/BurntSushi/toml v0.3.1
+	github.com/google/go-containerregistry v0.16.1
 	github.com/google/go-licenses v0.0.0-20200602185517-f29a4c695c3d // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.7
 	github.com/Masterminds/semver/v3 v3.1.1

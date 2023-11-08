@@ -31,6 +31,8 @@ VERSIONS_WITH_FLEX_SUPPORT = {
     "python38": gae_runtimes["python38"],
     "python39": gae_runtimes["python39"],
     "python310": gae_runtimes["python310"],
+    "python311": gae_runtimes["python311"],
+    "python312": gae_runtimes["python312"],
 }
 
 acceptance_test_suite(
@@ -40,6 +42,11 @@ acceptance_test_suite(
     ],
     builder = "//builders/python:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "python310": "//builders/python:builder_22.tar",
+        "python311": "//builders/python:builder_22.tar",
+        "python312": "//builders/python:builder_22.tar",
+    },
     testdata = "//builders/testdata/python:generic",
     versions = VERSIONS_WITH_GCP_SUPPORT,
 )
@@ -52,6 +59,11 @@ acceptance_test_suite(
     argsmap = pythonargs(),
     builder = "//builders/python:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "python310": "//builders/python:builder_22.tar",
+        "python311": "//builders/python:builder_22.tar",
+        "python312": "//builders/python:builder_22.tar",
+    },
     testdata = "//builders/testdata/python:appengine",
     versions = VERSIONS_WITH_GAE_SUPPORT,
 )
@@ -63,6 +75,11 @@ acceptance_test_suite(
     ],
     builder = "//builders/python:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "python310": "//builders/python:builder_22.tar",
+        "python311": "//builders/python:builder_22.tar",
+        "python312": "//builders/python:builder_22.tar",
+    },
     testdata = "//builders/testdata/python:functions",
     versions = VERSIONS_WITH_GCF_SUPPORT,
 )
@@ -72,6 +89,11 @@ acceptance_test_suite(
     srcs = ["flex_test.go"],
     builder = "//builders/python:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "python310": "//builders/python:builder_22.tar",
+        "python311": "//builders/python:builder_22.tar",
+        "python312": "//builders/python:builder_22.tar",
+    },
     testdata = "//builders/testdata/python:flex",
     versions = VERSIONS_WITH_FLEX_SUPPORT,
 )

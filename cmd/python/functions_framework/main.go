@@ -83,6 +83,9 @@ func buildFn(ctx *gcp.Context) error {
 			return fmt.Errorf("clearing layer %q: %w", l.Name, err)
 		}
 	} else {
+		if _, isVendored := os.LookupEnv(python.VendorPipDepsEnv); isVendored {
+			return gcp.UserErrorf("Vendored dependencies detected, please add functions-framework to requirements.txt and download it using pip")
+		}
 		ctx.Logf("Handling functions without dependency on functions-framework.")
 		if err := cloudfunctions.AssertFrameworkInjectionAllowed(); err != nil {
 			return err

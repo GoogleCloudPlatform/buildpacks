@@ -32,7 +32,7 @@ import (
 
 const (
 	// TODO(b/151198698): Automate Maven version updates.
-	mavenVersion = "3.9.4"
+	mavenVersion = "3.9.5"
 	mavenURL     = "https://archive.apache.org/dist/maven/maven-3/%[1]s/binaries/apache-maven-%[1]s-bin.tar.gz"
 	mavenLayer   = "maven"
 	m2Layer      = "m2"
@@ -106,6 +106,10 @@ func buildFn(ctx *gcp.Context) error {
 			ctx.Warnf("Detected maven.repo.local property set in GOOGLE_BUILD_ARGS. Maven caching may not work properly.")
 		}
 		command = append(command, strings.Fields(buildArgs)...)
+	}
+
+	if mvnBuildArgs := os.Getenv(java.MavenBuildArgs); mvnBuildArgs != "" {
+		command = append([]string{mvn}, strings.Fields(mvnBuildArgs)...)
 	}
 
 	if !ctx.Debug() && !devmode.Enabled(ctx) {

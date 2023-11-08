@@ -73,8 +73,16 @@ func TestAcceptancePython(t *testing.T) {
 			App:     "native_extensions",
 			Env:     []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
-			// numpy requires Python 3.8 or newer.
-			VersionInclusionConstraint: ">= 3.8.0",
+			// numpy 1.23.1 requires Python 3.8 and <3.12.0.
+			VersionInclusionConstraint: ">=3.8.0 <3.12.0",
+		},
+		{
+			Name:    "python module dependency using a native extension for 3.9 and above",
+			App:     "native_extensions_above_python39",
+			Env:     []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
+			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+			// numpy 1.26.0 needed to support 3.12 only works on python 3.9 and above.
+			VersionInclusionConstraint: ">= 3.9.0",
 		},
 		{
 			Name:    "pip vendored dependencies",
@@ -87,7 +95,8 @@ func TestAcceptancePython(t *testing.T) {
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			acceptance.TestApp(t, imageCtx, tc)
 		})
@@ -110,7 +119,8 @@ func TestFailuresPython(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}

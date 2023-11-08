@@ -1,2 +1,3 @@
 flask==2.0.3
 hatch # this package relies on pip
+Werkzeug==2.2.2 # Flask 2.x incompatible with latest Werkzeug 3.x as of 10/2023

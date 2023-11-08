@@ -30,6 +30,8 @@ steps:
 
   - id: google-18-build-stack-images
     name: bazel-pack
+    env:
+      - 'DOCKER_BUILDKIT=0'
     args: ['run', '//builders/gcp/base/stack:build']
 
   - id: google-18-create-builder
@@ -86,6 +88,44 @@ steps:
       - '--jobs=2'
       - '//builders/gcp/base/acceptance/...'
 
+  - id: firebase-app-hosting-22-build-image
+    name: gcr.io/cloud-builders/docker
+    dir: stacks/firebase_app_hosting_22
+    args:
+    - 'build'
+    - '--build-arg="packages=build-packages.txt"'
+    - '--build-arg="CANDIDATE_NAME=${_CANDIDATE_NAME}"'
+    - '-t=gcr.io/buildpacks/firebase-app-hosting-22/build:latest'
+    - '-f=build.Dockerfile'
+    - '.'
+
+  - id: firebase-app-hosting-22-run-image
+    name: gcr.io/cloud-builders/docker
+    dir: stacks/firebase_app_hosting_22
+    args:
+    - 'build'
+    - '--build-arg="packages=run-packages.txt"'
+    - '--build-arg="CANDIDATE_NAME=${_CANDIDATE_NAME}"'
+    - '-t=gcr.io/buildpacks/firebase-app-hosting-22/run:latest'
+    - '-f=run.Dockerfile'
+    - '.'
+
+  - id: firebase-app-hosting-22-builder-image
+    name: bazel-pack
+    args: ['build', '//builders/firebase/apphosting:builder.image']
+
+  - id: firebase-app-hosting-22-run-acceptance-tests
+    name: bazel-pack
+    args:
+      - 'test'
+      - '--test_output=errors'
+      - '--flaky_test_attempts=3'
+      - '--test_arg=-cloudbuild'
+      - '--test_arg=-pull-images=false'
+      - '--test_arg=-builder-image=firebase/apphosting'
+      - '--jobs=2'
+      - '//builders/firebase/apphosting/acceptance/...'
+
   - id: add-licenses
     name: bazel-pack
     entrypoint: /bin/bash
@@ -94,6 +134,15 @@ steps:
   - id: validate-licenses
     name: gcr.io/gae-runtimes/license_validator:current
     args: ['-pull_images=false', 'gcp/base']
+
+  - id: add-firebase-licenses
+    name: bazel-pack
+    entrypoint: /bin/bash
+    args: ['-c', 'tools/licenses/add.sh firebase/apphosting']
+
+  - id: validate-firebase-licenses
+    name: gcr.io/gae-runtimes/license_validator:current
+    args: ['-pull_images=false', 'firebase/apphosting']
 
   - id: tag-images
     name: bazel-pack
@@ -117,6 +166,9 @@ steps:
         && docker tag google-22/builder gcr.io/$PROJECT_ID/google-22/builder:$COMMIT_SHA
         && docker tag google-22/builder gcr.io/$PROJECT_ID/builder:google-22
         && docker tag google-22/builder gcr.io/$PROJECT_ID/builder:latest
+        && docker tag gcr.io/buildpacks/firebase-app-hosting-22/build:latest gcr.io/$PROJECT_ID/firebase-app-hosting-22/build:$COMMIT_SHA
+        && docker tag gcr.io/buildpacks/firebase-app-hosting-22/run:latest gcr.io/$PROJECT_ID/firebase-app-hosting-22/run:$COMMIT_SHA
+        && docker tag firebase/apphosting gcr.io/$PROJECT_ID/firebase-app-hosting-22/builder:$COMMIT_SHA
 
   - id: push_google22_builder
     name: 'gcr.io/cloud-builders/docker'
@@ -189,6 +241,9 @@ images:
   - 'gcr.io/$PROJECT_ID/google-22/builder:latest'
   - 'gcr.io/$PROJECT_ID/google-22/builder:$COMMIT_SHA'
   - 'gcr.io/$PROJECT_ID/builder:google-22'
+  - 'gcr.io/$PROJECT_ID/firebase-app-hosting-22/build:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/firebase-app-hosting-22/run:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/firebase-app-hosting-22/builder:$COMMIT_SHA'
 
 substitutions:
   _CANDIDATE_NAME: localbuild

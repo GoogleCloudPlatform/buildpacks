@@ -15,9 +15,12 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 )
 
 func TestDetect(t *testing.T) {
@@ -49,6 +52,63 @@ func TestDetect(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+		})
+	}
+}
+
+func TestBuildCommand(t *testing.T) {
+	testCases := []struct {
+		name              string
+		app               string
+		envs              []string
+		opts              []buildpacktest.Option
+		mocks             []*mockprocess.Mock
+		wantCommands      []string
+		doNotWantCommands []string
+		files             map[string]string
+	}{
+		{
+			name: "maven build argument",
+			app:  "gradle_micronaut",
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`^bash -c command -v gradle || true`, mockprocess.WithStdout("Gradle 0.0.0")),
+			},
+			envs: []string{fmt.Sprintf("%s=clean assemble", java.GradleBuildArgs)},
+			wantCommands: []string{
+				"gradle clean assemble",
+			},
+			doNotWantCommands: []string{
+				"gradle clean assemble -x test --build-cache",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			opts := []buildpacktest.Option{
+				buildpacktest.WithTestName(tc.name),
+				buildpacktest.WithApp(tc.app),
+				buildpacktest.WithEnvs(tc.envs...),
+				buildpacktest.WithExecMocks(tc.mocks...),
+			}
+
+			opts = append(opts, tc.opts...)
+			result, err := buildpacktest.RunBuild(t, buildFn, opts...)
+			if err != nil {
+				t.Fatalf("error running build: %v, logs: %s", err, result.Output)
+			}
+
+			for _, cmd := range tc.wantCommands {
+				if !result.CommandExecuted(cmd) {
+					t.Errorf("expected command %q to be executed, but it was not, build output: %s", cmd, result.Output)
+				}
+			}
+
+			for _, cmd := range tc.doNotWantCommands {
+				if result.CommandExecuted(cmd) {
+					t.Errorf("expected command %q not to be executed, but it was, build output: %s", cmd, result.Output)
+				}
+			}
 		})
 	}
 }

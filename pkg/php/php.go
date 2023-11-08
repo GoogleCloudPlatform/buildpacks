@@ -236,10 +236,6 @@ func ComposerRequire(ctx *gcp.Context, packages []string) error {
 
 // GetInstallableRuntime returns the installable runtime prefix.
 func GetInstallableRuntime(ctx *gcp.Context) runtime.InstallableRuntime {
-	// Selecting PHPMin runtime only for Google-22 Builder.
-	if ctx.StackID() == "google.22" {
-		return runtime.PHPMin
-	}
 	return runtime.PHP
 }
 

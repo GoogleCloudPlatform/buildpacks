@@ -37,7 +37,17 @@ go_test(
     name = "main_test",
     size = "small",
     srcs = ["main_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata/java:generic)",
+    ],
+    data = [
+        "//builders/testdata/java:generic",
+    ],
     embed = [":main"],
     rundir = ".",
-    deps = ["//internal/buildpacktest"],
+    deps = [
+        "//internal/buildpacktest",
+        "//internal/mockprocess",
+        "//pkg/java",
+    ],
 )

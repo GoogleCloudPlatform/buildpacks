@@ -90,8 +90,11 @@ func IsExactSemver(constraint string) bool {
 // IsReleaseCandidate returns true if given string is a RC candidate version.
 // When launching a new runtime, we need to test with RC candidate which will eventually be replaced
 // by a stable candidate. Till then, we will support these unstable releases in the QA for testing.
-// Example python rc candidate - 3.12.0rc1
+// Example python rc version - 3.12.0rc1
+// Example dotnet rc version - 8.0.100-rc.1
+// Example php rc version - 8.3.0RC4
+// Example ruby rc version - 3.2.0-rc1
 func IsReleaseCandidate(constraint string) bool {
-	m := regexp.MustCompile(`(.+)\.(.+)\.(.*)rc(.*)`)
+	m := regexp.MustCompile(`(\d+)\.(\d+)\.(.*)(rc|RC)(.*)`)
 	return m.MatchString(constraint)
 }

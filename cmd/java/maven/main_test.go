@@ -15,12 +15,15 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"testing"
 
 	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 )
 
 func TestDetect(t *testing.T) {
@@ -112,6 +115,63 @@ func TestCrLfRewrite(t *testing.T) {
 					strconv.QuoteToASCII(tc.expectContent))
 			}
 
+		})
+	}
+}
+
+func TestBuildCommand(t *testing.T) {
+	testCases := []struct {
+		name              string
+		app               string
+		envs              []string
+		opts              []buildpacktest.Option
+		mocks             []*mockprocess.Mock
+		wantCommands      []string
+		doNotWantCommands []string
+		files             map[string]string
+	}{
+		{
+			name: "maven build argument",
+			app:  "hello_quarkus_maven",
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`^bash -c command -v mvn || true`, mockprocess.WithStdout("Apache Maven")),
+			},
+			envs: []string{fmt.Sprintf("%s=clean package", java.MavenBuildArgs)},
+			wantCommands: []string{
+				"mvn clean package",
+			},
+			doNotWantCommands: []string{
+				"mvn clean package --batch-mode -DskipTests -Dhttp.keepAlive=false",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			opts := []buildpacktest.Option{
+				buildpacktest.WithTestName(tc.name),
+				buildpacktest.WithApp(tc.app),
+				buildpacktest.WithEnvs(tc.envs...),
+				buildpacktest.WithExecMocks(tc.mocks...),
+			}
+
+			opts = append(opts, tc.opts...)
+			result, err := buildpacktest.RunBuild(t, buildFn, opts...)
+			if err != nil {
+				t.Fatalf("error running build: %v, logs: %s", err, result.Output)
+			}
+
+			for _, cmd := range tc.wantCommands {
+				if !result.CommandExecuted(cmd) {
+					t.Errorf("expected command %q to be executed, but it was not, build output: %s", cmd, result.Output)
+				}
+			}
+
+			for _, cmd := range tc.doNotWantCommands {
+				if result.CommandExecuted(cmd) {
+					t.Errorf("expected command %q not to be executed, but it was, build output: %s", cmd, result.Output)
+				}
+			}
 		})
 	}
 }

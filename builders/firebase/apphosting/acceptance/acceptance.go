@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package buildermetrics
+// Package acceptance implements acceptance tests for a buildpack builder.
+package acceptance
 
-import (
-	"testing"
+const (
+	// Buildpack identifiers used to verify that buildpacks were or were not used.
+	nodeNPM     = "google.nodejs.npm"
+	nodePNPM    = "google.nodejs.pnpm"
+	nodeRuntime = "google.nodejs.runtime"
+	nodeYarn    = "google.nodejs.yarn"
 )
-
-// This test validates the descriptors that are defined in counterDescriptors
-func TestValidateDescriptors(t *testing.T) {
-	for k, v := range counterDescriptors {
-		if v.Name == "" || v.Description == "" {
-			t.Errorf("Descriptor %q (for CounterID %q) must have both a Name and a Description", v, k)
-		}
-	}
-}

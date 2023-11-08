@@ -184,7 +184,7 @@ func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 	bo.Warnings = append(bo.Warnings, ctx.warnings...)
 
 	bm := buildermetrics.GlobalBuilderMetrics()
-	bm.ForEachCounter(func(id buildermetrics.CounterID, c *buildermetrics.Counter) {
+	bm.ForEachCounter(func(id buildermetrics.MetricID, c *buildermetrics.Counter) {
 		count := bo.Metrics.GetCounter(id)
 		count.Increment(c.Value())
 	})

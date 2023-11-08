@@ -46,6 +46,7 @@ package_group(
 package_group(
     name = "nodejs_builders",
     packages = [
+        "//builders/firebase/apphosting",
         "//builders/gcp/base",
         "//builders/nodejs",
     ],
