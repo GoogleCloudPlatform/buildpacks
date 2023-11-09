@@ -27,6 +27,7 @@ VERSIONS_ALL["dotnet7"] = VERSION_DOTNET7
 
 VERSIONS_WITH_FLEX_SUPPORT = {
     "dotnet6": gcf_runtimes["dotnet6"],
+    "dotnet8": gcf_runtimes["dotnet8"],
 }
 
 VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
