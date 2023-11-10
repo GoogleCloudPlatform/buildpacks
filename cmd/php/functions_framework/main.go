@@ -73,7 +73,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Syntax check the function code without executing.
 	command := []string{"php", "-l", fnFile}
-	if _, err := ctx.Exec(command, gcp.WithStdoutTail, gcp.WithUserAttribution); err != nil {
+	if _, err := ctx.Exec(command, gcp.WithCombinedTail, gcp.WithUserAttribution); err != nil {
 		return err
 	}
 

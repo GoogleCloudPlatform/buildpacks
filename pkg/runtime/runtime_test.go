@@ -119,10 +119,10 @@ func TestRuntimeVersion(t *testing.T) {
 			expectedResult: "python27",
 		},
 		{
-			name:           "ruby31",
-			languageName:   "ruby",
-			version:        "3.1.7",
-			expectedResult: "ruby31",
+			name:           "php83",
+			languageName:   "php",
+			version:        "8.3.0RC4",
+			expectedResult: "php83",
 		},
 	}
 

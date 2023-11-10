@@ -1411,6 +1411,9 @@ func ShouldTestVersion(t *testing.T, inclusionConstraint string) bool {
 	if strings.Contains(v, "rc") && !strings.Contains(v, "-rc") {
 		v = strings.Replace(v, "rc", "-rc", 1)
 	}
+	if strings.Contains(v, "RC") && !strings.Contains(v, "-RC") {
+		v = strings.Replace(v, "RC", "-RC", 1)
+	}
 	rtVer, err := semver.NewVersion(v)
 	if err != nil {
 		t.Fatalf("Unable to use %q as a semver.Version: %v", v, err)

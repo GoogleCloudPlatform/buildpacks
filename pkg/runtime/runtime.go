@@ -72,6 +72,9 @@ func formatVersion(languageName, version string) (string, error) {
 	if strings.Contains(version, "rc") && !strings.Contains(version, "-rc") {
 		version = strings.Replace(version, "rc", "-rc", 1)
 	}
+	if strings.Contains(version, "RC") && !strings.Contains(version, "-RC") {
+		version = strings.Replace(version, "RC", "-RC", 1)
+	}
 	semVer, err := semver.NewVersion(version)
 	if err != nil {
 		return "", fmt.Errorf("parsing %q as a semver: %w", version, err)
