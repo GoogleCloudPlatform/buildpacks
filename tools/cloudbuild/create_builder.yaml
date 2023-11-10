@@ -185,7 +185,7 @@ steps:
       - push_google22_builder
 
   - id: sign_google22_builder
-    name: gcr.io/projectsigstore/cosign
+    name: gcr.io/projectsigstore/cosign:v2.2.0
     env:
       - REGISTRY=gcr.io
       - TUF_ROOT=/tmp
