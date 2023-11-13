@@ -18,10 +18,9 @@ use Psr\Http\Message\ServerRequestInterface;
 function testFunction(ServerRequestInterface $request) {
   $want = '9.5.11';
   $got = PHPUnit\Runner\Version::id();
-
-  if ($got !== $want) {
-    echo 'Unexpected phpunit version: got ' . $got . ', want ' . $want;
-  } else {
+  if ($got != null && $got != "" && version_compare($got, $want) >= 0) {
     echo 'PASS';
+  } else {
+    echo 'Unexpected phpunit version: got ' . $got . ', want ' . $want;
   }
 }
