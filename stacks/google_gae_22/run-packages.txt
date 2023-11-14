@@ -4,6 +4,7 @@ file
 fontconfig
 fonts-liberation
 git
+gnupg
 imagemagick
 iputils-ping
 libasound2
