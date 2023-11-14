@@ -11,5 +11,5 @@ gcf_runtimes = {
     "dotnet": "",
     "dotnet3": "3.1.426",
     "dotnet6": "6.0.416",
-    "dotnet8": "8.0.100-rc.1",
+    "dotnet8": "8.0.100",
 }
