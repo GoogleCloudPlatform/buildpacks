@@ -191,7 +191,7 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 		stripComponents = 1
 	}
 	region, present := os.LookupEnv(env.RuntimeImageRegion)
-	if present && runtime == Python {
+	if present && (runtime == Python || runtime == Nodejs) {
 		url := runtimeImageURL(runtime, osName, version, region)
 		fallbackURL := runtimeImageURL(runtime, osName, version, fallbackRegion)
 		if err := fetch.ARImage(url, fallbackURL, layer.Path, stripComponents, ctx); err != nil {
@@ -300,7 +300,7 @@ func ResolveVersion(runtime InstallableRuntime, verConstraint, osName string) (s
 	var versions []string
 	var err error
 	region, present := os.LookupEnv(env.RuntimeImageRegion)
-	if present && runtime == Python {
+	if present && (runtime == Python || runtime == Nodejs) {
 		versions, err = crane.ListTags(fmt.Sprintf(runtimeImageARRepoURL, region, osName, runtime))
 	} else {
 		err = fetch.JSON(url, &versions)

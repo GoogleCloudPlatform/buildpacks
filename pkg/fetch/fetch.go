@@ -45,7 +45,7 @@ func Tarball(url, dir string, stripComponents int) error {
 }
 
 // ARImage downloads tarball from images in artifact registry.
-func ARImage(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error {
+var ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error {
 	image, err := crane.Pull(url)
 	if err != nil {
 		ctx.Logf("Failed to download runtime from %s: %v", url, err)

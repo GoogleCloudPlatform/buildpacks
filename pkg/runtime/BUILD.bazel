@@ -37,6 +37,7 @@ go_test(
         "//internal/mockprocess",
         "//internal/testserver",
         "//pkg/env",
+        "//pkg/fetch",
         "//pkg/gcpbuildpack",
         "//pkg/testdata",
         "@com_github_buildpacks_libcnb//:go_default_library",

@@ -27,6 +27,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
@@ -217,6 +218,7 @@ func TestInstallSource(t *testing.T) {
 		wantFile           string
 		wantVersion        string
 		wantError          bool
+		wantAR             bool
 	}{
 		{
 			name:         "install with lorry",
@@ -225,13 +227,33 @@ func TestInstallSource(t *testing.T) {
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
 			wantFile:     "lib/foo.txt",
 			wantVersion:  "2.2.2",
+			wantAR:       false,
 		},
 		{
 			name:               "install with artifact registry",
 			runtime:            Python,
-			version:            "2.x.x",
+			version:            "3.10.0",
 			runtimeImageRegion: "us-west1",
-			wantError:          true,
+			wantError:          false,
+			wantAR:             true,
+		},
+		{
+			name:               "install from artifact registry",
+			runtime:            Nodejs,
+			version:            "16.20.0",
+			responseFile:       "testdata/dummy-ruby-runtime.tar.gz",
+			runtimeImageRegion: "us-west1",
+			wantError:          false,
+			wantAR:             true,
+		},
+
+		{
+			name:         "missing runtimeImageRegion",
+			runtime:      Nodejs,
+			version:      "16.20.0",
+			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
+			wantError:    false,
+			wantAR:       false,
 		},
 	}
 
@@ -248,9 +270,18 @@ func TestInstallSource(t *testing.T) {
 			testserver.New(
 				t,
 				testserver.WithStatus(http.StatusOK),
-				testserver.WithJSON(`["1.1.1","3.3.3","2.2.2"]`),
+				testserver.WithJSON(`["1.1.1","3.3.3","2.2.2","16.20.0"]`),
 				testserver.WithMockURL(&runtimeVersionsURL),
 			)
+			fetchedFromAR := false
+			defer func(fn func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error) {
+				fetch.ARImage = fn
+			}(fetch.ARImage)
+
+			fetch.ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error {
+				fetchedFromAR = true
+				return nil
+			}
 
 			layer := &libcnb.Layer{
 				Path:     t.TempDir(),
@@ -267,7 +298,11 @@ func TestInstallSource(t *testing.T) {
 			}
 			_, err := InstallTarballIfNotCached(ctx, tc.runtime, tc.version, layer)
 			if tc.wantError == (err == nil) {
-				t.Fatalf("InstallTarballIfNotCached(ctx, %q, %q) got error: %v, want error? %v", Python, tc.version, err, tc.wantError)
+				t.Fatalf("InstallTarballIfNotCached(ctx, %q, %q) got error: %v, want error? %v", tc.runtime, tc.version, err, tc.wantError)
+			}
+
+			if tc.wantAR != fetchedFromAR {
+				t.Errorf("Fetched runtime from AR = %v and want AR = %v", fetchedFromAR, tc.wantAR)
 			}
 
 			if !tc.wantError {
