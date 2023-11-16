@@ -88,6 +88,16 @@ steps:
       - '--jobs=2'
       - '//builders/gcp/base/acceptance/...'
 
+
+  - id: firebase-publisher-build
+    name: bazel-pack
+    entrypoint: /bin/bash
+    args:
+    - -c
+    - |
+      bazel build //tools/publisher:main
+      cp bazel-bin/tools/publisher/main_/main stacks/firebase_app_hosting_22/publisher
+
   - id: firebase-app-hosting-22-build-image
     name: gcr.io/cloud-builders/docker
     dir: stacks/firebase_app_hosting_22

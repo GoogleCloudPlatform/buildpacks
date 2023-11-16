@@ -19,6 +19,9 @@ ARG cnb_gid=1000
 
 USER root
 
+# Copy built publisher binary into image.
+COPY publisher /bin/publisher
+
 # Version identifier of the image.
 ARG CANDIDATE_NAME
 RUN \
