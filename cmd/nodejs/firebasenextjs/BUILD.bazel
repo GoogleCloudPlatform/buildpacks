@@ -1,0 +1,29 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+# Buildpack for the Next.js framework.
+load("//tools:defs.bzl", "buildpack")
+
+licenses(["notice"])
+
+buildpack(
+    name = "firebasenextjs",
+    executables = [
+        ":main",
+    ],
+    prefix = "nodejs",
+    version = "0.0.1",
+    visibility = [
+        "//builders:nodejs_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = ["//pkg/gcpbuildpack"],
+)

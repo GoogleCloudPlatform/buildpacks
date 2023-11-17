@@ -13,6 +13,8 @@ builder(
         "//cmd/nodejs/npm:npm.tgz",
         "//cmd/nodejs/pnpm:pnpm.tgz",
         "//cmd/nodejs/yarn:yarn.tgz",
+        "//cmd/nodejs/firebasenextjs:firebasenextjs.tgz",
+        "//cmd/nodejs/firebasebundle:firebasebundle.tgz",
     ],
     image = "firebase/apphosting",
 )

@@ -1,0 +1,28 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+# Buildpack for the Firebase output bundle.
+load("//tools:defs.bzl", "buildpack")
+
+licenses(["notice"])
+
+buildpack(
+    name = "firebasebundle",
+    executables = [
+        ":main",
+    ],
+    prefix = "nodejs",
+    version = "0.0.1",
+    visibility = [
+        "//builders:nodejs_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = ["//pkg/gcpbuildpack"],
+)
