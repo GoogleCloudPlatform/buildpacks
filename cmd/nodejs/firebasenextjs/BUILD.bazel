@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
 
 # Buildpack for the Next.js framework.
 load("//tools:defs.bzl", "buildpack")
@@ -25,5 +25,15 @@ go_binary(
         "-s",
         "-w",
     ],
-    deps = ["//pkg/gcpbuildpack"],
+    deps = [
+        "//pkg/gcpbuildpack",
+    ],
+)
+
+go_test(
+    name = "main_test",
+    srcs = ["main_test.go"],
+    embed = [":main"],
+    rundir = ".",
+    deps = ["//internal/buildpacktest"],
 )

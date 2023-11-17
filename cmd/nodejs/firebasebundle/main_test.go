@@ -12,26 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements nodejs/firebasebundle buildpack.
-// The output bundle buildpack sets up the output bundle for future steps
-// It will do the following
-// 1. Copy over static assets to the build layer
-// 2. Delete unnecessary files
-// 3. Override run script with a new one to run the optimized build
 package main
 
 import (
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"testing"
+
+	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 )
 
-func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	return gcp.OptInAlways(), nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	return nil
+func TestDetect(t *testing.T) {
+	testCases := []struct {
+		name  string
+		files map[string]string
+		want  int
+	}{
+		{
+			name:  "always opt in",
+			files: map[string]string{},
+			want:  0,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			bpt.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+		})
+	}
 }

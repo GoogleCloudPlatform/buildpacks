@@ -29,6 +29,7 @@ description = "Builder for Firebase App Hosting"
     id = "google.nodejs.runtime"
   [[order.group]]
     id = "google.nodejs.firebasenextjs"
+    optional = true
   [[order.group]]
     id = "google.nodejs.yarn"
   [[order.group]]
@@ -39,6 +40,7 @@ description = "Builder for Firebase App Hosting"
     id = "google.nodejs.runtime"
   [[order.group]]
     id = "google.nodejs.firebasenextjs"
+    optional = true
   [[order.group]]
     id = "google.nodejs.pnpm"
   [[order.group]]
@@ -49,6 +51,7 @@ description = "Builder for Firebase App Hosting"
     id = "google.nodejs.runtime"
   [[order.group]]
     id = "google.nodejs.firebasenextjs"
+    optional = true
   [[order.group]]
     id = "google.nodejs.npm"
   [[order.group]]

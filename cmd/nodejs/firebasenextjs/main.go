@@ -25,7 +25,25 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	return gcp.OptIn("TODO"), nil
+	// TODO (b/311402770)
+	// In monorepo scenarios, we'll probably need to support environment variable that can be used to
+	// know where the application directory is located within the repository.
+	nextConfigExists, err := ctx.FileExists("next.config.js")
+	if err != nil {
+		return nil, err
+	}
+	if nextConfigExists {
+		return gcp.OptInFileFound("next.config.js"), nil
+	}
+
+	nextConfigModuleExists, err := ctx.FileExists("next.config.mjs")
+	if err != nil {
+		return nil, err
+	}
+	if nextConfigModuleExists {
+		return gcp.OptInFileFound("next.config.mjs"), nil
+	}
+	return gcp.OptOut("nextjs config not found"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {
