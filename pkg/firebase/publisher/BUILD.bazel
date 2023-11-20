@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+go_library(
+    name = "publisher",
+    srcs = ["publisher.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    deps = ["@in_gopkg_yaml_v2//:go_default_library"],
+)
+
+go_test(
+    name = "publisher_test",
+    size = "small",
+    srcs = ["publisher_test.go"],
+    data = glob(["testdata/**"]),
+    embed = [":publisher"],
+    rundir = ".",
+    deps = [
+        "//pkg/testdata",
+        "@in_gopkg_yaml_v2//:go_default_library",
+    ],
+)

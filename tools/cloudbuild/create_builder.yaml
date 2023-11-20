@@ -95,8 +95,8 @@ steps:
     args:
     - -c
     - |
-      bazel build //tools/publisher:main
-      cp bazel-bin/tools/publisher/main_/main stacks/firebase_app_hosting_22/publisher
+      bazel build //cmd/firebase/publisher:main
+      cp bazel-bin/cmd/firebase/publisher/main_/main stacks/firebase_app_hosting_22/publisher
 
   - id: firebase-app-hosting-22-build-image
     name: gcr.io/cloud-builders/docker
