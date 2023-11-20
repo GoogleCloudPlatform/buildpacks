@@ -177,8 +177,11 @@ steps:
         && docker tag google-22/builder gcr.io/$PROJECT_ID/builder:google-22
         && docker tag google-22/builder gcr.io/$PROJECT_ID/builder:latest
         && docker tag gcr.io/buildpacks/firebase-app-hosting-22/build:latest gcr.io/$PROJECT_ID/firebase-app-hosting-22/build:$COMMIT_SHA
+        && docker tag gcr.io/buildpacks/firebase-app-hosting-22/build:latest gcr.io/$PROJECT_ID/firebase-app-hosting-22/build:latest
         && docker tag gcr.io/buildpacks/firebase-app-hosting-22/run:latest gcr.io/$PROJECT_ID/firebase-app-hosting-22/run:$COMMIT_SHA
+        && docker tag gcr.io/buildpacks/firebase-app-hosting-22/run:latest gcr.io/$PROJECT_ID/firebase-app-hosting-22/run:latest
         && docker tag firebase/apphosting gcr.io/$PROJECT_ID/firebase-app-hosting-22/builder:$COMMIT_SHA
+        && docker tag firebase/apphosting gcr.io/$PROJECT_ID/firebase-app-hosting-22/builder:latest
 
   - id: push_google22_builder
     name: 'gcr.io/cloud-builders/docker'
@@ -251,8 +254,11 @@ images:
   - 'gcr.io/$PROJECT_ID/google-22/builder:latest'
   - 'gcr.io/$PROJECT_ID/google-22/builder:$COMMIT_SHA'
   - 'gcr.io/$PROJECT_ID/builder:google-22'
+  - 'gcr.io/$PROJECT_ID/firebase-app-hosting-22/build:latest'
   - 'gcr.io/$PROJECT_ID/firebase-app-hosting-22/build:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/firebase-app-hosting-22/run:latest'
   - 'gcr.io/$PROJECT_ID/firebase-app-hosting-22/run:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/firebase-app-hosting-22/builder:latest'
   - 'gcr.io/$PROJECT_ID/firebase-app-hosting-22/builder:$COMMIT_SHA'
 
 substitutions:
