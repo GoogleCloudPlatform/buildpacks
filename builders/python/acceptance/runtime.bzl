@@ -22,3 +22,11 @@ gcf_runtimes = {
     "python311": "3.11.6",
     "python312": "3.12.0",
 }
+
+flex_runtimes = {
+    "python38": "3.8.18",
+    "python39": "3.9.18",
+    "python310": "3.10.13",
+    "python311": "3.11.6",
+    "python312": "3.12.0",
+}

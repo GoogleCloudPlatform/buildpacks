@@ -13,3 +13,8 @@ gcf_runtimes = {
     "dotnet6": "6.0.416",
     "dotnet8": "8.0.100",
 }
+
+flex_runtimes = {
+    "dotnet6": "6.0.416",
+    "dotnet8": "8.0.100",
+}

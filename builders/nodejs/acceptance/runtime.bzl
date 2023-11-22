@@ -23,3 +23,8 @@ gcf_runtimes = {
     "nodejs18": "18.18.2",
     "nodejs20": "20.9.0",
 }
+
+flex_runtimes = {
+    "nodejs18": "18.18.2",
+    "nodejs20": "20.9.0",
+}

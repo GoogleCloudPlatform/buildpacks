@@ -18,3 +18,7 @@ gcf_runtimes = {
     "ruby30": "3.0.6",
     "ruby32": "3.2.2",
 }
+
+flex_runtimes = {
+    "ruby32": "3.2.2",
+}
