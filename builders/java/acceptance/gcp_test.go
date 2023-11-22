@@ -87,34 +87,6 @@ func TestAcceptanceJava(t *testing.T) {
 			FilesMustExist:      []string{"/layers/google.java.maven/m2", "/layers/google.java.maven/m2/bin/.devmode_rebuild.sh"},
 			MustRebuildOnChange: "/workspace/src/main/java/hello/Hello.java",
 		},
-		// TODO(b/189485322): Enable the below test when exact version can be pinned.
-		// {
-		// 	// This is a separate test case from Dev mode above because it has a fixed runtime version.
-		// 	// Its only purpose is to test that the metadata is set correctly.
-		// 	Name: "Dev mode metadata",
-		// 	App:  "hello_quarkus_maven",
-		// 	Env:  []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=11"},
-		// 	BOM: []acceptance.BOMEntry{
-		// 		{
-		// 			Name: "java",
-		// 			Metadata: map[string]interface{}{
-		// 				"version": "11",
-		// 			},
-		// 		},
-		// 		{
-		// 			Name: "devmode",
-		// 			Metadata: map[string]interface{}{
-		// 				"devmode.sync": []interface{}{
-		// 					map[string]interface{}{"dest": "/workspace", "src": "**/*.java"},
-		// 					map[string]interface{}{"dest": "/workspace", "src": "**/*.kt"},
-		// 					map[string]interface{}{"dest": "/workspace", "src": "**/*.scala"},
-		// 					map[string]interface{}{"dest": "/workspace", "src": "**/*.groovy"},
-		// 					map[string]interface{}{"dest": "/workspace", "src": "**/*.clj"},
-		// 				},
-		// 			},
-		// 		},
-		// 	},
-		// },
 		{
 			Name:       "Java gradle",
 			App:        "gradle_micronaut",

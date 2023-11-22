@@ -81,12 +81,6 @@ func TestAcceptance(t *testing.T) {
 			MustUse:                    []string{goRuntime, goBuild, goPath},
 			BOM: []acceptance.BOMEntry{
 				{
-					Name: "go",
-					Metadata: map[string]interface{}{
-						"version": "1.16.4",
-					},
-				},
-				{
 					Name: "devmode",
 					Metadata: map[string]interface{}{
 						"devmode.sync": []interface{}{

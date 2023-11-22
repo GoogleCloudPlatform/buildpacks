@@ -59,12 +59,6 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			MustUse: []string{nodeRuntime, nodeNPM},
 			BOM: []acceptance.BOMEntry{
 				{
-					Name: "nodejs",
-					Metadata: map[string]interface{}{
-						"version": "14.19.3",
-					},
-				},
-				{
 					Name: "devmode",
 					Metadata: map[string]interface{}{
 						"devmode.sync": []interface{}{

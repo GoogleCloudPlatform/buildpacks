@@ -163,12 +163,6 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	if err != nil {
 		return false, err
 	}
-	ctx.AddBOMEntry(libcnb.BOMEntry{
-		Name:     runtimeID,
-		Metadata: map[string]interface{}{"version": version},
-		Launch:   true,
-		Build:    true,
-	})
 
 	if layer.Cache {
 		if IsCached(ctx, layer, version) {

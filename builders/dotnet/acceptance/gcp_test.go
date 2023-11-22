@@ -74,20 +74,6 @@ func TestAcceptanceDotNet(t *testing.T) {
 			MustUse:                    []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustNotExist:          []string{sdk},
 			Env:                        []string{"GOOGLE_BUILDABLE=Function/Function.csproj"},
-			BOM: []acceptance.BOMEntry{
-				{
-					Name: "dotnetsdk",
-					Metadata: map[string]interface{}{
-						"version": "3.1.426",
-					},
-				},
-				{
-					Name: "aspnetcore",
-					Metadata: map[string]interface{}{
-						"version": "3.1.0", // Specified by Function/Function.csproj.
-					},
-				},
-			},
 		},
 		{
 			Name:              "build with properties specified",
@@ -111,14 +97,6 @@ func TestAcceptanceDotNet(t *testing.T) {
 			MustUse:                    []string{dotnetRuntime},
 			MustNotUse:                 []string{dotnetSDK, dotnetPublish},
 			FilesMustNotExist:          []string{sdk},
-			BOM: []acceptance.BOMEntry{
-				{
-					Name: "aspnetcore",
-					Metadata: map[string]interface{}{
-						"version": "3.1.0", // Version specified by simple_prebuilt/simple.runtimeconfig.json.
-					},
-				},
-			},
 		},
 		{
 			Name: "Dev mode",
@@ -143,12 +121,6 @@ func TestAcceptanceDotNet(t *testing.T) {
 			Env:                        []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=3.1.409"},
 			MustUse:                    []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			BOM: []acceptance.BOMEntry{
-				{
-					Name: "dotnetsdk",
-					Metadata: map[string]interface{}{
-						"version": "3.1.409",
-					},
-				},
 				{
 					Name: "devmode",
 					Metadata: map[string]interface{}{

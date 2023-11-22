@@ -73,14 +73,6 @@ func TestAcceptanceDotNet(t *testing.T) {
 			MustUse:           []string{dotnetRuntime},
 			MustNotUse:        []string{dotnetSDK, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
-			BOM: []acceptance.BOMEntry{
-				{
-					Name: "aspnetcore",
-					Metadata: map[string]interface{}{
-						"version": "3.1.0", // Version specified by simple_prebuilt/simple.runtimeconfig.json.
-					},
-				},
-			},
 		},
 		{
 			Name: "Dev mode",
@@ -100,12 +92,6 @@ func TestAcceptanceDotNet(t *testing.T) {
 			Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=6.0.402"},
 			MustUse: []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			BOM: []acceptance.BOMEntry{
-				{
-					Name: "dotnetsdk",
-					Metadata: map[string]interface{}{
-						"version": "6.0.402",
-					},
-				},
 				{
 					Name: "devmode",
 					Metadata: map[string]interface{}{

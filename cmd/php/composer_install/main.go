@@ -27,7 +27,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
-	"github.com/buildpacks/libcnb"
 )
 
 var (
@@ -68,12 +67,6 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", composerLayer, err)
 	}
-
-	ctx.AddBOMEntry(libcnb.BOMEntry{
-		Name:     composerLayer,
-		Metadata: map[string]interface{}{"version": composerVer},
-		Build:    true,
-	})
 
 	// Check the metadata in the cache layer to determine if we need to proceed.
 	metaVersion := ctx.GetMetadata(l, versionKey)

@@ -22,7 +22,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/dart"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/buildpacks/libcnb"
 )
 
 const (
@@ -68,11 +67,6 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", dartLayer, err)
 	}
-	ctx.AddBOMEntry(libcnb.BOMEntry{
-		Name:     dartLayer,
-		Metadata: map[string]interface{}{"version": version},
-		Build:    true,
-	})
 
 	if runtime.IsCached(ctx, drl, version) {
 		ctx.CacheHit(dartLayer)

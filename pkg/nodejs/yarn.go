@@ -132,12 +132,6 @@ func InstallYarnLayer(ctx *gcp.Context, yarnLayer *libcnb.Layer, pjs *PackageJSO
 	if err := ctx.Setenv("PATH", filepath.Join(yarnLayer.Path, "bin")+":"+os.Getenv("PATH")); err != nil {
 		return err
 	}
-	ctx.AddBOMEntry(libcnb.BOMEntry{
-		Name:     layerName,
-		Metadata: map[string]interface{}{"version": version},
-		Launch:   yarnLayer.Launch,
-		Build:    yarnLayer.Build,
-	})
 	return nil
 }
 
