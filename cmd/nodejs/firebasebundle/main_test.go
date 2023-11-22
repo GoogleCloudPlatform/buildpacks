@@ -37,4 +37,5 @@ func TestDetect(t *testing.T) {
 			bpt.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
 		})
 	}
+	// TODO (b/311402770) add tests for build function
 }

@@ -92,11 +92,12 @@ func moveOrCopyPath(moveOrCopy action, destPath, srcPath string, condition func(
 			return os.MkdirAll(dest, 0744)
 		}
 
-		return copyFile(dest, path)
+		return CopyFile(dest, path)
 	})
 }
 
-func copyFile(dest, src string) error {
+// CopyFile copies a file from src to dest
+func CopyFile(dest, src string) error {
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return err
