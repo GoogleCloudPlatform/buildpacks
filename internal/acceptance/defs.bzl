@@ -378,3 +378,45 @@ def acceptance_test_argo_source(name, testdata, srcs = [], structure_test_config
         ],
         testonly = 1,
     )
+
+def create_acceptance_versions_dict_file(name, file, flex_runtime_versions, gae_runtime_versions, gcf_runtime_versions, gcp_runtime_versions, **kwargs):
+    """Export a file that contains a dictionary of product to a list of strings, each of which can be parsed as {{runtime id}}:{{runtime semver version}}
+
+    Takes input dictionaries for each of the products for a single language
+
+    Creates an output file with the following structure:
+    ========
+    {
+        flex: [go118:1.18.10, go119:1.19.13, go120:1.20.10, go121:1.21.3],
+        gae: [go111:1.11.13, go112:1.12.17, go113:1.13.15, go114:1.14.15, go115:1.15.15, go116:1.16.15, go118:1.18.10, go119:1.19.13, go120:1.20.10, go121:1.21.3],
+        gcf: [go113:1.13.15, go116:1.16.15, go118:1.18.10, go119:1.19.13, go120:1.20.10, go121:1.21.3],
+        gcp: [go118:1.18.10, go119:1.19.13, go120:1.20.10, go121:1.21.3, go111:1.11.13, go112:1.12.17, go113:1.13.15, go114:1.14.15, go115:1.15.15, go116:1.16.15],
+    }
+    ========
+
+    Args:
+        name: name of the target to create
+        file: the output file name
+        multiline with additional indentation.
+        flex_runtime_versions: bzl/python map of flex runtimes to exact runtime semvers for the
+                                given runtime
+        gae_runtime_versions: bzl/python map of gae runtimes to exact runtime semvers for the
+                                given runtime
+        gcf_runtime_versions: bzl/python map of gcf runtimes to exact runtime semvers for the
+                                given runtime
+        gcp_runtime_versions: bzl/python map of gcp runtimes to exact runtime semvers for the
+                                given runtime
+        **kwargs: passed through to the native.genrule.
+    """
+    d = dict()
+    d["flex"] = [k + ":" + v for k, v in flex_runtime_versions.items()]
+    d["gae"] = [k + ":" + v for k, v in gae_runtime_versions.items()]
+    d["gcf"] = [k + ":" + v for k, v in gcf_runtime_versions.items()]
+    d["gcp"] = [k + ":" + v for k, v in gcp_runtime_versions.items()]
+    native.genrule(
+        name = name,
+        outs = [file],
+        cmd = ("echo " + str(d) + " > $@"),
+        visibility = ["//visibility:public"],
+        **kwargs
+    )

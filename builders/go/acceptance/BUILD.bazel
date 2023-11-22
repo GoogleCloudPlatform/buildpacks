@@ -1,5 +1,5 @@
-load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
-load(":args.bzl", "gae_go_runtime_versions", "gcf_go_runtime_versions", "goargs")
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
+load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions", "goargs")
 
 licenses(["notice"])
 
@@ -7,6 +7,15 @@ exports_files([
     "config.yaml",
     "args.bzl",
 ])
+
+create_acceptance_versions_dict_file(
+    name = "gen_acceptance_targets_list",
+    file = "acceptance_targets.dict",
+    flex_runtime_versions = flex_runtime_versions,
+    gae_runtime_versions = gae_runtime_versions,
+    gcf_runtime_versions = gcf_runtime_versions,
+    gcp_runtime_versions = gcp_runtime_versions,
+)
 
 test_suite(
     name = "acceptance_test",
@@ -18,29 +27,6 @@ test_suite(
         "gcp_test",
     ],
 )
-
-# The union of all versions across all products.
-VERSIONS_ALL_PRODUCTS = gae_go_runtime_versions
-
-# The product versions for which there is GAE support.
-VERSIONS_GAE_SUPPORT = VERSIONS_ALL_PRODUCTS
-
-# The product versions for which there is GAE Flex support.
-# Note that the app.yamls in the test apps are still hardcoded to at least 1.18.
-VERSIONS_WITH_FLEX_SUPPORT = {
-    "go118": "1.18",
-    "go119": "1.19",
-    "go120": "1.20",
-    "go121": "1.21.0",
-}
-
-# The product versions for which there is explicit, tested GCP support. Technically any version is available
-# on GCP, but not all versions are tested.
-VERSIONS_GCP_SUPPORT = VERSIONS_ALL_PRODUCTS
-
-# The product versions for which there is GCF support. The GCF tests are expensive to run so only the released
-# versions are tested.
-VERSIONS_GCF_SUPPORT = gcf_go_runtime_versions
 
 # The GCF Legacy Worker is only available and used for the "GCF go111" runtime version. It has different behavior,
 # a unique order group, and is tested seperately.
@@ -55,7 +41,7 @@ acceptance_test_suite(
     builder = "//builders/go:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/go:functions",
-    versions = VERSIONS_GCF_SUPPORT,
+    versions = gcf_runtime_versions,
 )
 
 acceptance_test_suite(
@@ -67,7 +53,7 @@ acceptance_test_suite(
     builder = "//builders/go:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/go:generic",
-    versions = VERSIONS_GCP_SUPPORT,
+    versions = gcp_runtime_versions,
 )
 
 # Test the run image tagged as latest in gae-runtimes.
@@ -81,7 +67,7 @@ acceptance_test_suite(
     builder = "//builders/go:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/go:appengine",
-    versions = VERSIONS_GAE_SUPPORT,
+    versions = gae_runtime_versions,
 )
 
 # Test the run image tagged as ${_CANDIDATE_NAME} in gae-runtimes-private.
@@ -95,7 +81,7 @@ acceptance_test_suite(
     builder = "//builders/go:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/go:appengine",
-    versions = VERSIONS_GAE_SUPPORT,
+    versions = gae_runtime_versions,
 )
 
 # This suite is a special suite just for go 1.11. The order group GCF & go111 includes the legacy-worker buildpack.
@@ -123,7 +109,7 @@ acceptance_test_suite(
     builder = "//builders/go:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/go:flex",
-    versions = VERSIONS_WITH_FLEX_SUPPORT,
+    versions = flex_runtime_versions,
 )
 
 acceptance_test_argo_source(

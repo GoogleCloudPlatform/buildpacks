@@ -1,9 +1,18 @@
-load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
-load("runtime.bzl", "gcf_runtimes")
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
+load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions")
 
 licenses(["notice"])
 
 exports_files(["config.yaml"])
+
+create_acceptance_versions_dict_file(
+    name = "gen_acceptance_targets_list",
+    file = "acceptance_targets.dict",
+    flex_runtime_versions = flex_runtime_versions,
+    gae_runtime_versions = gae_runtime_versions,
+    gcf_runtime_versions = gcf_runtime_versions,
+    gcp_runtime_versions = gcp_runtime_versions,
+)
 
 test_suite(
     name = "acceptance_test",
@@ -15,23 +24,6 @@ test_suite(
     ],
 )
 
-# We wanted to support dotnet 7 if someone in the OSS community wanted to build against it,
-# but we also don't want to target dotnet 7 explicitly -- it is not a LTS release, only STS.
-VERSION_DOTNET7 = "7.0.100"
-
-VERSIONS_WITH_GCF_SUPPORT = {n: v for n, v in gcf_runtimes.items() if n != "dotnet"}
-
-VERSIONS_ALL = {n: v for n, v in VERSIONS_WITH_GCF_SUPPORT.items()}
-
-VERSIONS_ALL["dotnet7"] = VERSION_DOTNET7
-
-VERSIONS_WITH_FLEX_SUPPORT = {
-    "dotnet6": gcf_runtimes["dotnet6"],
-    "dotnet8": gcf_runtimes["dotnet8"],
-}
-
-VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
-
 acceptance_test_suite(
     name = "flex_test",
     srcs = [
@@ -41,7 +33,7 @@ acceptance_test_suite(
     builder = "//builders/dotnet:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/dotnet:flex",
-    versions = VERSIONS_WITH_FLEX_SUPPORT,
+    versions = flex_runtime_versions,
     deps = [
         "@com_github_masterminds_semver//:go_default_library",
     ],
@@ -56,7 +48,7 @@ acceptance_test_suite(
     builder = "//builders/dotnet:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/dotnet:functions",
-    versions = VERSIONS_WITH_GCF_SUPPORT,
+    versions = gcf_runtime_versions,
     deps = [
         "@com_github_masterminds_semver//:go_default_library",
     ],
@@ -71,7 +63,7 @@ acceptance_test_suite(
     builder = "//builders/dotnet:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/dotnet:generic",
-    versions = VERSIONS_WITH_GCP_SUPPORT,
+    versions = gcp_runtime_versions,
     deps = [
         "@com_github_masterminds_semver//:go_default_library",
     ],
@@ -88,14 +80,14 @@ acceptance_test_suite(
     builder = "//builders/dotnet:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/dotnet:generic",
-    versions = VERSIONS_ALL,
+    # There are no GAE tests for dotnet as there is no dotnet runtime on GAE. However, the language
+    # test framework expects a `gae_candidate_test` target. For that reason this target exists.
+    versions = gcf_runtime_versions,
     deps = [
         "@com_github_masterminds_semver//:go_default_library",
     ],
 )
 
-# There are no GAE tests for dotnet as there is no dotnet runtime on GAE. However, the language
-# test framework expects a `gae_candidate_test` target. For that reason this target exists.
 acceptance_test_suite(
     name = "gae_candidate_test",
     srcs = [
@@ -105,7 +97,9 @@ acceptance_test_suite(
     builder = "//builders/dotnet:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/dotnet:generic",
-    versions = VERSIONS_ALL,
+    # There are no GAE tests for dotnet as there is no dotnet runtime on GAE. However, the language
+    # test framework expects a `gae_candidate_test` target. For that reason this target exists.
+    versions = gcf_runtime_versions,
     deps = [
         "@com_github_masterminds_semver//:go_default_library",
     ],

@@ -2,7 +2,12 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 """Module for initializing arguments by Ruby version"""
 
-load(":runtime.bzl", "gae_runtimes")
+load(":runtime.bzl", "flex_runtimes", "gae_runtimes", "gcf_runtimes")
+
+flex_runtime_versions = {n: v for n, v in flex_runtimes.items()}
+gae_runtime_versions = {n: v for n, v in gae_runtimes.items()}
+gcf_runtime_versions = {n: v for n, v in gcf_runtimes.items()}
+gcp_runtime_versions = dict(dict(flex_runtime_versions, **gae_runtime_versions), **gcf_runtime_versions)
 
 def rubyargs(runImageTag = ""):
     """Create a new key-value map of arguments for Ruby acceptance tests

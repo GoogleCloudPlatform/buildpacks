@@ -1,5 +1,5 @@
-load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
-load(":args.bzl", "gae_java_runtime_versions", "javaargs")
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
+load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions", "javaargs")
 
 licenses(["notice"])
 
@@ -7,6 +7,15 @@ exports_files([
     "config.yaml",
     "args.bzl",
 ])
+
+create_acceptance_versions_dict_file(
+    name = "gen_acceptance_targets_list",
+    file = "acceptance_targets.dict",
+    flex_runtime_versions = flex_runtime_versions,
+    gae_runtime_versions = gae_runtime_versions,
+    gcf_runtime_versions = gcf_runtime_versions,
+    gcp_runtime_versions = gcp_runtime_versions,
+)
 
 test_suite(
     name = "acceptance_test",
@@ -18,27 +27,6 @@ test_suite(
     ],
 )
 
-VERSIONS_ALL = gae_java_runtime_versions
-
-# java8 is gen1 runtime so it's not using buildpacks
-VERSIONS_WITH_GAE_SUPPORT = {n: v for n, v in gae_java_runtime_versions.items() if v != "8"}
-
-VERSION_JAVA11 = "11"
-
-VERSION_JAVA17 = "17"
-
-VERSION_JAVA21 = "21"
-
-VERSIONS_WITH_FLEX_SUPPORT = {
-    "java11": VERSION_JAVA11,
-    "java17": VERSION_JAVA17,
-    "java21": VERSION_JAVA21,
-}
-
-VERSIONS_WITH_GCF_SUPPORT = VERSIONS_WITH_GAE_SUPPORT
-
-VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
-
 # Test the run image tagged as latest in gae-runtimes.
 acceptance_test_suite(
     name = "gae_test",
@@ -49,7 +37,7 @@ acceptance_test_suite(
     builder = "//builders/java:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/java:appengine.tgz",
-    versions = VERSIONS_WITH_GAE_SUPPORT,
+    versions = gae_runtime_versions,
 )
 
 # Test the run image tagged as ${_CANDIDATE_NAME} in gae-runtimes-private.
@@ -62,7 +50,7 @@ acceptance_test_suite(
     builder = "//builders/java:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/java:appengine.tgz",
-    versions = VERSIONS_WITH_GAE_SUPPORT,
+    versions = gae_runtime_versions,
 )
 
 acceptance_test_suite(
@@ -73,7 +61,7 @@ acceptance_test_suite(
     builder = "//builders/java:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/java:functions.tgz",
-    versions = VERSIONS_WITH_GCF_SUPPORT,
+    versions = gcf_runtime_versions,
 )
 
 acceptance_test_suite(
@@ -84,7 +72,7 @@ acceptance_test_suite(
     builder = "//builders/java:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/java:generic",
-    versions = VERSIONS_WITH_GCP_SUPPORT,
+    versions = gcp_runtime_versions,
 )
 
 acceptance_test_suite(
@@ -95,7 +83,7 @@ acceptance_test_suite(
     builder = "//builders/java:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/java:flex",
-    versions = VERSIONS_WITH_FLEX_SUPPORT,
+    versions = flex_runtime_versions,
 )
 
 acceptance_test_argo_source(

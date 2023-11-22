@@ -1,6 +1,6 @@
-load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
-load(":args.bzl", "nodejsargs")
-load("runtime.bzl", "gae_runtimes", "gcf_runtimes")
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
+load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions", "nodejsargs")
+load(":runtime.bzl", "gcf_runtimes")
 
 licenses(["notice"])
 
@@ -8,6 +8,15 @@ exports_files([
     "config.yaml",
     "args.bzl",
 ])
+
+create_acceptance_versions_dict_file(
+    name = "gen_acceptance_targets_list",
+    file = "acceptance_targets.dict",
+    flex_runtime_versions = flex_runtime_versions,
+    gae_runtime_versions = gae_runtime_versions,
+    gcf_runtime_versions = gcf_runtime_versions,
+    gcp_runtime_versions = gcp_runtime_versions,
+)
 
 test_suite(
     name = "acceptance_test",
@@ -20,21 +29,9 @@ test_suite(
     ],
 )
 
-VERSIONS_ALL = gae_runtimes
-
-# nodejs8 is decommissioned for GAE
-VERSIONS_WITH_GAE_SUPPORT = {n: v for n, v in gae_runtimes.items() if not v.startswith("8")}
-
-# nodejs8 will be decommissioned for GCF on June 5, 2023
-VERSIONS_WITH_GCF_SUPPORT = {n: v for n, v in gcf_runtimes.items() if not v.startswith("8")}
-
-VERSIONS_WITH_FLEX_SUPPORT = {n: v for n, v in gcf_runtimes.items() if (n.startswith("nodejs18") or n.startswith("nodejs20"))}
-
 # The GCF Legacy Worker is only available and used for the "GCF nodejs8" runtime version. It has
 # different behavior, a unique order group, and is tested seperately.
 VERSION_GCF_LEGACY_WORKER = gcf_runtimes["nodejs8"]
-
-VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
 
 acceptance_test_suite(
     name = "gcp_test",
@@ -44,7 +41,7 @@ acceptance_test_suite(
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/nodejs:generic",
-    versions = VERSIONS_WITH_GCP_SUPPORT,
+    versions = gcp_runtime_versions,
 )
 
 # Test the run image tagged as latest in gae-runtimes.
@@ -57,7 +54,7 @@ acceptance_test_suite(
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/nodejs:appengine",
-    versions = VERSIONS_WITH_GAE_SUPPORT,
+    versions = gae_runtime_versions,
 )
 
 # Test the run image tagged as ${_CANDIDATE_NAME} in gae-runtimes-private.
@@ -70,7 +67,7 @@ acceptance_test_suite(
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/nodejs:appengine",
-    versions = VERSIONS_WITH_GAE_SUPPORT,
+    versions = gae_runtime_versions,
 )
 
 acceptance_test_suite(
@@ -81,7 +78,7 @@ acceptance_test_suite(
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/nodejs:functions",
-    versions = VERSIONS_WITH_GCF_SUPPORT,
+    versions = gcf_runtime_versions,
 )
 
 acceptance_test_suite(
@@ -111,7 +108,7 @@ acceptance_test_suite(
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/nodejs:flex",
-    versions = VERSIONS_WITH_FLEX_SUPPORT,
+    versions = flex_runtime_versions,
 )
 
 exports_files(["runtime.bzl"])

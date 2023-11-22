@@ -1,6 +1,5 @@
-load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
-load(":args.bzl", "rubyargs")
-load(":runtime.bzl", "gae_runtimes", "gcf_runtimes")
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
+load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions", "rubyargs")
 
 licenses(["notice"])
 
@@ -8,6 +7,15 @@ exports_files([
     "config.yaml",
     "args.bzl",
 ])
+
+create_acceptance_versions_dict_file(
+    name = "gen_acceptance_targets_list",
+    file = "acceptance_targets.dict",
+    flex_runtime_versions = flex_runtime_versions,
+    gae_runtime_versions = gae_runtime_versions,
+    gcf_runtime_versions = gcf_runtime_versions,
+    gcp_runtime_versions = gcp_runtime_versions,
+)
 
 test_suite(
     name = "acceptance_test",
@@ -19,24 +27,6 @@ test_suite(
     ],
 )
 
-VERSION_RUBY31 = "3.1.0"
-
-VERSIONS_ALL = {n: v for n, v in gae_runtimes.items()}
-
-VERSIONS_ALL["ruby31"] = VERSION_RUBY31
-
-VERSIONS_WITH_GAE_SUPPORT = gae_runtimes
-
-VERSIONS_WITH_GCF_SUPPORT = gcf_runtimes
-
-VERSIONS_WITH_FLEX_SUPPORT = {
-    "ruby27": gae_runtimes["ruby27"],
-    "ruby30": gae_runtimes["ruby30"],
-    "ruby32": gae_runtimes["ruby32"],
-}
-
-VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
-
 acceptance_test_suite(
     name = "gcp_test",
     srcs = [
@@ -46,7 +36,7 @@ acceptance_test_suite(
     builder = "//builders/ruby:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/ruby:generic",
-    versions = VERSIONS_WITH_GCP_SUPPORT,
+    versions = gcp_runtime_versions,
 )
 
 # Test the run image tagged as latest in gae-runtimes.
@@ -60,7 +50,7 @@ acceptance_test_suite(
     builder = "//builders/ruby:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/ruby:appengine",
-    versions = VERSIONS_WITH_GAE_SUPPORT,
+    versions = gae_runtime_versions,
 )
 
 # Test the run image tagged as ${_CANDIDATE_NAME} in gae-runtimes-private.
@@ -74,7 +64,7 @@ acceptance_test_suite(
     builder = "//builders/ruby:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/ruby:appengine",
-    versions = VERSIONS_WITH_GAE_SUPPORT,
+    versions = gae_runtime_versions,
 )
 
 # This uses the latest Ubuntu 18 stack run image.
@@ -87,7 +77,7 @@ acceptance_test_suite(
     builder = "//builders/ruby:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/ruby:functions",
-    versions = VERSIONS_WITH_GCF_SUPPORT,
+    versions = gcf_runtime_versions,
 )
 
 acceptance_test_suite(
@@ -98,7 +88,7 @@ acceptance_test_suite(
     builder = "//builders/ruby:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/ruby:flex",
-    versions = VERSIONS_WITH_FLEX_SUPPORT,
+    versions = flex_runtime_versions,
 )
 
 acceptance_test_argo_source(

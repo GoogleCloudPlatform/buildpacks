@@ -1,5 +1,5 @@
-load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
-load(":args.bzl", "flex_php_runtime_versions", "gae_php_runtime_versions", "gcf_php_runtime_versions", "phpargs")
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
+load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions", "phpargs")
 
 licenses(["notice"])
 
@@ -7,6 +7,15 @@ exports_files([
     "config.yaml",
     "args.bzl",
 ])
+
+create_acceptance_versions_dict_file(
+    name = "gen_acceptance_targets_list",
+    file = "acceptance_targets.dict",
+    flex_runtime_versions = flex_runtime_versions,
+    gae_runtime_versions = gae_runtime_versions,
+    gcf_runtime_versions = gcf_runtime_versions,
+    gcp_runtime_versions = gcp_runtime_versions,
+)
 
 test_suite(
     name = "acceptance_test",
@@ -18,12 +27,6 @@ test_suite(
     ],
 )
 
-VERSIONS_ALL_PRODUCTS = gae_php_runtime_versions
-
-VERSIONS_GCF_SUPPORT = gcf_php_runtime_versions
-
-VERSIONS_FLEX_SUPPORT = flex_php_runtime_versions
-
 acceptance_test_suite(
     name = "gcp_test",
     srcs = [
@@ -33,7 +36,7 @@ acceptance_test_suite(
     builder = "//builders/php:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/php:generic",
-    versions = VERSIONS_ALL_PRODUCTS,
+    versions = gcp_runtime_versions,
 )
 
 # Test the run image tagged as latest in gae-runtimes.
@@ -47,7 +50,7 @@ acceptance_test_suite(
     builder = "//builders/php:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/php:appengine",
-    versions = VERSIONS_ALL_PRODUCTS,
+    versions = gae_runtime_versions,
 )
 
 # Test the run image tagged as ${_CANDIDATE_NAME} in gae-runtimes-private.
@@ -61,7 +64,7 @@ acceptance_test_suite(
     builder = "//builders/php:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/php:appengine",
-    versions = VERSIONS_ALL_PRODUCTS,
+    versions = gae_runtime_versions,
 )
 
 acceptance_test_suite(
@@ -73,7 +76,7 @@ acceptance_test_suite(
     builder = "//builders/php:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/php:functions",
-    versions = VERSIONS_GCF_SUPPORT,
+    versions = gcf_runtime_versions,
 )
 
 acceptance_test_suite(
@@ -85,7 +88,7 @@ acceptance_test_suite(
     builder = "//builders/php:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/php:flex",
-    versions = VERSIONS_FLEX_SUPPORT,
+    versions = flex_runtime_versions,
 )
 
 acceptance_test_argo_source(

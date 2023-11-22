@@ -2,13 +2,18 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 """Module for initializing aruments by GO version"""
 
-load(":runtime.bzl", "gae_runtimes", "gcf_runtimes")
+load(":runtime.bzl", "flex_runtimes", "gae_runtimes", "gcf_runtimes")
 
-gae_go_runtime_versions = {n: gae_runtimes[n] for n in gae_runtimes}
+# Note that the app.yamls in the test apps are still hardcoded to at least 1.18.
+flex_runtime_versions = {n: v for n, v in flex_runtimes.items()}
+gae_runtime_versions = {n: v for n, v in gae_runtimes.items()}
 
 # GCF Legacy Worker is only available and used for the "GCF go111" runtime version so it needs to
-# be handled separately.
-gcf_go_runtime_versions = {n: gcf_runtimes[n] for n in gcf_runtimes if n != "go111"}
+# be handled separately (and explicitly in BUILD).
+gcf_runtime_versions = {n: v for n, v in gcf_runtimes.items() if n != "go111"}
+
+# The union of all versions across all products.
+gcp_runtime_versions = dict(dict(flex_runtime_versions, **gae_runtime_versions), **gcf_runtime_versions)
 
 def goargs(runImageTag = ""):
     """Create a new key-value map of arguments for go test
@@ -17,7 +22,7 @@ def goargs(runImageTag = ""):
         A key-value map of the arguments
     """
     args = {}
-    for runtime, version in gae_go_runtime_versions.items():
+    for runtime, version in gae_runtime_versions.items():
         args[version] = newArgs(runtime, runImageTag)
 
     return args

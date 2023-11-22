@@ -1,6 +1,5 @@
-load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
-load(":args.bzl", "pythonargs")
-load(":runtime.bzl", "gae_runtimes")
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
+load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions", "pythonargs")
 
 licenses(["notice"])
 
@@ -8,6 +7,15 @@ exports_files([
     "config.yaml",
     "args.bzl",
 ])
+
+create_acceptance_versions_dict_file(
+    name = "gen_acceptance_targets_list",
+    file = "acceptance_targets.dict",
+    flex_runtime_versions = flex_runtime_versions,
+    gae_runtime_versions = gae_runtime_versions,
+    gcf_runtime_versions = gcf_runtime_versions,
+    gcp_runtime_versions = gcp_runtime_versions,
+)
 
 test_suite(
     name = "acceptance_test",
@@ -18,22 +26,6 @@ test_suite(
         "gcp_test",
     ],
 )
-
-VERSIONS_ALL = {n: v for n, v in gae_runtimes.items() if n != "python27"}
-
-VERSIONS_WITH_GCP_SUPPORT = VERSIONS_ALL
-
-VERSIONS_WITH_GAE_SUPPORT = VERSIONS_ALL
-
-VERSIONS_WITH_GCF_SUPPORT = VERSIONS_ALL
-
-VERSIONS_WITH_FLEX_SUPPORT = {
-    "python38": gae_runtimes["python38"],
-    "python39": gae_runtimes["python39"],
-    "python310": gae_runtimes["python310"],
-    "python311": gae_runtimes["python311"],
-    "python312": gae_runtimes["python312"],
-}
 
 acceptance_test_suite(
     name = "gcp_test",
@@ -48,7 +40,7 @@ acceptance_test_suite(
         "python312": "//builders/python:builder_22.tar",
     },
     testdata = "//builders/testdata/python:generic",
-    versions = VERSIONS_WITH_GCP_SUPPORT,
+    versions = gcp_runtime_versions,
 )
 
 acceptance_test_suite(
@@ -65,7 +57,7 @@ acceptance_test_suite(
         "python312": "//builders/python:builder_22.tar",
     },
     testdata = "//builders/testdata/python:appengine",
-    versions = VERSIONS_WITH_GAE_SUPPORT,
+    versions = gae_runtime_versions,
 )
 
 acceptance_test_suite(
@@ -81,7 +73,7 @@ acceptance_test_suite(
         "python312": "//builders/python:builder_22.tar",
     },
     testdata = "//builders/testdata/python:functions",
-    versions = VERSIONS_WITH_GCF_SUPPORT,
+    versions = gcf_runtime_versions,
 )
 
 acceptance_test_suite(
@@ -95,7 +87,7 @@ acceptance_test_suite(
         "python312": "//builders/python:builder_22.tar",
     },
     testdata = "//builders/testdata/python:flex",
-    versions = VERSIONS_WITH_FLEX_SUPPORT,
+    versions = flex_runtime_versions,
 )
 
 acceptance_test_argo_source(
@@ -113,7 +105,7 @@ acceptance_test_suite(
     builder = "//builders/python:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/python:appengine",
-    versions = VERSIONS_WITH_GAE_SUPPORT,
+    versions = gae_runtime_versions,
 )
 
 exports_files(["runtime.bzl"])
