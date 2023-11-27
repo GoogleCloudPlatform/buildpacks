@@ -246,7 +246,15 @@ func TestInstallSource(t *testing.T) {
 			wantError:          false,
 			wantAR:             true,
 		},
-
+		{
+			name:               "install from artifact registry",
+			runtime:            OpenJDK,
+			version:            "17.1.0",
+			responseFile:       "testdata/dummy-ruby-runtime.tar.gz",
+			runtimeImageRegion: "us-central1",
+			wantError:          false,
+			wantAR:             true,
+		},
 		{
 			name:         "missing runtimeImageRegion",
 			runtime:      Nodejs,
