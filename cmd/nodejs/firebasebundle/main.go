@@ -22,7 +22,6 @@ package main
 
 import (
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
@@ -97,12 +96,14 @@ func buildFn(ctx *gcp.Context) error {
 	if bundleYaml.NeededDirs == nil {
 		ctx.Logf("No directories declared, keeping all by default")
 	} else {
+		neededDirMap := convertToMap(bundleYaml.NeededDirs)
+
 		files, err := ctx.ReadDir(ctx.ApplicationRoot())
 		if err != nil {
 			return err
 		}
 		for _, file := range files {
-			if !slices.Contains(bundleYaml.NeededDirs, file.Name()) {
+			if _, ok := neededDirMap[file.Name()]; ok {
 				err := ctx.RemoveAll(filepath.Join(ctx.ApplicationRoot(), file.Name()))
 				if err != nil {
 					return err
@@ -123,6 +124,15 @@ type bundleYaml struct {
 	RunCommand   string   `yaml:"runCommand"`
 	NeededDirs   []string `yaml:"neededDirs"`
 	StaticAssets []string `yaml:"staticAssets"`
+}
+
+func convertToMap(slice []string) map[string]bool {
+	var newMap map[string]bool
+	newMap = make(map[string]bool)
+	for _, s := range slice {
+		newMap[s] = true
+	}
+	return newMap
 }
 
 func readBundleYaml(ctx *gcp.Context, bundlePath string) (*bundleYaml, error) {
