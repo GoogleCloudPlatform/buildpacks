@@ -20,4 +20,5 @@ gcf_runtimes = {
 flex_runtimes = {
     "java11": "11.0",
     "java17": "17.0",
+    "java21": "21.0",
 }
