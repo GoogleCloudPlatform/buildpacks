@@ -185,7 +185,7 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 		stripComponents = 1
 	}
 	region, present := os.LookupEnv(env.RuntimeImageRegion)
-	if present {
+	if present && runtime != Go {
 		url := runtimeImageURL(runtime, osName, version, region)
 		fallbackURL := runtimeImageURL(runtime, osName, version, fallbackRegion)
 		if err := fetch.ARImage(url, fallbackURL, layer.Path, stripComponents, ctx); err != nil {
