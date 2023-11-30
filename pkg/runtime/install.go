@@ -296,6 +296,11 @@ func ResolveVersion(runtime InstallableRuntime, verConstraint, osName string) (s
 	region, present := os.LookupEnv(env.RuntimeImageRegion)
 	if present {
 		versions, err = crane.ListTags(fmt.Sprintf(runtimeImageARRepoURL, region, osName, runtime))
+		if runtime == OpenJDK {
+			for i, version := range versions {
+				versions[i] = strings.ReplaceAll(version, "_", "+")
+			}
+		}
 	} else {
 		err = fetch.JSON(url, &versions)
 	}
