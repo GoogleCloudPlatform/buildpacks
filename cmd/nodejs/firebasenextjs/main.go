@@ -19,6 +19,12 @@ package main
 import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
+	"github.com/Masterminds/semver"
+)
+
+var (
+	// minNextVersion is the lowest version of nextjs supported by the firebasenextjs buildpack.
+	minNextVersion = semver.MustParse("14.0.0")
 )
 
 func main() {
@@ -54,6 +60,15 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
+	version, err := semver.NewVersion(pjs.Dependencies["next"])
+	if err != nil {
+		return err
+	}
+
+	if version.LessThan(minNextVersion) {
+		return gcp.UserErrorf("running unsupported nextjs version, minimum %s required but %s is being run", minNextVersion.String(), version.String())
+	}
+
 	buildScript, exists := pjs.Scripts["build"]
 
 	if exists && buildScript == "next build" {

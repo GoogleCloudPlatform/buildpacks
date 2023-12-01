@@ -66,6 +66,9 @@ func TestBuild(t *testing.T) {
 				"package.json": `{
 				"scripts": {
 					"build": "next build"
+				},
+				"dependencies": {
+					"next": "14.0.0"
 				}
 			}`,
 			},
@@ -79,7 +82,11 @@ func TestBuild(t *testing.T) {
 		{
 			name: "build script doesnt exist",
 			files: map[string]string{
-				"package.json": "{}",
+				"package.json": `{
+					"dependencies": {
+						"next": "14.0.0"
+					}
+				}`,
 			},
 		},
 		{
@@ -88,9 +95,23 @@ func TestBuild(t *testing.T) {
 				"package.json": `{
 					"scripts": {
 						"build": "apphosting-adapter-nextjs-build"
+					},
+					"dependencies": {
+						"next": "14.0.0"
 					}
 				}`,
 			},
+		},
+		{
+			name: "error out if the version is below 14.0.0",
+			files: map[string]string{
+				"package.json": `{
+				"dependencies": {
+					"next": "13.0.0"
+				}
+			}`,
+			},
+			wantExitCode: 1,
 		},
 	}
 
@@ -103,7 +124,7 @@ func TestBuild(t *testing.T) {
 			}
 			opts = append(opts, tc.opts...)
 			result, err := bpt.RunBuild(t, buildFn, opts...)
-			if err != nil {
+			if err != nil && tc.wantExitCode == 0 {
 				t.Fatalf("error running build: %v, logs: %s", err, result.Output)
 			}
 
