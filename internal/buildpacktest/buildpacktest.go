@@ -128,6 +128,13 @@ func WithEnvs(envs ...string) Option {
 	}
 }
 
+// WithFiles specifies files, by directory name and contents to generate for tests.
+func WithFiles(files map[string]string) Option {
+	return func(cfg *config) {
+		cfg.files = files
+	}
+}
+
 // WithExecMocks mocks the behavior of shell commands.
 func WithExecMocks(mocks ...*mockprocess.Mock) Option {
 	return func(cfg *config) {

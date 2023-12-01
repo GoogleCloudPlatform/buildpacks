@@ -37,6 +37,8 @@ const (
 	nodejsNPMBuildEnv = "GOOGLE_EXPERIMENTAL_NODEJS_NPM_BUILD_ENABLED"
 	// VendorNpmDeps for vendoring npm dependencies
 	VendorNpmDeps = "GOOGLE_VENDOR_NPM_DEPENDENCIES"
+	// AppHostingBuildEnv is the env var that contains the build script to run for nextjs apps
+	AppHostingBuildEnv = "APPHOSTING_BUILD"
 )
 
 var (
@@ -140,10 +142,16 @@ func SupportsNPMPrune(ctx *gcp.Context) (bool, error) {
 // or a system build step (default build behavior).
 //
 // Users can specify npm scripts to run in three ways, with the following order of precedence:
-// 1. GOOGLE_NODE_RUN_SCRIPTS env var
-// 2. "gcp-build" script in package.json
-// 3. "build" script in package.json
+// 1. APPHOSTING_BUILD env var
+// 2. GOOGLE_NODE_RUN_SCRIPTS env var
+// 3. "gcp-build" script in package.json
+// 4. "build" script in package.json
 func DetermineBuildCommands(pjs *PackageJSON, pkgTool string) (cmds []string, isCustomBuild bool) {
+	nextJsBuildScript, nextJsBuildScriptPresent := os.LookupEnv(AppHostingBuildEnv)
+	if nextJsBuildScriptPresent {
+		return []string{nextJsBuildScript}, true
+	}
+
 	envScript, envScriptPresent := os.LookupEnv(GoogleNodeRunScriptsEnv)
 	if envScriptPresent {
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmGoogleNodeRunScriptsUsageCounterID).Increment(1)

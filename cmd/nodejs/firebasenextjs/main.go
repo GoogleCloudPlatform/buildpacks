@@ -18,6 +18,7 @@ package main
 
 import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 )
 
 func main() {
@@ -28,6 +29,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	// TODO (b/311402770)
 	// In monorepo scenarios, we'll probably need to support environment variable that can be used to
 	// know where the application directory is located within the repository.
+	// TODO (b/313959098)
+	// Verify nextjs version
 	nextConfigExists, err := ctx.FileExists("next.config.js")
 	if err != nil {
 		return nil, err
@@ -47,5 +50,25 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	return nil
+	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
+	if err != nil {
+		return err
+	}
+	buildScript, exists := pjs.Scripts["build"]
+
+	if exists && buildScript == "next build" {
+		njsl, err := ctx.Layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
+		if err != nil {
+			return err
+		}
+		err = nodejs.InstallNextJsBuildAdaptor(ctx, njsl)
+		if err != nil {
+			return err
+		}
+		// This env var indicates to the package manager buildpack that a different command needs to be run
+		nodejs.OverrideNextjsBuildScript(njsl)
+	} else if exists && buildScript != "apphosting-adapter-nextjs-build" {
+		ctx.Warnf("*** You are using a custom build command (your build command is NOT 'next build'), we will accept it as is but some features will not be enabled ***")
+	}
+	return err
 }

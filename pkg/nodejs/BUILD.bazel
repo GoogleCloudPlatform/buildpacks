@@ -5,6 +5,7 @@ licenses(["notice"])
 go_library(
     name = "nodejs",
     srcs = [
+        "nextjs.go",
         "nodejs.go",
         "npm.go",
         "pnpm.go",
@@ -34,6 +35,7 @@ go_library(
 go_test(
     name = "nodejs_test",
     srcs = [
+        "nextjs_test.go",
         "nodejs_test.go",
         "npm_test.go",
         "pnpm_test.go",
@@ -44,6 +46,7 @@ go_test(
     embed = [":nodejs"],
     rundir = ".",
     deps = [
+        "//internal/mockprocess",
         "//internal/testserver",
         "//pkg/env",
         "//pkg/gcpbuildpack",

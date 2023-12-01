@@ -156,13 +156,15 @@ func TestSupportsNPMPrune(t *testing.T) {
 
 func TestDetermineBuildCommands(t *testing.T) {
 	testsCases := []struct {
-		name               string
-		pjs                string
-		nodeRunScriptSet   bool
-		nodeRunScriptValue string // ignored if `nodeRunScriptSet == false`
-		targetPlatformSet  bool
-		want               []string
-		wantIsCustomBuild  bool
+		name                       string
+		pjs                        string
+		appHostingBuildScriptSet   bool
+		appHostingBuildScriptValue string // ignored if `nextJsBuildScriptSet == false`
+		nodeRunScriptSet           bool
+		nodeRunScriptValue         string // ignored if `nodeRunScriptSet == false`
+		targetPlatformSet          bool
+		want                       []string
+		wantIsCustomBuild          bool
 	}{
 		{
 			name:             "no build",
@@ -225,7 +227,22 @@ func TestDetermineBuildCommands(t *testing.T) {
 			wantIsCustomBuild: true,
 		},
 		{
-			name: "GOOGLE_NODE_RUN_SCRIPTS highest precedence",
+			name: "APPHOSTING_BUILD highest precedence",
+			pjs: `{
+				"scripts": {
+					"build": "tsc --build --clean",
+					"gcp-build": "tsc --build"
+				}
+			}`,
+			appHostingBuildScriptSet:   true,
+			appHostingBuildScriptValue: "next-js build",
+			nodeRunScriptSet:           true,
+			nodeRunScriptValue:         "from-env",
+			want:                       []string{"next-js build"},
+			wantIsCustomBuild:          true,
+		},
+		{
+			name: "GOOGLE_NODE_RUN_SCRIPTS second precedence",
 			pjs: `{
 				"scripts": {
 					"build": "tsc --build --clean",
@@ -285,6 +302,9 @@ func TestDetermineBuildCommands(t *testing.T) {
 	}
 	for _, tc := range testsCases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.appHostingBuildScriptSet {
+				t.Setenv(AppHostingBuildEnv, tc.appHostingBuildScriptValue)
+			}
 			if tc.nodeRunScriptSet {
 				t.Setenv(GoogleNodeRunScriptsEnv, tc.nodeRunScriptValue)
 			}

@@ -164,6 +164,7 @@ func TestBuild(t *testing.T) {
 				bpt.WithApp(tc.app),
 				bpt.WithEnvs(tc.envs...),
 				bpt.WithExecMocks(tc.mocks...),
+				bpt.WithFiles(tc.files),
 			}
 			opts = append(opts, tc.opts...)
 			result, err := bpt.RunBuild(t, buildFn, opts...)
