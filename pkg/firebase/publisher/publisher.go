@@ -96,9 +96,10 @@ func writeToFile(fileData []byte, outputFilePath string) error {
 	return nil
 }
 
-// Publish takes in the path to various required files such as apphosting.yaml, bundle.yaml, and other files (tbd) and merges them into one output that describes the
-// desired Backend Service configuration before pushing this information to the control plane.
-func Publish(appHostingYAMLPath string, outputFilePath string) error {
+// Publish takes in the path to various required files such as apphosting.yaml, bundle.yaml, and
+// other files (tbd) and merges them into one output that describes the desired Backend Service
+// configuration before pushing this information to the control plane.
+func Publish(appHostingYAMLPath string, bundleYAMLPath string, outputFilePath string) error {
 	// Read in apphosting.yaml
 	apphostingBuffer, err := os.ReadFile(appHostingYAMLPath)
 	if err != nil {

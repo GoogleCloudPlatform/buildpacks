@@ -62,7 +62,7 @@ func TestPublish(t *testing.T) {
 
 	// Testing happy paths
 	for _, test := range testCasesHappy {
-		err := Publish(test.filePath, outputFilePath)
+		err := Publish(test.filePath, "", outputFilePath)
 		if err != nil {
 			t.Errorf("Error in test '%v'. Error was %v", test.desc, err)
 		}
@@ -85,7 +85,7 @@ func TestPublish(t *testing.T) {
 
 	// Testing error paths
 	for _, test := range testCasesError {
-		err := Publish(test.filePath, outputFilePath)
+		err := Publish(test.filePath, "", outputFilePath)
 		if err == nil {
 			t.Errorf("Calling Publish did not produce an error for test '%v'", test.desc)
 		}
