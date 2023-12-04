@@ -11,4 +11,5 @@ go_binary(
         "-s",
         "-w",
     ],
+    deps = ["//pkg/firebase/publisher"],
 )

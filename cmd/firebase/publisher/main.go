@@ -16,9 +16,31 @@
 package main
 
 import (
-	"fmt"
+	"flag"
+	"log"
+	"path/filepath"
+
+	publisher "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/publisher"
+)
+
+var (
+	apphostingYAMLFilePath = flag.String("apphostingyaml_filepath", "", "File path to user defined apphosting.yaml")
+	outputBundleDir        = flag.String("output_bundle_dir", "", "File path to root directory of build artifacts aka Output Bundle (including bundle.yaml)")
 )
 
 func main() {
-	fmt.Printf("Hello, world. This is the publisher.")
+
+	flag.Parse()
+
+	if *apphostingYAMLFilePath == "" {
+		log.Fatal("--apphostingyaml_filepath flag not specified.")
+	}
+	if *outputBundleDir == "" {
+		log.Fatal("--output_bundle_dir flag not specified.")
+	}
+
+	_, err := publisher.Publish(*apphostingYAMLFilePath, filepath.Join(*outputBundleDir, "bundle.yaml"))
+	if err != nil {
+		log.Fatal(err)
+	}
 }
