@@ -23,28 +23,60 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type backendResources struct {
-	CPU int64
+// appHostingSchema is the struct representation of apphosting.yaml
+type appHostingSchema struct {
+	BackendResources backendResources `yaml:"backend_resources"`
 }
 
-func byteArrayToBackendResources(fileData []byte) (*backendResources, error) {
-	var structData backendResources
+// buildSchema is the internal Publisher representation of the final build settings that will ultimately be converted into an updateBuildRequest
+type buildSchema struct {
+	BackendResources backendResources `yaml:"backend_resources"`
+}
+
+type backendResources struct {
+	CPU          int32
+	Memory       int32
+	Concurrency  int32
+	MinInstances int32 `yaml:"minInstances"`
+	MaxInstances int32 `yaml:"maxInstances"`
+}
+
+func byteArrayToAppHostingSchema(fileData []byte) (*appHostingSchema, error) {
+	var structData appHostingSchema
 	err := yaml.Unmarshal(fileData, &structData)
 	if err != nil {
-		return nil, fmt.Errorf("error marshalling %q as YAML: %w", fileData, err)
+		return nil, fmt.Errorf("error unmarshalling %q as YAML: %w", fileData, err)
 	}
 	return &structData, nil
 }
 
-// Publish takes in the path to various required files such as apphosting.yaml, bundle.yaml, and other files (tbd) and merges them into one output that describes the
-// desired cloud run variables before pushing this information to the AppHosting control plane.
-func Publish(pathToAppHostingYAML, pathToBundleYAML string) (string, error) {
-	// Read in bundle.yaml
-	bundleBuffer, err := os.ReadFile(pathToBundleYAML)
-	if err != nil {
-		return "", err
+func validateAppHostingYAMLFields(appHostingYAML *appHostingSchema) error {
+	if !(appHostingYAML.BackendResources.CPU >= 1 && appHostingYAML.BackendResources.CPU <= 8) {
+		return fmt.Errorf("cpu field is not in valid range of '1 <= cpu <= 8'")
 	}
 
+	if !(appHostingYAML.BackendResources.Memory >= 512 && appHostingYAML.BackendResources.Memory <= 32768) {
+		return fmt.Errorf("memory field is not in valid range of '512 <= memory <= 32768'")
+	}
+
+	if !(appHostingYAML.BackendResources.Concurrency >= 1 && appHostingYAML.BackendResources.Concurrency <= 1000) {
+		return fmt.Errorf("concurrency field is not in valid range of '1 <= concurrency <= 1000'")
+	}
+
+	if !(appHostingYAML.BackendResources.MinInstances >= 1 && appHostingYAML.BackendResources.MinInstances <= 1000) {
+		return fmt.Errorf("minInstances field is not in valid range of '1 <= minInstances <= 1000'")
+	}
+
+	if !(appHostingYAML.BackendResources.MaxInstances >= 1 && appHostingYAML.BackendResources.MaxInstances <= 100) {
+		return fmt.Errorf("maxInstances field is not in valid range of '1 <= maxInstances <= 100'")
+	}
+
+	return nil
+}
+
+// Publish takes in the path to various required files such as apphosting.yaml, bundle.yaml, and other files (tbd) and merges them into one output that describes the
+// desired Backend Service configuration before pushing this information to the control plane.
+func Publish(pathToAppHostingYAML string) (string, error) {
 	// Read in apphosting.yaml
 	apphostingBuffer, err := os.ReadFile(pathToAppHostingYAML)
 	if err != nil {
@@ -52,17 +84,25 @@ func Publish(pathToAppHostingYAML, pathToBundleYAML string) (string, error) {
 	}
 
 	// Convert read in file arrays to struct
-	bundleYAML, _ := byteArrayToBackendResources(bundleBuffer)
-	apphostingYAML, _ := byteArrayToBackendResources(apphostingBuffer)
+	apphostingYAML, err := byteArrayToAppHostingSchema(apphostingBuffer)
+	if err != nil {
+		return "", err
+	}
 
-	// Use bundleYaml and apphostingYaml to generate output.yaml
-	bundleYAMLCPU := bundleYAML.CPU
-	appHostingYAMLCPU := apphostingYAML.CPU
+	validateErr := validateAppHostingYAMLFields(apphostingYAML)
+	if validateErr != nil {
+		return "", fmt.Errorf("apphosting.yaml fields are not valid: %w", validateErr)
+	}
 
-	outputYAMLCPU := max(bundleYAMLCPU, appHostingYAMLCPU, 1)
-
-	outputYAMLStruct := backendResources{
-		CPU: outputYAMLCPU,
+	// TODO: Use bundleYaml and apphostingYaml to generate output.yaml
+	outputYAMLStruct := buildSchema{
+		BackendResources: backendResources{
+			CPU:          apphostingYAML.BackendResources.CPU,
+			Memory:       apphostingYAML.BackendResources.Memory,
+			Concurrency:  apphostingYAML.BackendResources.Concurrency,
+			MinInstances: apphostingYAML.BackendResources.MinInstances,
+			MaxInstances: apphostingYAML.BackendResources.MaxInstances,
+		},
 	}
 
 	// Marshal struct to YAML format.

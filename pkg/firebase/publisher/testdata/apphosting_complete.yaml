@@ -1,0 +1,8 @@
+schemaVersion: '3.0.0'
+
+backend_resources:
+  cpu: 3
+  memory: 512
+  minInstances: 2
+  maxInstances: 3
+  concurrency: 100
