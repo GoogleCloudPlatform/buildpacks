@@ -15,12 +15,13 @@
 // Implements nodejs/firebasebundle buildpack.
 // The output bundle buildpack sets up the output bundle for future steps
 // It will do the following
-// 1. Copy over static assets to the build layer
+// 1. Copy over static assets to the output bundle dir
 // 2. Delete unnecessary files
 // 3. Override run script with a new one to run the optimized build
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -30,7 +31,8 @@ import (
 )
 
 const (
-	defaultPublicDir = "public"
+	defaultPublicDir        = "public"
+	firebaseOutputBundleDir = "FIREBASE_OUTPUT_BUNDLE_DIR"
 )
 
 func main() {
@@ -50,42 +52,48 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	staticAssetLayer, err := ctx.Layer("staticAssets", gcp.BuildLayer)
-	if err != nil {
-		return err
+	outputBundleDir, ok := os.LookupEnv(firebaseOutputBundleDir)
+
+	if !ok {
+		return gcp.InternalErrorf("looking up output bundle env %s", firebaseOutputBundleDir)
 	}
 
 	workspacePublicDir := filepath.Join(ctx.ApplicationRoot(), defaultPublicDir)
-	layerPublicDir := filepath.Join(staticAssetLayer.Path, defaultPublicDir)
+	outputPublicDir := filepath.Join(outputBundleDir, defaultPublicDir)
 	if bundleYaml == nil {
 		ctx.Logf("bundle.yaml does not exist, assuming default configs")
 
 		// if public folder exists assume that the code there should be in cdn
 		ctx.Logf("No static assets declared, copying public directory (if it exists) to staticAssets by default")
-		err := ctx.MkdirAll(layerPublicDir, 0744)
+		err := copyPublicDirToOutputBundleDir(outputPublicDir, workspacePublicDir, ctx)
 		if err != nil {
 			return err
 		}
-		fileutil.MaybeCopyPathContents(layerPublicDir, workspacePublicDir, fileutil.AllPaths)
+		err = generateDefaultBundleYaml(outputBundleDir, ctx)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	}
 
 	ctx.Logf("Copying static assets.")
-	fileutil.CopyFile(filepath.Join(staticAssetLayer.Path, "bundle.yaml"), bundlePath)
+	err = fileutil.CopyFile(filepath.Join(outputBundleDir, "bundle.yaml"), bundlePath)
+	if err != nil {
+		return gcp.InternalErrorf("copying output bundle dir %s: %w", outputBundleDir, err)
+	}
 
 	if bundleYaml.StaticAssets == nil {
 		// copy public folder by default if there are no static assets declared
 		ctx.Logf("No static assets declared, copying public directory (if it exists) to staticAssets by default")
-		err := ctx.MkdirAll(layerPublicDir, 0744)
+		err := copyPublicDirToOutputBundleDir(outputPublicDir, workspacePublicDir, ctx)
 		if err != nil {
 			return err
 		}
-		fileutil.MaybeCopyPathContents(layerPublicDir, workspacePublicDir, fileutil.AllPaths)
 	} else {
 		for _, staticAsset := range bundleYaml.StaticAssets {
-			ctx.MkdirAll(filepath.Join(staticAssetLayer.Path, staticAsset), 0744)
-			err := fileutil.MaybeCopyPathContents(filepath.Join(staticAssetLayer.Path, staticAsset), filepath.Join(ctx.ApplicationRoot(), staticAsset), fileutil.AllPaths)
+			ctx.MkdirAll(filepath.Join(outputBundleDir, staticAsset), 0744)
+			err := fileutil.MaybeCopyPathContents(filepath.Join(outputBundleDir, staticAsset), filepath.Join(ctx.ApplicationRoot(), staticAsset), fileutil.AllPaths)
 			if err != nil {
 				ctx.Logf("%s dir not detected", staticAsset)
 			}
@@ -103,7 +111,7 @@ func buildFn(ctx *gcp.Context) error {
 			return err
 		}
 		for _, file := range files {
-			if _, ok := neededDirMap[file.Name()]; ok {
+			if _, ok := neededDirMap[file.Name()]; !ok {
 				err := ctx.RemoveAll(filepath.Join(ctx.ApplicationRoot(), file.Name()))
 				if err != nil {
 					return err
@@ -153,4 +161,24 @@ func readBundleYaml(ctx *gcp.Context, bundlePath string) (*bundleYaml, error) {
 		return nil, gcp.UserErrorf("invalid %s: %w", bundlePath, err)
 	}
 	return &bundleYaml, nil
+}
+
+func generateDefaultBundleYaml(outputBundleDir string, ctx *gcp.Context) error {
+	f, err := ctx.CreateFile(filepath.Join(outputBundleDir, "bundle.yaml"))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return nil
+}
+
+func copyPublicDirToOutputBundleDir(outputPublicDir string, workspacePublicDir string, ctx *gcp.Context) error {
+	err := ctx.MkdirAll(outputPublicDir, 0744)
+	if err != nil {
+		return err
+	}
+	if err := fileutil.MaybeCopyPathContents(outputPublicDir, workspacePublicDir, fileutil.AllPaths); err != nil {
+		return err
+	}
+	return nil
 }
