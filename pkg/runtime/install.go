@@ -297,8 +297,9 @@ func ResolveVersion(runtime InstallableRuntime, verConstraint, osName string) (s
 	if present {
 		versions, err = crane.ListTags(fmt.Sprintf(runtimeImageARRepoURL, region, osName, runtime))
 		if runtime == OpenJDK {
-			for i, version := range versions {
-				versions[i] = strings.ReplaceAll(version, "_", "+")
+			for i, v := range versions {
+				// When resolving version openjdk versions should be decoded to align with semver requirement. (eg. 11.0.21_9 -> 11.0.21+9)
+				versions[i] = strings.ReplaceAll(v, "_", "+")
 			}
 		}
 	} else {
@@ -311,6 +312,10 @@ func ResolveVersion(runtime InstallableRuntime, verConstraint, osName string) (s
 	v, err := version.ResolveVersion(verConstraint, versions)
 	if err != nil {
 		return "", gcp.UserErrorf("invalid %s version specified: %v. You may need to use a different builder. Please check if the language version specified is supported by the os: %v. You can refer to https://cloud.google.com/docs/buildpacks/builders for a list of compatible runtime languages per builder", runtimeNames[runtime], err, osName)
+	}
+	// When downloading from AR the openjdk version should be encoded to align with tag format requirement. (eg. 11.0.21+9 -> 11.0.21_9)
+	if present && runtime == OpenJDK {
+		v = strings.ReplaceAll(v, "+", "_")
 	}
 	return v, nil
 }
