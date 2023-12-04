@@ -21,5 +21,6 @@ go_test(
     deps = [
         "//pkg/testdata",
         "@com_github_google_go-cmp//cmp:go_default_library",
+        "@in_gopkg_yaml_v2//:go_default_library",
     ],
 )

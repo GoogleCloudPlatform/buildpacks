@@ -19,6 +19,7 @@ package publisher
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v2"
 )
@@ -45,7 +46,7 @@ func byteArrayToAppHostingSchema(fileData []byte) (*appHostingSchema, error) {
 	var structData appHostingSchema
 	err := yaml.Unmarshal(fileData, &structData)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling %q as YAML: %w", fileData, err)
+		return nil, fmt.Errorf("unmarshalling %q as YAML: %w", fileData, err)
 	}
 	return &structData, nil
 }
@@ -74,28 +75,49 @@ func validateAppHostingYAMLFields(appHostingYAML *appHostingSchema) error {
 	return nil
 }
 
+// Write the given build schema to the specified path, used to output the final arguments to BuildStepOutputs[]
+func writeToFile(fileData []byte, outputFilePath string) error {
+	err := os.MkdirAll(filepath.Dir(outputFilePath), os.ModeDir)
+	if err != nil {
+		return fmt.Errorf("creating parent directory %q: %w", outputFilePath, err)
+	}
+
+	file, err := os.Create(outputFilePath)
+	if err != nil {
+		return fmt.Errorf("creating file: %w", err)
+	}
+	defer file.Close()
+
+	_, err = file.Write(fileData)
+	if err != nil {
+		return fmt.Errorf("writing data to file: %w", err)
+	}
+
+	return nil
+}
+
 // Publish takes in the path to various required files such as apphosting.yaml, bundle.yaml, and other files (tbd) and merges them into one output that describes the
 // desired Backend Service configuration before pushing this information to the control plane.
-func Publish(pathToAppHostingYAML string) (string, error) {
+func Publish(appHostingYAMLPath string, outputFilePath string) error {
 	// Read in apphosting.yaml
-	apphostingBuffer, err := os.ReadFile(pathToAppHostingYAML)
+	apphostingBuffer, err := os.ReadFile(appHostingYAMLPath)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	// Convert read in file arrays to struct
 	apphostingYAML, err := byteArrayToAppHostingSchema(apphostingBuffer)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	validateErr := validateAppHostingYAMLFields(apphostingYAML)
 	if validateErr != nil {
-		return "", fmt.Errorf("apphosting.yaml fields are not valid: %w", validateErr)
+		return fmt.Errorf("apphosting.yaml fields are not valid: %w", validateErr)
 	}
 
 	// TODO: Use bundleYaml and apphostingYaml to generate output.yaml
-	outputYAMLStruct := buildSchema{
+	buildSchema := buildSchema{
 		BackendResources: backendResources{
 			CPU:          apphostingYAML.BackendResources.CPU,
 			Memory:       apphostingYAML.BackendResources.Memory,
@@ -106,11 +128,15 @@ func Publish(pathToAppHostingYAML string) (string, error) {
 	}
 
 	// Marshal struct to YAML format.
-	stringOutputYAML, err := yaml.Marshal(&outputYAMLStruct)
+	buildSchemaData, err := yaml.Marshal(&buildSchema)
 	if err != nil {
-		return "", fmt.Errorf("error when converting struct to YAML: %w", err)
+		return fmt.Errorf("converting struct to YAML: %w", err)
 	}
 
-	// Return string representation of output YAML
-	return string(stringOutputYAML), nil
+	err = writeToFile(buildSchemaData, outputFilePath)
+	if err != nil {
+		return fmt.Errorf("writing buildSchema to file: %w", err)
+	}
+
+	return nil
 }

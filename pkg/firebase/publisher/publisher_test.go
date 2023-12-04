@@ -15,11 +15,12 @@
 package publisher
 
 import (
-	"fmt"
+	"io/ioutil"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/google/go-cmp/cmp"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -28,21 +29,26 @@ var (
 )
 
 func TestPublish(t *testing.T) {
+	testDir := t.TempDir()
+	outputFilePath := testDir + "/output"
+
 	testCasesHappy := []struct {
-		desc     string
-		filePath string
-		wantYAML string
+		desc            string
+		filePath        string
+		wantBuildSchema buildSchema
 	}{{
 		desc:     "Correctly parse in provided apphosting.yaml",
 		filePath: appHostingCompleteYAMLPath,
-		wantYAML: fmt.Sprint(`backend_resources:
-  cpu: 3
-  memory: 512
-  concurrency: 100
-  minInstances: 2
-  maxInstances: 3
-`),
-	}}
+		wantBuildSchema: buildSchema{
+			BackendResources: backendResources{
+				CPU:          3,
+				Memory:       512,
+				Concurrency:  100,
+				MinInstances: 2,
+				MaxInstances: 3,
+			},
+		}},
+	}
 
 	testCasesError := []struct {
 		desc      string
@@ -56,21 +62,32 @@ func TestPublish(t *testing.T) {
 
 	// Testing happy paths
 	for _, test := range testCasesHappy {
-		res, err := Publish(test.filePath)
+		err := Publish(test.filePath, outputFilePath)
 		if err != nil {
 			t.Errorf("Error in test '%v'. Error was %v", test.desc, err)
 		}
 
-		if diff := cmp.Diff(test.wantYAML, res); diff != "" {
+		actualBuildSchemaData, err := ioutil.ReadFile(outputFilePath)
+		if err != nil {
+			t.Errorf("Error reading in temp file: %v", err)
+		}
+
+		var actualBuildSchema buildSchema
+		err = yaml.Unmarshal(actualBuildSchemaData, &actualBuildSchema)
+		if err != nil {
+			t.Errorf("error unmarshalling %q as YAML: %v", actualBuildSchemaData, err)
+		}
+
+		if diff := cmp.Diff(test.wantBuildSchema, actualBuildSchema); diff != "" {
 			t.Errorf("Unexpected YAML for test %v (+got, -want): \n %v", test.desc, diff)
 		}
 	}
 
 	// Testing error paths
 	for _, test := range testCasesError {
-		res, err := Publish(test.filePath)
+		err := Publish(test.filePath, outputFilePath)
 		if err == nil {
-			t.Errorf("Calling Publish did not produce an error for test '%v'. Instead produced %v", test.desc, res)
+			t.Errorf("Calling Publish did not produce an error for test '%v'", test.desc)
 		}
 
 		if diff := cmp.Diff(test.wantError, err.Error()); diff != "" {
@@ -153,7 +170,7 @@ func TestValidateAppHostingYAMLFields(t *testing.T) {
 			desc: "Throw an error when maxInstances value is invalid",
 			appHostingSchema: &appHostingSchema{
 				BackendResources: backendResources{
-					CPU:          4,
+					CPU:          3,
 					Memory:       1024,
 					Concurrency:  500,
 					MinInstances: 2,
