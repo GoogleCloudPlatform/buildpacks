@@ -19,6 +19,8 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
+var baseEnv = "FIREBASE_OUTPUT_BUNDLE_DIR=.apphosting/"
+
 func init() {
 	acceptance.DefineFlags()
 }
@@ -42,12 +44,16 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			Env:     []string{"GOOGLE_NODEJS_VERSION=16.17.1"},
 			MustUse: []string{nodeRuntime},
 		},
-		{
-			Name:       "yarn",
-			App:        "yarn",
-			MustUse:    []string{nodeRuntime, nodeYarn},
-			MustNotUse: []string{nodeNPM, nodePNPM},
-		},
+
+		// TODO(b/315008858) This should be reenabled once yarn support is re added
+		/*
+			{
+				Name:       "yarn",
+				App:        "yarn",
+				MustUse:    []string{nodeRuntime, nodeYarn},
+				MustNotUse: []string{nodeNPM, nodePNPM},
+			},
+		*/
 		{
 			Name:       "pnpm",
 			App:        "pnpm",
@@ -72,6 +78,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
+		tc.Env = append(tc.Env, baseEnv)
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()

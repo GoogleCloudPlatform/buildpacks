@@ -164,6 +164,7 @@ func readBundleYaml(ctx *gcp.Context, bundlePath string) (*bundleYaml, error) {
 }
 
 func generateDefaultBundleYaml(outputBundleDir string, ctx *gcp.Context) error {
+	ctx.MkdirAll(outputBundleDir, 0744)
 	f, err := ctx.CreateFile(filepath.Join(outputBundleDir, "bundle.yaml"))
 	if err != nil {
 		return err
@@ -173,7 +174,14 @@ func generateDefaultBundleYaml(outputBundleDir string, ctx *gcp.Context) error {
 }
 
 func copyPublicDirToOutputBundleDir(outputPublicDir string, workspacePublicDir string, ctx *gcp.Context) error {
-	err := ctx.MkdirAll(outputPublicDir, 0744)
+	publicDirExists, err := ctx.FileExists(outputPublicDir)
+	if err != nil {
+		return err
+	}
+	if !publicDirExists {
+		return nil
+	}
+	err = ctx.MkdirAll(outputPublicDir, 0744)
 	if err != nil {
 		return err
 	}
