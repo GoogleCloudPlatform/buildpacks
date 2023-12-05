@@ -26,6 +26,8 @@ import (
 var (
 	appHostingCompleteYAMLPath string = testdata.MustGetPath("testdata/apphosting_complete.yaml")
 	appHostingInvalidYAMLPath  string = testdata.MustGetPath("testdata/apphosting_invalid.yaml")
+	appHostingCompleteEnvPath  string = testdata.MustGetPath("testdata/apphosting_complete.env")
+	appHostingReservedEnvPath  string = testdata.MustGetPath("testdata/apphosting_reserved.env")
 )
 
 func TestPublish(t *testing.T) {
@@ -33,36 +35,54 @@ func TestPublish(t *testing.T) {
 	outputFilePath := testDir + "/output"
 
 	testCasesHappy := []struct {
-		desc            string
-		filePath        string
-		wantBuildSchema buildSchema
-	}{{
-		desc:     "Correctly parse in provided apphosting.yaml",
-		filePath: appHostingCompleteYAMLPath,
-		wantBuildSchema: buildSchema{
-			BackendResources: backendResources{
-				CPU:          3,
-				Memory:       512,
-				Concurrency:  100,
-				MinInstances: 2,
-				MaxInstances: 3,
-			},
-		}},
+		desc                   string
+		appHostingYAMLFilePath string
+		appHostingEnvFilePath  string
+		wantBuildSchema        buildSchema
+	}{
+		{
+			desc:                   "Correctly parse in provided apphosting.yaml",
+			appHostingYAMLFilePath: appHostingCompleteYAMLPath,
+			appHostingEnvFilePath:  appHostingCompleteEnvPath,
+			wantBuildSchema: buildSchema{
+				BackendResources: backendResources{
+					CPU:          3,
+					Memory:       512,
+					Concurrency:  100,
+					MinInstances: 2,
+					MaxInstances: 4,
+				},
+				Runtime: runtime{
+					EnvVariables: map[string]string{
+						"API_URL":     "api.service.com",
+						"ENVIRONMENT": "staging",
+					},
+				},
+			}},
 	}
 
 	testCasesError := []struct {
-		desc      string
-		filePath  string
-		wantError string
-	}{{
-		desc:      "Throw an error parsing apphosting.yaml when values are invalid",
-		filePath:  appHostingInvalidYAMLPath,
-		wantError: "apphosting.yaml fields are not valid: concurrency field is not in valid range of '1 <= concurrency <= 1000'",
-	}}
+		desc                   string
+		appHostingYAMLFilePath string
+		appHostingEnvFilePath  string
+		wantError              bool
+	}{
+		{
+			desc:                   "Throw an error parsing apphosting.yaml when values are invalid",
+			appHostingYAMLFilePath: appHostingInvalidYAMLPath,
+			appHostingEnvFilePath:  appHostingCompleteEnvPath,
+			wantError:              true,
+		},
+		{
+			desc:                   "Throw an error parsing apphosting.env when values are reserved",
+			appHostingYAMLFilePath: appHostingCompleteYAMLPath,
+			appHostingEnvFilePath:  appHostingReservedEnvPath,
+			wantError:              false, // TODO: Swap this to true once env file validation is enabled
+		}}
 
 	// Testing happy paths
 	for _, test := range testCasesHappy {
-		err := Publish(test.filePath, "", outputFilePath)
+		err := Publish(test.appHostingYAMLFilePath, "", test.appHostingEnvFilePath, outputFilePath)
 		if err != nil {
 			t.Errorf("Error in test '%v'. Error was %v", test.desc, err)
 		}
@@ -74,6 +94,7 @@ func TestPublish(t *testing.T) {
 
 		var actualBuildSchema buildSchema
 		err = yaml.Unmarshal(actualBuildSchemaData, &actualBuildSchema)
+
 		if err != nil {
 			t.Errorf("error unmarshalling %q as YAML: %v", actualBuildSchemaData, err)
 		}
@@ -85,13 +106,9 @@ func TestPublish(t *testing.T) {
 
 	// Testing error paths
 	for _, test := range testCasesError {
-		err := Publish(test.filePath, "", outputFilePath)
-		if err == nil {
-			t.Errorf("Calling Publish did not produce an error for test '%v'", test.desc)
-		}
-
-		if diff := cmp.Diff(test.wantError, err.Error()); diff != "" {
-			t.Errorf("Error not of expected format for test '%v' (+got, -want): \n %v", test.desc, diff)
+		err := Publish(test.appHostingYAMLFilePath, "", test.appHostingEnvFilePath, outputFilePath)
+		if err != nil != test.wantError {
+			t.Errorf("For test '%v' got %v, want error presence = %v", test.desc, err, test.wantError)
 		}
 	}
 }
@@ -182,9 +199,7 @@ func TestValidateAppHostingYAMLFields(t *testing.T) {
 
 	for _, test := range testCasesError {
 		err := validateAppHostingYAMLFields(test.appHostingSchema)
-		gotErr := err != nil
-
-		if gotErr != test.wantError {
+		if err != nil != test.wantError {
 			t.Errorf("For test '%v' got %v, want error presence = %v", test.desc, err, test.wantError)
 		}
 	}

@@ -4,5 +4,5 @@ backend_resources:
   cpu: 3
   memory: 512
   minInstances: 2
-  maxInstances: 3
+  maxInstances: 4
   concurrency: 100

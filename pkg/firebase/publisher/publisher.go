@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v2"
 )
 
@@ -32,6 +33,7 @@ type appHostingSchema struct {
 // buildSchema is the internal Publisher representation of the final build settings that will ultimately be converted into an updateBuildRequest
 type buildSchema struct {
 	BackendResources backendResources `yaml:"backend_resources"`
+	Runtime          runtime          `yaml:"runtime"`
 }
 
 type backendResources struct {
@@ -40,6 +42,10 @@ type backendResources struct {
 	Concurrency  int32
 	MinInstances int32 `yaml:"minInstances"`
 	MaxInstances int32 `yaml:"maxInstances"`
+}
+
+type runtime struct {
+	EnvVariables map[string]string `yaml:"env_variables"`
 }
 
 func byteArrayToAppHostingSchema(fileData []byte) (*appHostingSchema, error) {
@@ -99,7 +105,7 @@ func writeToFile(fileData []byte, outputFilePath string) error {
 // Publish takes in the path to various required files such as apphosting.yaml, bundle.yaml, and
 // other files (tbd) and merges them into one output that describes the desired Backend Service
 // configuration before pushing this information to the control plane.
-func Publish(appHostingYAMLPath string, bundleYAMLPath string, outputFilePath string) error {
+func Publish(appHostingYAMLPath string, bundleYAMLPath string, appHostingEnvPath string, outputFilePath string) error {
 	// Read in apphosting.yaml
 	apphostingBuffer, err := os.ReadFile(appHostingYAMLPath)
 	if err != nil {
@@ -117,6 +123,13 @@ func Publish(appHostingYAMLPath string, bundleYAMLPath string, outputFilePath st
 		return fmt.Errorf("apphosting.yaml fields are not valid: %w", validateErr)
 	}
 
+	// Read in apphosting.env
+	var appHostingEnvVars map[string]string
+	appHostingEnvVars, err = godotenv.Read(appHostingEnvPath)
+	if err != nil {
+		return fmt.Errorf("reading apphosting.env: %w", err)
+	}
+
 	// TODO: Use bundleYaml and apphostingYaml to generate output.yaml
 	buildSchema := buildSchema{
 		BackendResources: backendResources{
@@ -125,6 +138,9 @@ func Publish(appHostingYAMLPath string, bundleYAMLPath string, outputFilePath st
 			Concurrency:  apphostingYAML.BackendResources.Concurrency,
 			MinInstances: apphostingYAML.BackendResources.MinInstances,
 			MaxInstances: apphostingYAML.BackendResources.MaxInstances,
+		},
+		Runtime: runtime{
+			EnvVariables: appHostingEnvVars,
 		},
 	}
 
