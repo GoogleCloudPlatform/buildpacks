@@ -3,6 +3,5 @@ schemaVersion: '3.0.0'
 backend_resources:
   cpu: 3
   memory: 512
-  minInstances: 2
-  maxInstances: 4
+  max_instances: 4
   concurrency: 100

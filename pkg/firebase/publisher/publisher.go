@@ -17,7 +17,9 @@
 package publisher
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -30,90 +32,158 @@ type appHostingSchema struct {
 	BackendResources backendResources `yaml:"backend_resources"`
 }
 
-// buildSchema is the internal Publisher representation of the final build settings that will ultimately be converted into an updateBuildRequest
+// outputBundleSchema is the struct representation of a Firebase App Hosting Output Bundle
+// (configured by bundle.yaml).
+type outputBundleSchema struct {
+	// TODO: Add fields.
+}
+
+// buildSchema is the internal Publisher representation of the final build settings that will
+// ultimately be converted into an updateBuildRequest.
 type buildSchema struct {
-	BackendResources backendResources `yaml:"backend_resources"`
-	Runtime          runtime          `yaml:"runtime"`
+	BackendResources backendResources `yaml:"backend_resources,omitempty"`
+	Runtime          runtime          `yaml:"runtime,omitempty"`
 }
 
 type backendResources struct {
-	CPU          int32
-	Memory       int32
-	Concurrency  int32
-	MinInstances int32 `yaml:"minInstances"`
-	MaxInstances int32 `yaml:"maxInstances"`
+	// int32 value type used here to match server field types. pointers are used to capture unset vs zero-like values.
+	CPU          *int32
+	Memory       *int32
+	Concurrency  *int32
+	MaxInstances *int32 `yaml:"max_instances"`
 }
 
 type runtime struct {
-	EnvVariables map[string]string `yaml:"env_variables"`
+	EnvVariables map[string]string `yaml:"env_variables,omitempty"`
 }
 
-func byteArrayToAppHostingSchema(fileData []byte) (*appHostingSchema, error) {
-	var structData appHostingSchema
-	err := yaml.Unmarshal(fileData, &structData)
+var (
+	defaultCPU          int32 = 1   // From https://cloud.google.com/run/docs/configuring/services/cpu.
+	defaultMemory       int32 = 512 // From https://cloud.google.com/run/docs/configuring/services/memory-limits.
+	defaultConcurrency  int32 = 80  // From https://cloud.google.com/run/docs/about-concurrency.
+	defaultMaxInstances int32 = 100 // From https://cloud.google.com/run/docs/configuring/max-instances.
+)
+
+// readAppHostingSchemaFromFile returns nil if apphosting.yaml does not exist.
+func readAppHostingSchemaFromFile(filePath string) (appHostingSchema, error) {
+	a := appHostingSchema{}
+	apphostingBuffer, err := os.ReadFile(filePath)
+	if os.IsNotExist(err) {
+		log.Printf("Missing apphosting config at %v, using reasonable defaults\n", filePath)
+		return a, nil
+	} else if err != nil {
+		return a, fmt.Errorf("reading apphosting config at %v: %w", filePath, err)
+	}
+
+	err = yaml.Unmarshal(apphostingBuffer, &a)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshalling %q as YAML: %w", fileData, err)
+		return a, fmt.Errorf("unmarshalling apphosting config as YAML: %w", err)
 	}
-	return &structData, nil
+	return a, nil
 }
 
-func validateAppHostingYAMLFields(appHostingYAML *appHostingSchema) error {
-	if !(appHostingYAML.BackendResources.CPU >= 1 && appHostingYAML.BackendResources.CPU <= 8) {
-		return fmt.Errorf("cpu field is not in valid range of '1 <= cpu <= 8'")
+func validateAppHostingYAMLFields(appHostingYAML appHostingSchema) error {
+	b := appHostingYAML.BackendResources
+	if b.CPU != nil && !(1 <= *b.CPU && *b.CPU <= 8) {
+		return fmt.Errorf("backend_resources.cpu field is not in valid range of [1, 8]")
 	}
 
-	if !(appHostingYAML.BackendResources.Memory >= 512 && appHostingYAML.BackendResources.Memory <= 32768) {
-		return fmt.Errorf("memory field is not in valid range of '512 <= memory <= 32768'")
+	if b.Memory != nil && !(512 <= *b.Memory && *b.Memory <= 32768) {
+		return fmt.Errorf("backend_resources.memory field is not in valid range of [512, 32768]")
 	}
 
-	if !(appHostingYAML.BackendResources.Concurrency >= 1 && appHostingYAML.BackendResources.Concurrency <= 1000) {
-		return fmt.Errorf("concurrency field is not in valid range of '1 <= concurrency <= 1000'")
+	if b.Concurrency != nil && !(1 <= *b.Concurrency && *b.Concurrency <= 1000) {
+		return fmt.Errorf("backend_resources.concurrency field is not in valid range of [1, 1000]")
 	}
 
-	if !(appHostingYAML.BackendResources.MinInstances >= 1 && appHostingYAML.BackendResources.MinInstances <= 1000) {
-		return fmt.Errorf("minInstances field is not in valid range of '1 <= minInstances <= 1000'")
+	if b.MaxInstances != nil && !(1 <= *b.MaxInstances && *b.MaxInstances <= 100) {
+		return fmt.Errorf("backend_resources.maxInstances field is not in valid range of [1, 100]")
 	}
-
-	if !(appHostingYAML.BackendResources.MaxInstances >= 1 && appHostingYAML.BackendResources.MaxInstances <= 100) {
-		return fmt.Errorf("maxInstances field is not in valid range of '1 <= maxInstances <= 100'")
-	}
-
 	return nil
 }
 
+func readBundleSchemaFromFile(filePath string) (outputBundleSchema, error) {
+	bundleBuffer, err := os.ReadFile(filePath)
+	if os.IsNotExist(err) {
+		return outputBundleSchema{}, fmt.Errorf("missing bundle config at %v", filePath)
+	} else if err != nil {
+		return outputBundleSchema{}, fmt.Errorf("reading bundle config at %v: %w", filePath, err)
+	}
+
+	err = yaml.Unmarshal(bundleBuffer, &outputBundleSchema{})
+	if err != nil {
+		return outputBundleSchema{}, fmt.Errorf("unmarshalling bundle config as YAML: %w", err)
+	}
+	return outputBundleSchema{}, nil
+}
+
 // Write the given build schema to the specified path, used to output the final arguments to BuildStepOutputs[]
-func writeToFile(fileData []byte, outputFilePath string) error {
-	err := os.MkdirAll(filepath.Dir(outputFilePath), os.ModeDir)
+func writeToFile(buildSchema buildSchema, outputFilePath string) error {
+	prettifiedJSONData, err := json.MarshalIndent(buildSchema, "", "  ")
+	if err != nil {
+		log.Printf("Failed to print final build schema out to console: %v\n", err)
+	}
+	log.Printf("Final build schema: %v\n", string(prettifiedJSONData))
+
+	fileData, err := yaml.Marshal(&buildSchema)
+	if err != nil {
+		return fmt.Errorf("converting struct to YAML: %w", err)
+	}
+
+	err = os.MkdirAll(filepath.Dir(outputFilePath), os.ModeDir)
 	if err != nil {
 		return fmt.Errorf("creating parent directory %q: %w", outputFilePath, err)
 	}
 
 	file, err := os.Create(outputFilePath)
 	if err != nil {
-		return fmt.Errorf("creating file: %w", err)
+		return fmt.Errorf("creating build schema file: %w", err)
 	}
 	defer file.Close()
 
 	_, err = file.Write(fileData)
 	if err != nil {
-		return fmt.Errorf("writing data to file: %w", err)
+		return fmt.Errorf("writing build schema data to file: %w", err)
 	}
 
 	return nil
+}
+
+func toBuildSchema(appHostingSchema appHostingSchema, bundleSchema outputBundleSchema, appHostingEnvVars map[string]string) buildSchema {
+	buildSchema := buildSchema{
+		BackendResources: backendResources{
+			CPU:          &defaultCPU,
+			Memory:       &defaultMemory,
+			Concurrency:  &defaultConcurrency,
+			MaxInstances: &defaultMaxInstances,
+		},
+	}
+	// Copy fields from apphosting.yaml.
+	b := appHostingSchema.BackendResources
+	if b.CPU != nil {
+		buildSchema.BackendResources.CPU = b.CPU
+	}
+	if b.Memory != nil {
+		buildSchema.BackendResources.Memory = b.Memory
+	}
+	if b.Concurrency != nil {
+		buildSchema.BackendResources.Concurrency = b.Concurrency
+	}
+	if b.MaxInstances != nil {
+		buildSchema.BackendResources.MaxInstances = b.MaxInstances
+	}
+	// Copy fields from apphosting.env.
+	if len(appHostingEnvVars) > 0 {
+		buildSchema.Runtime.EnvVariables = appHostingEnvVars
+	}
+	return buildSchema
 }
 
 // Publish takes in the path to various required files such as apphosting.yaml, bundle.yaml, and
 // other files (tbd) and merges them into one output that describes the desired Backend Service
 // configuration before pushing this information to the control plane.
 func Publish(appHostingYAMLPath string, bundleYAMLPath string, appHostingEnvPath string, outputFilePath string) error {
-	// Read in apphosting.yaml
-	apphostingBuffer, err := os.ReadFile(appHostingYAMLPath)
-	if err != nil {
-		return err
-	}
-
-	// Convert read in file arrays to struct
-	apphostingYAML, err := byteArrayToAppHostingSchema(apphostingBuffer)
+	apphostingYAML, err := readAppHostingSchemaFromFile(appHostingYAMLPath)
 	if err != nil {
 		return err
 	}
@@ -130,29 +200,17 @@ func Publish(appHostingYAMLPath string, bundleYAMLPath string, appHostingEnvPath
 		return fmt.Errorf("reading apphosting.env: %w", err)
 	}
 
-	// TODO: Use bundleYaml and apphostingYaml to generate output.yaml
-	buildSchema := buildSchema{
-		BackendResources: backendResources{
-			CPU:          apphostingYAML.BackendResources.CPU,
-			Memory:       apphostingYAML.BackendResources.Memory,
-			Concurrency:  apphostingYAML.BackendResources.Concurrency,
-			MinInstances: apphostingYAML.BackendResources.MinInstances,
-			MaxInstances: apphostingYAML.BackendResources.MaxInstances,
-		},
-		Runtime: runtime{
-			EnvVariables: appHostingEnvVars,
-		},
+	// For now, simply validates that bundle.yaml exists.
+	bundleSchema, err := readBundleSchemaFromFile(bundleYAMLPath)
+	if err != nil {
+		return err
 	}
 
-	// Marshal struct to YAML format.
-	buildSchemaData, err := yaml.Marshal(&buildSchema)
-	if err != nil {
-		return fmt.Errorf("converting struct to YAML: %w", err)
-	}
+	buildSchema := toBuildSchema(apphostingYAML, bundleSchema, appHostingEnvVars)
 
-	err = writeToFile(buildSchemaData, outputFilePath)
+	err = writeToFile(buildSchema, outputFilePath)
 	if err != nil {
-		return fmt.Errorf("writing buildSchema to file: %w", err)
+		return err
 	}
 
 	return nil

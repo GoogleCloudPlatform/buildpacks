@@ -3,6 +3,5 @@ schemaVersion: '3.0.0'
 backend_resources:
   cpu: 3
   memory: 512
-  minInstances: 2
-  maxInstances: 3
+  max_instances: 3
   concurrency: 1001 # Invalid as the maximum allowed value for this field is 1000
