@@ -24,7 +24,7 @@ import (
 
 var (
 	// minNextVersion is the lowest version of nextjs supported by the firebasenextjs buildpack.
-	minNextVersion = semver.MustParse("14.0.0")
+	minNextVersion = semver.MustParse("13.0.0")
 )
 
 func main() {

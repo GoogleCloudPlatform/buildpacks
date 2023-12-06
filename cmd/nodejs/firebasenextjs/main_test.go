@@ -68,7 +68,7 @@ func TestBuild(t *testing.T) {
 					"build": "next build"
 				},
 				"dependencies": {
-					"next": "14.0.0"
+					"next": "13.0.0"
 				}
 			}`,
 			},
@@ -84,7 +84,7 @@ func TestBuild(t *testing.T) {
 			files: map[string]string{
 				"package.json": `{
 					"dependencies": {
-						"next": "14.0.0"
+						"next": "13.0.0"
 					}
 				}`,
 			},
@@ -97,7 +97,7 @@ func TestBuild(t *testing.T) {
 						"build": "apphosting-adapter-nextjs-build"
 					},
 					"dependencies": {
-						"next": "14.0.0"
+						"next": "13.0.0"
 					}
 				}`,
 			},
@@ -107,7 +107,7 @@ func TestBuild(t *testing.T) {
 			files: map[string]string{
 				"package.json": `{
 				"dependencies": {
-					"next": "13.0.0"
+					"next": "12.0.0"
 				}
 			}`,
 			},
