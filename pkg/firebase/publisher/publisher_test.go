@@ -28,8 +28,7 @@ import (
 var (
 	appHostingCompleteYAMLPath string = testdata.MustGetPath("testdata/apphosting_complete.yaml")
 	appHostingInvalidYAMLPath  string = testdata.MustGetPath("testdata/apphosting_invalid.yaml")
-	appHostingCompleteEnvPath  string = testdata.MustGetPath("testdata/apphosting_complete.env")
-	appHostingReservedEnvPath  string = testdata.MustGetPath("testdata/apphosting_reserved.env")
+	appHostingEnvPath          string = testdata.MustGetPath("testdata/apphosting.env")
 	bundleYAMLPath             string = testdata.MustGetPath("testdata/bundle.yaml")
 )
 
@@ -53,28 +52,29 @@ func TestPublish(t *testing.T) {
 		appHostingYAMLFilePath string
 		appHostingEnvFilePath  string
 		wantBuildSchema        buildSchema
-	}{{
-		desc:                   "Publish apphosting.yaml, bundle.yaml, and apphosting.env",
-		appHostingYAMLFilePath: appHostingCompleteYAMLPath,
-		appHostingEnvFilePath:  appHostingCompleteEnvPath,
-		wantBuildSchema: buildSchema{
-			BackendResources: backendResources{
-				CPU:          int32Ptr(3),
-				Memory:       int32Ptr(512),
-				Concurrency:  int32Ptr(100),
-				MaxInstances: int32Ptr(4),
-			},
-			Runtime: runtime{
-				EnvVariables: map[string]string{
-					"API_URL":     "api.service.com",
-					"ENVIRONMENT": "staging",
+	}{
+		{
+			desc:                   "Publish apphosting.yaml, bundle.yaml, and apphosting.env",
+			appHostingYAMLFilePath: appHostingCompleteYAMLPath,
+			appHostingEnvFilePath:  appHostingEnvPath,
+			wantBuildSchema: buildSchema{
+				BackendResources: backendResources{
+					CPU:          int32Ptr(3),
+					Memory:       int32Ptr(512),
+					Concurrency:  int32Ptr(100),
+					MaxInstances: int32Ptr(4),
 				},
-			},
-		}},
+				Runtime: runtime{
+					EnvVariables: map[string]string{
+						"API_URL":     "api.service.com",
+						"ENVIRONMENT": "staging",
+					},
+				},
+			}},
 		{
 			desc:                   "Handle nonexistent apphosting.yaml",
 			appHostingYAMLFilePath: "nonexistent",
-			appHostingEnvFilePath:  appHostingCompleteEnvPath,
+			appHostingEnvFilePath:  appHostingEnvPath,
 			wantBuildSchema: buildSchema{
 				BackendResources: backendResources{
 					CPU:          int32Ptr(1),
@@ -89,6 +89,19 @@ func TestPublish(t *testing.T) {
 					},
 				},
 			}},
+		{
+			desc:                   "Handle nonexistent apphosting.env",
+			appHostingYAMLFilePath: appHostingCompleteYAMLPath,
+			appHostingEnvFilePath:  "nonexistent",
+			wantBuildSchema: buildSchema{
+				BackendResources: backendResources{
+					CPU:          int32Ptr(3),
+					Memory:       int32Ptr(512),
+					Concurrency:  int32Ptr(100),
+					MaxInstances: int32Ptr(4),
+				},
+				Runtime: runtime{},
+			}},
 	}
 
 	testCasesError := []struct {
@@ -99,7 +112,7 @@ func TestPublish(t *testing.T) {
 	}{{
 		desc:                   "Throw an error parsing apphosting.yaml when values are invalid",
 		appHostingYAMLFilePath: appHostingInvalidYAMLPath,
-		appHostingEnvFilePath:  appHostingCompleteEnvPath,
+		appHostingEnvFilePath:  appHostingEnvPath,
 		wantError:              "concurrency",
 	}}
 
@@ -123,7 +136,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		if diff := cmp.Diff(test.wantBuildSchema, actualBuildSchema); diff != "" {
-			t.Errorf("Unexpected YAML for test %v (+got, -want): \n %v", test.desc, diff)
+			t.Errorf("Unexpected YAML for test %v (+got, -want):\n%v", test.desc, diff)
 		}
 	}
 
@@ -141,22 +154,23 @@ func TestPublish(t *testing.T) {
 }
 
 func TestValidateAppHostingYAMLFields(t *testing.T) {
-	testCasesError := []struct {
+	testCases := []struct {
 		desc             string
 		appHostingSchema appHostingSchema
 		wantError        bool
-	}{{
-		desc: "Throw no error when schema is valid",
-		appHostingSchema: appHostingSchema{
-			BackendResources: backendResources{
-				CPU:          int32Ptr(7),
-				Memory:       int32Ptr(1024),
-				Concurrency:  int32Ptr(500),
-				MaxInstances: int32Ptr(4),
+	}{
+		{
+			desc: "Throw no error when schema is valid",
+			appHostingSchema: appHostingSchema{
+				BackendResources: backendResources{
+					CPU:          int32Ptr(7),
+					Memory:       int32Ptr(1024),
+					Concurrency:  int32Ptr(500),
+					MaxInstances: int32Ptr(4),
+				},
 			},
+			wantError: false,
 		},
-		wantError: false,
-	},
 		{
 			desc: "Throw an error when CPU value is invalid",
 			appHostingSchema: appHostingSchema{
@@ -194,11 +208,62 @@ func TestValidateAppHostingYAMLFields(t *testing.T) {
 			wantError: true,
 		}}
 
-	for _, test := range testCasesError {
+	for _, test := range testCases {
 		err := validateAppHostingYAMLFields(test.appHostingSchema)
 		if err != nil != test.wantError {
 			t.Errorf("validateAppHostingYAMLFields(%q) = %v, want %v", test.desc, err, test.wantError)
 		}
+	}
+}
+
+func TestSanitizeAppHostingEnvFields(t *testing.T) {
+	testCases := []struct {
+		desc         string
+		inputEnvVars map[string]string
+		wantEnvVars  map[string]string
+	}{
+		{
+			desc: "Remove no keys when all env vars are valid",
+			inputEnvVars: map[string]string{
+				"API_URL":     "api.service.com",
+				"ENVIRONMENT": "staging",
+			},
+			wantEnvVars: map[string]string{
+				"API_URL":     "api.service.com",
+				"ENVIRONMENT": "staging",
+			},
+		},
+		{
+			desc: "Remove keys containing reserved Cloud Run env var keys",
+			inputEnvVars: map[string]string{
+				"API_URL":   "api.service.com",
+				"K_SERVICE": "k.service.com",
+			},
+			wantEnvVars: map[string]string{
+				"API_URL": "api.service.com",
+			},
+		},
+		{
+			desc: "Remove keys containing reserved Firebase env vars keys",
+			inputEnvVars: map[string]string{
+				"API_URL":     "api.service.com",
+				"FIREBASE_ID": "firebaseId",
+			},
+			wantEnvVars: map[string]string{
+				"API_URL": "api.service.com",
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		gotEnvVars, err := sanitizeAppHostingEnvFields(test.inputEnvVars)
+		if err != nil {
+			t.Errorf("sanitizeAppHostingEnvFields(%q) = %v, want %v", test.desc, err, test.wantEnvVars)
+		}
+		if diff := cmp.Diff(test.wantEnvVars, gotEnvVars); diff != "" {
+			t.Errorf("unexpected sanitized envVars for test %q (+got, -want):\n%v", test.desc, diff)
+		}
+
 	}
 }
 

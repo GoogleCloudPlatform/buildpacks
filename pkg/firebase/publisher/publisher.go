@@ -22,6 +22,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v2"
@@ -62,6 +63,15 @@ var (
 	defaultMemory       int32 = 512 // From https://cloud.google.com/run/docs/configuring/services/memory-limits.
 	defaultConcurrency  int32 = 80  // From https://cloud.google.com/run/docs/about-concurrency.
 	defaultMaxInstances int32 = 100 // From https://cloud.google.com/run/docs/configuring/max-instances.
+
+	reservedKeys = map[string]bool{
+		"PORT":            true,
+		"K_SERVICE":       true,
+		"K_REVISION":      true,
+		"K_CONFIGURATION": true,
+	}
+
+	reservedFirebaseKey = "FIREBASE_"
 )
 
 // readAppHostingSchemaFromFile returns nil if apphosting.yaml does not exist.
@@ -100,6 +110,46 @@ func validateAppHostingYAMLFields(appHostingYAML appHostingSchema) error {
 		return fmt.Errorf("backend_resources.maxInstances field is not in valid range of [1, 100]")
 	}
 	return nil
+}
+
+func readAndSanitizeAppHostingEnv(appHostingEnvPath string) (map[string]string, error) {
+	appHostingEnvVars, err := godotenv.Read(appHostingEnvPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Printf("missing apphosting.env at path %v, no environment variables will be provisioned", appHostingEnvPath)
+			appHostingEnvVars = map[string]string{}
+		} else {
+			return map[string]string{}, fmt.Errorf("reading apphosting.env at %v: %w", appHostingEnvPath, err)
+		}
+	}
+
+	appHostingEnvVarsSanitized, err := sanitizeAppHostingEnvFields(appHostingEnvVars)
+	if err != nil {
+		return map[string]string{}, fmt.Errorf("sanitizing apphosting.env fields: %w", err)
+	}
+
+	return appHostingEnvVarsSanitized, nil
+}
+
+func sanitizeAppHostingEnvFields(appHostingEnvVars map[string]string) (map[string]string, error) {
+	isReservedKey := func(input string) bool {
+		if _, ok := reservedKeys[input]; ok {
+			return true
+		} else if strings.HasPrefix(input, reservedFirebaseKey) {
+			return true
+		}
+		return false
+	}
+
+	sanitizedEnv := map[string]string{}
+	for k, v := range appHostingEnvVars {
+		if !isReservedKey(k) {
+			sanitizedEnv[k] = v
+		} else {
+			log.Printf("WARNING: %s is a reserved key, removing it from the final env vars", k)
+		}
+	}
+	return sanitizedEnv, nil
 }
 
 func readBundleSchemaFromFile(filePath string) (outputBundleSchema, error) {
@@ -193,11 +243,10 @@ func Publish(appHostingYAMLPath string, bundleYAMLPath string, appHostingEnvPath
 		return fmt.Errorf("apphosting.yaml fields are not valid: %w", validateErr)
 	}
 
-	// Read in apphosting.env
-	var appHostingEnvVars map[string]string
-	appHostingEnvVars, err = godotenv.Read(appHostingEnvPath)
+	// Read in apphosting.env & sanitize fields.
+	appHostingEnvVarsSanitized, err := readAndSanitizeAppHostingEnv(appHostingEnvPath)
 	if err != nil {
-		return fmt.Errorf("reading apphosting.env: %w", err)
+		return fmt.Errorf("processing apphosting.env: %w", err)
 	}
 
 	// For now, simply validates that bundle.yaml exists.
@@ -206,7 +255,7 @@ func Publish(appHostingYAMLPath string, bundleYAMLPath string, appHostingEnvPath
 		return err
 	}
 
-	buildSchema := toBuildSchema(apphostingYAML, bundleSchema, appHostingEnvVars)
+	buildSchema := toBuildSchema(apphostingYAML, bundleSchema, appHostingEnvVarsSanitized)
 
 	err = writeToFile(buildSchema, outputFilePath)
 	if err != nil {
