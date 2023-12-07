@@ -1,5 +1,6 @@
 ca-certificates
 curl
+ffmpeg
 file
 fontconfig
 fonts-liberation
