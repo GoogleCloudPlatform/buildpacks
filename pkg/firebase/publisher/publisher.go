@@ -17,7 +17,6 @@
 package publisher
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -30,7 +29,7 @@ import (
 
 // appHostingSchema is the struct representation of apphosting.yaml
 type appHostingSchema struct {
-	BackendResources backendResources `yaml:"backend_resources"`
+	BackendResources backendResources `yaml:"backendResources,omitempty"`
 }
 
 // outputBundleSchema is the struct representation of a Firebase App Hosting Output Bundle
@@ -42,20 +41,20 @@ type outputBundleSchema struct {
 // buildSchema is the internal Publisher representation of the final build settings that will
 // ultimately be converted into an updateBuildRequest.
 type buildSchema struct {
-	BackendResources backendResources `yaml:"backend_resources,omitempty"`
+	BackendResources backendResources `yaml:"backendResources,omitempty"`
 	Runtime          runtime          `yaml:"runtime,omitempty"`
 }
 
 type backendResources struct {
 	// int32 value type used here to match server field types. pointers are used to capture unset vs zero-like values.
-	CPU          *int32
-	Memory       *int32
-	Concurrency  *int32
-	MaxInstances *int32 `yaml:"max_instances"`
+	CPU          *int32 `yaml:"cpu"`
+	MemoryMiB    *int32 `yaml:"memoryMiB"`
+	Concurrency  *int32 `yaml:"concurrency"`
+	MaxInstances *int32 `yaml:"maxInstances"`
 }
 
 type runtime struct {
-	EnvVariables map[string]string `yaml:"env_variables,omitempty"`
+	EnvVariables map[string]string `yaml:"envVariables,omitempty"`
 }
 
 var (
@@ -98,7 +97,7 @@ func validateAppHostingYAMLFields(appHostingYAML appHostingSchema) error {
 		return fmt.Errorf("backend_resources.cpu field is not in valid range of [1, 8]")
 	}
 
-	if b.Memory != nil && !(512 <= *b.Memory && *b.Memory <= 32768) {
+	if b.MemoryMiB != nil && !(512 <= *b.MemoryMiB && *b.MemoryMiB <= 32768) {
 		return fmt.Errorf("backend_resources.memory field is not in valid range of [512, 32768]")
 	}
 
@@ -169,16 +168,11 @@ func readBundleSchemaFromFile(filePath string) (outputBundleSchema, error) {
 
 // Write the given build schema to the specified path, used to output the final arguments to BuildStepOutputs[]
 func writeToFile(buildSchema buildSchema, outputFilePath string) error {
-	prettifiedJSONData, err := json.MarshalIndent(buildSchema, "", "  ")
-	if err != nil {
-		log.Printf("Failed to print final build schema out to console: %v\n", err)
-	}
-	log.Printf("Final build schema: %v\n", string(prettifiedJSONData))
-
 	fileData, err := yaml.Marshal(&buildSchema)
 	if err != nil {
 		return fmt.Errorf("converting struct to YAML: %w", err)
 	}
+	log.Printf("Final build schema: %v\n", string(fileData))
 
 	err = os.MkdirAll(filepath.Dir(outputFilePath), os.ModeDir)
 	if err != nil {
@@ -203,7 +197,7 @@ func toBuildSchema(appHostingSchema appHostingSchema, bundleSchema outputBundleS
 	buildSchema := buildSchema{
 		BackendResources: backendResources{
 			CPU:          &defaultCPU,
-			Memory:       &defaultMemory,
+			MemoryMiB:    &defaultMemory,
 			Concurrency:  &defaultConcurrency,
 			MaxInstances: &defaultMaxInstances,
 		},
@@ -213,8 +207,8 @@ func toBuildSchema(appHostingSchema appHostingSchema, bundleSchema outputBundleS
 	if b.CPU != nil {
 		buildSchema.BackendResources.CPU = b.CPU
 	}
-	if b.Memory != nil {
-		buildSchema.BackendResources.Memory = b.Memory
+	if b.MemoryMiB != nil {
+		buildSchema.BackendResources.MemoryMiB = b.MemoryMiB
 	}
 	if b.Concurrency != nil {
 		buildSchema.BackendResources.Concurrency = b.Concurrency
