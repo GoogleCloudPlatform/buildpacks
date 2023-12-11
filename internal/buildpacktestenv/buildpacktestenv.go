@@ -68,24 +68,21 @@ func TempWorkingDir(t *testing.T) (string, func()) {
 }
 
 // SetUpTempDirs sets up temp directories that mimic the layers of buildpacks.
-func SetUpTempDirs(t *testing.T) TempDirs {
+func SetUpTempDirs(t *testing.T, customCodeDir string) TempDirs {
 	t.Helper()
-	LayersDir, err := ioutil.TempDir("", "layers-")
-	if err != nil {
-		t.Fatalf("creating layers dir: %v", err)
+	layersDir := t.TempDir()
+	platformDir := t.TempDir()
+	codeDir := ""
+	if customCodeDir != "" {
+		err := os.Mkdir(filepath.Join(os.TempDir(), customCodeDir), 0700)
+		if err != nil {
+			t.Fatalf("creating code dir: %v", err)
+		}
+		codeDir = filepath.Join(os.TempDir(), customCodeDir)
+	} else {
+		codeDir = t.TempDir()
 	}
-	PlatformDir, err := ioutil.TempDir("", "platform-")
-	if err != nil {
-		t.Fatalf("creating platform dir: %v", err)
-	}
-	CodeDir, err := ioutil.TempDir("", "CodeDir-")
-	if err != nil {
-		t.Fatalf("creating code dir: %v", err)
-	}
-	BuildpackDir, err := ioutil.TempDir("", "buildpack-")
-	if err != nil {
-		t.Fatalf("creating buildpack dir: %v", err)
-	}
+	buildpackDir := t.TempDir()
 
 	stack := "com.stack"
 	buildpackTOML := fmt.Sprintf(`
@@ -100,7 +97,7 @@ name = "my-name"
 id = "%s"
 `, stack)
 
-	if err := ioutil.WriteFile(filepath.Join(BuildpackDir, "buildpack.toml"), []byte(buildpackTOML), 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(buildpackDir, "buildpack.toml"), []byte(buildpackTOML), 0644); err != nil {
 		t.Fatalf("writing buildpack.toml: %v", err)
 	}
 
@@ -111,7 +108,7 @@ version = "entry-version"
 [entries.metadata]
   entry-meta-key = "entry-meta-value"
 `
-	if err := ioutil.WriteFile(filepath.Join(BuildpackDir, "plan.toml"), []byte(planTOML), 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(buildpackDir, "plan.toml"), []byte(planTOML), 0644); err != nil {
 		t.Fatalf("writing plan.toml: %v", err)
 	}
 
@@ -120,25 +117,16 @@ version = "entry-version"
 	}
 
 	temps := TempDirs{
-		CodeDir:      CodeDir,
-		LayersDir:    LayersDir,
-		PlatformDir:  PlatformDir,
-		BuildpackDir: BuildpackDir,
-		PlanFile:     filepath.Join(BuildpackDir, "plan.toml"),
+		CodeDir:      codeDir,
+		LayersDir:    layersDir,
+		PlatformDir:  platformDir,
+		BuildpackDir: buildpackDir,
+		PlanFile:     filepath.Join(buildpackDir, "plan.toml"),
 	}
 
 	t.Cleanup(func() {
-		if err := os.RemoveAll(CodeDir); err != nil {
-			t.Fatalf("removing code dir %q: %v", CodeDir, err)
-		}
-		if err := os.RemoveAll(PlatformDir); err != nil {
-			t.Fatalf("removing platform dir %q: %v", PlatformDir, err)
-		}
-		if err := os.RemoveAll(LayersDir); err != nil {
-			t.Fatalf("removing layers dir %q: %v", LayersDir, err)
-		}
-		if err := os.RemoveAll(BuildpackDir); err != nil {
-			t.Fatalf("removing buildpac dir %q: %v", BuildpackDir, err)
+		if err := os.RemoveAll(codeDir); err != nil {
+			t.Fatalf("removing code dir %q: %v", codeDir, err)
 		}
 		if err := os.Unsetenv("CNB_STACK_ID"); err != nil {
 			t.Fatalf("unsetting CNB_STACK_ID: %v", err)

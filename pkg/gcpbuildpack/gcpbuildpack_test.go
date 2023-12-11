@@ -703,7 +703,7 @@ func simpleContext(t *testing.T) (*Context, func()) {
 // functionality.
 func setUpDetectEnvironment(t *testing.T) buildpacktestenv.TempDirs {
 	t.Helper()
-	temps := buildpacktestenv.SetUpTempDirs(t)
+	temps := buildpacktestenv.SetUpTempDirs(t, "")
 	setOSArgs(t, []string{filepath.Join(temps.BuildpackDir, "bin", "detect"), temps.PlatformDir, temps.PlanFile})
 
 	return temps
@@ -713,7 +713,7 @@ func setUpDetectEnvironment(t *testing.T) buildpacktestenv.TempDirs {
 // functionality.
 func setUpBuildEnvironment(t *testing.T) buildpacktestenv.TempDirs {
 	t.Helper()
-	temps := buildpacktestenv.SetUpTempDirs(t)
+	temps := buildpacktestenv.SetUpTempDirs(t, "")
 	setOSArgs(t, []string{filepath.Join(temps.BuildpackDir, "bin", "build"), temps.LayersDir, temps.PlatformDir, temps.PlanFile})
 
 	return temps

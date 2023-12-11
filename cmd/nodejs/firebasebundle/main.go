@@ -174,7 +174,7 @@ func generateDefaultBundleYaml(outputBundleDir string, ctx *gcp.Context) error {
 }
 
 func copyPublicDirToOutputBundleDir(outputPublicDir string, workspacePublicDir string, ctx *gcp.Context) error {
-	publicDirExists, err := ctx.FileExists(outputPublicDir)
+	publicDirExists, err := ctx.FileExists(workspacePublicDir)
 	if err != nil {
 		return err
 	}

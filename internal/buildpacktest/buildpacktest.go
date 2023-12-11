@@ -78,6 +78,7 @@ type config struct {
 	want           int
 	appPath        string
 	mockProcesses  []*mockprocess.Mock
+	codeDir        string
 }
 
 // Result encapsulates the result of a buildpack phase ran as a child process.
@@ -132,6 +133,13 @@ func WithEnvs(envs ...string) Option {
 func WithFiles(files map[string]string) Option {
 	return func(cfg *config) {
 		cfg.files = files
+	}
+}
+
+// WithTempDir specifies a TempDir name to use instead of the default temp
+func WithTempDir(dir string) Option {
+	return func(cfg *config) {
+		cfg.codeDir = dir
 	}
 }
 
@@ -277,7 +285,7 @@ func runBuildpackPhaseMain(t *testing.T, cfg *config) {
 }
 
 func runBuildpackPhase(t *testing.T, cfg *config) (bool, error) {
-	temps := buildpacktestenv.SetUpTempDirs(t)
+	temps := buildpacktestenv.SetUpTempDirs(t, cfg.codeDir)
 	opts := []gcp.ContextOption{gcp.WithApplicationRoot(temps.CodeDir), gcp.WithBuildpackRoot(temps.BuildpackDir)}
 
 	// Mock out calls to ctx.Exec, if specified
