@@ -16,7 +16,6 @@ package nodejs
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -137,7 +136,7 @@ __metadata:
 
 			if tc.content != "" {
 				fp := path.Join(dir, YarnLock)
-				if err := ioutil.WriteFile(fp, []byte(tc.content), 0644); err != nil {
+				if err := os.WriteFile(fp, []byte(tc.content), 0644); err != nil {
 					t.Fatalf("writing %s: %v", fp, err)
 				}
 			}

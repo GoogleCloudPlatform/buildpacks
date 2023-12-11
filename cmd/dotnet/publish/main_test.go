@@ -16,7 +16,6 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -82,14 +81,14 @@ func TestGetAssemblyName(t *testing.T) {
 	for _, tc := range tcs {
 		ctx := gcp.NewContext()
 		t.Run(tc.name, func(t *testing.T) {
-			tmpDir, err := ioutil.TempDir("", "dotnettest")
+			tmpDir, err := os.MkdirTemp("", "dotnettest")
 			if err != nil {
 				t.Fatalf("creating temp dir: %v", err)
 			}
 			defer os.RemoveAll(tmpDir)
 
 			filename := filepath.Join(tmpDir, "app.csproj")
-			if err = ioutil.WriteFile(filename, []byte(tc.data), 0644); err != nil {
+			if err = os.WriteFile(filename, []byte(tc.data), 0644); err != nil {
 				t.Fatalf("writing project file: %v", err)
 			}
 
@@ -159,7 +158,7 @@ func TestGetEntrypoint(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := gcp.NewContext()
 
-			tmpDir, err := ioutil.TempDir("", "dotnettest")
+			tmpDir, err := os.MkdirTemp("", "dotnettest")
 			if err != nil {
 				t.Fatalf("creating temp dir: %v", err)
 			}
@@ -171,13 +170,13 @@ func TestGetEntrypoint(t *testing.T) {
 
 			// Write the expected exe file.
 			exe := filepath.Join(tmpDir, tc.exe)
-			if err = ioutil.WriteFile(exe, []byte(""), 0644); err != nil {
+			if err = os.WriteFile(exe, []byte(""), 0644); err != nil {
 				t.Fatalf("writing exe file: %v", err)
 			}
 
 			// Write the project file.
 			proj := filepath.Join(tmpDir, tc.proj)
-			if err = ioutil.WriteFile(proj, []byte(tc.data), 0644); err != nil {
+			if err = os.WriteFile(proj, []byte(tc.data), 0644); err != nil {
 				t.Fatalf("writing proj file: %v", err)
 			}
 

@@ -18,7 +18,6 @@ package nodejs
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,7 +82,7 @@ type PackageJSON struct {
 // directory.
 func ReadPackageJSONIfExists(dir string) (*PackageJSON, error) {
 	f := filepath.Join(dir, "package.json")
-	rawpjs, err := ioutil.ReadFile(f)
+	rawpjs, err := os.ReadFile(f)
 	if os.IsNotExist(err) {
 		// Return an empty struct if the file doesn't exist (null object pattern).
 		return nil, nil

@@ -17,7 +17,6 @@ package checktools
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -57,7 +56,7 @@ func Installed() error {
 // PackVersion checks that the installed pack has the correct version.
 func PackVersion() error {
 	// pack requires $HOME to exist.
-	home, err := ioutil.TempDir("", "pack-home")
+	home, err := os.MkdirTemp("", "pack-home")
 	if err != nil {
 		return err
 	}

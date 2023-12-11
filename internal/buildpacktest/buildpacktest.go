@@ -20,7 +20,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -309,7 +308,7 @@ func runBuildpackPhase(t *testing.T, cfg *config) (bool, error) {
 			}
 		}
 
-		if err := ioutil.WriteFile(fn, []byte(c), 0644); err != nil {
+		if err := os.WriteFile(fn, []byte(c), 0644); err != nil {
 			return false, fmt.Errorf("writing file %s: %v", fn, err)
 		}
 	}

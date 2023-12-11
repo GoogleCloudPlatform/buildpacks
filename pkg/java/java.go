@@ -18,7 +18,7 @@ package java
 import (
 	"archive/zip"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -124,7 +124,7 @@ func FindManifestValueFromJar(jarPath, key string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("opening file %s in jar %s: %v", f.FileInfo().Name(), jarPath, err)
 		}
-		content, err := ioutil.ReadAll(rc)
+		content, err := io.ReadAll(rc)
 		if err != nil {
 			return "", err
 		}

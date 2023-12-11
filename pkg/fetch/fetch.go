@@ -20,7 +20,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -97,7 +96,7 @@ func JSON(url string, v interface{}) error {
 		return err
 	}
 	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return gcp.InternalErrorf("reading response body from %q: %v", url, err)
 	}

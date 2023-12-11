@@ -15,7 +15,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -191,7 +190,7 @@ func TestPopulateMainLayer(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tmpDir, err := ioutil.TempDir("", tc.name)
+			tmpDir, err := os.MkdirTemp("", tc.name)
 			if err != nil {
 				t.Fatalf("creating temp dir: %v", err)
 			}
@@ -213,20 +212,20 @@ func TestPopulateMainLayer(t *testing.T) {
 
 			for _, name := range []string{"CMakeLists.txt", "vcpkg.json"} {
 				path := filepath.Join(converter, name)
-				if ioutil.WriteFile(path, []byte(converterFileContents), 0644); err != nil {
+				if os.WriteFile(path, []byte(converterFileContents), 0644); err != nil {
 					t.Fatalf("writing fake C++ support file (path=%s): %v", path, err)
 				}
 			}
 			for _, name := range tc.sourceFiles {
 				path := filepath.Join(fakeApp, name)
-				if ioutil.WriteFile(path, []byte(generatedFileContents), 0644); err != nil {
+				if os.WriteFile(path, []byte(generatedFileContents), 0644); err != nil {
 					t.Fatalf("writing test C++ build file (name=%s): %v", name, err)
 				}
 			}
 			if err := createMainCppSupportFiles(ctx, fakeMain, fakeBuildpackRoot); err != nil {
 				t.Fatalf("creating support files in main layer: %v", err)
 			}
-			vcpkgContents, err := ioutil.ReadFile(filepath.Join(fakeMain, "vcpkg.json"))
+			vcpkgContents, err := os.ReadFile(filepath.Join(fakeMain, "vcpkg.json"))
 			if err != nil {
 				t.Fatalf("reading vcpkg.json from main layer: %v", err)
 			}
@@ -234,7 +233,7 @@ func TestPopulateMainLayer(t *testing.T) {
 				t.Errorf("mismatched contents in vcpkg.json, got=%s, want=%s", string(vcpkgContents), tc.vcpkgJSONContents)
 			}
 
-			cmakeContents, err := ioutil.ReadFile(filepath.Join(fakeMain, "CMakeLists.txt"))
+			cmakeContents, err := os.ReadFile(filepath.Join(fakeMain, "CMakeLists.txt"))
 			if err != nil {
 				t.Fatalf("reading CMakeLists.txt from main layer: %v", err)
 			}

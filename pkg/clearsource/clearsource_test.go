@@ -14,7 +14,7 @@
 package clearsource
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -71,7 +71,7 @@ func TestPathsToRemove(t *testing.T) {
 			tDir := t.TempDir()
 			for _, file := range tc.files {
 				path := filepath.Join(tDir, file)
-				if err := ioutil.WriteFile(path, []byte{}, 0644); err != nil {
+				if err := os.WriteFile(path, []byte{}, 0644); err != nil {
 					t.Fatalf("writing to file %s: %v", path, err)
 				}
 			}

@@ -15,7 +15,7 @@
 package ruby
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -79,7 +79,7 @@ RUBY VERSION
 			tempRoot := t.TempDir()
 
 			path := filepath.Join(tempRoot, tc.lockFile.name)
-			if err := ioutil.WriteFile(path, []byte(tc.lockFile.content), 0644); err != nil {
+			if err := os.WriteFile(path, []byte(tc.lockFile.content), 0644); err != nil {
 				t.Fatalf("writing file %s: %v", path, err)
 			}
 
@@ -167,7 +167,7 @@ BUNDLED WITH
 			tempRoot := t.TempDir()
 
 			path := filepath.Join(tempRoot, tc.lockFile.name)
-			if err := ioutil.WriteFile(path, []byte(tc.lockFile.content), 0644); err != nil {
+			if err := os.WriteFile(path, []byte(tc.lockFile.content), 0644); err != nil {
 				t.Fatalf("writing file %s: %v", path, err)
 			}
 

@@ -16,7 +16,6 @@ package devmode
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,7 +25,7 @@ import (
 )
 
 func TestWriteAndRunScripts(t *testing.T) {
-	testDirRoot, err := ioutil.TempDir("", "test-layer-")
+	testDirRoot, err := os.MkdirTemp("", "test-layer-")
 	if err != nil {
 		t.Fatalf("Creating temp directory: %v", err)
 	}
@@ -74,7 +73,7 @@ func TestWriteAndRunScripts(t *testing.T) {
 
 			bar := filepath.Join(tc.layerRoot, "bin", "build_and_run.sh")
 			war := filepath.Join(tc.layerRoot, "bin", "watch_and_run.sh")
-			c, err := ioutil.ReadFile(bar)
+			c, err := os.ReadFile(bar)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -82,7 +81,7 @@ func TestWriteAndRunScripts(t *testing.T) {
 				t.Errorf("build_and_run.sh = %q, want %q", string(c), tc.wantBuildAndRun)
 			}
 
-			c, err = ioutil.ReadFile(war)
+			c, err = os.ReadFile(war)
 			if err != nil {
 				t.Fatal(err)
 			}

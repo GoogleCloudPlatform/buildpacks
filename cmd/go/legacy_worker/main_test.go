@@ -15,7 +15,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -110,7 +109,7 @@ func TestCreateMainGoFile(t *testing.T) {
 		t.Fatalf("error creating file at path %q from worker template: %s", targetMain, err)
 	}
 
-	b, err := ioutil.ReadFile(targetMain)
+	b, err := os.ReadFile(targetMain)
 	if err != nil {
 		t.Fatalf("error reading file at path %q: %s", targetMain, err)
 	}
@@ -151,7 +150,7 @@ replace fnmod => ./serverless_function_source_code`
 		t.Fatalf("error creating file at path %q from go.mod template: %s", targetGoMod, err)
 	}
 
-	b, err := ioutil.ReadFile(targetGoMod)
+	b, err := os.ReadFile(targetGoMod)
 	if err != nil {
 		t.Fatalf("error reading file at path %q: %s", targetGoMod, err)
 	}

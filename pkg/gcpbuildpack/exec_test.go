@@ -16,7 +16,6 @@ package gcpbuildpack
 
 import (
 	"bytes"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -312,7 +311,7 @@ func TestExecWithEnvMultiple(t *testing.T) {
 }
 
 func TestExecWithWorkDir(t *testing.T) {
-	tdir, err := ioutil.TempDir("", "exec2-")
+	tdir, err := os.MkdirTemp("", "exec2-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -649,7 +648,7 @@ func TestExecWithCRLF(t *testing.T) {
 
 	f := filepath.Join(t.TempDir(), "script")
 	// must be executable
-	if err := ioutil.WriteFile(f, []byte("#!/bin/sh\r\necho NO\r\n"), 0555); err != nil {
+	if err := os.WriteFile(f, []byte("#!/bin/sh\r\necho NO\r\n"), 0555); err != nil {
 		t.Fatal(err)
 	}
 

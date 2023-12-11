@@ -15,7 +15,6 @@
 package cache
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -192,7 +191,7 @@ func TestWithFiles(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			temp, err := ioutil.TempDir("", "test-sha-")
+			temp, err := os.MkdirTemp("", "test-sha-")
 			if err != nil {
 				t.Fatalf("creating temp dir: %v", err)
 			}
@@ -232,7 +231,7 @@ func TestWithFilesError(t *testing.T) {
 }
 
 func TestHash_SameFileContentsYieldsSameHash(t *testing.T) {
-	temp, err := ioutil.TempDir("", "test-sha-same-contents-")
+	temp, err := os.MkdirTemp("", "test-sha-same-contents-")
 	if err != nil {
 		t.Fatalf("creating temp dir: %v", err)
 	}
@@ -255,7 +254,7 @@ func TestHash_SameFileContentsYieldsSameHash(t *testing.T) {
 }
 
 func TestHash_Uniqueness(t *testing.T) {
-	temp, err := ioutil.TempDir("", "test-sha-uniqueness-")
+	temp, err := os.MkdirTemp("", "test-sha-uniqueness-")
 	if err != nil {
 		t.Fatalf("creating temp dir: %v", err)
 	}
@@ -294,7 +293,7 @@ func TestHash_Uniqueness(t *testing.T) {
 func writeFile(t *testing.T, tempDir, name, contents string) string {
 	t.Helper()
 	fullName := filepath.Join(tempDir, name)
-	if err := ioutil.WriteFile(fullName, []byte(contents), 0644); err != nil {
+	if err := os.WriteFile(fullName, []byte(contents), 0644); err != nil {
 		t.Fatalf("writing file %q: %v", fullName, err)
 	}
 	return fullName

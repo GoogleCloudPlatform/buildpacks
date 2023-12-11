@@ -16,7 +16,6 @@ package gcpbuildpack
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,7 +32,7 @@ import (
 
 func TestSaveErrorOutput(t *testing.T) {
 	t.Cleanup(buildermetrics.Reset)
-	tempDir, err := ioutil.TempDir("", "save-error-output-")
+	tempDir, err := os.MkdirTemp("", "save-error-output-")
 	if err != nil {
 		t.Fatalf("creating temp dir: %v", err)
 	}
@@ -55,7 +54,7 @@ func TestSaveErrorOutput(t *testing.T) {
 
 	ctx.saveErrorOutput(buildererror.Errorf(buildererror.StatusInternal, msg))
 
-	data, err := ioutil.ReadFile(filepath.Join(tempDir, "output"))
+	data, err := os.ReadFile(filepath.Join(tempDir, "output"))
 	if err != nil {
 		t.Fatalf("TestSaveErrorOutput reading expected file $BUILDER_OUTPUT/output: %v", err)
 	}
@@ -453,7 +452,7 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Cleanup(buildermetrics.Reset)
-			tempDir, err := ioutil.TempDir("", "save-success-output-")
+			tempDir, err := os.MkdirTemp("", "save-success-output-")
 			if err != nil {
 				t.Fatalf("TestSaveBuilderSuccessOutput creating temp dir: %v", err)
 			}
@@ -469,7 +468,7 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Failed to marshal stats: %v", err)
 				}
-				if err := ioutil.WriteFile(fname, content, 0644); err != nil {
+				if err := os.WriteFile(fname, content, 0644); err != nil {
 					t.Fatalf("TestSaveBuilderSuccessOutput writing %s: %v", fname, err)
 				}
 			}
@@ -486,7 +485,7 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 
 			ctx.saveSuccessOutput(dur)
 
-			content, err := ioutil.ReadFile(fname)
+			content, err := os.ReadFile(fname)
 			if err != nil {
 				t.Fatalf("Failed to read %s: %v", fname, err)
 			}

@@ -17,7 +17,6 @@ package gcpbuildpack
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -99,7 +98,7 @@ func (ctx *Context) saveErrorOutput(err error) {
 	// /bin/detect steps run in parallel, so they might compete over the output file. To eliminate
 	// this competition, write to temp file, then `mv -f` to final location (last one in wins).
 	tname := filepath.Join(outputDir, fmt.Sprintf("%s-%d", builderOutputFilename, rand.Int()))
-	if err := ioutil.WriteFile(tname, data, 0644); err != nil {
+	if err := os.WriteFile(tname, data, 0644); err != nil {
 		ctx.Warnf("Failed to write %s, skipping structured error output: %v", tname, err)
 		return
 	}
@@ -159,7 +158,7 @@ func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 	}
 	// Previous buildpacks may have already written to the builder output file.
 	if fnameExists {
-		content, err := ioutil.ReadFile(fname)
+		content, err := os.ReadFile(fname)
 		if err != nil {
 			ctx.Warnf("Failed to read %s, skipping statistics: %v", fname, err)
 			return
@@ -222,7 +221,7 @@ func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 		ctx.Warnf("Failed to create dir %s, skipping statistics: %v", outputDir, err)
 		return
 	}
-	if err := ioutil.WriteFile(fname, content, 0644); err != nil {
+	if err := os.WriteFile(fname, content, 0644); err != nil {
 		ctx.Warnf("Failed to write %s, skipping statistics: %v", fname, err)
 		return
 	}

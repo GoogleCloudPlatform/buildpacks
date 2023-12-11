@@ -19,7 +19,6 @@ package buildpacktestenv
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -49,7 +48,7 @@ func TempWorkingDir(t *testing.T) (string, func()) {
 	if err != nil {
 		t.Fatalf("getting working dir: %v", err)
 	}
-	newwd, err := ioutil.TempDir("", "source-")
+	newwd, err := os.MkdirTemp("", "source-")
 	if err != nil {
 		t.Fatalf("creating temp dir: %v", err)
 	}
@@ -70,19 +69,19 @@ func TempWorkingDir(t *testing.T) (string, func()) {
 // SetUpTempDirs sets up temp directories that mimic the layers of buildpacks.
 func SetUpTempDirs(t *testing.T) TempDirs {
 	t.Helper()
-	LayersDir, err := ioutil.TempDir("", "layers-")
+	LayersDir, err := os.MkdirTemp("", "layers-")
 	if err != nil {
 		t.Fatalf("creating layers dir: %v", err)
 	}
-	PlatformDir, err := ioutil.TempDir("", "platform-")
+	PlatformDir, err := os.MkdirTemp("", "platform-")
 	if err != nil {
 		t.Fatalf("creating platform dir: %v", err)
 	}
-	CodeDir, err := ioutil.TempDir("", "CodeDir-")
+	CodeDir, err := os.MkdirTemp("", "CodeDir-")
 	if err != nil {
 		t.Fatalf("creating code dir: %v", err)
 	}
-	BuildpackDir, err := ioutil.TempDir("", "buildpack-")
+	BuildpackDir, err := os.MkdirTemp("", "buildpack-")
 	if err != nil {
 		t.Fatalf("creating buildpack dir: %v", err)
 	}
@@ -100,7 +99,7 @@ name = "my-name"
 id = "%s"
 `, stack)
 
-	if err := ioutil.WriteFile(filepath.Join(BuildpackDir, "buildpack.toml"), []byte(buildpackTOML), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(BuildpackDir, "buildpack.toml"), []byte(buildpackTOML), 0644); err != nil {
 		t.Fatalf("writing buildpack.toml: %v", err)
 	}
 
@@ -111,7 +110,7 @@ version = "entry-version"
 [entries.metadata]
   entry-meta-key = "entry-meta-value"
 `
-	if err := ioutil.WriteFile(filepath.Join(BuildpackDir, "plan.toml"), []byte(planTOML), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(BuildpackDir, "plan.toml"), []byte(planTOML), 0644); err != nil {
 		t.Fatalf("writing plan.toml: %v", err)
 	}
 

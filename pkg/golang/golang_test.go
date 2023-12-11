@@ -16,7 +16,6 @@ package golang
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -295,7 +294,7 @@ module dir
 
 	for tci, tc := range testCases {
 		t.Run(fmt.Sprintf("go.mod testcase %d", tci), func(t *testing.T) {
-			dir, err := ioutil.TempDir("", tc.name)
+			dir, err := os.MkdirTemp("", tc.name)
 			if err != nil {
 				t.Fatalf("failing to create temp dir: %v", err)
 			}
@@ -303,7 +302,7 @@ module dir
 
 			ctx := gcp.NewContext(gcp.WithApplicationRoot(dir))
 
-			if err := ioutil.WriteFile(filepath.Join(dir, "go.mod"), []byte(tc.gomod), 0644); err != nil {
+			if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(tc.gomod), 0644); err != nil {
 				t.Fatalf("writing go.mod: %v", err)
 			}
 
