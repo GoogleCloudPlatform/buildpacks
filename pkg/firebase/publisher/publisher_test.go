@@ -65,8 +65,9 @@ func TestPublish(t *testing.T) {
 			},
 			Runtime: runtime{
 				EnvVariables: map[string]string{
-					"API_URL":     "api.service.com",
-					"ENVIRONMENT": "staging",
+					"API_URL":           "api.service.com",
+					"ENVIRONMENT":       "staging",
+					"MULTILINE_ENV_VAR": "line 1\nline 2",
 				},
 			},
 		}},
@@ -83,8 +84,9 @@ func TestPublish(t *testing.T) {
 				},
 				Runtime: runtime{
 					EnvVariables: map[string]string{
-						"API_URL":     "api.service.com",
-						"ENVIRONMENT": "staging",
+						"API_URL":           "api.service.com",
+						"ENVIRONMENT":       "staging",
+						"MULTILINE_ENV_VAR": "line 1\nline 2",
 					},
 				},
 			}},
