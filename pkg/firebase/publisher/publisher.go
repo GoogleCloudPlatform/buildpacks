@@ -172,7 +172,7 @@ func writeToFile(buildSchema buildSchema, outputFilePath string) error {
 	if err != nil {
 		return fmt.Errorf("converting struct to YAML: %w", err)
 	}
-	log.Printf("Final build schema: %v\n", string(fileData))
+	log.Printf("Final build schema:\n%v\n", string(fileData))
 
 	err = os.MkdirAll(filepath.Dir(outputFilePath), os.ModeDir)
 	if err != nil {
