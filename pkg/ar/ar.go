@@ -87,6 +87,7 @@ var locations = []string{
 	"us-west2",
 	"us-west3",
 	"us-west4",
+	"us-west8",
 }
 
 // NpmRegistryConfig defines properties for an npm registy.

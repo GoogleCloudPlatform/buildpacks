@@ -90,6 +90,7 @@ machine us-west1-python.pkg.dev login oauth2accesstoken password token
 machine us-west2-python.pkg.dev login oauth2accesstoken password token
 machine us-west3-python.pkg.dev login oauth2accesstoken password token
 machine us-west4-python.pkg.dev login oauth2accesstoken password token
+machine us-west8-python.pkg.dev login oauth2accesstoken password token
 `),
 		},
 	}
