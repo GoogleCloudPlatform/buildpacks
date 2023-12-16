@@ -103,7 +103,20 @@ func TestBuild(t *testing.T) {
 			},
 		},
 		{
-			name: "error out if the version is below 14.0.0",
+			name: "supports versions with constraints",
+			files: map[string]string{
+				"package.json": `{
+					"scripts": {
+						"build": "apphosting-adapter-nextjs-build"
+					},
+					"dependencies": {
+						"next": "^13.0.0"
+					}
+				}`,
+			},
+		},
+		{
+			name: "error out if the version is below 13.0.0",
 			files: map[string]string{
 				"package.json": `{
 				"dependencies": {

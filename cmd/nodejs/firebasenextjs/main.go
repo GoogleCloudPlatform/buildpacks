@@ -17,9 +17,10 @@
 package main
 
 import (
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/Masterminds/semver"
+
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 var (
@@ -60,17 +61,13 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
-	version, err := semver.NewVersion(pjs.Dependencies["next"])
+
+	err = validateVersion(ctx, pjs.Dependencies["next"])
 	if err != nil {
 		return err
 	}
 
-	if version.LessThan(minNextVersion) {
-		return gcp.UserErrorf("running unsupported nextjs version, minimum %s required but %s is being run", minNextVersion.String(), version.String())
-	}
-
 	buildScript, exists := pjs.Scripts["build"]
-
 	if exists && buildScript == "next build" {
 		njsl, err := ctx.Layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
 		if err != nil {
@@ -86,4 +83,20 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Warnf("*** You are using a custom build command (your build command is NOT 'next build'), we will accept it as is but some features will not be enabled ***")
 	}
 	return err
+}
+
+func validateVersion(ctx *gcp.Context, depVersion string) error {
+	version, err := semver.NewVersion(depVersion)
+	if err != nil {
+		// TODO(b/316585247): Actually validate version range.
+		ctx.Warnf("Unrecognized version of next: %s", depVersion)
+		ctx.Warnf("Consider updating your next dependencies to >=%s", minNextVersion.String())
+		return nil
+	}
+	if version.LessThan(minNextVersion) {
+		ctx.Warnf("Unsupported version of next: %s", depVersion)
+		ctx.Warnf("Update the next dependencies to >=%s", minNextVersion.String())
+		return gcp.UserErrorf("unsupported version of next %s", depVersion)
+	}
+	return nil
 }
