@@ -48,16 +48,17 @@ type InstallableRuntime string
 
 // All runtimes that can be installed using the InstallTarballIfNotCached function.
 const (
-	Nodejs     InstallableRuntime = "nodejs"
-	PHP        InstallableRuntime = "php"
-	Python     InstallableRuntime = "python"
-	Ruby       InstallableRuntime = "ruby"
-	Nginx      InstallableRuntime = "nginx"
-	Pid1       InstallableRuntime = "pid1"
-	DotnetSDK  InstallableRuntime = "dotnetsdk"
-	AspNetCore InstallableRuntime = "aspnetcore"
-	OpenJDK    InstallableRuntime = "openjdk"
-	Go         InstallableRuntime = "go"
+	Nodejs       InstallableRuntime = "nodejs"
+	PHP          InstallableRuntime = "php"
+	Python       InstallableRuntime = "python"
+	Ruby         InstallableRuntime = "ruby"
+	Nginx        InstallableRuntime = "nginx"
+	Pid1         InstallableRuntime = "pid1"
+	DotnetSDK    InstallableRuntime = "dotnetsdk"
+	AspNetCore   InstallableRuntime = "aspnetcore"
+	OpenJDK      InstallableRuntime = "openjdk"
+	CanonicalJDK InstallableRuntime = "canonicaljdk"
+	Go           InstallableRuntime = "go"
 
 	ubuntu1804 string = "ubuntu1804"
 	ubuntu2204 string = "ubuntu2204"

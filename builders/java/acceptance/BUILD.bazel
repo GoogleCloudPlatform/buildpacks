@@ -36,6 +36,10 @@ acceptance_test_suite(
     argsmap = javaargs(),
     builder = "//builders/java:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "java17": "//builders/java:builder_22.tar",
+        "java21": "//builders/java:builder_22.tar",
+    },
     testdata = "//builders/testdata/java:appengine.tgz",
     versions = gae_runtime_versions,
 )
@@ -49,6 +53,10 @@ acceptance_test_suite(
     argsmap = javaargs("$${_CANDIDATE_NAME}"),
     builder = "//builders/java:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "java17": "//builders/java:builder_22.tar",
+        "java21": "//builders/java:builder_22.tar",
+    },
     testdata = "//builders/testdata/java:appengine.tgz",
     versions = gae_runtime_versions,
 )
@@ -62,6 +70,7 @@ acceptance_test_suite(
     rundir = ".",
     runtime_to_builder_map = {
         "java17": "//builders/java:builder_22.tar",
+        "java21": "//builders/java:builder_22.tar",
     },
     testdata = "//builders/testdata/java:functions.tgz",
     versions = gcf_runtime_versions,
@@ -76,6 +85,7 @@ acceptance_test_suite(
     rundir = ".",
     runtime_to_builder_map = {
         "java17": "//builders/java:builder_22.tar",
+        "java21": "//builders/java:builder_22.tar",
     },
     testdata = "//builders/testdata/java:generic",
     versions = gcp_runtime_versions,
@@ -90,6 +100,7 @@ acceptance_test_suite(
     rundir = ".",
     runtime_to_builder_map = {
         "java17": "//builders/java:builder_22.tar",
+        "java21": "//builders/java:builder_22.tar",
     },
     testdata = "//builders/testdata/java:flex",
     versions = flex_runtime_versions,

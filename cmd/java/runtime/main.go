@@ -87,7 +87,12 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", javaLayer, err)
 	}
-	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.OpenJDK, featureVersion, l)
+	jdkRuntime := runtime.OpenJDK
+	// Java 21 should fetch Jdk from Canonical instead of Adoptium.
+	if strings.HasPrefix(featureVersion, "21") {
+		jdkRuntime = runtime.CanonicalJDK
+	}
+	_, err = runtime.InstallTarballIfNotCached(ctx, jdkRuntime, featureVersion, l)
 	return err
 }
 
