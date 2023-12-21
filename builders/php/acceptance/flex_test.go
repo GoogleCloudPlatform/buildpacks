@@ -16,21 +16,24 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:    "modified front_controller",
-			App:     "front_controller",
-			MustUse: []string{flex, composer},
+			Name:                       "modified front_controller",
+			App:                        "front_controller",
+			VersionInclusionConstraint: "< 8.2.0",
+			MustUse:                    []string{flex, composer},
 		},
 		{
-			Name:      "php ini override",
-			App:       "php_ini",
-			MustMatch: "PASS_PHP_INI",
-			MustUse:   []string{flex},
+			Name:                       "php ini override",
+			App:                        "php_ini",
+			MustMatch:                  "PASS_PHP_INI",
+			VersionInclusionConstraint: "< 8.2.0",
+			MustUse:                    []string{flex},
 		},
 		{
-			Name:      "nginx server config included",
-			App:       "nginx_conf_include",
-			MustUse:   []string{flex, utilsNginx},
-			MustMatch: "app.php",
+			Name:                       "nginx server config included",
+			App:                        "nginx_conf_include",
+			VersionInclusionConstraint: "< 8.2.0",
+			MustUse:                    []string{flex, utilsNginx},
+			MustMatch:                  "app.php",
 		},
 	}
 

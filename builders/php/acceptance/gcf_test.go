@@ -26,10 +26,11 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:       "function without composer.json",
-			App:        "no_composer_json",
-			MustUse:    []string{composerInstall, phpRuntime, functionFramework, cloudFunctions},
-			MustNotUse: []string{composer, composerGCPBuild, phpWebConfig},
+			Name:                       "function without composer.json",
+			App:                        "no_composer_json",
+			VersionInclusionConstraint: "< 8.2.0",
+			MustUse:                    []string{composerInstall, phpRuntime, functionFramework, cloudFunctions},
+			MustNotUse:                 []string{composer, composerGCPBuild, phpWebConfig},
 			MustOutput: []string{
 				"Handling function without composer.json",
 				"No vendor directory present, installing functions framework",
@@ -40,11 +41,12 @@ func TestAcceptance(t *testing.T) {
 			},
 		},
 		{
-			Name:       "non default source file",
-			App:        "non_default_source_file",
-			Env:        []string{"GOOGLE_FUNCTION_SOURCE=myfunc.php"},
-			MustUse:    []string{composerInstall, phpRuntime, functionFramework, cloudFunctions},
-			MustNotUse: []string{composer, composerGCPBuild, phpWebConfig},
+			Name:                       "non default source file",
+			App:                        "non_default_source_file",
+			VersionInclusionConstraint: "< 8.2.0",
+			Env:                        []string{"GOOGLE_FUNCTION_SOURCE=myfunc.php"},
+			MustUse:                    []string{composerInstall, phpRuntime, functionFramework, cloudFunctions},
+			MustNotUse:                 []string{composer, composerGCPBuild, phpWebConfig},
 			MustOutput: []string{
 				"Handling function without composer.json",
 				"No vendor directory present, installing functions framework",
@@ -54,29 +56,32 @@ func TestAcceptance(t *testing.T) {
 			},
 		},
 		{
-			Name:       "function without framework dependency",
-			App:        "no_framework",
-			MustUse:    []string{composer, composerInstall, phpRuntime, functionFramework, cloudFunctions},
-			MustNotUse: []string{composerGCPBuild, phpWebConfig},
-			MustOutput: []string{"Handling function without dependency on functions framework"},
+			Name:                       "function without framework dependency",
+			App:                        "no_framework",
+			VersionInclusionConstraint: "< 8.2.0",
+			MustUse:                    []string{composer, composerInstall, phpRuntime, functionFramework, cloudFunctions},
+			MustNotUse:                 []string{composerGCPBuild, phpWebConfig},
+			MustOutput:                 []string{"Handling function without dependency on functions framework"},
 			Labels: map[string]string{
 				"google.functions-framework-version": `{"runtime":"php","version":"^1.1","injected":true}`,
 			},
 		},
 		{
-			Name:       "function without framework dependency and allow injection",
-			App:        "no_framework",
-			Env:        []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=False"},
-			MustUse:    []string{composer, composerInstall, phpRuntime, functionFramework, cloudFunctions},
-			MustNotUse: []string{composerGCPBuild, phpWebConfig},
-			MustOutput: []string{"Handling function without dependency on functions framework"},
+			Name:                       "function without framework dependency and allow injection",
+			App:                        "no_framework",
+			VersionInclusionConstraint: "< 8.2.0",
+			Env:                        []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=False"},
+			MustUse:                    []string{composer, composerInstall, phpRuntime, functionFramework, cloudFunctions},
+			MustNotUse:                 []string{composerGCPBuild, phpWebConfig},
+			MustOutput:                 []string{"Handling function without dependency on functions framework"},
 		},
 		{
-			Name:       "function with framework dependency",
-			App:        "with_framework",
-			MustUse:    []string{composer, composerInstall, phpRuntime, functionFramework, cloudFunctions},
-			MustNotUse: []string{composerGCPBuild, phpWebConfig},
-			MustOutput: []string{"Handling function with dependency on functions framework"},
+			Name:                       "function with framework dependency",
+			App:                        "with_framework",
+			VersionInclusionConstraint: "< 8.2.0",
+			MustUse:                    []string{composer, composerInstall, phpRuntime, functionFramework, cloudFunctions},
+			MustNotUse:                 []string{composerGCPBuild, phpWebConfig},
+			MustOutput:                 []string{"Handling function with dependency on functions framework"},
 			Labels: map[string]string{
 				"google.functions-framework-version": `{"runtime":"php","version":"^1.0","injected":false}`,
 			},
@@ -90,16 +95,18 @@ func TestAcceptance(t *testing.T) {
 			VersionInclusionConstraint: "<8.2.0",
 		},
 		{
-			Name:       "function with gcp-build",
-			App:        "with_gcp_build",
-			MustUse:    []string{composer, composerGCPBuild, composerInstall, phpRuntime, functionFramework, cloudFunctions},
-			MustOutput: []string{"Handling function with dependency on functions framework"},
+			Name:                       "function with gcp-build",
+			App:                        "with_gcp_build",
+			VersionInclusionConstraint: "< 8.2.0",
+			MustUse:                    []string{composer, composerGCPBuild, composerInstall, phpRuntime, functionFramework, cloudFunctions},
+			MustOutput:                 []string{"Handling function with dependency on functions framework"},
 		},
 		{
-			Name:       "function with vendor dir but no framework",
-			App:        "vendored_no_framework",
-			MustUse:    []string{composerInstall, phpRuntime, functionFramework, cloudFunctions},
-			MustNotUse: []string{composer, composerGCPBuild, phpWebConfig},
+			Name:                       "function with vendor dir but no framework",
+			App:                        "vendored_no_framework",
+			VersionInclusionConstraint: "< 8.2.0",
+			MustUse:                    []string{composerInstall, phpRuntime, functionFramework, cloudFunctions},
+			MustNotUse:                 []string{composer, composerGCPBuild, phpWebConfig},
 			MustOutput: []string{
 				"Handling function without composer.json",
 				"Functions framework is not present at vendor/google/cloud-functions-framework",
@@ -112,19 +119,22 @@ func TestAcceptance(t *testing.T) {
 			},
 		},
 		{
-			Name: "declarative http function",
-			App:  "declarative_http",
+			Name:                       "declarative http function",
+			App:                        "declarative_http",
+			VersionInclusionConstraint: "< 8.2.0",
 		},
 		{
-			Name:        "declarative cloudevent function",
-			App:         "declarative_cloud_event",
-			RequestType: acceptance.CloudEventType,
+			Name:                       "declarative cloudevent function",
+			App:                        "declarative_cloud_event",
+			VersionInclusionConstraint: "< 8.2.0",
+			RequestType:                acceptance.CloudEventType,
 		},
 		{
-			Name:        "non declarative cloudevent function",
-			Env:         []string{"GOOGLE_FUNCTION_SIGNATURE_TYPE=cloudevent"},
-			App:         "non_declarative_cloud_event",
-			RequestType: acceptance.CloudEventType,
+			Name:                       "non declarative cloudevent function",
+			Env:                        []string{"GOOGLE_FUNCTION_SIGNATURE_TYPE=cloudevent"},
+			App:                        "non_declarative_cloud_event",
+			VersionInclusionConstraint: "< 8.2.0",
+			RequestType:                acceptance.CloudEventType,
 		},
 	}
 
@@ -152,36 +162,42 @@ func TestFailures(t *testing.T) {
 
 	testCases := []acceptance.FailureTest{
 		{
-			App:       "fail_syntax_error",
-			MustMatch: "Parse error: syntax error",
+			App:                        "fail_syntax_error",
+			VersionInclusionConstraint: "< 8.2.0",
+			MustMatch:                  "Parse error: syntax error",
 		},
 		{
-			App:       "fail_vendored_framework_no_router_script",
-			MustMatch: `functions framework router script vendor/bin/router\.php is not present`,
+			App:                        "fail_vendored_framework_no_router_script",
+			VersionInclusionConstraint: "< 8.2.0",
+			MustMatch:                  `functions framework router script vendor/bin/router\.php is not present`,
 		},
 		{
-			App:       "fail_vendored_no_framework_no_installed_json",
-			MustMatch: `vendor/composer/installed\.json is not present, so it appears that Composer was not used to install dependencies\.`,
+			App:                        "fail_vendored_no_framework_no_installed_json",
+			VersionInclusionConstraint: "< 8.2.0",
+			MustMatch:                  `vendor/composer/installed\.json is not present, so it appears that Composer was not used to install dependencies\.`,
 		},
 		{
-			Name:      "function without framework dependency or injection",
-			App:       "no_framework",
-			Env:       []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=True"},
-			MustMatch: "skipping automatic framework injection has been enabled",
+			Name:                       "function without framework dependency or injection",
+			App:                        "no_framework",
+			VersionInclusionConstraint: "< 8.2.0",
+			Env:                        []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=True"},
+			MustMatch:                  "skipping automatic framework injection has been enabled",
 		},
 		{
-			App:       "fail_wrong_file",
-			MustMatch: "Could not open input file:",
+			App:                        "fail_wrong_file",
+			VersionInclusionConstraint: "< 8.2.0",
+			MustMatch:                  "Could not open input file:",
 		},
 		{
 			// todo(mtraver): This acceptance test must exist in the OSS buildpack for PHP when created per b/156265858.
-			App:       "no_composer_json",
-			Env:       []string{"GOOGLE_FUNCTION_SOURCE=file_does_not_exist.php"},
-			MustMatch: "Could not open input file: file_does_not_exist.php",
+			App:                        "no_composer_json",
+			VersionInclusionConstraint: "< 8.2.0",
+			Env:                        []string{"GOOGLE_FUNCTION_SOURCE=file_does_not_exist.php"},
+			MustMatch:                  "Could not open input file: file_does_not_exist.php",
 		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterFailureTests(t, testCases) {
 		tc := tc
 		t.Run(tc.App, func(t *testing.T) {
 			t.Parallel()
