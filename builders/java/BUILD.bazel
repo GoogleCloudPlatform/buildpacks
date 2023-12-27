@@ -4,25 +4,46 @@ licenses(["notice"])
 
 package(default_visibility = ["//builders/java:__subpackages__"])
 
+exports_files([
+    "builder.toml.template",
+])
+
+BUILDPACKS = [
+    "//cmd/config/entrypoint:entrypoint.tgz",
+    "//cmd/utils/label:label_image.tgz",
+    "//cmd/config/flex:flex.tgz",
+    "//cmd/java/appengine:appengine.tgz",
+    "//cmd/utils/archive_source:archive_source.tgz",
+]
+
+GROUPS = {
+    "java": [
+        "//cmd/java/clear_source:clear_source.tgz",
+        "//cmd/java/entrypoint:entrypoint.tgz",
+        "//cmd/java/exploded_jar:exploded_jar.tgz",
+        "//cmd/java/functions_framework:functions_framework.tgz",
+        "//cmd/java/gradle:gradle.tgz",
+        "//cmd/java/maven:maven.tgz",
+        "//cmd/java/runtime:runtime.tgz",
+    ],
+}
+
 builder(
     name = "builder",
-    buildpacks = [
-        "//cmd/config/entrypoint:entrypoint.tgz",
-        "//cmd/utils/label:label_image.tgz",
-        "//cmd/config/flex:flex.tgz",
-        "//cmd/java/appengine:appengine.tgz",
-        "//cmd/utils/archive_source:archive_source.tgz",
-    ],
-    groups = {
-        "java": [
-            "//cmd/java/clear_source:clear_source.tgz",
-            "//cmd/java/entrypoint:entrypoint.tgz",
-            "//cmd/java/exploded_jar:exploded_jar.tgz",
-            "//cmd/java/functions_framework:functions_framework.tgz",
-            "//cmd/java/gradle:gradle.tgz",
-            "//cmd/java/maven:maven.tgz",
-            "//cmd/java/runtime:runtime.tgz",
-        ],
-    },
+    builder_template = ":builder.toml.template",
+    buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
+    groups = GROUPS,
     image = "gcp/java",
+    stack = "google.gae.18",
+)
+
+builder(
+    name = "builder_22",
+    builder_template = ":builder.toml.template",
+    buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
+    groups = GROUPS,
+    image = "gcp/java-22",
+    stack = "google.gae.22",
 )
