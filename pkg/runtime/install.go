@@ -297,7 +297,7 @@ func ResolveVersion(runtime InstallableRuntime, verConstraint, osName string) (s
 	region, present := os.LookupEnv(env.RuntimeImageRegion)
 	if present {
 		versions, err = crane.ListTags(fmt.Sprintf(runtimeImageARRepoURL, region, osName, runtime))
-		if runtime == OpenJDK {
+		if runtime == OpenJDK || runtime == CanonicalJDK {
 			for i, v := range versions {
 				// When resolving version openjdk versions should be decoded to align with semver requirement. (eg. 11.0.21_9 -> 11.0.21+9)
 				versions[i] = strings.ReplaceAll(v, "_", "+")
