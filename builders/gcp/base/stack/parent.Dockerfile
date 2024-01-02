@@ -23,7 +23,7 @@ ARG stack_id="google"
 # Required by go/runtime: tzdata (Go may panic without /usr/share/zoneinfo)
 # Required by ruby/runtime: libyaml
 # Required by php/runtime: libtidy5, libpq5, libxml2, libenchant1c2a,
-# libpng16-16, libonig4, libjpeg8, libfreetype6, libxslt1.1, libzip4
+# libpng16-16, libonig4, libjpeg8, libfreetype6, libxslt1.1, libzip4, libsodium23,
 RUN apt-get update -y && \
   apt-get upgrade -y --no-install-recommends --allow-remove-essential && \
   apt-get install -y --no-install-recommends --allow-remove-essential \
@@ -42,6 +42,7 @@ RUN apt-get update -y && \
     libonig4 \
     libjpeg8 \
     libfreetype6 \
+    libsodium23 \
     libxslt1.1 \
     libzip4 \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
