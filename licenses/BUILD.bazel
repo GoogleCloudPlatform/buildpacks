@@ -10,3 +10,8 @@ pkg_tar(
     extension = "tar",
     strip_prefix = ".",
 )
+
+filegroup(
+    name = "files",
+    srcs = glob(["**"]),
+)
