@@ -315,8 +315,10 @@ func ResolveVersion(runtime InstallableRuntime, verConstraint, osName string) (s
 		return "", gcp.UserErrorf("invalid %s version specified: %v. You may need to use a different builder. Please check if the language version specified is supported by the os: %v. You can refer to https://cloud.google.com/docs/buildpacks/builders for a list of compatible runtime languages per builder", runtimeNames[runtime], err, osName)
 	}
 	// When downloading from AR the openjdk version should be encoded to align with tag format requirement. (eg. 11.0.21+9 -> 11.0.21_9)
-	if present && runtime == OpenJDK {
-		v = strings.ReplaceAll(v, "+", "_")
+	if present {
+		if runtime == OpenJDK || runtime == CanonicalJDK {
+			v = strings.ReplaceAll(v, "+", "_")
+		}
 	}
 	return v, nil
 }
