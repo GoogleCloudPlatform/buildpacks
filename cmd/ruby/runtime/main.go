@@ -94,7 +94,7 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	versionInstalled, _ := runtime.ResolveVersion(runtime.Ruby, version, runtime.OSForStack(ctx))
+	versionInstalled, _ := runtime.ResolveVersion(ctx, runtime.Ruby, version, runtime.OSForStack(ctx))
 	// Store the installed Ruby version for subsequent buildpacks (like RubyGems) that depend on it.
 	rl.BuildEnvironment.Override(ruby.RubyVersionKey, versionInstalled)
 

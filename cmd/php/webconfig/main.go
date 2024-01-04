@@ -134,7 +134,7 @@ func getInstalledPhpVersion(ctx *gcp.Context) (string, error) {
 		return "", fmt.Errorf("determining runtime version: %w", err)
 	}
 
-	resolvedVersion, err := runtime.ResolveVersion(php.GetInstallableRuntime(ctx), version, runtime.OSForStack(ctx))
+	resolvedVersion, err := runtime.ResolveVersion(ctx, php.GetInstallableRuntime(ctx), version, runtime.OSForStack(ctx))
 	if err != nil {
 		return "", fmt.Errorf("resolving runtime version: %w", err)
 	}

@@ -44,6 +44,17 @@ func Tarball(url, dir string, stripComponents int) error {
 	return untar(dir, response.Body, stripComponents)
 }
 
+// ARVersions downloads list of versions from artifact registry.
+var ARVersions = func(url, fallbackURL string, ctx *gcp.Context) ([]string, error) {
+	versions, err := crane.ListTags(url)
+	if err != nil || len(versions) == 0 {
+		ctx.Logf("Failed to list versions from %s. Size of versions is %d. Error is: %v", url, len(versions), err)
+		ctx.Logf("Attempting to list versions from %s as a fallback", fallbackURL)
+		versions, err = crane.ListTags(fallbackURL)
+	}
+	return versions, err
+}
+
 // ARImage downloads tarball from images in artifact registry.
 var ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error {
 	image, err := crane.Pull(url)

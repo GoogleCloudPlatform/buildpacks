@@ -28,7 +28,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/version"
 	"github.com/buildpacks/libcnb"
-	"github.com/google/go-containerregistry/pkg/crane"
 )
 
 var (
@@ -160,7 +159,7 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	runtimeID := string(runtime)
 	osName := OSForStack(ctx)
 
-	version, err := ResolveVersion(runtime, versionConstraint, osName)
+	version, err := ResolveVersion(ctx, runtime, versionConstraint, osName)
 	if err != nil {
 		return false, err
 	}
@@ -279,7 +278,7 @@ func IsReleaseCandidate(verConstraint string) bool {
 
 // ResolveVersion returns the newest available version of a runtime that satisfies the provided
 // version constraint.
-func ResolveVersion(runtime InstallableRuntime, verConstraint, osName string) (string, error) {
+func ResolveVersion(ctx *gcp.Context, runtime InstallableRuntime, verConstraint, osName string) (string, error) {
 	if runtime == Go {
 		// Go provides its own version manifest so it has its own version resolution logic.
 		return golang.ResolveGoVersion(verConstraint)
@@ -290,26 +289,27 @@ func ResolveVersion(runtime InstallableRuntime, verConstraint, osName string) (s
 		return verConstraint, nil
 	}
 
-	url := fmt.Sprintf(runtimeVersionsURL, osName, runtime)
-
 	var versions []string
 	var err error
 	region, present := os.LookupEnv(env.RuntimeImageRegion)
 	if present {
-		versions, err = crane.ListTags(fmt.Sprintf(runtimeImageARRepoURL, region, osName, runtime))
-		if runtime == OpenJDK || runtime == CanonicalJDK {
-			for i, v := range versions {
-				// When resolving version openjdk versions should be decoded to align with semver requirement. (eg. 11.0.21_9 -> 11.0.21+9)
-				versions[i] = strings.ReplaceAll(v, "_", "+")
-			}
-		}
+		url := fmt.Sprintf(runtimeImageARRepoURL, region, osName, runtime)
+		fallbackURL := fmt.Sprintf(runtimeImageARRepoURL, fallbackRegion, osName, runtime)
+		versions, err = fetch.ARVersions(url, fallbackURL, ctx)
 	} else {
+		url := fmt.Sprintf(runtimeVersionsURL, osName, runtime)
 		err = fetch.JSON(url, &versions)
 	}
 	if err != nil {
 		return "", gcp.InternalErrorf("fetching %s versions %s osName: %v", runtimeNames[runtime], osName, err)
 	}
 
+	if present && (runtime == OpenJDK || runtime == CanonicalJDK) {
+		for i, v := range versions {
+			// When resolving version openjdk versions should be decoded to align with semver requirement. (eg. 11.0.21_9 -> 11.0.21+9)
+			versions[i] = strings.ReplaceAll(v, "_", "+")
+		}
+	}
 	v, err := version.ResolveVersion(verConstraint, versions)
 	if err != nil {
 		return "", gcp.UserErrorf("invalid %s version specified: %v. You may need to use a different builder. Please check if the language version specified is supported by the os: %v. You can refer to https://cloud.google.com/docs/buildpacks/builders for a list of compatible runtime languages per builder", runtimeNames[runtime], err, osName)

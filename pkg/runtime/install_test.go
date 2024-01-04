@@ -256,6 +256,16 @@ func TestInstallSource(t *testing.T) {
 			wantAR:             true,
 		},
 		{
+			name:               "install from artifact registry for java 21.0",
+			runtime:            CanonicalJDK,
+			version:            "21.0",
+			stackID:            "google.gae.22",
+			responseFile:       "testdata/dummy-ruby-runtime.tar.gz",
+			runtimeImageRegion: "us-central1",
+			wantError:          false,
+			wantAR:             true,
+		},
+		{
 			name:         "missing runtimeImageRegion",
 			runtime:      Nodejs,
 			version:      "16.20.0",
@@ -289,6 +299,14 @@ func TestInstallSource(t *testing.T) {
 			fetch.ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error {
 				fetchedFromAR = true
 				return nil
+			}
+
+			defer func(fn func(url, fallbackURL string, ctx *gcp.Context) ([]string, error)) {
+				fetch.ARVersions = fn
+			}(fetch.ARVersions)
+
+			fetch.ARVersions = func(url, fallbackURL string, ctx *gcp.Context) ([]string, error) {
+				return []string{"11.0.21_9-post-Ubuntu-0ubuntu122.04", "17.0.9_9-Ubuntu-122.04", "21.0.1_12-Ubuntu-222.04"}, nil
 			}
 
 			layer := &libcnb.Layer{
