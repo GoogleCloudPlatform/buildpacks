@@ -2,4 +2,3 @@ API_URL=api.service.com
 ENVIRONMENT=staging # Test Comment
 MULTILINE_ENV_VAR='line 1
 line 2'
-FIREBASE_CONFIG=testing # This is a reserved word

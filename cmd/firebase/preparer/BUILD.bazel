@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = ["//pkg/firebase/preparer"],
+)

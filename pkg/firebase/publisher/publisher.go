@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package publisher provides basic functionality to coalesce user and framework adapter defined
-// variables. In the future it will provide more functionality.
+// variables.
 package publisher
 
 import (
@@ -21,9 +21,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/joho/godotenv"
+	env "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/env"
 	"gopkg.in/yaml.v2"
 )
 
@@ -111,46 +110,6 @@ func validateAppHostingYAMLFields(appHostingYAML appHostingSchema) error {
 	return nil
 }
 
-func readAndSanitizeAppHostingEnv(appHostingEnvPath string) (map[string]string, error) {
-	appHostingEnvVars, err := godotenv.Read(appHostingEnvPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			log.Printf("missing apphosting.env at path %v, no environment variables will be provisioned", appHostingEnvPath)
-			appHostingEnvVars = map[string]string{}
-		} else {
-			return map[string]string{}, fmt.Errorf("reading apphosting.env at %v: %w", appHostingEnvPath, err)
-		}
-	}
-
-	appHostingEnvVarsSanitized, err := sanitizeAppHostingEnvFields(appHostingEnvVars)
-	if err != nil {
-		return map[string]string{}, fmt.Errorf("sanitizing apphosting.env fields: %w", err)
-	}
-
-	return appHostingEnvVarsSanitized, nil
-}
-
-func sanitizeAppHostingEnvFields(appHostingEnvVars map[string]string) (map[string]string, error) {
-	isReservedKey := func(input string) bool {
-		if _, ok := reservedKeys[input]; ok {
-			return true
-		} else if strings.HasPrefix(input, reservedFirebaseKey) {
-			return true
-		}
-		return false
-	}
-
-	sanitizedEnv := map[string]string{}
-	for k, v := range appHostingEnvVars {
-		if !isReservedKey(k) {
-			sanitizedEnv[k] = v
-		} else {
-			log.Printf("WARNING: %s is a reserved key, removing it from the final env vars", k)
-		}
-	}
-	return sanitizedEnv, nil
-}
-
 func readBundleSchemaFromFile(filePath string) (outputBundleSchema, error) {
 	bundleBuffer, err := os.ReadFile(filePath)
 	if os.IsNotExist(err) {
@@ -226,7 +185,7 @@ func toBuildSchema(appHostingSchema appHostingSchema, bundleSchema outputBundleS
 // Publish takes in the path to various required files such as apphosting.yaml, bundle.yaml, and
 // other files (tbd) and merges them into one output that describes the desired Backend Service
 // configuration before pushing this information to the control plane.
-func Publish(appHostingYAMLPath string, bundleYAMLPath string, appHostingEnvPath string, outputFilePath string) error {
+func Publish(appHostingYAMLPath string, bundleYAMLPath string, envPath string, outputFilePath string) error {
 	apphostingYAML, err := readAppHostingSchemaFromFile(appHostingYAMLPath)
 	if err != nil {
 		return err
@@ -237,10 +196,10 @@ func Publish(appHostingYAMLPath string, bundleYAMLPath string, appHostingEnvPath
 		return fmt.Errorf("apphosting.yaml fields are not valid: %w", validateErr)
 	}
 
-	// Read in apphosting.env & sanitize fields.
-	appHostingEnvVarsSanitized, err := readAndSanitizeAppHostingEnv(appHostingEnvPath)
+	// Read in environment variables
+	envMap, err := env.ReadEnv(envPath)
 	if err != nil {
-		return fmt.Errorf("processing apphosting.env: %w", err)
+		return fmt.Errorf("reading environment variables from %v: %w", envPath, err)
 	}
 
 	// For now, simply validates that bundle.yaml exists.
@@ -249,7 +208,7 @@ func Publish(appHostingYAMLPath string, bundleYAMLPath string, appHostingEnvPath
 		return err
 	}
 
-	buildSchema := toBuildSchema(apphostingYAML, bundleSchema, appHostingEnvVarsSanitized)
+	buildSchema := toBuildSchema(apphostingYAML, bundleSchema, envMap)
 
 	err = writeToFile(buildSchema, outputFilePath)
 	if err != nil {

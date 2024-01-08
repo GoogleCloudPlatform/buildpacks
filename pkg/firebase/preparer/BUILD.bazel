@@ -5,25 +5,22 @@ package(default_visibility = ["//:__subpackages__"])
 licenses(["notice"])
 
 go_library(
-    name = "publisher",
-    srcs = ["publisher.go"],
+    name = "preparer",
+    srcs = ["preparer.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    deps = [
-        "//pkg/firebase/env",
-        "@in_gopkg_yaml_v2//:go_default_library",
-    ],
+    deps = ["//pkg/firebase/env"],
 )
 
 go_test(
-    name = "publisher_test",
+    name = "preparer_test",
     size = "small",
-    srcs = ["publisher_test.go"],
+    srcs = ["preparer_test.go"],
     data = glob(["testdata/**"]),
-    embed = [":publisher"],
+    embed = [":preparer"],
     rundir = ".",
     deps = [
+        "//pkg/firebase/env",
         "//pkg/testdata",
         "@com_github_google_go-cmp//cmp:go_default_library",
-        "@in_gopkg_yaml_v2//:go_default_library",
     ],
 )
