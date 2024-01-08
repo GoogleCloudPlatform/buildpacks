@@ -137,6 +137,9 @@ const (
 	// FlexEnv is internal env variable to denote a flex application
 	FlexEnv = "GOOGLE_FLEX_APPLICATION"
 
+	// FlexMinVersion is the lowest version that is allowed to build.
+	FlexMinVersion = "GOOGLE_FLEX_MIN_VERSION"
+
 	// RuntimeImageRegion is the region to fetch runtime images.
 	RuntimeImageRegion = "GOOGLE_RUNTIME_IMAGE_REGION"
 )

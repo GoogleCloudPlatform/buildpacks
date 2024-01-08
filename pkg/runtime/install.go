@@ -28,6 +28,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/version"
 	"github.com/buildpacks/libcnb"
+	"github.com/Masterminds/semver"
 )
 
 var (
@@ -161,6 +162,10 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 
 	version, err := ResolveVersion(ctx, runtime, versionConstraint, osName)
 	if err != nil {
+		return false, err
+	}
+
+	if err = ValidateFlexMinVersion(ctx, version); err != nil {
 		return false, err
 	}
 
@@ -321,4 +326,31 @@ func ResolveVersion(ctx *gcp.Context, runtime InstallableRuntime, verConstraint,
 		}
 	}
 	return v, nil
+}
+
+// ValidateFlexMinVersion validates the minimum flex version for a given runtime.
+func ValidateFlexMinVersion(ctx *gcp.Context, version string) error {
+	if !env.IsFlex() {
+		return nil
+	}
+	minVersionEnv, present := os.LookupEnv(env.FlexMinVersion)
+	if !present {
+		return nil
+	}
+
+	minVersion, err := semver.NewVersion(minVersionEnv)
+	if err != nil {
+		// Ignore the error if env version is incorrect since it should be set by RCS.
+		return nil
+	}
+	currentVersion, err := semver.NewVersion(version)
+	if err != nil {
+		return err
+	}
+
+	if currentVersion.LessThan(minVersion) {
+		return gcp.UserErrorf("flex version %s is less than the minimum version %s allowed", version, minVersionEnv)
+	}
+
+	return nil
 }

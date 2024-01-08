@@ -500,3 +500,58 @@ func TestRuntimeImageURL(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateMinFlexVersion(t *testing.T) {
+	testCases := []struct {
+		name       string
+		version    string
+		minVersion string
+		env        string
+		wantErr    bool
+	}{
+		{
+			name:       "valid version",
+			version:    "3.7.2",
+			minVersion: "3.7.0",
+			wantErr:    false,
+		},
+		{
+			name:       "version below min version",
+			version:    "2.8",
+			minVersion: "3.7.0",
+			wantErr:    true,
+		},
+		{
+			name:       "invalid semver in env",
+			version:    "4.3.2",
+			minVersion: "cde",
+			wantErr:    false,
+		},
+		{
+			name:       "invalid semver version input",
+			version:    "abc",
+			minVersion: "3.7.0",
+			wantErr:    true,
+		},
+		{
+			name:    "non flex environment",
+			env:     env.TargetPlatformAppEngine,
+			wantErr: false,
+		},
+	}
+	t.Setenv(env.XGoogleTargetPlatform, env.TargetPlatformFlex)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext()
+			if tc.env != "" {
+				t.Setenv(env.XGoogleTargetPlatform, tc.env)
+			}
+			t.Setenv(env.FlexMinVersion, tc.minVersion)
+			err := ValidateFlexMinVersion(ctx, tc.version)
+			gotErr := err != nil
+			if gotErr != tc.wantErr {
+				t.Errorf("ValidateMinFlexVersion(%v)= %v, want error presence: %v, ", tc.version, err, tc.wantErr)
+			}
+		})
+	}
+}
