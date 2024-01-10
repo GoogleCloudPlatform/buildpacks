@@ -1,0 +1,83 @@
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Builds only the Firebase App Hosting build and builder images. Useful for testing local changes
+# to the Firebase Preparer and Publisher binaries that are bundled with the build image.
+#
+# Before using this config, be sure to update <root>/builders/firebase/apphosting/builder.toml to
+# point to the build image that this config builds, e.g.
+#   gcr.io/buildpacks/firebase-app-hosting-22/build -> gcr.io/<PROJECT_ID>/firebase-app-hosting-22/build
+#
+# To run this config on Cloud Build:
+#   $ gcloud builds submit --config=tools/cloudbuild/create_dev_firebase_builder.yaml
+
+steps:
+  - id: build-bazel-pack-image
+    name: gcr.io/cloud-builders/docker
+    args: ['build', '-t=bazel-pack', '-f=tools/cloudbuild/Dockerfile', '.']
+
+  - id: pull-google-22-build-image
+    name: gcr.io/cloud-builders/docker
+    args:
+    - pull
+    - gcr.io/buildpacks/google-22/build:latest
+
+  - id: firebase-tools-build
+    name: bazel-pack
+    entrypoint: /bin/bash
+    args:
+    - -c
+    - |
+      bazel build //cmd/firebase/publisher:main
+      cp bazel-bin/cmd/firebase/publisher/main_/main stacks/firebase_app_hosting_22/publisher
+      bazel build //cmd/firebase/preparer:main
+      cp bazel-bin/cmd/firebase/preparer/main_/main stacks/firebase_app_hosting_22/preparer
+
+  - id: firebase-app-hosting-22-build-image
+    name: gcr.io/cloud-builders/docker
+    dir: stacks/firebase_app_hosting_22
+    args:
+    - 'build'
+    - '--build-arg="packages=build-packages.txt"'
+    - '--build-arg="CANDIDATE_NAME=localbuild"'
+    - '-t=gcr.io/$PROJECT_ID/firebase-app-hosting-22/build:latest'
+    - '-f=build.Dockerfile'
+    - '.'
+
+  - id: pull-firebase-app-hosting-22-run-image
+    name: gcr.io/cloud-builders/docker
+    dir: stacks/firebase_app_hosting_22
+    args:
+    - 'pull'
+    - 'gcr.io/buildpacks/firebase-app-hosting-22/run:latest'
+
+
+  - id: firebase-app-hosting-22-builder-image
+    name: bazel-pack
+    args: ['build', '//builders/firebase/apphosting:builder.image']
+
+  - id: tag-images
+    name: bazel-pack
+    entrypoint: /bin/bash
+    args:
+      - -c
+      - >
+        docker tag firebase/apphosting gcr.io/$PROJECT_ID/firebase-app-hosting-22/builder:latest
+
+
+images:
+  - 'gcr.io/$PROJECT_ID/firebase-app-hosting-22/build:latest'
+  - 'gcr.io/$PROJECT_ID/firebase-app-hosting-22/builder:latest'
+
+timeout: '10800s'
