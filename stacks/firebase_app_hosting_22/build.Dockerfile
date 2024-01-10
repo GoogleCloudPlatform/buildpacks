@@ -19,8 +19,10 @@ ARG cnb_gid=1000
 
 USER root
 
-# Copy built publisher binary into image.
+# Copy built Firebase publisher binary into image.
 COPY publisher /bin/publisher
+# Copy built Firebase preparer binary into image.
+COPY preparer /bin/preparer
 
 # Version identifier of the image.
 ARG CANDIDATE_NAME

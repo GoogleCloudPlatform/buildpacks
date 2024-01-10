@@ -89,7 +89,7 @@ steps:
       - '//builders/gcp/base/acceptance/...'
 
 
-  - id: firebase-publisher-build
+  - id: firebase-tools-build
     name: bazel-pack
     entrypoint: /bin/bash
     args:
@@ -97,6 +97,8 @@ steps:
     - |
       bazel build //cmd/firebase/publisher:main
       cp bazel-bin/cmd/firebase/publisher/main_/main stacks/firebase_app_hosting_22/publisher
+      bazel build //cmd/firebase/preparer:main
+      cp bazel-bin/cmd/firebase/preparer/main_/main stacks/firebase_app_hosting_22/preparer
 
   - id: firebase-app-hosting-22-build-image
     name: gcr.io/cloud-builders/docker
