@@ -21,7 +21,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -29,8 +28,10 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
 )
 
-const flexHost = "0.0.0.0"
-const railsCommand = "rails "
+const (
+	flexEntrypoint = "flex_entrypoint"
+	production     = "production"
+)
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -57,13 +58,15 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 func buildFn(ctx *gcp.Context) error {
 	entrypoint := getEntrypoint(ctx)
-	if strings.Contains(entrypoint, railsCommand) {
-		// -b will "bind" the server to 0.0.0.0 instead of localhost.
-		// https://guides.rubyonrails.org/command_line.html
-		entrypoint = fmt.Sprintf("%s -b %s", entrypoint, flexHost)
-	} else {
-		entrypoint = fmt.Sprintf("%s -o %s", entrypoint, flexHost)
+	l, err := ctx.Layer(flexEntrypoint, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating layer: %w", err)
 	}
+	// Set the launch environment to production so it uses 0.0.0.0 host when it starts the entrypoint.
+	l.LaunchEnvironment.Default("RACK_ENV", production)
+	l.LaunchEnvironment.Default("RAILS_ENV", production)
+	l.LaunchEnvironment.Default("APP_ENV", production)
+
 	ctx.Logf("Using entrypoint %s", entrypoint)
 	ctx.AddProcess(gcp.WebProcess, []string{entrypoint}, gcp.AsDefaultProcess())
 	return nil
