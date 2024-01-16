@@ -30,13 +30,13 @@ func TestInstallNextJsBuildAdaptor(t *testing.T) {
 		{
 			name: "download adaptor succeeds",
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@canary`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@latest`, mockprocess.WithStdout("installed adaptor")),
 			},
 			layerMetadata: map[string]any{},
 		},
 		{
 			name:          "download adaptor not needed since it is cached",
-			layerMetadata: map[string]any{"version": "canary"},
+			layerMetadata: map[string]any{"version": "latest"},
 		},
 	}
 

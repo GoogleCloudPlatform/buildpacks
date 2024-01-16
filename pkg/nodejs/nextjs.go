@@ -57,14 +57,14 @@ func InstallNextJsBuildAdaptor(ctx *gcp.Context, njsl *libcnb.Layer) error {
 
 // detectNextjsAdaptorVersion determines the version of Nextjs that is needed by a nextjs project
 func detectNextjsAdaptorVersion() (string, error) {
-	// TODO(b/313959098) for now this will always be canary, later we will need to support different versions
-	return "canary", nil
+	// TODO(b/313959098) for now this will always be latest, later we will need to support different versions
+	return "latest", nil
 }
 
 // downloadNextJsAdaptor downloads the nextjs build adaptor into the provided directory.
 func downloadNextJsAdaptor(ctx *gcp.Context, dirPath string) error {
 	// TODO(b/313959098) Account for different versions
-	_, err := ctx.Exec([]string{"npm", "install", "--prefix", dirPath, "@apphosting/adapter-nextjs@canary"})
+	_, err := ctx.Exec([]string{"npm", "install", "--prefix", dirPath, "@apphosting/adapter-nextjs@latest"})
 	if err != nil {
 		return gcp.InternalErrorf("installing nextjs adaptor: %w", err)
 	}

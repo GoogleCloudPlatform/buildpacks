@@ -73,10 +73,10 @@ func TestBuild(t *testing.T) {
 			}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@canary`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@latest`, mockprocess.WithStdout("installed adaptor")),
 			},
 			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-nextjs@canary",
+				"npm install --prefix npm_modules @apphosting/adapter-nextjs@latest",
 			},
 		},
 		{
