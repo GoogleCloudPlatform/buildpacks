@@ -17,6 +17,8 @@
 package main
 
 import (
+	"encoding/json"
+
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/Masterminds/semver"
 
@@ -61,8 +63,9 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
+	version := version(ctx, pjs)
 
-	err = validateVersion(ctx, pjs.Dependencies["next"])
+	err = validateVersion(ctx, version)
 	if err != nil {
 		return err
 	}
@@ -99,4 +102,28 @@ func validateVersion(ctx *gcp.Context, depVersion string) error {
 		return gcp.UserErrorf("unsupported version of next %s", depVersion)
 	}
 	return nil
+}
+
+type nextVersionJSON struct {
+	Name         string `json:"name"`
+	Dependencies struct {
+		Next struct {
+			Version    string `json:"version"`
+			Resolved   string `json:"resolved"`
+			Overridden bool   `json:"overridden"`
+		} `json:"next"`
+	} `json:"dependencies"`
+}
+
+// tries to get the concrete nextjs version used, otherwise falls back on package.json
+func version(ctx *gcp.Context, pjs *nodejs.PackageJSON) string {
+	result, err := ctx.Exec([]string{"npm", "list", "next", "--json"})
+	if err != nil {
+		return pjs.Dependencies["next"]
+	}
+	var nextVersionnpm nextVersionJSON
+	if err := json.Unmarshal([]byte(result.Stdout), &nextVersionnpm); err != nil {
+		return pjs.Dependencies["next"]
+	}
+	return nextVersionnpm.Dependencies.Next.Version
 }

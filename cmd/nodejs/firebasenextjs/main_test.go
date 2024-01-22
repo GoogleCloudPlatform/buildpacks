@@ -126,6 +126,51 @@ func TestBuild(t *testing.T) {
 			},
 			wantExitCode: 1,
 		},
+		{
+			name: "read supported concrete version from npm list",
+			files: map[string]string{
+				"package.json": `{
+				"dependencies": {
+					"next": "12.0.0 - 14.0.0"
+				}
+			}`,
+			},
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`npm list next --json`, mockprocess.WithStdout(`{
+					"name": "test",
+					"dependencies": {
+						"next": {
+							"version": "14.0.0",
+							"resolved": "https://registry.npmjs.org/next/-/next-14.1.0.tgz",
+							"overridden": false
+						}
+					}
+				}`)),
+			},
+		},
+		{
+			name: "read unsupported concrete version from npm list",
+			files: map[string]string{
+				"package.json": `{
+				"dependencies": {
+					"next": "12.0.0 - 14.0.0"
+				}
+			}`,
+			},
+			wantExitCode: 1,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`npm list next --json`, mockprocess.WithStdout(`{
+					"name": "test",
+					"dependencies": {
+						"next": {
+							"version": "12.0.0",
+							"resolved": "https://registry.npmjs.org/next/-/next-12.0.0.tgz",
+							"overridden": false
+						}
+					}
+				}`)),
+			},
+		},
 	}
 
 	for _, tc := range testCases {
