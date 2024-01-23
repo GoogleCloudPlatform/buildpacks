@@ -47,6 +47,7 @@ func TestGeneratePythonConfig(t *testing.T) {
 			name:       ".netrc created",
 			fileExists: false,
 			wantConfig: fmt.Sprint(`
+machine africa-south1-python.pkg.dev login oauth2accesstoken password token
 machine asia-python.pkg.dev login oauth2accesstoken password token
 machine asia-east1-python.pkg.dev login oauth2accesstoken password token
 machine asia-east2-python.pkg.dev login oauth2accesstoken password token

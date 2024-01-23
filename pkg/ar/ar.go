@@ -44,6 +44,7 @@ var (
 
 // locations is a list of AR regional endpoints.
 var locations = []string{
+	"africa-south1",
 	"asia",
 	"asia-east1",
 	"asia-east2",
