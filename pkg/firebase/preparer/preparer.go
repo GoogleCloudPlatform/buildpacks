@@ -26,7 +26,7 @@ import (
 // * Reading, sanitizing, and writing user-defined environment variables in apphosting.env to a new file.
 //
 // Prepare will always write a file to disk, even if there are no environment variables to write.
-func Prepare(apphostingEnvFilePath string, envOutputFilePath string) error {
+func Prepare(apphostingEnvFilePath string, projectID string, envOutputFilePath string) error {
 	envMap := map[string]string{}
 
 	// Read statically defined env vars from apphosting.env.
@@ -39,6 +39,10 @@ func Prepare(apphostingEnvFilePath string, envOutputFilePath string) error {
 		envMap, err = env.SanitizeAppHostingEnv(envMap)
 		if err != nil {
 			return fmt.Errorf("sanitizing apphosting.env fields: %w", err)
+		}
+		envMap, err = env.NormalizeAppHostingSecretsEnv(envMap, projectID)
+		if err != nil {
+			return fmt.Errorf("normalizing apphosting.env fields: %w", err)
 		}
 	}
 

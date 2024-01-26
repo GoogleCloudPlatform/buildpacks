@@ -19,15 +19,18 @@ func TestPrepare(t *testing.T) {
 	testCases := []struct {
 		desc                  string
 		appHostingEnvFilePath string
+		projectID             string
 		wantEnvMap            map[string]string
 	}{
 		{
 			desc:                  "apphosting.env",
 			appHostingEnvFilePath: appHostingEnvPath,
+			projectID:             "test-project",
 			wantEnvMap: map[string]string{
 				"API_URL":           "api.service.com",
 				"ENVIRONMENT":       "staging",
 				"MULTILINE_ENV_VAR": "line 1\nline 2",
+				"SECRET_API_KEY":    "projects/test-project/secrets/secretID/versions/11",
 			},
 		},
 		{
@@ -39,7 +42,7 @@ func TestPrepare(t *testing.T) {
 
 	// Testing happy paths
 	for _, test := range testCases {
-		if err := Prepare(test.appHostingEnvFilePath, outputFilePath); err != nil {
+		if err := Prepare(test.appHostingEnvFilePath, test.projectID, outputFilePath); err != nil {
 			t.Errorf("Error in test '%v'. Error was %v", test.desc, err)
 		}
 

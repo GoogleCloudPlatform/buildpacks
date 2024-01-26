@@ -24,17 +24,22 @@ import (
 
 var (
 	apphostingEnvFilePath = flag.String("apphostingenv_filepath", "", "File path to user defined apphosting.env")
+	projectID             = flag.String("project_id", "", "User's GCP project ID")
 	envOutputFilePath     = flag.String("env_output_filepath", "", "File path to write sanitized environment variables too")
 )
 
 func main() {
 	flag.Parse()
 
+	if *projectID == "" {
+		log.Fatal("--project_id flag not specified.")
+	}
+
 	if *envOutputFilePath == "" {
 		log.Fatal("--env_output_filepath flag not specified.")
 	}
 
-	err := preparer.Prepare(*apphostingEnvFilePath, *envOutputFilePath)
+	err := preparer.Prepare(*apphostingEnvFilePath, *projectID, *envOutputFilePath)
 	if err != nil {
 		log.Fatal(err)
 	}

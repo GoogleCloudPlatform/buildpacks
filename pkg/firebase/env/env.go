@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -34,6 +35,7 @@ var (
 	}
 
 	reservedFirebaseKeyPrefix = "FIREBASE_"
+	secretKeyPrefix           = "SECRET_"
 )
 
 // ReadEnv parses environment variables at the given file path.
@@ -74,4 +76,51 @@ func SanitizeAppHostingEnv(envMap map[string]string) (map[string]string, error) 
 		}
 	}
 	return sanitizedEnvMap, nil
+}
+
+// NormalizeAppHostingSecretsEnv converts the different possible secret formats provided by users
+// into one standard format of projects/p/secrets/s/versions/v.
+func NormalizeAppHostingSecretsEnv(envMap map[string]string, projectID string) (map[string]string, error) {
+	normalizedEnvMap := map[string]string{}
+	for k, v := range envMap {
+		if strings.HasPrefix(k, secretKeyPrefix) {
+			normalizedSecret, err := normalizeSecretFormat(strings.TrimPrefix(k, secretKeyPrefix), v, projectID)
+			if err != nil {
+				return nil, fmt.Errorf("normalizing secret with key=%v and value=%v: %w", k, v, err)
+			}
+			normalizedEnvMap[k] = normalizedSecret
+		} else {
+			normalizedEnvMap[k] = v
+		}
+	}
+	return normalizedEnvMap, nil
+
+}
+
+// Handles the following cases:
+// "secretID@versionID" -> Extracts the specified secretID and versionID
+// "secretID" -> Extracts the specified secretID and uses "latest" for versionID
+// "@versionID" -> Uses "envKey" as the secretID and extracts versionID
+// "" -> Uses "envKey" as the secretID and "latest" for versionID
+func normalizeSecretFormat(envKey, firebaseSecret, projectID string) (string, error) {
+	pattern := `^(?P<secretID>\w+)?@?(?P<versionID>\w+)?$`
+	re := regexp.MustCompile(pattern)
+
+	matches := re.FindStringSubmatch(firebaseSecret)
+
+	if matches == nil {
+		return "", fmt.Errorf("invalid secret format for %v", firebaseSecret)
+	}
+
+	secretID := matches[1]
+	if secretID == "" {
+		secretID = envKey
+	}
+
+	versionID := matches[2]
+	if versionID == "" {
+		versionID = "latest"
+	}
+
+	return fmt.Sprintf("projects/%s/secrets/%s/versions/%s", projectID, secretID, versionID), nil
 }
