@@ -489,4 +489,4 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   run-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-min-22/run"
 
 [lifecycle]
-  version = "0.17.2"
+  version = "0.17.3"

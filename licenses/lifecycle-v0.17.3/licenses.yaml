@@ -165,6 +165,10 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/fifo/LICENSE
 
+- package: github.com/containerd/log
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/log/LICENSE
+
 - package: github.com/containerd/stargz-snapshotter/estargz
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/stargz-snapshotter/estargz/LICENSE
