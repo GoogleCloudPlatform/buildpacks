@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"google3/security/safeopen/safeopen"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/google/go-cmp/cmp"
@@ -326,6 +327,87 @@ func TestDetermineBuildCommands(t *testing.T) {
 
 			if isCustomBuild != tc.wantIsCustomBuild {
 				t.Errorf("DetermineBuildCommands() is custom build mismatch, got: %t, want: %t", isCustomBuild, tc.wantIsCustomBuild)
+			}
+		})
+	}
+}
+
+func TestDefaultStartCommand(t *testing.T) {
+	testsCases := []struct {
+		name        string
+		pjs         string
+		hasServerJs bool
+		want        []string
+	}{
+		{
+			name: "no package.json",
+			want: []string{"node", "index.js"},
+		},
+		{
+			name: "no main or start",
+			pjs: `{
+				"scripts": {
+					"build": "tsc --build",
+					"clean": "tsc --build --clean"
+				}
+			}`,
+			want: []string{"node", "index.js"},
+		},
+		{
+			name: "main and start uses start",
+			pjs: `{
+				"main": "main.js",
+				"scripts": {
+					"start": "node main.js"
+				}
+			}`,
+			want: []string{"npm", "run", "start"},
+		},
+		{
+			name: "main module",
+			pjs: `{
+				"main": "main.js",
+				"scripts": {
+					"build": "node main.js"
+				}
+			}`,
+			want: []string{"node", "main.js"},
+		},
+		{
+			name: "main module and serverjs",
+			pjs: `{
+				"main": "main.js",
+				"scripts": {
+					"build": "node main.js"
+				}
+			}`,
+			hasServerJs: true,
+			want:        []string{"npm", "run", "start"},
+		},
+	}
+	for _, tc := range testsCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var pjs *PackageJSON = nil
+			if tc.pjs != "" {
+				if err := json.Unmarshal([]byte(tc.pjs), &pjs); err != nil {
+					t.Fatalf("failed to unmarshal package.json: %s, error: %v", tc.pjs, err)
+				}
+			}
+			home := t.TempDir()
+			if tc.hasServerJs {
+				_, err := safeopen.CreateBeneath(home, "server.js")
+				if err != nil {
+					t.Fatalf("failed to create server.js: %v", err)
+				}
+			}
+			ctx := gcpbuildpack.NewContext(gcpbuildpack.WithApplicationRoot(home))
+
+			got, err := DefaultStartCommand(ctx, pjs)
+			if err != nil {
+				t.Fatalf("DefaultStartCommand() got error: %v", err)
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("DefaultStartCommand() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

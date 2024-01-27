@@ -46,6 +46,7 @@ go_test(
     embed = [":nodejs"],
     rundir = ".",
     deps = [
+        "//security/safeopen",
         "//internal/mockprocess",
         "//internal/testserver",
         "//pkg/env",

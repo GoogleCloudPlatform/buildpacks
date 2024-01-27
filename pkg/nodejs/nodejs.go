@@ -61,8 +61,6 @@ type packageEnginesJSON struct {
 const (
 	// ScriptBuild is the name of npm build scripts.
 	ScriptBuild = "build"
-	// ScriptStart is the name of npm start scripts.
-	ScriptStart = "start"
 	// ScriptGCPBuild is the name of "gcp-build" scripts.
 	ScriptGCPBuild = "gcp-build"
 )

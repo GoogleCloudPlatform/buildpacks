@@ -174,7 +174,10 @@ NOTE: Running the default build script can be skipped by passing the empty envir
 	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
 
 	// Configure the entrypoint for production.
-	cmd := []string{"npm", "start"}
+	cmd, err := nodejs.DefaultStartCommand(ctx, pjs)
+	if err != nil {
+		return fmt.Errorf("detecting start command: %w", err)
+	}
 
 	if !devmode.Enabled(ctx) {
 		ctx.AddWebProcess(cmd)

@@ -197,3 +197,30 @@ func IsUsingVendoredDependencies() bool {
 func runCommand(pkgTool, command string) string {
 	return fmt.Sprintf("%s run %s", pkgTool, strings.TrimSpace(command))
 }
+
+// DefaultStartCommand return the default command that should be used to configure the application
+// web process if the user has not explicitly configured one. The algorithm follows the conventions
+// of Nodejs package.json files: https://docs.npmjs.com/cli/v10/configuring-npm/package-json#main
+// 1. if script.start is specified return `npm run start`
+// 2. if the project contains server.js `npm run start`
+// 3. if main is specified `node ${pjs.main}`
+// 4. otherwise `node index.js“
+func DefaultStartCommand(ctx *gcp.Context, pjs *PackageJSON) ([]string, error) {
+	if pjs == nil {
+		return []string{"node", "index.js"}, nil
+	}
+	if _, ok := pjs.Scripts["start"]; ok {
+		return []string{"npm", "run", "start"}, nil
+	}
+	exists, err := ctx.FileExists(ctx.ApplicationRoot(), "server.js")
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return []string{"npm", "run", "start"}, nil
+	}
+	if pjs.Main != "" {
+		return []string{"node", pjs.Main}, nil
+	}
+	return []string{"node", "index.js"}, nil
+}
