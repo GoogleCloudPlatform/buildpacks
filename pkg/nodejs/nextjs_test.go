@@ -24,11 +24,29 @@ import (
 func TestInstallNextJsBuildAdaptor(t *testing.T) {
 	testCases := []struct {
 		name          string
+		nextjsVersion string
 		layerMetadata map[string]any
 		mocks         []*mockprocess.Mock
 	}{
 		{
-			name: "download adaptor succeeds",
+			name:          "download latest adaptor succeeds",
+			nextjsVersion: "latest",
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@latest`, mockprocess.WithStdout("installed adaptor")),
+			},
+			layerMetadata: map[string]any{},
+		},
+		{
+			name:          "download v13.0 adaptor succeeds",
+			nextjsVersion: "13.0.0",
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@13.0`, mockprocess.WithStdout("installed adaptor")),
+			},
+			layerMetadata: map[string]any{},
+		},
+		{
+			name:          "download invalid adaptor falls back to latest",
+			nextjsVersion: "a.b.c",
 			mocks: []*mockprocess.Mock{
 				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@latest`, mockprocess.WithStdout("installed adaptor")),
 			},
@@ -36,6 +54,7 @@ func TestInstallNextJsBuildAdaptor(t *testing.T) {
 		},
 		{
 			name:          "download adaptor not needed since it is cached",
+			nextjsVersion: "latest",
 			layerMetadata: map[string]any{"version": "latest"},
 		},
 	}
@@ -48,9 +67,157 @@ func TestInstallNextJsBuildAdaptor(t *testing.T) {
 				Path:     t.TempDir(),
 				Metadata: tc.layerMetadata,
 			}
-			err := InstallNextJsBuildAdaptor(ctx, layer)
+			err := InstallNextJsBuildAdaptor(ctx, layer, tc.nextjsVersion)
 			if err != nil {
 				t.Fatalf("InstallNextJsBuildAdaptor() got error: %v", err)
+			}
+		})
+	}
+}
+func TestDetectNextjsAdaptorVersion(t *testing.T) {
+	testCases := []struct {
+		name           string
+		version        string
+		expectedOutput string
+		mocks          []*mockprocess.Mock
+	}{
+		{
+			name:           "concrete version",
+			version:        "13.0.0",
+			expectedOutput: "13.0",
+		},
+		{
+			name:           "handles ^",
+			version:        "^13.1.14",
+			expectedOutput: "^13.1",
+		},
+		{
+			name:           "handles ~",
+			version:        "~13.1.14",
+			expectedOutput: "~13.1",
+		},
+		{
+			name:           "handles x patch",
+			version:        "13.0.x",
+			expectedOutput: "13.0",
+		},
+		{
+			name:           "handles x minor",
+			version:        "13.x",
+			expectedOutput: "13.x",
+		},
+		{
+			name:           "handles x major",
+			version:        "x",
+			expectedOutput: "x",
+		},
+		{
+			name:           "handles no patch",
+			version:        "13.0",
+			expectedOutput: "13.0",
+		},
+		{
+			name:           "handles no minor",
+			version:        "13",
+			expectedOutput: "13",
+		},
+		{
+			name:           "handles prereleases",
+			version:        "13.0.1-canary",
+			expectedOutput: "13.0",
+		},
+		{
+			name:           "defaults to latest when version is invalid",
+			version:        "a.b.c",
+			expectedOutput: "latest",
+		},
+		{
+			name:           "defaults to latest when version is invalid range",
+			version:        "13.0.0 - a",
+			expectedOutput: "latest",
+		},
+		{
+			name:           "- range translates to proper range",
+			version:        "13.0.0 - 14.0.0",
+			expectedOutput: ">=13.0 <=14.0",
+		},
+		{
+			name:           "- with x",
+			version:        "13.0.0 - 14.x.x",
+			expectedOutput: ">=13.0 <=14.x",
+		},
+		{
+			name:           "- with x minor",
+			version:        "13.0.0 - 14.x",
+			expectedOutput: ">=13.0 <=14.x",
+		},
+		{
+			name:           "- with major",
+			version:        "13.0.0 - 14",
+			expectedOutput: ">=13.0 <=14",
+		},
+		{
+			name:           "range constraint translates",
+			version:        ">13.1.14 <14.1.15",
+			expectedOutput: ">=13.1 <=14.1",
+		},
+		{
+			name:           "< translates to <=",
+			version:        "<14.0.15",
+			expectedOutput: "<=14.0",
+		},
+		{
+			name:           "> translates to >=",
+			version:        ">14.0.15",
+			expectedOutput: ">=14.0",
+		},
+		{
+			name:           "< maps range with no patch",
+			version:        "<14.1",
+			expectedOutput: "<14.1",
+		},
+		{
+			name:           "< maps with no minor",
+			version:        "<14",
+			expectedOutput: "<14",
+		},
+		{
+			name:           "< map properly with 0 patch version",
+			version:        ">13.1.14 <14.1.0",
+			expectedOutput: ">=13.1 <14.1",
+		},
+		{
+			name:           "<= maps",
+			version:        ">13.1.14 <=14.1.15",
+			expectedOutput: ">=13.1 <=14.1",
+		},
+		{
+			name:           "handles ^ and <",
+			version:        "^13.1.14 <14.1.15",
+			expectedOutput: "^13.1 <=14.1",
+		},
+		{
+			name:           "handles ||",
+			version:        "^13.1.14 <13.1.15 || >14",
+			expectedOutput: "^13.1 <=13.1 || >14",
+		},
+		{
+			name:           "handles prerelease ranges",
+			version:        ">13.0.1-canary <14.1.0-canary",
+			expectedOutput: ">=13.0 <14.1",
+		},
+		{
+			name:           "handles mixed range",
+			version:        "^13.1.14 ~12.0.0-canary <13.1.15-test || >14",
+			expectedOutput: "^13.1 ~12.0 <=13.1 || >14",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			output := detectNextjsAdaptorVersion(tc.version)
+			if output != tc.expectedOutput {
+				t.Fatalf("detectNextjsAdaptorVersion(%s) output: %s doesn't match expected output %s", tc.version, output, tc.expectedOutput)
 			}
 		})
 	}

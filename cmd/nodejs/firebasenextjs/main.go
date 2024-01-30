@@ -76,7 +76,7 @@ func buildFn(ctx *gcp.Context) error {
 		if err != nil {
 			return err
 		}
-		err = nodejs.InstallNextJsBuildAdaptor(ctx, njsl)
+		err = nodejs.InstallNextJsBuildAdaptor(ctx, njsl, version)
 		if err != nil {
 			return err
 		}
