@@ -9,16 +9,16 @@ gae_runtimes = {
     "ruby26": "2.6.10",
     "ruby27": "2.7.8",
     "ruby30": "3.0.6",
-    "ruby32": "3.2.2",
+    "ruby32": "3.2.3",
 }
 
 gcf_runtimes = {
     "ruby26": "2.6.10",
     "ruby27": "2.7.8",
     "ruby30": "3.0.6",
-    "ruby32": "3.2.2",
+    "ruby32": "3.2.3",
 }
 
 flex_runtimes = {
-    "ruby32": "3.2.2",
+    "ruby32": "3.2.3",
 }
