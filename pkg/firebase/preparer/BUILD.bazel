@@ -8,7 +8,10 @@ go_library(
     name = "preparer",
     srcs = ["preparer.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    deps = ["//pkg/firebase/env"],
+    deps = [
+        "//pkg/firebase/env",
+        "//pkg/firebase/secrets",
+    ],
 )
 
 go_test(

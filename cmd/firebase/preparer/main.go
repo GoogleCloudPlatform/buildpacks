@@ -23,9 +23,10 @@ import (
 )
 
 var (
-	apphostingEnvFilePath = flag.String("apphostingenv_filepath", "", "File path to user defined apphosting.env")
-	projectID             = flag.String("project_id", "", "User's GCP project ID")
-	envOutputFilePath     = flag.String("env_output_filepath", "", "File path to write sanitized environment variables too")
+	apphostingEnvFilePath         = flag.String("apphostingenv_filepath", "", "File path to user defined apphosting.env")
+	projectID                     = flag.String("project_id", "", "User's GCP project ID")
+	envReferencedOutputFilePath   = flag.String("env_referenced_output_filepath", "", "File path to write sanitized environment variables & referenced secret material to")
+	envDereferencedOutputFilePath = flag.String("env_dereferenced_output_filepath", "", "File path to write sanitized environment variables & dereferenced secret material to")
 )
 
 func main() {
@@ -35,11 +36,15 @@ func main() {
 		log.Fatal("--project_id flag not specified.")
 	}
 
-	if *envOutputFilePath == "" {
-		log.Fatal("--env_output_filepath flag not specified.")
+	if *envReferencedOutputFilePath == "" {
+		log.Fatal("--env_referenced_output_filepath flag not specified.")
 	}
 
-	err := preparer.Prepare(*apphostingEnvFilePath, *projectID, *envOutputFilePath)
+	if *envDereferencedOutputFilePath == "" {
+		log.Fatal("--env_dereferenced_output_filepath flag not specified.")
+	}
+
+	err := preparer.Prepare(*apphostingEnvFilePath, *projectID, *envReferencedOutputFilePath, *envDereferencedOutputFilePath)
 	if err != nil {
 		log.Fatal(err)
 	}

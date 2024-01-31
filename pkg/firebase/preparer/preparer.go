@@ -20,35 +20,50 @@ import (
 	"fmt"
 
 	env "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/env"
+	secrets "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/secrets"
 )
 
 // Prepare performs pre-build logic for App Hosting backends including:
 // * Reading, sanitizing, and writing user-defined environment variables in apphosting.env to a new file.
 //
 // Prepare will always write a file to disk, even if there are no environment variables to write.
-func Prepare(apphostingEnvFilePath string, projectID string, envOutputFilePath string) error {
-	envMap := map[string]string{}
+func Prepare(apphostingEnvFilePath string, projectID string, envReferencedOutputFilePath string, envDereferencedOutputFilePath string) error {
+	referencedEnvMap := map[string]string{}   // Env map with referenced secret material
+	dereferencedEnvMap := map[string]string{} // Env map with dereferenced secret material
 
 	// Read statically defined env vars from apphosting.env.
 	if apphostingEnvFilePath != "" {
 		var err error
-		envMap, err = env.ReadEnv(apphostingEnvFilePath)
+		referencedEnvMap, err = env.ReadEnv(apphostingEnvFilePath)
 		if err != nil {
 			return fmt.Errorf("reading apphosting.env: %w", err)
 		}
-		envMap, err = env.SanitizeAppHostingEnv(envMap)
+		referencedEnvMap, err = env.SanitizeAppHostingEnv(referencedEnvMap)
 		if err != nil {
 			return fmt.Errorf("sanitizing apphosting.env fields: %w", err)
 		}
-		envMap, err = env.NormalizeAppHostingSecretsEnv(envMap, projectID)
+		err = secrets.NormalizeAppHostingSecretsEnv(referencedEnvMap, projectID)
 		if err != nil {
 			return fmt.Errorf("normalizing apphosting.env fields: %w", err)
 		}
+		err = secrets.PinVersionSecrets(referencedEnvMap)
+		if err != nil {
+			return fmt.Errorf("pinning secrets in apphosting.env: %w", err)
+		}
+		dereferencedEnvMap, err = secrets.DereferenceSecrets(referencedEnvMap)
+		if err != nil {
+			return fmt.Errorf("dereferencing secrets in apphosting.env: %w", err)
+		}
 	}
 
-	err := env.WriteEnv(envMap, envOutputFilePath)
+	err := env.WriteEnv(referencedEnvMap, envReferencedOutputFilePath)
 	if err != nil {
-		return fmt.Errorf("writing final environment variables to %v: %w", envOutputFilePath, err)
+		return fmt.Errorf("writing final referenced environment variables to %v: %w", envReferencedOutputFilePath, err)
+	}
+
+	err = env.WriteEnv(dereferencedEnvMap, envDereferencedOutputFilePath)
+	if err != nil {
+		return fmt.Errorf("writing final dereferenced environment variables to %v: %w", envDereferencedOutputFilePath, err)
 	}
 
 	return nil
