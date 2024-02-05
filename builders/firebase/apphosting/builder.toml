@@ -15,13 +15,22 @@ description = "Builder for Firebase App Hosting"
 [[buildpacks]]
   id = "google.nodejs.npm"
   uri = "npm.tgz"
-
-
+[[buildpacks]]
+  id = "google.nodejs.yarn"
+  uri = "yarn.tgz"
 [[buildpacks]]
   id = "google.nodejs.pnpm"
   uri = "pnpm.tgz"
-
-
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"

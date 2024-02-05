@@ -147,9 +147,9 @@ func SupportsNPMPrune(ctx *gcp.Context) (bool, error) {
 // 3. "gcp-build" script in package.json
 // 4. "build" script in package.json
 func DetermineBuildCommands(pjs *PackageJSON, pkgTool string) (cmds []string, isCustomBuild bool) {
-	nextJsBuildScript, nextJsBuildScriptPresent := os.LookupEnv(AppHostingBuildEnv)
-	if nextJsBuildScriptPresent {
-		return []string{nextJsBuildScript}, true
+	appHostingBuildScript, appHostingBuildScriptPresent := os.LookupEnv(AppHostingBuildEnv)
+	if appHostingBuildScriptPresent {
+		return []string{appHostingBuildScript}, true
 	}
 
 	envScript, envScriptPresent := os.LookupEnv(GoogleNodeRunScriptsEnv)

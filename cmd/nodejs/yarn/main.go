@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
@@ -164,7 +165,8 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		cmd = append(cmd, "--frozen-lockfile")
 	}
 	gcpBuild := nodejs.HasGCPBuild(pjs)
-	if gcpBuild {
+	appHostingBuildScript, appHostingBuildScriptPresent := os.LookupEnv(nodejs.AppHostingBuildEnv)
+	if gcpBuild || appHostingBuildScriptPresent {
 		// Setting --production=false causes the devDependencies to be installed regardless of the
 		// NODE_ENV value. The allows the customer's lifecycle hooks to access to them. We purge the
 		// devDependencies from the final app.
@@ -177,9 +179,15 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		return err
 	}
 
-	if gcpBuild {
-		if _, err := ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution); err != nil {
-			return err
+	if gcpBuild || appHostingBuildScriptPresent {
+		if appHostingBuildScriptPresent {
+			if _, err := ctx.Exec(strings.Split(appHostingBuildScript, " "), gcp.WithUserAttribution); err != nil {
+				return err
+			}
+		} else {
+			if _, err := ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution); err != nil {
+				return err
+			}
 		}
 
 		// If there was a gcp-build script we installed all the devDependencies above. We should try to
