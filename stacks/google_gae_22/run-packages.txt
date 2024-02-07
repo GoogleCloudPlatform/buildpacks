@@ -108,6 +108,7 @@ libxslt1.1
 libyaml-0-2
 libzip-dev
 locales
+locales-all
 lsb-release
 mime-support
 netbase
