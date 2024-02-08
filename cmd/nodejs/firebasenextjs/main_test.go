@@ -127,48 +127,63 @@ func TestBuild(t *testing.T) {
 			wantExitCode: 1,
 		},
 		{
-			name: "read supported concrete version from npm list",
+			name: "read supported concrete version from package-lock.json",
 			files: map[string]string{
 				"package.json": `{
-				"dependencies": {
-					"next": "12.0.0 - 14.0.0"
-				}
-			}`,
-			},
-			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm list next --json`, mockprocess.WithStdout(`{
-					"name": "test",
 					"dependencies": {
-						"next": {
-							"version": "14.0.0",
-							"resolved": "https://registry.npmjs.org/next/-/next-14.1.0.tgz",
-							"overridden": false
+						"next": "12.0.0 - 14.0.0"
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+						"node_modules/next": {
+							"version": "14.0.0"
 						}
 					}
-				}`)),
+				}`,
 			},
 		},
 		{
-			name: "read unsupported concrete version from npm list",
+			name: "read supported concrete version from pnpm-lock.yaml",
 			files: map[string]string{
 				"package.json": `{
-				"dependencies": {
-					"next": "12.0.0 - 14.0.0"
-				}
-			}`,
-			},
-			wantExitCode: 1,
-			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm list next --json`, mockprocess.WithStdout(`{
-					"name": "test",
 					"dependencies": {
-						"next": {
-							"version": "12.0.0",
-							"resolved": "https://registry.npmjs.org/next/-/next-12.0.0.tgz",
-							"overridden": false
-						}
+						"next": "12.0.0 - 14.0.0"
 					}
-				}`)),
+				}`,
+				"pnpm-lock.yaml": `
+dependencies:
+  next:
+    version: 14.0.0(@babel/core@7.23.9)
+
+`,
+			},
+		},
+		{
+			name: "read supported concrete version from yaml.lock berry",
+			files: map[string]string{
+				"package.json": `{
+					"dependencies": {
+						"next": "^13.1.0"
+					}
+				}`,
+				"yarn.lock": `
+"next@npm:^13.1.0":
+	version: 13.5.6`,
+			},
+		},
+		{
+			name: "read supported concrete version from yaml.lock classic",
+			files: map[string]string{
+				"package.json": `{
+					"dependencies": {
+						"next": "^13.0.0"
+					}
+				}`,
+				"yarn.lock": `
+next@^13.0.0:
+  version: "13.5.6"
+`,
 			},
 		},
 	}
