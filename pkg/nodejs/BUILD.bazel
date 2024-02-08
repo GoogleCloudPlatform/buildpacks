@@ -5,6 +5,7 @@ licenses(["notice"])
 go_library(
     name = "nodejs",
     srcs = [
+        "angular.go",
         "nextjs.go",
         "nodejs.go",
         "npm.go",
@@ -35,6 +36,7 @@ go_library(
 go_test(
     name = "nodejs_test",
     srcs = [
+        "angular_test.go",
         "nextjs_test.go",
         "nodejs_test.go",
         "npm_test.go",
