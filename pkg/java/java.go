@@ -60,6 +60,7 @@ var (
 		[]string{"target"},
 		[]string{"build"},
 		[]string{"build", "libs"},
+		[]string{"*", "build", "libs"},
 		// An empty file path searches the application root for jars.
 		[]string{},
 	}

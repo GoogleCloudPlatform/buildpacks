@@ -46,6 +46,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		".mvn/extensions.xml",
 		"build.gradle",
 		"build.gradle.kts",
+		"settings.gradle.kts",
+		"settings.gradle",
 		"META-INF/MANIFEST.MF",
 	}
 	for _, f := range files {

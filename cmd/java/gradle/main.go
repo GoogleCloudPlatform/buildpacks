@@ -41,21 +41,22 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	buildGradleExists, err := ctx.FileExists("build.gradle")
-	if err != nil {
-		return nil, err
+	files := []string{
+		"build.gradle",
+		"build.gradle.kts",
+		"settings.gradle.kts",
+		"settings.gradle",
 	}
-	if buildGradleExists {
-		return gcp.OptInFileFound("build.gradle"), nil
+	for _, f := range files {
+		exists, err := ctx.FileExists(f)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			return gcp.OptInFileFound(f), nil
+		}
 	}
-	buildGradleKTSExists, err := ctx.FileExists("build.gradle.kts")
-	if err != nil {
-		return nil, err
-	}
-	if buildGradleKTSExists {
-		return gcp.OptInFileFound("build.gradle.kts"), nil
-	}
-	return gcp.OptOut("neither build.gradle nor build.gradle.kts found"), nil
+	return gcp.OptOut(fmt.Sprintf("none of the following found: %s", strings.Join(files, ", "))), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

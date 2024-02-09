@@ -95,6 +95,12 @@ func TestAcceptanceJava(t *testing.T) {
 			MustNotUse: []string{javaEntrypoint},
 		},
 		{
+			Name:       "Java mono repo",
+			App:        "gradle_mono_repo",
+			MustUse:    []string{javaGradle, javaRuntime, javaEntrypoint},
+			MustNotUse: []string{entrypoint},
+		},
+		{
 			Name:                "Java gradle (Dev Mode)",
 			App:                 "gradle_micronaut",
 			Env:                 []string{"GOOGLE_DEVMODE=1"},
