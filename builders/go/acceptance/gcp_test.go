@@ -25,12 +25,16 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:            "simple Go application",
-			App:             "simple",
-			MustUse:         []string{goRuntime, goBuild, goPath},
-			MustNotUse:      []string{goClearSource},
-			FilesMustExist:  []string{"/layers/google.go.build/bin/main", "/workspace/main.go"},
-			EnableCacheTest: true,
+			Name: "simple Go application",
+			// With Go 1.22+ go get is no longer supported outside of a module in the legacy GOPATH mode (that is, with
+			// GO111MODULE=off). Other build commands, such as go build and go test, will continue to work
+			// indefinitely for legacy GOPATH programs.
+			VersionInclusionConstraint: "< 1.22",
+			App:                        "simple",
+			MustUse:                    []string{goRuntime, goBuild, goPath},
+			MustNotUse:                 []string{goClearSource},
+			FilesMustExist:             []string{"/layers/google.go.build/bin/main", "/workspace/main.go"},
+			EnableCacheTest:            true,
 		},
 		{
 			Name:       "Go.mod",
