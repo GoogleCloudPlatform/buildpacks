@@ -17,7 +17,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -27,6 +26,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 )
@@ -136,7 +136,7 @@ func provisionOrDetectMaven(ctx *gcp.Context) (string, error) {
 	}
 	if mvnwExists {
 		// With CRLF endings, the "\r" gets seen as part of the shebang target, which doesn't exist.
-		if err := ensureUnixLineEndings(ctx, "mvnw"); err != nil {
+		if err := fileutil.EnsureUnixLineEndings("mvnw"); err != nil {
 			return "", fmt.Errorf("ensuring unix newline characters: %w", err)
 		}
 		return "./mvnw", nil
@@ -228,30 +228,6 @@ func installMaven(ctx *gcp.Context) (string, error) {
 
 	ctx.SetMetadata(mvnl, versionKey, mavenVersion)
 	return filepath.Join(mvnl.Path, "bin", "mvn"), nil
-}
-
-// Replace CRLF with LF
-func ensureUnixLineEndings(ctx *gcp.Context, file ...string) error {
-	isWriteable, err := ctx.IsWritable(file...)
-	if err != nil {
-		return err
-	}
-	if !isWriteable {
-		return nil
-	}
-
-	path := filepath.Join(file...)
-	data, err := ctx.ReadFile(path)
-	if err != nil {
-		return err
-	}
-
-	data = bytes.ReplaceAll(data, []byte{'\r', '\n'}, []byte{'\n'})
-
-	if err := ctx.WriteFile(path, data, os.FileMode(0755)); err != nil {
-		return err
-	}
-	return nil
 }
 
 func pomFilePath(ctx *gcp.Context) (string, error) {

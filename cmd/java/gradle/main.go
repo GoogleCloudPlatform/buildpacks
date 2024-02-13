@@ -25,6 +25,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 )
@@ -119,6 +120,10 @@ func provisionOrDetectGradle(ctx *gcp.Context) (string, error) {
 		return "", err
 	}
 	if gradlewExists {
+		// With CRLF endings, the "\r" gets seen as part of the shebang target, which doesn't exist.
+		if err := fileutil.EnsureUnixLineEndings("gradlew"); err != nil {
+			return "", fmt.Errorf("ensuring unix newline characters: %w", err)
+		}
 		return "./gradlew", nil
 	}
 	installed, err := gradleInstalled(ctx)

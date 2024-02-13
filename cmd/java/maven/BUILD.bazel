@@ -28,6 +28,7 @@ go_binary(
     deps = [
         "//pkg/devmode",
         "//pkg/env",
+        "//pkg/fileutil",
         "//pkg/gcpbuildpack",
         "//pkg/java",
     ],
@@ -48,7 +49,6 @@ go_test(
     deps = [
         "//internal/buildpacktest",
         "//internal/mockprocess",
-        "//pkg/gcpbuildpack",
         "//pkg/java",
     ],
 )

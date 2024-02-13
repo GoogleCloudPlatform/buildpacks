@@ -28,6 +28,7 @@ go_binary(
     deps = [
         "//pkg/devmode",
         "//pkg/env",
+        "//pkg/fileutil",
         "//pkg/gcpbuildpack",
         "//pkg/java",
     ],

@@ -209,3 +209,49 @@ func TestMaybeMovePathContents(t *testing.T) {
 		})
 	}
 }
+
+func TestEnsureUnixLineEndings(t *testing.T) {
+	testCases := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{
+			name:    "no new lines",
+			content: "no new lines",
+			want:    "no new lines",
+		},
+		{
+			name:    "windows-style replaced",
+			content: "#!/bin/sh\r\n\r\necho Windows\r\n",
+			want:    "#!/bin/sh\n\necho Windows\n",
+		},
+		{
+			name:    "unix-style unmodified",
+			content: "#!/bin/sh\n\necho Unix\n",
+			want:    "#!/bin/sh\n\necho Unix\n",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			fp := filepath.Join(dir, "file.txt")
+			if err := os.WriteFile(fp, []byte(tc.content), 0644); err != nil {
+				t.Fatalf("error writing file %q: %v", fp, err)
+			}
+
+			err := EnsureUnixLineEndings(fp)
+			if err != nil {
+				t.Fatalf("error reading file %q: %v", fp, err)
+			}
+			got, err := os.ReadFile(fp)
+			if err != nil {
+				t.Fatalf("error reading file %q: %v", fp, err)
+			}
+			if string(got) != tc.want {
+				t.Errorf("EnsureUnixLineEndings(%q) got %q, want %q", fp, got, tc.want)
+			}
+
+		})
+	}
+}

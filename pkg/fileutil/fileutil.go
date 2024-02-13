@@ -16,6 +16,8 @@
 package fileutil
 
 import (
+	"bytes"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -112,4 +114,41 @@ func CopyFile(dest, src string) error {
 
 	_, err = io.Copy(destFile, srcFile)
 	return err
+}
+
+// EnsureUnixLineEndings replaces windows style CRLF line endings with unix LF line endings. This is
+// necessary for executable scripts with shebang as the "\r" gets seen as part of the shebang
+// target, which doesn't exist.
+func EnsureUnixLineEndings(file ...string) error {
+	isWriteable, err := IsWritable(file...)
+	if err != nil {
+		return err
+	}
+	if !isWriteable {
+		return nil
+	}
+
+	path := filepath.Join(file...)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	data = bytes.ReplaceAll(data, []byte{'\r', '\n'}, []byte{'\n'})
+
+	if err := os.WriteFile(path, data, os.FileMode(0755)); err != nil {
+		return err
+	}
+	return nil
+}
+
+// IsWritable returns true if the file at the path constructed by joining elem is writable by the owner.
+func IsWritable(elem ...string) (bool, error) {
+	path := filepath.Join(elem...)
+	info, err := os.Stat(path)
+	if err != nil {
+		return false, fmt.Errorf("stat %q: %v", path, err)
+	}
+	// check that that user writable permission bit is set
+	return info.Mode().Perm()&0200 != 0, nil
 }
