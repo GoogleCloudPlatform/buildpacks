@@ -29,14 +29,6 @@ func TestAcceptanceGo(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:            "simple Go application",
-			App:             "simple",
-			MustUse:         []string{goRuntime, goBuild, goPath},
-			MustNotUse:      []string{goClearSource},
-			FilesMustExist:  []string{"/layers/google.go.build/bin/main", "/workspace/main.go"},
-			EnableCacheTest: true,
-		},
-		{
 			Name:       "Go.mod",
 			App:        "simple_gomod",
 			MustUse:    []string{goRuntime, goBuild, goMod},
@@ -65,9 +57,9 @@ func TestAcceptanceGo(t *testing.T) {
 		},
 		{
 			Name:                "Dev mode",
-			App:                 "simple",
+			App:                 "simple_gomod",
 			Env:                 []string{"GOOGLE_DEVMODE=1"},
-			MustUse:             []string{goRuntime, goBuild, goPath},
+			MustUse:             []string{goRuntime, goBuild, goMod},
 			FilesMustExist:      []string{"/layers/google.go.runtime/go/bin/go", "/workspace/main.go"},
 			MustRebuildOnChange: "/workspace/main.go",
 		},
@@ -75,9 +67,9 @@ func TestAcceptanceGo(t *testing.T) {
 			// This is a separate test case from Dev mode above because it has a fixed runtime version.
 			// Its only purpose is to test that the metadata is set correctly.
 			Name:    "Dev mode metadata",
-			App:     "simple",
+			App:     "simple_gomod",
 			Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=1.16.4"},
-			MustUse: []string{goRuntime, goBuild, goPath},
+			MustUse: []string{goRuntime, goBuild, goMod},
 			BOM: []acceptance.BOMEntry{
 				{
 					Name: "devmode",
@@ -91,14 +83,14 @@ func TestAcceptanceGo(t *testing.T) {
 		},
 		{
 			Name:    "Go runtime version respected",
-			App:     "simple",
+			App:     "simple_gomod",
 			Path:    "/version?want=1.13",
 			Env:     []string{"GOOGLE_RUNTIME_VERSION=1.13"},
-			MustUse: []string{goRuntime, goBuild, goPath},
+			MustUse: []string{goRuntime, goBuild, goMod},
 		},
 		{
 			Name:              "clear source",
-			App:               "simple",
+			App:               "simple_gomod",
 			Env:               []string{"GOOGLE_CLEAR_SOURCE=true"},
 			MustUse:           []string{goClearSource},
 			FilesMustExist:    []string{"/layers/google.go.build/bin/main"},
@@ -122,7 +114,7 @@ func TestFailuresGo(t *testing.T) {
 	testCases := []acceptance.FailureTest{
 		{
 			Name:      "bad runtime version",
-			App:       "simple",
+			App:       "simple_gomod",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
 			MustMatch: "invalid Go version specified:",
 		},
