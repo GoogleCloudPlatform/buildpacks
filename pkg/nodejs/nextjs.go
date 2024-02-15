@@ -51,7 +51,11 @@ type PnpmLockfile struct {
 // InstallNextJsBuildAdaptor installs the nextjs build adaptor in the given layer if it is not already cached.
 func InstallNextJsBuildAdaptor(ctx *gcp.Context, njsl *libcnb.Layer, njsVersion string) error {
 	layerName := njsl.Name
-	version := detectNextjsAdaptorVersion(njsVersion)
+	version, err := detectNextjsAdaptorVersion(njsVersion)
+
+	if err != nil {
+		return err
+	}
 
 	// Check the metadata in the cache layer to determine if we need to proceed.
 	metaVersion := ctx.GetMetadata(njsl, nextJsVersionKey)
@@ -76,38 +80,14 @@ func InstallNextJsBuildAdaptor(ctx *gcp.Context, njsl *libcnb.Layer, njsVersion 
 }
 
 // detectNextjsAdaptorVersion determines the version of Nextjs that is needed by a nextjs project
-func detectNextjsAdaptorVersion(njsVersion string) string {
-	if version, err := semver.StrictNewVersion(njsVersion); err == nil {
-		// match major + minor versions with the Nextjs version if Nextjs version is concrete
-		adapterVersion := strconv.FormatUint(version.Major(), 10) + "." + strconv.FormatUint(version.Minor(), 10)
-		return adapterVersion
-	}
-	constraint, err := semver.NewConstraint(njsVersion)
+func detectNextjsAdaptorVersion(njsVersion string) (string, error) {
+	version, err := semver.StrictNewVersion(njsVersion)
 	if err != nil {
-		return "latest"
+		return "", gcp.InternalErrorf("parsing nextjs version: %w", err)
 	}
-	var newConstraints []string
-	for _, constraint := range strings.Split(constraint.String(), " ") {
-		versionSplit := strings.Split(constraint, ".")
-
-		if len(versionSplit) == 3 {
-			// converts < into <= when patch version is greater than 0
-			// this is needed since the patch version is being dropped
-			// i.e.  <14.0.15 -> needs to map to <=14.0 instead of <14.0 to be equivalent
-			if strings.HasPrefix(versionSplit[0], "<") && !strings.HasPrefix(versionSplit[0], "<=") &&
-				!strings.HasPrefix(versionSplit[len(versionSplit)-1], "0") {
-				versionSplit[0] = "<=" + versionSplit[0][1:]
-			}
-			// > needs to be converted to >= for the same reason
-			if strings.HasPrefix(versionSplit[0], ">") && !strings.HasPrefix(versionSplit[0], ">=") {
-				versionSplit[0] = ">=" + versionSplit[0][1:]
-			}
-			// strip off patch version
-			versionSplit = versionSplit[:len(versionSplit)-1]
-		}
-		newConstraints = append(newConstraints, strings.Join(versionSplit, "."))
-	}
-	return strings.Join(newConstraints, " ")
+	// match major + minor versions with the Nextjs version
+	adapterVersion := strconv.FormatUint(version.Major(), 10) + "." + strconv.FormatUint(version.Minor(), 10)
+	return adapterVersion, nil
 }
 
 // downloadNextJsAdaptor downloads the Nextjs build adaptor into the provided directory.
@@ -126,41 +106,45 @@ func OverrideNextjsBuildScript(njsl *libcnb.Layer) {
 	njsl.BuildEnvironment.Override(AppHostingBuildEnv, fmt.Sprintf("npm exec --prefix %s apphosting-adapter-nextjs-build", njsl.Path))
 }
 
-// Version tries to get the concrete nextjs version used based on lock file, otherwise falls back on package.json
-func Version(ctx *gcp.Context, pjs *PackageJSON) string {
+// Version tries to get the concrete nextjs version used based on lock file, returns error if no lock file is found or is mishappen
+func Version(ctx *gcp.Context, pjs *PackageJSON) (string, error) {
 	for _, filename := range possibleLockfileFilenames {
 		filePath := filepath.Join(ctx.ApplicationRoot(), filename)
 		rawPackageLock, err := os.ReadFile(filePath)
-		if err == nil {
-			if filename == "pnpm-lock.yaml" {
-				var lockfile PnpmLockfile
-				if err := yaml.Unmarshal(rawPackageLock, &lockfile); err == nil {
-					return strings.Split(lockfile.Dependencies["next"].Version, "(")[0]
-				}
+		if err != nil {
+			continue
+		}
+		if filename == "pnpm-lock.yaml" {
+			var lockfile PnpmLockfile
+			if err := yaml.Unmarshal(rawPackageLock, &lockfile); err != nil {
+				return "", gcp.InternalErrorf("parsing pnpm lock file: %w", err)
 			}
+			return strings.Split(lockfile.Dependencies["next"].Version, "(")[0], nil
+		}
 
-			if filename == "yarn.lock" {
-				// yarn requires custom parsing since it has a custom format
-				// this logic works for both yarn classic and berry
-				for _, dependency := range strings.Split(string(rawPackageLock[:]), "\n\n") {
-					if strings.Contains(dependency, "next@") && strings.Contains(dependency, pjs.Dependencies["next"]) {
-						for _, line := range strings.Split(dependency, "\n") {
-							if strings.Contains(line, "version") {
-								return strings.Trim(strings.Fields(line)[1], `"`)
-							}
+		if filename == "yarn.lock" {
+			// yarn requires custom parsing since it has a custom format
+			// this logic works for both yarn classic and berry
+			for _, dependency := range strings.Split(string(rawPackageLock[:]), "\n\n") {
+				if strings.Contains(dependency, "next@") && strings.Contains(dependency, pjs.Dependencies["next"]) {
+					for _, line := range strings.Split(dependency, "\n") {
+						if strings.Contains(line, "version") {
+							return strings.Trim(strings.Fields(line)[1], `"`), nil
 						}
 					}
 				}
 			}
+			return "", gcp.InternalErrorf("parsing yarn file")
+		}
 
-			if filename == "npm-shrinkwrap.json" || filename == "package-lock.json" {
-				var lockfile NpmLockfile
-				if err := json.Unmarshal(rawPackageLock, &lockfile); err == nil {
-					return lockfile.Packages["node_modules/next"].Version
-				}
+		if filename == "npm-shrinkwrap.json" || filename == "package-lock.json" {
+			var lockfile NpmLockfile
+			if err := json.Unmarshal(rawPackageLock, &lockfile); err != nil {
+				return "", gcp.InternalErrorf("parsing lock file: %w", err)
 			}
+			return lockfile.Packages["node_modules/next"].Version, nil
 		}
 	}
 
-	return pjs.Dependencies["next"]
+	return "", gcp.UserErrorf("No lock file found, please run npm install to generate one")
 }

@@ -62,7 +62,10 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	version := nodejs.Version(ctx, pjs)
+	version, err := nodejs.Version(ctx, pjs)
+	if err != nil {
+		return err
+	}
 
 	err = validateVersion(ctx, version)
 	if err != nil {
@@ -90,10 +93,7 @@ func buildFn(ctx *gcp.Context) error {
 func validateVersion(ctx *gcp.Context, depVersion string) error {
 	version, err := semver.NewVersion(depVersion)
 	if err != nil {
-		// TODO(b/316585247): Actually validate version range.
-		ctx.Warnf("Unrecognized version of next: %s", depVersion)
-		ctx.Warnf("Consider updating your next dependencies to >=%s", minNextVersion.String())
-		return nil
+		return gcp.InternalErrorf("parsing next version: %v", err)
 	}
 	if version.LessThan(minNextVersion) {
 		ctx.Warnf("Unsupported version of next: %s", depVersion)

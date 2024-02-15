@@ -70,6 +70,12 @@ func TestBuild(t *testing.T) {
 				"dependencies": {
 					"next": "13.0.0"
 				}
+			}`, "package-lock.json": `{
+				"packages": {
+					"node_modules/next": {
+						"version": "13.0.0"
+					}
+				}
 			}`,
 			},
 			mocks: []*mockprocess.Mock{
@@ -87,6 +93,13 @@ func TestBuild(t *testing.T) {
 						"next": "13.0.0"
 					}
 				}`,
+				"package-lock.json": `{
+					"packages": {
+						"node_modules/next": {
+							"version": "13.0.0"
+						}
+					}
+				}`,
 			},
 		},
 		{
@@ -98,6 +111,13 @@ func TestBuild(t *testing.T) {
 					},
 					"dependencies": {
 						"next": "13.0.0"
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+						"node_modules/next": {
+							"version": "13.0.0"
+						}
 					}
 				}`,
 			},
@@ -112,6 +132,12 @@ func TestBuild(t *testing.T) {
 					"dependencies": {
 						"next": "^13.0.0"
 					}
+				}`, "package-lock.json": `{
+					"packages": {
+						"node_modules/next": {
+							"version": "13.5.6"
+						}
+					}
 				}`,
 			},
 		},
@@ -121,6 +147,13 @@ func TestBuild(t *testing.T) {
 				"package.json": `{
 				"dependencies": {
 					"next": "12.0.0"
+				}
+			}`,
+				"package-lock.json": `{
+				"packages": {
+					"node_modules/next": {
+						"version": "12.0.0"
+					}
 				}
 			}`,
 			},
