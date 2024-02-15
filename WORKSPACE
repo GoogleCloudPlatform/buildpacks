@@ -249,8 +249,8 @@ go_repository(
 go_repository(
     name = "com_github_googleapis_gax_go_v2",
     importpath = "github.com/googleapis/gax-go/v2",
-    sum = "h1:sjZBwGj9Jlw33ImPtvFviGYvseOtDM7hkSKB7+Tv3SM=",
-    version = "v2.0.5",
+    sum = "h1:A+gCJKdRfqXkr+BIRGtZLibNXf0m1f9E4HG56etFpas=",
+    version = "v2.12.0",
 )
 
 go_repository(
@@ -405,6 +405,13 @@ go_repository(
     importpath = "github.com/yuin/goldmark",
     sum = "h1:5tjfNdR2ki3yYQ842+eX2sQHeiwpKJ0RnHO4IYOc4V8=",
     version = "v1.1.32",
+)
+
+go_repository(
+    name = "com_google_cloud_go_secretmanager",
+    importpath = "cloud.google.com/go/secretmanager",
+    sum = "h1:ovHBlQ62xZxSmnf4RarqU45rSYl+QB/FkzZGvE/FjWI=",
+    version = "v0.1.0",
 )
 
 go_repository(

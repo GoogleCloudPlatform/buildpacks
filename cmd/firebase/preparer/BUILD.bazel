@@ -11,5 +11,10 @@ go_binary(
         "-s",
         "-w",
     ],
-    deps = ["//pkg/firebase/preparer"],
+    deps = [
+        "//pkg/firebase/preparer",
+        "@com_github_googleapis_gax_go_v2//:go_default_library",
+        "@com_google_cloud_go_secretmanager//:go_default_library",
+        "@org_golang_google_genproto:go_default_library",
+    ],
 )

@@ -20,6 +20,9 @@ import (
 	"log"
 
 	preparer "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/preparer"
+	"cloud.google.com/go/secretmanager/apiv1"
+	"github.com/googleapis/gax-go/v2"
+	smpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 )
 
 var (
@@ -48,4 +51,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+// TempSecretManager is an interface for the Secret Manager API, used as a temporary holder to manage dependency imports.
+type TempSecretManager interface {
+	GetSecretVersion(opts ...gax.CallOption) error
+}
+
+// TempGetSecretVersionResponse is a wrapper for a temp secret manager service GetSecretVersion api response. Used to temporarily manage dependency imports.
+type TempGetSecretVersionResponse struct {
+	SecretVersion *smpb.SecretVersion
+	SecretClient  *secretmanager.Client
+	Error         error
 }
