@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+licenses(["notice"])
+
+package(default_visibility = ["//:__subpackages__"])
+
+go_library(
+    name = "fakesecretmanager",
+    srcs = ["fakesecretmanager.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    deps = [
+        "@com_github_googleapis_gax_go_v2//:go_default_library",
+        "@org_golang_google_genproto:go_default_library",
+    ],
+)
