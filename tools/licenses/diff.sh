@@ -40,5 +40,5 @@ rm -rf "$NEW_LICENSES/files"
 echo "Diffing $NEW_LICENSES and $OLD_LICENSES"
 echo
 diff -r --exclude "BUILD.bazel" "$NEW_LICENSES" "$OLD_LICENSES"
-# The following message will only be printed if there are no diffs.
+# The folllowing message will only be printed if there are no diffs.
 echo "No diff found"

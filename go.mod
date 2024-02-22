@@ -8,7 +8,6 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/google/go-containerregistry v0.16.1
 	github.com/google/go-licenses v0.0.0-20200602185517-f29a4c695c3d // indirect
-	cloud.google.com/go/secretmanager v0.1.0
 	github.com/hashicorp/go-retryablehttp v0.6.7
 	github.com/joho/godotenv v1.5.1
 	github.com/Masterminds/semver/v3 v3.1.1

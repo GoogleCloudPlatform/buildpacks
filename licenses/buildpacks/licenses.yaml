@@ -9,13 +9,9 @@
 #   source_path: Absolute path to the source on the image.
 #
 
-- package: cloud.google.com/go
+- package: cloud.google.com/go/compute/metadata
   license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/buildpacks/cloud.google.com/go/LICENSE
-
-- package: cloud.google.com/go/secretmanager/apiv1
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/buildpacks/cloud.google.com/go/secretmanager/apiv1/LICENSE
+  license_path: /usr/local/share/licenses/buildpacks/cloud.google.com/go/compute/metadata/LICENSE
 
 - package: github.com/buildpacks/libcnb
   license_name: Apache-2.0
@@ -45,25 +41,9 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/buildpacks/github.com/docker/docker/pkg/homedir/LICENSE
 
-- package: github.com/golang/groupcache/lru
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/buildpacks/github.com/golang/groupcache/lru/LICENSE
-
-- package: github.com/golang/protobuf
-  license_name: BSD-3-Clause
-  license_path: /usr/local/share/licenses/buildpacks/github.com/golang/protobuf/LICENSE
-
-- package: github.com/googleapis/gax-go/v2
-  license_name: BSD-3-Clause
-  license_path: /usr/local/share/licenses/buildpacks/github.com/googleapis/gax-go/v2/LICENSE
-
 - package: github.com/GoogleCloudPlatform/buildpacks
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/buildpacks/github.com/GoogleCloudPlatform/buildpacks/LICENSE
-
-- package: github.com/google/go-cmp/cmp
-  license_name: BSD-3-Clause
-  license_path: /usr/local/share/licenses/buildpacks/github.com/google/go-cmp/cmp/LICENSE
 
 - package: github.com/google/go-containerregistry
   license_name: Apache-2.0
@@ -133,10 +113,6 @@
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/buildpacks/github.com/vbatts/tar-split/archive/tar/LICENSE
 
-- package: golang.org/x/net
-  license_name: BSD-3-Clause
-  license_path: /usr/local/share/licenses/buildpacks/golang.org/x/net/LICENSE
-
 - package: golang.org/x/oauth2
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/buildpacks/golang.org/x/oauth2/LICENSE
@@ -148,30 +124,6 @@
 - package: golang.org/x/sys
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/buildpacks/golang.org/x/sys/LICENSE
-
-- package: golang.org/x/text
-  license_name: BSD-3-Clause
-  license_path: /usr/local/share/licenses/buildpacks/golang.org/x/text/LICENSE
-
-- package: google.golang.org/api
-  license_name: BSD-3-Clause
-  license_path: /usr/local/share/licenses/buildpacks/google.golang.org/api/LICENSE
-
-- package: google.golang.org/genproto/googleapis
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/buildpacks/google.golang.org/genproto/googleapis/LICENSE
-
-- package: google.golang.org/grpc
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/buildpacks/google.golang.org/grpc/LICENSE
-
-- package: google.golang.org/protobuf
-  license_name: BSD-3-Clause
-  license_path: /usr/local/share/licenses/buildpacks/google.golang.org/protobuf/LICENSE
-
-- package: go.opencensus.io
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/buildpacks/go.opencensus.io/LICENSE
 
 - package: gopkg.in/yaml.v2
   license_name: Apache-2.0
