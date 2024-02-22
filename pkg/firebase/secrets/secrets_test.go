@@ -1,19 +1,10 @@
 package secrets
 
 import (
-	"context"
 	"strings"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/buildpacks/internal/fakesecretmanager"
 	"github.com/google/go-cmp/cmp"
-	smpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
-)
-
-var (
-	ctx              context.Context = context.Background()
-	pinnedSecretName string          = "projects/test-project/secrets/secretID/versions/5"
-	latestSecretName string          = "projects/test-project/secrets/secretID/versions/latest"
 )
 
 func TestNormalizeAppHostingSecretsEnv(t *testing.T) {
@@ -94,61 +85,31 @@ func TestPinVersionSecrets(t *testing.T) {
 		desc         string
 		inputEnvVars map[string]string
 		wantEnvVars  map[string]string
-		wantErr      bool
 	}{
 		{
 			desc: "Pin secret values properly",
 			inputEnvVars: map[string]string{
 				"API_URL":              "api.service.com",
-				"SECRET_FORMAT_PINNED": pinnedSecretName,
-				"SECRET_FORMAT_LATEST": latestSecretName,
+				"SECRET_FORMAT_PINNED": "projects/test-project/secrets/secretID/versions/5",
+				"SECRET_FORMAT_LATEST": "projects/test-project/secrets/secretID/versions/latest",
 			},
 			wantEnvVars: map[string]string{
 				"API_URL":              "api.service.com",
-				"SECRET_FORMAT_PINNED": pinnedSecretName,
-				"SECRET_FORMAT_LATEST": pinnedSecretName, // Latest secret must become pinned
-			},
-			wantErr: false,
-		},
-		{
-			desc: "Throw an error when secret version is not found",
-			inputEnvVars: map[string]string{
-				"API_URL":                      "api.service.com",
-				"SECRET_FORMAT_PINNED":         pinnedSecretName,
-				"SECRET_FORMAT_LATEST_INVALID": "projects/test-project/secrets/invalidSecretID/versions/latest",
-			},
-			wantErr: true,
-		},
-	}
-
-	fakeSecretClient := &fakesecretmanager.FakeSecretClient{
-		SecretVersionResponses: map[string]fakesecretmanager.GetSecretVersionResponse{
-			latestSecretName: fakesecretmanager.GetSecretVersionResponse{
-				SecretVersion: &smpb.SecretVersion{
-					Name:  pinnedSecretName,
-					State: smpb.SecretVersion_ENABLED,
-				},
+				"SECRET_FORMAT_PINNED": "projects/test-project/secrets/secretID/versions/5",
+				"SECRET_FORMAT_LATEST": "projects/test-project/secrets/secretID/versions/latest",
 			},
 		},
 	}
 
 	for _, test := range testCases {
-		err := PinVersionSecrets(ctx, fakeSecretClient, test.inputEnvVars)
+		err := PinVersionSecrets(test.inputEnvVars)
 
-		// Happy Path
-		if !test.wantErr {
-			if err != nil {
-				t.Errorf("PinVersionSecrets(%q) = %v, want %v", test.desc, err, test.wantEnvVars)
-			}
+		if err != nil {
+			t.Errorf("PinVersionSecrets(%q) = %v, want %v", test.desc, err, test.wantEnvVars)
+		}
 
-			if diff := cmp.Diff(test.wantEnvVars, test.inputEnvVars); diff != "" {
-				t.Errorf("unexpected pinned envVars for test %q (+got, -want):\n%v", test.desc, diff)
-			}
-			// Error Path
-		} else {
-			if err == nil {
-				t.Errorf("PinVersionSecrets(%q) = %v, want error", test.desc, err)
-			}
+		if diff := cmp.Diff(test.wantEnvVars, test.inputEnvVars); diff != "" {
+			t.Errorf("unexpected pinned envVars for test %q (+got, -want):\n%v", test.desc, diff)
 		}
 	}
 }
@@ -163,8 +124,8 @@ func TestDereferenceSecrets(t *testing.T) {
 			desc: "Pin secret values properly",
 			inputEnvVars: map[string]string{
 				"API_URL":              "api.service.com",
-				"SECRET_FORMAT_PINNED": pinnedSecretName,
-				"SECRET_FORMAT_LATEST": latestSecretName,
+				"SECRET_FORMAT_PINNED": "projects/test-project/secrets/secretID/versions/5",
+				"SECRET_FORMAT_LATEST": "projects/test-project/secrets/secretID/versions/latest",
 			},
 			wantEnvVars: map[string]string{
 				"API_URL":       "api.service.com",
