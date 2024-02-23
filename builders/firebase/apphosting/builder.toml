@@ -9,6 +9,10 @@ description = "Builder for Firebase App Hosting"
   uri = "firebasenextjs.tgz"
 
 [[buildpacks]]
+  id = "google.nodejs.firebaseangular"
+  uri = "firebaseangular.tgz"
+
+[[buildpacks]]
   id = "google.nodejs.firebasebundle"
   uri = "firebasebundle.tgz"
 
@@ -26,7 +30,6 @@ description = "Builder for Firebase App Hosting"
     id = "google.nodejs.runtime"
   [[order.group]]
     id = "google.nodejs.firebasenextjs"
-    optional = true
   [[order.group]]
     id = "google.nodejs.yarn"
   [[order.group]]
@@ -36,7 +39,6 @@ description = "Builder for Firebase App Hosting"
     id = "google.nodejs.runtime"
   [[order.group]]
     id = "google.nodejs.firebasenextjs"
-    optional = true
   [[order.group]]
     id = "google.nodejs.pnpm"
   [[order.group]]
@@ -47,7 +49,57 @@ description = "Builder for Firebase App Hosting"
     id = "google.nodejs.runtime"
   [[order.group]]
     id = "google.nodejs.firebasenextjs"
-    optional = true
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
   [[order.group]]
     id = "google.nodejs.npm"
   [[order.group]]
