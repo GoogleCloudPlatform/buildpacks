@@ -14,11 +14,13 @@
 package nodejs
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestInstallAngularBuildAdaptor(t *testing.T) {
@@ -51,6 +53,58 @@ func TestInstallAngularBuildAdaptor(t *testing.T) {
 			err := InstallAngularBuildAdaptor(ctx, layer)
 			if err != nil {
 				t.Fatalf("InstallAngularBuildAdaptor() got error: %v", err)
+			}
+		})
+	}
+}
+
+func TestExtractAngularStartCommand(t *testing.T) {
+	testsCases := []struct {
+		name string
+		pjs  string
+		want string
+	}{
+		{
+			name: "with angular serve command",
+			pjs: `{
+					"scripts": {
+						"ng": "ng",
+						"start": "ng serve",
+						"build": "ng build",
+						"watch": "ng build --watch --configuration development",
+						"test": "ng test",
+						"serve:ssr:my-angular-app": "node dist/my-angular-app/server/server.mjs"
+					}
+				}`,
+			want: "node dist/my-angular-app/server/server.mjs",
+		},
+		{
+			name: "no angular serve command",
+			pjs: `{
+					"main": "main.js",
+					"scripts": {
+						"start": "node main.js"
+					}
+				}`,
+			want: "",
+		},
+		{
+			name: "no scripts",
+			pjs:  `{}`,
+			want: "",
+		},
+	}
+	for _, tc := range testsCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var pjs *PackageJSON = nil
+			if tc.pjs != "" {
+				if err := json.Unmarshal([]byte(tc.pjs), &pjs); err != nil {
+					t.Fatalf("failed to unmarshal package.json: %s, error: %v", tc.pjs, err)
+				}
+			}
+			got := ExtractAngularStartCommand(pjs)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("ExtractAngularStartCommand() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

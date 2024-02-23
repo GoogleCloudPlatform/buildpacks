@@ -384,6 +384,20 @@ func TestDefaultStartCommand(t *testing.T) {
 			hasServerJs: true,
 			want:        []string{"npm", "run", "start"},
 		},
+		{
+			name: "angular app",
+			pjs: `{
+					"scripts": {
+						"ng": "ng",
+						"start": "ng serve",
+						"build": "ng build",
+						"watch": "ng build --watch --configuration development",
+						"test": "ng test",
+						"serve:ssr:my-angular-app": "node dist/my-angular-app/server/server.mjs"
+					}
+				}`,
+			want: []string{"node", "dist/my-angular-app/server/server.mjs"},
+		},
 	}
 	for _, tc := range testsCases {
 		t.Run(tc.name, func(t *testing.T) {

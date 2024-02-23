@@ -209,6 +209,9 @@ func DefaultStartCommand(ctx *gcp.Context, pjs *PackageJSON) ([]string, error) {
 	if pjs == nil {
 		return []string{"node", "index.js"}, nil
 	}
+	if angularStart := ExtractAngularStartCommand(pjs); angularStart != "" {
+		return strings.Fields(angularStart), nil
+	}
 	if _, ok := pjs.Scripts["start"]; ok {
 		return []string{"npm", "run", "start"}, nil
 	}

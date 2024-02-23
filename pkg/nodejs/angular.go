@@ -16,6 +16,7 @@ package nodejs
 
 import (
 	"fmt"
+	"strings"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
@@ -75,4 +76,15 @@ func downloadAngularAdaptor(ctx *gcp.Context, dirPath string) error {
 // OverrideAngularBuildScript overrides the build script to be the Angular build script
 func OverrideAngularBuildScript(njsl *libcnb.Layer) {
 	njsl.BuildEnvironment.Override(AppHostingBuildEnv, fmt.Sprintf("npm exec --prefix %s apphosting-adapter-angular-build", njsl.Path))
+}
+
+// ExtractAngularStartCommand inspects the given package.json file for an idiomatic `serve:ssr:APP_NAME`
+// command. If one exists, its value is returned. If not, return an empty string.
+func ExtractAngularStartCommand(pjs *PackageJSON) string {
+	for k, v := range pjs.Scripts {
+		if strings.HasPrefix(k, "serve:ssr:") {
+			return v
+		}
+	}
+	return ""
 }
