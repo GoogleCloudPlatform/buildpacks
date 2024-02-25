@@ -52,6 +52,8 @@ type OverrideProperties struct {
 	PHPIniOverride bool
 	// PHPIniOverrideFileName name of the user-provided php ini config.
 	PHPIniOverrideFileName string
+	// NginxServesStaticFiles whether Nginx also serves static files for matching URIs.
+	NginxServesStaticFiles bool
 }
 
 // OverriddenProperties returns whether the property has been overridden and the path to the file.

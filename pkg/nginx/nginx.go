@@ -90,7 +90,13 @@ server {
 	server_name	"";
 	root	{{.Root}};
 
+	{{if .ServesStaticFiles}}
+	location / {
+		try_files $uri /{{.FrontControllerScript}}$uri;
+	}
+	{{else}}
 	rewrite	^/(.*)$	/{{.FrontControllerScript}}$uri;
+	{{end}}
 
 	location	~	^/{{.FrontControllerScript}}	{
 		error_log stderr;
@@ -161,6 +167,7 @@ type Config struct {
 	AppListenAddress      string
 	FrontControllerScript string
 	NginxConfInclude      string
+	ServesStaticFiles     bool
 }
 
 const (

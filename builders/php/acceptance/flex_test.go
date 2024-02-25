@@ -35,6 +35,23 @@ func TestAcceptance(t *testing.T) {
 			MustUse:                    []string{flex, utilsNginx},
 			MustMatch:                  "app.php",
 		},
+		{
+			Name:                       "serves static files",
+			App:                        "serves_static_files",
+			Env:                        []string{"NGINX_SERVES_STATIC_FILES=true"},
+			VersionInclusionConstraint: "< 8.2.0",
+			MustUse:                    []string{flex, utilsNginx},
+			Path:                       "/hello.txt",
+			MustMatch:                  "hello world",
+		},
+		{
+			Name:                       "does not serve static files",
+			App:                        "serves_static_files",
+			VersionInclusionConstraint: "< 8.2.0",
+			MustUse:                    []string{flex, utilsNginx},
+			Path:                       "/hello.txt",
+			MustMatch:                  "index.php",
+		},
 	}
 
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
