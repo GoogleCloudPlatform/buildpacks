@@ -16,6 +16,7 @@ package publisher
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"strings"
 	"testing"
@@ -38,6 +39,12 @@ func int32Ptr(i int) *int32 {
 	return v
 }
 
+func float32Ptr(i int32) *float32 {
+	v := new(float32)
+	*v = float32(i)
+	return v
+}
+
 func toString(buildSchema buildSchema) string {
 	data, _ := json.MarshalIndent(buildSchema, "", "  ")
 	return string(data)
@@ -45,7 +52,6 @@ func toString(buildSchema buildSchema) string {
 
 func TestPublish(t *testing.T) {
 	testDir := t.TempDir()
-	outputFilePath := testDir + "/output"
 
 	testCasesHappy := []struct {
 		desc                   string
@@ -57,13 +63,20 @@ func TestPublish(t *testing.T) {
 		appHostingYAMLFilePath: appHostingCompleteYAMLPath,
 		envFilePath:            envPath,
 		wantBuildSchema: buildSchema{
+			RunConfig: &runConfig{
+				CPU:          float32Ptr(3),
+				MemoryMiB:    int32Ptr(1024),
+				Concurrency:  int32Ptr(100),
+				MaxInstances: int32Ptr(4),
+				MinInstances: int32Ptr(0),
+			},
 			BackendResources: backendResources{
 				CPU:          int32Ptr(3),
 				MemoryMiB:    int32Ptr(1024),
 				Concurrency:  int32Ptr(100),
 				MaxInstances: int32Ptr(4),
 			},
-			Runtime: runtime{
+			Runtime: &runtime{
 				EnvVariables: map[string]string{
 					"API_URL":           "api.service.com",
 					"ENVIRONMENT":       "staging",
@@ -76,13 +89,20 @@ func TestPublish(t *testing.T) {
 			appHostingYAMLFilePath: "nonexistent",
 			envFilePath:            envPath,
 			wantBuildSchema: buildSchema{
+				RunConfig: &runConfig{
+					CPU:          float32Ptr(1),
+					MemoryMiB:    int32Ptr(512),
+					Concurrency:  int32Ptr(80),
+					MaxInstances: int32Ptr(100),
+					MinInstances: int32Ptr(0),
+				},
 				BackendResources: backendResources{
 					CPU:          int32Ptr(1),
 					MemoryMiB:    int32Ptr(512),
 					Concurrency:  int32Ptr(80),
 					MaxInstances: int32Ptr(100),
 				},
-				Runtime: runtime{
+				Runtime: &runtime{
 					EnvVariables: map[string]string{
 						"API_URL":           "api.service.com",
 						"ENVIRONMENT":       "staging",
@@ -101,7 +121,13 @@ func TestPublish(t *testing.T) {
 					Concurrency:  int32Ptr(100),
 					MaxInstances: int32Ptr(4),
 				},
-				Runtime: runtime{},
+				RunConfig: &runConfig{
+					CPU:          float32Ptr(3),
+					MemoryMiB:    int32Ptr(1024),
+					Concurrency:  int32Ptr(100),
+					MaxInstances: int32Ptr(4),
+					MinInstances: int32Ptr(0),
+				},
 			}},
 	}
 
@@ -118,7 +144,9 @@ func TestPublish(t *testing.T) {
 	}}
 
 	// Testing happy paths
-	for _, test := range testCasesHappy {
+	for i, test := range testCasesHappy {
+		outputFilePath := fmt.Sprintf("%s/outputhappy%d", testDir, i)
+
 		err := Publish(test.appHostingYAMLFilePath, bundleYAMLPath, test.envFilePath, outputFilePath)
 		if err != nil {
 			t.Errorf("Error in test '%v'. Error was %v", test.desc, err)
@@ -142,7 +170,9 @@ func TestPublish(t *testing.T) {
 	}
 
 	// Testing error paths
-	for _, test := range testCasesError {
+	for i, test := range testCasesError {
+		outputFilePath := fmt.Sprintf("%s/outputerr%d", testDir, i)
+
 		err := Publish(test.appHostingYAMLFilePath, bundleYAMLPath, test.appHostingEnvFilePath, outputFilePath)
 		if err == nil {
 			t.Errorf("calling Publish did not produce an error for test %q", test.desc)
@@ -252,6 +282,13 @@ func TestToBuildSchemaBackendResources(t *testing.T) {
 					Concurrency:  &defaultConcurrency,
 					MaxInstances: &defaultMaxInstances,
 				},
+				RunConfig: &runConfig{
+					CPU:          float32Ptr(defaultCPU),
+					MemoryMiB:    &defaultMemory,
+					Concurrency:  &defaultConcurrency,
+					MaxInstances: &defaultMaxInstances,
+					MinInstances: int32Ptr(0),
+				},
 			},
 		},
 		{
@@ -271,6 +308,13 @@ func TestToBuildSchemaBackendResources(t *testing.T) {
 					Concurrency:  int32Ptr(2),
 					MaxInstances: int32Ptr(5),
 				},
+				RunConfig: &runConfig{
+					CPU:          float32Ptr(1000),
+					MemoryMiB:    int32Ptr(2048),
+					Concurrency:  int32Ptr(2),
+					MaxInstances: int32Ptr(5),
+					MinInstances: int32Ptr(0),
+				},
 			},
 		},
 		{
@@ -288,6 +332,13 @@ func TestToBuildSchemaBackendResources(t *testing.T) {
 					Concurrency:  int32Ptr(2),
 					MaxInstances: &defaultMaxInstances,
 				},
+				RunConfig: &runConfig{
+					CPU:          float32Ptr(1000),
+					MemoryMiB:    &defaultMemory,
+					Concurrency:  int32Ptr(2),
+					MaxInstances: &defaultMaxInstances,
+					MinInstances: int32Ptr(0),
+				},
 			},
 		},
 	}
@@ -296,8 +347,8 @@ func TestToBuildSchemaBackendResources(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			bundleSchema := outputBundleSchema{}
 			result := toBuildSchema(tc.appHostingSchema, bundleSchema, map[string]string{})
-			if !cmp.Equal(result, tc.expected) {
-				t.Errorf("toBuildSchema(%q) = %+v, want = %+v", tc.name, result, tc.expected)
+			if diff := cmp.Diff(tc.expected, result); diff != "" {
+				t.Errorf("toBuildSchema(%s) (-want +got):\n%s", tc.name, diff)
 			}
 		})
 	}

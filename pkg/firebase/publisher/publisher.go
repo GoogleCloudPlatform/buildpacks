@@ -22,8 +22,9 @@ import (
 	"os"
 	"path/filepath"
 
-	env "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/env"
 	"gopkg.in/yaml.v2"
+
+	env "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/env"
 )
 
 // appHostingSchema is the struct representation of apphosting.yaml
@@ -39,9 +40,11 @@ type outputBundleSchema struct {
 
 // buildSchema is the internal Publisher representation of the final build settings that will
 // ultimately be converted into an updateBuildRequest.
+// TODO: b/322201485 - remove the "backendResources" struct once "runConfig" has rolled out.
 type buildSchema struct {
 	BackendResources backendResources `yaml:"backendResources,omitempty"`
-	Runtime          runtime          `yaml:"runtime,omitempty"`
+	RunConfig        *runConfig       `yaml:"runConfig,omitempty"`
+	Runtime          *runtime         `yaml:"runtime,omitempty"`
 }
 
 type backendResources struct {
@@ -50,6 +53,15 @@ type backendResources struct {
 	MemoryMiB    *int32 `yaml:"memoryMiB"`
 	Concurrency  *int32 `yaml:"concurrency"`
 	MaxInstances *int32 `yaml:"maxInstances"`
+}
+
+type runConfig struct {
+	// value types used must match server field types. pointers are used to capture unset vs zero-like values.
+	CPU          *float32 `yaml:"cpu"`
+	MemoryMiB    *int32   `yaml:"memoryMiB"`
+	Concurrency  *int32   `yaml:"concurrency"`
+	MaxInstances *int32   `yaml:"maxInstances"`
+	MinInstances *int32   `yaml:"minInstances"`
 }
 
 type runtime struct {
@@ -61,6 +73,7 @@ var (
 	defaultMemory       int32 = 512 // From https://cloud.google.com/run/docs/configuring/services/memory-limits.
 	defaultConcurrency  int32 = 80  // From https://cloud.google.com/run/docs/about-concurrency.
 	defaultMaxInstances int32 = 100 // From https://cloud.google.com/run/docs/configuring/max-instances.
+	defaultMinInstances int32 = 0   // From https://cloud.google.com/run/docs/configuring/min-instances.
 
 	reservedKeys = map[string]bool{
 		"PORT":            true,
@@ -107,6 +120,8 @@ func validateAppHostingYAMLFields(appHostingYAML appHostingSchema) error {
 	if b.MaxInstances != nil && !(1 <= *b.MaxInstances && *b.MaxInstances <= 100) {
 		return fmt.Errorf("backend_resources.maxInstances field is not in valid range of [1, 100]")
 	}
+
+	// TODO: b/322201485 - Add validation for min_instances once "runConfig" has rolled out.
 	return nil
 }
 
@@ -153,6 +168,7 @@ func writeToFile(buildSchema buildSchema, outputFilePath string) error {
 }
 
 func toBuildSchema(appHostingSchema appHostingSchema, bundleSchema outputBundleSchema, appHostingEnvVars map[string]string) buildSchema {
+	dCPU := float32(defaultCPU)
 	buildSchema := buildSchema{
 		BackendResources: backendResources{
 			CPU:          &defaultCPU,
@@ -160,24 +176,38 @@ func toBuildSchema(appHostingSchema appHostingSchema, bundleSchema outputBundleS
 			Concurrency:  &defaultConcurrency,
 			MaxInstances: &defaultMaxInstances,
 		},
+		RunConfig: &runConfig{
+			CPU:          &dCPU,
+			MemoryMiB:    &defaultMemory,
+			Concurrency:  &defaultConcurrency,
+			MaxInstances: &defaultMaxInstances,
+			MinInstances: &defaultMinInstances,
+		},
 	}
 	// Copy fields from apphosting.yaml.
 	b := appHostingSchema.BackendResources
+	// TODO: b/322201485 - Add min_instances once "runConfig" has rolled out.
 	if b.CPU != nil {
 		buildSchema.BackendResources.CPU = b.CPU
+		cpu := float32(*b.CPU)
+		buildSchema.RunConfig.CPU = &cpu
 	}
 	if b.MemoryMiB != nil {
 		buildSchema.BackendResources.MemoryMiB = b.MemoryMiB
+		buildSchema.RunConfig.MemoryMiB = b.MemoryMiB
 	}
 	if b.Concurrency != nil {
 		buildSchema.BackendResources.Concurrency = b.Concurrency
+		buildSchema.RunConfig.Concurrency = b.Concurrency
 	}
 	if b.MaxInstances != nil {
 		buildSchema.BackendResources.MaxInstances = b.MaxInstances
+		buildSchema.RunConfig.MaxInstances = b.MaxInstances
 	}
+
 	// Copy fields from apphosting.env.
 	if len(appHostingEnvVars) > 0 {
-		buildSchema.Runtime.EnvVariables = appHostingEnvVars
+		buildSchema.Runtime = &runtime{EnvVariables: appHostingEnvVars}
 	}
 	return buildSchema
 }
