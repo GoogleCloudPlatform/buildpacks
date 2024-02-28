@@ -16,10 +16,13 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"fmt"
 	"log"
 
 	preparer "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/preparer"
+	"cloud.google.com/go/secretmanager/apiv1"
 )
 
 var (
@@ -44,7 +47,13 @@ func main() {
 		log.Fatal("--env_dereferenced_output_filepath flag not specified.")
 	}
 
-	err := preparer.Prepare(*apphostingEnvFilePath, *projectID, *envReferencedOutputFilePath, *envDereferencedOutputFilePath)
+	secretClient, err := secretmanager.NewClient(context.Background())
+	if err != nil {
+		log.Fatal(fmt.Errorf("failed to create secretmanager client: %w", err))
+	}
+	defer secretClient.Close()
+
+	err = preparer.Prepare(context.Background(), secretClient, *apphostingEnvFilePath, *projectID, *envReferencedOutputFilePath, *envDereferencedOutputFilePath)
 	if err != nil {
 		log.Fatal(err)
 	}

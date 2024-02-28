@@ -1,11 +1,14 @@
 package preparer
 
 import (
+	"context"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/internal/fakesecretmanager"
 	env "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/google/go-cmp/cmp"
+	smpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 )
 
 var (
@@ -29,16 +32,18 @@ func TestPrepare(t *testing.T) {
 			appHostingEnvFilePath: appHostingEnvPath,
 			projectID:             "test-project",
 			wantEnvMapReferenced: map[string]string{
-				"API_URL":           "api.service.com",
-				"ENVIRONMENT":       "staging",
-				"MULTILINE_ENV_VAR": "line 1\nline 2",
-				"SECRET_API_KEY":    "projects/test-project/secrets/secretID/versions/11",
+				"API_URL":               "api.service.com",
+				"ENVIRONMENT":           "staging",
+				"MULTILINE_ENV_VAR":     "line 1\nline 2",
+				"SECRET_API_KEY_LATEST": "projects/test-project/secrets/secretID/versions/12",
+				"SECRET_API_KEY_PINNED": "projects/test-project/secrets/secretID/versions/11",
 			},
 			wantEnvMapDereferenced: map[string]string{
 				"API_URL":           "api.service.com",
 				"ENVIRONMENT":       "staging",
 				"MULTILINE_ENV_VAR": "line 1\nline 2",
-				"API_KEY":           "secretString",
+				"API_KEY_LATEST":    "secretString",
+				"API_KEY_PINNED":    "secretString",
 			},
 		},
 		{
@@ -49,9 +54,20 @@ func TestPrepare(t *testing.T) {
 		},
 	}
 
+	fakeSecretClient := &fakesecretmanager.FakeSecretClient{
+		SecretVersionResponses: map[string]fakesecretmanager.GetSecretVersionResponse{
+			"projects/test-project/secrets/secretID/versions/latest": fakesecretmanager.GetSecretVersionResponse{
+				SecretVersion: &smpb.SecretVersion{
+					Name:  "projects/test-project/secrets/secretID/versions/12",
+					State: smpb.SecretVersion_ENABLED,
+				},
+			},
+		},
+	}
+
 	// Testing happy paths
 	for _, test := range testCases {
-		if err := Prepare(test.appHostingEnvFilePath, test.projectID, outputFilePathReferenced, outputFilePathDereferenced); err != nil {
+		if err := Prepare(context.Background(), fakeSecretClient, test.appHostingEnvFilePath, test.projectID, outputFilePathReferenced, outputFilePathDereferenced); err != nil {
 			t.Errorf("Error in test '%v'. Error was %v", test.desc, err)
 		}
 

@@ -22,8 +22,10 @@ go_test(
     embed = [":preparer"],
     rundir = ".",
     deps = [
+        "//internal/fakesecretmanager",
         "//pkg/firebase/env",
         "//pkg/testdata",
         "@com_github_google_go-cmp//cmp:go_default_library",
+        "@org_golang_google_genproto//googleapis/cloud/secretmanager/v1:go_default_library",
     ],
 )

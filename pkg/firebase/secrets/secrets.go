@@ -16,10 +16,21 @@
 package secrets
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
+
+	"github.com/googleapis/gax-go/v2"
+
+	smpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 )
+
+// SecretManager is an interface for the Secret Manager API
+type SecretManager interface {
+	GetSecretVersion(ctx context.Context, req *smpb.GetSecretVersionRequest, opts ...gax.CallOption) (*smpb.SecretVersion, error)
+}
 
 var (
 	secretKeyPrefix = "SECRET_"
@@ -71,10 +82,10 @@ func normalizeSecretFormat(envKey, firebaseSecret, projectID string) (string, er
 
 // PinVersionSecrets will determine the latest version for any secrets that require it and pin it to
 // that value for any subsequent steps. Requires that secrets are of the format SECRET_*=projects/p/secrets/s/versions/v
-func PinVersionSecrets(envMap map[string]string) error {
+func PinVersionSecrets(ctx context.Context, client SecretManager, envMap map[string]string) error {
 	for k, v := range envMap {
 		if strings.HasPrefix(k, secretKeyPrefix) && strings.HasSuffix(v, latestSuffix) {
-			n, err := getSecretVersion(v)
+			n, err := getSecretVersion(ctx, client, v)
 			if err != nil {
 				return fmt.Errorf("calling GetSecretVersion with name=%v: %w", v, err)
 			}
@@ -102,10 +113,18 @@ func DereferenceSecrets(envMap map[string]string) (map[string]string, error) {
 	return dereferencedEnvMap, nil
 }
 
-// Get secret version metadata. Does not include the secret's sensitive data.
-func getSecretVersion(name string) (string, error) {
-	// TODO (abhisun): Make call to SecretManager GetSecretVersion and extract name field
-	return name, nil
+// Get secret version metadata. Does NOT include the secret's sensitive data.
+func getSecretVersion(ctx context.Context, client SecretManager, name string) (string, error) {
+	req := &smpb.GetSecretVersionRequest{
+		Name: name,
+	}
+
+	result, err := client.GetSecretVersion(ctx, req)
+	if err != nil {
+		return "", fmt.Errorf("getting secret version: %w", err)
+	}
+	log.Printf("Pinned secret %v to %v for the rest of the current build and run", name, result.Name)
+	return result.Name, nil
 }
 
 // Access secret version. Includes secret's sensitive data.

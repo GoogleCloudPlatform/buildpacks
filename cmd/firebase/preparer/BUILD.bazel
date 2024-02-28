@@ -11,5 +11,8 @@ go_binary(
         "-s",
         "-w",
     ],
-    deps = ["//pkg/firebase/preparer"],
+    deps = [
+        "//pkg/firebase/preparer",
+        "@com_google_cloud_go_secretmanager//apiv1:go_default_library",
+    ],
 )
