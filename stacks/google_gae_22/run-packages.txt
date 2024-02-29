@@ -69,7 +69,7 @@ libmysqlclient21
 libnghttp2-14
 libnspr4
 libnss3
-libonig-dev
+libonig5
 libpango-1.0-0
 libpangocairo-1.0-0
 libpng16-16
@@ -84,11 +84,11 @@ libsasl2-2
 libsasl2-modules
 libsasl2-modules-db
 libsnappy1v5
-libsodium-dev
+libsodium23
 libsqlite3-0
 libssl3
 libstdc++6
-libtidy-dev
+libtidy5deb1
 libtiff5
 libtiffxx5
 libuuid1
@@ -106,7 +106,7 @@ libxrandr2
 libxrender1
 libxslt1.1
 libyaml-0-2
-libzip-dev
+libzip4
 locales
 locales-all
 lsb-release
