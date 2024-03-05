@@ -2,9 +2,9 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
     application
-    kotlin("jvm") version "1.3.21"
-    kotlin("kapt") version "1.3.21"
-    id("com.github.johnrengelman.shadow") version "4.0.4"
+    kotlin("jvm") version "1.9.22"
+    kotlin("kapt") version "1.9.22"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 repositories {
@@ -26,7 +26,7 @@ dependencies {
 }
 
 application {
-    mainClassName = "hello.WebAppKt"
+    mainClass.set("hello.WebAppKt")
 }
 
 tasks.withType<ShadowJar> {

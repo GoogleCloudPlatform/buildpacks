@@ -150,26 +150,17 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput:   []string{"WARNING"},
 			EnableCacheTest: true,
 			Setup:           updateGradleVersions,
-			// Java21 is not yet supported by Gradle - https://screenshot.googleplex.com/5Rd6oKQcxKHxEAX
-			// TODO(b/305232925) remove constraint once Java21 support is available
-			VersionInclusionConstraint: "< 21.0",
 		},
 		{
 			Name:          "gradlew micronaut",
 			App:           "gradlew_micronaut",
 			MustNotOutput: []string{"WARNING"},
 			Setup:         updateGradleVersions,
-			// Java21 is not yet supported by Gradle - https://screenshot.googleplex.com/5Rd6oKQcxKHxEAX
-			// TODO(b/305232925) remove constraint once Java21 support is available
-			VersionInclusionConstraint: "< 21.0",
 		},
 		{
 			Name:  "gradle kotlin",
 			App:   "gradle-kotlin",
 			Setup: updateGradleVersions,
-			// Java21 is not yet supported by Gradle - https://screenshot.googleplex.com/5Rd6oKQcxKHxEAX
-			// TODO(b/305232925) remove constraint once Java21 support is available
-			VersionInclusionConstraint: "< 21.0",
 		},
 		{
 			Name:              "Gradle with source clearing",
@@ -184,9 +175,6 @@ func TestAcceptance(t *testing.T) {
 			App:           "gradle_quarkus",
 			MustNotOutput: []string{"WARNING"},
 			Setup:         updateGradleVersions,
-			// Java21 is not yet supported by Gradle - https://screenshot.googleplex.com/5Rd6oKQcxKHxEAX
-			// TODO(b/305232925) remove constraint once Java21 support is available
-			VersionInclusionConstraint: "< 21.0",
 		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {

@@ -42,8 +42,6 @@ func TestAcceptance(t *testing.T) {
 			App:     "gradle_quarkus",
 			Env:     []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
 			MustUse: []string{"google.config.flex"},
-			// TODO(b/305232925) remove constraint once Java21 support is available
-			VersionInclusionConstraint: "< 21.0",
 		},
 	}
 
