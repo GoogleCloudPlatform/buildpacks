@@ -87,6 +87,12 @@ func buildFn(ctx *gcp.Context) error {
 		overrides.NginxConfOverrideFileName = filepath.Join(defaultRoot, customNginxConf)
 	}
 
+	nginxServesStaticFiles, err := env.IsPresentAndTrue(php.NginxServesStaticFiles)
+	if err != nil {
+		return err
+	}
+	overrides.NginxServesStaticFiles = nginxServesStaticFiles
+
 	fpmConfFile, err := writeFpmConfig(ctx, l.Path, overrides)
 	if err != nil {
 		return err
@@ -247,6 +253,7 @@ func nginxConfig(layer string, overrides webconfig.OverrideProperties) nginx.Con
 		FrontControllerScript: frontController,
 		Root:                  root,
 		AppListenAddress:      "unix:" + filepath.Join(layer, appSocket),
+		ServesStaticFiles:     overrides.NginxServesStaticFiles,
 	}
 
 	if env.IsFlex() {

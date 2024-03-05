@@ -90,6 +90,9 @@ post_max_size = 32M
 
 	// CustomNginxConfig is an environment variable to pass a custom nginx configuration.
 	CustomNginxConfig = "GOOGLE_CUSTOM_NGINX_CONFIG"
+
+	// NginxServesStaticFiles is an environment variable to configure Nginx to serve static files.
+	NginxServesStaticFiles = "NGINX_SERVES_STATIC_FILES"
 )
 
 type composerScriptsJSON struct {
