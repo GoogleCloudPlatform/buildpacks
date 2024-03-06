@@ -52,7 +52,7 @@ func Prepare(ctx context.Context, secretClient secrets.SecretManager, apphosting
 		if err != nil {
 			return fmt.Errorf("pinning secrets in apphosting.env: %w", err)
 		}
-		dereferencedEnvMap, err = secrets.DereferenceSecrets(referencedEnvMap)
+		dereferencedEnvMap, err = secrets.DereferenceSecrets(ctx, secretClient, referencedEnvMap)
 		if err != nil {
 			return fmt.Errorf("dereferencing secrets in apphosting.env: %w", err)
 		}

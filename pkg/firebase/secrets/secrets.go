@@ -18,6 +18,7 @@ package secrets
 import (
 	"context"
 	"fmt"
+	"hash/crc32"
 	"log"
 	"regexp"
 	"strings"
@@ -30,6 +31,7 @@ import (
 // SecretManager is an interface for the Secret Manager API
 type SecretManager interface {
 	GetSecretVersion(ctx context.Context, req *smpb.GetSecretVersionRequest, opts ...gax.CallOption) (*smpb.SecretVersion, error)
+	AccessSecretVersion(ctx context.Context, req *smpb.AccessSecretVersionRequest, opts ...gax.CallOption) (*smpb.AccessSecretVersionResponse, error)
 }
 
 var (
@@ -97,11 +99,11 @@ func PinVersionSecrets(ctx context.Context, client SecretManager, envMap map[str
 
 // DereferenceSecrets will return a mapping of environment variables to their dereferenced secret
 // values. Requires that secrets are of the format SECRET_*=projects/p/secrets/s/versions/v
-func DereferenceSecrets(envMap map[string]string) (map[string]string, error) {
+func DereferenceSecrets(ctx context.Context, client SecretManager, envMap map[string]string) (map[string]string, error) {
 	dereferencedEnvMap := map[string]string{}
 	for k, v := range envMap {
 		if strings.HasPrefix(k, secretKeyPrefix) {
-			n, err := accessSecretVersion(v)
+			n, err := accessSecretVersion(ctx, client, v)
 			if err != nil {
 				return nil, fmt.Errorf("calling AccessSecretVersion with name=%v: %w", v, err)
 			}
@@ -128,7 +130,23 @@ func getSecretVersion(ctx context.Context, client SecretManager, name string) (s
 }
 
 // Access secret version. Includes secret's sensitive data.
-func accessSecretVersion(name string) (string, error) {
-	// TODO (abhisun): Make call to SecretManager AccessSecretVersion and extract secret data
-	return "secretString", nil
+func accessSecretVersion(ctx context.Context, client SecretManager, name string) (string, error) {
+	result, err := client.AccessSecretVersion(ctx, &smpb.AccessSecretVersionRequest{
+		Name: name,
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to access secret version %v: %w", name, err)
+	}
+	log.Printf("Accessed secret %v for the rest of the current build", name)
+
+	// Verify the data checksum.
+	crc32c := crc32.MakeTable(crc32.Castagnoli)
+	checksum := int64(crc32.Checksum(result.Payload.Data, crc32c))
+
+	if checksum != *result.Payload.DataCrc32C {
+		return "", fmt.Errorf("data corruption while accessing secret %v detected", name)
+	}
+
+	return string(result.Payload.Data), nil
 }

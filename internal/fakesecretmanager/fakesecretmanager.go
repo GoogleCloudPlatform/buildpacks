@@ -25,21 +25,40 @@ import (
 
 // FakeSecretClient is a fake of the SecretClient.
 type FakeSecretClient struct {
-	SecretVersionResponses map[string]GetSecretVersionResponse
+	SecretVersionResponses       map[string]GetSecretVersionResponse
+	AccessSecretVersionResponses map[string]AccessSecretVersionResponse
 }
 
-// GetSecretVersionResponse is a wrapper for secret manager service GetSecretVersion api response.
+// GetSecretVersionResponse is a wrapper for secret manager service GetSecretVersion api
+// response.
 type GetSecretVersionResponse struct {
 	SecretVersion *smpb.SecretVersion
 	Error         error
 }
 
+// AccessSecretVersionResponse is a wrapper for secret manager service AccessSecretVersion
+// api response.
+type AccessSecretVersionResponse struct {
+	Response *smpb.AccessSecretVersionResponse
+	Error    error
+}
+
 // GetSecretVersion gets the secret version for the given request.
 func (s *FakeSecretClient) GetSecretVersion(ctx context.Context, req *smpb.GetSecretVersionRequest, opts ...gax.CallOption) (*smpb.SecretVersion, error) {
-	if resp, ok := s.SecretVersionResponses[req.GetName()]; ok {
-		if resp.SecretVersion != nil {
-			return resp.SecretVersion, nil
-		}
+	resp, ok := s.SecretVersionResponses[req.GetName()]
+	if !ok || resp.SecretVersion == nil {
+		return nil, fmt.Errorf("fake client secret version is not found")
 	}
-	return nil, fmt.Errorf("fake client secret version is not found")
+
+	return resp.SecretVersion, nil
+}
+
+// AccessSecretVersion accesses the secret material for the given request.
+func (s *FakeSecretClient) AccessSecretVersion(ctx context.Context, req *smpb.AccessSecretVersionRequest, opts ...gax.CallOption) (*smpb.AccessSecretVersionResponse, error) {
+	resp, ok := s.AccessSecretVersionResponses[req.GetName()]
+	if !ok || resp.Response == nil {
+		return nil, fmt.Errorf("fake client secret version is not found")
+	}
+
+	return resp.Response, nil
 }

@@ -2,6 +2,7 @@ package preparer
 
 import (
 	"context"
+	"hash/crc32"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/fakesecretmanager"
@@ -12,7 +13,11 @@ import (
 )
 
 var (
-	appHostingEnvPath string = testdata.MustGetPath("testdata/apphosting.env")
+	appHostingEnvPath    string = testdata.MustGetPath("testdata/apphosting.env")
+	latestSecretName     string = "projects/test-project/secrets/secretID/versions/12"
+	pinnedSecretName     string = "projects/test-project/secrets/secretID/versions/11"
+	secretString         string = "secretString"
+	secretStringChecksum int64  = int64(crc32.Checksum([]byte(secretString), crc32.MakeTable(crc32.Castagnoli)))
 )
 
 func TestPrepare(t *testing.T) {
@@ -35,15 +40,15 @@ func TestPrepare(t *testing.T) {
 				"API_URL":               "api.service.com",
 				"ENVIRONMENT":           "staging",
 				"MULTILINE_ENV_VAR":     "line 1\nline 2",
-				"SECRET_API_KEY_LATEST": "projects/test-project/secrets/secretID/versions/12",
-				"SECRET_API_KEY_PINNED": "projects/test-project/secrets/secretID/versions/11",
+				"SECRET_API_KEY_LATEST": latestSecretName,
+				"SECRET_API_KEY_PINNED": pinnedSecretName,
 			},
 			wantEnvMapDereferenced: map[string]string{
 				"API_URL":           "api.service.com",
 				"ENVIRONMENT":       "staging",
 				"MULTILINE_ENV_VAR": "line 1\nline 2",
-				"API_KEY_LATEST":    "secretString",
-				"API_KEY_PINNED":    "secretString",
+				"API_KEY_LATEST":    secretString,
+				"API_KEY_PINNED":    secretString,
 			},
 		},
 		{
@@ -58,8 +63,26 @@ func TestPrepare(t *testing.T) {
 		SecretVersionResponses: map[string]fakesecretmanager.GetSecretVersionResponse{
 			"projects/test-project/secrets/secretID/versions/latest": fakesecretmanager.GetSecretVersionResponse{
 				SecretVersion: &smpb.SecretVersion{
-					Name:  "projects/test-project/secrets/secretID/versions/12",
+					Name:  latestSecretName,
 					State: smpb.SecretVersion_ENABLED,
+				},
+			},
+		},
+		AccessSecretVersionResponses: map[string]fakesecretmanager.AccessSecretVersionResponse{
+			pinnedSecretName: fakesecretmanager.AccessSecretVersionResponse{
+				Response: &smpb.AccessSecretVersionResponse{
+					Payload: &smpb.SecretPayload{
+						Data:       []byte(secretString),
+						DataCrc32C: &secretStringChecksum,
+					},
+				},
+			},
+			latestSecretName: fakesecretmanager.AccessSecretVersionResponse{
+				Response: &smpb.AccessSecretVersionResponse{
+					Payload: &smpb.SecretPayload{
+						Data:       []byte(secretString),
+						DataCrc32C: &secretStringChecksum,
+					},
 				},
 			},
 		},

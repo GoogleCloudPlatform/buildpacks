@@ -2,6 +2,7 @@ package secrets
 
 import (
 	"context"
+	"hash/crc32"
 	"strings"
 	"testing"
 
@@ -11,9 +12,11 @@ import (
 )
 
 var (
-	ctx              context.Context = context.Background()
-	pinnedSecretName string          = "projects/test-project/secrets/secretID/versions/5"
-	latestSecretName string          = "projects/test-project/secrets/secretID/versions/latest"
+	ctx                  context.Context = context.Background()
+	pinnedSecretName     string          = "projects/test-project/secrets/secretID/versions/5"
+	latestSecretName     string          = "projects/test-project/secrets/secretID/versions/latest"
+	secretString         string          = "secretString"
+	secretStringChecksum int64           = int64(crc32.Checksum([]byte(secretString), crc32.MakeTable(crc32.Castagnoli)))
 )
 
 func TestNormalizeAppHostingSecretsEnv(t *testing.T) {
@@ -108,7 +111,6 @@ func TestPinVersionSecrets(t *testing.T) {
 				"SECRET_FORMAT_PINNED": pinnedSecretName,
 				"SECRET_FORMAT_LATEST": pinnedSecretName, // Latest secret must become pinned
 			},
-			wantErr: false,
 		},
 		{
 			desc: "Throw an error when secret version is not found",
@@ -158,31 +160,59 @@ func TestDereferenceSecrets(t *testing.T) {
 		desc         string
 		inputEnvVars map[string]string
 		wantEnvVars  map[string]string
+		wantErr      bool
 	}{
 		{
-			desc: "Pin secret values properly",
+			desc: "Dereference secret values properly",
 			inputEnvVars: map[string]string{
 				"API_URL":              "api.service.com",
 				"SECRET_FORMAT_PINNED": pinnedSecretName,
-				"SECRET_FORMAT_LATEST": latestSecretName,
 			},
 			wantEnvVars: map[string]string{
 				"API_URL":       "api.service.com",
-				"FORMAT_PINNED": "secretString",
-				"FORMAT_LATEST": "secretString",
+				"FORMAT_PINNED": secretString,
+			},
+		},
+		{
+			desc: "Throw an error when secret version is not found",
+			inputEnvVars: map[string]string{
+				"API_URL":                      "api.service.com",
+				"SECRET_FORMAT_PINNED":         pinnedSecretName,
+				"SECRET_FORMAT_LATEST_INVALID": "projects/test-project/secrets/invalidSecretID/versions/latest",
+			},
+			wantErr: true,
+		},
+	}
+
+	fakeSecretClient := &fakesecretmanager.FakeSecretClient{
+		AccessSecretVersionResponses: map[string]fakesecretmanager.AccessSecretVersionResponse{
+			pinnedSecretName: fakesecretmanager.AccessSecretVersionResponse{
+				Response: &smpb.AccessSecretVersionResponse{
+					Payload: &smpb.SecretPayload{
+						Data:       []byte(secretString),
+						DataCrc32C: &secretStringChecksum,
+					},
+				},
 			},
 		},
 	}
 
 	for _, test := range testCases {
-		gotEnvVars, err := DereferenceSecrets(test.inputEnvVars)
+		gotEnvVars, err := DereferenceSecrets(ctx, fakeSecretClient, test.inputEnvVars)
 
-		if err != nil {
-			t.Errorf("DereferenceSecrets(%q) = %v, want %v", test.desc, err, test.wantEnvVars)
-		}
+		// Happy Path
+		if !test.wantErr {
+			if err != nil {
+				t.Errorf("unexpected error for DereferenceSecrets(%q): %v", test.desc, err)
+			}
 
-		if diff := cmp.Diff(test.wantEnvVars, gotEnvVars); diff != "" {
-			t.Errorf("unexpected dereferencing envVars for test %q (+got, -want):\n%v", test.desc, diff)
+			if diff := cmp.Diff(test.wantEnvVars, gotEnvVars); diff != "" {
+				t.Errorf("unexpected dereferenced secrets for test %q (+got, -want):\n%v", test.desc, diff)
+			}
+		} else {
+			if err == nil {
+				t.Errorf("DereferenceSecrets(%q) = %v, want error", test.desc, err)
+			}
 		}
 	}
 }
