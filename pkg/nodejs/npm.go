@@ -198,7 +198,7 @@ func runCommand(pkgTool, command string) string {
 	return fmt.Sprintf("%s run %s", pkgTool, strings.TrimSpace(command))
 }
 
-// DefaultStartCommand return the default command that should be used to configure the application
+// DefaultStartCommand returns the default command that should be used to configure the application
 // web process if the user has not explicitly configured one. The algorithm follows the conventions
 // of Nodejs package.json files: https://docs.npmjs.com/cli/v10/configuring-npm/package-json#main
 // 1. if script.start is specified return `npm run start`
@@ -214,6 +214,9 @@ func DefaultStartCommand(ctx *gcp.Context, pjs *PackageJSON) ([]string, error) {
 	}
 	if _, ok := pjs.Scripts["start"]; ok {
 		return []string{"npm", "run", "start"}, nil
+	}
+	if nuxt, err := NuxtStartCommand(ctx); err != nil || nuxt != nil {
+		return nuxt, err
 	}
 	exists, err := ctx.FileExists(ctx.ApplicationRoot(), "server.js")
 	if err != nil {
