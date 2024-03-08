@@ -28,7 +28,7 @@ import (
 // * Reading, sanitizing, and writing user-defined environment variables in apphosting.env to a new file.
 //
 // Prepare will always write a file to disk, even if there are no environment variables to write.
-func Prepare(ctx context.Context, secretClient secrets.SecretManager, apphostingEnvFilePath string, projectID string, envReferencedOutputFilePath string, envDereferencedOutputFilePath string) error {
+func Prepare(ctx context.Context, secretClient secrets.SecretManager, apphostingEnvFilePath string, appHostingYAMLPath string, projectID string, envReferencedOutputFilePath string, envDereferencedOutputFilePath string) error {
 	referencedEnvMap := map[string]string{}   // Env map with referenced secret material
 	dereferencedEnvMap := map[string]string{} // Env map with dereferenced secret material
 

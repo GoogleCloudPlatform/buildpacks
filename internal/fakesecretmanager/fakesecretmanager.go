@@ -47,7 +47,7 @@ type AccessSecretVersionResponse struct {
 func (s *FakeSecretClient) GetSecretVersion(ctx context.Context, req *smpb.GetSecretVersionRequest, opts ...gax.CallOption) (*smpb.SecretVersion, error) {
 	resp, ok := s.SecretVersionResponses[req.GetName()]
 	if !ok || resp.SecretVersion == nil {
-		return nil, fmt.Errorf("fake client secret version is not found")
+		return nil, fmt.Errorf("fake client secret version is not found for %s", req.GetName())
 	}
 
 	return resp.SecretVersion, nil
@@ -57,7 +57,7 @@ func (s *FakeSecretClient) GetSecretVersion(ctx context.Context, req *smpb.GetSe
 func (s *FakeSecretClient) AccessSecretVersion(ctx context.Context, req *smpb.AccessSecretVersionRequest, opts ...gax.CallOption) (*smpb.AccessSecretVersionResponse, error) {
 	resp, ok := s.AccessSecretVersionResponses[req.GetName()]
 	if !ok || resp.Response == nil {
-		return nil, fmt.Errorf("fake client secret version is not found")
+		return nil, fmt.Errorf("fake client secret version is not found for %s", req.GetName())
 	}
 
 	return resp.Response, nil

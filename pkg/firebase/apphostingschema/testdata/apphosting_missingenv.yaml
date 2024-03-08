@@ -1,5 +1,6 @@
 schemaVersion: '3.0.0'
 
+# Should still be valid even when missing the env section
 runConfig:
   cpu: 3
   memoryMiB: 1024

@@ -34,7 +34,6 @@ var (
 	}
 
 	reservedFirebaseKeyPrefix = "FIREBASE_"
-	secretKeyPrefix           = "SECRET_"
 )
 
 // ReadEnv parses environment variables at the given file path.

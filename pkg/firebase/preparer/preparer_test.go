@@ -90,7 +90,7 @@ func TestPrepare(t *testing.T) {
 
 	// Testing happy paths
 	for _, test := range testCases {
-		if err := Prepare(context.Background(), fakeSecretClient, test.appHostingEnvFilePath, test.projectID, outputFilePathReferenced, outputFilePathDereferenced); err != nil {
+		if err := Prepare(context.Background(), fakeSecretClient, test.appHostingEnvFilePath, test.appHostingEnvFilePath, test.projectID, outputFilePathReferenced, outputFilePathDereferenced); err != nil {
 			t.Errorf("Error in test '%v'. Error was %v", test.desc, err)
 		}
 

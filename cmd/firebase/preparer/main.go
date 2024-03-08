@@ -27,6 +27,7 @@ import (
 
 var (
 	apphostingEnvFilePath         = flag.String("apphostingenv_filepath", "", "File path to user defined apphosting.env")
+	apphostingYAMLFilePath        = flag.String("apphostingyaml_filepath", "", "File path to user defined apphosting.yaml")
 	projectID                     = flag.String("project_id", "", "User's GCP project ID")
 	envReferencedOutputFilePath   = flag.String("env_referenced_output_filepath", "", "File path to write sanitized environment variables & referenced secret material to")
 	envDereferencedOutputFilePath = flag.String("env_dereferenced_output_filepath", "", "File path to write sanitized environment variables & dereferenced secret material to")
@@ -53,7 +54,7 @@ func main() {
 	}
 	defer secretClient.Close()
 
-	err = preparer.Prepare(context.Background(), secretClient, *apphostingEnvFilePath, *projectID, *envReferencedOutputFilePath, *envDereferencedOutputFilePath)
+	err = preparer.Prepare(context.Background(), secretClient, *apphostingEnvFilePath, *apphostingYAMLFilePath, *projectID, *envReferencedOutputFilePath, *envDereferencedOutputFilePath)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -24,13 +24,9 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	apphostingschema "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	env "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/env"
 )
-
-// appHostingSchema is the struct representation of apphosting.yaml
-type appHostingSchema struct {
-	BackendResources backendResources `yaml:"backendResources,omitempty"`
-}
 
 // outputBundleSchema is the struct representation of a Firebase App Hosting Output Bundle
 // (configured by bundle.yaml).
@@ -40,30 +36,12 @@ type outputBundleSchema struct {
 
 // buildSchema is the internal Publisher representation of the final build settings that will
 // ultimately be converted into an updateBuildRequest.
-// TODO: b/322201485 - remove the "backendResources" struct once "runConfig" has rolled out.
 type buildSchema struct {
-	BackendResources backendResources `yaml:"backendResources,omitempty"`
-	RunConfig        *runConfig       `yaml:"runConfig,omitempty"`
-	Runtime          *runtime         `yaml:"runtime,omitempty"`
+	RunConfig *apphostingschema.RunConfig `yaml:"runConfig,omitempty"`
+	Runtime   *runtime                    `yaml:"runtime,omitempty"`
 }
 
-type backendResources struct {
-	// int32 value type used here to match server field types. pointers are used to capture unset vs zero-like values.
-	CPU          *int32 `yaml:"cpu"`
-	MemoryMiB    *int32 `yaml:"memoryMiB"`
-	Concurrency  *int32 `yaml:"concurrency"`
-	MaxInstances *int32 `yaml:"maxInstances"`
-}
-
-type runConfig struct {
-	// value types used must match server field types. pointers are used to capture unset vs zero-like values.
-	CPU          *float32 `yaml:"cpu"`
-	MemoryMiB    *int32   `yaml:"memoryMiB"`
-	Concurrency  *int32   `yaml:"concurrency"`
-	MaxInstances *int32   `yaml:"maxInstances"`
-	MinInstances *int32   `yaml:"minInstances"`
-}
-
+// TODO (b/328444933): Migrate this to the new EnvironmentVariable in apphostingschema.go
 type runtime struct {
 	EnvVariables map[string]string `yaml:"envVariables,omitempty"`
 }
@@ -84,46 +62,6 @@ var (
 
 	reservedFirebaseKey = "FIREBASE_"
 )
-
-// readAppHostingSchemaFromFile returns nil if apphosting.yaml does not exist.
-func readAppHostingSchemaFromFile(filePath string) (appHostingSchema, error) {
-	a := appHostingSchema{}
-	apphostingBuffer, err := os.ReadFile(filePath)
-	if os.IsNotExist(err) {
-		log.Printf("Missing apphosting config at %v, using reasonable defaults\n", filePath)
-		return a, nil
-	} else if err != nil {
-		return a, fmt.Errorf("reading apphosting config at %v: %w", filePath, err)
-	}
-
-	err = yaml.Unmarshal(apphostingBuffer, &a)
-	if err != nil {
-		return a, fmt.Errorf("unmarshalling apphosting config as YAML: %w", err)
-	}
-	return a, nil
-}
-
-func validateAppHostingYAMLFields(appHostingYAML appHostingSchema) error {
-	b := appHostingYAML.BackendResources
-	if b.CPU != nil && !(1 <= *b.CPU && *b.CPU <= 8) {
-		return fmt.Errorf("backend_resources.cpu field is not in valid range of [1, 8]")
-	}
-
-	if b.MemoryMiB != nil && !(512 <= *b.MemoryMiB && *b.MemoryMiB <= 32768) {
-		return fmt.Errorf("backend_resources.memory field is not in valid range of [512, 32768]")
-	}
-
-	if b.Concurrency != nil && !(1 <= *b.Concurrency && *b.Concurrency <= 1000) {
-		return fmt.Errorf("backend_resources.concurrency field is not in valid range of [1, 1000]")
-	}
-
-	if b.MaxInstances != nil && !(1 <= *b.MaxInstances && *b.MaxInstances <= 100) {
-		return fmt.Errorf("backend_resources.maxInstances field is not in valid range of [1, 100]")
-	}
-
-	// TODO: b/322201485 - Add validation for min_instances once "runConfig" has rolled out.
-	return nil
-}
 
 func readBundleSchemaFromFile(filePath string) (outputBundleSchema, error) {
 	bundleBuffer, err := os.ReadFile(filePath)
@@ -167,16 +105,10 @@ func writeToFile(buildSchema buildSchema, outputFilePath string) error {
 	return nil
 }
 
-func toBuildSchema(appHostingSchema appHostingSchema, bundleSchema outputBundleSchema, appHostingEnvVars map[string]string) buildSchema {
+func toBuildSchema(appHostingSchema apphostingschema.AppHostingSchema, bundleSchema outputBundleSchema, appHostingEnvVars map[string]string) buildSchema {
 	dCPU := float32(defaultCPU)
 	buildSchema := buildSchema{
-		BackendResources: backendResources{
-			CPU:          &defaultCPU,
-			MemoryMiB:    &defaultMemory,
-			Concurrency:  &defaultConcurrency,
-			MaxInstances: &defaultMaxInstances,
-		},
-		RunConfig: &runConfig{
+		RunConfig: &apphostingschema.RunConfig{
 			CPU:          &dCPU,
 			MemoryMiB:    &defaultMemory,
 			Concurrency:  &defaultConcurrency,
@@ -185,24 +117,22 @@ func toBuildSchema(appHostingSchema appHostingSchema, bundleSchema outputBundleS
 		},
 	}
 	// Copy fields from apphosting.yaml.
-	b := appHostingSchema.BackendResources
-	// TODO: b/322201485 - Add min_instances once "runConfig" has rolled out.
+	b := appHostingSchema.RunConfig
 	if b.CPU != nil {
-		buildSchema.BackendResources.CPU = b.CPU
 		cpu := float32(*b.CPU)
 		buildSchema.RunConfig.CPU = &cpu
 	}
 	if b.MemoryMiB != nil {
-		buildSchema.BackendResources.MemoryMiB = b.MemoryMiB
 		buildSchema.RunConfig.MemoryMiB = b.MemoryMiB
 	}
 	if b.Concurrency != nil {
-		buildSchema.BackendResources.Concurrency = b.Concurrency
 		buildSchema.RunConfig.Concurrency = b.Concurrency
 	}
 	if b.MaxInstances != nil {
-		buildSchema.BackendResources.MaxInstances = b.MaxInstances
 		buildSchema.RunConfig.MaxInstances = b.MaxInstances
+	}
+	if b.MinInstances != nil {
+		buildSchema.RunConfig.MinInstances = b.MinInstances
 	}
 
 	// Copy fields from apphosting.env.
@@ -216,14 +146,9 @@ func toBuildSchema(appHostingSchema appHostingSchema, bundleSchema outputBundleS
 // other files (tbd) and merges them into one output that describes the desired Backend Service
 // configuration before pushing this information to the control plane.
 func Publish(appHostingYAMLPath string, bundleYAMLPath string, envPath string, outputFilePath string) error {
-	apphostingYAML, err := readAppHostingSchemaFromFile(appHostingYAMLPath)
+	apphostingYAML, err := apphostingschema.ReadAndValidateAppHostingSchemaFromFile(appHostingYAMLPath)
 	if err != nil {
 		return err
-	}
-
-	validateErr := validateAppHostingYAMLFields(apphostingYAML)
-	if validateErr != nil {
-		return fmt.Errorf("apphosting.yaml fields are not valid: %w", validateErr)
 	}
 
 	// Read in environment variables

@@ -5,27 +5,20 @@ package(default_visibility = ["//:__subpackages__"])
 licenses(["notice"])
 
 go_library(
-    name = "publisher",
-    srcs = ["publisher.go"],
+    name = "apphostingschema",
+    srcs = ["apphostingschema.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    deps = [
-        "//pkg/firebase/apphostingschema",
-        "//pkg/firebase/env",
-        "@in_gopkg_yaml_v2//:go_default_library",
-    ],
+    deps = ["@in_gopkg_yaml_v2//:go_default_library"],
 )
 
 go_test(
-    name = "publisher_test",
-    size = "small",
-    srcs = ["publisher_test.go"],
+    name = "apphostingschema_test",
+    srcs = ["apphostingschema_test.go"],
     data = glob(["testdata/**"]),
-    embed = [":publisher"],
+    embed = [":apphostingschema"],
     rundir = ".",
     deps = [
-        "//pkg/firebase/apphostingschema",
         "//pkg/testdata",
         "@com_github_google_go-cmp//cmp:go_default_library",
-        "@in_gopkg_yaml_v2//:go_default_library",
     ],
 )

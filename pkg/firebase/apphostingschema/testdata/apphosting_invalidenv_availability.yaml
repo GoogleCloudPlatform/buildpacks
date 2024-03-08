@@ -1,0 +1,9 @@
+schemaVersion: '3.0.0'
+
+# Invalid as it contains an invalid value in the avaibility field
+env:
+  - variable: STORAGE_BUCKET
+    value: mybucket.appspot.com
+    availability:
+      - BUILD
+      - FOOBAR

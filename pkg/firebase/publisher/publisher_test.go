@@ -18,17 +18,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/google/go-cmp/cmp"
 	"gopkg.in/yaml.v2"
+
+	apphostingschema "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 )
 
 var (
 	appHostingCompleteYAMLPath string = testdata.MustGetPath("testdata/apphosting_complete.yaml")
-	appHostingInvalidYAMLPath  string = testdata.MustGetPath("testdata/apphosting_invalid.yaml")
 	envPath                    string = testdata.MustGetPath("testdata/env")
 	bundleYAMLPath             string = testdata.MustGetPath("testdata/bundle.yaml")
 )
@@ -63,18 +63,12 @@ func TestPublish(t *testing.T) {
 		appHostingYAMLFilePath: appHostingCompleteYAMLPath,
 		envFilePath:            envPath,
 		wantBuildSchema: buildSchema{
-			RunConfig: &runConfig{
+			RunConfig: &apphostingschema.RunConfig{
 				CPU:          float32Ptr(3),
 				MemoryMiB:    int32Ptr(1024),
 				Concurrency:  int32Ptr(100),
 				MaxInstances: int32Ptr(4),
 				MinInstances: int32Ptr(0),
-			},
-			BackendResources: backendResources{
-				CPU:          int32Ptr(3),
-				MemoryMiB:    int32Ptr(1024),
-				Concurrency:  int32Ptr(100),
-				MaxInstances: int32Ptr(4),
 			},
 			Runtime: &runtime{
 				EnvVariables: map[string]string{
@@ -89,18 +83,12 @@ func TestPublish(t *testing.T) {
 			appHostingYAMLFilePath: "nonexistent",
 			envFilePath:            envPath,
 			wantBuildSchema: buildSchema{
-				RunConfig: &runConfig{
+				RunConfig: &apphostingschema.RunConfig{
 					CPU:          float32Ptr(1),
 					MemoryMiB:    int32Ptr(512),
 					Concurrency:  int32Ptr(80),
 					MaxInstances: int32Ptr(100),
 					MinInstances: int32Ptr(0),
-				},
-				BackendResources: backendResources{
-					CPU:          int32Ptr(1),
-					MemoryMiB:    int32Ptr(512),
-					Concurrency:  int32Ptr(80),
-					MaxInstances: int32Ptr(100),
 				},
 				Runtime: &runtime{
 					EnvVariables: map[string]string{
@@ -115,13 +103,7 @@ func TestPublish(t *testing.T) {
 			appHostingYAMLFilePath: appHostingCompleteYAMLPath,
 			envFilePath:            "nonexistent",
 			wantBuildSchema: buildSchema{
-				BackendResources: backendResources{
-					CPU:          int32Ptr(3),
-					MemoryMiB:    int32Ptr(1024),
-					Concurrency:  int32Ptr(100),
-					MaxInstances: int32Ptr(4),
-				},
-				RunConfig: &runConfig{
+				RunConfig: &apphostingschema.RunConfig{
 					CPU:          float32Ptr(3),
 					MemoryMiB:    int32Ptr(1024),
 					Concurrency:  int32Ptr(100),
@@ -130,18 +112,6 @@ func TestPublish(t *testing.T) {
 				},
 			}},
 	}
-
-	testCasesError := []struct {
-		desc                   string
-		appHostingYAMLFilePath string
-		appHostingEnvFilePath  string
-		wantError              string
-	}{{
-		desc:                   "Throw an error parsing apphosting.yaml when values are invalid",
-		appHostingYAMLFilePath: appHostingInvalidYAMLPath,
-		appHostingEnvFilePath:  envPath,
-		wantError:              "concurrency",
-	}}
 
 	// Testing happy paths
 	for i, test := range testCasesHappy {
@@ -168,121 +138,19 @@ func TestPublish(t *testing.T) {
 			t.Errorf("Unexpected YAML for test %v (+got, -want):\n%v", test.desc, diff)
 		}
 	}
-
-	// Testing error paths
-	for i, test := range testCasesError {
-		outputFilePath := fmt.Sprintf("%s/outputerr%d", testDir, i)
-
-		err := Publish(test.appHostingYAMLFilePath, bundleYAMLPath, test.appHostingEnvFilePath, outputFilePath)
-		if err == nil {
-			t.Errorf("calling Publish did not produce an error for test %q", test.desc)
-		}
-
-		if !strings.Contains(err.Error(), test.wantError) {
-			t.Errorf("error not in expected format for test %q.\nGot: %v\nWant: %v", test.desc, err, test.wantError)
-		}
-	}
 }
 
-func TestReadAppHostingSchemaFromFile(t *testing.T) {
-	s, err := readAppHostingSchemaFromFile(appHostingCompleteYAMLPath)
-	if err != nil {
-		t.Errorf("unexpected error for TestReadAppHostingSchemaFromFile: %v", err)
-	}
-
-	expected := appHostingSchema{
-		BackendResources: backendResources{
-			CPU:          int32Ptr(3),
-			MemoryMiB:    int32Ptr(1024),
-			Concurrency:  int32Ptr(100),
-			MaxInstances: int32Ptr(4),
-		},
-	}
-
-	if diff := cmp.Diff(expected, s); diff != "" {
-		t.Errorf("Unexpected YAML for test 'TestReadAppHostingSchemaFromFile', (+got, -want): \n %v", diff)
-	}
-}
-
-func TestValidateAppHostingYAMLFields(t *testing.T) {
-	testCases := []struct {
-		desc             string
-		appHostingSchema appHostingSchema
-		wantError        bool
-	}{{
-		desc: "Throw no error when schema is valid",
-		appHostingSchema: appHostingSchema{
-			BackendResources: backendResources{
-				CPU:          int32Ptr(7),
-				MemoryMiB:    int32Ptr(1024),
-				Concurrency:  int32Ptr(500),
-				MaxInstances: int32Ptr(4),
-			},
-		},
-		wantError: false,
-	},
-		{
-			desc: "Throw an error when CPU value is invalid",
-			appHostingSchema: appHostingSchema{
-				BackendResources: backendResources{
-					CPU: int32Ptr(50),
-				},
-			},
-			wantError: true,
-		},
-		{
-			desc: "Throw an error when Memory value is invalid",
-			appHostingSchema: appHostingSchema{
-				BackendResources: backendResources{
-					MemoryMiB: int32Ptr(40000),
-				},
-			},
-			wantError: true,
-		},
-		{
-			desc: "Throw an error when concurrency value is invalid",
-			appHostingSchema: appHostingSchema{
-				BackendResources: backendResources{
-					Concurrency: int32Ptr(2000),
-				},
-			},
-			wantError: true,
-		},
-		{
-			desc: "Throw an error when maxInstances value is invalid",
-			appHostingSchema: appHostingSchema{
-				BackendResources: backendResources{
-					MaxInstances: int32Ptr(101),
-				},
-			},
-			wantError: true,
-		}}
-
-	for _, test := range testCases {
-		err := validateAppHostingYAMLFields(test.appHostingSchema)
-		if err != nil != test.wantError {
-			t.Errorf("validateAppHostingYAMLFields(%q) = %v, want %v", test.desc, err, test.wantError)
-		}
-	}
-}
-
-func TestToBuildSchemaBackendResources(t *testing.T) {
+func TestToBuildSchemaRunConfig(t *testing.T) {
 	tests := []struct {
 		name             string
-		appHostingSchema appHostingSchema
+		appHostingSchema apphostingschema.AppHostingSchema
 		expected         buildSchema
 	}{
 		{
 			name:             "Empty AppHostingSchema",
-			appHostingSchema: appHostingSchema{},
+			appHostingSchema: apphostingschema.AppHostingSchema{},
 			expected: buildSchema{
-				BackendResources: backendResources{
-					CPU:          &defaultCPU,
-					MemoryMiB:    &defaultMemory,
-					Concurrency:  &defaultConcurrency,
-					MaxInstances: &defaultMaxInstances,
-				},
-				RunConfig: &runConfig{
+				RunConfig: &apphostingschema.RunConfig{
 					CPU:          float32Ptr(defaultCPU),
 					MemoryMiB:    &defaultMemory,
 					Concurrency:  &defaultConcurrency,
@@ -293,22 +161,17 @@ func TestToBuildSchemaBackendResources(t *testing.T) {
 		},
 		{
 			name: "Full AppHostingSchema",
-			appHostingSchema: appHostingSchema{
-				BackendResources: backendResources{
-					CPU:          int32Ptr(1000),
+			appHostingSchema: apphostingschema.AppHostingSchema{
+				RunConfig: apphostingschema.RunConfig{
+					CPU:          float32Ptr(1000),
 					MemoryMiB:    int32Ptr(2048),
 					Concurrency:  int32Ptr(2),
 					MaxInstances: int32Ptr(5),
+					MinInstances: int32Ptr(0),
 				},
 			},
 			expected: buildSchema{
-				BackendResources: backendResources{
-					CPU:          int32Ptr(1000),
-					MemoryMiB:    int32Ptr(2048),
-					Concurrency:  int32Ptr(2),
-					MaxInstances: int32Ptr(5),
-				},
-				RunConfig: &runConfig{
+				RunConfig: &apphostingschema.RunConfig{
 					CPU:          float32Ptr(1000),
 					MemoryMiB:    int32Ptr(2048),
 					Concurrency:  int32Ptr(2),
@@ -319,20 +182,14 @@ func TestToBuildSchemaBackendResources(t *testing.T) {
 		},
 		{
 			name: "Partial AppHostingSchema",
-			appHostingSchema: appHostingSchema{
-				BackendResources: backendResources{
-					CPU:         int32Ptr(1000),
+			appHostingSchema: apphostingschema.AppHostingSchema{
+				RunConfig: apphostingschema.RunConfig{
+					CPU:         float32Ptr(1000),
 					Concurrency: int32Ptr(2),
 				},
 			},
 			expected: buildSchema{
-				BackendResources: backendResources{
-					CPU:          int32Ptr(1000),
-					MemoryMiB:    &defaultMemory,
-					Concurrency:  int32Ptr(2),
-					MaxInstances: &defaultMaxInstances,
-				},
-				RunConfig: &runConfig{
+				RunConfig: &apphostingschema.RunConfig{
 					CPU:          float32Ptr(1000),
 					MemoryMiB:    &defaultMemory,
 					Concurrency:  int32Ptr(2),
