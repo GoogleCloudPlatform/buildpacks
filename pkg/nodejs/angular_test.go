@@ -25,20 +25,32 @@ import (
 
 func TestInstallAngularBuildAdaptor(t *testing.T) {
 	testCases := []struct {
-		name          string
-		layerMetadata map[string]any
-		mocks         []*mockprocess.Mock
+		name           string
+		layerMetadata  map[string]any
+		angularVersion string
+		mocks          []*mockprocess.Mock
 	}{
 		{
-			name: "download adaptor succeeds",
+			name:           "download v17.2 adaptor succeeds",
+			angularVersion: "17.2.0",
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@latest`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
 			},
 			layerMetadata: map[string]any{},
 		},
 		{
-			name:          "download adaptor not needed since it is cached",
-			layerMetadata: map[string]any{"version": "latest"},
+			name:           "download adaptor not needed since it is cached",
+			angularVersion: "17.2.0",
+			layerMetadata:  map[string]any{"version": "17.2"},
+		},
+		{
+			name:           "download invalid adaptor falls back to latest",
+			angularVersion: "20.0.0",
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@20.0`, mockprocess.WithStderr("installed adapter failed")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@latest`, mockprocess.WithStderr("installed adapter")),
+			},
+			layerMetadata: map[string]any{},
 		},
 	}
 
@@ -50,7 +62,7 @@ func TestInstallAngularBuildAdaptor(t *testing.T) {
 				Path:     t.TempDir(),
 				Metadata: tc.layerMetadata,
 			}
-			err := InstallAngularBuildAdaptor(ctx, layer)
+			err := InstallAngularBuildAdaptor(ctx, layer, tc.angularVersion)
 			if err != nil {
 				t.Fatalf("InstallAngularBuildAdaptor() got error: %v", err)
 			}

@@ -28,6 +28,7 @@ import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
 	"github.com/Masterminds/semver"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -50,6 +51,7 @@ var semVer11 = semver.MustParse("11.0.0")
 var (
 	cachedPackageJSONs = map[string]*PackageJSON{}
 )
+var possibleLockfileFilenames = []string{"pnpm-lock.yaml", "yarn.lock", "npm-shrinkwrap.json", "package-lock.json"}
 
 type packageEnginesJSON struct {
 	Node string `json:"node"`
@@ -74,6 +76,20 @@ type PackageJSON struct {
 	Scripts         map[string]string  `json:"scripts"`
 	Dependencies    map[string]string  `json:"dependencies"`
 	DevDependencies map[string]string  `json:"devDependencies"`
+}
+
+// NpmLockfile represents the contents of a lock file generated with npm.
+type NpmLockfile struct {
+	Packages map[string]struct {
+		Version string `json:"version"`
+	} `json:"packages"`
+}
+
+// PnpmLockfile represents the contents of a lock file generated with pnpm.
+type PnpmLockfile struct {
+	Dependencies map[string]struct {
+		Version string `yaml:"version"`
+	} `yaml:"dependencies"`
 }
 
 // ReadPackageJSONIfExists returns deserialized package.json from the given dir. If the provided dir
@@ -220,4 +236,57 @@ func SkipSyntaxCheck(ctx *gcp.Context, file string, pjs *PackageJSON) (bool, err
 // legacy behavior in GCF.
 func IsNodeJS8Runtime() bool {
 	return os.Getenv(env.Runtime) == "nodejs8"
+}
+
+func versionFromPnpmLock(rawPackageLock []byte, pkg string) (string, error) {
+	var lockfile PnpmLockfile
+	if err := yaml.Unmarshal(rawPackageLock, &lockfile); err != nil {
+		return "", gcp.InternalErrorf("parsing pnpm lock file: %w", err)
+	}
+	return strings.Split(lockfile.Dependencies[pkg].Version, "(")[0], nil
+}
+
+func versionFromYarnLock(rawPackageLock []byte, pjs *PackageJSON, pkg string) (string, error) {
+	// yarn requires custom parsing since it has a custom format
+	// this logic works for both yarn classic and berry
+	for _, dependency := range strings.Split(string(rawPackageLock[:]), "\n\n") {
+		if strings.Contains(dependency, pkg+"@") && strings.Contains(dependency, pjs.Dependencies[pkg]) {
+			for _, line := range strings.Split(dependency, "\n") {
+				if strings.Contains(line, "version") {
+					return strings.Trim(strings.Fields(line)[1], `"`), nil
+				}
+			}
+		}
+	}
+	return "", gcp.InternalErrorf("parsing yarn file")
+}
+
+func versionFromNpmLock(rawPackageLock []byte, pkg string) (string, error) {
+	var lockfile NpmLockfile
+	if err := json.Unmarshal(rawPackageLock, &lockfile); err != nil {
+		return "", gcp.InternalErrorf("parsing lock file: %w", err)
+	}
+	return lockfile.Packages["node_modules/"+pkg].Version, nil
+}
+
+// Version tries to get the concrete package version used based on lock file,
+// returns error if no lock file is found or is misshapen
+func Version(ctx *gcp.Context, pjs *PackageJSON, pkg string) (string, error) {
+	for _, filename := range possibleLockfileFilenames {
+		filePath := filepath.Join(ctx.ApplicationRoot(), filename)
+		rawPackageLock, err := os.ReadFile(filePath)
+		if err != nil {
+			continue
+		}
+		switch filename {
+		case "pnpm-lock.yaml":
+			return versionFromPnpmLock(rawPackageLock, pkg)
+		case "yarn.lock":
+			return versionFromYarnLock(rawPackageLock, pjs, pkg)
+		case "npm-shrinkwrap.json", "package-lock.json":
+			return versionFromNpmLock(rawPackageLock, pkg)
+		}
+	}
+
+	return "", gcp.UserErrorf("No lock file found, please run npm install to generate one")
 }

@@ -16,10 +16,13 @@ package nodejs
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 )
@@ -317,6 +320,139 @@ func TestIsNodeJS8Runtime(t *testing.T) {
 			result := IsNodeJS8Runtime()
 			if result != tc.expectedResult {
 				t.Fatalf("IsNodeJS8Runtime(GOOGLE_RUNTIME=%v) = %v, want %v", tc.runtimeEnvVar, result, tc.expectedResult)
+			}
+		})
+	}
+}
+
+func TestVersion(t *testing.T) {
+	testCases := []struct {
+		name            string
+		pjs             PackageJSON
+		files           map[string]string
+		expectedVersion string
+		mocks           []*mockprocess.Mock
+		expectedError   bool
+		pkg             string
+	}{
+		{
+			name: "Errors out when no package-lock is included nextjs",
+			pkg:  "next",
+			pjs: PackageJSON{
+				Dependencies: map[string]string{
+					"next": "^13.1.0",
+				},
+			},
+			files:         map[string]string{},
+			expectedError: true,
+		},
+		{
+			name: "Parses package-lock version nextjs",
+			pkg:  "next",
+			pjs: PackageJSON{
+				Dependencies: map[string]string{
+					"next": "^13.1.0",
+				},
+			},
+			files: map[string]string{
+				"package-lock.json": `{
+					"packages": {
+						"node_modules/next": {
+							"version": "13.5.6"
+						}
+					}
+				}`,
+			},
+			expectedVersion: "13.5.6",
+		},
+		{
+			name: "Parses package-lock version angular",
+			pkg:  "angular",
+			pjs: PackageJSON{
+				Dependencies: map[string]string{
+					"angular": "^17.1.0",
+				},
+			},
+			files: map[string]string{
+				"package-lock.json": `{
+					"packages": {
+						"node_modules/angular": {
+							"version": "17.1.2"
+						}
+					}
+				}`,
+			},
+			expectedVersion: "17.1.2",
+		},
+		{
+			name: "Parses yarn.lock berry version nextjs",
+			pkg:  "next",
+			pjs: PackageJSON{
+				Dependencies: map[string]string{
+					"next": "^13.1.0",
+				},
+			},
+			files: map[string]string{
+				"yarn.lock": `
+"next@npm:^13.1.0":
+	version: 13.5.6`,
+			},
+			expectedVersion: "13.5.6",
+		},
+		{
+			name: "Parses yarn.lock classic version nextjs",
+			pkg:  "next",
+			pjs: PackageJSON{
+				Dependencies: map[string]string{
+					"next": "^13.1.0",
+				},
+			},
+			files: map[string]string{
+				"yarn.lock": `
+next@^13.1.0:
+	version: "13.5.6"
+				`,
+			},
+			expectedVersion: "13.5.6",
+		},
+		{
+			name: "Parses pnpm-lock version nextjs",
+			pkg:  "next",
+			pjs: PackageJSON{
+				Dependencies: map[string]string{
+					"next": "^13.1.0",
+				},
+			},
+			files: map[string]string{
+				"pnpm-lock.yaml": `
+dependencies:
+  next:
+    version: 13.5.6(@babel/core@7.23.9)
+
+`,
+			},
+			expectedVersion: "13.5.6",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpDir := os.TempDir()
+
+			ctx := gcp.NewContext(append(getContextOpts(t, tc.mocks), gcp.WithApplicationRoot(tmpDir))...)
+
+			for file, content := range tc.files {
+				fn := filepath.Join(ctx.ApplicationRoot(), file)
+				ioutil.WriteFile(fn, []byte(content), 0644)
+			}
+
+			version, err := Version(ctx, &tc.pjs, tc.pkg)
+			if version != tc.expectedVersion {
+				t.Fatalf("Version(%v, %v) output: %s doesn't match expected output %s", ctx, tc.pjs, version, tc.expectedVersion)
+			}
+			if gotErr := (err != nil); gotErr != tc.expectedError {
+				t.Fatalf("Version(_, %v) returned error: %v, wanted: %v, errMsg: %v.",
+					tc.pjs, gotErr, tc.expectedError, err)
 			}
 		})
 	}

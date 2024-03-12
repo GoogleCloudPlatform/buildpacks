@@ -17,8 +17,6 @@
 package main
 
 import (
-	"encoding/json"
-
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	// "google3/third_party/golang/hashicorp/version/version"
 	"github.com/Masterminds/semver"
@@ -28,7 +26,7 @@ import (
 
 var (
 	// minAngularVersion is the lowest version of angular supported by the firebase angular buildpack.
-	minAngularVersion = semver.MustParse("17.0.0")
+	minAngularVersion = semver.MustParse("17.2.0")
 )
 
 func main() {
@@ -54,7 +52,10 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
-	version := version(ctx, pjs)
+	version, err := nodejs.Version(ctx, pjs, "@angular/core")
+	if err != nil {
+		return err
+	}
 
 	err = validateVersion(ctx, version)
 	if err != nil {
@@ -66,16 +67,15 @@ func buildFn(ctx *gcp.Context) error {
 		ctx.Warnf("*** You are using a custom build command (your build command is NOT 'ng build'), we will accept it as is but will error if output structure is not as expected ***")
 	}
 
-	njsl, err := ctx.Layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
+	al, err := ctx.Layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
 	if err != nil {
 		return err
 	}
-	err = nodejs.InstallAngularBuildAdaptor(ctx, njsl)
-	if err != nil {
+	if err = nodejs.InstallAngularBuildAdaptor(ctx, al, version); err != nil {
 		return err
 	}
 	// This env var indicates to the package manager buildpack that a different command needs to be run
-	nodejs.OverrideAngularBuildScript(njsl)
+	nodejs.OverrideAngularBuildScript(al)
 
 	return nil
 }
@@ -83,9 +83,7 @@ func buildFn(ctx *gcp.Context) error {
 func validateVersion(ctx *gcp.Context, depVersion string) error {
 	version, err := semver.NewVersion(depVersion)
 	if err != nil {
-		ctx.Warnf("Unrecognized version of angular: %s", depVersion)
-		ctx.Warnf("Consider updating your angular dependencies to >=%s", minAngularVersion.String())
-		return nil
+		return gcp.InternalErrorf("parsing angular version: %v, %s", err, depVersion)
 	}
 	if version.LessThan(minAngularVersion) {
 		ctx.Warnf("Unsupported version of angular: %s", depVersion)
@@ -93,29 +91,4 @@ func validateVersion(ctx *gcp.Context, depVersion string) error {
 		return gcp.UserErrorf("unsupported version of angular %s", depVersion)
 	}
 	return nil
-}
-
-type angularVersionJSON struct {
-	Version      string `json:"version"`
-	Name         string `json:"name"`
-	Dependencies struct {
-		Angular struct {
-			Version    string `json:"version"`
-			Resolved   string `json:"resolved"`
-			Overridden bool   `json:"overridden"`
-		} `json:"angular"`
-	} `json:"dependencies"`
-}
-
-// tries to get the concrete angular version used, otherwise falls back on package.json
-func version(ctx *gcp.Context, pjs *nodejs.PackageJSON) string {
-	result, err := ctx.Exec([]string{"npm", "list", "@angular/cli", "--json"})
-	if err != nil {
-		return pjs.Dependencies["@angular/cli"]
-	}
-	var angularVersionnpm angularVersionJSON
-	if err := json.Unmarshal([]byte(result.Stdout), &angularVersionnpm); err != nil {
-		return pjs.Dependencies["@angular/cli"]
-	}
-	return angularVersionnpm.Dependencies.Angular.Version
 }

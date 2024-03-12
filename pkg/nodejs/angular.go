@@ -16,10 +16,12 @@ package nodejs
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
+	"github.com/Masterminds/semver"
 )
 
 var (
@@ -28,47 +30,54 @@ var (
 )
 
 // InstallAngularBuildAdaptor installs the angular build adaptor in the given layer if it is not already cached.
-func InstallAngularBuildAdaptor(ctx *gcp.Context, njsl *libcnb.Layer) error {
-	layerName := njsl.Name
-	version, err := detectAngularAdaptorVersion()
+func InstallAngularBuildAdaptor(ctx *gcp.Context, al *libcnb.Layer, version string) error {
+	layerName := al.Name
+	version, err := AngularAdaptorVersion(version)
 	if err != nil {
 		return err
 	}
 
 	// Check the metadata in the cache layer to determine if we need to proceed.
-	metaVersion := ctx.GetMetadata(njsl, angularVersionKey)
+	metaVersion := ctx.GetMetadata(al, angularVersionKey)
 	if version == metaVersion {
 		ctx.CacheHit(layerName)
 		ctx.Logf("angular adaptor cache hit: %q, %q, skipping installation.", version, metaVersion)
 	} else {
 		ctx.CacheMiss(layerName)
-		if err := ctx.ClearLayer(njsl); err != nil {
+		if err := ctx.ClearLayer(al); err != nil {
 			return fmt.Errorf("clearing layer %q: %w", layerName, err)
 		}
 		// Download and install angular adaptor in layer.
 		ctx.Logf("Installing angular adaptor %s", version)
-		if err := downloadAngularAdaptor(ctx, njsl.Path); err != nil {
+		if err := downloadAngularAdaptor(ctx, al.Path, version); err != nil {
 			return gcp.InternalErrorf("downloading angular adapter: %w", err)
 		}
 	}
 
 	// Store layer flags and metadata.
-	ctx.SetMetadata(njsl, angularVersionKey, version)
+	ctx.SetMetadata(al, angularVersionKey, version)
 	return nil
 }
 
-// detectAngularAdaptorVersion determines the version of Angular that is needed by an Angular project
-func detectAngularAdaptorVersion() (string, error) {
-	// TODO(b/323280044) for now this will always be latest, later we will need to support different versions
-	return "latest", nil
+// AngularAdaptorVersion determines the version of Angular that is needed by an Angular project
+func AngularAdaptorVersion(version string) (string, error) {
+	parsedVersion, err := semver.StrictNewVersion(version)
+	if err != nil {
+		return "", gcp.InternalErrorf("parsing angular version: %w", err)
+	}
+	// match major + minor versions with the Angular version
+	adapterVersion := strconv.FormatUint(parsedVersion.Major(), 10) + "." + strconv.FormatUint(parsedVersion.Minor(), 10)
+	return adapterVersion, nil
 }
 
 // downloadAngularAdaptor downloads the Angular build adaptor into the provided directory.
-func downloadAngularAdaptor(ctx *gcp.Context, dirPath string) error {
+func downloadAngularAdaptor(ctx *gcp.Context, dirPath, version string) error {
 	// TODO(b/323280044) account for different versions
-	_, err := ctx.Exec([]string{"npm", "install", "--prefix", dirPath, "@apphosting/adapter-angular@latest"})
-	if err != nil {
-		return gcp.InternalErrorf("installing angular adaptor: %w", err)
+	if _, err := ctx.Exec([]string{"npm", "install", "--prefix", dirPath, "@apphosting/adapter-angular@" + version}); err != nil {
+		ctx.Logf("Failed to install angular adaptor version: %s. Falling back to latest", version)
+		if _, err := ctx.Exec([]string{"npm", "install", "--prefix", dirPath, "@apphosting/adapter-angular@latest"}); err != nil {
+			return gcp.InternalErrorf("installing angular adaptor: %w", err)
+		}
 	}
 	return nil
 }

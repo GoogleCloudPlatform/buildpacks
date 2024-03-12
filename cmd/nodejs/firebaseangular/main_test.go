@@ -68,15 +68,21 @@ func TestBuild(t *testing.T) {
 					"build": "ng build"
 				},
 				"dependencies": {
-					"angular": "17.0.0"
+					"@angular/core": "17.2.0"
+				}
+			}`, "package-lock.json": `{
+				"packages": {
+					"node_modules/@angular/core": {
+						"version": "17.2.0"
+					}
 				}
 			}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@latest`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
 			},
 			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-angular@latest",
+				"npm install --prefix npm_modules @apphosting/adapter-angular@17.2",
 			},
 		},
 		{
@@ -84,7 +90,13 @@ func TestBuild(t *testing.T) {
 			files: map[string]string{
 				"package.json": `{
 					"dependencies": {
-						"angular": "17.0.0"
+						"@angular/core": "17.2.0"
+					}
+				}`, "package-lock.json": `{
+					"packages": {
+						"node_modules/@angular/core": {
+							"version": "17.2.0"
+						}
 					}
 				}`,
 			},
@@ -100,38 +112,152 @@ func TestBuild(t *testing.T) {
 						"build": "apphosting-adapter-angular-build"
 					},
 					"dependencies": {
-						"angular": "17.0.0"
+						"@angular/core": "17.2.0"
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+						"node_modules/@angular/core": {
+							"version": "17.2.0"
+						}
 					}
 				}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@latest`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
 			},
 		},
 		{
-			name: "error out if the version is below 17.0.0",
+			name: "error out if the version is below 17.2.0",
 			files: map[string]string{
 				"package.json": `{
 				"dependencies": {
-					"angular": "16.0.0"
+					"@angular/core": "17.0.0"
+				}
+			}`,
+				"package-lock.json": `{
+				"packages": {
+					"node_modules/@angular/core": {
+						"version": "17.0.0"
+					}
 				}
 			}`,
 			},
 			wantExitCode: 1,
 		},
 		{
-			name: "should work if the version is exactly 17.0.0",
+			name: "should work if the version is exactly 17.2.0",
 			files: map[string]string{
 				"package.json": `{
 				"dependencies": {
-					"angular": "17.0.0"
+					"@angular/core": "17.2.0"
+				}
+			}`,
+				"package-lock.json": `{
+				"packages": {
+					"node_modules/@angular/core": {
+						"version": "17.2.0"
+					}
 				}
 			}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@latest`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
 			},
 			wantExitCode: 0,
+		},
+		{
+			name: "supports versions with constraints",
+			files: map[string]string{
+				"package.json": `{
+					"scripts": {
+						"build": "apphosting-adapter-angular-build"
+					},
+					"dependencies": {
+						"@angular/core": "^17.0.0"
+					}
+				}`, "package-lock.json": `{
+					"packages": {
+						"node_modules/@angular/core": {
+							"version": "17.2.1"
+						}
+					}
+				}`,
+			},
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
+			},
+		},
+		{
+			name: "read supported concrete version from package-lock.json",
+			files: map[string]string{
+				"package.json": `{
+					"dependencies": {
+						"@angular/core": "15.0.0 - 17.2.0"
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+						"node_modules/@angular/core": {
+							"version": "17.2.0"
+						}
+					}
+				}`,
+			},
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
+			},
+		},
+		{
+			name: "read supported concrete version from pnpm-lock.yaml",
+			files: map[string]string{
+				"package.json": `{
+					"dependencies": {
+						"@angular/core": "15.0.0 - 17.2.0"
+					}
+				}`,
+				"pnpm-lock.yaml": `
+dependencies:
+  '@angular/core':
+    version: 17.2.3(rxjs@7.8.1)(zone.js@0.14.4)
+`,
+			},
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
+			},
+		},
+		{
+			name: "read supported concrete version from yaml.lock berry",
+			files: map[string]string{
+				"package.json": `{
+					"dependencies": {
+						"@angular/core": "^17.1.0"
+					}
+				}`,
+				"yarn.lock": `
+	"@angular/core@npm:^17.1.0":
+	version: 17.2.0`,
+			},
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
+			},
+		},
+		{
+			name: "read supported concrete version from yaml.lock classic",
+			files: map[string]string{
+				"package.json": `{
+					"dependencies": {
+						"@angular/core": "^17.1.0"
+					}
+				}`,
+				"yarn.lock": `
+				@angular/core@^17.1.0:
+	version: "17.2.0"
+	`,
+			},
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
+			},
 		},
 	}
 

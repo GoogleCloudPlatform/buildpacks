@@ -62,7 +62,7 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	version, err := nodejs.Version(ctx, pjs)
+	version, err := nodejs.Version(ctx, pjs, "next")
 	if err != nil {
 		return err
 	}
