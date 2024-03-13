@@ -93,6 +93,11 @@ func buildFn(ctx *gcp.Context) error {
 	}
 	overrides.NginxServesStaticFiles = nginxServesStaticFiles
 
+	nginxDocumentRoot := os.Getenv(php.NginxDocumentRoot)
+	if (nginxDocumentRoot != "") {
+		overrides.DocumentRoot = nginxDocumentRoot
+	}
+
 	fpmConfFile, err := writeFpmConfig(ctx, l.Path, overrides)
 	if err != nil {
 		return err
