@@ -37,8 +37,9 @@ type outputBundleSchema struct {
 // buildSchema is the internal Publisher representation of the final build settings that will
 // ultimately be converted into an updateBuildRequest.
 type buildSchema struct {
-	RunConfig *apphostingschema.RunConfig `yaml:"runConfig,omitempty"`
-	Runtime   *runtime                    `yaml:"runtime,omitempty"`
+	RunConfig *apphostingschema.RunConfig            `yaml:"runConfig,omitempty"`
+	Runtime   *runtime                               `yaml:"runtime,omitempty"`
+	Env       []apphostingschema.EnvironmentVariable `yaml:"env,omitempty"`
 }
 
 // TODO (b/328444933): Migrate this to the new EnvironmentVariable in apphostingschema.go
@@ -105,7 +106,7 @@ func writeToFile(buildSchema buildSchema, outputFilePath string) error {
 	return nil
 }
 
-func toBuildSchema(appHostingSchema apphostingschema.AppHostingSchema, bundleSchema outputBundleSchema, appHostingEnvVars map[string]string) buildSchema {
+func toBuildSchema(schema apphostingschema.AppHostingSchema, bundleSchema outputBundleSchema, appHostingEnvVars map[string]string) buildSchema {
 	dCPU := float32(defaultCPU)
 	buildSchema := buildSchema{
 		RunConfig: &apphostingschema.RunConfig{
@@ -117,7 +118,7 @@ func toBuildSchema(appHostingSchema apphostingschema.AppHostingSchema, bundleSch
 		},
 	}
 	// Copy fields from apphosting.yaml.
-	b := appHostingSchema.RunConfig
+	b := schema.RunConfig
 	if b.CPU != nil {
 		cpu := float32(*b.CPU)
 		buildSchema.RunConfig.CPU = &cpu
@@ -138,6 +139,16 @@ func toBuildSchema(appHostingSchema apphostingschema.AppHostingSchema, bundleSch
 	// Copy fields from apphosting.env.
 	if len(appHostingEnvVars) > 0 {
 		buildSchema.Runtime = &runtime{EnvVariables: appHostingEnvVars}
+		envVars := []apphostingschema.EnvironmentVariable{}
+		for k, v := range appHostingEnvVars {
+			ev := apphostingschema.EnvironmentVariable{
+				Variable:     k,
+				Value:        v,
+				Availability: []string{"RUNTIME"},
+			}
+			envVars = append(envVars, ev)
+		}
+		buildSchema.Env = envVars
 	}
 	return buildSchema
 }

@@ -22,6 +22,8 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/google/go-cmp/cmp"
+	"google3/third_party/golang/cmp/cmpopts/cmpopts"
+	"google3/third_party/golang/protobuf/v2/proto/proto"
 	"gopkg.in/yaml.v2"
 
 	apphostingschema "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
@@ -32,18 +34,6 @@ var (
 	envPath                    string = testdata.MustGetPath("testdata/env")
 	bundleYAMLPath             string = testdata.MustGetPath("testdata/bundle.yaml")
 )
-
-func int32Ptr(i int) *int32 {
-	v := new(int32)
-	*v = int32(i)
-	return v
-}
-
-func float32Ptr(i int32) *float32 {
-	v := new(float32)
-	*v = float32(i)
-	return v
-}
 
 func toString(buildSchema buildSchema) string {
 	data, _ := json.MarshalIndent(buildSchema, "", "  ")
@@ -64,11 +54,28 @@ func TestPublish(t *testing.T) {
 		envFilePath:            envPath,
 		wantBuildSchema: buildSchema{
 			RunConfig: &apphostingschema.RunConfig{
-				CPU:          float32Ptr(3),
-				MemoryMiB:    int32Ptr(1024),
-				Concurrency:  int32Ptr(100),
-				MaxInstances: int32Ptr(4),
-				MinInstances: int32Ptr(0),
+				CPU:          proto.Float32(3),
+				MemoryMiB:    proto.Int32(1024),
+				Concurrency:  proto.Int32(100),
+				MaxInstances: proto.Int32(4),
+				MinInstances: proto.Int32(0),
+			},
+			Env: []apphostingschema.EnvironmentVariable{
+				apphostingschema.EnvironmentVariable{
+					Variable:     "API_URL",
+					Value:        "api.service.com",
+					Availability: []string{"RUNTIME"},
+				},
+				apphostingschema.EnvironmentVariable{
+					Variable:     "ENVIRONMENT",
+					Value:        "staging",
+					Availability: []string{"RUNTIME"},
+				},
+				apphostingschema.EnvironmentVariable{
+					Variable:     "MULTILINE_ENV_VAR",
+					Value:        "line 1\nline 2",
+					Availability: []string{"RUNTIME"},
+				},
 			},
 			Runtime: &runtime{
 				EnvVariables: map[string]string{
@@ -84,11 +91,28 @@ func TestPublish(t *testing.T) {
 			envFilePath:            envPath,
 			wantBuildSchema: buildSchema{
 				RunConfig: &apphostingschema.RunConfig{
-					CPU:          float32Ptr(1),
-					MemoryMiB:    int32Ptr(512),
-					Concurrency:  int32Ptr(80),
-					MaxInstances: int32Ptr(100),
-					MinInstances: int32Ptr(0),
+					CPU:          proto.Float32(1),
+					MemoryMiB:    proto.Int32(512),
+					Concurrency:  proto.Int32(80),
+					MaxInstances: proto.Int32(100),
+					MinInstances: proto.Int32(0),
+				},
+				Env: []apphostingschema.EnvironmentVariable{
+					apphostingschema.EnvironmentVariable{
+						Variable:     "ENVIRONMENT",
+						Value:        "staging",
+						Availability: []string{"RUNTIME"},
+					},
+					apphostingschema.EnvironmentVariable{
+						Variable:     "MULTILINE_ENV_VAR",
+						Value:        "line 1\nline 2",
+						Availability: []string{"RUNTIME"},
+					},
+					apphostingschema.EnvironmentVariable{
+						Variable:     "API_URL",
+						Value:        "api.service.com",
+						Availability: []string{"RUNTIME"},
+					},
 				},
 				Runtime: &runtime{
 					EnvVariables: map[string]string{
@@ -104,11 +128,11 @@ func TestPublish(t *testing.T) {
 			envFilePath:            "nonexistent",
 			wantBuildSchema: buildSchema{
 				RunConfig: &apphostingschema.RunConfig{
-					CPU:          float32Ptr(3),
-					MemoryMiB:    int32Ptr(1024),
-					Concurrency:  int32Ptr(100),
-					MaxInstances: int32Ptr(4),
-					MinInstances: int32Ptr(0),
+					CPU:          proto.Float32(3),
+					MemoryMiB:    proto.Int32(1024),
+					Concurrency:  proto.Int32(100),
+					MaxInstances: proto.Int32(4),
+					MinInstances: proto.Int32(0),
 				},
 			}},
 	}
@@ -134,7 +158,8 @@ func TestPublish(t *testing.T) {
 			t.Errorf("error unmarshalling %q as YAML: %v", actualBuildSchemaData, err)
 		}
 
-		if diff := cmp.Diff(test.wantBuildSchema, actualBuildSchema); diff != "" {
+		sort := cmpopts.SortSlices(func(a, b apphostingschema.EnvironmentVariable) bool { return a.Variable < b.Variable })
+		if diff := cmp.Diff(test.wantBuildSchema, actualBuildSchema, sort); diff != "" {
 			t.Errorf("Unexpected YAML for test %v (+got, -want):\n%v", test.desc, diff)
 		}
 	}
@@ -151,11 +176,11 @@ func TestToBuildSchemaRunConfig(t *testing.T) {
 			appHostingSchema: apphostingschema.AppHostingSchema{},
 			expected: buildSchema{
 				RunConfig: &apphostingschema.RunConfig{
-					CPU:          float32Ptr(defaultCPU),
+					CPU:          proto.Float32(float32(defaultCPU)),
 					MemoryMiB:    &defaultMemory,
 					Concurrency:  &defaultConcurrency,
 					MaxInstances: &defaultMaxInstances,
-					MinInstances: int32Ptr(0),
+					MinInstances: proto.Int32(0),
 				},
 			},
 		},
@@ -163,20 +188,20 @@ func TestToBuildSchemaRunConfig(t *testing.T) {
 			name: "Full AppHostingSchema",
 			appHostingSchema: apphostingschema.AppHostingSchema{
 				RunConfig: apphostingschema.RunConfig{
-					CPU:          float32Ptr(1000),
-					MemoryMiB:    int32Ptr(2048),
-					Concurrency:  int32Ptr(2),
-					MaxInstances: int32Ptr(5),
-					MinInstances: int32Ptr(0),
+					CPU:          proto.Float32(1000),
+					MemoryMiB:    proto.Int32(2048),
+					Concurrency:  proto.Int32(2),
+					MaxInstances: proto.Int32(5),
+					MinInstances: proto.Int32(0),
 				},
 			},
 			expected: buildSchema{
 				RunConfig: &apphostingschema.RunConfig{
-					CPU:          float32Ptr(1000),
-					MemoryMiB:    int32Ptr(2048),
-					Concurrency:  int32Ptr(2),
-					MaxInstances: int32Ptr(5),
-					MinInstances: int32Ptr(0),
+					CPU:          proto.Float32(1000),
+					MemoryMiB:    proto.Int32(2048),
+					Concurrency:  proto.Int32(2),
+					MaxInstances: proto.Int32(5),
+					MinInstances: proto.Int32(0),
 				},
 			},
 		},
@@ -184,17 +209,17 @@ func TestToBuildSchemaRunConfig(t *testing.T) {
 			name: "Partial AppHostingSchema",
 			appHostingSchema: apphostingschema.AppHostingSchema{
 				RunConfig: apphostingschema.RunConfig{
-					CPU:         float32Ptr(1000),
-					Concurrency: int32Ptr(2),
+					CPU:         proto.Float32(1000),
+					Concurrency: proto.Int32(2),
 				},
 			},
 			expected: buildSchema{
 				RunConfig: &apphostingschema.RunConfig{
-					CPU:          float32Ptr(1000),
+					CPU:          proto.Float32(1000),
 					MemoryMiB:    &defaultMemory,
-					Concurrency:  int32Ptr(2),
+					Concurrency:  proto.Int32(2),
 					MaxInstances: &defaultMaxInstances,
-					MinInstances: int32Ptr(0),
+					MinInstances: proto.Int32(0),
 				},
 			},
 		},
