@@ -99,10 +99,27 @@ type composerScriptsJSON struct {
 	GCPBuild string `json:"gcp-build"`
 }
 
+type composerExtraJSON struct {
+	GoogleBuildpacks composerExtraGoogleBuildpacksJSON `json:"google-buildpacks,omitempty"`
+}
+
+type composerExtraGoogleBuildpacksJSON struct {
+	DocumentRoot    string                                  `json:"document_root,omitempty"`
+	FrontController string                                  `json:"front_controller,omitempty"`
+	PHPFPM          composerExtraGoogleBuildpacksPHPFPMJSON `json:"php-fpm,omitempty"`
+	ServeStatic     bool                                    `json:"serve_static,omitempty"`
+}
+
+type composerExtraGoogleBuildpacksPHPFPMJSON struct {
+	EnableDynamicWorkers bool `json:"enable_dynamic_workers,omitempty"`
+	Workers              int  `json:"workers,omitempty"`
+}
+
 // ComposerJSON represents the contents of a composer.json file.
 type ComposerJSON struct {
 	Require map[string]string   `json:"require"`
 	Scripts composerScriptsJSON `json:"scripts"`
+	Extra   composerExtraJSON   `json:"extra,omitempty"`
 }
 
 // SupportsAppEngineApis is a function that returns true if App Engine API access is enabled

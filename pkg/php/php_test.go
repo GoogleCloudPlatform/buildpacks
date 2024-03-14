@@ -67,6 +67,74 @@ func TestReadComposerJSON(t *testing.T) {
 	}
 }
 
+func TestReadComposerOverridesJSON(t *testing.T) {
+	d, err := ioutil.TempDir("/tmp", "test-read-composer-overrides-")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(d)
+
+	contents := strings.TrimSpace(`
+{
+    "require": {
+        "php": "^8.3",
+        "myorg/mypackage": "^0.7"
+    },
+    "scripts": {
+        "gcp-build": "my-script"
+    },
+    "extra": {
+        "laravel": {
+            "dont-discover": [
+                "myorg/mypackage"
+            ]
+        },
+        "google-buildpacks": {
+            "document_root": "public",
+            "front_controller": "index.php",
+            "php-fpm": {
+                "enable_dynamic_workers": true,
+                "workers": 4
+            },
+            "serve_static": true
+        }
+    }
+}
+`)
+
+	if err := ioutil.WriteFile(filepath.Join(d, composerJSON), []byte(contents), 0644); err != nil {
+		t.Fatalf("Failed to write composer.json: %v", err)
+	}
+
+	want := ComposerJSON{
+		Require: map[string]string{
+			"php":             "^8.3",
+			"myorg/mypackage": "^0.7",
+		},
+		Scripts: composerScriptsJSON{
+			GCPBuild: "my-script",
+		},
+		Extra: composerExtraJSON{
+			GoogleBuildpacks: composerExtraGoogleBuildpacksJSON{
+				DocumentRoot:    "public",
+				FrontController: "index.php",
+				PHPFPM: composerExtraGoogleBuildpacksPHPFPMJSON{
+					EnableDynamicWorkers: true,
+					Workers:              4,
+				},
+				ServeStatic: true,
+			},
+		},
+	}
+	got, err := ReadComposerJSON(d)
+	if err != nil {
+		t.Errorf("ReadComposerJSON got error: %v", err)
+	}
+	if !reflect.DeepEqual(*got, want) {
+		t.Errorf("ReadComposerJSON\ngot %#v\nwant %#v", *got, want)
+	}
+}
+
 func TestExtractVersion(t *testing.T) {
 
 	testCases := []struct {

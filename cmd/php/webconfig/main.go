@@ -48,10 +48,9 @@ const (
 	nginxLog               = "nginx.log"
 
 	// php-fpm
-	defaultDynamicWorkers = false
-	defaultFPMBinary      = "php-fpm"
-	defaultFPMWorkers     = 2
-	phpFpmPid             = "php-fpm.pid"
+	defaultFPMBinary  = "php-fpm"
+	defaultFPMWorkers = 2
+	phpFpmPid         = "php-fpm.pid"
 )
 
 var (
@@ -92,6 +91,15 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 	overrides.NginxServesStaticFiles = nginxServesStaticFiles
+
+	if !env.IsGAE() && !env.IsGCF() {
+		composerConfig, err := php.ReadComposerJSON(ctx.ApplicationRoot())
+		if err != nil {
+			return err
+		}
+
+		overrides.PatchWithComposerConfig(ctx, composerConfig)
+	}
 
 	fpmConfFile, err := writeFpmConfig(ctx, l.Path, overrides)
 	if err != nil {
@@ -193,11 +201,16 @@ func fpmConfig(layer string, addNoDecorateWorkers bool, overrides webconfig.Over
 		return nginx.FPMConfig{}, fmt.Errorf("getting current user: %w", err)
 	}
 
+	workers := defaultFPMWorkers
+	if overrides.PHPFPMWorkers > 0 {
+		workers = overrides.PHPFPMWorkers
+	}
+
 	fpm := nginx.FPMConfig{
 		PidPath:              filepath.Join(layer, phpFpmPid),
-		NumWorkers:           defaultFPMWorkers,
+		NumWorkers:           workers,
 		ListenAddress:        filepath.Join(layer, appSocket),
-		DynamicWorkers:       defaultDynamicWorkers,
+		DynamicWorkers:       overrides.PHPFPMDynamicWorkers,
 		Username:             user.Username,
 		AddNoDecorateWorkers: addNoDecorateWorkers,
 	}

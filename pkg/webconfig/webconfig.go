@@ -44,6 +44,10 @@ type OverrideProperties struct {
 	NginxHTTPInclude bool
 	// NginxHTTPIncludeFileName name of the partial nginx config to be included in the http section.
 	NginxHTTPIncludeFileName string
+	// PHPFPMDynamicWorkers boolean to toggle dynamic workers in the php-fpm config file.
+	PHPFPMDynamicWorkers bool
+	// PHPFPMWorkers integer to specify the worker thread count in the php-fpm config file.
+	PHPFPMWorkers int
 	// PHPFPMOverride boolean to check if user-provided php-fpm config exists.
 	PHPFPMOverride bool
 	// PHPFPMOverrideFileName name of the user-provided php-fpm config file.
@@ -54,6 +58,23 @@ type OverrideProperties struct {
 	PHPIniOverrideFileName string
 	// NginxServesStaticFiles whether Nginx also serves static files for matching URIs.
 	NginxServesStaticFiles bool
+}
+
+func (op *OverrideProperties) PatchWithComposerConfig(ctx *gcp.Context, composerConfig *php.ComposerJSON) {
+	if len(composerConfig.Extra.GoogleBuildpacks.DocumentRoot) > 0 {
+		op.DocumentRoot = composerConfig.Extra.GoogleBuildpacks.DocumentRoot
+	}
+
+	if len(composerConfig.Extra.GoogleBuildpacks.FrontController) > 0 {
+		op.FrontController = composerConfig.Extra.GoogleBuildpacks.FrontController
+	}
+
+	op.PHPFPMDynamicWorkers = composerConfig.Extra.GoogleBuildpacks.PHPFPM.EnableDynamicWorkers
+	op.PHPFPMWorkers = composerConfig.Extra.GoogleBuildpacks.PHPFPM.Workers
+
+	if composerConfig.Extra.GoogleBuildpacks.ServeStatic {
+		op.NginxServesStaticFiles = composerConfig.Extra.GoogleBuildpacks.ServeStatic
+	}
 }
 
 // OverriddenProperties returns whether the property has been overridden and the path to the file.
