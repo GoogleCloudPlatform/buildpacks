@@ -37,7 +37,7 @@ func TestReadAndValidateAppHostingSchemaFromFile(t *testing.T) {
 					MaxInstances: int32Ptr(4),
 				},
 				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"BUILD", "BACKEND"}},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"BUILD", "RUNTIME"}},
 					EnvironmentVariable{Variable: "API_KEY", Secret: "myApiKeySecret", Availability: []string{"BUILD"}},
 					EnvironmentVariable{Variable: "PINNED_API_KEY", Secret: "myApiKeySecret@5"}},
 			},

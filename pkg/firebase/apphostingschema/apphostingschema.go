@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	validAvailabilityValues = map[string]bool{"BUILD": true, "BACKEND": true}
+	validAvailabilityValues = map[string]bool{"BUILD": true, "RUNTIME": true}
 )
 
 // AppHostingSchema is the struct representation of apphosting.yaml.

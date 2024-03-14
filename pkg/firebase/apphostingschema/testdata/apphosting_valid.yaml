@@ -11,7 +11,7 @@ env:
     value: mybucket.appspot.com
     availability:
       - BUILD
-      - BACKEND
+      - RUNTIME
 
   - variable: API_KEY
     secret: myApiKeySecret
