@@ -25,15 +25,19 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name: "simple Go application",
-			// With Go 1.22+ go get is no longer supported outside of a module in the legacy GOPATH mode (that is, with
-			// GO111MODULE=off). Other build commands, such as go build and go test, will continue to work
-			// indefinitely for legacy GOPATH programs.
-			VersionInclusionConstraint: "< 1.22",
-			App:                        "simple",
+			Name:            "simple Go application",
+			App:             "simple",
+			MustUse:         []string{goRuntime, goBuild, goPath},
+			MustNotUse:      []string{goClearSource},
+			FilesMustExist:  []string{"/layers/google.go.build/bin/main", "/workspace/main.go"},
+			EnableCacheTest: true,
+		},
+		{
+			VersionInclusionConstraint: ">= 1.17",
+			Name:                       "simple go app, no gomod with vendored deps",
+			App:                        "simple_no_gomod_vendor",
 			MustUse:                    []string{goRuntime, goBuild, goPath},
 			MustNotUse:                 []string{goClearSource},
-			FilesMustExist:             []string{"/layers/google.go.build/bin/main", "/workspace/main.go"},
 			EnableCacheTest:            true,
 		},
 		{
@@ -142,6 +146,12 @@ func TestFailures(t *testing.T) {
 			App:                        "simple",
 			Env:                        []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
 			MustMatch:                  "invalid Go version specified:",
+		},
+		{
+			Name:                       "no gomod; no vendor application",
+			VersionInclusionConstraint: ">= 1.22",
+			App:                        "simple_no_gomod_no_vendor_with_deps",
+			SkipBuilderOutputMatch:     true,
 		},
 	}
 

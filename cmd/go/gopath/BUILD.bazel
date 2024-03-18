@@ -25,7 +25,11 @@ go_binary(
         "-s",
         "-w",
     ],
-    deps = ["//pkg/gcpbuildpack"],
+    deps = [
+        "//pkg/fileutil",
+        "//pkg/gcpbuildpack",
+        "//pkg/golang",
+    ],
 )
 
 go_test(

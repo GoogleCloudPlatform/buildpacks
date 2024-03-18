@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 )
 
 func TestDetect(t *testing.T) {
@@ -108,7 +108,7 @@ func TestRuntimeVersion(t *testing.T) {
 			if tc.envKey != "" {
 				os.Setenv(tc.envKey, tc.want)
 			}
-			v, err := runtimeVersion(gcp.NewContext())
+			v, err := golang.RuntimeVersion()
 			if err != nil {
 				t.Fatalf("runtimeVersion() failed: %v", err)
 			}

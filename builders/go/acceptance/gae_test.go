@@ -128,3 +128,27 @@ func TestAcceptance(t *testing.T) {
 		})
 	}
 }
+
+func TestFailures(t *testing.T) {
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
+	t.Cleanup(cleanup)
+
+	testCases := []acceptance.FailureTest{
+		// Test that gopath apps without a vendor directory and having external dependencies fail in gae.
+		{
+			Name:                   "gopath, external dependency, no vendor/(GOPATH/src) ",
+			App:                    "gopath_externaldeps_notongopath",
+			MustMatch:              `cannot find package "golang.org/x/text/unicode/norm" in any of:`,
+			SkipBuilderOutputMatch: true,
+		},
+	}
+
+	for _, tc := range acceptance.FilterFailureTests(t, testCases) {
+		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gae")
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
+			acceptance.TestBuildFailure(t, imageCtx, tc)
+		})
+	}
+}

@@ -26,8 +26,8 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/env",
         "//pkg/gcpbuildpack",
+        "//pkg/golang",
         "//pkg/runtime",
     ],
 )
@@ -40,6 +40,6 @@ go_test(
     rundir = ".",
     deps = [
         "//internal/buildpacktest",
-        "//pkg/gcpbuildpack",
+        "//pkg/golang",
     ],
 )

@@ -18,8 +18,11 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 )
 
 func main() {
@@ -40,12 +43,37 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 func buildFn(ctx *gcp.Context) error {
 	l, err := ctx.Layer("gopath", gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
 	if err != nil {
-		return fmt.Errorf("creating layer: %w", err)
+		return fmt.Errorf("creating GOPATH layer: %w", err)
 	}
 	l.SharedEnvironment.Override("GOPATH", l.Path)
 	l.SharedEnvironment.Override("GO111MODULE", "off")
 
 	// TODO(b/145604612): Investigate caching the modules layer.
+
+	// Skip 'go get' for Go versions >= 1.22 due to changes in module behavior
+	if supportsGoGet, err := golang.SupportsGoGet(ctx); err != nil {
+		return err
+	} else if !supportsGoGet {
+		ctx.Logf("\"go get\" has been skipped as go get is no longer supported outside of a module in the legacy GOPATH mode for go122+")
+
+		goPath := l.Path
+		goPathSrc := filepath.Join(goPath, "src")
+		vendorPath := filepath.Join(ctx.ApplicationRoot(), "vendor")
+
+		vendorPathExists, err := ctx.FileExists(vendorPath)
+		if err != nil {
+			return err
+		}
+
+		if vendorPathExists {
+
+			err := fileutil.MaybeCopyPathContents(goPathSrc, vendorPath, fileutil.AllPaths)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 
 	_, err = ctx.Exec([]string{"go", "get", "-d"}, gcp.WithEnv("GOPATH="+l.Path, "GO111MODULE=off"), gcp.WithUserAttribution)
 	return err

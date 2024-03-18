@@ -41,6 +41,7 @@ const (
 	goPathLayerName = "gopath"
 	// The key used when a layers' cache is keyed off of the go mod
 	goModCacheKey = "go-mod-sha"
+	envGoVersion  = "GOOGLE_GO_VERSION"
 )
 
 var (
@@ -89,13 +90,32 @@ func SupportsGoCleanModCache(ctx *gcp.Context) (bool, error) {
 	return VersionMatches(ctx, ">=1.13.0")
 }
 
-// VersionMatches checks if the installed version of Go and the version specified in go.mod match the given version range.
-// The range string has the following format: https://github.com/blang/semver#ranges.
-func VersionMatches(ctx *gcp.Context, versionRange string) (bool, error) {
-	v, err := GoModVersion(ctx)
+// SupportsGoGet returns true if the Go version supports `go get`.
+// For versions above 1.22.0+ `go get` is not supported outside of modules in legacy gopath mode.
+func SupportsGoGet(ctx *gcp.Context) (bool, error) {
+	v, err := RuntimeVersion()
 	if err != nil {
 		return false, err
 	}
+	return VersionMatches(ctx, "<1.22.0", v)
+}
+
+// VersionMatches checks if the installed version of Go and the version specified in go.mod match the given version range.
+// The range string has the following format: https://github.com/blang/semver#ranges.
+func VersionMatches(ctx *gcp.Context, versionRange string, goVersions ...string) (bool, error) {
+
+	var v string
+	var err error
+
+	if len(goVersions) == 0 {
+		v, err = GoModVersion(ctx)
+		if err != nil {
+			return false, err
+		}
+	} else {
+		v = goVersions[0]
+	}
+
 	if v == "" {
 		return false, nil
 	}
@@ -272,6 +292,19 @@ func ExecWithGoproxyFallback(ctx *gcp.Context, cmd []string, opts ...gcp.ExecOpt
 // true when using GCF or GAE with go 1.11.
 func IsGo111Runtime() bool {
 	return os.Getenv(env.Runtime) == "go111"
+}
+
+// RuntimeVersion returns the runtime version for the go app.
+func RuntimeVersion() (string, error) {
+	if version := os.Getenv(envGoVersion); version != "" {
+		return version, nil
+	}
+
+	if version := os.Getenv(env.RuntimeVersion); version != "" {
+		return version, nil
+	}
+
+	return "", gcp.InternalErrorf("no runtime version found")
 }
 
 // ResolveGoVersion finds the latest version of Go that matches the provided semver constraint.

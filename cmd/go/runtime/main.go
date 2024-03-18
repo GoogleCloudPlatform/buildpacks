@@ -18,10 +18,9 @@ package main
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 )
 
@@ -49,7 +48,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	version, err := runtimeVersion(ctx)
+	version, err := golang.RuntimeVersion()
 	if err != nil {
 		return err
 	}
@@ -59,18 +58,4 @@ func buildFn(ctx *gcp.Context) error {
 	}
 	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.Go, version, grl)
 	return err
-}
-
-func runtimeVersion(ctx *gcp.Context) (string, error) {
-	if version := os.Getenv(envGoVersion); version != "" {
-		ctx.Logf("Using runtime version from %s: %s", envGoVersion, version)
-		return version, nil
-	}
-
-	if version := os.Getenv(env.RuntimeVersion); version != "" {
-		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, version)
-		return version, nil
-	}
-	ctx.Logf("Using latest stable Go version")
-	return "", nil
 }
