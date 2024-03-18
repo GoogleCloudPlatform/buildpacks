@@ -61,10 +61,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 func buildFn(ctx *gcp.Context) error {
 	version, err := php.ExtractVersion(ctx)
-	// TODO(b/313631685) We should not use 8.3 version of php until it is GA.
-	// Hence this limit until it is GA.
 	if version == "" {
-		version = "8.2.x"
+		version = "8.3.x"
 	}
 	if err != nil {
 		return fmt.Errorf("determining runtime version: %w", err)
