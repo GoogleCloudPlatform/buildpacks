@@ -48,7 +48,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	version, err := golang.RuntimeVersion()
+	version, err := golang.RuntimeVersion(ctx)
 	if err != nil {
 		return err
 	}

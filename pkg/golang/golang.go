@@ -93,9 +93,12 @@ func SupportsGoCleanModCache(ctx *gcp.Context) (bool, error) {
 // SupportsGoGet returns true if the Go version supports `go get`.
 // For versions above 1.22.0+ `go get` is not supported outside of modules in legacy gopath mode.
 func SupportsGoGet(ctx *gcp.Context) (bool, error) {
-	v, err := RuntimeVersion()
+	v, err := RuntimeVersion(ctx)
 	if err != nil {
 		return false, err
+	}
+	if v == "" {
+		return false, nil
 	}
 	return VersionMatches(ctx, "<1.22.0", v)
 }
@@ -295,16 +298,19 @@ func IsGo111Runtime() bool {
 }
 
 // RuntimeVersion returns the runtime version for the go app.
-func RuntimeVersion() (string, error) {
+func RuntimeVersion(ctx *gcp.Context) (string, error) {
 	if version := os.Getenv(envGoVersion); version != "" {
+		ctx.Logf("Using runtime version from %s: %s", envGoVersion, version)
 		return version, nil
 	}
 
 	if version := os.Getenv(env.RuntimeVersion); version != "" {
+		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, version)
 		return version, nil
 	}
 
-	return "", gcp.InternalErrorf("no runtime version found")
+	ctx.Logf("Using latest stable Go version")
+	return "", nil
 }
 
 // ResolveGoVersion finds the latest version of Go that matches the provided semver constraint.

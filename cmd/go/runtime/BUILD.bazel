@@ -40,6 +40,7 @@ go_test(
     rundir = ".",
     deps = [
         "//internal/buildpacktest",
+        "//pkg/gcpbuildpack",
         "//pkg/golang",
     ],
 )
