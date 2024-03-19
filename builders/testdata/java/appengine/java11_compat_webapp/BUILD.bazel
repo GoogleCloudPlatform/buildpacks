@@ -19,3 +19,8 @@ exports_files([
 #        # "@io_bazel_rules_appengine//appengine:javax.servlet.api",
 #    ],
 #)
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]),
+)

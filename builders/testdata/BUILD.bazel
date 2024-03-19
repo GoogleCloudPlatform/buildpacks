@@ -16,3 +16,11 @@ exports_files(
         "ruby",
     ],
 )
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]) + [
+        "//builders/testdata/{}:all_files".format(subpkg)
+        for subpkg in subpackages(include = ["**"])
+    ],
+)

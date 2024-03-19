@@ -9,3 +9,8 @@ exports_files(
         "generic",
     ],
 )
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]),
+)

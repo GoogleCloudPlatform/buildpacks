@@ -18,3 +18,8 @@ java_binary(
     javacopts = ["-Xep:DefaultPackage:OFF"],
     main_class = "Main",
 )
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]),
+)

@@ -17,3 +17,8 @@ genrule(
     outs = ["fatjar2.jar"],
     cmd = "cp $< $@",
 )
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]),
+)

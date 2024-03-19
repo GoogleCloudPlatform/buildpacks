@@ -12,3 +12,10 @@ exports_files(
         "flex",
     ],
 )
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]) + [
+        "//builders/testdata/nodejs/appengine:all_files",
+    ],
+)

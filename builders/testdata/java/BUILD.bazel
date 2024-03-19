@@ -52,3 +52,11 @@ pkg_tar(
     },
     strip_prefix = "appengine",
 )
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]) + [
+        "//builders/testdata/java/{}:all_files".format(subpkg)
+        for subpkg in subpackages(include = ["**"])
+    ],
+)

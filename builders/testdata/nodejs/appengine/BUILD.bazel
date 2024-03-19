@@ -9,3 +9,8 @@ exports_files(
         "functions",
     ],
 )
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]),
+)
