@@ -37,7 +37,7 @@ const (
 	nodejsNPMBuildEnv = "GOOGLE_EXPERIMENTAL_NODEJS_NPM_BUILD_ENABLED"
 	// VendorNpmDeps for vendoring npm dependencies
 	VendorNpmDeps = "GOOGLE_VENDOR_NPM_DEPENDENCIES"
-	// AppHostingBuildEnv is the env var that contains the build script to run for nextjs apps
+	// AppHostingBuildEnv is the env var that contains the build command to run for Firebase backends.
 	AppHostingBuildEnv = "APPHOSTING_BUILD"
 )
 
