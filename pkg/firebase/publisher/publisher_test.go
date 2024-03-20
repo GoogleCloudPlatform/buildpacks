@@ -15,7 +15,6 @@
 package publisher
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"testing"
@@ -30,28 +29,21 @@ import (
 )
 
 var (
-	appHostingCompleteYAMLPath string = testdata.MustGetPath("testdata/apphosting_complete.yaml")
-	envPath                    string = testdata.MustGetPath("testdata/env")
-	bundleYAMLPath             string = testdata.MustGetPath("testdata/bundle.yaml")
+	appHostingYAMLPath string = testdata.MustGetPath("testdata/apphosting.yaml")
+	bundleYAMLPath     string = testdata.MustGetPath("testdata/bundle.yaml")
+	latestSecretName   string = "projects/test-project/secrets/secretID/versions/12"
 )
-
-func toString(buildSchema buildSchema) string {
-	data, _ := json.MarshalIndent(buildSchema, "", "  ")
-	return string(data)
-}
 
 func TestPublish(t *testing.T) {
 	testDir := t.TempDir()
 
-	testCasesHappy := []struct {
+	testCases := []struct {
 		desc                   string
 		appHostingYAMLFilePath string
-		envFilePath            string
 		wantBuildSchema        buildSchema
 	}{{
-		desc:                   "Publish apphosting.yaml, bundle.yaml, and apphosting.env",
-		appHostingYAMLFilePath: appHostingCompleteYAMLPath,
-		envFilePath:            envPath,
+		desc:                   "Publish apphosting.yaml, bundle.yaml",
+		appHostingYAMLFilePath: appHostingYAMLPath,
 		wantBuildSchema: buildSchema{
 			RunConfig: &apphostingschema.RunConfig{
 				CPU:          proto.Float32(3),
@@ -64,31 +56,23 @@ func TestPublish(t *testing.T) {
 				apphostingschema.EnvironmentVariable{
 					Variable:     "API_URL",
 					Value:        "api.service.com",
+					Availability: []string{"BUILD", "RUNTIME"},
+				},
+				apphostingschema.EnvironmentVariable{
+					Variable:     "STORAGE_BUCKET",
+					Value:        "mybucket.appspot.com",
 					Availability: []string{"RUNTIME"},
 				},
 				apphostingschema.EnvironmentVariable{
-					Variable:     "ENVIRONMENT",
-					Value:        "staging",
-					Availability: []string{"RUNTIME"},
-				},
-				apphostingschema.EnvironmentVariable{
-					Variable:     "MULTILINE_ENV_VAR",
-					Value:        "line 1\nline 2",
-					Availability: []string{"RUNTIME"},
-				},
-			},
-			Runtime: &runtime{
-				EnvVariables: map[string]string{
-					"API_URL":           "api.service.com",
-					"ENVIRONMENT":       "staging",
-					"MULTILINE_ENV_VAR": "line 1\nline 2",
+					Variable:     "API_KEY",
+					Secret:       "projects/test-project/secrets/secretID/versions/12",
+					Availability: []string{"BUILD"},
 				},
 			},
 		}},
 		{
 			desc:                   "Handle nonexistent apphosting.yaml",
 			appHostingYAMLFilePath: "nonexistent",
-			envFilePath:            envPath,
 			wantBuildSchema: buildSchema{
 				RunConfig: &apphostingschema.RunConfig{
 					CPU:          proto.Float32(1),
@@ -97,38 +81,14 @@ func TestPublish(t *testing.T) {
 					MaxInstances: proto.Int32(100),
 					MinInstances: proto.Int32(0),
 				},
-				Env: []apphostingschema.EnvironmentVariable{
-					apphostingschema.EnvironmentVariable{
-						Variable:     "ENVIRONMENT",
-						Value:        "staging",
-						Availability: []string{"RUNTIME"},
-					},
-					apphostingschema.EnvironmentVariable{
-						Variable:     "MULTILINE_ENV_VAR",
-						Value:        "line 1\nline 2",
-						Availability: []string{"RUNTIME"},
-					},
-					apphostingschema.EnvironmentVariable{
-						Variable:     "API_URL",
-						Value:        "api.service.com",
-						Availability: []string{"RUNTIME"},
-					},
-				},
-				Runtime: &runtime{
-					EnvVariables: map[string]string{
-						"API_URL":           "api.service.com",
-						"ENVIRONMENT":       "staging",
-						"MULTILINE_ENV_VAR": "line 1\nline 2",
-					},
-				},
 			}},
 	}
 
 	// Testing happy paths
-	for i, test := range testCasesHappy {
+	for i, test := range testCases {
 		outputFilePath := fmt.Sprintf("%s/outputhappy%d", testDir, i)
 
-		err := Publish(test.appHostingYAMLFilePath, bundleYAMLPath, test.envFilePath, outputFilePath)
+		err := Publish(test.appHostingYAMLFilePath, bundleYAMLPath, outputFilePath)
 		if err != nil {
 			t.Errorf("Error in test '%v'. Error was %v", test.desc, err)
 		}
@@ -154,14 +114,14 @@ func TestPublish(t *testing.T) {
 
 func TestToBuildSchemaRunConfig(t *testing.T) {
 	tests := []struct {
-		name             string
-		appHostingSchema apphostingschema.AppHostingSchema
-		expected         buildSchema
+		desc                  string
+		inputAppHostingSchema apphostingschema.AppHostingSchema
+		expectedSchema        buildSchema
 	}{
 		{
-			name:             "Empty AppHostingSchema",
-			appHostingSchema: apphostingschema.AppHostingSchema{},
-			expected: buildSchema{
+			desc:                  "Empty AppHostingSchema",
+			inputAppHostingSchema: apphostingschema.AppHostingSchema{},
+			expectedSchema: buildSchema{
 				RunConfig: &apphostingschema.RunConfig{
 					CPU:          proto.Float32(float32(defaultCPU)),
 					MemoryMiB:    &defaultMemory,
@@ -172,8 +132,8 @@ func TestToBuildSchemaRunConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "Full AppHostingSchema",
-			appHostingSchema: apphostingschema.AppHostingSchema{
+			desc: "Full AppHostingSchema",
+			inputAppHostingSchema: apphostingschema.AppHostingSchema{
 				RunConfig: apphostingschema.RunConfig{
 					CPU:          proto.Float32(1000),
 					MemoryMiB:    proto.Int32(2048),
@@ -181,8 +141,12 @@ func TestToBuildSchemaRunConfig(t *testing.T) {
 					MaxInstances: proto.Int32(5),
 					MinInstances: proto.Int32(0),
 				},
+				Env: []apphostingschema.EnvironmentVariable{
+					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
+				},
 			},
-			expected: buildSchema{
+			expectedSchema: buildSchema{
 				RunConfig: &apphostingschema.RunConfig{
 					CPU:          proto.Float32(1000),
 					MemoryMiB:    proto.Int32(2048),
@@ -190,17 +154,25 @@ func TestToBuildSchemaRunConfig(t *testing.T) {
 					MaxInstances: proto.Int32(5),
 					MinInstances: proto.Int32(0),
 				},
+				Env: []apphostingschema.EnvironmentVariable{
+					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
+				},
 			},
 		},
 		{
-			name: "Partial AppHostingSchema",
-			appHostingSchema: apphostingschema.AppHostingSchema{
+			desc: "Partial AppHostingSchema",
+			inputAppHostingSchema: apphostingschema.AppHostingSchema{
 				RunConfig: apphostingschema.RunConfig{
 					CPU:         proto.Float32(1000),
 					Concurrency: proto.Int32(2),
 				},
+				Env: []apphostingschema.EnvironmentVariable{
+					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
+				},
 			},
-			expected: buildSchema{
+			expectedSchema: buildSchema{
 				RunConfig: &apphostingschema.RunConfig{
 					CPU:          proto.Float32(1000),
 					MemoryMiB:    &defaultMemory,
@@ -208,16 +180,20 @@ func TestToBuildSchemaRunConfig(t *testing.T) {
 					MaxInstances: &defaultMaxInstances,
 					MinInstances: proto.Int32(0),
 				},
+				Env: []apphostingschema.EnvironmentVariable{
+					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
+				},
 			},
 		},
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.desc, func(t *testing.T) {
 			bundleSchema := outputBundleSchema{}
-			result := toBuildSchema(tc.appHostingSchema, bundleSchema, map[string]string{})
-			if diff := cmp.Diff(tc.expected, result); diff != "" {
-				t.Errorf("toBuildSchema(%s) (-want +got):\n%s", tc.name, diff)
+			result := toBuildSchema(tc.inputAppHostingSchema, bundleSchema)
+			if diff := cmp.Diff(tc.expectedSchema, result); diff != "" {
+				t.Errorf("toBuildSchema(%s) (-want +got):\n%s", tc.desc, diff)
 			}
 		})
 	}

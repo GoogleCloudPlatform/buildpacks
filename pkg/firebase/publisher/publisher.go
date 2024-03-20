@@ -22,7 +22,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v2"
 
 	apphostingschema "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
@@ -38,13 +37,7 @@ type outputBundleSchema struct {
 // ultimately be converted into an updateBuildRequest.
 type buildSchema struct {
 	RunConfig *apphostingschema.RunConfig            `yaml:"runConfig,omitempty"`
-	Runtime   *runtime                               `yaml:"runtime,omitempty"`
 	Env       []apphostingschema.EnvironmentVariable `yaml:"env,omitempty"`
-}
-
-// TODO (b/328444933): Migrate this to the new EnvironmentVariable in apphostingschema.go
-type runtime struct {
-	EnvVariables map[string]string `yaml:"envVariables,omitempty"`
 }
 
 var (
@@ -97,7 +90,7 @@ func writeToFile(buildSchema buildSchema, outputFilePath string) error {
 	return nil
 }
 
-func toBuildSchema(schema apphostingschema.AppHostingSchema, bundleSchema outputBundleSchema, appHostingEnvVars map[string]string) buildSchema {
+func toBuildSchema(schema apphostingschema.AppHostingSchema, bundleSchema outputBundleSchema) buildSchema {
 	dCPU := float32(defaultCPU)
 	buildSchema := buildSchema{
 		RunConfig: &apphostingschema.RunConfig{
@@ -108,7 +101,7 @@ func toBuildSchema(schema apphostingschema.AppHostingSchema, bundleSchema output
 			MinInstances: &defaultMinInstances,
 		},
 	}
-	// Copy fields from apphosting.yaml.
+	// Copy RunConfig fields from apphosting.yaml.
 	b := schema.RunConfig
 	if b.CPU != nil {
 		cpu := float32(*b.CPU)
@@ -127,36 +120,21 @@ func toBuildSchema(schema apphostingschema.AppHostingSchema, bundleSchema output
 		buildSchema.RunConfig.MinInstances = b.MinInstances
 	}
 
-	// Copy fields from apphosting.env.
-	if len(appHostingEnvVars) > 0 {
-		buildSchema.Runtime = &runtime{EnvVariables: appHostingEnvVars}
-		envVars := []apphostingschema.EnvironmentVariable{}
-		for k, v := range appHostingEnvVars {
-			ev := apphostingschema.EnvironmentVariable{
-				Variable:     k,
-				Value:        v,
-				Availability: []string{"RUNTIME"},
-			}
-			envVars = append(envVars, ev)
-		}
-		buildSchema.Env = envVars
+	// Copy Env fields from apphosting.yaml
+	if len(schema.Env) > 0 {
+		buildSchema.Env = schema.Env
 	}
+
 	return buildSchema
 }
 
 // Publish takes in the path to various required files such as apphosting.yaml, bundle.yaml, and
 // other files (tbd) and merges them into one output that describes the desired Backend Service
 // configuration before pushing this information to the control plane.
-func Publish(appHostingYAMLPath string, bundleYAMLPath string, envPath string, outputFilePath string) error {
-	apphostingYAML, err := apphostingschema.ReadAndValidateAppHostingSchemaFromFile(appHostingYAMLPath)
+func Publish(appHostingYAMLPath string, bundleYAMLPath string, outputFilePath string) error {
+	appHostingSchema, err := apphostingschema.ReadAndValidateAppHostingSchemaFromFile(appHostingYAMLPath)
 	if err != nil {
 		return err
-	}
-
-	// Read in environment variables
-	envMap, err := godotenv.Read(envPath)
-	if err != nil {
-		return fmt.Errorf("reading environment variables from %v: %w", envPath, err)
 	}
 
 	// For now, simply validates that bundle.yaml exists.
@@ -165,7 +143,7 @@ func Publish(appHostingYAMLPath string, bundleYAMLPath string, envPath string, o
 		return err
 	}
 
-	buildSchema := toBuildSchema(apphostingYAML, bundleSchema, envMap)
+	buildSchema := toBuildSchema(appHostingSchema, bundleSchema)
 
 	err = writeToFile(buildSchema, outputFilePath)
 	if err != nil {

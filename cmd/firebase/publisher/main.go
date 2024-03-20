@@ -26,7 +26,6 @@ import (
 var (
 	apphostingYAMLFilePath = flag.String("apphostingyaml_filepath", "", "File path to user defined apphosting.yaml")
 	outputBundleDir        = flag.String("output_bundle_dir", "", "File path to root directory of build artifacts aka Output Bundle (including bundle.yaml)")
-	envFilePath            = flag.String("env_filepath", "", "File path to preprocessed environment variables")
 	outputFilePath         = flag.String("output_filepath", "", "File path to write publisher output data to")
 )
 
@@ -40,15 +39,12 @@ func main() {
 	if *outputBundleDir == "" {
 		log.Fatal("--output_bundle_dir flag not specified.")
 	}
-	if *envFilePath == "" {
-		log.Fatal("--env_filepath flag not specified.")
-	}
 	if *outputFilePath == "" {
 		log.Fatal("--output_filepath flag not specified.")
 	}
 
 	err := publisher.Publish(
-		*apphostingYAMLFilePath, filepath.Join(*outputBundleDir, "bundle.yaml"), *envFilePath, *outputFilePath)
+		*apphostingYAMLFilePath, filepath.Join(*outputBundleDir, "bundle.yaml"), *outputFilePath)
 	if err != nil {
 		log.Fatal(err)
 	}

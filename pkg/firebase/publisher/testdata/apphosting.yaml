@@ -1,0 +1,25 @@
+schemaVersion: '3.0.0'
+
+runConfig:
+  cpu: 3
+  memoryMiB: 1024
+  maxInstances: 4
+  minInstances: 0
+  concurrency: 100
+
+env:
+  - variable: API_URL
+    value: api.service.com
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: STORAGE_BUCKET
+    value: mybucket.appspot.com
+    availability:
+      - RUNTIME
+
+  - variable: API_KEY
+    secret: projects/test-project/secrets/secretID/versions/12
+    availability:
+      - BUILD
