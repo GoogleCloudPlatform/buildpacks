@@ -19,12 +19,22 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
 
 var (
 	validAvailabilityValues = map[string]bool{"BUILD": true, "RUNTIME": true}
+	reservedKeys            = map[string]bool{
+		"PORT":            true,
+		"K_SERVICE":       true,
+		"K_REVISION":      true,
+		"K_CONFIGURATION": true,
+	}
+
+	reservedFirebaseKeyPrefix = "FIREBASE_"
 )
 
 // AppHostingSchema is the struct representation of apphosting.yaml.
@@ -126,4 +136,65 @@ func ReadAndValidateAppHostingSchemaFromFile(filePath string) (AppHostingSchema,
 		return a, fmt.Errorf("unmarshalling apphosting config as YAML: %w", err)
 	}
 	return a, nil
+}
+
+func isReservedKey(envKey string) bool {
+	if _, ok := reservedKeys[envKey]; ok {
+		return true
+	} else if strings.HasPrefix(envKey, reservedFirebaseKeyPrefix) {
+		return true
+	}
+	return false
+}
+
+func santizeEnv(env []EnvironmentVariable) []EnvironmentVariable {
+	if env == nil {
+		return nil
+	}
+
+	var sanitizedSchemaEnv []EnvironmentVariable
+	for _, ev := range env {
+		if !isReservedKey(ev.Variable) {
+			if ev.Availability == nil {
+				log.Printf("%s has no availability specified, applying the default of 'BUILD' and 'RUNTIME'", ev.Variable)
+				ev.Availability = []string{"BUILD", "RUNTIME"}
+			}
+			sanitizedSchemaEnv = append(sanitizedSchemaEnv, ev)
+		} else {
+			log.Printf("WARNING: %s is a reserved key, removing it from the final environment variables", ev.Variable)
+		}
+	}
+
+	return sanitizedSchemaEnv
+}
+
+// Sanitize strips reserved environment variables from the environment variable
+// list.
+func Sanitize(schema *AppHostingSchema) {
+	schema.Env = santizeEnv(schema.Env)
+}
+
+// WriteToFile writes the given app hosting schema to the specified path.
+func (schema *AppHostingSchema) WriteToFile(outputFilePath string) error {
+	fileData, err := yaml.Marshal(schema)
+	if err != nil {
+		return fmt.Errorf("converting struct to YAML: %w", err)
+	}
+	log.Printf("Final app hosting schema:\n%v\n", string(fileData))
+
+	if err := os.MkdirAll(filepath.Dir(outputFilePath), os.ModeDir); err != nil {
+		return fmt.Errorf("creating parent directory %q: %w", outputFilePath, err)
+	}
+
+	file, err := os.Create(outputFilePath)
+	if err != nil {
+		return fmt.Errorf("creating app hosting schema file: %w", err)
+	}
+	defer file.Close()
+
+	if _, err := file.Write(fileData); err != nil {
+		return fmt.Errorf("writing app hosting schema data to file: %w", err)
+	}
+
+	return nil
 }

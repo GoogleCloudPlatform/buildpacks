@@ -6,14 +6,16 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/fakesecretmanager"
-	env "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/env"
+	apphostingschema "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/google/go-cmp/cmp"
 	smpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
+	"github.com/joho/godotenv"
+	"google3/third_party/golang/protobuf/v2/proto/proto"
 )
 
 var (
-	appHostingEnvPath    string = testdata.MustGetPath("testdata/apphosting.env")
+	appHostingYAMLPath   string = testdata.MustGetPath("testdata/apphosting.yaml")
 	latestSecretName     string = "projects/test-project/secrets/secretID/versions/12"
 	pinnedSecretName     string = "projects/test-project/secrets/secretID/versions/11"
 	secretString         string = "secretString"
@@ -22,40 +24,51 @@ var (
 
 func TestPrepare(t *testing.T) {
 	testDir := t.TempDir()
-	outputFilePathReferenced := testDir + "/outputReferenced"
-	outputFilePathDereferenced := testDir + "/outputDereferenced"
+	outputFilePathYAML := testDir + "/outputYAML"
+	outputFilePathEnv := testDir + "/outputEnv"
 
 	testCases := []struct {
-		desc                   string
-		appHostingEnvFilePath  string
-		projectID              string
-		wantEnvMapReferenced   map[string]string
-		wantEnvMapDereferenced map[string]string
+		desc               string
+		appHostingYAMLPath string
+		projectID          string
+		wantEnvMap         map[string]string
+		wantSchema         apphostingschema.AppHostingSchema
 	}{
 		{
-			desc:                  "apphosting.env",
-			appHostingEnvFilePath: appHostingEnvPath,
-			projectID:             "test-project",
-			wantEnvMapReferenced: map[string]string{
-				"API_URL":               "api.service.com",
-				"ENVIRONMENT":           "staging",
-				"MULTILINE_ENV_VAR":     "line 1\nline 2",
-				"SECRET_API_KEY_LATEST": latestSecretName,
-				"SECRET_API_KEY_PINNED": pinnedSecretName,
+			desc:               "properly prepare apphosting.yaml",
+			appHostingYAMLPath: appHostingYAMLPath,
+			projectID:          "test-project",
+			wantEnvMap: map[string]string{
+				"API_URL":                "api.service.com",
+				"API_KEY":                secretString,
+				"PINNED_API_KEY":         secretString,
+				"VERBOSE_API_KEY":        secretString,
+				"PINNED_VERBOSE_API_KEY": secretString,
 			},
-			wantEnvMapDereferenced: map[string]string{
-				"API_URL":           "api.service.com",
-				"ENVIRONMENT":       "staging",
-				"MULTILINE_ENV_VAR": "line 1\nline 2",
-				"API_KEY_LATEST":    secretString,
-				"API_KEY_PINNED":    secretString,
+			wantSchema: apphostingschema.AppHostingSchema{
+				RunConfig: apphostingschema.RunConfig{
+					CPU:          proto.Float32(3),
+					MemoryMiB:    proto.Int32(1024),
+					Concurrency:  proto.Int32(100),
+					MaxInstances: proto.Int32(4),
+					MinInstances: proto.Int32(0),
+				},
+				Env: []apphostingschema.EnvironmentVariable{
+					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
+					apphostingschema.EnvironmentVariable{Variable: "PINNED_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "VERBOSE_API_KEY", Secret: latestSecretName, Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "PINNED_VERBOSE_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}},
+				},
 			},
 		},
 		{
-			desc:                   "nonexistent apphosting.env",
-			appHostingEnvFilePath:  "",
-			wantEnvMapReferenced:   map[string]string{},
-			wantEnvMapDereferenced: map[string]string{},
+			desc:               "non-existant apphosting.yaml",
+			appHostingYAMLPath: "",
+			projectID:          "test-project",
+			wantEnvMap:         map[string]string{},
+			wantSchema:         apphostingschema.AppHostingSchema{},
 		},
 	}
 
@@ -90,28 +103,28 @@ func TestPrepare(t *testing.T) {
 
 	// Testing happy paths
 	for _, test := range testCases {
-		if err := Prepare(context.Background(), fakeSecretClient, test.appHostingEnvFilePath, test.appHostingEnvFilePath, test.projectID, outputFilePathReferenced, outputFilePathDereferenced); err != nil {
+		if err := Prepare(context.Background(), fakeSecretClient, test.appHostingYAMLPath, test.projectID, outputFilePathYAML, outputFilePathEnv); err != nil {
 			t.Errorf("Error in test '%v'. Error was %v", test.desc, err)
 		}
 
-		// Check referenced secret material env file
-		actualEnvMapReferenced, err := env.ReadEnv(outputFilePathReferenced)
-		if err != nil {
-			t.Errorf("Error reading in temp file: %v", err)
-		}
-
-		if diff := cmp.Diff(test.wantEnvMapReferenced, actualEnvMapReferenced); diff != "" {
-			t.Errorf("Unexpected YAML for test %v (+got, -want):\n%v", test.desc, diff)
-		}
-
 		// Check dereferenced secret material env file
-		actualEnvMapDereferenced, err := env.ReadEnv(outputFilePathDereferenced)
+		actualEnvMapDereferenced, err := godotenv.Read(outputFilePathEnv)
 		if err != nil {
 			t.Errorf("Error reading in temp file: %v", err)
 		}
 
-		if diff := cmp.Diff(test.wantEnvMapDereferenced, actualEnvMapDereferenced); diff != "" {
-			t.Errorf("Unexpected YAML for test %v (+got, -want):\n%v", test.desc, diff)
+		if diff := cmp.Diff(test.wantEnvMap, actualEnvMapDereferenced); diff != "" {
+			t.Errorf("Unexpected env map for test %v (+got, -want):\n%v", test.desc, diff)
+		}
+
+		// Check app hosting schema
+		actualAppHostingSchema, err := apphostingschema.ReadAndValidateAppHostingSchemaFromFile(outputFilePathYAML)
+		if err != nil {
+			t.Errorf("reading in and validating apphosting.yaml at path %v: %v", outputFilePathYAML, err)
+		}
+
+		if diff := cmp.Diff(test.wantSchema, actualAppHostingSchema); diff != "" {
+			t.Errorf("unexpected prepared YAML schema for test %q (+got, -want):\n%v", test.desc, diff)
 		}
 	}
 }

@@ -9,8 +9,9 @@ go_library(
     srcs = ["preparer.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     deps = [
-        "//pkg/firebase/env",
+        "//pkg/firebase/apphostingschema",
         "//pkg/firebase/secrets",
+        "@com_github_joho_godotenv//:go_default_library",
     ],
 )
 
@@ -23,9 +24,11 @@ go_test(
     rundir = ".",
     deps = [
         "//internal/fakesecretmanager",
-        "//pkg/firebase/env",
+        "//pkg/firebase/apphostingschema",
         "//pkg/testdata",
+        "//third_party/golang/protobuf/v2/proto",
         "@com_github_google_go-cmp//cmp:go_default_library",
+        "@com_github_joho_godotenv//:go_default_library",
         "@org_golang_google_genproto//googleapis/cloud/secretmanager/v1:go_default_library",
     ],
 )

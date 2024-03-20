@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package preparer prepares user-defined environment variables for use in subsequent buildpacks
+// Package preparer prepares user-defined apphosting.yaml for use in subsequent buildpacks
 // steps.
 package preparer
 
@@ -20,50 +20,54 @@ import (
 	"context"
 	"fmt"
 
-	env "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
+
 	secrets "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/secrets"
+	"github.com/joho/godotenv"
 )
 
 // Prepare performs pre-build logic for App Hosting backends including:
-// * Reading, sanitizing, and writing user-defined environment variables in apphosting.env to a new file.
+// * Reading, sanitizing, and writing user-defined environment variables in apphosting.yaml to a new file.
+// * Dereferencing secrets in apphosting.yaml.
 //
-// Prepare will always write a file to disk, even if there are no environment variables to write.
-func Prepare(ctx context.Context, secretClient secrets.SecretManager, apphostingEnvFilePath string, appHostingYAMLPath string, projectID string, envReferencedOutputFilePath string, envDereferencedOutputFilePath string) error {
-	referencedEnvMap := map[string]string{}   // Env map with referenced secret material
+// Preparer will always write a prepared apphosting.yaml and a .env file to disk, even if there
+// is no schema to write.
+func Prepare(ctx context.Context, secretClient secrets.SecretManager, appHostingYAMLPath string, projectID string, appHostingYAMLOutputFilePath string, envDereferencedOutputFilePath string) error {
 	dereferencedEnvMap := map[string]string{} // Env map with dereferenced secret material
+	appHostingYAML := apphostingschema.AppHostingSchema{}
 
-	// Read statically defined env vars from apphosting.env.
-	if apphostingEnvFilePath != "" {
+	if appHostingYAMLPath != "" {
 		var err error
 
-		referencedEnvMap, err = env.ReadEnv(apphostingEnvFilePath)
+		appHostingYAML, err = apphostingschema.ReadAndValidateAppHostingSchemaFromFile(appHostingYAMLPath)
 		if err != nil {
-			return fmt.Errorf("reading apphosting.env: %w", err)
+			return fmt.Errorf("reading in and validating apphosting.yaml at path %v: %w", appHostingYAMLPath, err)
 		}
-		referencedEnvMap, err = env.SanitizeAppHostingEnv(referencedEnvMap)
+
+		apphostingschema.Sanitize(&appHostingYAML)
+
+		err = secrets.Normalize(appHostingYAML.Env, projectID)
 		if err != nil {
-			return fmt.Errorf("sanitizing apphosting.env fields: %w", err)
+			return fmt.Errorf("normalizing apphosting.yaml fields: %w", err)
 		}
-		err = secrets.NormalizeAppHostingSecretsEnv(referencedEnvMap, projectID)
+
+		err = secrets.PinVersions(ctx, secretClient, appHostingYAML.Env)
 		if err != nil {
-			return fmt.Errorf("normalizing apphosting.env fields: %w", err)
+			return fmt.Errorf("pinning secrets in apphosting.yaml: %w", err)
 		}
-		err = secrets.PinVersionSecrets(ctx, secretClient, referencedEnvMap)
+
+		dereferencedEnvMap, err = secrets.GenerateBuildDereferencedEnvMap(ctx, secretClient, appHostingYAML.Env)
 		if err != nil {
-			return fmt.Errorf("pinning secrets in apphosting.env: %w", err)
-		}
-		dereferencedEnvMap, err = secrets.DereferenceSecrets(ctx, secretClient, referencedEnvMap)
-		if err != nil {
-			return fmt.Errorf("dereferencing secrets in apphosting.env: %w", err)
+			return fmt.Errorf("dereferencing secrets in apphosting.yaml: %w", err)
 		}
 	}
 
-	err := env.WriteEnv(referencedEnvMap, envReferencedOutputFilePath)
+	err := appHostingYAML.WriteToFile(appHostingYAMLOutputFilePath)
 	if err != nil {
-		return fmt.Errorf("writing final referenced environment variables to %v: %w", envReferencedOutputFilePath, err)
+		return fmt.Errorf("writing final apphosting.yaml to %v: %w", appHostingYAMLOutputFilePath, err)
 	}
 
-	err = env.WriteEnv(dereferencedEnvMap, envDereferencedOutputFilePath)
+	err = godotenv.Write(dereferencedEnvMap, envDereferencedOutputFilePath)
 	if err != nil {
 		return fmt.Errorf("writing final dereferenced environment variables to %v: %w", envDereferencedOutputFilePath, err)
 	}

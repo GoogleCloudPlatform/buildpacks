@@ -122,19 +122,6 @@ func TestPublish(t *testing.T) {
 					},
 				},
 			}},
-		{
-			desc:                   "Handle nonexistent apphosting.env",
-			appHostingYAMLFilePath: appHostingCompleteYAMLPath,
-			envFilePath:            "nonexistent",
-			wantBuildSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{
-					CPU:          proto.Float32(3),
-					MemoryMiB:    proto.Int32(1024),
-					Concurrency:  proto.Int32(100),
-					MaxInstances: proto.Int32(4),
-					MinInstances: proto.Int32(0),
-				},
-			}},
 	}
 
 	// Testing happy paths

@@ -26,11 +26,10 @@ import (
 )
 
 var (
-	apphostingEnvFilePath         = flag.String("apphostingenv_filepath", "", "File path to user defined apphosting.env")
-	apphostingYAMLFilePath        = flag.String("apphostingyaml_filepath", "", "File path to user defined apphosting.yaml")
-	projectID                     = flag.String("project_id", "", "User's GCP project ID")
-	envReferencedOutputFilePath   = flag.String("env_referenced_output_filepath", "", "File path to write sanitized environment variables & referenced secret material to")
-	envDereferencedOutputFilePath = flag.String("env_dereferenced_output_filepath", "", "File path to write sanitized environment variables & dereferenced secret material to")
+	apphostingYAMLFilePath       = flag.String("apphostingyaml_filepath", "", "File path to user defined apphosting.yaml")
+	projectID                    = flag.String("project_id", "", "User's GCP project ID")
+	appHostingYAMLOutputFilePath = flag.String("apphostingyaml_output_filepath", "", "File path to write the validated and formatted apphosting.yaml to")
+	dotEnvOutputFilePath         = flag.String("dot_env_output_filepath", "", "File path to write the output .env file to")
 )
 
 func main() {
@@ -40,12 +39,12 @@ func main() {
 		log.Fatal("--project_id flag not specified.")
 	}
 
-	if *envReferencedOutputFilePath == "" {
-		log.Fatal("--env_referenced_output_filepath flag not specified.")
+	if *appHostingYAMLOutputFilePath == "" {
+		log.Fatal("--apphostingyaml_output_filepath flag not specified.")
 	}
 
-	if *envDereferencedOutputFilePath == "" {
-		log.Fatal("--env_dereferenced_output_filepath flag not specified.")
+	if *dotEnvOutputFilePath == "" {
+		log.Fatal("--dot_env_output_filepath flag not specified.")
 	}
 
 	secretClient, err := secretmanager.NewClient(context.Background())
@@ -54,7 +53,7 @@ func main() {
 	}
 	defer secretClient.Close()
 
-	err = preparer.Prepare(context.Background(), secretClient, *apphostingEnvFilePath, *apphostingYAMLFilePath, *projectID, *envReferencedOutputFilePath, *envDereferencedOutputFilePath)
+	err = preparer.Prepare(context.Background(), secretClient, *apphostingYAMLFilePath, *projectID, *appHostingYAMLOutputFilePath, *dotEnvOutputFilePath)
 	if err != nil {
 		log.Fatal(err)
 	}

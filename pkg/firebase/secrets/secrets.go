@@ -21,10 +21,12 @@ import (
 	"hash/crc32"
 	"log"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/googleapis/gax-go/v2"
 
+	apphostingschema "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	smpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 )
 
@@ -35,83 +37,98 @@ type SecretManager interface {
 }
 
 var (
-	secretKeyPrefix = "SECRET_"
-	latestSuffix    = "latest"
+	latestSuffix = "latest"
 )
 
-// NormalizeAppHostingSecretsEnv converts the different possible secret formats provided by users
+// Normalize converts the different possible secret formats provided by users
 // into one standard format of projects/p/secrets/s/versions/v.
-func NormalizeAppHostingSecretsEnv(envMap map[string]string, projectID string) error {
-	for k, v := range envMap {
-		if strings.HasPrefix(k, secretKeyPrefix) {
-			n, err := normalizeSecretFormat(strings.TrimPrefix(k, secretKeyPrefix), v, projectID)
+func Normalize(env []apphostingschema.EnvironmentVariable, projectID string) error {
+	for i, ev := range env {
+		if ev.Secret != "" {
+			n, err := normalizeSecretFormat(ev.Secret, projectID)
 			if err != nil {
-				return fmt.Errorf("normalizing secret with key=%v and value=%v: %w", k, v, err)
+				return fmt.Errorf("normalizing secret with key=%v and value=%v: %w", ev.Secret, ev.Secret, err)
 			}
-			envMap[k] = n
+			env[i].Secret = n
 		}
 	}
+
 	return nil
 }
+
+var (
+	patternBare          = regexp.MustCompile(`^[^/@]+$`)
+	patternBareVersioned = regexp.MustCompile(`^([^/@]+)@([0-9]+)$`)
+	patternFull          = regexp.MustCompile(`^projects/([^/]+)/secrets/([^/]+)$`)
+	patternFullVersioned = regexp.MustCompile(`^projects/([^/]+)/secrets/([^/]+)/versions/([^/]+)$`)
+)
 
 // Handles the following cases:
-// "secretID@versionID" -> Extracts the specified secretID and versionID
-// "secretID" -> Extracts the specified secretID and uses "latest" for versionID
-// "@versionID" -> Uses "envKey" as the secretID and extracts versionID
-// "" -> Uses "envKey" as the secretID and "latest" for versionID
-func normalizeSecretFormat(envKey, firebaseSecret, projectID string) (string, error) {
-	pattern := `^(?P<secretID>\w+)?@?(?P<versionID>\w+)?$`
-	re := regexp.MustCompile(pattern)
-
-	matches := re.FindStringSubmatch(firebaseSecret)
-
-	if matches == nil {
-		return "", fmt.Errorf("invalid secret format for %v", firebaseSecret)
+// 1. "secretID" -> Extracts the specified secretID and uses "latest" for versionID
+// 2. "secretID@versionID" -> Extracts the specified secretID and versionID
+// 3. "projects/projectID/secrets/secretID" -> Uses "latest" for versionID
+// 4. "projects/projectID/secrets/secretID/versions/versionID" -> Uses as is
+func normalizeSecretFormat(firebaseSecret, projectID string) (string, error) {
+	// Handle "secretID"
+	if patternBare.MatchString(firebaseSecret) {
+		return fmt.Sprintf("projects/%s/secrets/%s/versions/latest", projectID, firebaseSecret), nil
 	}
 
-	secretID := matches[1]
-	if secretID == "" {
-		secretID = envKey
+	// Handle "secretID@versionID"
+	if patternBareVersioned.MatchString(firebaseSecret) {
+		matches := patternBareVersioned.FindStringSubmatch(firebaseSecret)
+		return fmt.Sprintf("projects/%s/secrets/%s/versions/%s", projectID, matches[1], matches[2]), nil
 	}
 
-	versionID := matches[2]
-	if versionID == "" {
-		versionID = "latest"
+	// Handle "projects/projectID/secrets/secretID"
+	if patternFull.MatchString(firebaseSecret) {
+		return firebaseSecret + "/versions/latest", nil
 	}
 
-	return fmt.Sprintf("projects/%s/secrets/%s/versions/%s", projectID, secretID, versionID), nil
+	// Handle "projects/projectID/secrets/secretID/versions/versionID"
+	if patternFullVersioned.MatchString(firebaseSecret) {
+		return firebaseSecret, nil
+	}
+
+	return "", fmt.Errorf("invalid secret format for %v", firebaseSecret)
 }
 
-// PinVersionSecrets will determine the latest version for any secrets that require it and pin it to
-// that value for any subsequent steps. Requires that secrets are of the format SECRET_*=projects/p/secrets/s/versions/v
-func PinVersionSecrets(ctx context.Context, client SecretManager, envMap map[string]string) error {
-	for k, v := range envMap {
-		if strings.HasPrefix(k, secretKeyPrefix) && strings.HasSuffix(v, latestSuffix) {
-			n, err := getSecretVersion(ctx, client, v)
+// PinVersions will determine the latest version for any secrets that require it and pin it to
+// that value for any subsequent steps. Requires that secrets are of the format 'projects/p/secrets/s/versions/v'
+func PinVersions(ctx context.Context, client SecretManager, env []apphostingschema.EnvironmentVariable) error {
+	for i, ev := range env {
+		if ev.Secret != "" && strings.HasSuffix(ev.Secret, latestSuffix) {
+			n, err := getSecretVersion(ctx, client, ev.Secret)
 			if err != nil {
-				return fmt.Errorf("calling GetSecretVersion with name=%v: %w", v, err)
+				return fmt.Errorf("calling GetSecretVersion with name=%v: %w", ev.Secret, err)
 			}
-			envMap[k] = n
+			env[i].Secret = n
 		}
 	}
+
 	return nil
 }
 
-// DereferenceSecrets will return a mapping of environment variables to their dereferenced secret
-// values. Requires that secrets are of the format SECRET_*=projects/p/secrets/s/versions/v
-func DereferenceSecrets(ctx context.Context, client SecretManager, envMap map[string]string) (map[string]string, error) {
+// GenerateBuildDereferencedEnvMap will return a mapping of environment variables to their dereferenced
+// secret values along with plain env vars only if they are scope to BUILD availability. Requires
+// that secrets are of the format 'projects/p/secrets/s/versions/v'
+func GenerateBuildDereferencedEnvMap(ctx context.Context, client SecretManager, env []apphostingschema.EnvironmentVariable) (map[string]string, error) {
 	dereferencedEnvMap := map[string]string{}
-	for k, v := range envMap {
-		if strings.HasPrefix(k, secretKeyPrefix) {
-			n, err := accessSecretVersion(ctx, client, v)
-			if err != nil {
-				return nil, fmt.Errorf("calling AccessSecretVersion with name=%v: %w", v, err)
+
+	for _, ev := range env {
+		if slices.Contains(ev.Availability, "BUILD") {
+			if ev.Value != "" {
+				dereferencedEnvMap[ev.Variable] = ev.Value
+			} else if ev.Secret != "" {
+				n, err := accessSecretVersion(ctx, client, ev.Secret)
+				if err != nil {
+					return nil, fmt.Errorf("calling AccessSecretVersion with name=%v: %w", ev.Secret, err)
+				}
+				dereferencedEnvMap[ev.Variable] = n
 			}
-			dereferencedEnvMap[strings.TrimPrefix(k, secretKeyPrefix)] = n
-		} else {
-			dereferencedEnvMap[k] = v
 		}
 	}
+
 	return dereferencedEnvMap, nil
 }
 

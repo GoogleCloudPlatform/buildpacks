@@ -22,10 +22,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v2"
 
 	apphostingschema "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
-	env "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/env"
 )
 
 // outputBundleSchema is the struct representation of a Firebase App Hosting Output Bundle
@@ -53,15 +53,6 @@ var (
 	defaultConcurrency  int32 = 80  // From https://cloud.google.com/run/docs/about-concurrency.
 	defaultMaxInstances int32 = 100 // From https://cloud.google.com/run/docs/configuring/max-instances.
 	defaultMinInstances int32 = 0   // From https://cloud.google.com/run/docs/configuring/min-instances.
-
-	reservedKeys = map[string]bool{
-		"PORT":            true,
-		"K_SERVICE":       true,
-		"K_REVISION":      true,
-		"K_CONFIGURATION": true,
-	}
-
-	reservedFirebaseKey = "FIREBASE_"
 )
 
 func readBundleSchemaFromFile(filePath string) (outputBundleSchema, error) {
@@ -163,7 +154,7 @@ func Publish(appHostingYAMLPath string, bundleYAMLPath string, envPath string, o
 	}
 
 	// Read in environment variables
-	envMap, err := env.ReadEnv(envPath)
+	envMap, err := godotenv.Read(envPath)
 	if err != nil {
 		return fmt.Errorf("reading environment variables from %v: %w", envPath, err)
 	}
