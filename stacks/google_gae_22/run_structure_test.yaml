@@ -34,7 +34,7 @@ metadataTest:
       value: '33'
   labels:
     - key: 'io.buildpacks.stack.id'
-      value: 'google.+'
+      value: 'google.gae.22'
       isRegex: true
     - key: 'io.buildpacks.stack.distro.name'
       value: 'Ubuntu'
