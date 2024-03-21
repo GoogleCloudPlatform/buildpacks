@@ -144,8 +144,12 @@ func buildFn(ctx *gcp.Context) error {
 		// If there are multiple build scripts to run, run them one-by-one so the logs are
 		// easier to understand.
 		for _, cmd := range buildCmds {
+			execOpts := []gcp.ExecOption{gcp.WithUserAttribution}
+			if nodejs.DetectSvelteKitAutoAdapter(pjs) {
+				execOpts = append(execOpts, gcp.WithEnv(nodejs.SvelteAdapterEnv))
+			}
 			split := strings.Split(cmd, " ")
-			if _, err := ctx.Exec(split, gcp.WithUserAttribution); err != nil {
+			if _, err := ctx.Exec(split, execOpts...); err != nil {
 				if !isCustomBuild {
 					return fmt.Errorf(`%w
 NOTE: Running the default build script can be skipped by passing the empty environment variable "%s=" to the build`, err, nodejs.GoogleNodeRunScriptsEnv)

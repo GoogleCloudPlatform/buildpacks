@@ -218,6 +218,9 @@ func DefaultStartCommand(ctx *gcp.Context, pjs *PackageJSON) ([]string, error) {
 	if nuxt, err := NuxtStartCommand(ctx); err != nil || nuxt != nil {
 		return nuxt, err
 	}
+	if svelteKit, err := SvelteKitStartCommand(ctx); err != nil || svelteKit != nil {
+		return svelteKit, err
+	}
 	exists, err := ctx.FileExists(ctx.ApplicationRoot(), "server.js")
 	if err != nil {
 		return nil, err

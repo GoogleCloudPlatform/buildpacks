@@ -54,7 +54,7 @@ func TestNuxtStartCommand(t *testing.T) {
 				}
 				_, err := safeopen.CreateBeneath(dir, "index.mjs")
 				if err != nil {
-					t.Fatalf("failed to create server.js: %v", err)
+					t.Fatalf("failed to create index.mjs: %v", err)
 				}
 			}
 			ctx := gcpbuildpack.NewContext(gcpbuildpack.WithApplicationRoot(home))
