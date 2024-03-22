@@ -9,6 +9,7 @@ go_library(
     ],
     deps = [
         "//pkg/appyaml",
+        "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/php",
         "@com_github_buildpacks_libcnb//:go_default_library",

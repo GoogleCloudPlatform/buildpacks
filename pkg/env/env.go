@@ -194,3 +194,18 @@ func IsPresentAndTrue(varName string) (bool, error) {
 
 	return parsed, nil
 }
+
+// IsPresentAndInt returns true and the integer value if the environment variable evaluates exists and contains an integer.
+func IsPresentAndInt(varName string) (bool, int, error) {
+	varValue, present := os.LookupEnv(varName)
+	if !present {
+		return false, 0, nil
+	}
+
+	parsed, err := strconv.Atoi(varValue)
+	if err != nil {
+		return false, 0, fmt.Errorf("parsing %s: %v", varName, err)
+	}
+
+	return true, parsed, nil
+}

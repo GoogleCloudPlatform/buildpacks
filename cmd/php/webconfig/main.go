@@ -82,20 +82,9 @@ func buildFn(ctx *gcp.Context) error {
 		webconfig.SetEnvVariables(l, overrides)
 	}
 
-	if customNginxConf, present := os.LookupEnv(php.CustomNginxConfig); present {
-		overrides.NginxConfOverride = true
-		overrides.NginxConfOverrideFileName = filepath.Join(defaultRoot, customNginxConf)
-	}
-
-	nginxServesStaticFiles, err := env.IsPresentAndTrue(php.NginxServesStaticFiles)
+	err = overrides.UpdateFromEnvironment(ctx)
 	if err != nil {
 		return err
-	}
-	overrides.NginxServesStaticFiles = nginxServesStaticFiles
-
-	nginxDocumentRoot := os.Getenv(php.NginxDocumentRoot)
-	if (nginxDocumentRoot != "") {
-		overrides.DocumentRoot = nginxDocumentRoot
 	}
 
 	fpmConfFile, err := writeFpmConfig(ctx, l.Path, overrides)
@@ -209,6 +198,14 @@ func fpmConfig(layer string, addNoDecorateWorkers bool, overrides webconfig.Over
 
 	if env.IsFlex() {
 		fpm.ListenAddress = defaultFlexAddress
+	}
+
+	if overrides.PHPFPMDynamicWorkers {
+		fpm.DynamicWorkers = overrides.PHPFPMDynamicWorkers
+	}
+
+	if overrides.PHPFPMWorkers > 0 {
+		fpm.NumWorkers = overrides.PHPFPMWorkers
 	}
 
 	if overrides.PHPFPMOverride {

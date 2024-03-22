@@ -91,11 +91,17 @@ post_max_size = 32M
 	// CustomNginxConfig is an environment variable to pass a custom nginx configuration.
 	CustomNginxConfig = "GOOGLE_CUSTOM_NGINX_CONFIG"
 
-	// NginxServesStaticFiles is an environment variable to configure Nginx to serve static files.
+	// NginxServesStaticFiles is an environment variable to configure nginx to serve static files.
 	NginxServesStaticFiles = "NGINX_SERVES_STATIC_FILES"
 
-	// NginxDocumentRoot overrides the document root of nginx.
+	// NginxDocumentRoot is an environment variable to configure the document root of nginx.
 	NginxDocumentRoot = "NGINX_DOCUMENT_ROOT"
+
+	// PHPFPMDynamicWorkers is an environment variable to enable dynamic workers for php-fpm.
+	PHPFPMDynamicWorkers = "PHP_FPM_DYNAMIC_WORKERS"
+
+	// PHPFPMWorkerCount is an environment variable to configure the number of php-fpm workers.
+	PHPFPMWorkerCount = "PHP_FPM_WORKER_COUNT"
 )
 
 type composerScriptsJSON struct {
