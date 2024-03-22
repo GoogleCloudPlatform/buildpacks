@@ -68,7 +68,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 func buildFn(ctx *gcp.Context) error {
 	// create webconfig layer
-	l, err := ctx.Layer("webconfig", gcp.CacheLayer, gcp.LaunchLayerUnlessSkipRuntimeLaunch)
+	l, err := ctx.Layer("webconfig", gcp.LaunchLayer)
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
 	}
