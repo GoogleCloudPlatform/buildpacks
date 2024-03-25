@@ -216,14 +216,16 @@ def _build_cloudbuild_test_binary(name, srcs, deps):
 # rules, including pkg_zip or pkg_tar, are not able to accept source files that are directories. It
 # requires an explicit fileset to bring in a directory of files.
 def _build_testdata_target(name, testdata):
-    testdata_label = testdata[testdata.rfind(":") + 1:]
+    testdata_pkg, testdata_label = testdata.split(":")
     fileset_name = name + "_" + testdata_label
     native.Fileset(
         name = fileset_name,
         out = name + "_generated/" + testdata_label,
         entries = [
             native.FilesetEntry(
-                srcdir = testdata,
+                srcdir = testdata_pkg + ":BUILD",
+                files = [testdata_label],
+                strip_prefix = testdata_label,
             ),
         ],
     )
@@ -352,12 +354,15 @@ _default_cloudbuild_bin_targets = ["flex_test_cloudbuild_bin", "gae_test_cloudbu
 
 def _build_argo_source_testdata_fileset_target(name, testdata):
     fileset_name = name + "_testdata"
+    testdata_pkg, testdata_label = testdata.split(":")
     native.Fileset(
         name = fileset_name,
         out = "testdata",
         entries = [
             native.FilesetEntry(
-                srcdir = testdata,
+                srcdir = testdata_pkg,
+                files = [testdata_label],
+                strip_prefix = testdata_label,
             ),
         ],
     )
