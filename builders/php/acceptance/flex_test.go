@@ -22,6 +22,15 @@ func TestAcceptance(t *testing.T) {
 			MustUse:                    []string{flex, composer},
 		},
 		{
+			Name:                       "overridden document root",
+			App:                        "front_controller",
+			VersionInclusionConstraint: "< 8.2.0",
+			MustUse:                    []string{flex, composer},
+			Env:                        []string{"NGINX_DOCUMENT_ROOT=public"},
+			Path:                       "/",
+			MustMatch:                  "from public dir",
+		},
+		{
 			Name:                       "php ini override",
 			App:                        "php_ini",
 			MustMatch:                  "PASS_PHP_INI",
