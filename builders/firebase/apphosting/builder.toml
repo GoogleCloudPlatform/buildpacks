@@ -5,6 +5,10 @@ description = "Builder for Firebase App Hosting"
   uri = "runtime.tgz"
 
 [[buildpacks]]
+  id = "google.nodejs.firebasenx"
+  uri = "firebasenx.tgz"
+
+[[buildpacks]]
   id = "google.nodejs.firebasenextjs"
   uri = "firebasenextjs.tgz"
 
@@ -43,7 +47,6 @@ description = "Builder for Firebase App Hosting"
     id = "google.nodejs.pnpm"
   [[order.group]]
     id = "google.nodejs.firebasebundle"
-
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"
@@ -58,6 +61,9 @@ description = "Builder for Firebase App Hosting"
   [[order.group]]
     id = "google.nodejs.runtime"
   [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
     id = "google.nodejs.firebaseangular"
   [[order.group]]
     id = "google.nodejs.yarn"
@@ -67,21 +73,27 @@ description = "Builder for Firebase App Hosting"
   [[order.group]]
     id = "google.nodejs.runtime"
   [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
     id = "google.nodejs.firebaseangular"
   [[order.group]]
     id = "google.nodejs.pnpm"
   [[order.group]]
     id = "google.nodejs.firebasebundle"
-
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
   [[order.group]]
     id = "google.nodejs.firebaseangular"
   [[order.group]]
     id = "google.nodejs.npm"
   [[order.group]]
     id = "google.nodejs.firebasebundle"
+
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"
@@ -96,7 +108,6 @@ description = "Builder for Firebase App Hosting"
     id = "google.nodejs.pnpm"
   [[order.group]]
     id = "google.nodejs.firebasebundle"
-
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"

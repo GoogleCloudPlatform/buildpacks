@@ -25,6 +25,7 @@ func TestDetect(t *testing.T) {
 	testCases := []struct {
 		name  string
 		files map[string]string
+		envs  []string
 		want  int
 	}{
 		{
@@ -36,16 +37,54 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
+			name: "with angular config in app dir",
+			files: map[string]string{
+				"packages/foo/index.js":     "",
+				"packages/foo/angular.json": "",
+			},
+			envs: []string{"FIREBASE_APP_DIRECTORY=packages/foo"},
+			want: 0,
+		},
+		{
 			name: "without angular config",
 			files: map[string]string{
 				"index.js": "",
 			},
 			want: 100,
 		},
+		{
+			name: "with project.json",
+			files: map[string]string{
+				"index.js": "",
+				"project.json": `{
+					"targets": {
+						"build": {
+							"executor": "@angular-devkit/build-angular:application"
+						}
+					}
+				}`,
+			},
+			want: 0,
+		},
+		{
+			name: "with project.json in app dir",
+			files: map[string]string{
+				"packages/foo/index.js": "",
+				"packages/foo/project.json": `{
+					"targets": {
+						"build": {
+							"executor": "@angular-devkit/build-angular:application"
+						}
+					}
+				}`,
+			},
+			envs: []string{"FIREBASE_APP_DIRECTORY=packages/foo"},
+			want: 0,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			bpt.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+			bpt.TestDetect(t, detectFn, tc.name, tc.files, tc.envs, tc.want)
 		})
 	}
 }
@@ -68,11 +107,15 @@ func TestBuild(t *testing.T) {
 					"build": "ng build"
 				},
 				"dependencies": {
-					"@angular/core": "17.2.0"
+					"@angular/core": "17.2.0",
+					"@angular-devkit/build-angular": "17.2.0"
 				}
 			}`, "package-lock.json": `{
 				"packages": {
 					"node_modules/@angular/core": {
+						"version": "17.2.0"
+					},
+					"node_modules/@angular-devkit/build-angular": {
 						"version": "17.2.0"
 					}
 				}
@@ -95,6 +138,9 @@ func TestBuild(t *testing.T) {
 				}`, "package-lock.json": `{
 					"packages": {
 						"node_modules/@angular/core": {
+							"version": "17.2.0"
+						},
+						"node_modules/@angular-devkit/build-angular": {
 							"version": "17.2.0"
 						}
 					}
@@ -119,6 +165,9 @@ func TestBuild(t *testing.T) {
 					"packages": {
 						"node_modules/@angular/core": {
 							"version": "17.2.0"
+						},
+						"node_modules/@angular-devkit/build-angular": {
+							"version": "17.2.0"
 						}
 					}
 				}`,
@@ -128,16 +177,42 @@ func TestBuild(t *testing.T) {
 			},
 		},
 		{
-			name: "error out if the version is below 17.2.0",
+			name: "error out if core version is below 17.2.0",
 			files: map[string]string{
 				"package.json": `{
 				"dependencies": {
-					"@angular/core": "17.0.0"
+					"@angular/core": "17.0.0",
+					"@angular-devkit/build-angular": "17.2.0"
 				}
 			}`,
 				"package-lock.json": `{
 				"packages": {
 					"node_modules/@angular/core": {
+						"version": "17.0.0"
+					},
+					"node_modules/@angular-devkit/build-angular": {
+						"version": "17.2.0"
+					}
+				}
+			}`,
+			},
+			wantExitCode: 1,
+		},
+		{
+			name: "error out if the builder version is below 17.2.0",
+			files: map[string]string{
+				"package.json": `{
+				"dependencies": {
+					"@angular/core": "17.2.0",
+					"@angular-devkit/build-angular": "17.0.0"
+				}
+			}`,
+				"package-lock.json": `{
+				"packages": {
+					"node_modules/@angular/core": {
+						"version": "17.2.0"
+					},
+					"node_modules/@angular-devkit/build-angular": {
 						"version": "17.0.0"
 					}
 				}
@@ -150,12 +225,16 @@ func TestBuild(t *testing.T) {
 			files: map[string]string{
 				"package.json": `{
 				"dependencies": {
-					"@angular/core": "17.2.0"
+					"@angular/core": "17.2.0",
+					"@angular-devkit/build-angular": "17.2.0"
 				}
 			}`,
 				"package-lock.json": `{
 				"packages": {
 					"node_modules/@angular/core": {
+						"version": "17.2.0"
+					},
+					"node_modules/@angular-devkit/build-angular": {
 						"version": "17.2.0"
 					}
 				}
@@ -174,11 +253,15 @@ func TestBuild(t *testing.T) {
 						"build": "apphosting-adapter-angular-build"
 					},
 					"dependencies": {
-						"@angular/core": "^17.0.0"
+						"@angular/core": "^17.0.0",
+						"@angular-devkit/build-angular": "^17.0.0"
 					}
 				}`, "package-lock.json": `{
 					"packages": {
 						"node_modules/@angular/core": {
+							"version": "17.2.1"
+						},
+						"node_modules/@angular-devkit/build-angular": {
 							"version": "17.2.1"
 						}
 					}
@@ -193,12 +276,16 @@ func TestBuild(t *testing.T) {
 			files: map[string]string{
 				"package.json": `{
 					"dependencies": {
-						"@angular/core": "15.0.0 - 17.2.0"
+						"@angular/core": "15.0.0 - 17.2.0",
+						"@angular-devkit/build-angular": "15.0.0 - 17.2.0"
 					}
 				}`,
 				"package-lock.json": `{
 					"packages": {
 						"node_modules/@angular/core": {
+							"version": "17.2.0"
+						},
+						"node_modules/@angular-devkit/build-angular": {
 							"version": "17.2.0"
 						}
 					}
@@ -213,12 +300,15 @@ func TestBuild(t *testing.T) {
 			files: map[string]string{
 				"package.json": `{
 					"dependencies": {
-						"@angular/core": "15.0.0 - 17.2.0"
+						"@angular/core": "15.0.0 - 17.2.0",
+						"@angular-devkit/build-angular": "15.0.0 - 17.2.0"
 					}
 				}`,
 				"pnpm-lock.yaml": `
 dependencies:
   '@angular/core':
+    version: 17.2.3(rxjs@7.8.1)(zone.js@0.14.4)
+  '@angular-devkit/build-angular':
     version: 17.2.3(rxjs@7.8.1)(zone.js@0.14.4)
 `,
 			},
@@ -231,12 +321,15 @@ dependencies:
 			files: map[string]string{
 				"package.json": `{
 					"dependencies": {
-						"@angular/core": "^17.1.0"
+						"@angular/core": "^17.1.0",
+						"@angular-devkit/build-angular": "^17.1.0"
 					}
 				}`,
 				"yarn.lock": `
 	"@angular/core@npm:^17.1.0":
-	version: 17.2.0`,
+	version: 17.2.0
+	"@angular-devkit/build-angular@npm:^17.1.0":
+  version: 17.2.0`,
 			},
 			mocks: []*mockprocess.Mock{
 				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
@@ -247,11 +340,14 @@ dependencies:
 			files: map[string]string{
 				"package.json": `{
 					"dependencies": {
-						"@angular/core": "^17.1.0"
+						"@angular/core": "^17.1.0",
+						"@angular-devkit/build-angular": "^17.1.0"
 					}
 				}`,
 				"yarn.lock": `
 				@angular/core@^17.1.0:
+	version: "17.2.0"
+@angular-devkit/build-angular@^17.1.0:
 	version: "17.2.0"
 	`,
 			},

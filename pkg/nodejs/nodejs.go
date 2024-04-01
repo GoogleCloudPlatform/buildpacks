@@ -69,6 +69,7 @@ const (
 
 // PackageJSON represents the contents of a package.json file.
 type PackageJSON struct {
+	Name            string             `json:"name"`
 	Main            string             `json:"main"`
 	Type            string             `json:"type"`
 	Version         string             `json:"version"`
@@ -90,6 +91,16 @@ type PnpmLockfile struct {
 	Dependencies map[string]struct {
 		Version string `yaml:"version"`
 	} `yaml:"dependencies"`
+	DevDependencies map[string]struct {
+		Version string `yaml:"version"`
+	} `yaml:"devDependencies"`
+}
+
+// NodeDependencies represents the dependencies of a Node package via its package.json and lockfile.
+type NodeDependencies struct {
+	PackageJSON   *PackageJSON
+	LockfileName  string
+	LockfileBytes []byte
 }
 
 // ReadPackageJSONIfExists returns deserialized package.json from the given dir. If the provided dir
@@ -111,6 +122,69 @@ func ReadPackageJSONIfExists(dir string) (*PackageJSON, error) {
 		return nil, gcp.UserErrorf("unmarshalling package.json: %v", err)
 	}
 	return &pjs, nil
+}
+
+// ReadNodeDependencies looks for a package.json and lockfile in either appDir or rootDir. The
+// lockfile must either be in the same directory as package.json or be in the application root,
+// otherwise an error is returned.
+func ReadNodeDependencies(ctx *gcp.Context, appDir string) (*NodeDependencies, error) {
+	rootDir := ctx.ApplicationRoot()
+	if !strings.HasPrefix(appDir, rootDir) {
+		return nil, fmt.Errorf("appDir %q is not a subpath of application root %q", appDir, rootDir)
+	}
+
+	var dir string
+	var pjs *PackageJSON
+	var err error
+	// Check appDir first for package.json file, then rootDir
+	if pjs, err = ReadPackageJSONIfExists(appDir); err != nil {
+		return nil, err
+	}
+	if pjs != nil {
+		dir = appDir
+	} else {
+		if pjs, err = ReadPackageJSONIfExists(rootDir); err != nil {
+			return nil, err
+		}
+		if pjs != nil {
+			dir = rootDir
+		} else {
+			return nil, gcp.UserErrorf("package.json not found")
+		}
+	}
+
+	// Try to read lockfile from the same dir; if there is no lockfile, check the application root for
+	// a lockfile. Return an error if no lockfile is found.
+	name, bytes, err := readLockfileBytesIfExists(dir)
+	if err != nil {
+		return nil, err
+	}
+	if bytes != nil {
+		return &NodeDependencies{pjs, name, bytes}, nil
+	}
+	name, bytes, err = readLockfileBytesIfExists(rootDir)
+	if err != nil {
+		return nil, err
+	}
+	if bytes != nil {
+		return &NodeDependencies{pjs, name, bytes}, nil
+	}
+	return nil, gcp.UserErrorf("lockfile not found")
+}
+
+func readLockfileBytesIfExists(dir string) (string, []byte, error) {
+	for _, filename := range possibleLockfileFilenames {
+		filePath := filepath.Join(dir, filename)
+		raw, err := os.ReadFile(filePath)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return "", nil, gcp.UserErrorf("Error while reading lockfile: %w", err)
+		}
+		return filename, raw, nil
+	}
+	return "", nil, nil
 }
 
 // HasGCPBuild returns true if the given package.json file includes a "gcp-build" script.
@@ -243,7 +317,13 @@ func versionFromPnpmLock(rawPackageLock []byte, pkg string) (string, error) {
 	if err := yaml.Unmarshal(rawPackageLock, &lockfile); err != nil {
 		return "", gcp.InternalErrorf("parsing pnpm lock file: %w", err)
 	}
-	return strings.Split(lockfile.Dependencies[pkg].Version, "(")[0], nil
+	if _, ok := lockfile.Dependencies[pkg]; ok {
+		return strings.Split(lockfile.Dependencies[pkg].Version, "(")[0], nil
+	}
+	if _, ok := lockfile.DevDependencies[pkg]; ok {
+		return strings.Split(lockfile.DevDependencies[pkg].Version, "(")[0], nil
+	}
+	return "", gcp.InternalErrorf("package not found")
 }
 
 func versionFromYarnLock(rawPackageLock []byte, pjs *PackageJSON, pkg string) (string, error) {
@@ -269,24 +349,16 @@ func versionFromNpmLock(rawPackageLock []byte, pkg string) (string, error) {
 	return lockfile.Packages["node_modules/"+pkg].Version, nil
 }
 
-// Version tries to get the concrete package version used based on lock file,
-// returns error if no lock file is found or is misshapen
-func Version(ctx *gcp.Context, pjs *PackageJSON, pkg string) (string, error) {
-	for _, filename := range possibleLockfileFilenames {
-		filePath := filepath.Join(ctx.ApplicationRoot(), filename)
-		rawPackageLock, err := os.ReadFile(filePath)
-		if err != nil {
-			continue
-		}
-		switch filename {
-		case "pnpm-lock.yaml":
-			return versionFromPnpmLock(rawPackageLock, pkg)
-		case "yarn.lock":
-			return versionFromYarnLock(rawPackageLock, pjs, pkg)
-		case "npm-shrinkwrap.json", "package-lock.json":
-			return versionFromNpmLock(rawPackageLock, pkg)
-		}
+// Version tries to get the concrete package version used based on lock file.
+func Version(deps *NodeDependencies, pkg string) (string, error) {
+	switch deps.LockfileName {
+	case "pnpm-lock.yaml":
+		return versionFromPnpmLock(deps.LockfileBytes, pkg)
+	case "yarn.lock":
+		return versionFromYarnLock(deps.LockfileBytes, deps.PackageJSON, pkg)
+	case "npm-shrinkwrap.json", "package-lock.json":
+		return versionFromNpmLock(deps.LockfileBytes, pkg)
 	}
 
-	return "", gcp.UserErrorf("No lock file found, please run npm install to generate one")
+	return "", gcp.UserErrorf("Failed to find version for package %s", pkg)
 }

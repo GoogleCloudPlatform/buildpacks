@@ -57,12 +57,12 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
+	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, ctx.ApplicationRoot())
 	if err != nil {
 		return err
 	}
 
-	version, err := nodejs.Version(ctx, pjs, "next")
+	version, err := nodejs.Version(nodeDeps, "next")
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	buildScript, exists := pjs.Scripts["build"]
+	buildScript, exists := nodeDeps.PackageJSON.Scripts["build"]
 	if exists && buildScript == "next build" {
 		njsl, err := ctx.Layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
 		if err != nil {

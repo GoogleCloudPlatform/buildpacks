@@ -1,12 +1,12 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
 
-# Buildpack for the Angular framework.
+# Buildpack for the Nx monorepo build system.
 load("//tools:defs.bzl", "buildpack")
 
 licenses(["notice"])
 
 buildpack(
-    name = "firebaseangular",
+    name = "firebasenx",
     executables = [
         ":main",
     ],
@@ -26,10 +26,8 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/firebase/util",
         "//pkg/gcpbuildpack",
         "//pkg/nodejs",
-        "@com_github_masterminds_semver//:go_default_library",
     ],
 )
 
@@ -40,6 +38,5 @@ go_test(
     rundir = ".",
     deps = [
         "//internal/buildpacktest",
-        "//internal/mockprocess",
     ],
 )

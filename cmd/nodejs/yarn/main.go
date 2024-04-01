@@ -231,9 +231,13 @@ func yarn2InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		return err
 	}
 
-	// Run the gcp-build script if it exists.
-	if nodejs.HasGCPBuild(pjs) {
+	if gcpBuild := nodejs.HasGCPBuild(pjs); gcpBuild {
 		if _, err := ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+	}
+	if appHostingBuildScript, ok := os.LookupEnv(nodejs.AppHostingBuildEnv); ok {
+		if _, err := ctx.Exec(strings.Split(appHostingBuildScript, " "), gcp.WithUserAttribution); err != nil {
 			return err
 		}
 	}

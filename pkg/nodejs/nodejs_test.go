@@ -16,13 +16,10 @@ package nodejs
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 	"reflect"
 	"testing"
 
-	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 )
@@ -325,111 +322,175 @@ func TestIsNodeJS8Runtime(t *testing.T) {
 	}
 }
 
+func TestReadNodeDependencies(t *testing.T) {
+	want := &NodeDependencies{
+		PackageJSON: &PackageJSON{
+			Engines: packageEnginesJSON{
+				Node: "my-node",
+				NPM:  "my-npm",
+			},
+			Scripts: map[string]string{
+				"start": "my-start",
+			},
+			Dependencies: map[string]string{
+				"a": "1.0",
+				"b": "2.0",
+			},
+			DevDependencies: map[string]string{
+				"c": "3.0",
+			},
+		},
+		LockfileName: "package-lock.json",
+		LockfileBytes: []byte(`{
+  "packages": {
+    "node_modules/a": {
+      "version": "1.0"
+    },
+    "node_modules/b": {
+      "version": "2.0"
+    }
+  }
+}`),
+	}
+
+	testCases := []struct {
+		name          string
+		rootDir       string
+		appDir        string
+		expectedError bool
+		want          *NodeDependencies
+	}{
+		{
+			name:          "missing lockfile",
+			rootDir:       testdata.MustGetPath("testdata/test-read-package/"),
+			appDir:        testdata.MustGetPath("testdata/test-read-package/"),
+			expectedError: true,
+			want:          nil,
+		},
+		{
+			name:    "package json and lockfile in same dir",
+			rootDir: testdata.MustGetPath("testdata/test-read-node-deps/"),
+			appDir:  testdata.MustGetPath("testdata/test-read-node-deps/"),
+			want:    want,
+		},
+		{
+			name:    "lockfile in root dir and package json in app dir",
+			rootDir: testdata.MustGetPath("testdata/test-read-node-deps-nested/"),
+			appDir:  testdata.MustGetPath("testdata/test-read-node-deps-nested/package-a/"),
+			want:    want,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(tc.rootDir))
+			got, err := ReadNodeDependencies(ctx, tc.appDir)
+			if err != nil && !tc.expectedError {
+				t.Fatalf("ReadNodeDependencies returned an unexpected error: %v", err)
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("ReadNodeDependencies package.json\ngot %#v\nwant %#v", got, want)
+			}
+		})
+	}
+}
+
 func TestVersion(t *testing.T) {
 	testCases := []struct {
 		name            string
-		pjs             PackageJSON
-		files           map[string]string
+		nodeDeps        *NodeDependencies
 		expectedVersion string
-		mocks           []*mockprocess.Mock
-		expectedError   bool
 		pkg             string
+		expectedError   bool
 	}{
-		{
-			name: "Errors out when no package-lock is included nextjs",
-			pkg:  "next",
-			pjs: PackageJSON{
-				Dependencies: map[string]string{
-					"next": "^13.1.0",
-				},
-			},
-			files:         map[string]string{},
-			expectedError: true,
-		},
 		{
 			name: "Parses package-lock version nextjs",
 			pkg:  "next",
-			pjs: PackageJSON{
-				Dependencies: map[string]string{
-					"next": "^13.1.0",
+			nodeDeps: &NodeDependencies{
+				PackageJSON: &PackageJSON{
+					Dependencies: map[string]string{
+						"next": "^13.1.0",
+					},
 				},
-			},
-			files: map[string]string{
-				"package-lock.json": `{
+				LockfileName: "package-lock.json",
+				LockfileBytes: []byte(`{
 					"packages": {
 						"node_modules/next": {
 							"version": "13.5.6"
 						}
 					}
-				}`,
+				}`),
 			},
 			expectedVersion: "13.5.6",
 		},
 		{
 			name: "Parses package-lock version angular",
 			pkg:  "angular",
-			pjs: PackageJSON{
-				Dependencies: map[string]string{
-					"angular": "^17.1.0",
+			nodeDeps: &NodeDependencies{
+				PackageJSON: &PackageJSON{
+					Dependencies: map[string]string{
+						"angular": "^17.1.0",
+					},
 				},
-			},
-			files: map[string]string{
-				"package-lock.json": `{
+				LockfileName: "package-lock.json",
+				LockfileBytes: []byte(`{
 					"packages": {
 						"node_modules/angular": {
 							"version": "17.1.2"
 						}
 					}
-				}`,
+				}`),
 			},
 			expectedVersion: "17.1.2",
 		},
 		{
 			name: "Parses yarn.lock berry version nextjs",
 			pkg:  "next",
-			pjs: PackageJSON{
-				Dependencies: map[string]string{
-					"next": "^13.1.0",
+			nodeDeps: &NodeDependencies{
+				PackageJSON: &PackageJSON{
+					Dependencies: map[string]string{
+						"next": "^13.1.0",
+					},
 				},
-			},
-			files: map[string]string{
-				"yarn.lock": `
-"next@npm:^13.1.0":
-	version: 13.5.6`,
+				LockfileName: "yarn.lock",
+				LockfileBytes: []byte(`
+				"next@npm:^13.1.0":
+					version: 13.5.6`),
 			},
 			expectedVersion: "13.5.6",
 		},
 		{
 			name: "Parses yarn.lock classic version nextjs",
 			pkg:  "next",
-			pjs: PackageJSON{
-				Dependencies: map[string]string{
-					"next": "^13.1.0",
+			nodeDeps: &NodeDependencies{
+				PackageJSON: &PackageJSON{
+					Dependencies: map[string]string{
+						"next": "^13.1.0",
+					},
 				},
-			},
-			files: map[string]string{
-				"yarn.lock": `
-next@^13.1.0:
-	version: "13.5.6"
-				`,
+				LockfileName: "yarn.lock",
+				LockfileBytes: []byte(`
+				next@^13.1.0:
+					version: "13.5.6"
+								`),
 			},
 			expectedVersion: "13.5.6",
 		},
 		{
 			name: "Parses pnpm-lock version nextjs",
 			pkg:  "next",
-			pjs: PackageJSON{
-				Dependencies: map[string]string{
-					"next": "^13.1.0",
+			nodeDeps: &NodeDependencies{
+				PackageJSON: &PackageJSON{
+					Dependencies: map[string]string{
+						"next": "^13.1.0",
+					},
 				},
-			},
-			files: map[string]string{
-				"pnpm-lock.yaml": `
+				LockfileName: "pnpm-lock.yaml",
+				LockfileBytes: []byte(`
 dependencies:
   next:
     version: 13.5.6(@babel/core@7.23.9)
 
-`,
+`),
 			},
 			expectedVersion: "13.5.6",
 		},
@@ -437,22 +498,12 @@ dependencies:
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tmpDir := os.TempDir()
-
-			ctx := gcp.NewContext(append(getContextOpts(t, tc.mocks), gcp.WithApplicationRoot(tmpDir))...)
-
-			for file, content := range tc.files {
-				fn := filepath.Join(ctx.ApplicationRoot(), file)
-				ioutil.WriteFile(fn, []byte(content), 0644)
-			}
-
-			version, err := Version(ctx, &tc.pjs, tc.pkg)
+			version, err := Version(tc.nodeDeps, tc.pkg)
 			if version != tc.expectedVersion {
-				t.Fatalf("Version(%v, %v) output: %s doesn't match expected output %s", ctx, tc.pjs, version, tc.expectedVersion)
+				t.Fatalf("Version(%v, %v) output: %s doesn't match expected output %s", tc.nodeDeps, tc.pkg, version, tc.expectedVersion)
 			}
 			if gotErr := (err != nil); gotErr != tc.expectedError {
-				t.Fatalf("Version(_, %v) returned error: %v, wanted: %v, errMsg: %v.",
-					tc.pjs, gotErr, tc.expectedError, err)
+				t.Fatalf("Version(_, %v) returned error: %v, wanted: %v, errMsg: %v.", tc.pkg, gotErr, tc.expectedError, err)
 			}
 		})
 	}

@@ -18,8 +18,9 @@ package main
 
 import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
-	// "google3/third_party/golang/hashicorp/version/version"
 	"github.com/Masterminds/semver"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
@@ -34,35 +35,52 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	// b/319754948
-	// In monorepo scenarios, we'll probably need to support environment variable that can be used to
-	// know where the application directory is located within the repository.
-	angularJSONExists, err := ctx.FileExists("angular.json")
+	appDir := util.ApplicationDirectory(ctx)
+	angularJSONExists, err := ctx.FileExists(appDir, "angular.json")
 	if err != nil {
 		return nil, err
 	}
 	if angularJSONExists {
 		return gcp.OptInFileFound("angular.json"), nil
 	}
+	// Check if this is an Nx + Angular project, which replaces angular.json with project.json.
+	projectJSON, err := nodejs.ReadNxProjectJSONIfExists(appDir)
+	if err != nil {
+		return nil, err
+	}
+	if projectJSON != nil && projectJSON.Targets.Build.Executor == "@angular-devkit/build-angular:application" {
+		return gcp.OptIn("angular builder found"), nil
+	}
 	return gcp.OptOut("angular config not found"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {
-	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
-	if err != nil {
-		return err
-	}
-	version, err := nodejs.Version(ctx, pjs, "@angular/core")
-	if err != nil {
-		return err
-	}
+	appDir := util.ApplicationDirectory(ctx)
 
+	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, appDir)
+	if err != nil {
+		return err
+	}
+	// Check that we support this version of angular.
+	version, err := nodejs.Version(nodeDeps, "@angular/core")
+	if err != nil {
+		return err
+	}
 	err = validateVersion(ctx, version)
 	if err != nil {
 		return err
 	}
+	// Ensure that the right version of the application builder is installed.
+	builderVersion, err := nodejs.Version(nodeDeps, "@angular-devkit/build-angular")
+	if err != nil {
+		return err
+	}
+	err = validateVersion(ctx, builderVersion)
+	if err != nil {
+		return err
+	}
 
-	buildScript, exists := pjs.Scripts["build"]
+	buildScript, exists := nodeDeps.PackageJSON.Scripts["build"]
 	if exists && buildScript != "ng build" && buildScript != "apphosting-adapter-angular-build" {
 		ctx.Warnf("*** You are using a custom build command (your build command is NOT 'ng build'), we will accept it as is but will error if output structure is not as expected ***")
 	}

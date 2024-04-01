@@ -16,6 +16,7 @@ builder(
         "//cmd/nodejs/firebasenextjs:firebasenextjs.tgz",
         "//cmd/nodejs/firebaseangular:firebaseangular.tgz",
         "//cmd/nodejs/firebasebundle:firebasebundle.tgz",
+        "//cmd/nodejs/firebasenx:firebasenx.tgz",
     ],
     image = "firebase/apphosting",
 )
