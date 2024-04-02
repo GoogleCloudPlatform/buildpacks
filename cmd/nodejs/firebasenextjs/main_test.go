@@ -19,6 +19,7 @@ import (
 
 	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 )
 
 func TestDetect(t *testing.T) {
@@ -79,10 +80,10 @@ func TestBuild(t *testing.T) {
 			}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@13.0`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@`+nodejs.PinnedNextjsAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
 			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-nextjs@13.0",
+				"npm install --prefix npm_modules @apphosting/adapter-nextjs@" + nodejs.PinnedNextjsAdapterVersion,
 			},
 		},
 		{

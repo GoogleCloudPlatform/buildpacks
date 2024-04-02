@@ -16,17 +16,17 @@ package nodejs
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
-	"github.com/Masterminds/semver"
 )
 
 var (
 	// angularVersionKey is the metadata key used to store the angular build adaptor version in the angular layer.
 	angularVersionKey = "version"
+	// PinnedAngularAdapterVersion is the version of the angular adapter that will be used.
+	PinnedAngularAdapterVersion = "17.2.2"
 )
 
 // InstallAngularBuildAdaptor installs the angular build adaptor in the given layer if it is not already cached.
@@ -59,14 +59,10 @@ func InstallAngularBuildAdaptor(ctx *gcp.Context, al *libcnb.Layer, version stri
 	return nil
 }
 
-// AngularAdaptorVersion determines the version of Angular that is needed by an Angular project
+// AngularAdaptorVersion determines the version of Angular that is needed by an Angular project.
 func AngularAdaptorVersion(version string) (string, error) {
-	parsedVersion, err := semver.StrictNewVersion(version)
-	if err != nil {
-		return "", gcp.InternalErrorf("parsing angular version: %w", err)
-	}
-	// match major + minor versions with the Angular version
-	adapterVersion := strconv.FormatUint(parsedVersion.Major(), 10) + "." + strconv.FormatUint(parsedVersion.Minor(), 10)
+	// TODO(b/323280044) account for different versions once development is more stable.
+	adapterVersion := PinnedAngularAdapterVersion
 	return adapterVersion, nil
 }
 
@@ -82,7 +78,7 @@ func downloadAngularAdaptor(ctx *gcp.Context, dirPath, version string) error {
 	return nil
 }
 
-// OverrideAngularBuildScript overrides the build script to be the Angular build script
+// OverrideAngularBuildScript overrides the build script to be the Angular build script.
 func OverrideAngularBuildScript(njsl *libcnb.Layer) {
 	njsl.BuildEnvironment.Override(AppHostingBuildEnv, fmt.Sprintf("npm exec --prefix %s apphosting-adapter-angular-build", njsl.Path))
 }

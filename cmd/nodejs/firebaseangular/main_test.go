@@ -19,6 +19,7 @@ import (
 
 	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 )
 
 func TestDetect(t *testing.T) {
@@ -122,10 +123,10 @@ func TestBuild(t *testing.T) {
 			}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
 			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-angular@17.2",
+				"npm install --prefix npm_modules @apphosting/adapter-angular@" + nodejs.PinnedAngularAdapterVersion,
 			},
 		},
 		{
@@ -147,7 +148,7 @@ func TestBuild(t *testing.T) {
 				}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@latest`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
 		},
 		{
@@ -173,7 +174,7 @@ func TestBuild(t *testing.T) {
 				}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
 		},
 		{
@@ -241,7 +242,7 @@ func TestBuild(t *testing.T) {
 			}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
 			wantExitCode: 0,
 		},
@@ -268,7 +269,7 @@ func TestBuild(t *testing.T) {
 				}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
 		},
 		{
@@ -292,7 +293,7 @@ func TestBuild(t *testing.T) {
 				}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
 		},
 		{
@@ -313,7 +314,7 @@ dependencies:
 `,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
 		},
 		{
@@ -332,7 +333,7 @@ dependencies:
   version: 17.2.0`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
 		},
 		{
@@ -352,7 +353,7 @@ dependencies:
 	`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
 		},
 	}

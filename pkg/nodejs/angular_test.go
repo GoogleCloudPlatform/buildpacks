@@ -31,17 +31,17 @@ func TestInstallAngularBuildAdaptor(t *testing.T) {
 		mocks          []*mockprocess.Mock
 	}{
 		{
-			name:           "download v17.2 adaptor succeeds",
+			name:           "download pinned adapter",
 			angularVersion: "17.2.0",
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@17.2`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
 			layerMetadata: map[string]any{},
 		},
 		{
 			name:           "download adaptor not needed since it is cached",
 			angularVersion: "17.2.0",
-			layerMetadata:  map[string]any{"version": "17.2"},
+			layerMetadata:  map[string]any{"version": PinnedAngularAdapterVersion},
 		},
 		{
 			name:           "download invalid adaptor falls back to latest",

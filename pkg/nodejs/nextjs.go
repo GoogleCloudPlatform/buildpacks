@@ -16,16 +16,16 @@ package nodejs
 
 import (
 	"fmt"
-	"strconv"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb"
-	"github.com/Masterminds/semver"
 )
 
 var (
 	// nextJsVersionKey is the metadata key used to store the nextjs build adaptor version in the nextjs layer.
 	nextJsVersionKey = "version"
+	// PinnedNextjsAdapterVersion is the version of the nextjs adapter that will be used.
+	PinnedNextjsAdapterVersion = "14.0.1"
 )
 
 // InstallNextJsBuildAdaptor installs the nextjs build adaptor in the given layer if it is not already cached.
@@ -59,14 +59,10 @@ func InstallNextJsBuildAdaptor(ctx *gcp.Context, njsl *libcnb.Layer, njsVersion 
 	return nil
 }
 
-// detectNextjsAdaptorVersion determines the version of Nextjs that is needed by a nextjs project
+// detectNextjsAdaptorVersion determines the version of Nextjs that is needed by a nextjs project.
 func detectNextjsAdaptorVersion(njsVersion string) (string, error) {
-	version, err := semver.StrictNewVersion(njsVersion)
-	if err != nil {
-		return "", gcp.InternalErrorf("parsing nextjs version: %w", err)
-	}
-	// match major + minor versions with the Nextjs version
-	adapterVersion := strconv.FormatUint(version.Major(), 10) + "." + strconv.FormatUint(version.Minor(), 10)
+	// TODO(b/323280044) account for different versions once development is more stable.
+	adapterVersion := PinnedNextjsAdapterVersion
 	return adapterVersion, nil
 }
 

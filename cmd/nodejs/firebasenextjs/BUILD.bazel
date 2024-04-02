@@ -40,5 +40,6 @@ go_test(
     deps = [
         "//internal/buildpacktest",
         "//internal/mockprocess",
+        "//pkg/nodejs",
     ],
 )

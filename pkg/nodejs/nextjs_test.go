@@ -29,10 +29,10 @@ func TestInstallNextJsBuildAdaptor(t *testing.T) {
 		mocks         []*mockprocess.Mock
 	}{
 		{
-			name:          "download v13.0 adaptor succeeds",
+			name:          "download pinned adapter",
 			nextjsVersion: "13.0.0",
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@13.0`, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@`+PinnedNextjsAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
 			layerMetadata: map[string]any{},
 		},
@@ -48,7 +48,7 @@ func TestInstallNextJsBuildAdaptor(t *testing.T) {
 		{
 			name:          "download adaptor not needed since it is cached",
 			nextjsVersion: "13.0.0",
-			layerMetadata: map[string]any{"version": "13.0"},
+			layerMetadata: map[string]any{"version": PinnedNextjsAdapterVersion},
 		},
 	}
 
@@ -77,12 +77,12 @@ func TestDetectNextjsAdaptorVersion(t *testing.T) {
 		{
 			name:           "concrete version",
 			version:        "13.0.0",
-			expectedOutput: "13.0",
+			expectedOutput: PinnedNextjsAdapterVersion,
 		},
 		{
 			name:           "handles prereleases",
 			version:        "13.0.1-canary",
-			expectedOutput: "13.0",
+			expectedOutput: PinnedNextjsAdapterVersion,
 		},
 	}
 
