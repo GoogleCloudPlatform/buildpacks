@@ -3,7 +3,12 @@ curl
 ffmpeg
 file
 fontconfig
+fonts-freefont-ttf
+fonts-ipafont-gothic
+fonts-kacst
 fonts-liberation
+fonts-thai-tlwg
+fonts-wqy-zenhei
 git
 gnupg
 imagemagick
