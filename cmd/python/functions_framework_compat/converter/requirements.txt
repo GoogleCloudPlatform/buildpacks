@@ -19,7 +19,7 @@ googleapis-common-protos==1.54.0
 grpcio==1.43.0
 grpcio-status==1.43.0
 httplib2==0.20.2
-idna==3.3
+idna==3.7
 itsdangerous==2.0.1
 Jinja2==3.0.3
 MarkupSafe==2.0.1
