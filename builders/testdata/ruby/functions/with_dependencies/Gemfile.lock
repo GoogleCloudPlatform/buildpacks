@@ -1,30 +1,24 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    cloud_events (0.7.0)
-    functions_framework (1.2.0)
+    cloud_events (0.7.1)
+    functions_framework (1.4.1)
       cloud_events (>= 0.7.0, < 2.a)
-      puma (>= 4.3.0, < 6.a)
-      rack (~> 2.1)
-    google-protobuf (3.21.12)
-    googleapis-common-protos-types (1.5.0)
-      google-protobuf (~> 3.14)
-    grpc (1.52.0)
-      google-protobuf (~> 3.21)
-      googleapis-common-protos-types (~> 1.0)
-    nio4r (2.5.8)
-    puma (5.6.5)
+      puma (>= 4.3.0, < 7.a)
+      rack (>= 2.1, < 4.a)
+    nio4r (2.7.1)
+    puma (6.4.2)
       nio4r (~> 2.0)
-    rack (2.2.6.2)
+    rack (3.0.10)
     webrick (1.8.1)
 
 PLATFORMS
-  ruby
+  x86_64-linux
 
 DEPENDENCIES
-  functions_framework (~> 1.1)
-  grpc (~> 1.52)
-  webrick (~> 1.7)
+  functions_framework (~> 1.4)
+  rack (~> 3.0)
+  webrick (~> 1.8)
 
 BUNDLED WITH
-   2.4.6
+   2.3.15

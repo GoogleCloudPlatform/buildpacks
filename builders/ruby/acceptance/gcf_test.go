@@ -33,7 +33,7 @@ func TestAcceptance(t *testing.T) {
 			App:             "with_dependencies",
 			EnableCacheTest: true,
 			Labels: map[string]string{
-				"google.functions-framework-version": `{"runtime":"ruby","version":"1.2.0","injected":false}`,
+				"google.functions-framework-version": `{"runtime":"ruby","version":"1.4.1","injected":false}`,
 			},
 		},
 		{

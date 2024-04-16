@@ -15,6 +15,6 @@
 require "functions_framework"
 
 FunctionsFramework.http "testFunction" do |request|
-  require "grpc"
+  require "rack"
   "PASS"
 end
