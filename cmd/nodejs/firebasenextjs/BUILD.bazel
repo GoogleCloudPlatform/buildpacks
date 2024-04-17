@@ -26,6 +26,7 @@ go_binary(
         "-w",
     ],
     deps = [
+        "//pkg/firebase/util",
         "//pkg/gcpbuildpack",
         "//pkg/nodejs",
         "@com_github_masterminds_semver//:go_default_library",

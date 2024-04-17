@@ -29,9 +29,13 @@ description = "Builder for Firebase App Hosting"
 [[buildpacks]]
   id = "google.nodejs.pnpm"
   uri = "pnpm.tgz"
+
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
   [[order.group]]
     id = "google.nodejs.firebasenextjs"
   [[order.group]]
@@ -42,6 +46,9 @@ description = "Builder for Firebase App Hosting"
   [[order.group]]
     id = "google.nodejs.runtime"
   [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
     id = "google.nodejs.firebasenextjs"
   [[order.group]]
     id = "google.nodejs.pnpm"
@@ -50,6 +57,9 @@ description = "Builder for Firebase App Hosting"
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
   [[order.group]]
     id = "google.nodejs.firebasenextjs"
   [[order.group]]

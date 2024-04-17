@@ -17,6 +17,7 @@
 package main
 
 import (
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/Masterminds/semver"
 
@@ -33,12 +34,10 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	// TODO (b/311402770)
-	// In monorepo scenarios, we'll probably need to support environment variable that can be used to
-	// know where the application directory is located within the repository.
+	appDir := util.ApplicationDirectory(ctx)
 	// TODO (b/313959098)
 	// Verify nextjs version
-	nextConfigExists, err := ctx.FileExists("next.config.js")
+	nextConfigExists, err := ctx.FileExists(appDir, "next.config.js")
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +45,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return gcp.OptInFileFound("next.config.js"), nil
 	}
 
-	nextConfigModuleExists, err := ctx.FileExists("next.config.mjs")
+	nextConfigModuleExists, err := ctx.FileExists(appDir, "next.config.mjs")
 	if err != nil {
 		return nil, err
 	}
@@ -57,36 +56,37 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, ctx.ApplicationRoot())
+	appDir := util.ApplicationDirectory(ctx)
+
+	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, appDir)
 	if err != nil {
 		return err
 	}
-
 	version, err := nodejs.Version(nodeDeps, "next")
 	if err != nil {
 		return err
 	}
-
 	err = validateVersion(ctx, version)
 	if err != nil {
 		return err
 	}
 
 	buildScript, exists := nodeDeps.PackageJSON.Scripts["build"]
-	if exists && buildScript == "next build" {
-		njsl, err := ctx.Layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
-		if err != nil {
-			return err
-		}
-		err = nodejs.InstallNextJsBuildAdaptor(ctx, njsl, version)
-		if err != nil {
-			return err
-		}
-		// This env var indicates to the package manager buildpack that a different command needs to be run
-		nodejs.OverrideNextjsBuildScript(njsl)
-	} else if exists && buildScript != "apphosting-adapter-nextjs-build" {
-		ctx.Warnf("*** You are using a custom build command (your build command is NOT 'next build'), we will accept it as is but some features will not be enabled ***")
+	if exists && buildScript != "next build" && buildScript != "apphosting-adapter-nextjs-build" {
+		ctx.Warnf("*** You are using a custom build command (your build command is NOT 'next build'), we will accept it as is but will error if output structure is not as expected ***")
 	}
+
+	njsl, err := ctx.Layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
+	if err != nil {
+		return err
+	}
+	err = nodejs.InstallNextJsBuildAdaptor(ctx, njsl, version)
+	if err != nil {
+		return err
+	}
+	// This env var indicates to the package manager buildpack that a different command needs to be run
+	nodejs.OverrideNextjsBuildScript(njsl)
+
 	return err
 }
 
