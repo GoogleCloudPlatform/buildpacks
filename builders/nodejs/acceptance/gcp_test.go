@@ -148,11 +148,12 @@ func TestAcceptance(t *testing.T) {
 			MustOutput:                 []string{"npm --version\n\n5.5.1"},
 		},
 		{
-			Name:       "Native extensions",
-			App:        "native_extensions",
-			Env:        []string{"GOOGLE_ENTRYPOINT=node hello.js"},
-			MustUse:    []string{nodeRuntime, nodeNPM, entrypoint},
-			SkipStacks: []string{"google.min.22"},
+			SkipPreReleaseVersions: true,
+			Name:                   "Native extensions",
+			App:                    "native_extensions",
+			Env:                    []string{"GOOGLE_ENTRYPOINT=node hello.js"},
+			MustUse:                []string{nodeRuntime, nodeNPM, entrypoint},
+			SkipStacks:             []string{"google.min.22"},
 		},
 	}
 

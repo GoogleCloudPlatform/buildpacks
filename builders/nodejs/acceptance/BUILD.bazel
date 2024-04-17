@@ -40,6 +40,9 @@ acceptance_test_suite(
     ],
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "nodejs22": "//builders/nodejs:builder_22.tar",
+    },
     testdata = "//builders/testdata/nodejs:generic",
     versions = gcp_runtime_versions,
 )
@@ -53,6 +56,9 @@ acceptance_test_suite(
     argsmap = nodejsargs(),
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "nodejs22": "//builders/nodejs:builder_22.tar",
+    },
     testdata = "//builders/testdata/nodejs:appengine",
     versions = gae_runtime_versions,
 )
@@ -66,6 +72,9 @@ acceptance_test_suite(
     argsmap = nodejsargs("$${_CANDIDATE_NAME}"),
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "nodejs22": "//builders/nodejs:builder_22.tar",
+    },
     testdata = "//builders/testdata/nodejs:appengine",
     versions = gae_runtime_versions,
 )
@@ -77,6 +86,9 @@ acceptance_test_suite(
     ],
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "nodejs22": "//builders/nodejs:builder_22.tar",
+    },
     testdata = "//builders/testdata/nodejs:functions",
     versions = gcf_runtime_versions,
 )
@@ -107,6 +119,9 @@ acceptance_test_suite(
     srcs = ["flex_test.go"],
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "nodejs22": "//builders/nodejs:builder_22.tar",
+    },
     testdata = "//builders/testdata/nodejs:flex",
     versions = flex_runtime_versions,
 )

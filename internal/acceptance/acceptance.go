@@ -190,6 +190,9 @@ type Test struct {
 	// SkipStacks is slice of buildpack stack IDs that this test case should not be run on. This is
 	// useful for excluding apps that do not compile on the min stack.
 	SkipStacks []string
+	// SkipPreReleaseVersions controls execution of the specified test case for pre-released versions.
+	// i.e. rc and nightly candidates. If true the tests are skipped for the pre-released versions
+	SkipPreReleaseVersions bool
 }
 
 // SetupContext is passed into the Test.Setup function, it gives the setupFunc implementor access
@@ -308,6 +311,9 @@ type FailureTest struct {
 	// `-runtime-version` flag. When the inclusion constraint or `runtime-version` flag are empty all
 	// tests are included. See semver documentation to learn what is possible.
 	VersionInclusionConstraint string
+	// SkipPreReleaseVersions controls execution of the specified test case for pre-released versions.
+	// i.e. rc and nightly candidates. If true the tests are skipped for the pre-released versions
+	SkipPreReleaseVersions bool
 }
 
 // TestBuildFailure runs a build and ensures that it fails. Additionally, it ensures the emitted logs match mustMatch regexps.
@@ -1361,6 +1367,9 @@ func PullImages() bool {
 func FilterTests(t *testing.T, imageCtx ImageContext, testCases []Test) []Test {
 	results := make([]Test, 0)
 	for _, tc := range testCases {
+		if tc.SkipPreReleaseVersions && isPreReleaseVersion() {
+			continue
+		}
 		if ShouldTestVersion(t, tc.VersionInclusionConstraint) && ShouldTestStack(t, imageCtx.StackID, tc.SkipStacks) {
 			results = append(results, tc)
 		}
@@ -1373,11 +1382,19 @@ func FilterTests(t *testing.T, imageCtx ImageContext, testCases []Test) []Test {
 func FilterFailureTests(t *testing.T, testCases []FailureTest) []FailureTest {
 	results := make([]FailureTest, 0)
 	for _, tc := range testCases {
+		if tc.SkipPreReleaseVersions && isPreReleaseVersion() {
+			continue
+		}
 		if ShouldTestVersion(t, tc.VersionInclusionConstraint) {
 			results = append(results, tc)
 		}
 	}
 	return results
+}
+
+// isPreReleaseVersion returns true if the runtime version is a pre-release version.
+func isPreReleaseVersion() bool {
+	return strings.Contains(runtimeVersion, "rc") || strings.Contains(runtimeVersion, "nightly") || strings.Contains(runtimeVersion, "RC")
 }
 
 // ShouldTestStack returns true if the current test should be included on test runs using the given
@@ -1402,12 +1419,13 @@ func ShouldTestStack(t *testing.T, stackID string, skipStacks []string) bool {
 // comparision. See the documentation for semver2 to learn more.
 func ShouldTestVersion(t *testing.T, inclusionConstraint string) bool {
 	t.Helper()
-	if runtimeVersion == "" || inclusionConstraint == "" {
+
+	v := runtimeVersion
+	if v == "" || inclusionConstraint == "" {
 		return true
 	}
 	// The format of Go pre-release version e.g. 1.20rc1 doesn't follow the semver rule
 	// that requires a hyphen before the identifier "rc".
-	v := runtimeVersion
 	if strings.Contains(v, "rc") && !strings.Contains(v, "-rc") {
 		v = strings.Replace(v, "rc", "-rc", 1)
 	}

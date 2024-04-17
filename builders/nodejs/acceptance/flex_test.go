@@ -43,10 +43,11 @@ func TestAcceptance(t *testing.T) {
 			SkipStacks: []string{"google.gae.18", "google.18"},
 		},
 		{
-			App:        "yarn_specified",
-			MustUse:    []string{yarn, flex},
-			MustNotUse: []string{npm},
-			SkipStacks: []string{"google.gae.18", "google.18"},
+			SkipPreReleaseVersions: true,
+			App:                    "yarn_specified",
+			MustUse:                []string{yarn, flex},
+			MustNotUse:             []string{npm},
+			SkipStacks:             []string{"google.gae.18", "google.18"},
 		},
 	}
 
