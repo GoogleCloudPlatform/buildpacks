@@ -32,9 +32,10 @@ var (
 		"K_SERVICE":       true,
 		"K_REVISION":      true,
 		"K_CONFIGURATION": true,
+		"FIREBASE_CONFIG": true,
 	}
 
-	reservedFirebaseKeyPrefix = "FIREBASE_"
+	reservedFirebaseKeyPrefix = "X_FIREBASE_"
 )
 
 // AppHostingSchema is the struct representation of apphosting.yaml.
