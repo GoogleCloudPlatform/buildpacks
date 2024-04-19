@@ -15,7 +15,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/rs/xid v0.0.0-20170604230408-02dd45c33376
 	golang.org/x/oauth2 v0.8.0
-	golang.org/x/sys v0.8.0
+	golang.org/x/sys v0.18.0
 	google.golang.org/genproto v0.0.0-20230913181813-007df8e322eb
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -45,10 +45,10 @@ require (
 	github.com/sirupsen/logrus v1.9.1 // indirect
 	github.com/vbatts/tar-split v0.11.3 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/crypto v0.9.0 // indirect
-	golang.org/x/net v0.10.0 // indirect
+	golang.org/x/crypto v0.21.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/sync v0.2.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/api v0.128.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230913181813-007df8e322eb // indirect
