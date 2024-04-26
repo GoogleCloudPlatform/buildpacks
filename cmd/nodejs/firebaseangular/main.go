@@ -64,7 +64,8 @@ func buildFn(ctx *gcp.Context) error {
 	// Check that we support this version of angular.
 	version, err := nodejs.Version(nodeDeps, "@angular/core")
 	if err != nil {
-		return err
+		ctx.Warnf("Error parsing version from lock file, defaulting to package.json version")
+		version = nodeDeps.PackageJSON.Dependencies["@angular/core"]
 	}
 	err = validateVersion(ctx, version)
 	if err != nil {
@@ -73,7 +74,8 @@ func buildFn(ctx *gcp.Context) error {
 	// Ensure that the right version of the application builder is installed.
 	builderVersion, err := nodejs.Version(nodeDeps, "@angular-devkit/build-angular")
 	if err != nil {
-		return err
+		ctx.Warnf("Error parsing version from lock file, defaulting to package.json version")
+		builderVersion = nodeDeps.PackageJSON.DevDependencies["@angular-devkit/build-angular"]
 	}
 	err = validateVersion(ctx, builderVersion)
 	if err != nil {
@@ -100,13 +102,15 @@ func buildFn(ctx *gcp.Context) error {
 
 func validateVersion(ctx *gcp.Context, depVersion string) error {
 	version, err := semver.NewVersion(depVersion)
+	// This should only happen in the case of an unexpected lockfile format, i.e. If there is a breaking update to a lock file schema
 	if err != nil {
-		return gcp.InternalErrorf("parsing angular version: %v, %s", err, depVersion)
+		ctx.Warnf("Unrecognized version of angular: %s", depVersion)
+		ctx.Warnf("Consider updating your angular dependencies to >=%s", minAngularVersion.String())
+		return nil
 	}
 	if version.LessThan(minAngularVersion) {
-		ctx.Warnf("Unsupported version of angular: %s", depVersion)
 		ctx.Warnf("Update the angular dependencies to >=%s", minAngularVersion.String())
-		return gcp.UserErrorf("unsupported version of angular %s", depVersion)
+		return gcp.UserErrorf("Unsupported version of angular %s", depVersion)
 	}
 	return nil
 }

@@ -222,6 +222,38 @@ next@^13.0.0:
 `,
 			},
 		},
+		{
+			name: "read supported concrete version from package.json with unsupported lock file format",
+			files: map[string]string{
+				"package.json": `{
+					"dependencies": {
+						"next": "14.0.0"
+					}
+				}`,
+				"pnpm-lock.yaml": `
+unsupported:
+  next:
+    version: 14.0.0(@babel/core@7.23.9)
+
+`,
+			},
+		},
+		{
+			name: "read range version from package.json with unsupported lock file format",
+			files: map[string]string{
+				"package.json": `{
+					"dependencies": {
+						"next": "14.0.0-15.0.0"
+					}
+				}`,
+				"pnpm-lock.yaml": `
+unsupported:
+  next:
+    version: 14.0.0(@babel/core@7.23.9)
+
+`,
+			},
+		},
 	}
 
 	for _, tc := range testCases {

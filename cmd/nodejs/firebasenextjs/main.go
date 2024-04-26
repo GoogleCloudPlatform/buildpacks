@@ -64,7 +64,8 @@ func buildFn(ctx *gcp.Context) error {
 	}
 	version, err := nodejs.Version(nodeDeps, "next")
 	if err != nil {
-		return err
+		ctx.Warnf("Error parsing version from lock file, defaulting to package.json version")
+		version = nodeDeps.PackageJSON.Dependencies["next"]
 	}
 	err = validateVersion(ctx, version)
 	if err != nil {
@@ -92,8 +93,11 @@ func buildFn(ctx *gcp.Context) error {
 
 func validateVersion(ctx *gcp.Context, depVersion string) error {
 	version, err := semver.NewVersion(depVersion)
+	// This should only happen in the case of an unexpected lockfile format, i.e. If there is a breaking update to a lock file schema
 	if err != nil {
-		return gcp.InternalErrorf("parsing next version: %v", err)
+		ctx.Warnf("Unrecognized version of next: %s", depVersion)
+		ctx.Warnf("Consider updating your next dependencies to >=%s", minNextVersion.String())
+		return nil
 	}
 	if version.LessThan(minNextVersion) {
 		ctx.Warnf("Unsupported version of next: %s", depVersion)

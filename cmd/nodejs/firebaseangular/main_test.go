@@ -355,6 +355,50 @@ dependencies:
 			mocks: []*mockprocess.Mock{
 				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
+		}, {
+			name: "read supported concrete version from package.json with unsupported lock file format",
+			files: map[string]string{
+				"package.json": `{
+					"dependencies": {
+						"@angular/core": "17.2.0"
+					},
+					"devDependencies": {
+						"@angular-devkit/build-angular": "17.2.0"
+					}
+				}`,
+				"pnpm-lock.yaml": `
+unsupported:
+  '@angular/core':
+    version: 17.2.3(rxjs@7.8.1)(zone.js@0.14.4)
+  '@angular-devkit/build-angular':
+    version: 17.2.3(rxjs@7.8.1)(zone.js@0.14.4)
+`,
+			},
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+			},
+		}, {
+			name: "read version range from package.json with unsupported lock file format",
+			files: map[string]string{
+				"package.json": `{
+					"dependencies": {
+						"@angular/core": "17.2.0 - 18.0.0"
+					},
+					"devDependencies": {
+						"@angular-devkit/build-angular": "^17.2.0"
+					}
+				}`,
+				"pnpm-lock.yaml": `
+unsupported:
+  '@angular/core':
+    version: 17.2.3(rxjs@7.8.1)(zone.js@0.14.4)
+  '@angular-devkit/build-angular':
+    version: 17.2.3(rxjs@7.8.1)(zone.js@0.14.4)
+`,
+			},
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+			},
 		},
 	}
 
