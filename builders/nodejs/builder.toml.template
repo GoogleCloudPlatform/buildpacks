@@ -163,6 +163,7 @@ description = "Builder for the Node.js runtime"
 
   [[order.group]]
     id = "google.utils.archive-source"
+    optional = true
 
   [[order.group]]
     id = "google.nodejs.npm"

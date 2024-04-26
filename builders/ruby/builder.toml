@@ -114,6 +114,7 @@ description = "Builder for the Ruby runtime"
 
   [[order.group]]
     id = "google.utils.archive-source"
+    optional = true
 
   [[order.group]]
     id = "google.ruby.bundle"

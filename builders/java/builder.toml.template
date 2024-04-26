@@ -137,6 +137,7 @@ description = "Builder for the Java runtime"
 
   [[order.group]]
     id = "google.utils.archive-source"
+    optional = true
 
   [[order.group]]
     id = "google.java.maven"
@@ -160,6 +161,7 @@ description = "Builder for the Java runtime"
 
   [[order.group]]
     id = "google.utils.archive-source"
+    optional = true
 
   [[order.group]]
     id = "google.java.gradle"

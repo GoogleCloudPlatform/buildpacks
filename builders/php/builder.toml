@@ -128,6 +128,7 @@ description = "Unified builder for the PHP runtime"
 
   [[order.group]]
     id = "google.utils.archive-source"
+    optional = true
 
   [[order.group]]
     id = "google.php.composer-install"
