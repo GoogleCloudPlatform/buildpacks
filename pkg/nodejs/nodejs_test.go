@@ -476,7 +476,7 @@ func TestVersion(t *testing.T) {
 			expectedVersion: "13.5.6",
 		},
 		{
-			name: "Parses pnpm-lock version nextjs",
+			name: "Parses pnpm-lock v6 version nextjs",
 			pkg:  "next",
 			nodeDeps: &NodeDependencies{
 				PackageJSON: &PackageJSON{
@@ -493,6 +493,67 @@ dependencies:
 `),
 			},
 			expectedVersion: "13.5.6",
+		},
+		{
+			name: "Parses pnpm-lock v9 version nextjs",
+			pkg:  "next",
+			nodeDeps: &NodeDependencies{
+				PackageJSON: &PackageJSON{
+					Dependencies: map[string]string{
+						"next": "^13.1.0",
+					},
+				},
+				LockfileName: "pnpm-lock.yaml",
+				LockfileBytes: []byte(`
+importers:
+  .:
+    dependencies:
+      next:
+        version: 13.5.6(@babel/core@7.23.9)
+
+`),
+			},
+			expectedVersion: "13.5.6",
+		},
+		{
+			name: "Parses pnpm-lock v6 version angular builder",
+			pkg:  "@angular-devkit/build-angular",
+			nodeDeps: &NodeDependencies{
+				PackageJSON: &PackageJSON{
+					Dependencies: map[string]string{
+						"@angular-devkit/build-angular": "^17.3.5",
+					},
+				},
+				LockfileName: "pnpm-lock.yaml",
+				LockfileBytes: []byte(`
+devDependencies:
+  '@angular-devkit/build-angular':
+    version: 17.3.5(@angular/compiler-cli@17.3.5)
+
+`),
+			},
+			expectedVersion: "17.3.5",
+		},
+		{
+			name: "Parses pnpm-lock v9 version angular builder",
+			pkg:  "@angular-devkit/build-angular",
+			nodeDeps: &NodeDependencies{
+				PackageJSON: &PackageJSON{
+					Dependencies: map[string]string{
+						"@angular-devkit/build-angular": "^17.3.5",
+					},
+				},
+				LockfileName: "pnpm-lock.yaml",
+				LockfileBytes: []byte(`
+importers:
+  .:
+    devDependencies:
+      '@angular-devkit/build-angular':
+        version: 17.3.5(@angular/compiler-cli@17.3.5)
+
+`),
+			},
+			expectedVersion: "17.3.5",
 		},
 	}
 

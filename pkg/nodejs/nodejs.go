@@ -86,14 +86,28 @@ type NpmLockfile struct {
 	} `json:"packages"`
 }
 
-// PnpmLockfile represents the contents of a lock file generated with pnpm.
-type PnpmLockfile struct {
+// PnpmV6Lockfile represents the contents of a lock file v6 generated with pnpm.
+type PnpmV6Lockfile struct {
 	Dependencies map[string]struct {
 		Version string `yaml:"version"`
 	} `yaml:"dependencies"`
 	DevDependencies map[string]struct {
 		Version string `yaml:"version"`
 	} `yaml:"devDependencies"`
+}
+
+// PnpmV9Lockfile represents the contents of a lock file v9 generated with pnpm.
+type PnpmV9Lockfile struct {
+	Importers struct {
+		Dot struct {
+			Dependencies map[string]struct {
+				Version string `yaml:"version"`
+			} `yaml:"dependencies"`
+			DevDependencies map[string]struct {
+				Version string `yaml:"version"`
+			} `yaml:"devDependencies"`
+		} `yaml:"."`
+	} `yaml:"importers"`
 }
 
 // NodeDependencies represents the dependencies of a Node package via its package.json and lockfile.
@@ -313,17 +327,27 @@ func IsNodeJS8Runtime() bool {
 }
 
 func versionFromPnpmLock(rawPackageLock []byte, pkg string) (string, error) {
-	var lockfile PnpmLockfile
-	if err := yaml.Unmarshal(rawPackageLock, &lockfile); err != nil {
+	var lockfileV6 PnpmV6Lockfile
+	if err := yaml.Unmarshal(rawPackageLock, &lockfileV6); err != nil {
 		return "", gcp.InternalErrorf("parsing pnpm lock file: %w", err)
 	}
-	if _, ok := lockfile.Dependencies[pkg]; ok {
-		return strings.Split(lockfile.Dependencies[pkg].Version, "(")[0], nil
+	if _, ok := lockfileV6.Dependencies[pkg]; ok {
+		return strings.Split(lockfileV6.Dependencies[pkg].Version, "(")[0], nil
 	}
-	if _, ok := lockfile.DevDependencies[pkg]; ok {
-		return strings.Split(lockfile.DevDependencies[pkg].Version, "(")[0], nil
+	if _, ok := lockfileV6.DevDependencies[pkg]; ok {
+		return strings.Split(lockfileV6.DevDependencies[pkg].Version, "(")[0], nil
 	}
-	return "", gcp.InternalErrorf("package not found")
+	var lockfileV9 PnpmV9Lockfile
+	if err := yaml.Unmarshal(rawPackageLock, &lockfileV9); err != nil {
+		return "", gcp.InternalErrorf("parsing pnpm lock file: %w", err)
+	}
+	if _, ok := lockfileV9.Importers.Dot.Dependencies[pkg]; ok {
+		return strings.Split(lockfileV9.Importers.Dot.Dependencies[pkg].Version, "(")[0], nil
+	}
+	if _, ok := lockfileV9.Importers.Dot.DevDependencies[pkg]; ok {
+		return strings.Split(lockfileV9.Importers.Dot.DevDependencies[pkg].Version, "(")[0], nil
+	}
+	return "", gcp.InternalErrorf("Failed to find version for package %s in pnpm lockfile", pkg)
 }
 
 func versionFromYarnLock(rawPackageLock []byte, pjs *PackageJSON, pkg string) (string, error) {
@@ -338,7 +362,7 @@ func versionFromYarnLock(rawPackageLock []byte, pjs *PackageJSON, pkg string) (s
 			}
 		}
 	}
-	return "", gcp.InternalErrorf("parsing yarn file")
+	return "", gcp.InternalErrorf("Failed to find version for package %s in yarn lockfile", pkg)
 }
 
 func versionFromNpmLock(rawPackageLock []byte, pkg string) (string, error) {
