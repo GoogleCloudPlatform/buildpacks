@@ -22,6 +22,8 @@ COPY build-packages.txt /tmp/packages.txt
 # Version identifier of the image.
 ARG CANDIDATE_NAME
 RUN \
+  # Precreate BUILDER_OUTPUT target
+  mkdir -p /builder/outputs/ && chmod 777 /builder/outputs/ && \
   # Write version information
   mkdir -p /usr/local/versions && \
     echo ${CANDIDATE_NAME} > /usr/local/versions/run_base && \

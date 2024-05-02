@@ -47,6 +47,8 @@ RUN --mount=type=secret,id=pro-attach-config \
   # Configure the system locale
   locale-gen en_US.UTF-8 && \
   update-locale LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8 && \
+  # Precreate BUILDER_OUTPUT target
+  mkdir -p /builder/outputs/ && chmod 777 /builder/outputs/ && \
   # Configure the user's home directory
   mkdir /www-data-home && \
   chown www-data:www-data /www-data-home && \

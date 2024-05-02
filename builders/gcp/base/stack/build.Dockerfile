@@ -16,6 +16,8 @@ ARG from_image
 FROM ${from_image}
 COPY licenses/ /usr/local/share/licenses/buildpacks/
 
+RUN mkdir -p /builder/outputs/ && chmod 777 /builder/outputs/
+
 # build-essential is required by many usecases.
 # git is required for some project dependencies.
 # python3 is required by node-gyp to compile native modules.
