@@ -69,21 +69,36 @@ func downloadPNPM(ctx *gcp.Context, dir, version string) error {
 }
 
 // detectPnpmVersion determines the version of pnpm that should be installed in a Node.js project
-// by examining the "engines.pnpm" constraint specified in package.json and comparing it against all
-// published versions in the NPM registry. If the package.json does not include "engines.pnpm" it
+// by examining the "engines.pnpm" and "packageManager" constraints specified in package.json and comparing them against all
+// published versions in the NPM registry, if both exist "engines.pnpm" will take precedence.
+// If the package.json does not include "engines.pnpm" or "packageManager" it
 // returns the latest stable version available.
+// TODO(b/338411091) create a shared packagejson util library and refactor out a generic detect
+// package manager version function.
 func detectPNPMVersion(pjs *PackageJSON) (string, error) {
-	if pjs == nil || pjs.Engines.PNPM == "" {
+	if pjs == nil || (pjs.Engines.PNPM == "" && pjs.PackageManager == "") {
 		version, err := latestPackageVersion("pnpm")
 		if err != nil {
 			return "", gcp.InternalErrorf("fetching available pnpm versions: %w", err)
 		}
 		return version, nil
 	}
-	requested := pjs.Engines.PNPM
-	version, err := resolvePackageVersion("pnpm", requested)
+	var requestedVersion string
+	if pjs.Engines.PNPM != "" {
+		requestedVersion = pjs.Engines.PNPM
+	} else {
+		packageManagerName, packageManagerVersion, err := parsePackageManager(pjs.PackageManager)
+		if err != nil {
+			return "", err
+		}
+		if packageManagerName != "pnpm" {
+			return "", gcp.UserErrorf("pnpm was detected but %s is set in the packageManager package.json field.", packageManagerName)
+		}
+		requestedVersion = packageManagerVersion
+	}
+	version, err := resolvePackageVersion("pnpm", requestedVersion)
 	if err != nil {
-		return "", gcp.UserErrorf("finding pnpm version that matched %q: %w", requested, err)
+		return "", gcp.UserErrorf("finding pnpm version that matched %q: %w", requestedVersion, err)
 	}
 	return version, nil
 }

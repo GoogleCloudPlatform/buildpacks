@@ -214,3 +214,82 @@ func TestInstallYarn(t *testing.T) {
 		})
 	}
 }
+func TestDetectYarnVersion(t *testing.T) {
+	testCases := []struct {
+		name        string
+		npmResponse string
+		packageJSON PackageJSON
+		wantVersion string
+		wantError   bool
+	}{
+		{
+			name:        "no package.json returns latest",
+			packageJSON: PackageJSON{},
+			npmResponse: `{
+				"name": "yarn",
+				"dist-tags": {
+					"latest": "2.2.2"
+				},
+				"versions": {
+					"2.2.2": {
+						"name": "npm",
+						"version": "2.2.2"
+					}
+				},
+				"modified": "2022-01-27T21:10:55.626Z"
+			}`,
+			wantVersion: "2.2.2",
+		},
+		{
+			name: "only engines version",
+			packageJSON: PackageJSON{
+				Engines: packageEnginesJSON{
+					Yarn: "1.1.0",
+				},
+			},
+			wantVersion: "1.1.0",
+		},
+		{
+			name: "only packageManager version",
+			packageJSON: PackageJSON{
+				PackageManager: "yarn@1.1.0",
+			},
+			wantVersion: "1.1.0",
+		},
+		{
+			name: "both engine and packageManager version",
+			packageJSON: PackageJSON{
+				Engines: packageEnginesJSON{
+					Yarn: "1.2.0",
+				},
+				PackageManager: "yarn@1.1.0",
+			},
+			wantVersion: "1.2.0",
+		},
+		{
+			name: "invalid packageManager version",
+			packageJSON: PackageJSON{
+				PackageManager: "pnpm@8.2.0",
+			},
+			wantError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testserver.New(
+				t,
+				testserver.WithJSON(tc.npmResponse),
+				testserver.WithMockURL(&npmRegistryURL),
+			)
+
+			version, err := detectYarnVersion(&tc.packageJSON)
+			if version != tc.wantVersion {
+				t.Errorf("detectYarnVersion() got version: %v, want version: %v", version, tc.wantVersion)
+			}
+			if tc.wantError == (err == nil) {
+				t.Fatalf("detectYarnVersion() got error: %v, want error? %v", err, tc.wantError)
+			}
+		})
+	}
+}

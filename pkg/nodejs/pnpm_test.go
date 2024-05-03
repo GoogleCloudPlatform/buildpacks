@@ -127,3 +127,82 @@ func TestInstallPNPM(t *testing.T) {
 		})
 	}
 }
+func TestDetectPNPMVersion(t *testing.T) {
+	testCases := []struct {
+		name        string
+		npmResponse string
+		packageJSON PackageJSON
+		wantVersion string
+		wantError   bool
+	}{
+		{
+			name:        "no package.json returns latest",
+			packageJSON: PackageJSON{},
+			npmResponse: `{
+				"name": "pnpm",
+				"dist-tags": {
+					"latest": "9.2.0"
+				},
+				"versions": {
+					"9.2.0": {
+						"name": "npm",
+						"version": "9.2.0"
+					}
+				},
+				"modified": "2022-01-27T21:10:55.626Z"
+			}`,
+			wantVersion: "9.2.0",
+		},
+		{
+			name: "only engines version",
+			packageJSON: PackageJSON{
+				Engines: packageEnginesJSON{
+					PNPM: "8.2.0",
+				},
+			},
+			wantVersion: "8.2.0",
+		},
+		{
+			name: "only packageManager version",
+			packageJSON: PackageJSON{
+				PackageManager: "pnpm@8.2.0",
+			},
+			wantVersion: "8.2.0",
+		},
+		{
+			name: "both engine and packageManager version",
+			packageJSON: PackageJSON{
+				Engines: packageEnginesJSON{
+					PNPM: "8.2.0",
+				},
+				PackageManager: "pnpm@8.1.0",
+			},
+			wantVersion: "8.2.0",
+		},
+		{
+			name: "invalid packageManager version",
+			packageJSON: PackageJSON{
+				PackageManager: "yarn@8.2.0",
+			},
+			wantError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testserver.New(
+				t,
+				testserver.WithJSON(tc.npmResponse),
+				testserver.WithMockURL(&npmRegistryURL),
+			)
+
+			version, err := detectPNPMVersion(&tc.packageJSON)
+			if version != tc.wantVersion {
+				t.Errorf("detectPNPMVersion() got version: %v, want version: %v", version, tc.wantVersion)
+			}
+			if tc.wantError == (err == nil) {
+				t.Fatalf("detectPNPMVersion() got error: %v, want error? %v", err, tc.wantError)
+			}
+		})
+	}
+}

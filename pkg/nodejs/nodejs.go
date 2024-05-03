@@ -77,6 +77,7 @@ type PackageJSON struct {
 	Scripts         map[string]string  `json:"scripts"`
 	Dependencies    map[string]string  `json:"dependencies"`
 	DevDependencies map[string]string  `json:"devDependencies"`
+	PackageManager  string             `json:"packageManager"`
 }
 
 // NpmLockfile represents the contents of a lock file generated with npm.
@@ -385,4 +386,14 @@ func Version(deps *NodeDependencies, pkg string) (string, error) {
 	}
 
 	return "", gcp.UserErrorf("Failed to find version for package %s", pkg)
+}
+
+// parsePackageManager parses the packageManager field and returns the manager name and version.
+// packageManagerField must have this regex (pnpm|yarn)@\d+\.\d+\.\d+(-.+)?, e.g. pnpm@9.0.0.
+func parsePackageManager(packageManagerField string) (string, string, error) {
+	packageManagerSplit := strings.Split(packageManagerField, "@")
+	if len(packageManagerSplit) != 2 {
+		return "", "", gcp.UserErrorf("parsing packageManager package.json field")
+	}
+	return packageManagerSplit[0], packageManagerSplit[1], nil
 }

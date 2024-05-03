@@ -80,22 +80,36 @@ func HasYarnWorkspacePlugin(ctx *gcp.Context) (bool, error) {
 }
 
 // detectYarnVersion determines the version of Yarn that should be installed in a Node.js project
-// by examining the "engines.yarn" constraint specified in package.json and comparing it against all
-// published versions in the NPM registry. If the package.json does not include "engines.yarn" it
+// by examining the "engines.yarn" and "packageManager" constraints specified in package.json and comparing it against all
+// published versions in the NPM registry, if both exist "engines.yarn" will take precedence.
+// If the package.json does not include "engines.yarn" or "packageManager" it
 // returns the latest stable version available.
+// TODO(b/338411091) create a shared packagejson util library and refactor out a generic detect
+// package manager version function.
 func detectYarnVersion(pjs *PackageJSON) (string, error) {
-	if pjs == nil || pjs.Engines.Yarn == "" {
+	if pjs == nil || (pjs.Engines.Yarn == "" && pjs.PackageManager == "") {
 		version, err := latestPackageVersion("yarn")
 		if err != nil {
 			return "", gcp.InternalErrorf("fetching available Yarn versions: %w", err)
 		}
 		return version, nil
 	}
-
-	requested := pjs.Engines.Yarn
-	version, err := resolvePackageVersion("yarn", requested)
+	var requestedVersion string
+	if pjs.Engines.Yarn != "" {
+		requestedVersion = pjs.Engines.Yarn
+	} else {
+		packageManagerName, packageManagerVersion, err := parsePackageManager(pjs.PackageManager)
+		if err != nil {
+			return "", err
+		}
+		if packageManagerName != "yarn" {
+			return "", gcp.UserErrorf("yarn was detected but %s is set in the packageManager package.json field.", packageManagerName)
+		}
+		requestedVersion = packageManagerVersion
+	}
+	version, err := resolvePackageVersion("yarn", requestedVersion)
 	if err != nil {
-		return "", gcp.UserErrorf("finding Yarn version that matched %q: %w", requested, err)
+		return "", gcp.UserErrorf("finding Yarn version that matched %q: %w", requestedVersion, err)
 	}
 	return version, nil
 }
