@@ -119,16 +119,18 @@ func TestFailuresGo(t *testing.T) {
 			MustMatch: "invalid Go version specified:",
 		},
 		{
-			Name:      "no Go files in root (Go 1.12)",
-			App:       "entrypoints",
-			Env:       []string{"GOOGLE_RUNTIME_VERSION=1.12"},
-			MustMatch: `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built`,
+			Name:                   "no Go files in root (Go 1.12)",
+			App:                    "entrypoints",
+			Env:                    []string{"GOOGLE_RUNTIME_VERSION=1.12"},
+			MustMatch:              `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built`,
+			SkipBuilderOutputMatch: true,
 		},
 		{
-			Name:      "no Go files in root (Go 1.14)",
-			App:       "entrypoints",
-			Env:       []string{"GOOGLE_RUNTIME_VERSION=1.14"},
-			MustMatch: `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built`,
+			Name:                   "no Go files in root (Go 1.14)",
+			App:                    "entrypoints",
+			Env:                    []string{"GOOGLE_RUNTIME_VERSION=1.14"},
+			MustMatch:              `Tip: "GOOGLE_BUILDABLE" env var configures which Go package is built`,
+			SkipBuilderOutputMatch: true,
 		},
 	}
 
