@@ -22,10 +22,6 @@ env:
   - variable: PORT
     value: 9001
 
-  # FIREBASE_* is a reserved key and should be removed
-  - variable: FIREBASE_CONFIG
-    secret: myIllegalSecret
-
   # This maps an env var to a secret that will need to be dereferenced via API call to secret manager.
   - variable: API_KEY
     secret: secretID # Key name in secret manager. Shorthand for pinning a build to the latest available version(regardless of active status) as of the time of the Build creation.

@@ -32,7 +32,6 @@ var (
 		"K_SERVICE":       true,
 		"K_REVISION":      true,
 		"K_CONFIGURATION": true,
-		"FIREBASE_CONFIG": true,
 	}
 
 	reservedFirebaseKeyPrefix = "X_FIREBASE_"

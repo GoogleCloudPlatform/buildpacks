@@ -103,7 +103,6 @@ func TestSanitize(t *testing.T) {
 				Env: []EnvironmentVariable{
 					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
 					EnvironmentVariable{Variable: "K_SERVICE", Secret: "secretID"},
-					EnvironmentVariable{Variable: "FIREBASE_CONFIG", Value: "value"},
 					EnvironmentVariable{Variable: "FIREBASE_ID", Value: "firebaseId", Availability: []string{"BUILD"}},
 					EnvironmentVariable{Variable: "X_FIREBASE_RESERVED", Value: "value"},
 					EnvironmentVariable{Variable: "MISSING_AVAILABILITY", Value: "projects/test-project/secrets/secretID"},
