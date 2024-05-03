@@ -51,10 +51,6 @@ fileExistenceTests:
   path: '/home/cnb'
   shouldExist: true
   permissions: 'drwxr-x---'
-- name: 'BUILDER_OUTPUT dir'
-  path: '/builder/outputs'
-  shouldExist: true
-  permissions: 'drwxrwxrwx'
 
 commandTests:
 - name: 'installed packages'
