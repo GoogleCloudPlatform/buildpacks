@@ -39,12 +39,12 @@ func ReadNxProjectJSONIfExists(dir string) (*NxProjectJSON, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, gcp.InternalErrorf("reading project.json: %v", err)
+		return nil, gcp.InternalErrorf("reading %s: %v", f, err)
 	}
 
 	var pjson NxProjectJSON
 	if err := json.Unmarshal(raw, &pjson); err != nil {
-		return nil, gcp.UserErrorf("unmarshalling nx.json: %v", err)
+		return nil, gcp.UserErrorf("unmarshalling %s: %v", f, err)
 	}
 	return &pjson, nil
 }
