@@ -21,7 +21,7 @@ grpcio-status==1.43.0
 httplib2==0.20.2
 idna==3.3
 itsdangerous==2.0.1
-Jinja2==3.0.3
+Jinja2==3.1.4
 MarkupSafe==2.0.1
 multidict==5.2.0
 opencensus==0.8.0
