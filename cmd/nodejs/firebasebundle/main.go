@@ -16,8 +16,7 @@
 // The output bundle buildpack sets up the output bundle for future steps
 // It will do the following
 // 1. Copy over static assets to the output bundle dir
-// 2. Delete unnecessary files
-// 3. Override run script with a new one to run the optimized build
+// 2. Override run script with a new one to run the optimized build
 package main
 
 import (
@@ -96,26 +95,6 @@ func buildFn(ctx *gcp.Context) error {
 			err := fileutil.MaybeCopyPathContents(filepath.Join(outputBundleDir, staticAsset), filepath.Join(ctx.ApplicationRoot(), staticAsset), fileutil.AllPaths)
 			if err != nil {
 				ctx.Logf("%s dir not detected", staticAsset)
-			}
-		}
-	}
-
-	ctx.Logf("Deleting unneeded dirs.")
-	if bundleYaml.NeededDirs == nil {
-		ctx.Logf("No directories declared, keeping all by default")
-	} else {
-		neededDirMap := convertToMap(bundleYaml.NeededDirs)
-
-		files, err := ctx.ReadDir(ctx.ApplicationRoot())
-		if err != nil {
-			return err
-		}
-		for _, file := range files {
-			if _, ok := neededDirMap[file.Name()]; !ok {
-				err := ctx.RemoveAll(filepath.Join(ctx.ApplicationRoot(), file.Name()))
-				if err != nil {
-					return err
-				}
 			}
 		}
 	}

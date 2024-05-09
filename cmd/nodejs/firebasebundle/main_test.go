@@ -78,22 +78,6 @@ func TestBuild(t *testing.T) {
 			expectedFiles: []string{"test_dir/static/test1", "test_dir/bundle.yaml", "public/test1", ".apphosting/bundle.yaml", "static/test1"},
 			codeDir:       "CodeDir-staticassets-bundleyaml",
 		},
-		{
-			name: "copies static files and deleted unneededdirs given bundle yaml contains static files and neededDirs",
-			files: map[string]string{
-				"public/test1": "",
-				"static/test1": "",
-				".apphosting/bundle.yaml": `staticAssets:
-- static
-- public
-neededDirs:
-- .apphosting
-- test_dir`,
-				"test_dir/test": "",
-			},
-			expectedFiles: []string{"test_dir/static/test1", "test_dir/public/test1", "test_dir/bundle.yaml", ".apphosting/bundle.yaml"},
-			codeDir:       "CodeDir-staticassets-neededdirs-bundleyaml",
-		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
