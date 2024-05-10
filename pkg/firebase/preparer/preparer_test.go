@@ -7,10 +7,10 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/fakesecretmanager"
 	apphostingschema "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/envvars"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/google/go-cmp/cmp"
 	smpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
-	"github.com/joho/godotenv"
 	"google3/third_party/golang/protobuf/v2/proto/proto"
 )
 
@@ -40,6 +40,12 @@ func TestPrepare(t *testing.T) {
 			projectID:          "test-project",
 			wantEnvMap: map[string]string{
 				"API_URL":                "api.service.com",
+				"VAR_QUOTED_SPECIAL":     "api2.service.com::",
+				"VAR_SPACED":             "api3 - service -  com",
+				"VAR_SINGLE_QUOTES":      "I said, 'I'm learning YAML!'",
+				"VAR_DOUBLE_QUOTES":      "\"api4.service.com\"",
+				"MULTILINE_VAR":          "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n",
+				"VAR_NUMBER":             "12345",
 				"API_KEY":                secretString,
 				"PINNED_API_KEY":         secretString,
 				"VERBOSE_API_KEY":        secretString,
@@ -54,7 +60,13 @@ func TestPrepare(t *testing.T) {
 					MinInstances: proto.Int32(0),
 				},
 				Env: []apphostingschema.EnvironmentVariable{
-					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD"}},
+					apphostingschema.EnvironmentVariable{Variable: "VAR_QUOTED_SPECIAL", Value: "api2.service.com::", Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "VAR_SPACED", Value: "api3 - service -  com", Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "VAR_SINGLE_QUOTES", Value: "I said, 'I'm learning YAML!'", Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "VAR_DOUBLE_QUOTES", Value: "\"api4.service.com\"", Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "MULTILINE_VAR", Value: "211 Broadway\nApt. 17\nNew York, NY 10019\n", Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "VAR_NUMBER", Value: "12345", Availability: []string{"BUILD", "RUNTIME"}},
 					apphostingschema.EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
 					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
 					apphostingschema.EnvironmentVariable{Variable: "PINNED_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}},
@@ -64,7 +76,7 @@ func TestPrepare(t *testing.T) {
 			},
 		},
 		{
-			desc:               "non-existant apphosting.yaml",
+			desc:               "non-existent apphosting.yaml",
 			appHostingYAMLPath: "",
 			projectID:          "test-project",
 			wantEnvMap:         map[string]string{},
@@ -108,7 +120,7 @@ func TestPrepare(t *testing.T) {
 		}
 
 		// Check dereferenced secret material env file
-		actualEnvMapDereferenced, err := godotenv.Read(outputFilePathEnv)
+		actualEnvMapDereferenced, err := envvars.Read(outputFilePathEnv)
 		if err != nil {
 			t.Errorf("Error reading in temp file: %v", err)
 		}

@@ -89,10 +89,6 @@
   license_name: MPL-2.0
   license_path: /usr/local/share/licenses/buildpacks/github.com/hashicorp/go-retryablehttp/LICENSE
 
-- package: github.com/joho/godotenv
-  license_name: MIT
-  license_path: /usr/local/share/licenses/buildpacks/github.com/joho/godotenv/LICENCE
-
 - package: github.com/klauspost/compress
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/buildpacks/github.com/klauspost/compress/LICENSE

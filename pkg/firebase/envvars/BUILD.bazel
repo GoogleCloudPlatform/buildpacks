@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+go_library(
+    name = "envvars",
+    srcs = ["envvars.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+)
+
+go_test(
+    name = "envvars_test",
+    srcs = ["envvars_test.go"],
+    embed = [":envvars"],
+    rundir = ".",
+    deps = ["@com_github_google_go-cmp//cmp:go_default_library"],
+)

@@ -1566,13 +1566,6 @@ go_repository(
 )
 
 go_repository(
-    name = "com_github_joho_godotenv",
-    importpath = "github.com/joho/godotenv",
-    sum = "h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=",
-    version = "v1.5.1",
-)
-
-go_repository(
     name = "com_github_hpcloud_tail",
     importpath = "github.com/hpcloud/tail",
     sum = "h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=",

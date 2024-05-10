@@ -21,9 +21,9 @@ import (
 	"fmt"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/envvars"
 
 	secrets "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/secrets"
-	"github.com/joho/godotenv"
 )
 
 // Prepare performs pre-build logic for App Hosting backends including:
@@ -67,7 +67,7 @@ func Prepare(ctx context.Context, secretClient secrets.SecretManager, appHosting
 		return fmt.Errorf("writing final apphosting.yaml to %v: %w", appHostingYAMLOutputFilePath, err)
 	}
 
-	err = godotenv.Write(dereferencedEnvMap, envDereferencedOutputFilePath)
+	err = envvars.Write(dereferencedEnvMap, envDereferencedOutputFilePath)
 	if err != nil {
 		return fmt.Errorf("writing final dereferenced environment variables to %v: %w", envDereferencedOutputFilePath, err)
 	}

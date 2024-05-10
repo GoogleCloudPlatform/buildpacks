@@ -12,7 +12,6 @@ require (
 	github.com/google/go-containerregistry v0.16.1
 	github.com/googleapis/gax-go/v2 v2.12.0
 	github.com/hashicorp/go-retryablehttp v0.6.7
-	github.com/joho/godotenv v1.5.1
 	github.com/rs/xid v0.0.0-20170604230408-02dd45c33376
 	golang.org/x/oauth2 v0.8.0
 	golang.org/x/sys v0.8.0

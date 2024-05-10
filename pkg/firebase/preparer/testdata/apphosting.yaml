@@ -11,6 +11,35 @@ env:
   # Simple mapping from env var to value. By default will be applied with BUILD and RUNTIME availability
   - variable: API_URL
     value: api.service.com
+    availability:
+      - BUILD
+
+  # Testing special characters that are within a quoted value field
+  - variable: VAR_QUOTED_SPECIAL
+    value: "api2.service.com::"
+
+  # Testing value fields that have spaces, important for testing .env file conversion logic
+  - variable: VAR_SPACED
+    value: api3 - service -  com
+
+  # Testing handling nested quotation marks
+  - variable: VAR_SINGLE_QUOTES
+    value: 'I said, ''I''m learning YAML!'''
+
+  # Testing handling escaped characters such as quotes
+  - variable: VAR_DOUBLE_QUOTES
+    value: "\"api4.service.com\""
+
+  # Testing multiline variable parsing
+  - variable: MULTILINE_VAR
+    value: |
+      211 Broadway
+      Apt. 17
+      New York, NY 10019
+
+  # Testing handling values other than a string
+  - variable: VAR_NUMBER
+    value: 12345
 
   # Same as the above but with user specified availability. Should be stripped since it is RUNTIME only.
   - variable: STORAGE_BUCKET
