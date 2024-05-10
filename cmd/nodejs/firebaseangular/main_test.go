@@ -49,37 +49,41 @@ func TestDetect(t *testing.T) {
 		{
 			name: "without angular config",
 			files: map[string]string{
-				"index.js": "",
+				"package.json": `{
+				"dependencies": {
+				},
+				"devDependencies": {
+				}
+			}`, "package-lock.json": `{
+				"packages": {
+				}
+			}`,
 			},
 			want: 100,
 		},
 		{
-			name: "with project.json",
+			name: "with angular builder dependency",
 			files: map[string]string{
-				"index.js": "",
-				"project.json": `{
-					"targets": {
-						"build": {
-							"executor": "@angular-devkit/build-angular:application"
+				"package.json": `{
+					"scripts": {
+						"build": "ng build"
+					},
+					"dependencies": {
+						"@angular/core": "17.2.0",
+						"@angular-devkit/build-angular": "17.2.0"
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+						"node_modules/@angular/core": {
+							"version": "17.2.0"
+						},
+						"node_modules/@angular-devkit/build-angular": {
+							"version": "17.2.0"
 						}
 					}
 				}`,
 			},
-			want: 0,
-		},
-		{
-			name: "with project.json in app dir",
-			files: map[string]string{
-				"packages/foo/index.js": "",
-				"packages/foo/project.json": `{
-					"targets": {
-						"build": {
-							"executor": "@angular-devkit/build-angular:application"
-						}
-					}
-				}`,
-			},
-			envs: []string{"FIREBASE_APP_DIRECTORY=packages/foo"},
 			want: 0,
 		},
 	}
@@ -111,7 +115,8 @@ func TestBuild(t *testing.T) {
 					"@angular/core": "17.2.0",
 					"@angular-devkit/build-angular": "17.2.0"
 				}
-			}`, "package-lock.json": `{
+			}`,
+				"package-lock.json": `{
 				"packages": {
 					"node_modules/@angular/core": {
 						"version": "17.2.0"
@@ -136,7 +141,8 @@ func TestBuild(t *testing.T) {
 					"dependencies": {
 						"@angular/core": "17.2.0"
 					}
-				}`, "package-lock.json": `{
+				}`,
+				"package-lock.json": `{
 					"packages": {
 						"node_modules/@angular/core": {
 							"version": "17.2.0"
@@ -257,7 +263,8 @@ func TestBuild(t *testing.T) {
 						"@angular/core": "^17.0.0",
 						"@angular-devkit/build-angular": "^17.0.0"
 					}
-				}`, "package-lock.json": `{
+				}`,
+				"package-lock.json": `{
 					"packages": {
 						"node_modules/@angular/core": {
 							"version": "17.2.1"

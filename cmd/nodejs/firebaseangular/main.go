@@ -43,15 +43,25 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if angularJSONExists {
 		return gcp.OptInFileFound("angular.json"), nil
 	}
-	// Check if this is an Nx + Angular project, which replaces angular.json with project.json.
-	projectJSON, err := nodejs.ReadNxProjectJSONIfExists(appDir)
+
+	// Some Angular project configurations don't require an angular.json file (e.g. Nx projects).
+	// In these cases, we check if the angular builder is specified as a dependency.
+	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, appDir)
 	if err != nil {
 		return nil, err
 	}
-	if projectJSON != nil && projectJSON.Targets.Build.Executor == "@angular-devkit/build-angular:application" {
-		return gcp.OptIn("angular builder found"), nil
+	version, err := nodejs.Version(nodeDeps, "@angular-devkit/build-angular")
+	if err != nil {
+		ctx.Warnf("Error parsing version from lock file, defaulting to package.json version")
+		if nodeDeps.PackageJSON.DevDependencies["@angular-devkit/build-angular"] != "" {
+			return gcp.OptIn("angular builder dependency found"), nil
+		}
+		return gcp.OptOut("angular builder dependency not found"), err
 	}
-	return gcp.OptOut("angular config not found"), nil
+	if version != "" {
+		return gcp.OptIn("angular builder dependency found"), nil
+	}
+	return gcp.OptOut("angular builder dependency not found"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

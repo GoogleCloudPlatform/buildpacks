@@ -18,9 +18,9 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
+	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 )
@@ -30,9 +30,10 @@ var (
 	firebaseAppDirectory = "FIREBASE_APP_DIRECTORY"
 	// The Nx buildpack build function sets the following environment variables to configure the build
 	// behavior of subsequent buildpacks.
-	monorepoProject = "MONOREPO_PROJECT" // The name of a project in a Nx monorepo.
-	monorepoBuilder = "MONOREPO_BUILDER" // The builder plugin used by the build target executor.
-	monorepoCommand = "MONOREPO_COMMAND" // The CLI command utility ("nx").
+	monorepoProject   = "MONOREPO_PROJECT"    // The name of a project in a Nx monorepo.
+	monorepoCommand   = "MONOREPO_COMMAND"    // The CLI command utility ("nx").
+	monorepoBuildArgs = "MONOREPO_BUILD_ARGS" // The builder plugin used by the build target executor.
+	nxNoCloud         = "NX_NO_CLOUD"         // Whether to disable Nx Cloud remote caching.
 )
 
 func main() {
@@ -51,22 +52,34 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	var appDir string
-	if appDirEnv, exists := os.LookupEnv(firebaseAppDirectory); exists {
-		appDir = filepath.Join(ctx.ApplicationRoot(), appDirEnv)
-	} else {
-		return gcp.UserErrorf("%s not specified", firebaseAppDirectory)
+	appDir := util.ApplicationDirectory(ctx)
+
+	nxJSON, err := nodejs.ReadNxJSONIfExists(ctx.ApplicationRoot())
+	if err != nil {
+		return err
+	}
+	if nxJSON == nil {
+		return gcp.UserErrorf("nx.json file does not exist")
+	}
+	if nxJSON.NxCloudAccessToken != "" {
+		ctx.Warnf("Nx Cloud is currently not supported. Ignoring Nx Cloud Access Token")
 	}
 
 	projectJSON, err := nodejs.ReadNxProjectJSONIfExists(appDir)
 	if err != nil {
 		return err
 	}
-	if projectJSON == nil {
-		return gcp.UserErrorf("%s should include a project.json file.", appDir)
+
+	projectName := nxJSON.DefaultProject
+	if projectJSON != nil {
+		projectName = projectJSON.Name
 	}
-	projectName := projectJSON.Name
-	projectBuilder := projectJSON.Targets.Build.Executor
+	// Project target is ambiguous, so we fail the build.
+	if projectName == "" {
+		return gcp.UserErrorf("target application in Nx monorepo is ambiguous. Please specify the application directory path during onboarding or a default project in nx.json")
+	}
+
+	buildArgs := []string{fmt.Sprintf("--project=%s", projectName)}
 
 	nxl, err := ctx.Layer("nx", gcp.BuildLayer, gcp.CacheLayer)
 	if err != nil {
@@ -74,8 +87,13 @@ func buildFn(ctx *gcp.Context) error {
 	}
 	// Set environment variables that will configure the build to use Nx.
 	nxl.BuildEnvironment.Override(monorepoProject, projectName)
-	nxl.BuildEnvironment.Override(monorepoBuilder, projectBuilder)
 	nxl.BuildEnvironment.Override(monorepoCommand, "nx")
+	nxl.BuildEnvironment.Override(monorepoBuildArgs, strings.Join(buildArgs, ","))
+	// If an Nx Cloud access token is provided in nx.json, the Nx build script will attempt to read
+	// from the user's cloud cache. This feature is currently disabled so that users don't rely on Nx
+	// remote caching until we can fully investigate how to support making external network requests
+	// to the Nx API.
+	nxl.BuildEnvironment.Override(nxNoCloud, "true")
 
 	return nil
 }

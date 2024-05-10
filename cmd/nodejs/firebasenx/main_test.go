@@ -50,6 +50,9 @@ func TestBuild(t *testing.T) {
 			},
 			files: map[string]string{
 				"index.js": "",
+				"nx.json": `{
+					"defaultProject": "my-project"
+				}`,
 				"apps/my-project/project.json": `{
 					"name": "my-project",
 					"targets": {
@@ -62,12 +65,20 @@ func TestBuild(t *testing.T) {
 			wantExitCode: 0,
 		},
 		{
-			name: "throw error if no project.json is found",
-			envs: []string{
-				fmt.Sprintf("%s=apps/my-project", firebaseAppDirectory),
-			},
+			name: "ambiguous project name",
 			files: map[string]string{
 				"index.js": "",
+				"nx.json": `{
+					"defaultProject": ""
+				}`,
+				"apps/my-project/project.json": `{
+					"name": "my-project",
+					"targets": {
+						"build": {
+							"executor": "@angular-devkit/build-angular:application"
+						}
+					}
+				}`,
 			},
 			wantExitCode: 1,
 		},
