@@ -41,7 +41,6 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput: []string{"WARNING"},
 			MustUse:       []string{"google.config.flex", "google.ruby.flex-entrypoint"},
 		},
-
 		{
 			Name:          "rack project",
 			App:           "rack",

@@ -13,5 +13,7 @@
 # limitations under the License.
 
 source "https://rubygems.org"
-gem "webrick", "~> 1.7"
-gem "sinatra", "~> 2.2"
+gem "webrick", "~> 1.8"
+gem "sinatra", "~> 4.0"
+gem "base64", "~> 0.2"
+gem "rackup", "~> 2.1"
