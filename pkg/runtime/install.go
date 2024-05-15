@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -85,6 +86,8 @@ var stackToOS = map[string]string{
 	"google.min.22":          ubuntu2204,
 	"firebase.apphosting.22": ubuntu2204,
 }
+
+var languageRuntimes = []InstallableRuntime{Nodejs, PHP, Python, Ruby, OpenJDK, CanonicalJDK, Go, DotnetSDK, AspNetCore}
 
 const (
 	versionKey = "version"
@@ -165,7 +168,7 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 		return false, err
 	}
 
-	if err = ValidateFlexMinVersion(ctx, version); err != nil {
+	if err = ValidateFlexMinVersion(ctx, runtime, version); err != nil {
 		return false, err
 	}
 
@@ -329,8 +332,8 @@ func ResolveVersion(ctx *gcp.Context, runtime InstallableRuntime, verConstraint,
 }
 
 // ValidateFlexMinVersion validates the minimum flex version for a given runtime.
-func ValidateFlexMinVersion(ctx *gcp.Context, version string) error {
-	if !env.IsFlex() {
+func ValidateFlexMinVersion(ctx *gcp.Context, runtime InstallableRuntime, version string) error {
+	if !env.IsFlex() || !slices.Contains(languageRuntimes, runtime) {
 		return nil
 	}
 	minVersionEnv, present := os.LookupEnv(env.FlexMinVersion)

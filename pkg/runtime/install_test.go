@@ -506,9 +506,24 @@ func TestValidateMinFlexVersion(t *testing.T) {
 		name       string
 		version    string
 		minVersion string
+		runtime    InstallableRuntime
 		env        string
 		wantErr    bool
 	}{
+		{
+			name:       "non language runtime pid1",
+			version:    "2.8",
+			minVersion: "3.7.0",
+			runtime:    Pid1,
+			wantErr:    false,
+		},
+		{
+			name:       "non language runtime nginx",
+			version:    "2.8",
+			minVersion: "3.7.0",
+			runtime:    Nginx,
+			wantErr:    false,
+		},
 		{
 			name:       "valid version",
 			version:    "3.7.2",
@@ -542,12 +557,16 @@ func TestValidateMinFlexVersion(t *testing.T) {
 	t.Setenv(env.XGoogleTargetPlatform, env.TargetPlatformFlex)
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			runtime := Python
+			if tc.runtime != "" {
+				runtime = tc.runtime
+			}
 			ctx := gcp.NewContext()
 			if tc.env != "" {
 				t.Setenv(env.XGoogleTargetPlatform, tc.env)
 			}
 			t.Setenv(env.FlexMinVersion, tc.minVersion)
-			err := ValidateFlexMinVersion(ctx, tc.version)
+			err := ValidateFlexMinVersion(ctx, runtime, tc.version)
 			gotErr := err != nil
 			if gotErr != tc.wantErr {
 				t.Errorf("ValidateMinFlexVersion(%v)= %v, want error presence: %v, ", tc.version, err, tc.wantErr)
