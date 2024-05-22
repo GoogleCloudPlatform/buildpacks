@@ -508,6 +508,7 @@ func TestValidateMinFlexVersion(t *testing.T) {
 		minVersion string
 		runtime    InstallableRuntime
 		env        string
+		envRuntime string
 		wantErr    bool
 	}{
 		{
@@ -553,14 +554,28 @@ func TestValidateMinFlexVersion(t *testing.T) {
 			env:     env.TargetPlatformAppEngine,
 			wantErr: false,
 		},
+		{
+			name:       "no validation if runtime does not match",
+			env:        env.TargetPlatformFlex,
+			version:    "abc",
+			minVersion: "3.7.0",
+			runtime:    Python,
+			envRuntime: "php",
+			wantErr:    false,
+		},
 	}
 	t.Setenv(env.XGoogleTargetPlatform, env.TargetPlatformFlex)
+	t.Setenv(env.Runtime, "python")
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			runtime := Python
 			if tc.runtime != "" {
 				runtime = tc.runtime
 			}
+			if tc.envRuntime != "" {
+				t.Setenv(env.Runtime, tc.envRuntime)
+			}
+
 			ctx := gcp.NewContext()
 			if tc.env != "" {
 				t.Setenv(env.XGoogleTargetPlatform, tc.env)
@@ -571,6 +586,55 @@ func TestValidateMinFlexVersion(t *testing.T) {
 			if gotErr != tc.wantErr {
 				t.Errorf("ValidateMinFlexVersion(%v)= %v, want error presence: %v, ", tc.version, err, tc.wantErr)
 			}
+
+			t.Setenv(env.Runtime, "python")
 		})
+	}
+}
+
+func TestRuntimeMatchesInstallableRuntime(t *testing.T) {
+	tests := []struct {
+		installableRuntime InstallableRuntime
+		env                string
+		want               bool
+	}{
+		{
+			installableRuntime: OpenJDK,
+			env:                "java",
+			want:               true,
+		},
+		{
+			installableRuntime: CanonicalJDK,
+			env:                "java",
+			want:               true,
+		},
+		{
+			installableRuntime: AspNetCore,
+			env:                "dotnet",
+			want:               true,
+		},
+		{
+			installableRuntime: DotnetSDK,
+			env:                "dotnet",
+			want:               true,
+		},
+		{
+			installableRuntime: Python,
+			env:                "nodejs",
+			want:               false,
+		},
+		{
+			installableRuntime: Nodejs,
+			env:                "nodejs",
+			want:               true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Setenv(env.Runtime, tc.env)
+		got := runtimeMatchesInstallableRuntime(tc.installableRuntime)
+		if got != tc.want {
+			t.Errorf("runtimeMatchesInstallableRuntime(%v) = %v, want: %v", tc.installableRuntime, got, tc.want)
+		}
 	}
 }

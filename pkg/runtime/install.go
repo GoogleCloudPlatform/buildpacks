@@ -336,6 +336,11 @@ func ValidateFlexMinVersion(ctx *gcp.Context, runtime InstallableRuntime, versio
 	if !env.IsFlex() || !slices.Contains(languageRuntimes, runtime) {
 		return nil
 	}
+
+	if !runtimeMatchesInstallableRuntime(runtime) {
+		return nil
+	}
+
 	minVersionEnv, present := os.LookupEnv(env.FlexMinVersion)
 	if !present {
 		return nil
@@ -356,4 +361,17 @@ func ValidateFlexMinVersion(ctx *gcp.Context, runtime InstallableRuntime, versio
 	}
 
 	return nil
+}
+
+// runtimeMatchesInstallableRuntime returns true if the GOOGLE_RUNTIME should match the installable runtime.
+// This is because PHP might install python and ruby might install nodejs.
+func runtimeMatchesInstallableRuntime(installableRuntime InstallableRuntime) bool {
+	switch r := os.Getenv(env.Runtime); r {
+	case "java":
+		return installableRuntime == OpenJDK || installableRuntime == CanonicalJDK
+	case "dotnet":
+		return installableRuntime == DotnetSDK || installableRuntime == AspNetCore
+	default:
+		return strings.HasPrefix(r, string(installableRuntime))
+	}
 }
