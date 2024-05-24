@@ -228,7 +228,12 @@ func TestRequestedNodejsVersion(t *testing.T) {
 	}{
 		{
 			name: "default is empty",
-			want: "",
+			want: defaultVersionConstraint,
+		},
+		{
+			name:        "package.json without engines",
+			packageJSON: `{}`,
+			want:        defaultVersionConstraint,
 		},
 		{
 			name:    "GOOGLE_NODEJS_VERSION is set",

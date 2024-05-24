@@ -43,6 +43,10 @@ const (
 
 	nodeVersionKey    = "node_version"
 	dependencyHashKey = "dependency_hash"
+	// defaultVersionConstraint is used if the project does not provide a Node.js version specifier in
+	// their package.json or via an env var. This pins them to the active LTS version, instead of the
+	// the latest available version.
+	defaultVersionConstraint = "20.*.*"
 )
 
 // semVer11 is the smallest possible semantic version with major version 11.
@@ -233,8 +237,8 @@ func RequestedNodejsVersion(ctx *gcp.Context, pjs *PackageJSON) (string, error) 
 		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, version)
 		return version, nil
 	}
-	if pjs == nil {
-		return "", nil
+	if pjs == nil || pjs.Engines.Node == "" {
+		return defaultVersionConstraint, nil
 	}
 	return pjs.Engines.Node, nil
 }
