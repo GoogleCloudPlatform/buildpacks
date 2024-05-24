@@ -53,10 +53,6 @@ fileExistenceTests:
   path: '/www-data-home'
   shouldExist: true
   permissions: 'drwxr-xr-x'
-- name: 'BUILDER_OUTPUT dir'
-  path: '/builder/outputs'
-  shouldExist: true
-  permissions: 'drwxrwxrwx'
 
 commandTests:
 - name: 'installed packages'

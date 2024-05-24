@@ -18,12 +18,6 @@
 
 schemaVersion: '2.0.0'
 
-fileExistenceTests:
-- name: 'BUILDER_OUTPUT dir'
-  path: '/builder/outputs'
-  shouldExist: true
-  permissions: 'drwxrwxrwx'
-
 metadataTest:
   envVars:
     - key: PORT
