@@ -97,8 +97,8 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("failed to fetch the installer signature from %s: %w", composerSigURL, err)
 	}
 	expectedSHA := expectedSHABuf.String()
-	// Disable the deprecated warnings inline using -d 'error_reporting=24575' flag while we add php.ini.
-	actualSHACmd := fmt.Sprintf("php -d 'error_reporting=24575' -r \"echo hash_file('sha384', '%s');\"", installer.Name())
+	// Disable display_errors to avoid printing warnings to the console when adding the php.ini.
+	actualSHACmd := fmt.Sprintf("php -d 'display_errors = Off' -r \"echo hash_file('sha384', '%s');\"", installer.Name())
 	result, err := ctx.Exec([]string{"bash", "-c", actualSHACmd})
 	if err != nil {
 		return err
