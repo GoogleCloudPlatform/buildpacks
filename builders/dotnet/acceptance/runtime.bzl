@@ -10,11 +10,11 @@ gae_runtimes = {
 gcf_runtimes = {
     "dotnet": "",
     "dotnet3": "3.1.426",
-    "dotnet6": "6.0.422",
-    "dotnet8": "8.0.100",
+    "dotnet6": "6.0.423",
+    "dotnet8": "8.0.301",
 }
 
 flex_runtimes = {
-    "dotnet6": "6.0.422",
-    "dotnet8": "8.0.100",
+    "dotnet6": "6.0.423",
+    "dotnet8": "8.0.301",
 }
