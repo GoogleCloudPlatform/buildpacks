@@ -92,7 +92,7 @@ server {
 
 	{{if .ServesStaticFiles}}
 	location / {
-		try_files $uri /{{.FrontControllerScript}}$uri;
+		try_files $uri /{{.FrontControllerScript}}$uri$is_args$args;
 	}
 	{{else}}
 	rewrite	^/(.*)$	/{{.FrontControllerScript}}$uri;

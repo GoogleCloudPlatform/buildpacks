@@ -45,6 +45,15 @@ func TestAcceptance(t *testing.T) {
 			MustMatch:                  "hello world",
 		},
 		{
+			Name:                       "serves static files goes to front controller with params",
+			App:                        "serves_static_files",
+			Env:                        []string{"NGINX_SERVES_STATIC_FILES=true"},
+			VersionInclusionConstraint: "< 8.2.0",
+			MustUse:                    []string{flex, utilsNginx},
+			Path:                       "/foo?name=bar",
+			MustMatch:                  "name is bar",
+		},
+		{
 			Name:                       "does not serve static files",
 			App:                        "serves_static_files",
 			VersionInclusionConstraint: "< 8.2.0",
