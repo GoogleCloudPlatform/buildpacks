@@ -169,7 +169,7 @@ func TestFailures(t *testing.T) {
 		{
 			App:                        "fail_vendored_framework_no_router_script",
 			VersionInclusionConstraint: "< 8.2.0",
-			MustMatch:                  `functions framework router script vendor/bin/router\.php is not present`,
+			MustMatch:                  `functions framework router script vendor/google/cloud-functions-framework/router.php is not present`,
 		},
 		{
 			App:                        "fail_vendored_no_framework_no_installed_json",

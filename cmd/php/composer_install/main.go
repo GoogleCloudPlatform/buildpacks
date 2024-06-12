@@ -33,7 +33,7 @@ var (
 	composerLayer    = "composer"
 	composerJSON     = "composer.json"
 	composerSetup    = "composer-setup"
-	composerVer      = "2.1.3"
+	composerVer      = "2.2.24"
 	versionKey       = "version"
 	composerSigURL   = "https://composer.github.io/installer.sig"
 	composerSetupURL = "https://getcomposer.org/installer"

@@ -24,7 +24,7 @@ import (
 
 const (
 	// routerScript is the path to the functions framework invoker script.
-	routerScript = "vendor/bin/router.php"
+	routerScript = "vendor/google/cloud-functions-framework/router.php"
 )
 
 func main() {

@@ -63,7 +63,7 @@ func TestEntrypoint(t *testing.T) {
 		t.Fatalf("unexpected error creating entrypoint: %v", err)
 	}
 
-	want := "serve -enable-dynamic-workers -workers=1024 vendor/bin/router.php"
+	want := "serve -enable-dynamic-workers -workers=1024 vendor/google/cloud-functions-framework/router.php"
 	if ep.Command != want {
 		t.Errorf("entrypoint set wrong, got: %q, want: %q", ep.Command, want)
 	}

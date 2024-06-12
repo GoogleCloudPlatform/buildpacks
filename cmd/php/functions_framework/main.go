@@ -44,7 +44,7 @@ const (
 	ffPackagistURL = "https://packagist.org/packages/google/cloud-functions-framework"
 
 	// routerScript is the path to the functions framework invoker script.
-	routerScript = "vendor/bin/router.php"
+	routerScript = "vendor/google/cloud-functions-framework/router.php"
 
 	// cacheTag is the cache tag for the `composer install` layer. We only cache in one case: There
 	// is no composer.json file and there is no vendor directory (i.e. a dependency-less function).
