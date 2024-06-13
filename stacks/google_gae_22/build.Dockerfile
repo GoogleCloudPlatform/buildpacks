@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:22.04
+FROM marketplace.gcr.io/google/ubuntu2204:latest
 
 # Version identifier of the image.
 ARG CANDIDATE_NAME

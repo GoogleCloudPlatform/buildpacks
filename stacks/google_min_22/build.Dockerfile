@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:22.04
+FROM marketplace.gcr.io/google/ubuntu2204:latest
 
 ARG cnb_uid=1000
 ARG cnb_gid=1000
