@@ -1,5 +1,3 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_test")
-
 """
 Generated bzl file. Do not update manually.
 """

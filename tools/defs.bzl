@@ -1,5 +1,3 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_test")
-
 """Utility macros for buildpacks."""
 
 load("@rules_pkg//pkg:mappings.bzl", "pkg_mklink")

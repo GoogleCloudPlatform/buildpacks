@@ -1,8 +1,7 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_test")
-
 """Macros for running acceptance tests."""
 
 load("@rules_pkg//pkg:zip.bzl", "pkg_zip")
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 # acceptance_test_suite defines several targets that are useful with buildpacks acceptance tests.
 # It defines a test target for each version, a test suite that runs all of the versioned targets,
