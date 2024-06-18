@@ -14,8 +14,8 @@
 
 FROM marketplace.gcr.io/google/ubuntu2204:latest
 
-ARG cnb_uid=1000
-ARG cnb_gid=1000
+ARG cnb_uid=33
+ARG cnb_gid=33
 
 COPY build-packages.txt /tmp/packages.txt
 
