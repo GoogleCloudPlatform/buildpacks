@@ -196,6 +196,11 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		if nodejs.NodeEnv() != nodejs.EnvProduction {
 			ctx.Logf("Retaining devDependencies because NODE_ENV=%q", nodeEnv)
 		} else {
+			if _, isAppHostingBuild := os.LookupEnv(nodejs.AppHostingBuildEnv); isAppHostingBuild {
+				// We don't prune if the user is using App Hosting since App Hosting builds don't
+				// rely on the node_modules folder at this point.
+				return nil
+			}
 			// For Yarn1, setting `--production=true` causes all `devDependencies` to be deleted.
 			ctx.Logf("Pruning devDependencies")
 			cmd := []string{"yarn", "install", "--ignore-scripts", "--prefer-offline", "--production=true", locationFlag}
