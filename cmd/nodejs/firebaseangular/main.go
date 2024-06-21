@@ -25,6 +25,11 @@ import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
+const (
+	// angularVersion is the version of angular that the applciation is using
+	angularVersion = "ANGULAR_VERSION"
+)
+
 var (
 	// minAngularVersion is the lowest version of angular supported by the firebase angular buildpack.
 	minAngularVersion = semver.MustParse("17.2.0")
@@ -104,6 +109,10 @@ func buildFn(ctx *gcp.Context) error {
 	if err = nodejs.InstallAngularBuildAdaptor(ctx, al, version); err != nil {
 		return err
 	}
+
+	// pass angular version as environment variable that will configure the build for version matching
+	al.BuildEnvironment.Override(angularVersion, version)
+
 	// This env var indicates to the package manager buildpack that a different command needs to be run
 	nodejs.OverrideAngularBuildScript(al)
 

@@ -24,6 +24,11 @@ import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
+const (
+	// nextVersion is the version of next that the applciation is using
+	nextVersion = "NEXT_VERSION"
+)
+
 var (
 	// minNextVersion is the lowest version of nextjs supported by the firebasenextjs buildpack.
 	minNextVersion = semver.MustParse("13.0.0")
@@ -85,6 +90,10 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// pass next version as environment variable that will configure the build for version matching
+	njsl.BuildEnvironment.Override(nextVersion, version)
+
 	// This env var indicates to the package manager buildpack that a different command needs to be run
 	nodejs.OverrideNextjsBuildScript(njsl)
 
