@@ -1270,11 +1270,6 @@ func getHostAndPortForApp(t *testing.T, containerID, containerName string) (stri
 	// our own port picker logic which would bring its own set of issues when run on
 	// glinux machines which have various services running on ports. Since we have not
 	// observed issues with the docker port picker, we are continuing to use it.
-
-	if v := os.Getenv("DOCKER_IP_UBUNTU"); v != "" {
-		return v, hostPort(t, containerID)
-	}
-
 	return "localhost", hostPort(t, containerID)
 }
 
