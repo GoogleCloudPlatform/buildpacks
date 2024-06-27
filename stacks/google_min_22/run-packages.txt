@@ -2,3 +2,4 @@ ca-certificates
 locales
 openssl
 tzdata
+curl
