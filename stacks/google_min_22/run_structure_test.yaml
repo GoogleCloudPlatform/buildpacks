@@ -26,14 +26,14 @@ metadataTest:
     - key: PORT
       value: 8080
     - key: 'CNB_STACK_ID'
-      value: 'google.gae.22'
+      value: 'google.min.22'
     - key: 'CNB_USER_ID'
       value: '1000'
     - key: 'CNB_GROUP_ID'
       value: '1000'
   labels:
     - key: 'io.buildpacks.stack.id'
-      value: 'google.gae.22'
+      value: 'google.min.22'
     - key: 'io.buildpacks.stack.distro.name'
       value: 'Ubuntu'
     - key: 'io.buildpacks.stack.distro.version'
