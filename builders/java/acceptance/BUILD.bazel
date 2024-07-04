@@ -112,7 +112,7 @@ acceptance_test_argo_source(
         "//builders/testdata/java:appengine.tgz",
         "//builders/testdata/java:functions.tgz",
     ],
-    testdata = "//builders/testdata:java",
+    testdata = "//builders/testdata/java:all_files",
 )
 
 exports_files(["runtime.bzl"])

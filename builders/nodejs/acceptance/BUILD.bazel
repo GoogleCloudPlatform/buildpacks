@@ -111,7 +111,7 @@ acceptance_test_argo_source(
     srcs = [
         ":8.17.0_gcf_test_cloudbuild_bin",
     ],
-    testdata = "//builders/testdata:nodejs",
+    testdata = "//builders/testdata/nodejs:all_files",
 )
 
 acceptance_test_suite(

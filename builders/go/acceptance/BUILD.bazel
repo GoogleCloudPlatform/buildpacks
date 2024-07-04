@@ -117,7 +117,7 @@ acceptance_test_argo_source(
     srcs = [
         ":1.11_gcf_test_cloudbuild_bin",
     ],
-    testdata = "//builders/testdata:go",
+    testdata = "//builders/testdata/go:all_files",
 )
 
 exports_files(["runtime.bzl"])

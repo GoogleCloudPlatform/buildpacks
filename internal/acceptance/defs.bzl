@@ -361,7 +361,7 @@ def _build_argo_source_testdata_fileset_target(name, testdata):
             native.FilesetEntry(
                 srcdir = testdata_pkg,
                 files = [testdata_label],
-                strip_prefix = testdata_label,
+                strip_prefix = "",
             ),
         ],
     )

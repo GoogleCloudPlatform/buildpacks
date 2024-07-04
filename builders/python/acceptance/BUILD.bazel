@@ -92,7 +92,7 @@ acceptance_test_suite(
 
 acceptance_test_argo_source(
     name = "argo_source",
-    testdata = "//builders/testdata:python",
+    testdata = "//builders/testdata/python:all_files",
 )
 
 # Test the run image tagged as ${_CANDIDATE_NAME} in gae-runtimes-private.

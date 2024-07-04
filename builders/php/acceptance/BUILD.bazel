@@ -93,7 +93,7 @@ acceptance_test_suite(
 
 acceptance_test_argo_source(
     name = "argo_source",
-    testdata = "//builders/testdata:php",
+    testdata = "//builders/testdata/php:all_files",
 )
 
 exports_files(["runtime.bzl"])
