@@ -9,7 +9,7 @@ gae_runtimes = {
     "python39": "3.9.19",
     "python310": "3.10.14",
     "python311": "3.11.9",
-    "python312": "3.12.3",
+    "python312": "3.12.4",
 }
 
 gcf_runtimes = {
@@ -18,7 +18,7 @@ gcf_runtimes = {
     "python39": "3.9.19",
     "python310": "3.10.14",
     "python311": "3.11.9",
-    "python312": "3.12.3",
+    "python312": "3.12.4",
 }
 
 flex_runtimes = {
@@ -26,5 +26,5 @@ flex_runtimes = {
     "python39": "3.9.19",
     "python310": "3.10.14",
     "python311": "3.11.9",
-    "python312": "3.12.3",
+    "python312": "3.12.4",
 }
