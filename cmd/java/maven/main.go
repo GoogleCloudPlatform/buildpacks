@@ -33,7 +33,7 @@ import (
 
 const (
 	// TODO(b/151198698): Automate Maven version updates.
-	mavenVersion = "3.9.6"
+	mavenVersion = "3.9.8"
 	mavenURL     = "https://archive.apache.org/dist/maven/maven-3/%[1]s/binaries/apache-maven-%[1]s-bin.tar.gz"
 	mavenLayer   = "maven"
 	m2Layer      = "m2"
