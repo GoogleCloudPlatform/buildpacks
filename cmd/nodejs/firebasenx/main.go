@@ -26,8 +26,7 @@ import (
 )
 
 var (
-	versionKey           = "version"
-	firebaseAppDirectory = "FIREBASE_APP_DIRECTORY"
+	versionKey = "version"
 	// The Nx buildpack build function sets the following environment variables to configure the build
 	// behavior of subsequent buildpacks.
 	monorepoProject   = "MONOREPO_PROJECT"    // The name of a project in a Nx monorepo.

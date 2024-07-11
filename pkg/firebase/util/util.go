@@ -19,18 +19,16 @@ import (
 	"os"
 	"path/filepath"
 
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 
-var (
-	firebaseAppDirectory = "FIREBASE_APP_DIRECTORY"
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 // ApplicationDirectory looks up the path to the application directory from the environment. Returns
 // the application root by default.
 func ApplicationDirectory(ctx *gcp.Context) string {
 	appDir := ctx.ApplicationRoot()
-	if appDirEnv, exists := os.LookupEnv(firebaseAppDirectory); exists {
+	if appDirEnv, exists := os.LookupEnv(env.Buildable); exists {
 		appDir = filepath.Join(ctx.ApplicationRoot(), appDirEnv)
 	}
 	return appDir

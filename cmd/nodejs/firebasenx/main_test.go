@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 
 	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
@@ -45,9 +44,7 @@ func TestBuild(t *testing.T) {
 	}{
 		{
 			name: "successfully read project.json",
-			envs: []string{
-				fmt.Sprintf("%s=apps/my-project", firebaseAppDirectory),
-			},
+			envs: []string{"GOOGLE_BUILDABLE=apps/my-project"},
 			files: map[string]string{
 				"index.js": "",
 				"nx.json": `{

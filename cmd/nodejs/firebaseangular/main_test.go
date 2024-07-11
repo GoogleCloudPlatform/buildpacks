@@ -43,7 +43,7 @@ func TestDetect(t *testing.T) {
 				"packages/foo/index.js":     "",
 				"packages/foo/angular.json": "",
 			},
-			envs: []string{"FIREBASE_APP_DIRECTORY=packages/foo"},
+			envs: []string{"GOOGLE_BUILDABLE=packages/foo"},
 			want: 0,
 		},
 		{

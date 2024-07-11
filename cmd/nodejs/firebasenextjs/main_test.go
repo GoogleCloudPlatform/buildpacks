@@ -50,7 +50,7 @@ func TestDetect(t *testing.T) {
 				"apps/next-app/index.js":       "",
 				"apps/next-app/next.config.js": "",
 			},
-			envs: []string{"FIREBASE_APP_DIRECTORY=apps/next-app"},
+			envs: []string{"GOOGLE_BUILDABLE=apps/next-app"},
 			want: 0,
 		},
 	}
