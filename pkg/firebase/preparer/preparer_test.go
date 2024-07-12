@@ -32,6 +32,7 @@ func TestPrepare(t *testing.T) {
 		desc               string
 		appHostingYAMLPath string
 		projectID          string
+		environmentName    string
 		wantEnvMap         map[string]string
 		wantSchema         apphostingschema.AppHostingSchema
 	}{
@@ -39,29 +40,31 @@ func TestPrepare(t *testing.T) {
 			desc:               "properly prepare apphosting.yaml",
 			appHostingYAMLPath: appHostingYAMLPath,
 			projectID:          "test-project",
+			environmentName:    "staging",
 			wantEnvMap: map[string]string{
-				"API_URL":                "api.service.com",
-				"VAR_QUOTED_SPECIAL":     "api2.service.com::",
-				"VAR_SPACED":             "api3 - service -  com",
-				"VAR_SINGLE_QUOTES":      "I said, 'I'm learning YAML!'",
-				"VAR_DOUBLE_QUOTES":      "\"api4.service.com\"",
-				"MULTILINE_VAR":          "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n",
-				"VAR_NUMBER":             "12345",
-				"API_KEY":                secretString,
-				"PINNED_API_KEY":         secretString,
-				"VERBOSE_API_KEY":        secretString,
-				"PINNED_VERBOSE_API_KEY": secretString,
+				"API_URL":                 "api.staging.service.com",
+				"VAR_QUOTED_SPECIAL":      "api2.service.com::",
+				"VAR_SPACED":              "api3 - service -  com",
+				"VAR_SINGLE_QUOTES":       "I said, 'I'm learning YAML!'",
+				"VAR_DOUBLE_QUOTES":       "\"api4.service.com\"",
+				"MULTILINE_VAR":           "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n",
+				"VAR_NUMBER":              "12345",
+				"API_KEY":                 secretString,
+				"PINNED_API_KEY":          secretString,
+				"VERBOSE_API_KEY":         secretString,
+				"PINNED_VERBOSE_API_KEY":  secretString,
+				"STAGING_SECRET_VARIABLE": secretString,
 			},
 			wantSchema: apphostingschema.AppHostingSchema{
 				RunConfig: apphostingschema.RunConfig{
-					CPU:          proto.Float32(3),
-					MemoryMiB:    proto.Int32(1024),
+					CPU:          proto.Float32(1),
+					MemoryMiB:    proto.Int32(512),
 					Concurrency:  proto.Int32(100),
-					MaxInstances: proto.Int32(4),
+					MaxInstances: proto.Int32(2),
 					MinInstances: proto.Int32(0),
 				},
 				Env: []apphostingschema.EnvironmentVariable{
-					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD"}},
+					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.staging.service.com", Availability: []string{"BUILD", "RUNTIME"}},
 					apphostingschema.EnvironmentVariable{Variable: "VAR_QUOTED_SPECIAL", Value: "api2.service.com::", Availability: []string{"BUILD", "RUNTIME"}},
 					apphostingschema.EnvironmentVariable{Variable: "VAR_SPACED", Value: "api3 - service -  com", Availability: []string{"BUILD", "RUNTIME"}},
 					apphostingschema.EnvironmentVariable{Variable: "VAR_SINGLE_QUOTES", Value: "I said, 'I'm learning YAML!'", Availability: []string{"BUILD", "RUNTIME"}},
@@ -73,6 +76,7 @@ func TestPrepare(t *testing.T) {
 					apphostingschema.EnvironmentVariable{Variable: "PINNED_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}},
 					apphostingschema.EnvironmentVariable{Variable: "VERBOSE_API_KEY", Secret: latestSecretName, Availability: []string{"BUILD", "RUNTIME"}},
 					apphostingschema.EnvironmentVariable{Variable: "PINNED_VERBOSE_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "STAGING_SECRET_VARIABLE", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}},
 				},
 			},
 		},
@@ -120,6 +124,7 @@ func TestPrepare(t *testing.T) {
 			SecretClient:                  fakeSecretClient,
 			AppHostingYAMLPath:            test.appHostingYAMLPath,
 			ProjectID:                     test.projectID,
+			EnvironmentName:               test.environmentName,
 			AppHostingYAMLOutputFilePath:  outputFilePathYAML,
 			EnvDereferencedOutputFilePath: outputFilePathEnv,
 			BackendRootDirectory:          "",
@@ -127,7 +132,7 @@ func TestPrepare(t *testing.T) {
 		}
 
 		if err := Prepare(context.Background(), opts); err != nil {
-			t.Errorf("Error in test '%v'. Error was %v", test.desc, err)
+			t.Fatalf("Error in test '%v'. Error was %v", test.desc, err)
 		}
 
 		// Check dereferenced secret material env file
@@ -137,7 +142,7 @@ func TestPrepare(t *testing.T) {
 		}
 
 		if diff := cmp.Diff(test.wantEnvMap, actualEnvMapDereferenced); diff != "" {
-			t.Errorf("Unexpected env map for test %v (+got, -want):\n%v", test.desc, diff)
+			t.Errorf("Unexpected env map for test %v (-want, +got):\n%v", test.desc, diff)
 		}
 
 		// Check app hosting schema
@@ -147,7 +152,7 @@ func TestPrepare(t *testing.T) {
 		}
 
 		if diff := cmp.Diff(test.wantSchema, actualAppHostingSchema); diff != "" {
-			t.Errorf("unexpected prepared YAML schema for test %q (+got, -want):\n%v", test.desc, diff)
+			t.Errorf("unexpected prepared YAML schema for test %q (-want, +got):\n%v", test.desc, diff)
 		}
 	}
 }

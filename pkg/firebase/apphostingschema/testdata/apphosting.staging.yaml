@@ -1,0 +1,15 @@
+schemaVersion: '3.0.0'
+
+runConfig:
+  cpu: 1
+  memoryMiB: 512
+  concurrency: 5
+
+env:
+  - variable: API_URL
+    value: api.staging.service.com
+    availability:
+      - BUILD
+
+  - variable: DATABASE_URL
+    secret: secretStagingDatabaseURL

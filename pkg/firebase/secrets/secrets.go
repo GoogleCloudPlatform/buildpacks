@@ -100,7 +100,14 @@ func PinVersions(ctx context.Context, client SecretManager, env []apphostingsche
 		if ev.Secret != "" && strings.HasSuffix(ev.Secret, latestSuffix) {
 			n, err := getSecretVersion(ctx, client, ev.Secret)
 			if err != nil {
-				return fmt.Errorf("calling GetSecretVersion with name=%v: %w", ev.Secret, err)
+				return fmt.Errorf(
+					"calling GetSecretVersion with name=%v: %w. "+
+						"If the secret already exists in your project, please grant your App Hosting backend "+
+						"access to it with the CLI command 'firebase apphosting:secrets:grantaccess'. "+
+						"See https://firebase.google.com/docs/app-hosting/configure#secret-parameters for more information",
+					ev.Secret,
+					err,
+				)
 			}
 			env[i].Secret = n
 		}

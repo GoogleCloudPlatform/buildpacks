@@ -28,6 +28,7 @@ import (
 var (
 	apphostingYAMLFilePath        = flag.String("apphostingyaml_filepath", "", "File path to user defined apphosting.yaml")
 	projectID                     = flag.String("project_id", "", "User's GCP project ID")
+	environmentName               = flag.String("environment_name", "", "Environment name tied to the build, if applicable")
 	appHostingYAMLOutputFilePath  = flag.String("apphostingyaml_output_filepath", "", "File path to write the validated and formatted apphosting.yaml to")
 	dotEnvOutputFilePath          = flag.String("dot_env_output_filepath", "", "File path to write the output .env file to")
 	backendRootDirectory          = flag.String("backend_root_directory", "", "File path to the application directory specified by the user")
@@ -67,6 +68,7 @@ func main() {
 		SecretClient:                  secretClient,
 		AppHostingYAMLPath:            *apphostingYAMLFilePath,
 		ProjectID:                     *projectID,
+		EnvironmentName:               *environmentName,
 		AppHostingYAMLOutputFilePath:  *appHostingYAMLOutputFilePath,
 		EnvDereferencedOutputFilePath: *dotEnvOutputFilePath,
 		BackendRootDirectory:          *backendRootDirectory,

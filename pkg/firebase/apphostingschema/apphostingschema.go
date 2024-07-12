@@ -174,6 +174,58 @@ func Sanitize(schema *AppHostingSchema) {
 	schema.Env = santizeEnv(schema.Env)
 }
 
+// Merge app hosting schemas with priority given to any environment specific overrides
+func mergeAppHostingSchemas(appHostingSchema *AppHostingSchema, envSpecificSchema *AppHostingSchema) {
+	// Merge RunConfig
+	if envSpecificSchema.RunConfig.CPU != nil {
+		appHostingSchema.RunConfig.CPU = envSpecificSchema.RunConfig.CPU
+	}
+	if envSpecificSchema.RunConfig.MemoryMiB != nil {
+		appHostingSchema.RunConfig.MemoryMiB = envSpecificSchema.RunConfig.MemoryMiB
+	}
+	if envSpecificSchema.RunConfig.Concurrency != nil {
+		appHostingSchema.RunConfig.Concurrency = envSpecificSchema.RunConfig.Concurrency
+	}
+	if envSpecificSchema.RunConfig.MaxInstances != nil {
+		appHostingSchema.RunConfig.MaxInstances = envSpecificSchema.RunConfig.MaxInstances
+	}
+	if envSpecificSchema.RunConfig.MinInstances != nil {
+		appHostingSchema.RunConfig.MinInstances = envSpecificSchema.RunConfig.MinInstances
+	}
+
+	// Merge Environment Variables
+	envVarMap := make(map[string]*EnvironmentVariable)
+	for i := range appHostingSchema.Env {
+		envVarMap[appHostingSchema.Env[i].Variable] = &appHostingSchema.Env[i]
+	}
+
+	for _, envVar := range envSpecificSchema.Env {
+		if existingVar, exists := envVarMap[envVar.Variable]; exists {
+			// Overwrite existing variable
+			*existingVar = envVar
+		} else {
+			// Add new variable
+			appHostingSchema.Env = append(appHostingSchema.Env, envVar)
+		}
+	}
+}
+
+// MergeWithEnvironmentSpecificYAML merges the environment specific apphosting.<environmentName>.yaml with the base apphosting schema found in apphosting.yaml
+func MergeWithEnvironmentSpecificYAML(appHostingSchema *AppHostingSchema, appHostingYAMLPath string, environmentName string) error {
+	if environmentName == "" {
+		return nil
+	}
+
+	envSpecificYAMLPath := filepath.Join(filepath.Dir(appHostingYAMLPath), fmt.Sprintf("apphosting.%v.yaml", environmentName))
+	envSpecificSchema, err := ReadAndValidateAppHostingSchemaFromFile(envSpecificYAMLPath)
+	if err != nil {
+		return fmt.Errorf("reading in and validating apphosting.%v.yaml at path %v: %w", environmentName, envSpecificYAMLPath, err)
+	}
+
+	mergeAppHostingSchemas(appHostingSchema, &envSpecificSchema)
+	return nil
+}
+
 // WriteToFile writes the given app hosting schema to the specified path.
 func (schema *AppHostingSchema) WriteToFile(outputFilePath string) error {
 	fileData, err := yaml.Marshal(schema)

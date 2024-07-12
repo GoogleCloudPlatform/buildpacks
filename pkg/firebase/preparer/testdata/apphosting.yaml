@@ -8,7 +8,7 @@ runConfig:
   concurrency: 100
 
 env:
-  # Simple mapping from env var to value. By default will be applied with BUILD and RUNTIME availability
+  # Simple mapping from env var to value. By default this will be applied with BUILD and RUNTIME availability
   - variable: API_URL
     value: api.service.com
     availability:
@@ -59,7 +59,7 @@ env:
 
   # Same as API_KEY above but with a pinned version. See go/firestack-secrets for more information on this format.
   - variable: PINNED_API_KEY
-    secret: secretID@11 # Secret will be pinned to version 5
+    secret: secretID@11 # Secret will be pinned to version 11
 
   # Same as API_KEY above but with the long form secret reference as defined by secret manager.
   - variable: VERBOSE_API_KEY

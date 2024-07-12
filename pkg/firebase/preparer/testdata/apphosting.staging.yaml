@@ -1,0 +1,18 @@
+schemaVersion: '3.0.0'
+
+runConfig:
+  cpu: 1
+  memoryMiB: 512
+  maxInstances: 2
+
+env:
+  # Should override the value of API_URL in apphosting.yaml
+  - variable: API_URL
+    value: api.staging.service.com
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # Append this to apphosting.yaml since it isn't present there
+  - variable: STAGING_SECRET_VARIABLE
+    secret: secretID@11

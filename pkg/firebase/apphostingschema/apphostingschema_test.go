@@ -76,7 +76,7 @@ func TestReadAndValidateAppHostingSchemaFromFile(t *testing.T) {
 			}
 
 			if diff := cmp.Diff(test.wantAppHostingSchema, s); diff != "" {
-				t.Errorf("unexpected YAML for test %q, (+got, -want):\n%v", test.desc, diff)
+				t.Errorf("unexpected YAML for test %q, (-want, +got):\n%v", test.desc, diff)
 			}
 
 			// Error Path
@@ -158,9 +158,164 @@ func TestSanitize(t *testing.T) {
 	for _, test := range testCases {
 		Sanitize(&test.inputSchema)
 		if diff := cmp.Diff(test.wantSchema, test.inputSchema); diff != "" {
-			t.Errorf("unexpected sanitized envVars for test %q (+got, -want):\n%v", test.desc, diff)
+			t.Errorf("unexpected sanitized envVars for test %q (-want, +got):\n%v", test.desc, diff)
 		}
 	}
+}
+
+func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
+	testCases := []struct {
+		desc               string
+		appHostingSchema   AppHostingSchema
+		appHostingYAMLPath string
+		environmentName    string
+		wantSchema         AppHostingSchema
+	}{
+		{
+			desc: "Merge apphosting.yaml and apphosting.<environmentName>.yaml properly",
+			appHostingSchema: AppHostingSchema{
+				RunConfig: RunConfig{
+					CPU:          proto.Float32(3),
+					MemoryMiB:    proto.Int32(1024),
+					MaxInstances: proto.Int32(4),
+					MinInstances: proto.Int32(0),
+					Concurrency:  proto.Int32(100),
+				},
+				Env: []EnvironmentVariable{
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
+					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+				},
+			},
+			appHostingYAMLPath: testdata.MustGetPath("testdata/apphosting.yaml"),
+			environmentName:    "staging",
+			wantSchema: AppHostingSchema{
+				RunConfig: RunConfig{
+					CPU:          proto.Float32(1),
+					MemoryMiB:    proto.Int32(512),
+					MaxInstances: proto.Int32(4),
+					MinInstances: proto.Int32(0),
+					Concurrency:  proto.Int32(5),
+				},
+				Env: []EnvironmentVariable{
+					EnvironmentVariable{Variable: "API_URL", Value: "api.staging.service.com", Availability: []string{"BUILD"}},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
+					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+					EnvironmentVariable{Variable: "DATABASE_URL", Secret: "secretStagingDatabaseURL"},
+				},
+			},
+		},
+		{
+			desc: "Don't modify apphosting.yaml when apphosting.<environmentName>.yaml is empty",
+			appHostingSchema: AppHostingSchema{
+				RunConfig: RunConfig{
+					CPU:          proto.Float32(3),
+					MemoryMiB:    proto.Int32(1024),
+					MaxInstances: proto.Int32(4),
+					MinInstances: proto.Int32(0),
+					Concurrency:  proto.Int32(100),
+				},
+				Env: []EnvironmentVariable{
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
+					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+				},
+			},
+			appHostingYAMLPath: testdata.MustGetPath("testdata/apphosting.yaml"),
+			environmentName:    "empty",
+			wantSchema: AppHostingSchema{
+				RunConfig: RunConfig{
+					CPU:          proto.Float32(3),
+					MemoryMiB:    proto.Int32(1024),
+					MaxInstances: proto.Int32(4),
+					MinInstances: proto.Int32(0),
+					Concurrency:  proto.Int32(100),
+				},
+				Env: []EnvironmentVariable{
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
+					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+				},
+			},
+		},
+		{
+			desc: "Don't modify apphosting.yaml when environment name isn't passed in",
+			appHostingSchema: AppHostingSchema{
+				RunConfig: RunConfig{
+					CPU:          proto.Float32(3),
+					MemoryMiB:    proto.Int32(1024),
+					MaxInstances: proto.Int32(4),
+					MinInstances: proto.Int32(0),
+					Concurrency:  proto.Int32(100),
+				},
+				Env: []EnvironmentVariable{
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
+					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+				},
+			},
+			appHostingYAMLPath: testdata.MustGetPath("testdata/apphosting.yaml"),
+			environmentName:    "",
+			wantSchema: AppHostingSchema{
+				RunConfig: RunConfig{
+					CPU:          proto.Float32(3),
+					MemoryMiB:    proto.Int32(1024),
+					MaxInstances: proto.Int32(4),
+					MinInstances: proto.Int32(0),
+					Concurrency:  proto.Int32(100),
+				},
+				Env: []EnvironmentVariable{
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
+					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+				},
+			},
+		},
+		{
+			desc: "Use apphosting.yaml when apphosting.<environmentName>.yaml is not found",
+			appHostingSchema: AppHostingSchema{
+				RunConfig: RunConfig{
+					CPU:          proto.Float32(3),
+					MemoryMiB:    proto.Int32(1024),
+					MaxInstances: proto.Int32(4),
+					MinInstances: proto.Int32(0),
+					Concurrency:  proto.Int32(100),
+				},
+				Env: []EnvironmentVariable{
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
+					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+				},
+			},
+			appHostingYAMLPath: testdata.MustGetPath("testdata/apphosting.yaml"),
+			environmentName:    "missingfile",
+			wantSchema: AppHostingSchema{
+				RunConfig: RunConfig{
+					CPU:          proto.Float32(3),
+					MemoryMiB:    proto.Int32(1024),
+					MaxInstances: proto.Int32(4),
+					MinInstances: proto.Int32(0),
+					Concurrency:  proto.Int32(100),
+				},
+				Env: []EnvironmentVariable{
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
+					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+				},
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		if err := MergeWithEnvironmentSpecificYAML(&test.appHostingSchema, test.appHostingYAMLPath, test.environmentName); err != nil {
+			t.Fatalf("unexpected error for TestMergeWithEnvironmentSpecificYAML(%q): %v", test.desc, err)
+		}
+
+		if diff := cmp.Diff(test.wantSchema, test.appHostingSchema); diff != "" {
+			t.Errorf("unexpected merged apphosting schema for test %q (-want, +got):\n%v", test.desc, diff)
+		}
+	}
+
 }
 
 func TestWriteToFile(t *testing.T) {
@@ -221,7 +376,7 @@ func TestWriteToFile(t *testing.T) {
 		}
 
 		if diff := cmp.Diff(test.inputSchema, actualSchema); diff != "" {
-			t.Errorf("unexpected schema for test %q, (+got, -want):\n%v", test.desc, diff)
+			t.Errorf("unexpected schema for test %q, (-want, +got):\n%v", test.desc, diff)
 		}
 	}
 }

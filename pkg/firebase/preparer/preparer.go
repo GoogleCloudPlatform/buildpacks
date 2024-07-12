@@ -32,6 +32,7 @@ type Options struct {
 	SecretClient                  secrets.SecretManager
 	AppHostingYAMLPath            string
 	ProjectID                     string
+	EnvironmentName               string
 	AppHostingYAMLOutputFilePath  string
 	EnvDereferencedOutputFilePath string
 	BackendRootDirectory          string
@@ -57,13 +58,17 @@ func Prepare(ctx context.Context, opts Options) error {
 			return fmt.Errorf("reading in and validating apphosting.yaml at path %v: %w", opts.AppHostingYAMLPath, err)
 		}
 
+		if err = apphostingschema.MergeWithEnvironmentSpecificYAML(&appHostingYAML, opts.AppHostingYAMLPath, opts.EnvironmentName); err != nil {
+			return fmt.Errorf("merging with environment specific apphosting.%v.yaml: %w", opts.EnvironmentName, err)
+		}
+
 		apphostingschema.Sanitize(&appHostingYAML)
 
-		if err := secrets.Normalize(appHostingYAML.Env, opts.ProjectID); err != nil {
+		if err = secrets.Normalize(appHostingYAML.Env, opts.ProjectID); err != nil {
 			return fmt.Errorf("normalizing apphosting.yaml fields: %w", err)
 		}
 
-		if err := secrets.PinVersions(ctx, opts.SecretClient, appHostingYAML.Env); err != nil {
+		if err = secrets.PinVersions(ctx, opts.SecretClient, appHostingYAML.Env); err != nil {
 			return fmt.Errorf("pinning secrets in apphosting.yaml: %w", err)
 		}
 
