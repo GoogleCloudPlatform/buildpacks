@@ -12,6 +12,7 @@ go_library(
         "//pkg/firebase/apphostingschema",
         "//pkg/firebase/envvars",
         "//pkg/firebase/secrets",
+        "//pkg/firebase/util",
     ],
 )
 

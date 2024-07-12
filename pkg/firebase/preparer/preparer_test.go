@@ -26,6 +26,7 @@ func TestPrepare(t *testing.T) {
 	testDir := t.TempDir()
 	outputFilePathYAML := testDir + "/outputYAML"
 	outputFilePathEnv := testDir + "/outputEnv"
+	outputFilePathBuildpackConfig := testDir + "/outputBuildpackConfig"
 
 	testCases := []struct {
 		desc               string
@@ -115,7 +116,17 @@ func TestPrepare(t *testing.T) {
 
 	// Testing happy paths
 	for _, test := range testCases {
-		if err := Prepare(context.Background(), fakeSecretClient, test.appHostingYAMLPath, test.projectID, outputFilePathYAML, outputFilePathEnv); err != nil {
+		opts := Options{
+			SecretClient:                  fakeSecretClient,
+			AppHostingYAMLPath:            test.appHostingYAMLPath,
+			ProjectID:                     test.projectID,
+			AppHostingYAMLOutputFilePath:  outputFilePathYAML,
+			EnvDereferencedOutputFilePath: outputFilePathEnv,
+			BackendRootDirectory:          "",
+			BuildpackConfigOutputFilePath: outputFilePathBuildpackConfig,
+		}
+
+		if err := Prepare(context.Background(), opts); err != nil {
 			t.Errorf("Error in test '%v'. Error was %v", test.desc, err)
 		}
 

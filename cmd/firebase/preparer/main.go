@@ -26,10 +26,12 @@ import (
 )
 
 var (
-	apphostingYAMLFilePath       = flag.String("apphostingyaml_filepath", "", "File path to user defined apphosting.yaml")
-	projectID                    = flag.String("project_id", "", "User's GCP project ID")
-	appHostingYAMLOutputFilePath = flag.String("apphostingyaml_output_filepath", "", "File path to write the validated and formatted apphosting.yaml to")
-	dotEnvOutputFilePath         = flag.String("dot_env_output_filepath", "", "File path to write the output .env file to")
+	apphostingYAMLFilePath        = flag.String("apphostingyaml_filepath", "", "File path to user defined apphosting.yaml")
+	projectID                     = flag.String("project_id", "", "User's GCP project ID")
+	appHostingYAMLOutputFilePath  = flag.String("apphostingyaml_output_filepath", "", "File path to write the validated and formatted apphosting.yaml to")
+	dotEnvOutputFilePath          = flag.String("dot_env_output_filepath", "", "File path to write the output .env file to")
+	backendRootDirectory          = flag.String("backend_root_directory", "", "File path to the application directory specified by the user")
+	buildpackConfigOutputFilePath = flag.String("buildpack_config_output_filepath", "", "File path to write the buildpack config to")
 )
 
 func main() {
@@ -47,13 +49,31 @@ func main() {
 		log.Fatal("--dot_env_output_filepath flag not specified.")
 	}
 
+	if backendRootDirectory == nil {
+		log.Fatal("--backend_root_directory flag not specified.")
+	}
+
+	if *buildpackConfigOutputFilePath == "" {
+		log.Fatal("--buildpack_config_output_filepath flag not specified.")
+	}
+
 	secretClient, err := secretmanager.NewClient(context.Background())
 	if err != nil {
 		log.Fatal(fmt.Errorf("failed to create secretmanager client: %w", err))
 	}
 	defer secretClient.Close()
 
-	err = preparer.Prepare(context.Background(), secretClient, *apphostingYAMLFilePath, *projectID, *appHostingYAMLOutputFilePath, *dotEnvOutputFilePath)
+	opts := preparer.Options{
+		SecretClient:                  secretClient,
+		AppHostingYAMLPath:            *apphostingYAMLFilePath,
+		ProjectID:                     *projectID,
+		AppHostingYAMLOutputFilePath:  *appHostingYAMLOutputFilePath,
+		EnvDereferencedOutputFilePath: *dotEnvOutputFilePath,
+		BackendRootDirectory:          *backendRootDirectory,
+		BuildpackConfigOutputFilePath: *buildpackConfigOutputFilePath,
+	}
+
+	err = preparer.Prepare(context.Background(), opts)
 	if err != nil {
 		log.Fatal(err)
 	}

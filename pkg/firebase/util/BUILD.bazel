@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -12,4 +12,11 @@ go_library(
         "//pkg/env",
         "//pkg/gcpbuildpack",
     ],
+)
+
+go_test(
+    name = "util_test",
+    srcs = ["util_test.go"],
+    embed = [":util"],
+    rundir = ".",
 )
