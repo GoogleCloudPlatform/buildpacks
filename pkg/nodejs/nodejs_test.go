@@ -345,17 +345,7 @@ func TestReadNodeDependencies(t *testing.T) {
 				"c": "3.0",
 			},
 		},
-		LockfileName: "package-lock.json",
-		LockfileBytes: []byte(`{
-  "packages": {
-    "node_modules/a": {
-      "version": "1.0"
-    },
-    "node_modules/b": {
-      "version": "2.0"
-    }
-  }
-}`),
+		LockfilePath: testdata.MustGetPath("testdata/test-read-node-deps/package-lock.json"),
 	}
 
 	testCases := []struct {
@@ -379,10 +369,13 @@ func TestReadNodeDependencies(t *testing.T) {
 			want:    want,
 		},
 		{
-			name:    "lockfile in root dir and package json in app dir",
+			name:    "lockfile in root dir and package json in app dir, find lockfile in root dir",
 			rootDir: testdata.MustGetPath("testdata/test-read-node-deps-nested/"),
 			appDir:  testdata.MustGetPath("testdata/test-read-node-deps-nested/package-a/"),
-			want:    want,
+			want: &NodeDependencies{
+				PackageJSON:  want.PackageJSON,
+				LockfilePath: testdata.MustGetPath("testdata/test-read-node-deps-nested/package-lock.json"),
+			},
 		},
 	}
 	for _, tc := range testCases {
@@ -401,51 +394,27 @@ func TestReadNodeDependencies(t *testing.T) {
 
 func TestVersion(t *testing.T) {
 	testCases := []struct {
-		name            string
-		nodeDeps        *NodeDependencies
-		expectedVersion string
-		pkg             string
-		expectedError   bool
+		name        string
+		nodeDeps    *NodeDependencies
+		wantVersion string
+		pkg         string
+		wantErr     bool
 	}{
 		{
-			name: "Parses package-lock version nextjs",
+			name: "Parses package-lock.json version nextjs",
 			pkg:  "next",
 			nodeDeps: &NodeDependencies{
-				PackageJSON: &PackageJSON{
-					Dependencies: map[string]string{
-						"next": "^13.1.0",
-					},
-				},
-				LockfileName: "package-lock.json",
-				LockfileBytes: []byte(`{
-					"packages": {
-						"node_modules/next": {
-							"version": "13.5.6"
-						}
-					}
-				}`),
+				LockfilePath: testdata.MustGetPath("testdata/lock-files/nextjs-package-lock.json"),
 			},
-			expectedVersion: "13.5.6",
+			wantVersion: "14.1.4",
 		},
 		{
 			name: "Parses package-lock version angular",
 			pkg:  "angular",
 			nodeDeps: &NodeDependencies{
-				PackageJSON: &PackageJSON{
-					Dependencies: map[string]string{
-						"angular": "^17.1.0",
-					},
-				},
-				LockfileName: "package-lock.json",
-				LockfileBytes: []byte(`{
-					"packages": {
-						"node_modules/angular": {
-							"version": "17.1.2"
-						}
-					}
-				}`),
+				LockfilePath: testdata.MustGetPath("testdata/lock-files/angular-package-lock.json"),
 			},
-			expectedVersion: "17.1.2",
+			wantVersion: "17.1.3",
 		},
 		{
 			name: "Parses yarn.lock berry version nextjs",
@@ -453,15 +422,12 @@ func TestVersion(t *testing.T) {
 			nodeDeps: &NodeDependencies{
 				PackageJSON: &PackageJSON{
 					Dependencies: map[string]string{
-						"next": "^13.1.0",
+						"next": "14.1.4",
 					},
 				},
-				LockfileName: "yarn.lock",
-				LockfileBytes: []byte(`
-				"next@npm:^13.1.0":
-					version: 13.5.6`),
+				LockfilePath: testdata.MustGetPath("testdata/lock-files/berry-yarn.lock"),
 			},
-			expectedVersion: "13.5.6",
+			wantVersion: "14.1.4",
 		},
 		{
 			name: "Parses yarn.lock classic version nextjs",
@@ -469,107 +435,55 @@ func TestVersion(t *testing.T) {
 			nodeDeps: &NodeDependencies{
 				PackageJSON: &PackageJSON{
 					Dependencies: map[string]string{
-						"next": "^13.1.0",
+						"next": "14.1.4",
 					},
 				},
-				LockfileName: "yarn.lock",
-				LockfileBytes: []byte(`
-				next@^13.1.0:
-					version: "13.5.6"
-								`),
+				LockfilePath: testdata.MustGetPath("testdata/lock-files/classic-yarn.lock"),
 			},
-			expectedVersion: "13.5.6",
+			wantVersion: "14.1.4",
 		},
 		{
 			name: "Parses pnpm-lock v6 version nextjs",
 			pkg:  "next",
 			nodeDeps: &NodeDependencies{
-				PackageJSON: &PackageJSON{
-					Dependencies: map[string]string{
-						"next": "^13.1.0",
-					},
-				},
-				LockfileName: "pnpm-lock.yaml",
-				LockfileBytes: []byte(`
-dependencies:
-  next:
-    version: 13.5.6(@babel/core@7.23.9)
-
-`),
+				LockfilePath: testdata.MustGetPath("testdata/lock-files/nextjs-v6-pnpm-lock.yaml"),
 			},
-			expectedVersion: "13.5.6",
+			wantVersion: "14.1.4",
 		},
 		{
 			name: "Parses pnpm-lock v9 version nextjs",
 			pkg:  "next",
 			nodeDeps: &NodeDependencies{
-				PackageJSON: &PackageJSON{
-					Dependencies: map[string]string{
-						"next": "^13.1.0",
-					},
-				},
-				LockfileName: "pnpm-lock.yaml",
-				LockfileBytes: []byte(`
-importers:
-  .:
-    dependencies:
-      next:
-        version: 13.5.6(@babel/core@7.23.9)
-
-`),
+				LockfilePath: testdata.MustGetPath("testdata/lock-files/nextjs-v9-pnpm-lock.yaml"),
 			},
-			expectedVersion: "13.5.6",
+			wantVersion: "14.1.4",
 		},
 		{
-			name: "Parses pnpm-lock v6 version angular builder",
+			name: "Parses pnpm-lock v6 version angular",
 			pkg:  "@angular-devkit/build-angular",
 			nodeDeps: &NodeDependencies{
-				PackageJSON: &PackageJSON{
-					Dependencies: map[string]string{
-						"@angular-devkit/build-angular": "^17.3.5",
-					},
-				},
-				LockfileName: "pnpm-lock.yaml",
-				LockfileBytes: []byte(`
-devDependencies:
-  '@angular-devkit/build-angular':
-    version: 17.3.5(@angular/compiler-cli@17.3.5)
-
-`),
+				LockfilePath: testdata.MustGetPath("testdata/lock-files/angular-v6-pnpm-lock.yaml"),
 			},
-			expectedVersion: "17.3.5",
+			wantVersion: "17.3.6",
 		},
 		{
-			name: "Parses pnpm-lock v9 version angular builder",
+			name: "Parses pnpm-lock v9 version angular",
 			pkg:  "@angular-devkit/build-angular",
 			nodeDeps: &NodeDependencies{
-				PackageJSON: &PackageJSON{
-					Dependencies: map[string]string{
-						"@angular-devkit/build-angular": "^17.3.5",
-					},
-				},
-				LockfileName: "pnpm-lock.yaml",
-				LockfileBytes: []byte(`
-importers:
-  .:
-    devDependencies:
-      '@angular-devkit/build-angular':
-        version: 17.3.5(@angular/compiler-cli@17.3.5)
-
-`),
+				LockfilePath: testdata.MustGetPath("testdata/lock-files/angular-v9-pnpm-lock.yaml"),
 			},
-			expectedVersion: "17.3.5",
+			wantVersion: "17.3.6",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			version, err := Version(tc.nodeDeps, tc.pkg)
-			if version != tc.expectedVersion {
-				t.Fatalf("Version(%v, %v) output: %s doesn't match expected output %s", tc.nodeDeps, tc.pkg, version, tc.expectedVersion)
+			if version != tc.wantVersion {
+				t.Fatalf("Version(%v, %v) output: %s doesn't match expected output %s", tc.nodeDeps, tc.pkg, version, tc.wantVersion)
 			}
-			if gotErr := (err != nil); gotErr != tc.expectedError {
-				t.Fatalf("Version(_, %v) returned error: %v, wanted: %v, errMsg: %v.", tc.pkg, gotErr, tc.expectedError, err)
+			if gotErr := (err != nil); gotErr != tc.wantErr {
+				t.Fatalf("Version(_, %v) returned error: %v, wanted: %v, errMsg: %v.", tc.pkg, gotErr, tc.wantErr, err)
 			}
 		})
 	}

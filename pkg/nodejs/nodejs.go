@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
@@ -53,9 +54,10 @@ const (
 var semVer11 = semver.MustParse("11.0.0")
 
 var (
-	cachedPackageJSONs = map[string]*PackageJSON{}
+	cachedPackageJSONs        = map[string]*PackageJSON{}
+	possibleLockfileFilenames = []string{"pnpm-lock.yaml", "yarn.lock", "npm-shrinkwrap.json", "package-lock.json"}
+	dependencyRegex           = regexp.MustCompile(`\r?\n\r?\n`)
 )
-var possibleLockfileFilenames = []string{"pnpm-lock.yaml", "yarn.lock", "npm-shrinkwrap.json", "package-lock.json"}
 
 type packageEnginesJSON struct {
 	Node string `json:"node"`
@@ -117,9 +119,8 @@ type PnpmV9Lockfile struct {
 
 // NodeDependencies represents the dependencies of a Node package via its package.json and lockfile.
 type NodeDependencies struct {
-	PackageJSON   *PackageJSON
-	LockfileName  string
-	LockfileBytes []byte
+	PackageJSON  *PackageJSON
+	LockfilePath string
 }
 
 // ReadPackageJSONIfExists returns deserialized package.json from the given dir. If the provided dir
@@ -146,6 +147,7 @@ func ReadPackageJSONIfExists(dir string) (*PackageJSON, error) {
 // ReadNodeDependencies looks for a package.json and lockfile in either appDir or rootDir. The
 // lockfile must either be in the same directory as package.json or be in the application root,
 // otherwise an error is returned.
+// TODO (b/354012293): In the future we should read the data into structs for easier manipulation.
 func ReadNodeDependencies(ctx *gcp.Context, appDir string) (*NodeDependencies, error) {
 	rootDir := ctx.ApplicationRoot()
 	if !strings.HasPrefix(appDir, rootDir) {
@@ -172,38 +174,34 @@ func ReadNodeDependencies(ctx *gcp.Context, appDir string) (*NodeDependencies, e
 		}
 	}
 
-	// Try to read lockfile from the same dir; if there is no lockfile, check the application root for
-	// a lockfile. Return an error if no lockfile is found.
-	name, bytes, err := readLockfileBytesIfExists(dir)
-	if err != nil {
-		return nil, err
+	// Try to find a lockfile from the same dir, if there is none then check the application root.
+	// Return an error if no lockfile is found.
+	path, err := findValidLockfileInDir(dir)
+	if err == nil {
+		return &NodeDependencies{pjs, path}, nil
 	}
-	if bytes != nil {
-		return &NodeDependencies{pjs, name, bytes}, nil
+
+	path, err = findValidLockfileInDir(rootDir)
+	if err == nil {
+		return &NodeDependencies{pjs, path}, nil
 	}
-	name, bytes, err = readLockfileBytesIfExists(rootDir)
-	if err != nil {
-		return nil, err
-	}
-	if bytes != nil {
-		return &NodeDependencies{pjs, name, bytes}, nil
-	}
-	return nil, gcp.UserErrorf("lockfile not found")
+
+	return nil, gcp.UserErrorf("valid lock file not found", dir)
 }
 
-func readLockfileBytesIfExists(dir string) (string, []byte, error) {
+func findValidLockfileInDir(dir string) (string, error) {
 	for _, filename := range possibleLockfileFilenames {
-		filePath := filepath.Join(dir, filename)
-		raw, err := os.ReadFile(filePath)
-		if os.IsNotExist(err) {
-			continue
+		if fp := filepath.Join(dir, filename); isValidLockFile(fp) {
+			return fp, nil
 		}
-		if err != nil {
-			return "", nil, gcp.UserErrorf("Error while reading lockfile: %w", err)
-		}
-		return filename, raw, nil
 	}
-	return "", nil, nil
+	return "", gcp.UserErrorf("valid lock file not found in directory %s", dir)
+}
+
+// isValidLockFile validates that the lock file both exists and is not empty.
+func isValidLockFile(filePath string) bool {
+	info, err := os.Stat(filePath)
+	return err == nil && info.Size() > 0
 }
 
 // HasGCPBuild returns true if the given package.json file includes a "gcp-build" script.
@@ -358,7 +356,11 @@ func versionFromPnpmLock(rawPackageLock []byte, pkg string) (string, error) {
 func versionFromYarnLock(rawPackageLock []byte, pjs *PackageJSON, pkg string) (string, error) {
 	// yarn requires custom parsing since it has a custom format
 	// this logic works for both yarn classic and berry
-	for _, dependency := range strings.Split(string(rawPackageLock[:]), "\n\n") {
+
+	// Split using a more flexible regex to handle various newline characters across OSes
+	dependencies := dependencyRegex.Split(string(rawPackageLock), -1)
+
+	for _, dependency := range dependencies {
 		if strings.Contains(dependency, pkg+"@") && strings.Contains(dependency, pjs.Dependencies[pkg]) {
 			for _, line := range strings.Split(dependency, "\n") {
 				if strings.Contains(line, "version") {
@@ -380,13 +382,17 @@ func versionFromNpmLock(rawPackageLock []byte, pkg string) (string, error) {
 
 // Version tries to get the concrete package version used based on lock file.
 func Version(deps *NodeDependencies, pkg string) (string, error) {
-	switch deps.LockfileName {
-	case "pnpm-lock.yaml":
-		return versionFromPnpmLock(deps.LockfileBytes, pkg)
-	case "yarn.lock":
-		return versionFromYarnLock(deps.LockfileBytes, deps.PackageJSON, pkg)
-	case "npm-shrinkwrap.json", "package-lock.json":
-		return versionFromNpmLock(deps.LockfileBytes, pkg)
+	raw, err := os.ReadFile(deps.LockfilePath)
+	if err != nil {
+		return "", gcp.UserErrorf("reading file at path %s: %w", deps.LockfilePath, err)
+	}
+	switch {
+	case strings.HasSuffix(deps.LockfilePath, "pnpm-lock.yaml"):
+		return versionFromPnpmLock(raw, pkg)
+	case strings.HasSuffix(deps.LockfilePath, "yarn.lock"):
+		return versionFromYarnLock(raw, deps.PackageJSON, pkg)
+	case strings.HasSuffix(deps.LockfilePath, "npm-shrinkwrap.json") || strings.HasSuffix(deps.LockfilePath, "package-lock.json"):
+		return versionFromNpmLock(raw, pkg)
 	}
 
 	return "", gcp.UserErrorf("Failed to find version for package %s", pkg)
