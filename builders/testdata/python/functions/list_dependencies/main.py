@@ -12,18 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import subprocess
 import sys
-from pip._internal.operations import freeze
 
 
 def testFunction(request):
   # Checks full list of pip packages installed via pip freeze.
-  length = len(list(freeze.freeze()))
+  result = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
+
+  # Check command output, remove empty lines.
+  reqs = [req for req in result.decode('ascii').split('\n') if req]
+  length = len(reqs)
   # Python 3.7 contains extra compat dependencies. If this test begins to fail,
   # it means another transitive dependency has been added. This transitive
   # dependency should be explicitly pinned in the functions_framework and
   # functions_framework_compat buildpacks and the number here should be updated.
+  want = 15
   if sys.version_info.minor == 7:
-    return 'PASS' if length == 56 else 'FAIL: received ' + str(length)
-  else:
-    return 'PASS' if length == 18 else 'FAIL: received ' + str(length)
+    want = 53
+  elif sys.version_info.minor >= 12:
+    want = 17  # 3.12 added setuptools==71.1.0, wheel==0.43.0
+  return (
+      'PASS'
+      if length == want
+      else f'FAIL: received {length} reqs: ' + ', '.join(reqs)
+  )
