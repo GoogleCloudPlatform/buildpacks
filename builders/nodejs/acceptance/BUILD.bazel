@@ -22,6 +22,7 @@ test_suite(
     name = "acceptance_test",
     tests = [
         gcf_runtimes["nodejs8"] + "_gcf_test",
+        "fah_test",
         "flex_test",
         "gae_test",
         "gcf_test",
@@ -124,6 +125,14 @@ acceptance_test_suite(
     },
     testdata = "//builders/testdata/nodejs:flex",
     versions = flex_runtime_versions,
+)
+
+acceptance_test_suite(
+    name = "fah_test",
+    srcs = ["fah_test.go"],
+    builder = "//builders/nodejs:builder_22.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/nodejs:generic",
 )
 
 exports_files(["runtime.bzl"])

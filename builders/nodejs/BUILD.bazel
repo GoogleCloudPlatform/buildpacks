@@ -20,6 +20,10 @@ BUILDPACKS = [
     "//cmd/nodejs/yarn:yarn.tgz",
     "//cmd/utils/archive_source:archive_source.tgz",
     "//cmd/utils/label:label_image.tgz",
+    "//cmd/nodejs/firebasenextjs:firebasenextjs.tgz",
+    "//cmd/nodejs/firebaseangular:firebaseangular.tgz",
+    "//cmd/nodejs/firebasebundle:firebasebundle.tgz",
+    "//cmd/nodejs/firebasenx:firebasenx.tgz",
 ]
 
 builder(

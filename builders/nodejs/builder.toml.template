@@ -44,6 +44,22 @@ description = "Builder for the Node.js runtime"
   id = "google.config.flex"
   uri = "flex.tgz"
 
+[[buildpacks]]
+  id = "google.nodejs.firebasenx"
+  uri = "firebasenx.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.firebasenextjs"
+  uri = "firebasenextjs.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.firebaseangular"
+  uri = "firebaseangular.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.firebasebundle"
+  uri = "firebasebundle.tgz"
+
 # GAE Flex for yarn
 [[order]]
   [[order.group]]
@@ -282,6 +298,102 @@ description = "Builder for the Node.js runtime"
 
   [[order.group]]
     id = "google.utils.label-image"
+
+# The Firebase apphosting order group for Node.js applications.
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
 
 [stack]
   id = "${STACK_ID}"
