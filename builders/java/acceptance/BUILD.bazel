@@ -62,6 +62,22 @@ acceptance_test_suite(
 )
 
 acceptance_test_suite(
+    name = "gae_stack_candidate_test",
+    srcs = [
+        "gae_test.go",
+    ],
+    argsmap = javaargs("$${_CANDIDATE_NAME}", "$${_STACK}"),
+    builder = "//builders/java:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = {
+        "java17": "//builders/java:builder_22.tar",
+        "java21": "//builders/java:builder_22.tar",
+    },
+    testdata = "//builders/testdata/java:appengine.tgz",
+    versions = gae_runtime_versions,
+)
+
+acceptance_test_suite(
     name = "gcf_test",
     srcs = [
         "gcf_test.go",

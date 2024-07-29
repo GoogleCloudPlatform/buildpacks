@@ -67,6 +67,20 @@ acceptance_test_suite(
     versions = gae_runtime_versions,
 )
 
+# Test the run image tagged as ${_CANDIDATE_NAME} with ${_STACK_} in gae-runtimes-private.
+acceptance_test_suite(
+    name = "gae_stack_candidate_test",
+    srcs = [
+        "common_test.go",
+        "gae_test.go",
+    ],
+    argsmap = rubyargs("$${_CANDIDATE_NAME}", "$${_STACK_}"),
+    builder = "//builders/ruby:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/ruby:appengine",
+    versions = gae_runtime_versions,
+)
+
 # This uses the latest Ubuntu 18 stack run image.
 acceptance_test_suite(
     name = "gcf_test",

@@ -80,6 +80,22 @@ acceptance_test_suite(
     versions = gae_runtime_versions,
 )
 
+# Test the run image tagged as ${_CANDIDATE_NAME} with ${_STACK} in gae-runtimes-private.
+acceptance_test_suite(
+    name = "gae_stack_candidate_test",
+    srcs = [
+        "gae_test.go",
+    ],
+    argsmap = nodejsargs("$${_CANDIDATE_NAME}", "$${_STACK}"),
+    builder = "//builders/nodejs:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = {
+        "nodejs22": "//builders/nodejs:builder_22.tar",
+    },
+    testdata = "//builders/testdata/nodejs:appengine",
+    versions = gae_runtime_versions,
+)
+
 acceptance_test_suite(
     name = "gcf_test",
     srcs = [

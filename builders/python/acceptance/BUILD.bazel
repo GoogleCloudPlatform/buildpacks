@@ -108,4 +108,17 @@ acceptance_test_suite(
     versions = gae_runtime_versions,
 )
 
+# Test the run image tagged as ${_CANDIDATE_NAME} with ${_STACK} in gae-runtimes-private.
+acceptance_test_suite(
+    name = "gae_stack_candidate_test",
+    srcs = [
+        "gae_test.go",
+    ],
+    argsmap = pythonargs("$${_CANDIDATE_NAME}", "$${_STACK}"),
+    builder = "//builders/python:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/python:appengine",
+    versions = gae_runtime_versions,
+)
+
 exports_files(["runtime.bzl"])

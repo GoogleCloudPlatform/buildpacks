@@ -10,7 +10,7 @@ gae_runtime_versions = {n: v for n, v in gae_runtimes.items() if n != "php55"}
 gcf_runtime_versions = {n: v for n, v in gcf_runtimes.items()}
 gcp_runtime_versions = dict(dict(flex_runtime_versions, **gae_runtime_versions), **gcf_runtime_versions)
 
-def phpargs(runImageTag = ""):
+def phpargs(runImageTag = "", stack = ""):
     """Create a new key-value map of arguments for php test
 
     Returns:
@@ -18,15 +18,21 @@ def phpargs(runImageTag = ""):
     """
     args = {}
     for runtime, version in gae_runtime_versions.items():
-        args[version] = newArgs(runtime, runImageTag)
+        args[version] = newArgs(runtime, runImageTag, stack)
     return args
 
-def newArgs(runtime, runImageTag):
+def newArgs(runtime, runImageTag, stack):
     return {
-        "-run-image-override": runImage(runtime, runImageTag),
+        "-run-image-override": runImage(runtime, runImageTag, stack),
     }
 
-def runImage(runtime, runImageTag):
+def runImage(runtime, runImageTag, stack):
+    if stack != "":
+        if runImageTag != "":
+            return "us-docker.pkg.dev/gae-runtimes-private/gcp/" + stack + "/runtimes/" + runtime + ":" + runImageTag
+        else:
+            return "gcr.io/gae-runtimes/buildpacks/" + runtime + "/run"
+
     if runImageTag != "":
         return "gcr.io/gae-runtimes-private/buildpacks/" + runtime + "/run:" + runImageTag
     else:

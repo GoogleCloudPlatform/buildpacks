@@ -84,6 +84,20 @@ acceptance_test_suite(
     versions = gae_runtime_versions,
 )
 
+# Test the run image tagged as ${_CANDIDATE_NAME} with ${_STACK} in gae-runtimes-private.
+acceptance_test_suite(
+    name = "gae_stack_candidate_test",
+    srcs = [
+        "common_test.go",
+        "gae_test.go",
+    ],
+    argsmap = goargs("$${_CANDIDATE_NAME}", "$${_STACK}"),
+    builder = "//builders/go:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/go:appengine",
+    versions = gae_runtime_versions,
+)
+
 # This suite is a special suite just for go 1.11. The order group GCF & go111 includes the legacy-worker buildpack.
 # As a result, the behavior and the tests for that version are slightly different.
 acceptance_test_suite(
