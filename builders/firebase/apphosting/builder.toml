@@ -132,4 +132,4 @@ description = "Builder for Firebase App Hosting"
   run-image = "gcr.io/buildpacks/firebase-app-hosting-22/run"
 
 [lifecycle]
-  version = "0.17.4"
+  version = "0.17.7"

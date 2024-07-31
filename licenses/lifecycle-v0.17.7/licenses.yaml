@@ -341,6 +341,10 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/moby/buildkit/LICENSE
 
+- package: github.com/moby/docker-image-spec/specs-go/v1
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/moby/docker-image-spec/specs-go/v1/LICENSE
+
 - package: github.com/moby/locker
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/moby/locker/LICENSE

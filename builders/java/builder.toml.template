@@ -301,4 +301,4 @@ description = "Builder for the Java runtime"
   run-image = "${STACK_RUN_IMAGE}"
 
 [lifecycle]
-  version = "0.17.4"
+  version = "0.17.7"
