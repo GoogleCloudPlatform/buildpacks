@@ -18,12 +18,15 @@ package envvars
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 )
 
 // Write produces a file where each like has the format KEY=VALUE. We aren't using the
@@ -83,4 +86,16 @@ func marshal(envMap map[string]string) (string, error) {
 	// Needed for some test assertions.
 	sort.Strings(lines)
 	return strings.Join(lines, "\n"), nil
+}
+
+// ParseEnvVarsFromString parses the server side environment variables from a string to a list of EnvironmentVariables.
+func ParseEnvVarsFromString(serverSideEnvVars string) ([]apphostingschema.EnvironmentVariable, error) {
+	var parsedServerSideEnvVars []apphostingschema.EnvironmentVariable
+
+	err := json.Unmarshal([]byte(serverSideEnvVars), &parsedServerSideEnvVars)
+	if err != nil {
+		return parsedServerSideEnvVars, fmt.Errorf("unmarshalling server side env var %v: %w", serverSideEnvVars, err)
+	}
+
+	return parsedServerSideEnvVars, nil
 }

@@ -37,6 +37,7 @@ type Options struct {
 	EnvDereferencedOutputFilePath string
 	BackendRootDirectory          string
 	BuildpackConfigOutputFilePath string
+	ServerSideEnvVars             string
 }
 
 // Prepare performs pre-build logic for App Hosting backends including:
@@ -49,10 +50,9 @@ type Options struct {
 func Prepare(ctx context.Context, opts Options) error {
 	dereferencedEnvMap := map[string]string{} // Env map with dereferenced secret material
 	appHostingYAML := apphostingschema.AppHostingSchema{}
+	var err error
 
 	if opts.AppHostingYAMLPath != "" {
-		var err error
-
 		appHostingYAML, err = apphostingschema.ReadAndValidateAppHostingSchemaFromFile(opts.AppHostingYAMLPath)
 		if err != nil {
 			return fmt.Errorf("reading in and validating apphosting.yaml at path %v: %w", opts.AppHostingYAMLPath, err)
@@ -61,20 +61,30 @@ func Prepare(ctx context.Context, opts Options) error {
 		if err = apphostingschema.MergeWithEnvironmentSpecificYAML(&appHostingYAML, opts.AppHostingYAMLPath, opts.EnvironmentName); err != nil {
 			return fmt.Errorf("merging with environment specific apphosting.%v.yaml: %w", opts.EnvironmentName, err)
 		}
+	}
 
-		apphostingschema.Sanitize(&appHostingYAML)
-
-		if err = secrets.Normalize(appHostingYAML.Env, opts.ProjectID); err != nil {
-			return fmt.Errorf("normalizing apphosting.yaml fields: %w", err)
+	// Use server side env vars instead of apphosting.yaml.
+	if opts.ServerSideEnvVars != "" {
+		parsedServerSideEnvVars, err := envvars.ParseEnvVarsFromString(opts.ServerSideEnvVars)
+		if err != nil {
+			return fmt.Errorf("parsing server side env vars %v: %w", opts.ServerSideEnvVars, err)
 		}
 
-		if err = secrets.PinVersions(ctx, opts.SecretClient, appHostingYAML.Env); err != nil {
-			return fmt.Errorf("pinning secrets in apphosting.yaml: %w", err)
-		}
+		appHostingYAML.Env = parsedServerSideEnvVars
+	}
 
-		if dereferencedEnvMap, err = secrets.GenerateBuildDereferencedEnvMap(ctx, opts.SecretClient, appHostingYAML.Env); err != nil {
-			return fmt.Errorf("dereferencing secrets in apphosting.yaml: %w", err)
-		}
+	apphostingschema.Sanitize(&appHostingYAML)
+
+	if err := secrets.Normalize(appHostingYAML.Env, opts.ProjectID); err != nil {
+		return fmt.Errorf("normalizing apphosting.yaml fields: %w", err)
+	}
+
+	if err := secrets.PinVersions(ctx, opts.SecretClient, appHostingYAML.Env); err != nil {
+		return fmt.Errorf("pinning secrets in apphosting.yaml: %w", err)
+	}
+
+	if dereferencedEnvMap, err = secrets.GenerateBuildDereferencedEnvMap(ctx, opts.SecretClient, appHostingYAML.Env); err != nil {
+		return fmt.Errorf("dereferencing secrets in apphosting.yaml: %w", err)
 	}
 
 	if err := appHostingYAML.WriteToFile(opts.AppHostingYAMLOutputFilePath); err != nil {

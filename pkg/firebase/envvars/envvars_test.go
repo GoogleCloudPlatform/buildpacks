@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -114,6 +115,83 @@ VAR_SPACED=api3 - service -  com
 
 		if diff := cmp.Diff(test.wantRawString, string(data)); diff != "" {
 			t.Errorf("unexpected raw string for test %q, (+got, -want):\n%v", test.desc, diff)
+		}
+	}
+}
+
+func TestParseEnvVarsFromString(t *testing.T) {
+	testCases := []struct {
+		desc              string
+		serverSideEnvVars string
+		wantEnvVars       []apphostingschema.EnvironmentVariable
+		wantErr           bool
+	}{
+		{
+			desc: "Parse server side env vars correctly",
+			serverSideEnvVars: `
+			[
+				{
+					"Variable": "SERVER_SIDE_ENV_VAR_NUMBER",
+					"Value": "3457934845",
+					"Availability": ["BUILD", "RUNTIME"]
+				},
+				{
+					"Variable": "SERVER_SIDE_ENV_VAR_MULTILINE_FROM_SERVER_SIDE",
+					"Value": "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n",
+					"Availability": ["BUILD"]
+				},
+				{
+					"Variable": "SERVER_SIDE_ENV_VAR_QUOTED_SPECIAL",
+					"Value": "api_from_server_side.service.com::",
+					"Availability": ["RUNTIME"]
+				},
+				{
+					"Variable": "SERVER_SIDE_ENV_VAR_SPACED",
+					"Value": "api979 - service -  com",
+					"Availability": ["BUILD"]
+				},
+				{
+					"Variable": "SERVER_SIDE_ENV_VAR_SINGLE_QUOTES",
+					"Value": "I said, 'I'm learning GOLANG!'",
+					"Availability": ["BUILD"]
+				},
+				{
+					"Variable": "SERVER_SIDE_ENV_VAR_DOUBLE_QUOTES",
+					"Value": "\"api41.service.com\"",
+					"Availability": ["BUILD", "RUNTIME"]
+				}
+			]
+		`,
+			wantEnvVars: []apphostingschema.EnvironmentVariable{
+				{Variable: "SERVER_SIDE_ENV_VAR_NUMBER", Value: "3457934845", Availability: []string{"BUILD", "RUNTIME"}},
+				{Variable: "SERVER_SIDE_ENV_VAR_MULTILINE_FROM_SERVER_SIDE", Value: "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n", Availability: []string{"BUILD"}},
+				{Variable: "SERVER_SIDE_ENV_VAR_QUOTED_SPECIAL", Value: "api_from_server_side.service.com::", Availability: []string{"RUNTIME"}},
+				{Variable: "SERVER_SIDE_ENV_VAR_SPACED", Value: "api979 - service -  com", Availability: []string{"BUILD"}},
+				{Variable: "SERVER_SIDE_ENV_VAR_SINGLE_QUOTES", Value: "I said, 'I'm learning GOLANG!'", Availability: []string{"BUILD"}},
+				{Variable: "SERVER_SIDE_ENV_VAR_DOUBLE_QUOTES", Value: "\"api41.service.com\"", Availability: []string{"BUILD", "RUNTIME"}},
+			},
+		},
+		{
+			desc:              "Empty list of server side env vars",
+			serverSideEnvVars: "[]",
+			wantEnvVars:       []apphostingschema.EnvironmentVariable{},
+		},
+		{
+			desc:              "Malformed server side env vars string",
+			serverSideEnvVars: "a malformed string",
+			wantEnvVars:       nil,
+			wantErr:           true,
+		},
+	}
+
+	for _, test := range testCases {
+		parsedServerSideEnvVars, err := ParseEnvVarsFromString(test.serverSideEnvVars)
+		gotErr := err != nil
+		if gotErr != test.wantErr {
+			t.Errorf("ParseEnvVarsFromString(%q) = %v, want error presence = %v", test.desc, err, test.wantErr)
+		}
+		if diff := cmp.Diff(test.wantEnvVars, parsedServerSideEnvVars); diff != "" {
+			t.Errorf("unexpected env vars for test %q, (+got, -want):\n%v", test.desc, diff)
 		}
 	}
 }
