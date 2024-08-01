@@ -74,7 +74,7 @@ acceptance_test_suite(
         "common_test.go",
         "gae_test.go",
     ],
-    argsmap = rubyargs("$${_CANDIDATE_NAME}", "$${_STACK_}"),
+    argsmap = rubyargs("$${_CANDIDATE_NAME}", "$${_STACK}"),
     builder = "//builders/ruby:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/ruby:appengine",
