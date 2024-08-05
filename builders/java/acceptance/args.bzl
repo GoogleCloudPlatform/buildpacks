@@ -35,6 +35,6 @@ def runImage(version, runImageTag, stack):
             return "gcr.io/gae-runtimes/buildpacks/java" + version + "/run"
 
     if runImageTag != "":
-        return "gcr.io/gae-runtimes-private/buildpacks/java" + version + "/run:" + runImageTag
+        return "us-docker.pkg.dev/gae-runtimes-private/gcp/buildpacks/java" + version + "/run:" + runImageTag
     else:
         return "gcr.io/gae-runtimes/buildpacks/java" + version + "/run"

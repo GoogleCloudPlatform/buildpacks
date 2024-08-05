@@ -33,6 +33,6 @@ def runImage(version, runImageTag, stack):
             return "gcr.io/gae-runtimes/buildpacks/nodejs" + version + "/run"
 
     if runImageTag != "":
-        return "gcr.io/gae-runtimes-private/buildpacks/nodejs" + version + "/run:" + runImageTag
+        return "us-docker.pkg.dev/gae-runtimes-private/gcp/buildpacks/nodejs" + version + "/run:" + runImageTag
     else:
         return "gcr.io/gae-runtimes/buildpacks/nodejs" + version + "/run"
