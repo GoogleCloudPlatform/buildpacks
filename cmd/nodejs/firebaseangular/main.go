@@ -97,6 +97,13 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
+	// TODO(b/357644160) We should consider adding a validation step to double check that the adapter version works for the framework version.
+	if version, exists := nodeDeps.PackageJSON.Dependencies["@apphosting/adapter-angular"]; exists {
+		ctx.Logf("*** You already have @apphosting/adapter-angular@%s listed as a dependency, skipping installation ***", version)
+		ctx.Logf("*** Your package.json build command will be run as is, please make sure it is set to apphosting-adapter-angular-build if you intend to build your app using the adapter ***")
+		return nil
+	}
+
 	buildScript, exists := nodeDeps.PackageJSON.Scripts["build"]
 	if exists && buildScript != "ng build" && buildScript != "apphosting-adapter-angular-build" {
 		ctx.Warnf("*** You are using a custom build command (your build command is NOT 'ng build'), we will accept it as is but will error if output structure is not as expected ***")

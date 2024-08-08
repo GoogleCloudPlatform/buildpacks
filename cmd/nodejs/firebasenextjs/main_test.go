@@ -63,11 +63,10 @@ func TestDetect(t *testing.T) {
 
 func TestBuild(t *testing.T) {
 	testCases := []struct {
-		name          string
-		wantExitCode  int
-		opts          []bpt.Option
-		files         map[string]string
-		filesExpected map[string]string
+		name                 string
+		wantExitCode         int
+		files                map[string]string
+		shouldInstallAdapter bool
 	}{
 		{
 			name: "replace build script",
@@ -87,6 +86,7 @@ func TestBuild(t *testing.T) {
 				}
 			}`,
 			},
+			shouldInstallAdapter: true,
 		},
 		{
 			name: "build script doesnt exist",
@@ -104,6 +104,7 @@ func TestBuild(t *testing.T) {
 					}
 				}`,
 			},
+			shouldInstallAdapter: true,
 		},
 		{
 			name: "build script already set",
@@ -124,6 +125,28 @@ func TestBuild(t *testing.T) {
 					}
 				}`,
 			},
+			shouldInstallAdapter: true,
+		},
+		{
+			name: "adapter already installed",
+			files: map[string]string{
+				"package.json": `{
+					"scripts": {
+						"build": "apphosting-adapter-nextjs-build"
+					},
+					"dependencies": {
+						"@apphosting/adapter-nextjs": "14.0.7"
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+						"node_modules/next": {
+							"version": "13.0.0"
+						}
+					}
+				}`,
+			},
+			shouldInstallAdapter: false,
 		},
 		{
 			name: "supports versions with constraints",
@@ -143,6 +166,7 @@ func TestBuild(t *testing.T) {
 					}
 				}`,
 			},
+			shouldInstallAdapter: true,
 		},
 		{
 			name: "error out if the version is below 13.0.0",
@@ -160,7 +184,8 @@ func TestBuild(t *testing.T) {
 				}
 			}`,
 			},
-			wantExitCode: 1,
+			wantExitCode:         1,
+			shouldInstallAdapter: true,
 		},
 		{
 			name: "read supported concrete version from package-lock.json",
@@ -178,6 +203,7 @@ func TestBuild(t *testing.T) {
 					}
 				}`,
 			},
+			shouldInstallAdapter: true,
 		},
 		{
 			name: "read supported concrete version from pnpm-lock.yaml",
@@ -194,6 +220,7 @@ dependencies:
 
 `,
 			},
+			shouldInstallAdapter: true,
 		},
 		{
 			name: "read supported concrete version from yaml.lock berry",
@@ -207,6 +234,7 @@ dependencies:
 "next@npm:^13.1.0":
 	version: 13.5.6`,
 			},
+			shouldInstallAdapter: true,
 		},
 		{
 			name: "read supported concrete version from yaml.lock classic",
@@ -221,6 +249,7 @@ next@^13.0.0:
   version: "13.5.6"
 `,
 			},
+			shouldInstallAdapter: true,
 		},
 		{
 			name: "read supported concrete version from package.json with unsupported lock file format",
@@ -237,6 +266,7 @@ unsupported:
 
 `,
 			},
+			shouldInstallAdapter: true,
 		},
 		{
 			name: "read range version from package.json with unsupported lock file format",
@@ -253,6 +283,7 @@ unsupported:
 
 `,
 			},
+			shouldInstallAdapter: true,
 		},
 	}
 
@@ -265,7 +296,6 @@ unsupported:
 					mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@`+nodejs.PinnedNextjsAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 				),
 			}
-			opts = append(opts, tc.opts...)
 			result, err := bpt.RunBuild(t, buildFn, opts...)
 			if err != nil && tc.wantExitCode == 0 {
 				t.Fatalf("error running build: %v, logs: %s", err, result.Output)
@@ -279,8 +309,11 @@ unsupported:
 				"npm install --prefix npm_modules @apphosting/adapter-nextjs@" + nodejs.PinnedNextjsAdapterVersion,
 			}
 			for _, cmd := range wantCommands {
-				if result.ExitCode == 0 && !result.CommandExecuted(cmd) {
+				if result.ExitCode == 0 && !result.CommandExecuted(cmd) && tc.shouldInstallAdapter {
 					t.Errorf("expected command %q to be executed, but it was not, build output: %s", cmd, result.Output)
+				}
+				if result.ExitCode == 0 && result.CommandExecuted(cmd) && !tc.shouldInstallAdapter {
+					t.Errorf("didn't expect command %q to be executed, but it was, build output: %s", cmd, result.Output)
 				}
 			}
 		})

@@ -96,13 +96,12 @@ func TestDetect(t *testing.T) {
 
 func TestBuild(t *testing.T) {
 	testCases := []struct {
-		name         string
-		wantExitCode int
-		wantCommands []string
-		// opts          []bpt.Option
-		mocks         []*mockprocess.Mock
-		files         map[string]string
-		filesExpected map[string]string
+		name             string
+		wantExitCode     int
+		wantCommands     []string
+		dontWantCommands []string
+		mocks            []*mockprocess.Mock
+		files            map[string]string
 	}{
 		{
 			name: "replace build script",
@@ -181,6 +180,32 @@ func TestBuild(t *testing.T) {
 			},
 			mocks: []*mockprocess.Mock{
 				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+			},
+		},
+		{
+			name: "adapter already installed",
+			files: map[string]string{
+				"package.json": `{
+					"scripts": {
+						"build": "apphosting-adapter-angular-build"
+					},
+					"dependencies": {
+						"@apphosting/adapter-angular": "17.2.5"
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+						"node_modules/@angular/core": {
+							"version": "17.2.0"
+						},
+						"node_modules/@angular-devkit/build-angular": {
+							"version": "17.2.0"
+						}
+					}
+				}`,
+			},
+			dontWantCommands: []string{
+				"npm install --prefix npm_modules @apphosting/adapter-angular@" + nodejs.PinnedAngularAdapterVersion,
 			},
 		},
 		{
@@ -428,6 +453,11 @@ unsupported:
 			for _, cmd := range tc.wantCommands {
 				if !result.CommandExecuted(cmd) {
 					t.Errorf("expected command %q to be executed, but it was not, build output: %s", cmd, result.Output)
+				}
+			}
+			for _, cmd := range tc.dontWantCommands {
+				if result.CommandExecuted(cmd) {
+					t.Errorf("didn't expect command %q to be executed, but it was, build output: %s", cmd, result.Output)
 				}
 			}
 		})

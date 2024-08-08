@@ -77,6 +77,13 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
+	// TODO(b/357644160) We we should consider adding a validation step to double check that the adapter version works for the framework version.
+	if version, exists := nodeDeps.PackageJSON.Dependencies["@apphosting/adapter-nextjs"]; exists {
+		ctx.Logf("*** You already have @apphosting/adapter-nextjs@%s listed as a dependency, skipping installation ***", version)
+		ctx.Logf("*** Your package.json build command will be run as is, please make sure it is set to apphosting-adapter-nextjs-build if you intend to build your app using the adapter ***")
+		return nil
+	}
+
 	buildScript, exists := nodeDeps.PackageJSON.Scripts["build"]
 	if exists && buildScript != "next build" && buildScript != "apphosting-adapter-nextjs-build" {
 		ctx.Warnf("*** You are using a custom build command (your build command is NOT 'next build'), we will accept it as is but will error if output structure is not as expected ***")
@@ -97,7 +104,7 @@ func buildFn(ctx *gcp.Context) error {
 	// This env var indicates to the package manager buildpack that a different command needs to be run
 	nodejs.OverrideNextjsBuildScript(njsl)
 
-	return err
+	return nil
 }
 
 func validateVersion(ctx *gcp.Context, depVersion string) error {
