@@ -9,7 +9,7 @@ bazel build //builders/java:builder.image
 ```
 
 ## Build a Test Application
-To build the sample application [gomod_go_sum](../testdata/java/), run:
+To build the sample application [http-server](../testdata/java/appengine/http-server), run:
 
 ```bash
 pack build sample-java --builder gcp/java --path <path to java app> --trust-builder -v
