@@ -76,7 +76,7 @@ func PackVersion() error {
 	log.Printf("Found pack version %s", out)
 	// Remove the build suffix so it can be parsed by semver andt the error message is less confusing.
 	// For example, instead of `0.13.1+git-4134cc6.build-1135` use `0.13.1`.
-	version, err := semver.NewVersion(strings.Split(string(out), "+")[0])
+	version, err := semver.NewVersion(strings.Split(strings.TrimSuffix(string(out), "\n"), "+")[0])
 	if err != nil {
 		return fmt.Errorf("parsing semver from %s: %v", out, err)
 	}
