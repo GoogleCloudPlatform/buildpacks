@@ -45,7 +45,7 @@ metadataTest:
     - key: 'io.buildpacks.stack.homepage'
       value: 'https://github.com/GoogleCloudPlatform/buildpacks/stacks/google-min-22'
   exposedPorts: ['8080']
-  user: "cnb"
+  user: "33:33"
 
 fileExistenceTests:
 - name: 'home dir'

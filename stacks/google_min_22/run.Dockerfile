@@ -14,8 +14,8 @@
 
 FROM marketplace.gcr.io/google/ubuntu2204:latest
 
-ARG cnb_uid=1000
-ARG cnb_gid=1000
+ARG cnb_uid=33
+ARG cnb_gid=33
 
 COPY run-packages.txt /tmp/packages.txt
 
@@ -59,7 +59,7 @@ RUN --mount=type=secret,id=pro-attach-config \
   mkdir -p /.google/usr/local/share/licenses/base_runtime/ && \
   touch /.google/usr/local/share/licenses/base_runtime/licenses.yaml
 
-USER cnb
+USER ${cnb_uid}:${cnb_gid}
 
 ENV LANG="en_US.UTF-8"
 ENV LANGUAGE="en_US:en"
