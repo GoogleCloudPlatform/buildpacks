@@ -14,9 +14,6 @@
 
 FROM marketplace.gcr.io/google/ubuntu2204:latest
 
-ARG cnb_uid=33
-ARG cnb_gid=33
-
 COPY run-packages.txt /tmp/packages.txt
 
 # Version identifier of the image.
@@ -51,14 +48,17 @@ RUN --mount=type=secret,id=pro-attach-config \
   # Configure the system locale
   locale-gen en_US.UTF-8 && \
   update-locale LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8 && \
-  # Configure the user
-  groupadd cnb --gid ${cnb_gid} && \
-  useradd --uid ${cnb_uid} --gid ${cnb_gid} -m -s /bin/bash cnb && \
+  # Configure the user's home directory
+  mkdir /www-data-home && \
+  chown www-data:www-data /www-data-home && \
+  usermod -d /www-data-home www-data && \
   # Nothing in this image requires an additional license, but we need to add an
   # empty license.yaml so the license validation doesn't fail.
   mkdir -p /.google/usr/local/share/licenses/base_runtime/ && \
   touch /.google/usr/local/share/licenses/base_runtime/licenses.yaml
 
+ARG cnb_uid=33
+ARG cnb_gid=33
 USER ${cnb_uid}:${cnb_gid}
 
 ENV LANG="en_US.UTF-8"

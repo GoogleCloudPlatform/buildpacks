@@ -28,9 +28,9 @@ metadataTest:
     - key: 'CNB_STACK_ID'
       value: 'google.gae.22'
     - key: 'CNB_USER_ID'
-      value: '1000'
+      value: '33'
     - key: 'CNB_GROUP_ID'
-      value: '1000'
+      value: '33'
   labels:
     - key: 'io.buildpacks.stack.id'
       value: 'google.gae.22'
@@ -49,9 +49,9 @@ metadataTest:
 
 fileExistenceTests:
 - name: 'home dir'
-  path: '/home/cnb'
+  path: '/www-data-home'
   shouldExist: true
-  permissions: 'drwxr-x---'
+  permissions: 'drwxr-xr-x'
 
 commandTests:
 - name: 'installed packages'
