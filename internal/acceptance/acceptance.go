@@ -1260,9 +1260,6 @@ func getHostAndPortForApp(t *testing.T, containerID, containerName string) (stri
 		// therefore ports are not mapped at the build container's 'localhost'.
 		return containerName, 8080
 	}
-	if v := os.Getenv("DOCKER_IP_UBUNTU"); v != "" {
-		return v, hostPort(t, containerID)
-	}
 	// When supplying the publish parameter with no local port picked, docker will
 	// choose a random port to map to the published port. In this case, it means
 	// there will be a mapping from localhost:${RAND_PORT} -> container:8080. There is a
