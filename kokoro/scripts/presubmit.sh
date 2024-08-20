@@ -24,14 +24,13 @@ set -euo pipefail
 if [[ -v KOKORO_ARTIFACTS_DIR ]]; then
   cd "${KOKORO_ARTIFACTS_DIR}/git/buildpacks"
   use_bazel.sh 5.4.0
-
-  # Move docker storage location to scratch disk so we don't run out of space.
-  echo 'DOCKER_OPTS="${DOCKER_OPTS} --data-root=/tmpfs/docker"' | sudo tee --append /etc/default/docker
-  sudo service docker restart
 else
   export KOKORO_ARTIFACTS_DIR="$(mktemp -d)"
   echo "Setting KOKORO_ARTIFACTS_DIR=$KOKORO_ARTIFACTS_DIR"
 fi
+
+export DOCKER_IP_UBUNTU="$(/sbin/ip route|awk '/default/ { print $3 }')"
+echo "DOCKER_IP_UBUNTU: ${DOCKER_IP_UBUNTU}"
 
 if [[ ! -v FILTER ]]; then
   echo 'Must specify $FILTER'
@@ -55,7 +54,6 @@ bazel test --jobs=3 --test_output=errors --action_env="PATH=$temp:$PATH" $(bazel
 
 # The exit code of the bazel command should be used to determine test outcome.
 readonly EXIT_CODE="${?}"
-
 # bazel-artifacts is specfied in build .cfg files.
 mkdir -p "$KOKORO_ARTIFACTS_DIR/bazel-artifacts"
 # bazel-testlogs is a symlink to a directory containing test output files.
