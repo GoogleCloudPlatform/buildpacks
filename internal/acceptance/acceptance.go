@@ -941,6 +941,7 @@ func buildCommand(srcDir, image, builderName, runName string, env map[string]str
 	// value ensures that the generated builder sha is unique and removing it after one build will
 	// not affect other builds running concurrently.
 	args = append(args, "--env", "GOOGLE_RANDOM="+randString(8), "--env", "GOOGLE_DEBUG=true")
+	args = append(args, "--network", "host")
 	log.Printf("Running %v\n", args)
 	return args
 }
@@ -1259,6 +1260,9 @@ func getHostAndPortForApp(t *testing.T, containerID, containerName string) (stri
 		// container and the launched containers are not "in" the host container and
 		// therefore ports are not mapped at the build container's 'localhost'.
 		return containerName, 8080
+	}
+	if v := os.Getenv("DOCKER_IP_UBUNTU"); v != "" {
+		return v, hostPort(t, containerID)
 	}
 	// When supplying the publish parameter with no local port picked, docker will
 	// choose a random port to map to the published port. In this case, it means
