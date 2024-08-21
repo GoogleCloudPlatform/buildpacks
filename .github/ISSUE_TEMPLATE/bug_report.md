@@ -20,6 +20,7 @@ How are you using GCP buildpacks?
 - [ ] Cloud Build
 - [ ] App Engine Standard
 - [ ] App Engine Flex
+- [ ] Firebase App Hosting
 
 
 **Did this used to work?**
