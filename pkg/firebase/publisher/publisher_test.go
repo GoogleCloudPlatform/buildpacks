@@ -74,13 +74,7 @@ func TestPublish(t *testing.T) {
 			desc:                   "Handle nonexistent apphosting.yaml",
 			appHostingYAMLFilePath: "nonexistent",
 			wantBuildSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{
-					CPU:          proto.Float32(1),
-					MemoryMiB:    proto.Int32(512),
-					Concurrency:  proto.Int32(80),
-					MaxInstances: proto.Int32(100),
-					MinInstances: proto.Int32(0),
-				},
+				RunConfig: &apphostingschema.RunConfig{},
 			}},
 	}
 
@@ -122,13 +116,7 @@ func TestToBuildSchemaRunConfig(t *testing.T) {
 			desc:                  "Empty AppHostingSchema",
 			inputAppHostingSchema: apphostingschema.AppHostingSchema{},
 			expectedSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{
-					CPU:          proto.Float32(float32(defaultCPU)),
-					MemoryMiB:    &defaultMemory,
-					Concurrency:  &defaultConcurrency,
-					MaxInstances: &defaultMaxInstances,
-					MinInstances: proto.Int32(0),
-				},
+				RunConfig: &apphostingschema.RunConfig{},
 			},
 		},
 		{
@@ -174,11 +162,8 @@ func TestToBuildSchemaRunConfig(t *testing.T) {
 			},
 			expectedSchema: buildSchema{
 				RunConfig: &apphostingschema.RunConfig{
-					CPU:          proto.Float32(1000),
-					MemoryMiB:    &defaultMemory,
-					Concurrency:  proto.Int32(2),
-					MaxInstances: &defaultMaxInstances,
-					MinInstances: proto.Int32(0),
+					CPU:         proto.Float32(1000),
+					Concurrency: proto.Int32(2),
 				},
 				Env: []apphostingschema.EnvironmentVariable{
 					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},

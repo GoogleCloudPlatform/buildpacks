@@ -40,14 +40,6 @@ type buildSchema struct {
 	Env       []apphostingschema.EnvironmentVariable `yaml:"env,omitempty"`
 }
 
-var (
-	defaultCPU          int32 = 1   // From https://cloud.google.com/run/docs/configuring/services/cpu.
-	defaultMemory       int32 = 512 // From https://cloud.google.com/run/docs/configuring/services/memory-limits.
-	defaultConcurrency  int32 = 80  // From https://cloud.google.com/run/docs/about-concurrency.
-	defaultMaxInstances int32 = 100 // From https://cloud.google.com/run/docs/configuring/max-instances.
-	defaultMinInstances int32 = 0   // From https://cloud.google.com/run/docs/configuring/min-instances.
-)
-
 func readBundleSchemaFromFile(filePath string) (outputBundleSchema, error) {
 	bundleBuffer, err := os.ReadFile(filePath)
 	if os.IsNotExist(err) {
@@ -69,7 +61,7 @@ func writeToFile(buildSchema buildSchema, outputFilePath string) error {
 	if err != nil {
 		return fmt.Errorf("converting struct to YAML: %w", err)
 	}
-	log.Printf("Final build schema:\n%v\n", string(fileData))
+	log.Printf("Final build schema:\n%v\n. Note that any unset runConfig fields will be set to reasonable default values.", string(fileData))
 
 	err = os.MkdirAll(filepath.Dir(outputFilePath), os.ModeDir)
 	if err != nil {
@@ -91,34 +83,10 @@ func writeToFile(buildSchema buildSchema, outputFilePath string) error {
 }
 
 func toBuildSchema(schema apphostingschema.AppHostingSchema, bundleSchema outputBundleSchema) buildSchema {
-	dCPU := float32(defaultCPU)
-	buildSchema := buildSchema{
-		RunConfig: &apphostingschema.RunConfig{
-			CPU:          &dCPU,
-			MemoryMiB:    &defaultMemory,
-			Concurrency:  &defaultConcurrency,
-			MaxInstances: &defaultMaxInstances,
-			MinInstances: &defaultMinInstances,
-		},
-	}
-	// Copy RunConfig fields from apphosting.yaml.
-	b := schema.RunConfig
-	if b.CPU != nil {
-		cpu := float32(*b.CPU)
-		buildSchema.RunConfig.CPU = &cpu
-	}
-	if b.MemoryMiB != nil {
-		buildSchema.RunConfig.MemoryMiB = b.MemoryMiB
-	}
-	if b.Concurrency != nil {
-		buildSchema.RunConfig.Concurrency = b.Concurrency
-	}
-	if b.MaxInstances != nil {
-		buildSchema.RunConfig.MaxInstances = b.MaxInstances
-	}
-	if b.MinInstances != nil {
-		buildSchema.RunConfig.MinInstances = b.MinInstances
-	}
+	buildSchema := buildSchema{}
+
+	// Copy RunConfig fields from apphosting.yaml, Control Plane will set defaults for any unset fields.
+	buildSchema.RunConfig = &schema.RunConfig
 
 	// Copy Env fields from apphosting.yaml
 	if len(schema.Env) > 0 {
