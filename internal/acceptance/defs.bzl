@@ -211,19 +211,19 @@ def _build_cloudbuild_test_binary(name, srcs, deps):
 
 # _build_testdata_target creates a Fileset target for the given testdata label. The reason to do
 # this is our testdata is accessed via exports_files(...) which copies the testdata into writeable
-# folders. The acceptance test suite relies on the the folders being writeable. However, most Bazel
-# rules, including pkg_zip or pkg_tar, are not able to accept source files that are directories. It
-# requires an explicit fileset to bring in a directory of files.
+# folders. The acceptance test suite relies on the the folders being writeable. We assume the
+# existence of a filegroup with the name "[testdata_label]_files" to bring in the required files.
 def _build_testdata_target(name, testdata):
     testdata_pkg, testdata_label = testdata.split(":")
     fileset_name = name + "_" + testdata_label
+    testdata_filegroup = testdata_label + "_files"
     native.Fileset(
         name = fileset_name,
         out = name + "_generated/" + testdata_label,
         entries = [
             native.FilesetEntry(
                 srcdir = testdata_pkg + ":BUILD",
-                files = [testdata_label],
+                files = [testdata_filegroup],
                 strip_prefix = testdata_label,
             ),
         ],

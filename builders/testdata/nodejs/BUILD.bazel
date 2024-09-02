@@ -19,3 +19,23 @@ filegroup(
         "//builders/testdata/nodejs/appengine:all_files",
     ],
 )
+
+filegroup(
+    name = "appengine_files",
+    srcs = ["//builders/testdata/nodejs/appengine:all_files"],
+)
+
+filegroup(
+    name = "functions_files",
+    srcs = glob(["functions/**"]),
+)
+
+filegroup(
+    name = "flex_files",
+    srcs = glob(["flex/**"]),
+)
+
+filegroup(
+    name = "generic_files",
+    srcs = glob(["generic/**"]),
+)
