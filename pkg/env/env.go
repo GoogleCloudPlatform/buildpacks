@@ -142,6 +142,9 @@ const (
 
 	// RuntimeImageRegion is the region to fetch runtime images.
 	RuntimeImageRegion = "GOOGLE_RUNTIME_IMAGE_REGION"
+
+	// FirebaseOutputDir is the directory to store the firebase output bundle.
+	FirebaseOutputDir = "FIREBASE_OUTPUT_BUNDLE_DIR"
 )
 
 // IsGAE returns true if the buildpack target platform is gae.

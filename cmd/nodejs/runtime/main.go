@@ -18,14 +18,19 @@ package main
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 )
 
-const nodeLayer = "node"
+const (
+	nodeLayer           = "node"
+	runtimeVersionLabel = "runtime_version"
+)
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -67,6 +72,20 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
+
+	if _, ok := os.LookupEnv(env.FirebaseOutputDir); ok {
+		osName := runtime.OSForStack(ctx)
+		latestAvailableVersion, err := runtime.ResolveVersion(ctx, runtime.Nodejs, version, osName)
+		if err != nil {
+			return fmt.Errorf("resolving version %s: %w", version, err)
+		}
+		majorVersion, err := nodejs.MajorVersion(latestAvailableVersion)
+		if err != nil {
+			return fmt.Errorf("getting major version for %s: %w", latestAvailableVersion, err)
+		}
+		ctx.AddLabel(runtimeVersionLabel, string(runtime.Nodejs)+majorVersion)
+	}
+
 	nrl, err := ctx.Layer(nodeLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerUnlessSkipRuntimeLaunch)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", nodeLayer, err)

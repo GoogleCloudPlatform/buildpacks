@@ -52,6 +52,14 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			Env:     []string{"GOOGLE_NODEJS_VERSION=16.17.1"},
 			MustUse: []string{nodeRuntime},
 		},
+		{
+			// Tests addition of RUNTIME_VERSION label to the final image.
+			Name:    "environment variable FIREBASE_OUTPUT_BUNDLE_DIR",
+			App:     "simple",
+			Path:    "/version?want=16.17.1",
+			Env:     []string{"GOOGLE_NODEJS_VERSION=16.17.1", "FIREBASE_OUTPUT_BUNDLE_DIR=/output/dir"},
+			MustUse: []string{nodeRuntime},
+		},
 
 		// TODO(b/315008858) This should be reenabled once yarn support is re added
 		/*

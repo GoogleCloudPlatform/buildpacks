@@ -45,6 +45,15 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
+			name: "with FIREBASE_OUTPUT_BUNDLE_DIR env variable",
+			files: map[string]string{
+				"index.js":     "",
+				"package.json": "",
+			},
+			env:  []string{"GOOGLE_RUNTIME=nodejs", "FIREBASE_OUTPUT_BUNDLE_DIR=/output/dir"},
+			want: 0,
+		},
+		{
 			name: "with package and runtime set to python",
 			files: map[string]string{
 				"index.js":     "",

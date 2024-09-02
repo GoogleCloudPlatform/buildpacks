@@ -407,3 +407,13 @@ func parsePackageManager(packageManagerField string) (string, string, error) {
 	}
 	return packageManagerSplit[0], packageManagerSplit[1], nil
 }
+
+// MajorVersion returns the major version of a version string of format "major.minor.patch".
+func MajorVersion(versionString string) (string, error) {
+	parts := strings.Split(versionString, ".")
+	if len(parts) < 3 {
+		return "", fmt.Errorf("invalid version format: %s", versionString)
+	}
+
+	return parts[0], nil
+}
