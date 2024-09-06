@@ -208,7 +208,15 @@ func buildFn(ctx *gcp.Context) error {
 
 // installFunctionsFramework downloads the functions-framework package to node_modules in the given layer.
 func installFunctionsFramework(ctx *gcp.Context, l *libcnb.Layer) error {
-	cvt := filepath.Join(ctx.BuildpackRoot(), "converter", "without-framework")
+	nodeVersion := os.Getenv(env.Runtime)
+	var subdir string
+	if nodeVersion == "nodejs12" || nodeVersion == "nodejs14" {
+		subdir = "without-framework-compat"
+	} else {
+		subdir = "without-framework"
+	}
+
+	cvt := filepath.Join(ctx.BuildpackRoot(), "converter", subdir)
 	pjs := filepath.Join(cvt, "package.json")
 	pljs := filepath.Join(cvt, nodejs.PackageLock)
 

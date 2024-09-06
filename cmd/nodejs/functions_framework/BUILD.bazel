@@ -8,6 +8,8 @@ licenses(["notice"])
 buildpack(
     name = "functions_framework",
     srcs = [
+        "converter/without-framework-compat/package.json",
+        "converter/without-framework-compat/package-lock.json",
         "converter/without-framework/package.json",
         "converter/without-framework/package-lock.json",
     ],

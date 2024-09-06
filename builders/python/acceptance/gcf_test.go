@@ -109,7 +109,7 @@ func TestFailures(t *testing.T) {
 		},
 		{
 			App:       "fail_broken_dependencies",
-			MustMatch: `functions-framework .* has requirement flask<3\.0,>=1\.0, but you have flask 0\.12\.5`,
+			MustMatch: `functions-framework .* has requirement flask.*,>=.*, but you have flask 0\.12\.5`,
 			// this is only a warning in python37
 			VersionInclusionConstraint: ">= 3.8.0",
 		},
