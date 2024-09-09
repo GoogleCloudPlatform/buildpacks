@@ -26,8 +26,8 @@ import (
 )
 
 const (
-	// angularVersion is the version of angular that the applciation is using
-	angularVersion = "ANGULAR_VERSION"
+	// frameworkVersion is the version of angular that the application is using
+	frameworkVersion = "FRAMEWORK_VERSION"
 )
 
 var (
@@ -118,7 +118,7 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// pass angular version as environment variable that will configure the build for version matching
-	al.BuildEnvironment.Override(angularVersion, version)
+	al.BuildEnvironment.Override(frameworkVersion, version)
 
 	// This env var indicates to the package manager buildpack that a different command needs to be run
 	nodejs.OverrideAngularBuildScript(al)

@@ -53,7 +53,7 @@ func Prepare(ctx context.Context, opts Options) error {
 	var err error
 
 	if opts.AppHostingYAMLPath != "" {
-		appHostingYAML, err = apphostingschema.ReadAndValidateAppHostingSchemaFromFile(opts.AppHostingYAMLPath)
+		appHostingYAML, err = apphostingschema.ReadAndValidateFromFile(opts.AppHostingYAMLPath)
 		if err != nil {
 			return fmt.Errorf("reading in and validating apphosting.yaml at path %v: %w", opts.AppHostingYAMLPath, err)
 		}

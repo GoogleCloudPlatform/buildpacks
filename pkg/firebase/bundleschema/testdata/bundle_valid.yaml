@@ -1,0 +1,14 @@
+runCommand: node .apphosting/dist/server/server.mjs
+neededDirs:
+  - .apphosting
+staticAssets:
+  - .apphosting/dist/browser
+env:
+  - variable: SSR_PORT
+    value: "8080"
+    availability:
+      - RUNTIME
+  - variable: HOSTNAME
+    value: 0.0.0.0
+    availability:
+      - RUNTIME

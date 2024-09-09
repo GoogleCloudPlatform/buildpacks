@@ -25,8 +25,8 @@ import (
 )
 
 const (
-	// nextVersion is the version of next that the applciation is using
-	nextVersion = "NEXT_VERSION"
+	// frameworkVersion is the version of next that the application is using
+	frameworkVersion = "FRAMEWORK_VERSION"
 )
 
 var (
@@ -98,8 +98,8 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	// pass next version as environment variable that will configure the build for version matching
-	njsl.BuildEnvironment.Override(nextVersion, version)
+	// pass nextjs version as environment variable that will configure the build for version matching
+	njsl.BuildEnvironment.Override(frameworkVersion, version)
 
 	// This env var indicates to the package manager buildpack that a different command needs to be run
 	nodejs.OverrideNextjsBuildScript(njsl)

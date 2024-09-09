@@ -219,7 +219,7 @@ func TestPrepare(t *testing.T) {
 		}
 
 		// Check app hosting schema
-		actualAppHostingSchema, err := apphostingschema.ReadAndValidateAppHostingSchemaFromFile(outputFilePathYAML)
+		actualAppHostingSchema, err := apphostingschema.ReadAndValidateFromFile(outputFilePathYAML)
 		if err != nil {
 			t.Errorf("reading in and validating apphosting.yaml at path %v: %v", outputFilePathYAML, err)
 		}

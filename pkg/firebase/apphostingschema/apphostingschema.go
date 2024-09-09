@@ -120,10 +120,10 @@ func (rc *RunConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	return nil
 }
 
-// ReadAndValidateAppHostingSchemaFromFile converts the provided file into an AppHostingSchema.
+// ReadAndValidateFromFile converts the provided file into an AppHostingSchema.
 // Returns an empty AppHostingSchema{} if the file does not exist.
-func ReadAndValidateAppHostingSchemaFromFile(filePath string) (AppHostingSchema, error) {
-	a := AppHostingSchema{}
+func ReadAndValidateFromFile(filePath string) (AppHostingSchema, error) {
+	var a AppHostingSchema
 	apphostingBuffer, err := os.ReadFile(filePath)
 	if os.IsNotExist(err) {
 		log.Printf("Missing apphosting config at %v, using reasonable defaults\n", filePath)
@@ -217,7 +217,7 @@ func MergeWithEnvironmentSpecificYAML(appHostingSchema *AppHostingSchema, appHos
 	}
 
 	envSpecificYAMLPath := filepath.Join(filepath.Dir(appHostingYAMLPath), fmt.Sprintf("apphosting.%v.yaml", environmentName))
-	envSpecificSchema, err := ReadAndValidateAppHostingSchemaFromFile(envSpecificYAMLPath)
+	envSpecificSchema, err := ReadAndValidateFromFile(envSpecificYAMLPath)
 	if err != nil {
 		return fmt.Errorf("reading in and validating apphosting.%v.yaml at path %v: %w", environmentName, envSpecificYAMLPath, err)
 	}

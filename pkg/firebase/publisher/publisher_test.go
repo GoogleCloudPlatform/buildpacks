@@ -25,7 +25,8 @@ import (
 	"google3/third_party/golang/protobuf/v2/proto/proto"
 	"gopkg.in/yaml.v2"
 
-	apphostingschema "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/bundleschema"
 )
 
 var (
@@ -175,8 +176,113 @@ func TestToBuildSchemaRunConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
-			bundleSchema := outputBundleSchema{}
+			bundleSchema := bundleschema.BundleSchema{}
 			result := toBuildSchema(tc.inputAppHostingSchema, bundleSchema)
+			if diff := cmp.Diff(tc.expectedSchema, result); diff != "" {
+				t.Errorf("toBuildSchema(%s) (-want +got):\n%s", tc.desc, diff)
+			}
+		})
+	}
+}
+
+func TestToBuildSchemaEnvVar(t *testing.T) {
+	tests := []struct {
+		desc                  string
+		inputAppHostingSchema apphostingschema.AppHostingSchema
+		inputBundleSchema     bundleschema.BundleSchema
+		expectedSchema        buildSchema
+	}{
+		{
+			desc:                  "Merging AppHostingSchema and BundleSchema with empty env vars",
+			inputAppHostingSchema: apphostingschema.AppHostingSchema{},
+			inputBundleSchema:     bundleschema.BundleSchema{},
+			expectedSchema: buildSchema{
+				RunConfig: &apphostingschema.RunConfig{},
+			},
+		},
+		{
+			desc: "Merging nonconflicting AppHostingSchema and BundleSchema",
+			inputAppHostingSchema: apphostingschema.AppHostingSchema{
+				Env: []apphostingschema.EnvironmentVariable{
+					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
+				},
+			},
+			inputBundleSchema: bundleschema.BundleSchema{
+				Env: []bundleschema.EnvironmentVariable{
+					bundleschema.EnvironmentVariable{Variable: "SSR_PORT", Value: "8080", Availability: []string{"RUNTIME"}},
+				},
+			},
+			expectedSchema: buildSchema{
+				RunConfig: &apphostingschema.RunConfig{},
+				Env: []apphostingschema.EnvironmentVariable{
+					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
+					apphostingschema.EnvironmentVariable{Variable: "SSR_PORT", Value: "8080", Availability: []string{"RUNTIME"}},
+				},
+			},
+		},
+		{
+			desc: "Merging AppHostingSchema and BundleSchema with same Environment Variable name and vailability",
+			inputAppHostingSchema: apphostingschema.AppHostingSchema{
+				Env: []apphostingschema.EnvironmentVariable{
+					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "apphostingapi.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
+				},
+			},
+			inputBundleSchema: bundleschema.BundleSchema{Env: []bundleschema.EnvironmentVariable{
+				bundleschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
+			}},
+			expectedSchema: buildSchema{
+				RunConfig: &apphostingschema.RunConfig{},
+				Env: []apphostingschema.EnvironmentVariable{
+					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "apphostingapi.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
+				},
+			},
+		},
+		{
+			desc: "Merging BundleSchema env vars and AppHostingSchema secrets with same name and availability",
+			inputAppHostingSchema: apphostingschema.AppHostingSchema{
+				Env: []apphostingschema.EnvironmentVariable{
+					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"RUNTIME"}},
+				},
+			},
+			inputBundleSchema: bundleschema.BundleSchema{Env: []bundleschema.EnvironmentVariable{
+				bundleschema.EnvironmentVariable{Variable: "API_KEY", Value: "bundleApiKey", Availability: []string{"RUNTIME"}},
+			},
+			},
+			expectedSchema: buildSchema{
+				RunConfig: &apphostingschema.RunConfig{},
+				Env: []apphostingschema.EnvironmentVariable{
+					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"RUNTIME"}},
+				},
+			},
+		},
+		{
+			desc: "Merging AppHostingSchema and BundleSchema env vars with same name but different availability",
+			inputAppHostingSchema: apphostingschema.AppHostingSchema{
+				Env: []apphostingschema.EnvironmentVariable{
+					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "apphostingapi.service.com", Availability: []string{"BUILD"}},
+				},
+			},
+			inputBundleSchema: bundleschema.BundleSchema{Env: []bundleschema.EnvironmentVariable{
+				bundleschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
+			},
+			},
+			expectedSchema: buildSchema{
+				RunConfig: &apphostingschema.RunConfig{},
+				Env: []apphostingschema.EnvironmentVariable{
+					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "apphostingapi.service.com", Availability: []string{"BUILD"}},
+					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			result := toBuildSchema(tc.inputAppHostingSchema, tc.inputBundleSchema)
 			if diff := cmp.Diff(tc.expectedSchema, result); diff != "" {
 				t.Errorf("toBuildSchema(%s) (-want +got):\n%s", tc.desc, diff)
 			}

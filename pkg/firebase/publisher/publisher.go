@@ -24,14 +24,9 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	apphostingschema "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/bundleschema"
 )
-
-// outputBundleSchema is the struct representation of a Firebase App Hosting Output Bundle
-// (configured by bundle.yaml).
-type outputBundleSchema struct {
-	// TODO: Add fields.
-}
 
 // buildSchema is the internal Publisher representation of the final build settings that will
 // ultimately be converted into an updateBuildRequest.
@@ -40,20 +35,13 @@ type buildSchema struct {
 	Env       []apphostingschema.EnvironmentVariable `yaml:"env,omitempty"`
 }
 
-func readBundleSchemaFromFile(filePath string) (outputBundleSchema, error) {
-	bundleBuffer, err := os.ReadFile(filePath)
-	if os.IsNotExist(err) {
-		return outputBundleSchema{}, fmt.Errorf("missing bundle config at %v", filePath)
-	} else if err != nil {
-		return outputBundleSchema{}, fmt.Errorf("reading bundle config at %v: %w", filePath, err)
-	}
-
-	err = yaml.Unmarshal(bundleBuffer, &outputBundleSchema{})
-	if err != nil {
-		return outputBundleSchema{}, fmt.Errorf("unmarshalling bundle config as YAML: %w", err)
-	}
-	return outputBundleSchema{}, nil
-}
+var (
+	defaultCPU          int32 = 1   // From https://cloud.google.com/run/docs/configuring/services/cpu.
+	defaultMemory       int32 = 512 // From https://cloud.google.com/run/docs/configuring/services/memory-limits.
+	defaultConcurrency  int32 = 80  // From https://cloud.google.com/run/docs/about-concurrency.
+	defaultMaxInstances int32 = 100 // From https://cloud.google.com/run/docs/configuring/max-instances.
+	defaultMinInstances int32 = 0   // From https://cloud.google.com/run/docs/configuring/min-instances.
+)
 
 // Write the given build schema to the specified path, used to output the final arguments to BuildStepOutputs[]
 func writeToFile(buildSchema buildSchema, outputFilePath string) error {
@@ -82,31 +70,68 @@ func writeToFile(buildSchema buildSchema, outputFilePath string) error {
 	return nil
 }
 
-func toBuildSchema(schema apphostingschema.AppHostingSchema, bundleSchema outputBundleSchema) buildSchema {
+func toBuildSchema(appHostingSchema apphostingschema.AppHostingSchema, bundleSchema bundleschema.BundleSchema) buildSchema {
 	buildSchema := buildSchema{}
 
 	// Copy RunConfig fields from apphosting.yaml, Control Plane will set defaults for any unset fields.
-	buildSchema.RunConfig = &schema.RunConfig
+	buildSchema.RunConfig = &appHostingSchema.RunConfig
 
-	// Copy Env fields from apphosting.yaml
-	if len(schema.Env) > 0 {
-		buildSchema.Env = schema.Env
+	// Merge Env fields from bundle.yaml and apphosting.yaml together.
+	if len(appHostingSchema.Env) > 0 || len(bundleSchema.Env) > 0 {
+		buildSchema.Env = mergeEnvironmentVariables(appHostingSchema.Env, bundleSchema.Env)
 	}
 
 	return buildSchema
+}
+
+// mergeEnvironmentVariables merges the environment variables from apphosting.yaml and bundle.yaml.
+// If there is a conflict between the environment variables, use the value/secret from apphosting.yaml.
+func mergeEnvironmentVariables(aevs []apphostingschema.EnvironmentVariable, bevs []bundleschema.EnvironmentVariable) []apphostingschema.EnvironmentVariable {
+	merged := aevs
+	varByName := make(map[string]apphostingschema.EnvironmentVariable)
+	for _, apphostingEv := range aevs {
+		varByName[apphostingEv.Variable] = apphostingEv
+	}
+
+	for _, bundleEv := range bevs {
+		apphostingEv, found := varByName[bundleEv.Variable]
+		if found && isEnvAvailabilityOverlap(apphostingEv.Availability, bundleEv.Availability) {
+			log.Printf("Apphosting.yaml environment variable %v conflicts with bundle.yaml environment variable\n", bundleEv.Variable)
+			log.Printf("Using an environment variable value or secret from apphosting.yaml\n")
+		} else {
+			var ev apphostingschema.EnvironmentVariable = apphostingschema.EnvironmentVariable(bundleEv)
+			log.Printf("Adding environment variable %v from bundle.yaml\n", bundleEv.Variable)
+			// merge bundleEv in if no conflict
+			merged = append(merged, ev)
+		}
+	}
+	return merged
+}
+
+func isEnvAvailabilityOverlap(appHostingAvailability, bundleAvailability []string) bool {
+	availabilityByName := make(map[string]bool)
+	for _, av := range appHostingAvailability {
+		availabilityByName[av] = true
+	}
+	for _, av := range bundleAvailability {
+		if availabilityByName[av] {
+			return true
+		}
+	}
+	return false
 }
 
 // Publish takes in the path to various required files such as apphosting.yaml, bundle.yaml, and
 // other files (tbd) and merges them into one output that describes the desired Backend Service
 // configuration before pushing this information to the control plane.
 func Publish(appHostingYAMLPath string, bundleYAMLPath string, outputFilePath string) error {
-	appHostingSchema, err := apphostingschema.ReadAndValidateAppHostingSchemaFromFile(appHostingYAMLPath)
+	appHostingSchema, err := apphostingschema.ReadAndValidateFromFile(appHostingYAMLPath)
 	if err != nil {
 		return err
 	}
 
 	// For now, simply validates that bundle.yaml exists.
-	bundleSchema, err := readBundleSchemaFromFile(bundleYAMLPath)
+	bundleSchema, err := bundleschema.ReadAndValidateFromFile(bundleYAMLPath)
 	if err != nil {
 		return err
 	}

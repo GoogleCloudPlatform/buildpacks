@@ -9,7 +9,7 @@ import (
 	"google3/third_party/golang/protobuf/v2/proto/proto"
 )
 
-func TestReadAndValidateAppHostingSchemaFromFile(t *testing.T) {
+func TestReadAndValidateFromFile(t *testing.T) {
 	testCases := []struct {
 		desc                 string
 		inputAppHostingYAML  string
@@ -67,12 +67,12 @@ func TestReadAndValidateAppHostingSchemaFromFile(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		s, err := ReadAndValidateAppHostingSchemaFromFile(test.inputAppHostingYAML)
+		s, err := ReadAndValidateFromFile(test.inputAppHostingYAML)
 
 		// Happy Path
 		if !test.wantErr {
 			if err != nil {
-				t.Errorf("unexpected error for ReadAppHostingSchemaFromFile(%q): %v", test.desc, err)
+				t.Errorf("unexpected error for ReadAndValidateFromFile(%q): %v", test.desc, err)
 			}
 
 			if diff := cmp.Diff(test.wantAppHostingSchema, s); diff != "" {
@@ -82,7 +82,7 @@ func TestReadAndValidateAppHostingSchemaFromFile(t *testing.T) {
 			// Error Path
 		} else {
 			if err == nil {
-				t.Errorf("ReadAppHostingSchemaFromFile(%q) = %v, want error", test.desc, err)
+				t.Errorf("ReadAndValidateFromFile(%q) = %v, want error", test.desc, err)
 			}
 		}
 	}
@@ -370,7 +370,7 @@ func TestWriteToFile(t *testing.T) {
 			t.Errorf("error in test '%v'. Error was %v", test.desc, err)
 		}
 
-		actualSchema, err := ReadAndValidateAppHostingSchemaFromFile(outputFilePath)
+		actualSchema, err := ReadAndValidateFromFile(outputFilePath)
 		if err != nil {
 			t.Errorf("error reading in temp file: %v", err)
 		}
