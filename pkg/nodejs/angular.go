@@ -26,7 +26,7 @@ var (
 	// angularVersionKey is the metadata key used to store the angular build adaptor version in the angular layer.
 	angularVersionKey = "version"
 	// PinnedAngularAdapterVersion is the version of the angular adapter that will be used.
-	PinnedAngularAdapterVersion = "17.2.7"
+	PinnedAngularAdapterVersion = "17.2.8"
 )
 
 // InstallAngularBuildAdaptor installs the angular build adaptor in the given layer if it is not already cached.
