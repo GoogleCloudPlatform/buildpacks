@@ -137,12 +137,20 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "python/missing_entrypoint.tgz"
 
 [[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source.tgz"
+
+[[buildpacks]]
   id = "google.utils.label-image"
   uri = "label_image.tgz"
 
 [[buildpacks]]
   id = "google.ruby.runtime"
   uri = "ruby/runtime.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.functions-framework"
+  uri = "ruby/functions_framework.tgz"
 
 [[buildpacks]]
   id = "google.ruby.rubygems"
@@ -525,6 +533,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.utils.label-image"
+    
 
 ###########
 # Ruby applications #
@@ -554,6 +563,26 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# The Ruby functions order group. Similar to the generic Ruby
+# applications order group above but uses the GOOGLE_FUNCTION_TARGET
+# env var to set the container entrypoint.
+[[order]]
+  [[order.group]]
+    id = "google.ruby.runtime"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.bundle"
+
+  [[order.group]]
+    id = "google.ruby.functions-framework"
 
   [[order.group]]
     id = "google.utils.label-image"

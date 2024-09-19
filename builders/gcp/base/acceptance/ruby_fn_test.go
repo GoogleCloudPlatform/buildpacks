@@ -31,29 +31,29 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:    "function with dependencies",
 			App:     "with_dependencies",
-			MustUse: []string{rubyRuntime, rubyBundle, entrypoint},
+			MustUse: []string{rubyRuntime, rubyBundle, rubyFF},
 		},
 		{
 			Name:    "function with platform-specific dependencies",
 			App:     "with_platform_dependencies",
-			MustUse: []string{rubyRuntime, rubyBundle, entrypoint},
+			MustUse: []string{rubyRuntime, rubyBundle, rubyFF},
 		},
 		{
 			Name:    "function with runtime env var",
 			App:     "with_env_var",
 			RunEnv:  []string{"FOO=foo"},
-			MustUse: []string{rubyRuntime, rubyBundle, entrypoint},
+			MustUse: []string{rubyRuntime, rubyBundle, rubyFF},
 		},
 		{
 			Name:    "function in fn_source file",
 			App:     "with_fn_source",
-			RunEnv:  []string{"FUNCTION_SOURCE=sub_dir/custom_file.rb"},
-			MustUse: []string{rubyRuntime, rubyBundle, entrypoint},
+			Env:     []string{"GOOGLE_FUNCTION_SOURCE=sub_dir/custom_file.rb"},
+			MustUse: []string{rubyRuntime, rubyBundle, rubyFF},
 		},
 		{
 			Name:    "function using framework older than 0.7",
 			App:     "with_legacy_framework",
-			MustUse: []string{rubyRuntime, rubyBundle, entrypoint},
+			MustUse: []string{rubyRuntime, rubyBundle, rubyFF},
 		},
 	}
 
@@ -65,7 +65,7 @@ func TestAcceptance(t *testing.T) {
 			tc.Path = "/testFunction"
 			tc.Env = append(tc.Env,
 				"GOOGLE_RUNTIME_VERSION=3.1.*",
-				"GOOGLE_ENTRYPOINT=bundle exec functions-framework-ruby --target testFunction",
+				"GOOGLE_FUNCTION_TARGET=testFunction",
 			)
 
 			acceptance.TestApp(t, imageCtx, tc)

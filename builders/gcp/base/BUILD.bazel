@@ -8,6 +8,7 @@ builder(
     name = "builder",
     buildpacks = [
         "//cmd/config/entrypoint:entrypoint.tgz",
+        "//cmd/utils/archive_source:archive_source.tgz",
         "//cmd/utils/label:label_image.tgz",
         "//cmd/utils/nginx:nginx.tgz",
         "//cmd/config/flex:flex.tgz",
@@ -64,6 +65,7 @@ builder(
         ],
         "ruby": [
             "//cmd/ruby/missing_entrypoint:missing_entrypoint.tgz",
+            "//cmd/ruby/functions_framework:functions_framework.tgz",
             "//cmd/ruby/rubygems:rubygems.tgz",
             "//cmd/ruby/bundle:bundle.tgz",
             "//cmd/ruby/rails:rails.tgz",
@@ -84,6 +86,7 @@ builder(
     name = "google_22_builder",
     buildpacks = [
         "//cmd/config/entrypoint:entrypoint.tgz",
+        "//cmd/utils/archive_source:archive_source.tgz",
         "//cmd/utils/label:label_image.tgz",
         "//cmd/utils/nginx:nginx.tgz",
         "//cmd/config/flex:flex.tgz",
@@ -141,6 +144,7 @@ builder(
         ],
         "ruby": [
             "//cmd/ruby/missing_entrypoint:missing_entrypoint.tgz",
+            "//cmd/ruby/functions_framework:functions_framework.tgz",
             "//cmd/ruby/rubygems:rubygems.tgz",
             "//cmd/ruby/bundle:bundle.tgz",
             "//cmd/ruby/rails:rails.tgz",
