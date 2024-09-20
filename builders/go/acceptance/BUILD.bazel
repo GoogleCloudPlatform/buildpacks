@@ -40,6 +40,13 @@ acceptance_test_suite(
     ],
     builder = "//builders/go:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "go118": "//builders/go:builder_22.tar",
+        "go119": "//builders/go:builder_22.tar",
+        "go120": "//builders/go:builder_22.tar",
+        "go121": "//builders/go:builder_22.tar",
+        "go122": "//builders/go:builder_22.tar",
+    },
     testdata = "//builders/testdata/go:functions",
     versions = gcf_runtime_versions,
 )
@@ -52,6 +59,13 @@ acceptance_test_suite(
     ],
     builder = "//builders/go:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "go118": "//builders/go:builder_22.tar",
+        "go119": "//builders/go:builder_22.tar",
+        "go120": "//builders/go:builder_22.tar",
+        "go121": "//builders/go:builder_22.tar",
+        "go122": "//builders/go:builder_22.tar",
+    },
     testdata = "//builders/testdata/go:generic",
     versions = gcp_runtime_versions,
 )
@@ -66,6 +80,13 @@ acceptance_test_suite(
     argsmap = goargs(),
     builder = "//builders/go:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "go118": "//builders/go:builder_22.tar",
+        "go119": "//builders/go:builder_22.tar",
+        "go120": "//builders/go:builder_22.tar",
+        "go121": "//builders/go:builder_22.tar",
+        "go122": "//builders/go:builder_22.tar",
+    },
     testdata = "//builders/testdata/go:appengine",
     versions = gae_runtime_versions,
 )
@@ -80,6 +101,13 @@ acceptance_test_suite(
     argsmap = goargs("$${_CANDIDATE_NAME}"),
     builder = "//builders/go:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "go118": "//builders/go:builder_22.tar",
+        "go119": "//builders/go:builder_22.tar",
+        "go120": "//builders/go:builder_22.tar",
+        "go121": "//builders/go:builder_22.tar",
+        "go122": "//builders/go:builder_22.tar",
+    },
     testdata = "//builders/testdata/go:appengine",
     versions = gae_runtime_versions,
 )
@@ -94,6 +122,13 @@ acceptance_test_suite(
     argsmap = goargs("$${_CANDIDATE_NAME}", "$${_STACK}"),
     builder = "//builders/go:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "go118": "//builders/go:builder_22.tar",
+        "go119": "//builders/go:builder_22.tar",
+        "go120": "//builders/go:builder_22.tar",
+        "go121": "//builders/go:builder_22.tar",
+        "go122": "//builders/go:builder_22.tar",
+    },
     testdata = "//builders/testdata/go:appengine",
     versions = gae_runtime_versions,
 )
@@ -122,6 +157,13 @@ acceptance_test_suite(
     ],
     builder = "//builders/go:builder.tar",
     rundir = ".",
+    runtime_to_builder_map = {
+        "go118": "//builders/go:builder_22.tar",
+        "go119": "//builders/go:builder_22.tar",
+        "go120": "//builders/go:builder_22.tar",
+        "go121": "//builders/go:builder_22.tar",
+        "go122": "//builders/go:builder_22.tar",
+    },
     testdata = "//builders/testdata/go:flex",
     versions = flex_runtime_versions,
 )

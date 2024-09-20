@@ -205,9 +205,9 @@ description = "Unified builder for the PHP runtime"
     id = "google.php.webconfig"
 
 [stack]
-  id = "google.gae.18"
-  build-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-gae-18/build"
-  run-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-gae-18/run"
+  id = "${STACK_ID}"
+  build-image = "${STACK_BUILD_IMAGE}"
+  run-image = "${STACK_RUN_IMAGE}"
 
 [lifecycle]
   version = "0.17.7"

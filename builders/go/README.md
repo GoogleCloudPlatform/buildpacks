@@ -2,10 +2,16 @@
 This directory contains the definition of the Go builder.
 
 ## Build the Image
-To build the builder image, run:
+To build the builder image for ubuntu-18 builder, run:
 
 ```bash
 bazel build //builders/go:builder.image
+```
+
+To build the builder image for ubuntu-22 builder, run:
+
+```bash
+bazel build //builders/go:builder_22.image
 ```
 
 ## Build a Test Application

@@ -4,24 +4,42 @@ package(default_visibility = ["//builders/go:__subpackages__"])
 
 licenses(["notice"])
 
+exports_files([
+    "builder.toml.template",
+])
+
+BUILDPACKS = [
+    "//cmd/config/entrypoint:entrypoint.tgz",
+    "//cmd/config/flex:flex.tgz",
+    "//cmd/go/appengine:appengine.tgz",
+    "//cmd/go/appengine_gomod:appengine_gomod.tgz",
+    "//cmd/go/flex_gomod:flex_gomod.tgz",
+    "//cmd/go/appengine_gopath:appengine_gopath.tgz",
+    "//cmd/go/build:build.tgz",
+    "//cmd/go/clear_source:clear_source.tgz",
+    "//cmd/go/functions_framework:functions_framework.tgz",
+    "//cmd/go/gomod:gomod.tgz",
+    "//cmd/go/gopath:gopath.tgz",
+    "//cmd/go/legacy_worker:legacy_worker.tgz",
+    "//cmd/go/runtime:runtime.tgz",
+    "//cmd/utils/archive_source:archive_source.tgz",
+    "//cmd/utils/label:label_image.tgz",
+]
+
 builder(
     name = "builder",
-    buildpacks = [
-        "//cmd/config/entrypoint:entrypoint.tgz",
-        "//cmd/config/flex:flex.tgz",
-        "//cmd/go/appengine:appengine.tgz",
-        "//cmd/go/appengine_gomod:appengine_gomod.tgz",
-        "//cmd/go/flex_gomod:flex_gomod.tgz",
-        "//cmd/go/appengine_gopath:appengine_gopath.tgz",
-        "//cmd/go/build:build.tgz",
-        "//cmd/go/clear_source:clear_source.tgz",
-        "//cmd/go/functions_framework:functions_framework.tgz",
-        "//cmd/go/gomod:gomod.tgz",
-        "//cmd/go/gopath:gopath.tgz",
-        "//cmd/go/legacy_worker:legacy_worker.tgz",
-        "//cmd/go/runtime:runtime.tgz",
-        "//cmd/utils/archive_source:archive_source.tgz",
-        "//cmd/utils/label:label_image.tgz",
-    ],
+    builder_template = ":builder.toml.template",
+    buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
     image = "gcp/go",
+    stack = "google.gae.18",
+)
+
+builder(
+    name = "builder_22",
+    builder_template = ":builder.toml.template",
+    buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
+    image = "gcp/go-22",
+    stack = "google.gae.22",
 )

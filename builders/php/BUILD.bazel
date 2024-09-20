@@ -4,30 +4,51 @@ package(default_visibility = ["//builders/php/acceptance:__pkg__"])
 
 licenses(["notice"])
 
+exports_files([
+    "builder.toml.template",
+])
+
+BUILDPACKS = [
+    "//cmd/config/entrypoint:entrypoint.tgz",
+    "//cmd/config/flex:flex.tgz",
+    "//cmd/php/appengine:appengine.tgz",
+    "//cmd/php/composer:composer.tgz",
+    "//cmd/php/composer_gcp_build:composer_gcp_build.tgz",
+    "//cmd/php/functions_framework:functions_framework.tgz",
+    "//cmd/php/cloudfunctions:cloudfunctions.tgz",
+    "//cmd/php/composer_install:composer_install.tgz",
+    "//cmd/php/runtime:runtime.tgz",
+    "//cmd/php/webconfig:webconfig.tgz",
+    "//cmd/utils/archive_source:archive_source.tgz",
+    "//cmd/utils/label:label_image.tgz",
+    "//cmd/utils/nginx:nginx.tgz",
+]
+
+GROUPS = {
+    "php": [
+        "//cmd/php/supervisor:supervisor.tgz",
+    ],
+    "python": [
+        "//cmd/python/runtime:runtime.tgz",
+    ],
+}
+
 builder(
     name = "builder",
-    buildpacks = [
-        "//cmd/config/entrypoint:entrypoint.tgz",
-        "//cmd/config/flex:flex.tgz",
-        "//cmd/php/appengine:appengine.tgz",
-        "//cmd/php/composer:composer.tgz",
-        "//cmd/php/composer_gcp_build:composer_gcp_build.tgz",
-        "//cmd/php/functions_framework:functions_framework.tgz",
-        "//cmd/php/cloudfunctions:cloudfunctions.tgz",
-        "//cmd/php/composer_install:composer_install.tgz",
-        "//cmd/php/runtime:runtime.tgz",
-        "//cmd/php/webconfig:webconfig.tgz",
-        "//cmd/utils/archive_source:archive_source.tgz",
-        "//cmd/utils/label:label_image.tgz",
-        "//cmd/utils/nginx:nginx.tgz",
-    ],
-    groups = {
-        "php": [
-            "//cmd/php/supervisor:supervisor.tgz",
-        ],
-        "python": [
-            "//cmd/python/runtime:runtime.tgz",
-        ],
-    },
+    builder_template = ":builder.toml.template",
+    buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
+    groups = GROUPS,
     image = "gcp/php",
+    stack = "google.gae.18",
+)
+
+builder(
+    name = "builder_22",
+    builder_template = ":builder.toml.template",
+    buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
+    groups = GROUPS,
+    image = "gcp/php-22",
+    stack = "google.gae.22",
 )

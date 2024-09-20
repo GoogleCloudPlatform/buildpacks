@@ -4,24 +4,45 @@ package(default_visibility = ["//builders/dotnet:__subpackages__"])
 
 licenses(["notice"])
 
+exports_files([
+    "builder.toml.template",
+])
+
+BUILDPACKS = [
+    "//cmd/config/entrypoint:entrypoint.tgz",
+    "//cmd/config/flex:flex.tgz",
+    "//cmd/dotnet/appengine:appengine.tgz",
+    "//cmd/dotnet/appengine_main:appengine_main.tgz",
+    "//cmd/dotnet/functions_framework:functions_framework.tgz",
+    "//cmd/dotnet/publish:publish.tgz",
+    "//cmd/dotnet/runtime:runtime.tgz",
+    "//cmd/dotnet/sdk:sdk.tgz",
+    "//cmd/utils/archive_source:archive_source.tgz",
+    "//cmd/utils/label:label_image.tgz",
+]
+
+GROUPS = {
+    "dotnet": [
+        "//cmd/dotnet/flex:flex.tgz",
+    ],
+}
+
 builder(
     name = "builder",
-    buildpacks = [
-        "//cmd/config/entrypoint:entrypoint.tgz",
-        "//cmd/config/flex:flex.tgz",
-        "//cmd/dotnet/appengine:appengine.tgz",
-        "//cmd/dotnet/appengine_main:appengine_main.tgz",
-        "//cmd/dotnet/functions_framework:functions_framework.tgz",
-        "//cmd/dotnet/publish:publish.tgz",
-        "//cmd/dotnet/runtime:runtime.tgz",
-        "//cmd/dotnet/sdk:sdk.tgz",
-        "//cmd/utils/archive_source:archive_source.tgz",
-        "//cmd/utils/label:label_image.tgz",
-    ],
-    groups = {
-        "dotnet": [
-            "//cmd/dotnet/flex:flex.tgz",
-        ],
-    },
+    builder_template = ":builder.toml.template",
+    buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
+    groups = GROUPS,
     image = "gcp/dotnet",
+    stack = "google.gae.18",
+)
+
+builder(
+    name = "builder_22",
+    builder_template = ":builder.toml.template",
+    buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
+    groups = GROUPS,
+    image = "gcp/dotnet-22",
+    stack = "google.gae.22",
 )

@@ -2,10 +2,16 @@
 This directory contains the definition of the PHP builder.
 
 ## Build the Image
-To build the builder image, run:
+To build the builder image for ubuntu-18 builder, run:
 
 ```bash
 bazel build //builders/php:builder.image
+```
+
+To build the builder image for ubuntu-22 builder, run:
+
+```bash
+bazel build //builders/php:builder_22.image
 ```
 
 ## Acceptance Tests
