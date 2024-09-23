@@ -12,3 +12,8 @@ env:
     value: 0.0.0.0
     availability:
       - RUNTIME
+metadata:
+  adapterPackageName: "@apphosting/adapter-angular"
+  adapterVersion: 17.2.7
+  framework: angular
+  frameworkVersion: 18.2.2

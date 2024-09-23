@@ -22,7 +22,18 @@ func TestReadAndValidateFromFile(t *testing.T) {
 					EnvironmentVariable{Variable: "SSR_PORT", Value: "8080", Availability: []string{"RUNTIME"}},
 					EnvironmentVariable{Variable: "HOSTNAME", Value: "0.0.0.0", Availability: []string{"RUNTIME"}},
 				},
+				Metadata: &Metadata{
+					AdapterPackageName: "@apphosting/adapter-angular",
+					AdapterVersion:     "17.2.7",
+					Framework:          "angular",
+					FrameworkVersion:   "18.2.2",
+				},
 			},
+		},
+		{
+			desc:             "Empty bundle schema for empty bundle yaml",
+			inputBundleYAML:  testdata.MustGetPath("testdata/bundle_empty.yaml"),
+			wantBundleSchema: BundleSchema{},
 		},
 		{
 			desc:            "Throw an error when the file doesn't exist",
@@ -42,6 +53,11 @@ func TestReadAndValidateFromFile(t *testing.T) {
 		{
 			desc:            "Throw an error when an env field contains an invalid availability value",
 			inputBundleYAML: testdata.MustGetPath("testdata/bundle_invalidenv_availability.yaml"),
+			wantErr:         true,
+		},
+		{
+			desc:            "Throw an error when a nonempty metadata is missing a required field",
+			inputBundleYAML: testdata.MustGetPath("testdata/bundle_invalid_md.yaml"),
 			wantErr:         true,
 		},
 	}

@@ -16,6 +16,7 @@
 package bundleschema
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -24,15 +25,29 @@ import (
 )
 
 var (
-	validAvailabilityValues = map[string]bool{"RUNTIME": true}
+	validAvailabilityValues      = map[string]bool{"RUNTIME": true}
+	errMissingAdapterPackageName = errors.New("missing the adapter package name in bundle.yaml metadata")
+	errMissingAdapterVersion     = errors.New("missing the adapter version in bundle.yaml metadata")
+	errMissingFrameworkName      = errors.New("missing the framework name in bundle.yaml metadata")
+	errMissingFrameworkVersion   = errors.New("missing the framework version in bundle.yaml metadata")
 )
 
-// EnvironmentVariable is the struct representation of the environment variables from bundle.yaml
+// EnvironmentVariable is the struct representation of the environment variables from bundle.yaml.
 type EnvironmentVariable apphostingschema.EnvironmentVariable
+
+// Metadata is the struct representation of the metadata from bundle.yaml.
+type Metadata struct {
+	AdapterPackageName string `yaml:"adapterPackageName"`
+	AdapterVersion     string `yaml:"adapterVersion"`
+	Framework          string `yaml:"framework"`
+	// TODO: b/366036980 retrieve community adapter's framework version from buildpack
+	FrameworkVersion string `yaml:"frameworkVersion"`
+}
 
 // BundleSchema is the struct representation of bundle.yaml.
 type BundleSchema struct {
-	Env []EnvironmentVariable `yaml:"env,omitempty"`
+	Env      []EnvironmentVariable `yaml:"env,omitempty"`
+	Metadata *Metadata             `yaml:"metadata,omitempty"` // empty when no adapter is used
 }
 
 // UnmarshalYAML provides custom validation logic to validate bundle.yaml environment variables.
@@ -51,6 +66,30 @@ func (ev *EnvironmentVariable) UnmarshalYAML(unmarshal func(any) error) error {
 		if !validAvailabilityValues[val] {
 			return fmt.Errorf("invalid value %s in 'availability'", val)
 		}
+	}
+
+	return nil
+}
+
+// UnmarshalYAML provides custom validation logic to validate bundle.yaml metadata.
+func (md *Metadata) UnmarshalYAML(unmarshal func(any) error) error {
+	type standardYAML Metadata // Define an alias
+	// Use alias and standard unmarshal to avoid recursive unmarshal on Metadata fields
+	if err := unmarshal((*standardYAML)(md)); err != nil {
+		return err
+	}
+
+	if md.AdapterPackageName == "" {
+		return errMissingAdapterPackageName
+	}
+	if md.AdapterVersion == "" {
+		return errMissingAdapterVersion
+	}
+	if md.Framework == "" {
+		return errMissingFrameworkName
+	}
+	if md.FrameworkVersion == "" {
+		return errMissingFrameworkVersion
 	}
 
 	return nil
