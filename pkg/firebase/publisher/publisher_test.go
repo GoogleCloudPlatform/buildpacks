@@ -289,3 +289,55 @@ func TestToBuildSchemaEnvVar(t *testing.T) {
 		})
 	}
 }
+
+func TestToBuildSchemaRunMetadata(t *testing.T) {
+	tests := []struct {
+		desc              string
+		inputBundleSchema bundleschema.BundleSchema
+		expectedSchema    buildSchema
+	}{
+		{
+			desc:              "Empty BundleSchema",
+			inputBundleSchema: bundleschema.BundleSchema{},
+			expectedSchema: buildSchema{
+				RunConfig: &apphostingschema.RunConfig{},
+			},
+		},
+		{
+			desc: "Full BundleSchema",
+			inputBundleSchema: bundleschema.BundleSchema{
+				Env: []bundleschema.EnvironmentVariable{
+					bundleschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
+				},
+				Metadata: &bundleschema.Metadata{
+					AdapterPackageName: "@apphosting/adapter-angular",
+					AdapterVersion:     "17.2.7",
+					Framework:          "angular",
+					FrameworkVersion:   "18.2.2",
+				},
+			},
+			expectedSchema: buildSchema{
+				RunConfig: &apphostingschema.RunConfig{},
+				Env: []apphostingschema.EnvironmentVariable{
+					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
+				},
+				Metadata: &bundleschema.Metadata{
+					AdapterPackageName: "@apphosting/adapter-angular",
+					AdapterVersion:     "17.2.7",
+					Framework:          "angular",
+					FrameworkVersion:   "18.2.2",
+				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			apphostingSchema := apphostingschema.AppHostingSchema{}
+			result := toBuildSchema(apphostingSchema, tc.inputBundleSchema)
+			if diff := cmp.Diff(tc.expectedSchema, result); diff != "" {
+				t.Errorf("toBuildSchema(%s) (-want +got):\n%s", tc.desc, diff)
+			}
+		})
+	}
+}

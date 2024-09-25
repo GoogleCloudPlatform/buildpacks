@@ -33,6 +33,7 @@ import (
 type buildSchema struct {
 	RunConfig *apphostingschema.RunConfig            `yaml:"runConfig,omitempty"`
 	Env       []apphostingschema.EnvironmentVariable `yaml:"env,omitempty"`
+	Metadata  *bundleschema.Metadata                 `yaml:"metadata,omitempty"`
 }
 
 var (
@@ -75,6 +76,9 @@ func toBuildSchema(appHostingSchema apphostingschema.AppHostingSchema, bundleSch
 
 	// Copy RunConfig fields from apphosting.yaml, Control Plane will set defaults for any unset fields.
 	buildSchema.RunConfig = &appHostingSchema.RunConfig
+
+	// Copy Metadata fields from bundle.yaml.
+	buildSchema.Metadata = bundleSchema.Metadata
 
 	// Merge Env fields from bundle.yaml and apphosting.yaml together.
 	if len(appHostingSchema.Env) > 0 || len(bundleSchema.Env) > 0 {
