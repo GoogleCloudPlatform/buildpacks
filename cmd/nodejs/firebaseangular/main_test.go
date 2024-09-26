@@ -209,28 +209,6 @@ func TestBuild(t *testing.T) {
 			},
 		},
 		{
-			name: "error out if core version is below 17.2.0",
-			files: map[string]string{
-				"package.json": `{
-				"dependencies": {
-					"@angular/core": "17.0.0",
-					"@angular-devkit/build-angular": "17.2.0"
-				}
-			}`,
-				"package-lock.json": `{
-				"packages": {
-					"node_modules/@angular/core": {
-						"version": "17.0.0"
-					},
-					"node_modules/@angular-devkit/build-angular": {
-						"version": "17.2.0"
-					}
-				}
-			}`,
-			},
-			wantExitCode: 1,
-		},
-		{
 			name: "error out if the builder version is below 17.2.0",
 			files: map[string]string{
 				"package.json": `{

@@ -76,16 +76,6 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
-	// Check that we support this version of angular.
-	version, err := nodejs.Version(nodeDeps, "@angular/core")
-	if err != nil {
-		ctx.Warnf("Error parsing version from lock file, defaulting to package.json version")
-		version = nodeDeps.PackageJSON.Dependencies["@angular/core"]
-	}
-	err = validateVersion(ctx, version)
-	if err != nil {
-		return err
-	}
 	// Ensure that the right version of the application builder is installed.
 	builderVersion, err := nodejs.Version(nodeDeps, "@angular-devkit/build-angular")
 	if err != nil {
@@ -113,12 +103,12 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
-	if err = nodejs.InstallAngularBuildAdaptor(ctx, al, version); err != nil {
+	if err = nodejs.InstallAngularBuildAdaptor(ctx, al, builderVersion); err != nil {
 		return err
 	}
 
 	// pass angular version as environment variable that will configure the build for version matching
-	al.BuildEnvironment.Override(frameworkVersion, version)
+	al.BuildEnvironment.Override(frameworkVersion, builderVersion)
 
 	// This env var indicates to the package manager buildpack that a different command needs to be run
 	nodejs.OverrideAngularBuildScript(al)
