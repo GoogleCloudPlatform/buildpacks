@@ -1,9 +1,7 @@
-runCommand: node .apphosting/dist/server/server.mjs
-neededDirs:
-  - .apphosting
-staticAssets:
-  - .apphosting/dist/browser
-env: []
+version: v1
+serverConfig:
+  runCommand: node dist/angular/server/server.mjs
+  environmentVariables: []
 metadata:
   adapterPackageName: "@apphosting/adapter-angular"
   framework: angular

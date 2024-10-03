@@ -35,6 +35,22 @@ var (
 // EnvironmentVariable is the struct representation of the environment variables from bundle.yaml.
 type EnvironmentVariable apphostingschema.EnvironmentVariable
 
+// BundleSchema is the struct representation of bundle.yaml.
+type BundleSchema struct {
+	ServerConfig ServerConfig `yaml:"serverConfig"`
+	Metadata     *Metadata    `yaml:"metadata,omitempty"`
+}
+
+// ServerConfig is the struct representation of the passed server config.
+type ServerConfig struct {
+	EnvironmentVariables []EnvironmentVariable `yaml:"environmentVariables,omitempty"`
+	CPU                  *float32              `yaml:"cpu"`
+	MemoryMiB            *int32                `yaml:"memoryMiB"`
+	Concurrency          *int32                `yaml:"concurrency"`
+	MaxInstances         *int32                `yaml:"maxInstances"`
+	MinInstances         *int32                `yaml:"minInstances"`
+}
+
 // Metadata is the struct representation of the metadata from bundle.yaml.
 type Metadata struct {
 	AdapterPackageName string `yaml:"adapterPackageName"`
@@ -42,12 +58,6 @@ type Metadata struct {
 	Framework          string `yaml:"framework"`
 	// TODO: b/366036980 retrieve community adapter's framework version from buildpack
 	FrameworkVersion string `yaml:"frameworkVersion"`
-}
-
-// BundleSchema is the struct representation of bundle.yaml.
-type BundleSchema struct {
-	Env      []EnvironmentVariable `yaml:"env,omitempty"`
-	Metadata *Metadata             `yaml:"metadata,omitempty"` // empty when no adapter is used
 }
 
 // UnmarshalYAML provides custom validation logic to validate bundle.yaml environment variables.

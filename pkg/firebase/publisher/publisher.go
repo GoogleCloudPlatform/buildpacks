@@ -74,16 +74,14 @@ func writeToFile(buildSchema buildSchema, outputFilePath string) error {
 func toBuildSchema(appHostingSchema apphostingschema.AppHostingSchema, bundleSchema bundleschema.BundleSchema) buildSchema {
 	buildSchema := buildSchema{}
 
-	// Copy RunConfig fields from apphosting.yaml, Control Plane will set defaults for any unset fields.
-	buildSchema.RunConfig = &appHostingSchema.RunConfig
+	// Merge RunConfig fields from apphosting.yaml and bundle.yaml, Control Plane will set defaults for any unset fields.
+	buildSchema.RunConfig = mergeRunConfig(appHostingSchema.RunConfig, bundleSchema.ServerConfig)
 
 	// Copy Metadata fields from bundle.yaml.
 	buildSchema.Metadata = bundleSchema.Metadata
 
 	// Merge Env fields from bundle.yaml and apphosting.yaml together.
-	if len(appHostingSchema.Env) > 0 || len(bundleSchema.Env) > 0 {
-		buildSchema.Env = mergeEnvironmentVariables(appHostingSchema.Env, bundleSchema.Env)
-	}
+	buildSchema.Env = mergeEnvironmentVariables(appHostingSchema.Env, bundleSchema.ServerConfig.EnvironmentVariables)
 
 	return buildSchema
 }
@@ -112,6 +110,35 @@ func mergeEnvironmentVariables(aevs []apphostingschema.EnvironmentVariable, bevs
 	return merged
 }
 
+// mergeRunConfig merges the RunConfig from apphosting.yaml and bundle.yaml.
+// If there is a conflict between the fields, use the value from apphosting.yaml.
+func mergeRunConfig(arc apphostingschema.RunConfig, brc bundleschema.ServerConfig) *apphostingschema.RunConfig {
+	merged := &apphostingschema.RunConfig{
+		CPU:          brc.CPU,
+		MemoryMiB:    brc.MemoryMiB,
+		Concurrency:  brc.Concurrency,
+		MinInstances: brc.MinInstances,
+		MaxInstances: brc.MaxInstances,
+	}
+	if arc.CPU != nil {
+		merged.CPU = arc.CPU
+	}
+	if arc.MemoryMiB != nil {
+		merged.MemoryMiB = arc.MemoryMiB
+	}
+	if arc.Concurrency != nil {
+		merged.Concurrency = arc.Concurrency
+	}
+	if arc.MinInstances != nil {
+		merged.MinInstances = arc.MinInstances
+	}
+	if arc.MaxInstances != nil {
+		merged.MaxInstances = arc.MaxInstances
+	}
+
+	return merged
+}
+
 func isEnvAvailabilityOverlap(appHostingAvailability, bundleAvailability []string) bool {
 	availabilityByName := make(map[string]bool)
 	for _, av := range appHostingAvailability {
@@ -134,7 +161,6 @@ func Publish(appHostingYAMLPath string, bundleYAMLPath string, outputFilePath st
 		return err
 	}
 
-	// For now, simply validates that bundle.yaml exists.
 	bundleSchema, err := bundleschema.ReadAndValidateFromFile(bundleYAMLPath)
 	if err != nil {
 		return err

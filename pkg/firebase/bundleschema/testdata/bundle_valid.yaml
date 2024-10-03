@@ -1,17 +1,15 @@
-runCommand: node .apphosting/dist/server/server.mjs
-neededDirs:
-  - .apphosting
-staticAssets:
-  - .apphosting/dist/browser
-env:
-  - variable: SSR_PORT
-    value: "8080"
-    availability:
-      - RUNTIME
-  - variable: HOSTNAME
-    value: 0.0.0.0
-    availability:
-      - RUNTIME
+version: v1
+serverConfig:
+  runCommand: node dist/angular-ssr/server/server.mjs
+  environmentVariables: 
+    - variable: SSR_PORT
+      value: "8080"
+      availability:
+        - RUNTIME
+    - variable: HOSTNAME
+      value: 0.0.0.0
+      availability:
+        - RUNTIME
 metadata:
   adapterPackageName: "@apphosting/adapter-angular"
   adapterVersion: 17.2.7

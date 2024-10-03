@@ -209,8 +209,10 @@ func TestToBuildSchemaEnvVar(t *testing.T) {
 				},
 			},
 			inputBundleSchema: bundleschema.BundleSchema{
-				Env: []bundleschema.EnvironmentVariable{
-					bundleschema.EnvironmentVariable{Variable: "SSR_PORT", Value: "8080", Availability: []string{"RUNTIME"}},
+				ServerConfig: bundleschema.ServerConfig{
+					EnvironmentVariables: []bundleschema.EnvironmentVariable{
+						bundleschema.EnvironmentVariable{Variable: "SSR_PORT", Value: "8080", Availability: []string{"RUNTIME"}},
+					},
 				},
 			},
 			expectedSchema: buildSchema{
@@ -230,9 +232,12 @@ func TestToBuildSchemaEnvVar(t *testing.T) {
 					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
 				},
 			},
-			inputBundleSchema: bundleschema.BundleSchema{Env: []bundleschema.EnvironmentVariable{
-				bundleschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
-			}},
+			inputBundleSchema: bundleschema.BundleSchema{
+				ServerConfig: bundleschema.ServerConfig{
+					EnvironmentVariables: []bundleschema.EnvironmentVariable{
+						bundleschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
+					},
+				}},
 			expectedSchema: buildSchema{
 				RunConfig: &apphostingschema.RunConfig{},
 				Env: []apphostingschema.EnvironmentVariable{
@@ -248,9 +253,12 @@ func TestToBuildSchemaEnvVar(t *testing.T) {
 					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"RUNTIME"}},
 				},
 			},
-			inputBundleSchema: bundleschema.BundleSchema{Env: []bundleschema.EnvironmentVariable{
-				bundleschema.EnvironmentVariable{Variable: "API_KEY", Value: "bundleApiKey", Availability: []string{"RUNTIME"}},
-			},
+			inputBundleSchema: bundleschema.BundleSchema{
+				ServerConfig: bundleschema.ServerConfig{
+					EnvironmentVariables: []bundleschema.EnvironmentVariable{
+						bundleschema.EnvironmentVariable{Variable: "API_KEY", Value: "bundleApiKey", Availability: []string{"RUNTIME"}},
+					},
+				},
 			},
 			expectedSchema: buildSchema{
 				RunConfig: &apphostingschema.RunConfig{},
@@ -266,9 +274,12 @@ func TestToBuildSchemaEnvVar(t *testing.T) {
 					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "apphostingapi.service.com", Availability: []string{"BUILD"}},
 				},
 			},
-			inputBundleSchema: bundleschema.BundleSchema{Env: []bundleschema.EnvironmentVariable{
-				bundleschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
-			},
+			inputBundleSchema: bundleschema.BundleSchema{
+				ServerConfig: bundleschema.ServerConfig{
+					EnvironmentVariables: []bundleschema.EnvironmentVariable{
+						bundleschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
+					},
+				},
 			},
 			expectedSchema: buildSchema{
 				RunConfig: &apphostingschema.RunConfig{},
@@ -276,6 +287,65 @@ func TestToBuildSchemaEnvVar(t *testing.T) {
 					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "apphostingapi.service.com", Availability: []string{"BUILD"}},
 					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
 				},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			result := toBuildSchema(tc.inputAppHostingSchema, tc.inputBundleSchema)
+			if diff := cmp.Diff(tc.expectedSchema, result); diff != "" {
+				t.Errorf("toBuildSchema(%s) (-want +got):\n%s", tc.desc, diff)
+			}
+		})
+	}
+}
+func TestMergeRunConfig(t *testing.T) {
+	tests := []struct {
+		desc                  string
+		inputAppHostingSchema apphostingschema.AppHostingSchema
+		inputBundleSchema     bundleschema.BundleSchema
+		expectedSchema        buildSchema
+	}{
+		{
+			desc:                  "Merging AppHostingSchema and BundleSchema with empty run config",
+			inputAppHostingSchema: apphostingschema.AppHostingSchema{},
+			inputBundleSchema:     bundleschema.BundleSchema{},
+			expectedSchema: buildSchema{
+				RunConfig: &apphostingschema.RunConfig{},
+			},
+		},
+		{
+			desc: "Merging nonconflicting AppHostingSchema and BundleSchema",
+			inputAppHostingSchema: apphostingschema.AppHostingSchema{
+				RunConfig: apphostingschema.RunConfig{CPU: proto.Float32(3), Concurrency: proto.Int32(2), MemoryMiB: proto.Int32(1024)},
+			},
+			inputBundleSchema: bundleschema.BundleSchema{
+				ServerConfig: bundleschema.ServerConfig{
+					MaxInstances: proto.Int32(2),
+					MinInstances: proto.Int32(1),
+				},
+			},
+			expectedSchema: buildSchema{
+				RunConfig: &apphostingschema.RunConfig{CPU: proto.Float32(3), Concurrency: proto.Int32(2), MemoryMiB: proto.Int32(1024), MaxInstances: proto.Int32(2), MinInstances: proto.Int32(1)},
+			},
+		},
+		{
+			desc: "Merging AppHostingSchema and BundleSchema with conflicts",
+			inputAppHostingSchema: apphostingschema.AppHostingSchema{
+				RunConfig: apphostingschema.RunConfig{CPU: proto.Float32(3), Concurrency: proto.Int32(2), MemoryMiB: proto.Int32(1024)},
+			},
+			inputBundleSchema: bundleschema.BundleSchema{
+				ServerConfig: bundleschema.ServerConfig{
+					MaxInstances: proto.Int32(2),
+					MinInstances: proto.Int32(1),
+					CPU:          proto.Float32(5),
+					Concurrency:  proto.Int32(3),
+					MemoryMiB:    proto.Int32(64),
+				},
+			},
+			expectedSchema: buildSchema{
+				RunConfig: &apphostingschema.RunConfig{CPU: proto.Float32(3), Concurrency: proto.Int32(2), MemoryMiB: proto.Int32(1024), MaxInstances: proto.Int32(2), MinInstances: proto.Int32(1)},
 			},
 		},
 	}
@@ -306,9 +376,9 @@ func TestToBuildSchemaRunMetadata(t *testing.T) {
 		{
 			desc: "Full BundleSchema",
 			inputBundleSchema: bundleschema.BundleSchema{
-				Env: []bundleschema.EnvironmentVariable{
+				ServerConfig: bundleschema.ServerConfig{EnvironmentVariables: []bundleschema.EnvironmentVariable{
 					bundleschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
-				},
+				}},
 				Metadata: &bundleschema.Metadata{
 					AdapterPackageName: "@apphosting/adapter-angular",
 					AdapterVersion:     "17.2.7",

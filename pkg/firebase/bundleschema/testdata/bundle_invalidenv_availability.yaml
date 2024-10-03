@@ -1,10 +1,8 @@
-runCommand: node .apphosting/dist/server/server.mjs
-neededDirs:
-  - .apphosting
-staticAssets:
-  - .apphosting/dist/browser
-env:
-  - variable: SSR_PORT
+version: v1
+serverConfig:
+  runCommand: node dist/angular/server/server.mjs
+  environmentVariables: 
+    - variable: SSR_PORT
     value: "8080"
     availability:
       - BUILD

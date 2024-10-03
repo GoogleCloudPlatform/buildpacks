@@ -18,9 +18,11 @@ func TestReadAndValidateFromFile(t *testing.T) {
 			desc:            "Read properly formatted bundle yaml schema properly",
 			inputBundleYAML: testdata.MustGetPath("testdata/bundle_valid.yaml"),
 			wantBundleSchema: BundleSchema{
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "SSR_PORT", Value: "8080", Availability: []string{"RUNTIME"}},
-					EnvironmentVariable{Variable: "HOSTNAME", Value: "0.0.0.0", Availability: []string{"RUNTIME"}},
+				ServerConfig: ServerConfig{
+					EnvironmentVariables: []EnvironmentVariable{
+						EnvironmentVariable{Variable: "SSR_PORT", Value: "8080", Availability: []string{"RUNTIME"}},
+						EnvironmentVariable{Variable: "HOSTNAME", Value: "0.0.0.0", Availability: []string{"RUNTIME"}},
+					},
 				},
 				Metadata: &Metadata{
 					AdapterPackageName: "@apphosting/adapter-angular",

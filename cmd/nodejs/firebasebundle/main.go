@@ -81,36 +81,45 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return gcp.InternalErrorf("copying output bundle dir %s: %w", outputBundleDir, err)
 	}
-
-	if bundleYaml.StaticAssets == nil {
-		// copy public folder by default if there are no static assets declared
-		ctx.Logf("No static assets declared, copying public directory (if it exists) to staticAssets by default")
-		err := copyPublicDirToOutputBundleDir(outputPublicDir, workspacePublicDir, ctx)
-		if err != nil {
-			return err
-		}
-	} else {
-		for _, staticAsset := range bundleYaml.StaticAssets {
-			ctx.MkdirAll(filepath.Join(outputBundleDir, staticAsset), 0744)
-			err := fileutil.MaybeCopyPathContents(filepath.Join(outputBundleDir, staticAsset), filepath.Join(ctx.ApplicationRoot(), staticAsset), fileutil.AllPaths)
-			if err != nil {
-				ctx.Logf("%s dir not detected", staticAsset)
-			}
-		}
+	err = copyPublicDirToOutputBundleDir(outputPublicDir, workspacePublicDir, ctx)
+	if err != nil {
+		return err
 	}
 
-	ctx.Logf("Configuring run command entry point")
-	if bundleYaml.RunCommand != "" {
-		ctx.AddWebProcess(strings.Split(bundleYaml.RunCommand, " "))
+	if bundleYaml.ServerConfig.RunCommand != "" {
+		ctx.AddWebProcess(strings.Split(bundleYaml.ServerConfig.RunCommand, " "))
 	}
 	return nil
 }
 
-// BundleYaml represents the contents of a bundle.yaml file.
+// bundleYaml represents the contents of a bundle.yaml file.
 type bundleYaml struct {
-	RunCommand   string   `yaml:"runCommand"`
-	NeededDirs   []string `yaml:"neededDirs"`
-	StaticAssets []string `yaml:"staticAssets"`
+	Version      string       `yaml:"version"`
+	ServerConfig serverConfig `yaml:"serverConfig"`
+	Metadata     metadata     `yaml:"metadata"`
+}
+
+type serverConfig struct {
+	RunCommand           string         `yaml:"runCommand"`
+	EnvironmentVariables []envVarConfig `yaml:"environmentVariables"`
+	Concurrency          string         `yaml:"concurrency"`
+	CPU                  string         `yaml:"cpu"`
+	MemoryMiB            string         `yaml:"memory"`
+	MinInstances         string         `yaml:"minInstances"`
+	MaxInstances         string         `yaml:"maxInstances"`
+}
+
+type metadata struct {
+	AdapterPackageName string `yaml:"name"`
+	AdapterVersion     string `yaml:"path"`
+	Framework          string `yaml:"framework"`
+	FrameworkVersion   string `yaml:"frameworkVersion"`
+}
+
+type envVarConfig struct {
+	Variable     string   `yaml:"variable"`
+	Value        string   `yaml:"value"`
+	Availability []string `yaml:"availability"`
 }
 
 func convertToMap(slice []string) map[string]bool {
