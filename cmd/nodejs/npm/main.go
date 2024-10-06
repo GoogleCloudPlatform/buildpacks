@@ -127,7 +127,7 @@ func buildFn(ctx *gcp.Context) error {
 				return err
 			}
 
-			if _, err := ctx.Exec([]string{"npm", installCmd, "--quiet"}, gcp.WithEnv("NODE_ENV="+buildNodeEnv), gcp.WithUserAttribution); err != nil {
+			if _, err := ctx.Exec([]string{"npm", installCmd, "--quiet", "--no-fund", "--no-audit"}, gcp.WithEnv("NODE_ENV="+buildNodeEnv), gcp.WithUserAttribution); err != nil {
 				return err
 			}
 			// Ensure node_modules exists even if no dependencies were installed.
