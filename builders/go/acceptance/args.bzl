@@ -31,6 +31,10 @@ def newArgs(runtime, runImageTag, stack):
     }
 
 def runImage(runtime, runImageTag, stack):
+    # TODO(yashag): Remove this once b/371521232 is fixed.
+    if runtime == "go123":
+        return "us-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/go123:go123_20241002_1_23_1_RC00"
+
     if stack != "":
         if runImageTag != "":
             return "us-docker.pkg.dev/gae-runtimes-private/gcp/" + stack + "/runtimes/" + runtime + ":" + runImageTag
