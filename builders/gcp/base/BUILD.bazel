@@ -160,3 +160,52 @@ builder(
     },
     image = "google-22/builder",
 )
+
+builder(
+    name = "min_22_builder",
+    buildpacks = [
+        "//cmd/config/entrypoint:entrypoint.tgz",
+        "//cmd/utils/label:label_image.tgz",
+    ],
+    descriptor = "google.min.22.builder.toml",
+    groups = {
+        "dart": [
+            "//cmd/dart/compile:compile.tgz",
+            "//cmd/dart/pub:pub.tgz",
+            "//cmd/dart/sdk:sdk.tgz",
+        ],
+        "dotnet": [
+            "//cmd/dotnet/functions_framework:functions_framework.tgz",
+            "//cmd/dotnet/publish:publish.tgz",
+            "//cmd/dotnet/runtime:runtime.tgz",
+            "//cmd/dotnet/sdk:sdk.tgz",
+        ],
+        "go": [
+            "//cmd/go/build:build.tgz",
+            "//cmd/go/clear_source:clear_source.tgz",
+            "//cmd/go/functions_framework:functions_framework.tgz",
+            "//cmd/go/gomod:gomod.tgz",
+            "//cmd/go/gopath:gopath.tgz",
+            "//cmd/go/runtime:runtime.tgz",
+        ],
+        "java": [
+            "//cmd/java/clear_source:clear_source.tgz",
+            "//cmd/java/entrypoint:entrypoint.tgz",
+            "//cmd/java/exploded_jar:exploded_jar.tgz",
+            "//cmd/java/functions_framework:functions_framework.tgz",
+            "//cmd/java/gradle:gradle.tgz",
+            "//cmd/java/maven:maven.tgz",
+            "//cmd/java/runtime:runtime.tgz",
+            "//cmd/java/graalvm:graalvm.tgz",
+            "//cmd/java/native_image:native_image.tgz",
+        ],
+        "nodejs": [
+            "//cmd/nodejs/functions_framework:functions_framework.tgz",
+            "//cmd/nodejs/npm:npm.tgz",
+            "//cmd/nodejs/runtime:runtime.tgz",
+            "//cmd/nodejs/yarn:yarn.tgz",
+            "//cmd/nodejs/pnpm:pnpm.tgz",
+        ],
+    },
+    image = "google-min-22/builder",
+)

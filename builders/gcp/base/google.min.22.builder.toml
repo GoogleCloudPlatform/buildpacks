@@ -485,7 +485,7 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
 [stack]
   id = "google.gae.22"
-  build-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-gae-22/build"
+  build-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-min-22/build"
   run-image = "gcr.io/gae-runtimes/buildpacks/stacks/google-min-22/run"
 
 [lifecycle]

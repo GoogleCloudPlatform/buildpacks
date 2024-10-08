@@ -20,6 +20,17 @@
 #   $ gcloud builds submit --config=tools/cloudbuild/create_stacks.yaml \
 #      --substitutions _CANDIDATE_NAME=my-local-build
 steps:
+  - id: min-build-image
+    name: gcr.io/cloud-builders/docker
+    dir: stacks/google_min_22
+    args:
+    - 'build'
+    - '--build-arg="packages=build-packages.txt"'
+    - '--build-arg="CANDIDATE_NAME=${_CANDIDATE_NAME}"'
+    - '-t=gcr.io/$PROJECT_ID/stacks/google-min-22/build:latest'
+    - '.'
+    waitFor: ['-']
+
   - id: min-run-image
     name: gcr.io/cloud-builders/docker
     dir: stacks/google_min_22
@@ -54,6 +65,7 @@ steps:
     waitFor: ['-']
 
 images:
+  - 'gcr.io/$PROJECT_ID/stacks/google-min-22/build:latest'
   - 'gcr.io/$PROJECT_ID/stacks/google-min-22/run:latest'
   - 'gcr.io/$PROJECT_ID/stacks/google-gae-22/build:latest'
   - 'gcr.io/$PROJECT_ID/stacks/google-gae-22/run:latest'
