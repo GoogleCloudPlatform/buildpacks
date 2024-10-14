@@ -26,7 +26,7 @@ def newArgs(version, runImageTag, stack):
 def runImage(version, runImageTag, stack):
     if stack != "":
         if runImageTag != "":
-            return "us-docker.pkg.dev/gae-runtimes-private/gcp/" + stack + "/runtimes/python" + version + ":" + runImageTag
+            return "us-docker.pkg.dev/gae-runtimes-private/" + stack + "/runtimes/python" + version + ":" + runImageTag
         else:
             return "gcr.io/gae-runtimes/buildpacks/python" + version + "/run"
 

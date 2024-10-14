@@ -37,7 +37,7 @@ def runImage(runtime, runImageTag, stack):
 
     if stack != "":
         if runImageTag != "":
-            return "us-docker.pkg.dev/gae-runtimes-private/gcp/" + stack + "/runtimes/" + runtime + ":" + runImageTag
+            return "us-docker.pkg.dev/gae-runtimes-private/" + stack + "/runtimes/" + runtime + ":" + runImageTag
         else:
             return "gcr.io/gae-runtimes/buildpacks/" + runtime + "/run"
 
