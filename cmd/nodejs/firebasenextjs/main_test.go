@@ -30,11 +30,19 @@ func TestDetect(t *testing.T) {
 		want  int
 	}{
 		{
+			name: "not a firebase apphosting app",
+			files: map[string]string{
+				"index.js": "",
+			},
+			want: 100,
+		},
+		{
 			name: "with next config",
 			files: map[string]string{
 				"index.js":       "",
 				"next.config.js": "",
 			},
+			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
 			want: 0,
 		},
 		{
@@ -42,6 +50,7 @@ func TestDetect(t *testing.T) {
 			files: map[string]string{
 				"index.js": "",
 			},
+			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
 			want: 100,
 		},
 		{
@@ -50,7 +59,7 @@ func TestDetect(t *testing.T) {
 				"apps/next-app/index.js":       "",
 				"apps/next-app/next.config.js": "",
 			},
-			envs: []string{"GOOGLE_BUILDABLE=apps/next-app"},
+			envs: []string{"GOOGLE_BUILDABLE=apps/next-app", "X_GOOGLE_TARGET_PLATFORM=fah"},
 			want: 0,
 		},
 	}

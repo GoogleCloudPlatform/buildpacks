@@ -30,11 +30,20 @@ func TestDetect(t *testing.T) {
 		want  int
 	}{
 		{
+			name: "not a firebase apphosting app",
+			files: map[string]string{
+				"index.js":     "",
+				"angular.json": "",
+			},
+			want: 100,
+		},
+		{
 			name: "with angular config",
 			files: map[string]string{
 				"index.js":     "",
 				"angular.json": "",
 			},
+			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
 			want: 0,
 		},
 		{
@@ -43,7 +52,7 @@ func TestDetect(t *testing.T) {
 				"packages/foo/index.js":     "",
 				"packages/foo/angular.json": "",
 			},
-			envs: []string{"GOOGLE_BUILDABLE=packages/foo"},
+			envs: []string{"GOOGLE_BUILDABLE=packages/foo", "X_GOOGLE_TARGET_PLATFORM=fah"},
 			want: 0,
 		},
 		{
@@ -59,6 +68,7 @@ func TestDetect(t *testing.T) {
 				}
 			}`,
 			},
+			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
 			want: 100,
 		},
 		{
@@ -84,6 +94,7 @@ func TestDetect(t *testing.T) {
 					}
 				}`,
 			},
+			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
 			want: 0,
 		},
 	}

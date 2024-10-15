@@ -134,6 +134,9 @@ const (
 	// TargetPlatformFlex is the flex value for 'X_GOOGLE_TARGET_PLATFORM'
 	TargetPlatformFlex = "flex"
 
+	// TargetPlatformFAH is the firebase apphosting value for 'X_GOOGLE_TARGET_PLATFORM'
+	TargetPlatformFAH = "fah"
+
 	// FlexEnv is internal env variable to denote a flex application
 	FlexEnv = "GOOGLE_FLEX_APPLICATION"
 
@@ -152,9 +155,14 @@ func IsGAE() bool {
 	return TargetPlatformAppEngine == os.Getenv(XGoogleTargetPlatform)
 }
 
+// IsFAH returns true if the buildpack target platform is fah.
+func IsFAH() bool {
+	return TargetPlatformFAH == os.Getenv(XGoogleTargetPlatform)
+}
+
 // IsGCP returns true if the buildpack target platform is not gae, gcf or flex.
 func IsGCP() bool {
-	return !IsGAE() && !IsGCF() && !IsFlex()
+	return !IsGAE() && !IsGCF() && !IsFlex() && !IsFAH()
 }
 
 // IsGCF returns true if the buildpack target platform is gcf.

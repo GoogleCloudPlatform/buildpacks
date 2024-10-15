@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"gopkg.in/yaml.v2"
@@ -41,7 +42,10 @@ func main() {
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	// This buildpack handles some necessary setup for future app hosting processes,
 	// it should always run for any app hosting initial build.
-	return gcp.OptInAlways(), nil
+	if !env.IsFAH() {
+		return gcp.OptOut("not a firebase apphosting application"), nil
+	}
+	return gcp.OptIn("firebase apphosting application"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

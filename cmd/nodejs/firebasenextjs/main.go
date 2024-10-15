@@ -21,6 +21,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/Masterminds/semver"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -40,6 +41,10 @@ func main() {
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	appDir := util.ApplicationDirectory(ctx)
+
+	if !env.IsFAH() {
+		return gcp.OptOut("not a firebase apphosting application"), nil
+	}
 	// TODO (b/313959098)
 	// Verify nextjs version
 	nextConfigExists, err := ctx.FileExists(appDir, "next.config.js")

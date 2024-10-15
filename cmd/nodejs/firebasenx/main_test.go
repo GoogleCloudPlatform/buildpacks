@@ -10,14 +10,23 @@ func TestDetect(t *testing.T) {
 	testCases := []struct {
 		name  string
 		files map[string]string
+		envs  []string
 		want  int
 	}{
+		{
+			name: "not a firebase apphosting app",
+			files: map[string]string{
+				"index.js": "",
+			},
+			want: 100,
+		},
 		{
 			name: "with nx config",
 			files: map[string]string{
 				"index.js": "",
 				"nx.json":  "",
 			},
+			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
 			want: 0,
 		},
 		{
@@ -25,12 +34,13 @@ func TestDetect(t *testing.T) {
 			files: map[string]string{
 				"index.js": "",
 			},
+			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
 			want: 100,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			bpt.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+			bpt.TestDetect(t, detectFn, tc.name, tc.files, tc.envs, tc.want)
 		})
 	}
 }

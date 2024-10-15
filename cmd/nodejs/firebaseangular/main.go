@@ -22,6 +22,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -40,6 +41,9 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if !env.IsFAH() {
+		return gcp.OptOut("not a firebase apphosting application"), nil
+	}
 	appDir := util.ApplicationDirectory(ctx)
 	angularJSONExists, err := ctx.FileExists(appDir, "angular.json")
 	if err != nil {
