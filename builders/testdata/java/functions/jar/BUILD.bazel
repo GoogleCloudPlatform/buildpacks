@@ -1,5 +1,7 @@
 # Function deployed as an already-built jar.
 
+load("@rules_java//java:defs.bzl", "java_binary")
+
 licenses(["notice"])
 
 # We can use :fatjar_deploy.jar as a "far jar" (one that contains all its
