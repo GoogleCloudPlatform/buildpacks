@@ -33,6 +33,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 		{
 			Name:            "simple application",
 			App:             "simple",
+			Env:             []string{"GOOGLE_NODEJS_VERSION=16.17.1", "X_GOOGLE_TARGET_PLATFORM=fah"},
 			MustUse:         []string{nodeRuntime, nodeNPM},
 			EnableCacheTest: true,
 		},
@@ -41,7 +42,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			Name:    "runtime version 16.17.1",
 			App:     "simple",
 			Path:    "/version?want=16.17.1",
-			Env:     []string{"GOOGLE_NODEJS_VERSION=16.17.1"},
+			Env:     []string{"GOOGLE_NODEJS_VERSION=16.17.1", "X_GOOGLE_TARGET_PLATFORM=fah"},
 			MustUse: []string{nodeRuntime},
 		},
 
@@ -57,6 +58,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 		{
 			Name:       "pnpm",
 			App:        "pnpm",
+			Env:        []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
 			MustUse:    []string{nodeRuntime, nodePNPM},
 			MustNotUse: []string{nodeNPM, nodeYarn},
 		},
@@ -64,7 +66,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			Name:       "runtime version with npm ci",
 			App:        "simple",
 			Path:       "/version?want=16.18.1",
-			Env:        []string{"GOOGLE_RUNTIME_VERSION=16.18.1"},
+			Env:        []string{"GOOGLE_RUNTIME_VERSION=16.18.1", "X_GOOGLE_TARGET_PLATFORM=fah"},
 			MustUse:    []string{nodeRuntime, nodeNPM},
 			MustNotUse: []string{nodePNPM, nodeYarn},
 		},
@@ -73,6 +75,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			// npm@8 requires nodejs@12+
 			VersionInclusionConstraint: ">= 12.0.0",
 			App:                        "npm_version_specified",
+			Env:                        []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
 			MustOutput:                 []string{"npm --version\n\n8.3.1"},
 			Path:                       "/version?want=8.3.1",
 		},
@@ -96,8 +99,14 @@ func TestFailuresNodeJs(t *testing.T) {
 		{
 			Name:      "bad runtime version",
 			App:       "simple",
-			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
+			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS", "X_GOOGLE_TARGET_PLATFORM=fah"},
 			MustMatch: "invalid Node.js version specified",
+		},
+		{
+			Name:                   "Env variable not set",
+			App:                    "simple",
+			Env:                    []string{"GOOGLE_RUNTIME_VERSION=16.18.1"},
+			SkipBuilderOutputMatch: true,
 		},
 	}
 
