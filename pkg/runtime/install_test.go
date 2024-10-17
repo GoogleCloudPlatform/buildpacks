@@ -208,17 +208,18 @@ func TestInstallRuby(t *testing.T) {
 
 func TestInstallSource(t *testing.T) {
 	testCases := []struct {
-		name               string
-		runtime            InstallableRuntime
-		version            string
-		httpStatus         int
-		stackID            string
-		responseFile       string
-		runtimeImageRegion string
-		wantFile           string
-		wantVersion        string
-		wantError          bool
-		wantAR             bool
+		name                       string
+		runtime                    InstallableRuntime
+		version                    string
+		httpStatus                 int
+		stackID                    string
+		responseFile               string
+		runtimeImageRegion         string
+		wantFile                   string
+		wantVersion                string
+		wantError                  bool
+		wantAR                     bool
+		serverlessRuntimesTarballs string
 	}{
 		{
 			name:         "install with lorry",
@@ -236,6 +237,15 @@ func TestInstallSource(t *testing.T) {
 			runtimeImageRegion: "us-west1",
 			wantError:          false,
 			wantAR:             true,
+		},
+		{
+			name:                       "install with artifact registry serverless runtimes",
+			runtime:                    Python,
+			version:                    "3.10.0",
+			runtimeImageRegion:         "us-west1",
+			wantError:                  false,
+			wantAR:                     true,
+			serverlessRuntimesTarballs: "true",
 		},
 		{
 			name:               "install from artifact registry",
@@ -321,6 +331,9 @@ func TestInstallSource(t *testing.T) {
 			ctx := gcp.NewContext(gcp.WithStackID(tc.stackID))
 			if tc.runtimeImageRegion != "" {
 				t.Setenv(env.RuntimeImageRegion, tc.runtimeImageRegion)
+			}
+			if tc.serverlessRuntimesTarballs != "" {
+				t.Setenv(env.ServerlessRuntimesTarballs, tc.serverlessRuntimesTarballs)
 			}
 			_, err := InstallTarballIfNotCached(ctx, tc.runtime, tc.version, layer)
 			if tc.wantError == (err == nil) {
@@ -461,11 +474,12 @@ func TestPinGemAndBundlerVersion(t *testing.T) {
 
 func TestRuntimeImageURL(t *testing.T) {
 	testCases := []struct {
-		runtime InstallableRuntime
-		osName  string
-		version string
-		region  string
-		want    string
+		runtime                    InstallableRuntime
+		osName                     string
+		version                    string
+		region                     string
+		serverlessRuntimesTarballs string
+		want                       string
 	}{
 		{
 			runtime: "python",
@@ -488,9 +502,20 @@ func TestRuntimeImageURL(t *testing.T) {
 			region:  "us-west1",
 			want:    "us-west1-docker.pkg.dev/gae-runtimes/runtimes-ubuntu2204/php:8.2.0",
 		},
+		{
+			runtime:                    "python",
+			osName:                     "ubuntu1804",
+			version:                    "3.7.2",
+			region:                     "us-west1",
+			serverlessRuntimesTarballs: "true",
+			want:                       "us-west1-docker.pkg.dev/serverless-runtimes/runtimes-ubuntu1804/python:3.7.2",
+		},
 	}
 
 	for _, tc := range testCases {
+		if tc.serverlessRuntimesTarballs != "" {
+			t.Setenv(env.ServerlessRuntimesTarballs, tc.serverlessRuntimesTarballs)
+		}
 		t.Run(fmt.Sprintf("%s-%s-%s-%s", tc.runtime, tc.osName, tc.version, tc.region), func(t *testing.T) {
 			runtimeImageURL := runtimeImageURL(tc.runtime, tc.osName, tc.version, tc.region)
 

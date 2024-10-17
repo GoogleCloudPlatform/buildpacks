@@ -187,7 +187,6 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	ctx.Logf("Installing %s v%s.", runtimeName, version)
 
 	runtimeURL := tarballDownloadURL(runtime, osName, version)
-
 	stripComponents := 0
 	if runtime == OpenJDK || runtime == Go {
 		stripComponents = 1
@@ -214,6 +213,11 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 }
 
 func runtimeImageURL(runtime InstallableRuntime, osName, version, region string) string {
+	flag, present := os.LookupEnv(env.ServerlessRuntimesTarballs)
+	if present && flag == "true" {
+		newRuntimeImageARURL := "%s-docker.pkg.dev/serverless-runtimes/runtimes-%s/%s:%s"
+		return fmt.Sprintf(newRuntimeImageARURL, region, osName, runtime, version)
+	}
 	return fmt.Sprintf(runtimeImageARURL, region, osName, runtime, version)
 }
 

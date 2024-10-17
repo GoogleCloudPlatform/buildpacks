@@ -148,6 +148,9 @@ const (
 
 	// FirebaseOutputDir is the directory to store the firebase output bundle.
 	FirebaseOutputDir = "FIREBASE_OUTPUT_BUNDLE_DIR"
+
+	// ServerlessRuntimesTarballs is an experiment flag to fetch tarballs from serverless-runtimes AR
+	ServerlessRuntimesTarballs = "GOOGLE_USE_SERVERLESS_RUNTIMES_TARBALLS"
 )
 
 // IsGAE returns true if the buildpack target platform is gae.
