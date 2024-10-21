@@ -1,5 +1,5 @@
 version: v1
-serverConfig:
+runConfig:
   runCommand: node dist/angular/server/server.mjs
   environmentVariables: 
     - variable: SSR_PORT

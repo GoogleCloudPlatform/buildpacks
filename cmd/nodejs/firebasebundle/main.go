@@ -90,20 +90,20 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	if bundleYaml.ServerConfig.RunCommand != "" {
-		ctx.AddWebProcess(strings.Split(bundleYaml.ServerConfig.RunCommand, " "))
+	if bundleYaml.RunConfig.RunCommand != "" {
+		ctx.AddWebProcess(strings.Split(bundleYaml.RunConfig.RunCommand, " "))
 	}
 	return nil
 }
 
 // bundleYaml represents the contents of a bundle.yaml file.
 type bundleYaml struct {
-	Version      string       `yaml:"version"`
-	ServerConfig serverConfig `yaml:"serverConfig"`
-	Metadata     metadata     `yaml:"metadata"`
+	Version   string    `yaml:"version"`
+	RunConfig runConfig `yaml:"runConfig"`
+	Metadata  metadata  `yaml:"metadata"`
 }
 
-type serverConfig struct {
+type runConfig struct {
 	RunCommand           string         `yaml:"runCommand"`
 	EnvironmentVariables []envVarConfig `yaml:"environmentVariables"`
 	Concurrency          string         `yaml:"concurrency"`

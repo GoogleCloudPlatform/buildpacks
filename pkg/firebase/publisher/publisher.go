@@ -75,13 +75,13 @@ func toBuildSchema(appHostingSchema apphostingschema.AppHostingSchema, bundleSch
 	buildSchema := buildSchema{}
 
 	// Merge RunConfig fields from apphosting.yaml and bundle.yaml, Control Plane will set defaults for any unset fields.
-	buildSchema.RunConfig = mergeRunConfig(appHostingSchema.RunConfig, bundleSchema.ServerConfig)
+	buildSchema.RunConfig = mergeRunConfig(appHostingSchema.RunConfig, bundleSchema.RunConfig)
 
 	// Copy Metadata fields from bundle.yaml.
 	buildSchema.Metadata = bundleSchema.Metadata
 
 	// Merge Env fields from bundle.yaml and apphosting.yaml together.
-	buildSchema.Env = mergeEnvironmentVariables(appHostingSchema.Env, bundleSchema.ServerConfig.EnvironmentVariables)
+	buildSchema.Env = mergeEnvironmentVariables(appHostingSchema.Env, bundleSchema.RunConfig.EnvironmentVariables)
 
 	return buildSchema
 }
@@ -112,7 +112,7 @@ func mergeEnvironmentVariables(aevs []apphostingschema.EnvironmentVariable, bevs
 
 // mergeRunConfig merges the RunConfig from apphosting.yaml and bundle.yaml.
 // If there is a conflict between the fields, use the value from apphosting.yaml.
-func mergeRunConfig(arc apphostingschema.RunConfig, brc bundleschema.ServerConfig) *apphostingschema.RunConfig {
+func mergeRunConfig(arc apphostingschema.RunConfig, brc bundleschema.RunConfig) *apphostingschema.RunConfig {
 	merged := &apphostingschema.RunConfig{
 		CPU:          brc.CPU,
 		MemoryMiB:    brc.MemoryMiB,

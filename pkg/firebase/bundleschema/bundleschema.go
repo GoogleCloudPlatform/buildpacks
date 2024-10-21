@@ -37,12 +37,12 @@ type EnvironmentVariable apphostingschema.EnvironmentVariable
 
 // BundleSchema is the struct representation of bundle.yaml.
 type BundleSchema struct {
-	ServerConfig ServerConfig `yaml:"serverConfig"`
-	Metadata     *Metadata    `yaml:"metadata,omitempty"`
+	RunConfig RunConfig `yaml:"runConfig"`
+	Metadata  *Metadata `yaml:"metadata,omitempty"`
 }
 
-// ServerConfig is the struct representation of the passed server config.
-type ServerConfig struct {
+// RunConfig is the struct representation of the passed cloud run config.
+type RunConfig struct {
 	EnvironmentVariables []EnvironmentVariable `yaml:"environmentVariables,omitempty"`
 	CPU                  *float32              `yaml:"cpu"`
 	MemoryMiB            *int32                `yaml:"memoryMiB"`

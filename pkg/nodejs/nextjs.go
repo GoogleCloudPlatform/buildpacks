@@ -25,7 +25,7 @@ var (
 	// nextJsVersionKey is the metadata key used to store the nextjs build adaptor version in the nextjs layer.
 	nextJsVersionKey = "version"
 	// PinnedNextjsAdapterVersion is the version of the nextjs adapter that will be used.
-	PinnedNextjsAdapterVersion = "14.0.8"
+	PinnedNextjsAdapterVersion = "14.0.9"
 )
 
 // InstallNextJsBuildAdaptor installs the nextjs build adaptor in the given layer if it is not already cached.

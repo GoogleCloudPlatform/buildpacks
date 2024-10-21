@@ -209,7 +209,7 @@ func TestToBuildSchemaEnvVar(t *testing.T) {
 				},
 			},
 			inputBundleSchema: bundleschema.BundleSchema{
-				ServerConfig: bundleschema.ServerConfig{
+				RunConfig: bundleschema.RunConfig{
 					EnvironmentVariables: []bundleschema.EnvironmentVariable{
 						bundleschema.EnvironmentVariable{Variable: "SSR_PORT", Value: "8080", Availability: []string{"RUNTIME"}},
 					},
@@ -233,7 +233,7 @@ func TestToBuildSchemaEnvVar(t *testing.T) {
 				},
 			},
 			inputBundleSchema: bundleschema.BundleSchema{
-				ServerConfig: bundleschema.ServerConfig{
+				RunConfig: bundleschema.RunConfig{
 					EnvironmentVariables: []bundleschema.EnvironmentVariable{
 						bundleschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
 					},
@@ -254,7 +254,7 @@ func TestToBuildSchemaEnvVar(t *testing.T) {
 				},
 			},
 			inputBundleSchema: bundleschema.BundleSchema{
-				ServerConfig: bundleschema.ServerConfig{
+				RunConfig: bundleschema.RunConfig{
 					EnvironmentVariables: []bundleschema.EnvironmentVariable{
 						bundleschema.EnvironmentVariable{Variable: "API_KEY", Value: "bundleApiKey", Availability: []string{"RUNTIME"}},
 					},
@@ -275,7 +275,7 @@ func TestToBuildSchemaEnvVar(t *testing.T) {
 				},
 			},
 			inputBundleSchema: bundleschema.BundleSchema{
-				ServerConfig: bundleschema.ServerConfig{
+				RunConfig: bundleschema.RunConfig{
 					EnvironmentVariables: []bundleschema.EnvironmentVariable{
 						bundleschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
 					},
@@ -321,7 +321,7 @@ func TestMergeRunConfig(t *testing.T) {
 				RunConfig: apphostingschema.RunConfig{CPU: proto.Float32(3), Concurrency: proto.Int32(2), MemoryMiB: proto.Int32(1024)},
 			},
 			inputBundleSchema: bundleschema.BundleSchema{
-				ServerConfig: bundleschema.ServerConfig{
+				RunConfig: bundleschema.RunConfig{
 					MaxInstances: proto.Int32(2),
 					MinInstances: proto.Int32(1),
 				},
@@ -336,7 +336,7 @@ func TestMergeRunConfig(t *testing.T) {
 				RunConfig: apphostingschema.RunConfig{CPU: proto.Float32(3), Concurrency: proto.Int32(2), MemoryMiB: proto.Int32(1024)},
 			},
 			inputBundleSchema: bundleschema.BundleSchema{
-				ServerConfig: bundleschema.ServerConfig{
+				RunConfig: bundleschema.RunConfig{
 					MaxInstances: proto.Int32(2),
 					MinInstances: proto.Int32(1),
 					CPU:          proto.Float32(5),
@@ -376,7 +376,7 @@ func TestToBuildSchemaRunMetadata(t *testing.T) {
 		{
 			desc: "Full BundleSchema",
 			inputBundleSchema: bundleschema.BundleSchema{
-				ServerConfig: bundleschema.ServerConfig{EnvironmentVariables: []bundleschema.EnvironmentVariable{
+				RunConfig: bundleschema.RunConfig{EnvironmentVariables: []bundleschema.EnvironmentVariable{
 					bundleschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
 				}},
 				Metadata: &bundleschema.Metadata{
