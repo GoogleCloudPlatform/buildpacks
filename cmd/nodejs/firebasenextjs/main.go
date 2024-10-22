@@ -45,8 +45,15 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !env.IsFAH() {
 		return gcp.OptOut("not a firebase apphosting application"), nil
 	}
-	// TODO (b/313959098)
-	// Verify nextjs version
+	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, appDir)
+	if err != nil {
+		return nil, err
+	}
+
+	if nodejs.HasApphostingBuild(nodeDeps.PackageJSON) {
+		return gcp.OptOut("apphosting:build script found, running custom adapter"), nil
+	}
+
 	nextConfigExists, err := ctx.FileExists(appDir, "next.config.js")
 	if err != nil {
 		return nil, err

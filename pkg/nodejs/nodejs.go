@@ -71,6 +71,8 @@ const (
 	ScriptBuild = "build"
 	// ScriptGCPBuild is the name of "gcp-build" scripts.
 	ScriptGCPBuild = "gcp-build"
+	// ScriptApphostingBuild is the name of "apphosting-build" scripts.
+	ScriptApphostingBuild = "apphosting:build"
 )
 
 // PackageJSON represents the contents of a package.json file.
@@ -207,6 +209,11 @@ func isValidLockFile(filePath string) bool {
 // HasGCPBuild returns true if the given package.json file includes a "gcp-build" script.
 func HasGCPBuild(p *PackageJSON) bool {
 	return HasScript(p, ScriptGCPBuild)
+}
+
+// HasApphostingBuild returns true if the given package.json file includes a "apphosting-build" script.
+func HasApphostingBuild(p *PackageJSON) bool {
+	return HasScript(p, ScriptApphostingBuild)
 }
 
 // HasScript returns true if the given package.json file defines a script with the given name.

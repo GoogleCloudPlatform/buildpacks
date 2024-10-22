@@ -59,6 +59,10 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	if nodejs.HasApphostingBuild(nodeDeps.PackageJSON) {
+		return gcp.OptOut("apphosting:build script found"), nil
+	}
+
 	version, err := nodejs.Version(nodeDeps, "@angular-devkit/build-angular")
 	if err != nil {
 		ctx.Warnf("Error parsing version from lock file, defaulting to package.json version")

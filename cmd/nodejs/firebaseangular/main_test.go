@@ -97,6 +97,27 @@ func TestDetect(t *testing.T) {
 			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
 			want: 0,
 		},
+		{
+			name: "with apphosting:build script",
+			files: map[string]string{
+				"package.json": `{
+					"scripts": {
+						"apphosting:build": "adapter build"
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+						"node_modules/@angular/core": {
+							"version": "17.2.0"
+						},
+						"node_modules/@angular-devkit/build-angular": {
+							"version": "17.2.0"
+						}
+					}
+				}`,
+			},
+			want: 100,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

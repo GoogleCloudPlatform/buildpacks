@@ -41,6 +41,15 @@ func TestDetect(t *testing.T) {
 			files: map[string]string{
 				"index.js":       "",
 				"next.config.js": "",
+				"package.json": `{
+					"scripts": {
+						"build": "adapter build"
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+					}
+				}`,
 			},
 			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
 			want: 0,
@@ -49,6 +58,15 @@ func TestDetect(t *testing.T) {
 			name: "without next config",
 			files: map[string]string{
 				"index.js": "",
+				"package.json": `{
+					"scripts": {
+						"build": "adapter build"
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+					}
+				}`,
 			},
 			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
 			want: 100,
@@ -58,9 +76,33 @@ func TestDetect(t *testing.T) {
 			files: map[string]string{
 				"apps/next-app/index.js":       "",
 				"apps/next-app/next.config.js": "",
+				"package.json": `{
+					"scripts": {
+						"build": "adapter build"
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+					}
+				}`,
 			},
 			envs: []string{"GOOGLE_BUILDABLE=apps/next-app", "X_GOOGLE_TARGET_PLATFORM=fah"},
 			want: 0,
+		},
+		{
+			name: "with apphosting:build script",
+			files: map[string]string{
+				"package.json": `{
+					"scripts": {
+						"apphosting:build": "adapter build"
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+					}
+				}`,
+			},
+			want: 100,
 		},
 	}
 	for _, tc := range testCases {

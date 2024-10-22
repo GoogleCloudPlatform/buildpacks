@@ -228,7 +228,23 @@ func TestDetermineBuildCommands(t *testing.T) {
 			wantIsCustomBuild: true,
 		},
 		{
-			name: "APPHOSTING_BUILD highest precedence",
+			name: "apphosting:build highest precedence",
+			pjs: `{
+				"scripts": {
+					"build": "tsc --build --clean",
+					"gcp-build": "tsc --build",
+					"apphosting:build": "tsc --build"
+				}
+			}`,
+			want:                       []string{"npm run apphosting:build"},
+			wantIsCustomBuild:          true,
+			appHostingBuildScriptSet:   true,
+			appHostingBuildScriptValue: "next-js build",
+			nodeRunScriptSet:           true,
+			nodeRunScriptValue:         "from-env",
+		},
+		{
+			name: "APPHOSTING_BUILD second precedence",
 			pjs: `{
 				"scripts": {
 					"build": "tsc --build --clean",
@@ -243,7 +259,7 @@ func TestDetermineBuildCommands(t *testing.T) {
 			wantIsCustomBuild:          true,
 		},
 		{
-			name: "GOOGLE_NODE_RUN_SCRIPTS second precedence",
+			name: "GOOGLE_NODE_RUN_SCRIPTS third precedence",
 			pjs: `{
 				"scripts": {
 					"build": "tsc --build --clean",

@@ -141,12 +141,16 @@ func SupportsNPMPrune(ctx *gcp.Context) (bool, error) {
 // and a bool representing whether this is a "custom build" (user-specified build scripts)
 // or a system build step (default build behavior).
 //
-// Users can specify npm scripts to run in three ways, with the following order of precedence:
-// 1. APPHOSTING_BUILD env var
-// 2. GOOGLE_NODE_RUN_SCRIPTS env var
-// 3. "gcp-build" script in package.json
-// 4. "build" script in package.json
+// Users can specify npm scripts with the following order of precedence:
+// 1. "apphosting:build" script in package.json
+// 2. APPHOSTING_BUILD env var
+// 3. GOOGLE_NODE_RUN_SCRIPTS env var
+// 4. "gcp-build" script in package.json
+// 5. "build" script in package.json
 func DetermineBuildCommands(pjs *PackageJSON, pkgTool string) (cmds []string, isCustomBuild bool) {
+	if HasApphostingBuild(pjs) {
+		return []string{runCommand(pkgTool, "apphosting:build")}, true
+	}
 	appHostingBuildScript, appHostingBuildScriptPresent := os.LookupEnv(AppHostingBuildEnv)
 	if appHostingBuildScriptPresent {
 		return []string{appHostingBuildScript}, true

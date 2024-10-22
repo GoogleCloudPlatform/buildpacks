@@ -165,8 +165,9 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		cmd = append(cmd, "--frozen-lockfile")
 	}
 	gcpBuild := nodejs.HasGCPBuild(pjs)
-	appHostingBuildScript, appHostingBuildScriptPresent := os.LookupEnv(nodejs.AppHostingBuildEnv)
-	if gcpBuild || appHostingBuildScriptPresent {
+	appHostingBuildScriptPresent := nodejs.HasApphostingBuild(pjs)
+	appHostingBuildEnv, appHostingBuildEnvPresent := os.LookupEnv(nodejs.AppHostingBuildEnv)
+	if gcpBuild || appHostingBuildEnvPresent {
 		// Setting --production=false causes the devDependencies to be installed regardless of the
 		// NODE_ENV value. The allows the customer's lifecycle hooks to access to them. We purge the
 		// devDependencies from the final app.
@@ -179,9 +180,13 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		return err
 	}
 
-	if gcpBuild || appHostingBuildScriptPresent {
+	if gcpBuild || appHostingBuildEnvPresent || appHostingBuildScriptPresent {
 		if appHostingBuildScriptPresent {
-			if _, err := ctx.Exec(strings.Split(appHostingBuildScript, " "), gcp.WithUserAttribution); err != nil {
+			if _, err := ctx.Exec([]string{"yarn", "run", "apphosting:build"}, gcp.WithUserAttribution); err != nil {
+				return err
+			}
+		} else if appHostingBuildEnvPresent {
+			if _, err := ctx.Exec(strings.Split(appHostingBuildEnv, " "), gcp.WithUserAttribution); err != nil {
 				return err
 			}
 		} else {
@@ -196,7 +201,7 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		if nodejs.NodeEnv() != nodejs.EnvProduction {
 			ctx.Logf("Retaining devDependencies because NODE_ENV=%q", nodeEnv)
 		} else {
-			if _, isAppHostingBuild := os.LookupEnv(nodejs.AppHostingBuildEnv); isAppHostingBuild {
+			if appHostingBuildEnvPresent {
 				// We don't prune if the user is using App Hosting since App Hosting builds don't
 				// rely on the node_modules folder at this point.
 				return nil
