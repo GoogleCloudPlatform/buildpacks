@@ -29,7 +29,7 @@ import (
 
 const (
 	javaLayer             = "java"
-	defaultFeatureVersion = "11"
+	defaultFeatureVersion = "21"
 )
 
 func main() {
