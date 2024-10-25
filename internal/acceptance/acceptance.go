@@ -60,8 +60,6 @@ var (
 	structureTestConfig string // Path to container test configuration file.
 	builderSource       string // Path to directory or archive containing builder source.
 	builderImage        string // Name of the builder image to test; takes precedence over builderSource.
-	descriptor          string // Path to the descriptor file.
-	sourceOverride      bool   // If true, use the source specified in the test case instead of the builderImage.
 	runImageOverride    string // Name of the run image to use during the test. This takes preference over the run-image defined in the builder.toml.
 	builderPrefix       string // Prefix for created builder image.
 	keepArtifacts       bool   // If true, keeps intermediate artifacts such as application images.
@@ -99,8 +97,6 @@ func DefineFlags() {
 	flag.StringVar(&structureTestConfig, "structure-test-config", "", "Location of the container structure test configuration.")
 	flag.StringVar(&builderSource, "builder-source", "", "Location of the builder source files.")
 	flag.StringVar(&builderImage, "builder-image", "", "Name of the builder image to test; takes precedence over builderSource.")
-	flag.StringVar(&descriptor, "descriptor", "builder.toml", "Path to the descriptor file.")
-	flag.BoolVar(&sourceOverride, "source-override", false, "If true, use the source specified in the test case instead of the builderImage.")
 	flag.StringVar(&runImageOverride, "run-image-override", "", "Name of the run image to use during the test. This takes preference over the run-image defined in the builder.toml.")
 	flag.StringVar(&builderPrefix, "builder-prefix", "acceptance-test-builder-", "Prefix for the generated builder image.")
 	flag.BoolVar(&keepArtifacts, "keep-artifacts", false, "Keep images and other artifacts after tests have finished.")
@@ -619,7 +615,7 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 	}
 
 	builderName := generateRandomImageName(builderPrefix)
-	if !sourceOverride && builderImage != "" {
+	if builderImage != "" {
 		t.Logf("Testing existing builder image: %s", builderImage)
 		if pullImages {
 			if _, err := runOutput("docker", "pull", builderImage); err != nil {
@@ -650,7 +646,7 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 	}
 
 	builderLoc, cleanUpBuilder := extractBuilder(t, builderSource)
-	config := filepath.Join(builderLoc, descriptor)
+	config := filepath.Join(builderLoc, "builder.toml")
 
 	if lifecycle != "" {
 		t.Logf("Using lifecycle location: %s", lifecycle)

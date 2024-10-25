@@ -86,14 +86,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/java:generic)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:google_22_builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:builder.tar)",
         "-builder-prefix=gcpbase-java-test-",
-        "-source-override=true",
-        "-descriptor=google.22.builder.toml",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:google_22_builder.tar",
+        "//builders/gcp/base:builder.tar",
         "//builders/testdata/java:generic",
     ],
     embed = [":acceptance"],
@@ -295,14 +293,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/java:functions.tgz)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:google_22_builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:builder.tar)",
         "-builder-prefix=gcpbase-java-fn-test-",
-        "-source-override=true",
-        "-descriptor=google.22.builder.toml",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:google_22_builder.tar",
+        "//builders/gcp/base:builder.tar",
         "//builders/testdata/java:functions.tgz",
     ],
     embed = [":acceptance"],

@@ -48,7 +48,6 @@ steps:
       - '--test_arg=-pull-images=false'
       - '--test_arg=-builder-image=gcp/base'
       - '--jobs=2'
-      - '--test_filter=-//builders/gcp/base/acceptance:java_test -//builders/gcp/base/acceptance:java_fn_test'
       - '//builders/gcp/base/acceptance/...'
 
   - id: google-22-build-image
