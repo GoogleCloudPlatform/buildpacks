@@ -43,14 +43,29 @@ type AppHostingSchema struct {
 	Env       []EnvironmentVariable `yaml:"env,omitempty"`
 }
 
+// NetworkInterface is the struct representation of the passed network interface in VPC direct connect.
+type NetworkInterface struct {
+	Network    string   `yaml:"network,omitempty"`
+	Subnetwork string   `yaml:"subnetwork,omitempty"`
+	Tags       []string `yaml:"tags,omitempty"`
+}
+
+// VpcAccess is the struct representation of the passed vpc access.
+type VpcAccess struct {
+	Connector         string             `yaml:"connector,omitempty"`
+	Egress            string             `yaml:"egress,omitempty"`
+	NetworkInterfaces []NetworkInterface `yaml:"networkInterfaces,omitempty"`
+}
+
 // RunConfig is the struct representation of the passed run config.
 type RunConfig struct {
 	// value types used must match server field types. pointers are used to capture unset vs zero-like values.
-	CPU          *float32 `yaml:"cpu"`
-	MemoryMiB    *int32   `yaml:"memoryMiB"`
-	Concurrency  *int32   `yaml:"concurrency"`
-	MaxInstances *int32   `yaml:"maxInstances"`
-	MinInstances *int32   `yaml:"minInstances"`
+	CPU          *float32   `yaml:"cpu"`
+	MemoryMiB    *int32     `yaml:"memoryMiB"`
+	Concurrency  *int32     `yaml:"concurrency"`
+	MaxInstances *int32     `yaml:"maxInstances"`
+	MinInstances *int32     `yaml:"minInstances"`
+	VpcAccess    *VpcAccess `yaml:"vpcAccess"`
 }
 
 // EnvironmentVariable is the struct representation of the passed environment variables.
@@ -117,6 +132,9 @@ func (rc *RunConfig) UnmarshalYAML(unmarshal func(any) error) error {
 		return fmt.Errorf("runConfig.minInstances field is not in valid range of [1, 100]")
 	}
 
+	if err := ValidateVpcAccess(rc.VpcAccess); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -192,6 +210,7 @@ func mergeAppHostingSchemas(appHostingSchema *AppHostingSchema, envSpecificSchem
 	if envSpecificSchema.RunConfig.MinInstances != nil {
 		appHostingSchema.RunConfig.MinInstances = envSpecificSchema.RunConfig.MinInstances
 	}
+	appHostingSchema.RunConfig.VpcAccess = MergeVpcAccess(appHostingSchema.RunConfig.VpcAccess, envSpecificSchema.RunConfig.VpcAccess)
 
 	// Merge Environment Variables
 	envVarMap := make(map[string]*EnvironmentVariable)

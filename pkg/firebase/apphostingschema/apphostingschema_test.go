@@ -25,11 +25,33 @@ func TestReadAndValidateFromFile(t *testing.T) {
 					MemoryMiB:    proto.Int32(1024),
 					Concurrency:  proto.Int32(100),
 					MaxInstances: proto.Int32(4),
+					VpcAccess: &VpcAccess{
+						Egress: "ALL_TRAFFIC",
+						NetworkInterfaces: []NetworkInterface{
+							NetworkInterface{
+								Network:    "10.0.0.0",
+								Subnetwork: "10.0.0.1",
+								Tags:       []string{"test-tag"},
+							},
+						},
+					},
 				},
 				Env: []EnvironmentVariable{
 					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"BUILD", "RUNTIME"}},
 					EnvironmentVariable{Variable: "API_KEY", Secret: "myApiKeySecret", Availability: []string{"BUILD"}},
-					EnvironmentVariable{Variable: "PINNED_API_KEY", Secret: "myApiKeySecret@5"}},
+					EnvironmentVariable{Variable: "PINNED_API_KEY", Secret: "myApiKeySecret@5"},
+				},
+			},
+		},
+		{
+			desc:                "Read properly formatted app hosting YAML schema with VPC connector properly",
+			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_valid_vpc_connector.yaml"),
+			wantAppHostingSchema: AppHostingSchema{
+				RunConfig: RunConfig{
+					VpcAccess: &VpcAccess{
+						Connector: "my-connector",
+					},
+				},
 			},
 		},
 		{
@@ -43,6 +65,21 @@ func TestReadAndValidateFromFile(t *testing.T) {
 					MaxInstances: proto.Int32(4),
 				},
 			},
+		},
+		{
+			desc:                "Throw an error when VCP egress is invalid",
+			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_vpc_egress.yaml"),
+			wantErr:             true,
+		},
+		{
+			desc:                "Throw an error when VPC connector and network interfaces are set",
+			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_vpc_connector_and_network_interfaces.yaml"),
+			wantErr:             true,
+		},
+		{
+			desc:                "Throw an error when VPC connector is set without an interface",
+			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_vpc_no_network.yaml"),
+			wantErr:             true,
 		},
 		{
 			desc:                 "Return an empty schema when the file doesn't exist",
@@ -196,6 +233,9 @@ func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
 					MaxInstances: proto.Int32(4),
 					MinInstances: proto.Int32(0),
 					Concurrency:  proto.Int32(5),
+					VpcAccess: &VpcAccess{
+						Connector: "projects/test-project/locations/us-central1/connectors/test-connector",
+					},
 				},
 				Env: []EnvironmentVariable{
 					EnvironmentVariable{Variable: "API_URL", Value: "api.staging.service.com", Availability: []string{"BUILD"}},

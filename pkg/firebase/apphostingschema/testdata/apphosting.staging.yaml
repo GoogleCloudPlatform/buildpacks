@@ -4,6 +4,8 @@ runConfig:
   cpu: 1
   memoryMiB: 512
   concurrency: 5
+  vpcAccess:
+    connector: projects/test-project/locations/us-central1/connectors/test-connector
 
 env:
   - variable: API_URL

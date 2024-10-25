@@ -1,0 +1,8 @@
+runConfig:
+  vpcAccess:
+    connector: my-connector
+    networkInterfaces:
+    - network: 10.0.0.0
+      subnetwork: 10.0.0.1
+      tags:
+        - test-tag

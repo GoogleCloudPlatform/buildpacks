@@ -5,6 +5,13 @@ runConfig:
   memoryMiB: 1024
   maxInstances: 4
   concurrency: 100
+  vpcAccess:
+    egress: ALL_TRAFFIC
+    networkInterfaces:
+      - network: 10.0.0.0
+        subnetwork: 10.0.0.1
+        tags:
+          - test-tag
 
 env:
   - variable: STORAGE_BUCKET

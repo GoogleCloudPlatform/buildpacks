@@ -1,0 +1,4 @@
+runConfig:
+  vpcAccess:
+    egress: INVALID_EGRESS
+    connector: my-connector

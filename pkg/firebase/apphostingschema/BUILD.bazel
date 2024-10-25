@@ -6,7 +6,10 @@ licenses(["notice"])
 
 go_library(
     name = "apphostingschema",
-    srcs = ["apphostingschema.go"],
+    srcs = [
+        "apphostingschema.go",
+        "vpcaccess.go",
+    ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     deps = ["@in_gopkg_yaml_v2//:go_default_library"],
 )
@@ -22,4 +25,14 @@ go_test(
         "//third_party/golang/protobuf/v2/proto",
         "@com_github_google_go-cmp//cmp:go_default_library",
     ],
+)
+
+go_test(
+    name = "vpcaccess_test",
+    srcs = [
+        "vpcaccess_test.go",
+    ],
+    embed = [":apphostingschema"],
+    rundir = ".",
+    deps = ["@com_github_google_go-cmp//cmp:go_default_library"],
 )
