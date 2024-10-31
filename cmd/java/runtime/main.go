@@ -28,9 +28,19 @@ import (
 )
 
 const (
-	javaLayer             = "java"
-	defaultFeatureVersion = "11"
+	javaLayer = "java"
 )
+
+// Map with key as stackId and value as the default feature version for that stack.
+// We still need to support Java11 on ubuntu18 for OSS applications.
+var defaultFeatureVersion = map[string]string{
+	"google":        "11",
+	"google.gae.18": "11",
+	"google.18":     "11",
+	"google.gae.22": "21",
+	"google.min.22": "21",
+	"google.22":     "21",
+}
 
 func main() {
 	gcp.Main(detectFn, buildFn)
@@ -78,12 +88,12 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
-	featureVersion := defaultFeatureVersion
+	featureVersion := stackToVersion(ctx.StackID())
 	if v := os.Getenv(env.RuntimeVersion); v != "" {
 		featureVersion = v
 		ctx.Logf("Using requested runtime feature version: %s", featureVersion)
 	} else {
-		ctx.Logf("Using latest Java %s runtime version. You can specify a different version with %s: https://github.com/GoogleCloudPlatform/buildpacks#configuration", defaultFeatureVersion, env.RuntimeVersion)
+		ctx.Logf("Using latest Java %s runtime version. You can specify a different version with %s: https://github.com/GoogleCloudPlatform/buildpacks#configuration", featureVersion, env.RuntimeVersion)
 	}
 	l, err := ctx.Layer(javaLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerUnlessSkipRuntimeLaunch)
 	if err != nil {
@@ -116,6 +126,15 @@ type versionData struct {
 type javaRelease struct {
 	VersionData versionData `json:"version_data"`
 	Binaries    []binary    `json:"binaries"`
+}
+
+// stackToVersion returns the default feature version for the given stack.
+func stackToVersion(stackID string) string {
+	featureVersion := "21"
+	if version, ok := defaultFeatureVersion[stackID]; ok {
+		featureVersion = version
+	}
+	return featureVersion
 }
 
 // parseVersionJSON parses a JSON array of version information

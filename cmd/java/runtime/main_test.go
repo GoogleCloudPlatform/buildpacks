@@ -204,6 +204,38 @@ func TestParseVersionJSONFail(t *testing.T) {
 	}
 }
 
+func TestStackToVersion(t *testing.T) {
+	testCases := []struct {
+		name  string
+		stack string
+		want  string
+	}{
+		{
+			name:  "Ubuntu 22 stack",
+			stack: "google.gae.22",
+			want:  "21",
+		},
+		{
+			name:  "Ubuntu 18 stack",
+			stack: "google.gae.18",
+			want:  "11",
+		},
+		{
+			name:  "No stack specified",
+			stack: "",
+			want:  "21",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			version := stackToVersion(tc.stack)
+			if version != tc.want {
+				t.Errorf("stackToVersion()=%s, want=%s", version, tc.want)
+			}
+		})
+	}
+}
+
 func TestExtractRelease(t *testing.T) {
 	testCases := []struct {
 		name           string

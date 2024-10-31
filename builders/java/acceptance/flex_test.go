@@ -31,17 +31,25 @@ func TestAcceptance(t *testing.T) {
 	testCases := []acceptance.Test{
 		// Test that we can build a maven project.
 		{
-			Name:    "maven project springboot",
-			App:     "helloworld_springboot",
-			Env:     []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
-			MustUse: []string{"google.config.flex"},
+			// Test application has been updated to use Java 17.
+			// Flex applications will not be able to build Java 11 applications. We can remove this
+			// constraint once Java 11 is deprecated.
+			VersionInclusionConstraint: ">11",
+			Name:                       "maven project springboot",
+			App:                        "helloworld_springboot",
+			Env:                        []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
+			MustUse:                    []string{"google.config.flex"},
 		},
 		// Test that we can build a gradle project
 		{
-			Name:    "gradle project",
-			App:     "gradle_quarkus",
-			Env:     []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
-			MustUse: []string{"google.config.flex"},
+			// Test application has been updated to use Java 17.
+			// Flex applications will not be able to build Java 11 applications. We can remove this
+			// constraint once Java 11 is deprecated.
+			VersionInclusionConstraint: ">11",
+			Name:                       "gradle project",
+			App:                        "gradle_quarkus",
+			Env:                        []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
+			MustUse:                    []string{"google.config.flex"},
 		},
 	}
 
