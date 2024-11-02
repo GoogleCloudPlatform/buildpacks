@@ -17,6 +17,7 @@ java_binary(
     srcs = [
         "Main.java",
     ],
+    jvm_flags = ["-source 8 -target 8"],
     main_class = "Main",
 )
 

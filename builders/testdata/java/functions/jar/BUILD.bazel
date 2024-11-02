@@ -11,6 +11,7 @@ licenses(["notice"])
 java_binary(
     name = "fatjar",
     srcs = ["HelloWorld.java"],
+    jvm_flags = ["-source 8 -target 8"],
     visibility = ["//builders/testdata/java:__subpackages__"],
     deps = ["@maven//:com_google_cloud_functions_functions_framework_api"],
 )

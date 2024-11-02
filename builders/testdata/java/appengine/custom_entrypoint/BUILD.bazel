@@ -18,6 +18,7 @@ java_binary(
         "Main.java",
     ],
     javacopts = ["-Xep:DefaultPackage:OFF"],
+    jvm_flags = ["-source 8 -target 8"],
     main_class = "Main",
 )
 
