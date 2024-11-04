@@ -1,7 +1,9 @@
 version: v1
 runConfig:
   runCommand: node dist/angular-ssr/server/server.mjs
-  environmentVariables: 
+  vpcAccess:
+    connector: projects/my-project/locations/us-central1/connectors/my-connector
+  environmentVariables:
     - variable: SSR_PORT
       value: "8080"
       availability:

@@ -3,6 +3,7 @@ package bundleschema
 import (
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/google/go-cmp/cmp"
 )
@@ -19,6 +20,9 @@ func TestReadAndValidateFromFile(t *testing.T) {
 			inputBundleYAML: testdata.MustGetPath("testdata/bundle_valid.yaml"),
 			wantBundleSchema: BundleSchema{
 				RunConfig: RunConfig{
+					VpcAccess: &apphostingschema.VpcAccess{
+						Connector: "projects/my-project/locations/us-central1/connectors/my-connector",
+					},
 					EnvironmentVariables: []EnvironmentVariable{
 						EnvironmentVariable{Variable: "SSR_PORT", Value: "8080", Availability: []string{"RUNTIME"}},
 						EnvironmentVariable{Variable: "HOSTNAME", Value: "0.0.0.0", Availability: []string{"RUNTIME"}},

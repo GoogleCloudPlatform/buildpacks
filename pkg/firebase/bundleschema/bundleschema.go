@@ -43,12 +43,13 @@ type BundleSchema struct {
 
 // RunConfig is the struct representation of the passed cloud run config.
 type RunConfig struct {
-	EnvironmentVariables []EnvironmentVariable `yaml:"environmentVariables,omitempty"`
-	CPU                  *float32              `yaml:"cpu"`
-	MemoryMiB            *int32                `yaml:"memoryMiB"`
-	Concurrency          *int32                `yaml:"concurrency"`
-	MaxInstances         *int32                `yaml:"maxInstances"`
-	MinInstances         *int32                `yaml:"minInstances"`
+	EnvironmentVariables []EnvironmentVariable       `yaml:"environmentVariables,omitempty"`
+	CPU                  *float32                    `yaml:"cpu"`
+	MemoryMiB            *int32                      `yaml:"memoryMiB"`
+	Concurrency          *int32                      `yaml:"concurrency"`
+	MaxInstances         *int32                      `yaml:"maxInstances"`
+	MinInstances         *int32                      `yaml:"minInstances"`
+	VpcAccess            *apphostingschema.VpcAccess `yaml:"vpcAccess"`
 }
 
 // Metadata is the struct representation of the metadata from bundle.yaml.
