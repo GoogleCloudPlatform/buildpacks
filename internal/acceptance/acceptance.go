@@ -34,7 +34,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -176,8 +175,6 @@ type Test struct {
 	FlakyBuildAttempts int
 	// RequestType specifies the payload of the request used to test the function.
 	RequestType requestType
-	// BOM specifies the list of bill-of-material entries expected in the built image metadata.
-	BOM []BOMEntry
 	// Map from label name to expected value.
 	Labels map[string]string
 	// Setup is a function that sets up the source directory before test.
@@ -222,12 +219,6 @@ type ImageContext struct {
 // The setupCtx.SrcDir property contains a path to a copy of the source which can be modified before the
 // test runs.
 type setupFunc func(setupCtx SetupContext) error
-
-// BOMEntry represents a bill-of-materials entry in the image metadata.
-type BOMEntry struct {
-	Name     string                 `json:"name"`
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
-}
 
 // builderTOML contains the values from builder.toml file
 type builderTOML struct {
@@ -286,7 +277,7 @@ func testAppWithCache(t *testing.T, src, image, builderName, runName string, env
 
 func testApp(t *testing.T, src, image, builderName, runName string, env map[string]string, cacheEnabled bool, checks *StructureTest, cfg Test) {
 	buildApp(t, src, image, builderName, runName, env, cacheEnabled, cfg)
-	verifyBuildMetadata(t, image, cfg.MustUse, cfg.MustNotUse, cfg.BOM)
+	verifyBuildMetadata(t, image, cfg.MustUse, cfg.MustNotUse)
 	verifyLabelValues(t, image, cfg.Labels)
 	verifyStructure(t, image, builderName, cacheEnabled, checks)
 	invokeApp(t, cfg, image, cacheEnabled)
@@ -1146,7 +1137,7 @@ func verifyLabelValues(t *testing.T, image string, labels map[string]string) {
 }
 
 // verifyBuildMetadata verifies the image was built with correct buildpacks.
-func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []string, bom []BOMEntry) {
+func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []string) {
 	t.Helper()
 
 	start := time.Now()
@@ -1156,7 +1147,6 @@ func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []strin
 	}
 
 	var metadata struct {
-		BOM        []BOMEntry `json:"bom"`
 		Buildpacks []struct {
 			ID string `json:"id"`
 		} `json:"buildpacks"`
@@ -1180,12 +1170,6 @@ func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []strin
 	for _, id := range mustNotUse {
 		if _, used := usedBuildpacks[id]; used {
 			t.Errorf("Must not use buildpack %s was used.", id)
-		}
-	}
-
-	if len(bom) != 0 {
-		if got, want := metadata.BOM, bom; !reflect.DeepEqual(got, want) {
-			t.Errorf("Unexpected BOM on image metadata\ngot: %v\nwant %v", got, want)
 		}
 	}
 

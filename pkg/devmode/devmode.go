@@ -85,18 +85,6 @@ func AddFileWatcherProcess(ctx *gcp.Context, cfg Config) error {
 	return nil
 }
 
-// AddSyncMetadata adds sync metadata to the final image.
-func AddSyncMetadata(ctx *gcp.Context, syncRulesFn func(string) []SyncRule) {
-	ctx.AddBOMEntry(libcnb.BOMEntry{
-		Name: "devmode",
-		Metadata: map[string]interface{}{
-			"devmode.sync": syncRulesFn(ctx.ApplicationRoot()),
-		},
-		Launch: true,
-		Build:  true,
-	})
-}
-
 // writeBuildAndRunScript writes the contents of a file that builds code and then runs the resulting program
 func writeBuildAndRunScript(ctx *gcp.Context, sl *libcnb.Layer, cfg Config) error {
 	sl.Launch = true

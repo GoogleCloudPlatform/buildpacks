@@ -380,14 +380,6 @@ func (ctx *Context) AddInstalledRuntimeVersion(version string) {
 	ctx.installedRuntimeVersions = append(ctx.installedRuntimeVersions, version)
 }
 
-// AddBOMEntry adds an entry to the bill of materials.
-func (ctx *Context) AddBOMEntry(entry libcnb.BOMEntry) {
-	if ctx.buildResult.BOM == nil {
-		ctx.buildResult.BOM = &libcnb.BOM{}
-	}
-	ctx.buildResult.BOM.Entries = append(ctx.buildResult.BOM.Entries, entry)
-}
-
 // AddWebProcess adds the given command as the web start process, overwriting any previous web start process.
 func (ctx *Context) AddWebProcess(cmd []string) {
 	ctx.AddProcess(WebProcess, cmd, AsDirectProcess(), AsDefaultProcess())

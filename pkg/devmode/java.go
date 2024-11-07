@@ -45,22 +45,6 @@ fi
 `))
 )
 
-// JavaSyncRules is the list of SyncRules to be configured in Dev Mode for Java.
-func JavaSyncRules(dest string) []SyncRule {
-	var rules []SyncRule
-
-	for _, ext := range JavaWatchedExtensions {
-		rules = append(rules, SyncRule{
-			Src:  "**/*." + ext,
-			Dest: dest,
-		})
-	}
-
-	// TODO(dgageot): Also sync resources (html,css,js...).
-
-	return rules
-}
-
 // WriteBuildScript writes the build steps to a script to be run on each file change in dev mode.
 func WriteBuildScript(ctx *gcp.Context, layerSrc, dest string, command []string) error {
 	var script bytes.Buffer

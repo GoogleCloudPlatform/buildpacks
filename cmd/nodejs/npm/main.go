@@ -195,7 +195,6 @@ NOTE: Running the default build script can be skipped by passing the empty envir
 	}); err != nil {
 		return fmt.Errorf("adding devmode file watcher: %w", err)
 	}
-	devmode.AddSyncMetadata(ctx, devmode.NodeSyncRules)
 
 	return nil
 }

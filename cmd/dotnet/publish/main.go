@@ -157,7 +157,6 @@ func buildFn(ctx *gcp.Context) error {
 
 	// Configure the entrypoint and metadata for dev mode.
 	ctx.AddWebProcess([]string{"dotnet", "watch", "--project", proj, "run"})
-	devmode.AddSyncMetadata(ctx, devmode.DotNetSyncRules)
 	return nil
 }
 

@@ -84,30 +84,6 @@ func TestAcceptanceDotNet(t *testing.T) {
 			FilesMustExist:      []string{sdk, "/workspace/Startup.cs"},
 			MustRebuildOnChange: "/workspace/Startup.cs",
 		},
-		{
-			// This is a separate test case from Dev mode above because it has a fixed runtime version.
-			// Its only purpose is to test that the metadata is set correctly.
-			Name:    "Dev mode metadata",
-			App:     "simple_dotnet6",
-			Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=6.0.402"},
-			MustUse: []string{dotnetSDK, dotnetRuntime, dotnetPublish},
-			BOM: []acceptance.BOMEntry{
-				{
-					Name: "devmode",
-					Metadata: map[string]interface{}{
-						"devmode.sync": []interface{}{
-							map[string]interface{}{"dest": "/workspace", "src": "**/*.cs"},
-							map[string]interface{}{"dest": "/workspace", "src": "*.csproj"},
-							map[string]interface{}{"dest": "/workspace", "src": "**/*.fs"},
-							map[string]interface{}{"dest": "/workspace", "src": "*.fsproj"},
-							map[string]interface{}{"dest": "/workspace", "src": "**/*.vb"},
-							map[string]interface{}{"dest": "/workspace", "src": "*.vbproj"},
-							map[string]interface{}{"dest": "/workspace", "src": "**/*.resx"},
-						},
-					},
-				},
-			},
-		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc

@@ -7,7 +7,6 @@ go_library(
     name = "devmode",
     srcs = [
         "devmode.go",
-        "dotnet.go",
         "go.go",
         "java.go",
         "nodejs.go",

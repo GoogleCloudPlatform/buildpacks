@@ -101,7 +101,6 @@ func buildFn(ctx *gcp.Context) error {
 	}); err != nil {
 		return fmt.Errorf("adding devmode file watcher: %w", err)
 	}
-	devmode.AddSyncMetadata(ctx, devmode.NodeSyncRules)
 
 	return nil
 }

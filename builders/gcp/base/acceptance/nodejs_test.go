@@ -51,29 +51,6 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			MustRebuildOnChange: "/workspace/server.js",
 		},
 		{
-			// This is a separate test case from Dev mode above because it has a fixed runtime version.
-			// Its only purpose is to test that the metadata is set correctly.
-			Name:    "Dev mode metadata",
-			App:     "simple",
-			Env:     []string{"GOOGLE_DEVMODE=1", "GOOGLE_RUNTIME_VERSION=14.19.3"},
-			MustUse: []string{nodeRuntime, nodeNPM},
-			BOM: []acceptance.BOMEntry{
-				{
-					Name: "devmode",
-					Metadata: map[string]interface{}{
-						"devmode.sync": []interface{}{
-							map[string]interface{}{"dest": "/workspace", "src": "**/*.js"},
-							map[string]interface{}{"dest": "/workspace", "src": "**/*.mjs"},
-							map[string]interface{}{"dest": "/workspace", "src": "**/*.coffee"},
-							map[string]interface{}{"dest": "/workspace", "src": "**/*.litcoffee"},
-							map[string]interface{}{"dest": "/workspace", "src": "**/*.json"},
-							map[string]interface{}{"dest": "/workspace", "src": "public/**"},
-						},
-					},
-				},
-			},
-		},
-		{
 			Name:    "simple application (custom entrypoint)",
 			App:     "custom_entrypoint",
 			Env:     []string{"GOOGLE_ENTRYPOINT=node custom.js"},
