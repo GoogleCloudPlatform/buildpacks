@@ -26,6 +26,7 @@ func TestWrite(t *testing.T) {
 				"VAR_SINGLE_QUOTES":  "I said, 'I'm learning YAML!'",
 				"VAR_DOUBLE_QUOTES":  "\"api4.service.com\"",
 				"VAR_NUMBER":         "12345",
+				"VAR_JSON":           `{"apiKey":"myApiKey","appId":"myAppId"}`,
 				"MULTILINE_VAR":      "211 Broadway\nApt. 17\nNew York, NY 10019\n",
 			},
 			wantEnvMap: map[string]string{
@@ -35,6 +36,7 @@ func TestWrite(t *testing.T) {
 				"VAR_SINGLE_QUOTES":  "I said, 'I'm learning YAML!'",
 				"VAR_DOUBLE_QUOTES":  "\"api4.service.com\"",
 				"VAR_NUMBER":         "12345",
+				"VAR_JSON":           `{"apiKey":"myApiKey","appId":"myAppId"}`,
 				// Key difference is that the newline character is now properly escaped
 				"MULTILINE_VAR": "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n",
 			},
@@ -83,10 +85,12 @@ func TestWriteRawData(t *testing.T) {
 				"VAR_DOUBLE_QUOTES":  "\"api4.service.com\"",
 				"VAR_NUMBER":         "12345",
 				"MULTILINE_VAR":      "211 Broadway\nApt. 17\nNew York, NY 10019\n",
+				"VAR_JSON":           `{"apiKey":"myApiKey","appId":"myAppId"}`,
 			},
 			wantRawString: `API_URL=api.service.com
 MULTILINE_VAR=211 Broadway\nApt. 17\nNew York, NY 10019\n
 VAR_DOUBLE_QUOTES="api4.service.com"
+VAR_JSON={"apiKey":"myApiKey","appId":"myAppId"}
 VAR_NUMBER=12345
 VAR_QUOTED_SPECIAL=api2.service.com::
 VAR_SINGLE_QUOTES=I said, 'I'm learning YAML!'

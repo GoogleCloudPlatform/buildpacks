@@ -38,6 +38,7 @@ func TestReadAndValidateFromFile(t *testing.T) {
 				},
 				Env: []EnvironmentVariable{
 					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"BUILD", "RUNTIME"}},
+					EnvironmentVariable{Variable: "VAR_JSON", Value: `{"apiKey":"myApiKey","appId":"myAppId"}`, Availability: []string{"BUILD", "RUNTIME"}},
 					EnvironmentVariable{Variable: "API_KEY", Secret: "myApiKeySecret", Availability: []string{"BUILD"}},
 					EnvironmentVariable{Variable: "PINNED_API_KEY", Secret: "myApiKeySecret@5"},
 				},
@@ -355,7 +356,42 @@ func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
 			t.Errorf("unexpected merged apphosting schema for test %q (-want, +got):\n%v", test.desc, diff)
 		}
 	}
+}
 
+func TestIsFirebaseConfigUserDefined(t *testing.T) {
+	testCases := []struct {
+		desc             string
+		appHostingSchema AppHostingSchema
+		wantBool         bool
+	}{
+		{
+			desc: "Return true when FIREBASE_CONFIG is user defined",
+			appHostingSchema: AppHostingSchema{
+				Env: []EnvironmentVariable{
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					EnvironmentVariable{Variable: "FIREBASE_CONFIG", Value: fmt.Sprintf(`{"apiKey":%q,"appId":%q}`, "myApiKey", "myAppId")},
+				},
+			},
+			wantBool: true,
+		},
+		{
+			desc: "Return false when FIREBASE_CONFIG is not user defined",
+			appHostingSchema: AppHostingSchema{
+				Env: []EnvironmentVariable{
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+				},
+			},
+			wantBool: false,
+		},
+	}
+
+	for _, test := range testCases {
+		gotBool := IsFirebaseConfigUserDefined(&test.appHostingSchema)
+
+		if gotBool != test.wantBool {
+			t.Errorf("IsFirebaseConfigUserDefined(%q) = %v, want %v", test.desc, gotBool, test.wantBool)
+		}
+	}
 }
 
 func TestWriteToFile(t *testing.T) {

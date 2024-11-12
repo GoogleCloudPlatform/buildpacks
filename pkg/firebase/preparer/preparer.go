@@ -37,6 +37,7 @@ type Options struct {
 	EnvDereferencedOutputFilePath string
 	BackendRootDirectory          string
 	BuildpackConfigOutputFilePath string
+	FirebaseConfig                string
 	ServerSideEnvVars             string
 }
 
@@ -60,6 +61,13 @@ func Prepare(ctx context.Context, opts Options) error {
 
 		if err = apphostingschema.MergeWithEnvironmentSpecificYAML(&appHostingYAML, opts.AppHostingYAMLPath, opts.EnvironmentName); err != nil {
 			return fmt.Errorf("merging with environment specific apphosting.%v.yaml: %w", opts.EnvironmentName, err)
+		}
+	}
+
+	// Add FIREBASE_CONFIG env var for Admin SDK AutoInit, only if it is not already user-defined.
+	if !apphostingschema.IsFirebaseConfigUserDefined(&appHostingYAML) {
+		if opts.FirebaseConfig != "" {
+			appHostingYAML.Env = append(appHostingYAML.Env, apphostingschema.EnvironmentVariable{Variable: "FIREBASE_CONFIG", Value: opts.FirebaseConfig})
 		}
 	}
 

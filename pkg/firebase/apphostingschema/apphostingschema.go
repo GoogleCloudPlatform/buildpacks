@@ -245,6 +245,16 @@ func MergeWithEnvironmentSpecificYAML(appHostingSchema *AppHostingSchema, appHos
 	return nil
 }
 
+// IsFirebaseConfigUserDefined determines whether the FIREBASE_CONFIG environment variable is user defined.
+func IsFirebaseConfigUserDefined(schema *AppHostingSchema) bool {
+	for _, e := range schema.Env {
+		if e.Variable == "FIREBASE_CONFIG" {
+			return true
+		}
+	}
+	return false
+}
+
 // WriteToFile writes the given app hosting schema to the specified path.
 func (schema *AppHostingSchema) WriteToFile(outputFilePath string) error {
 	fileData, err := yaml.Marshal(schema)

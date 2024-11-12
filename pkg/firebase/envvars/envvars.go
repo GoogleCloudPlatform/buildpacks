@@ -29,7 +29,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 )
 
-// Write produces a file where each like has the format KEY=VALUE. We aren't using the
+// Write produces a file where each line has the format KEY=VALUE. We aren't using the
 // godotenv library as its output isn't compatible with the `pack build --env-file` command.
 func Write(env map[string]string, fileName string) error {
 	content, err := marshal(env)

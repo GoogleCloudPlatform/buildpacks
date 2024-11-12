@@ -33,6 +33,7 @@ var (
 	dotEnvOutputFilePath          = flag.String("dot_env_output_filepath", "", "File path to write the output .env file to")
 	backendRootDirectory          = flag.String("backend_root_directory", "", "File path to the application directory specified by the user")
 	buildpackConfigOutputFilePath = flag.String("buildpack_config_output_filepath", "", "File path to write the buildpack config to")
+	firebaseConfig                = flag.String("firebase_config", "", "JSON serialized Firebase config used by Firebase Admin SDK")
 	serverSideEnvVars             = flag.String("server_side_env_vars", "", "List of server side env vars to set. An empty string indicates server side environment variables are disabled. Any other value indicates enablement and to use these vars over yaml defined env vars.")
 )
 
@@ -74,6 +75,7 @@ func main() {
 		EnvDereferencedOutputFilePath: *dotEnvOutputFilePath,
 		BackendRootDirectory:          *backendRootDirectory,
 		BuildpackConfigOutputFilePath: *buildpackConfigOutputFilePath,
+		FirebaseConfig:                *firebaseConfig,
 		ServerSideEnvVars:             *serverSideEnvVars,
 	}
 

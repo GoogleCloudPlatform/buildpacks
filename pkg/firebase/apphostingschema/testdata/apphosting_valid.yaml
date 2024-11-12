@@ -20,6 +20,12 @@ env:
       - BUILD
       - RUNTIME
 
+  - variable: VAR_JSON
+    value: '{"apiKey":"myApiKey","appId":"myAppId"}'
+    availability:
+      - BUILD
+      - RUNTIME
+
   - variable: API_KEY
     secret: myApiKeySecret
     availability:
