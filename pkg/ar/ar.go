@@ -21,6 +21,7 @@ import (
 	"io"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -76,10 +77,11 @@ var locations = []string{
 	"me-west1",
 	"northamerica-northeast1",
 	"northamerica-northeast2",
+	"northamerica-south1",
 	"southamerica-east1",
 	"southamerica-west1",
-	"us-central1",
 	"us",
+	"us-central1",
 	"us-east1",
 	"us-east4",
 	"us-east5",
@@ -119,6 +121,7 @@ func arRepositories() []string {
 	for _, endpoints := range locations {
 		arHosts = append(arHosts, fmt.Sprintf("%s-python.pkg.dev", endpoints))
 	}
+	sort.Strings(arHosts)
 	return arHosts
 }
 
