@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 )
@@ -108,7 +109,7 @@ func pnpmInstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 	}
 	shouldPruneDevDependencies := buildNodeEnv == nodejs.EnvDevelopment && !nodeEnvPresent && nodejs.HasDevDependencies(pjs)
 	if shouldPruneDevDependencies {
-		if _, isAppHostingBuild := os.LookupEnv(nodejs.AppHostingBuildEnv); isAppHostingBuild {
+		if env.IsFAH() {
 			// We don't prune if the user is using App Hosting since App Hosting builds don't
 			// rely on the node_modules folder at this point.
 			return nil

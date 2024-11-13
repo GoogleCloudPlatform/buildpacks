@@ -31,6 +31,7 @@ go_binary(
         "//pkg/ar",
         "//pkg/cache",
         "//pkg/devmode",
+        "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/nodejs",
     ],

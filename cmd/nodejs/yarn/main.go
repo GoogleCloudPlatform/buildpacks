@@ -25,6 +25,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 )
@@ -200,7 +201,7 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		if nodejs.NodeEnv() != nodejs.EnvProduction {
 			ctx.Logf("Retaining devDependencies because NODE_ENV=%q", nodeEnv)
 		} else {
-			if appHostingBuildEnvPresent {
+			if env.IsFAH() {
 				// We don't prune if the user is using App Hosting since App Hosting builds don't
 				// rely on the node_modules folder at this point.
 				return nil
