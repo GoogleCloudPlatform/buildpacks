@@ -19,8 +19,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/googleapis/gax-go/v2"
 	smpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
+	"github.com/googleapis/gax-go/v2"
 )
 
 // FakeSecretClient is a fake of the SecretClient.
