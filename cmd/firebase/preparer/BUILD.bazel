@@ -12,7 +12,9 @@ go_binary(
         "-w",
     ],
     deps = [
+        "//pkg/firebase/faherror",
         "//pkg/firebase/preparer",
+        "//pkg/gcpbuildpack",
         "@com_google_cloud_go_secretmanager//apiv1:go_default_library",
     ],
 )

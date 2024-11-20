@@ -27,6 +27,7 @@ import (
 	"github.com/googleapis/gax-go/v2"
 
 	apphostingschema "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 	smpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 )
 
@@ -90,7 +91,7 @@ func normalizeSecretFormat(firebaseSecret, projectID string) (string, error) {
 		return firebaseSecret, nil
 	}
 
-	return "", fmt.Errorf("invalid secret format for %v", firebaseSecret)
+	return "", faherror.ImproperSecretFormatError(firebaseSecret)
 }
 
 // PinVersions will determine the latest version for any secrets that require it and pin it to
@@ -100,19 +101,11 @@ func PinVersions(ctx context.Context, client SecretManager, env []apphostingsche
 		if ev.Secret != "" && strings.HasSuffix(ev.Secret, latestSuffix) {
 			n, err := getSecretVersion(ctx, client, ev.Secret)
 			if err != nil {
-				return fmt.Errorf(
-					"calling GetSecretVersion with name=%v: %w. "+
-						"If the secret already exists in your project, please grant your App Hosting backend "+
-						"access to it with the CLI command 'firebase apphosting:secrets:grantaccess'. "+
-						"See https://firebase.google.com/docs/app-hosting/configure#secret-parameters for more information",
-					ev.Secret,
-					err,
-				)
+				return faherror.MisconfiguredSecretError(ev.Secret, err)
 			}
 			env[i].Secret = n
 		}
 	}
-
 	return nil
 }
 

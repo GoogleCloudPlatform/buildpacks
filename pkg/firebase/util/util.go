@@ -17,11 +17,11 @@ package util
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
@@ -73,7 +73,7 @@ func buildDirectoryContext(cwd, userSpecifiedAppDirPath string) (string, string,
 	_, err := os.Stat(absoluteAppDirPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return "", "", fmt.Errorf("cannot find user-specified backend.root_directory path %q in repo: %w", userSpecifiedAppDirPath, err)
+			return "", "", faherror.InvalidRootDirectoryError(userSpecifiedAppDirPath, err)
 		}
 		return "", "", err
 	}

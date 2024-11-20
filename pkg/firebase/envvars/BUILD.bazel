@@ -8,7 +8,10 @@ go_library(
     name = "envvars",
     srcs = ["envvars.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    deps = ["//pkg/firebase/apphostingschema"],
+    deps = [
+        "//pkg/firebase/apphostingschema",
+        "//pkg/firebase/faherror",
+    ],
 )
 
 go_test(

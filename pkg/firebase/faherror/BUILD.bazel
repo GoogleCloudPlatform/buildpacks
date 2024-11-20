@@ -1,0 +1,13 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+package(default_visibility = [
+    "//cmd/firebase:__subpackages__",
+    "//cmd/nodejs:__subpackages__",
+    "//pkg/firebase:__subpackages__",
+])
+
+go_library(
+    name = "faherror",
+    srcs = ["faherror.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+)

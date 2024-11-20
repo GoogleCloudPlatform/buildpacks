@@ -17,11 +17,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 
-	preparer "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/preparer"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/preparer"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"cloud.google.com/go/secretmanager/apiv1"
 )
 
@@ -79,8 +82,18 @@ func main() {
 		ServerSideEnvVars:             *serverSideEnvVars,
 	}
 
-	err = preparer.Prepare(context.Background(), opts)
-	if err != nil {
-		log.Fatal(err)
+	gcpCtx := gcpbuildpack.NewContext()
+
+	if err = preparer.Prepare(context.Background(), opts); err != nil {
+		var fe *faherror.FahError
+		if errors.As(err, &fe) {
+			// Known App Hosting user errors are wrapped by a GCP User Error to avoid being labeled
+			// as internal status errors.
+			err = gcpbuildpack.UserErrorf("%w", fe)
+		} else {
+			err = faherror.InternalErrorf("%w", err)
+		}
+		gcpCtx.Exit(1, err)
 	}
+	gcpCtx.Exit(0, nil)
 }

@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 )
 
 // Write produces a file where each line has the format KEY=VALUE. We aren't using the
@@ -61,7 +62,7 @@ func Read(filename string) (map[string]string, error) {
 			value := line[equalSignIndex+1:]
 			envMap[key] = value
 		} else if line != "" {
-			return nil, fmt.Errorf("invalid line format: %s", line)
+			return nil, faherror.UserErrorf("invalid line format: %s", line)
 		}
 	}
 

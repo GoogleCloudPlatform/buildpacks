@@ -108,7 +108,7 @@ func Prepare(ctx context.Context, opts Options) error {
 		return fmt.Errorf("failed to get current working directory: %w", err)
 	}
 	if err := util.WriteBuildDirectoryContext(cwd, opts.BackendRootDirectory, opts.BuildpackConfigOutputFilePath); err != nil {
-		return fmt.Errorf("writing build directory context to %v: %w", opts.BuildpackConfigOutputFilePath, err)
+		return fmt.Errorf("writing build directory context: %w", err)
 	}
 
 	return nil

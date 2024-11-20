@@ -1,7 +1,6 @@
 package util
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,7 +14,7 @@ func TestWriteBuildDirectoryContext(t *testing.T) {
 		files                        []string
 		wantBuildDirectory           string
 		wantRelativeProjectDirectory string
-		wantError                    error
+		wantError                    bool
 	}{
 		{
 			name:                         "no_app_directory_path",
@@ -50,7 +49,7 @@ func TestWriteBuildDirectoryContext(t *testing.T) {
 			wantBuildDirectory:           "",
 			wantRelativeProjectDirectory: "",
 			files:                        []string{},
-			wantError:                    os.ErrNotExist,
+			wantError:                    true,
 		},
 	}
 	for _, test := range testCases {
@@ -71,7 +70,7 @@ func TestWriteBuildDirectoryContext(t *testing.T) {
 			buildpackConfigFilePath := filepath.Join(testDir, "tmp")
 			err := WriteBuildDirectoryContext(testDir, test.appDirectoryPath, buildpackConfigFilePath)
 			if err != nil {
-				if errors.Is(err, test.wantError) {
+				if test.wantError {
 					return
 				}
 				t.Errorf("WriteBuildDirectoryContext(%v, %v, %v) failed unexpectedly; err = %v", testDir, test.appDirectoryPath, buildpackConfigFilePath, err)

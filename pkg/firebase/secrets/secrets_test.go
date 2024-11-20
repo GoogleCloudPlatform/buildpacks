@@ -58,7 +58,7 @@ func TestNormalize(t *testing.T) {
 			inputEnv: []apphostingschema.EnvironmentVariable{
 				apphostingschema.EnvironmentVariable{Variable: "INVALID_SECRET_FORMAT", Secret: "secretID@@5", Availability: []string{"BUILD"}},
 			},
-			wantErr: "invalid secret format",
+			wantErr: "Improper Secret Format",
 		},
 	}
 

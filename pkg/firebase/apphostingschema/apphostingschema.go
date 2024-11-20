@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 	"gopkg.in/yaml.v2"
 )
 
@@ -151,7 +152,7 @@ func ReadAndValidateFromFile(filePath string) (AppHostingSchema, error) {
 	}
 
 	if err = yaml.Unmarshal(apphostingBuffer, &a); err != nil {
-		return a, fmt.Errorf("unmarshalling apphosting config as YAML: %w", err)
+		return a, faherror.InvalidAppHostingYamlError(filePath, err)
 	}
 	return a, nil
 }
@@ -238,7 +239,7 @@ func MergeWithEnvironmentSpecificYAML(appHostingSchema *AppHostingSchema, appHos
 	envSpecificYAMLPath := filepath.Join(filepath.Dir(appHostingYAMLPath), fmt.Sprintf("apphosting.%v.yaml", environmentName))
 	envSpecificSchema, err := ReadAndValidateFromFile(envSpecificYAMLPath)
 	if err != nil {
-		return fmt.Errorf("reading in and validating apphosting.%v.yaml at path %v: %w", environmentName, envSpecificYAMLPath, err)
+		return fmt.Errorf("reading environment specific apphosting schema: %w", err)
 	}
 
 	mergeAppHostingSchemas(appHostingSchema, &envSpecificSchema)

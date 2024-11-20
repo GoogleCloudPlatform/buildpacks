@@ -11,7 +11,10 @@ go_library(
         "vpcaccess.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    deps = ["@in_gopkg_yaml_v2//:go_default_library"],
+    deps = [
+        "//pkg/firebase/faherror",
+        "@in_gopkg_yaml_v2//:go_default_library",
+    ],
 )
 
 go_test(
