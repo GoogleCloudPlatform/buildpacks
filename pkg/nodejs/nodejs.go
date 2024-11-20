@@ -147,8 +147,7 @@ func ReadPackageJSONIfExists(dir string) (*PackageJSON, error) {
 }
 
 // ReadNodeDependencies looks for a package.json and lockfile in either appDir or rootDir. The
-// lockfile must either be in the same directory as package.json or be in the application root,
-// otherwise an error is returned.
+// lockfile must either be in the same directory as package.json or be in the application root.
 // TODO (b/354012293): In the future we should read the data into structs for easier manipulation.
 func ReadNodeDependencies(ctx *gcp.Context, appDir string) (*NodeDependencies, error) {
 	rootDir := ctx.ApplicationRoot()
@@ -177,27 +176,24 @@ func ReadNodeDependencies(ctx *gcp.Context, appDir string) (*NodeDependencies, e
 	}
 
 	// Try to find a lockfile from the same dir, if there is none then check the application root.
-	// Return an error if no lockfile is found.
-	path, err := findValidLockfileInDir(dir)
-	if err == nil {
+	if path := findValidLockfileInDir(dir); path != "" {
 		return &NodeDependencies{pjs, path}, nil
 	}
 
-	path, err = findValidLockfileInDir(rootDir)
-	if err == nil {
+	if path := findValidLockfileInDir(rootDir); path != "" {
 		return &NodeDependencies{pjs, path}, nil
 	}
 
-	return nil, gcp.UserErrorf("valid lock file not found", dir)
+	return &NodeDependencies{pjs, ""}, nil
 }
 
-func findValidLockfileInDir(dir string) (string, error) {
+func findValidLockfileInDir(dir string) string {
 	for _, filename := range possibleLockfileFilenames {
 		if fp := filepath.Join(dir, filename); isValidLockFile(fp) {
-			return fp, nil
+			return fp
 		}
 	}
-	return "", gcp.UserErrorf("valid lock file not found in directory %s", dir)
+	return ""
 }
 
 // isValidLockFile validates that the lock file both exists and is not empty.

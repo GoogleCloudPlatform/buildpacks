@@ -17,11 +17,13 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 )
@@ -103,6 +105,12 @@ func pnpmInstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		for _, cmd := range buildCmds {
 			split := strings.Split(cmd, " ")
 			if _, err := ctx.Exec(split, gcp.WithUserAttribution); err != nil {
+				if fahCmd, fahCmdPresent := os.LookupEnv(nodejs.AppHostingBuildEnv); fahCmdPresent {
+					return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(fahCmd, err))
+				}
+				if nodejs.HasApphostingBuild(pjs) {
+					return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(fmt.Sprintf("pnpm run %s", nodejs.ScriptApphostingBuild), err))
+				}
 				return err
 			}
 		}

@@ -17,6 +17,7 @@
 package main
 
 import (
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/Masterminds/semver"
@@ -79,6 +80,10 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
+	if nodeDeps.LockfilePath == "" {
+		return gcp.UserErrorf("%w", faherror.MissingLockFileError(appDir))
+	}
+
 	version, err := nodejs.Version(nodeDeps, "next")
 	if err != nil {
 		ctx.Warnf("Error parsing version from lock file, defaulting to package.json version")
@@ -130,7 +135,7 @@ func validateVersion(ctx *gcp.Context, depVersion string) error {
 	if version.LessThan(minNextVersion) {
 		ctx.Warnf("Unsupported version of next: %s", depVersion)
 		ctx.Warnf("Update the next dependencies to >=%s", minNextVersion.String())
-		return gcp.UserErrorf("unsupported version of next %s", depVersion)
+		return gcp.UserErrorf("%w", faherror.UnsupportedFrameworkVersionError("next", depVersion))
 	}
 	return nil
 }

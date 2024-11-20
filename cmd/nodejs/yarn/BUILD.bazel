@@ -32,6 +32,7 @@ go_binary(
         "//pkg/cache",
         "//pkg/devmode",
         "//pkg/env",
+        "//pkg/firebase/faherror",
         "//pkg/gcpbuildpack",
         "//pkg/nodejs",
     ],

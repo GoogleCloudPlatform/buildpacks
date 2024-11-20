@@ -20,6 +20,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/Masterminds/semver"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -84,6 +85,10 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
+	if nodeDeps.LockfilePath == "" {
+		return gcp.UserErrorf("%w", faherror.MissingLockFileError(appDir))
+	}
+
 	// Ensure that the right version of the application builder is installed.
 	builderVersion, err := nodejs.Version(nodeDeps, "@angular-devkit/build-angular")
 	if err != nil {
@@ -134,7 +139,7 @@ func validateVersion(ctx *gcp.Context, depVersion string) error {
 	}
 	if version.LessThan(minAngularVersion) {
 		ctx.Warnf("Update the angular dependencies to >=%s", minAngularVersion.String())
-		return gcp.UserErrorf("Unsupported version of angular %s", depVersion)
+		return gcp.UserErrorf("%w", faherror.UnsupportedFrameworkVersionError("angular", depVersion))
 	}
 	return nil
 }

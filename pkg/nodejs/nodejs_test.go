@@ -328,24 +328,31 @@ func TestIsNodeJS8Runtime(t *testing.T) {
 }
 
 func TestReadNodeDependencies(t *testing.T) {
-	want := &NodeDependencies{
-		PackageJSON: &PackageJSON{
-			Engines: packageEnginesJSON{
-				Node: "my-node",
-				NPM:  "my-npm",
-			},
-			Scripts: map[string]string{
-				"start": "my-start",
-			},
-			Dependencies: map[string]string{
-				"a": "1.0",
-				"b": "2.0",
-			},
-			DevDependencies: map[string]string{
-				"c": "3.0",
-			},
+
+	pjs := &PackageJSON{
+		Engines: packageEnginesJSON{
+			Node: "my-node",
+			NPM:  "my-npm",
 		},
+		Scripts: map[string]string{
+			"start": "my-start",
+		},
+		Dependencies: map[string]string{
+			"a": "1.0",
+			"b": "2.0",
+		},
+		DevDependencies: map[string]string{
+			"c": "3.0",
+		},
+	}
+
+	want := &NodeDependencies{
+		PackageJSON:  pjs,
 		LockfilePath: testdata.MustGetPath("testdata/test-read-node-deps/package-lock.json"),
+	}
+
+	wantNoLockfile := &NodeDependencies{
+		PackageJSON: pjs,
 	}
 
 	testCases := []struct {
@@ -359,8 +366,8 @@ func TestReadNodeDependencies(t *testing.T) {
 			name:          "missing lockfile",
 			rootDir:       testdata.MustGetPath("testdata/test-read-package/"),
 			appDir:        testdata.MustGetPath("testdata/test-read-package/"),
-			expectedError: true,
-			want:          nil,
+			expectedError: false,
+			want:          wantNoLockfile,
 		},
 		{
 			name:    "package json and lockfile in same dir",

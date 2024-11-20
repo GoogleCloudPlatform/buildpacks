@@ -26,6 +26,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 )
@@ -153,6 +154,12 @@ func buildFn(ctx *gcp.Context) error {
 				if !isCustomBuild {
 					return fmt.Errorf(`%w
 NOTE: Running the default build script can be skipped by passing the empty environment variable "%s=" to the build`, err, nodejs.GoogleNodeRunScriptsEnv)
+				}
+				if fahCmd, fahCmdPresent := os.LookupEnv(nodejs.AppHostingBuildEnv); fahCmdPresent {
+					return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(fahCmd, err))
+				}
+				if nodejs.HasApphostingBuild(pjs) {
+					return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(fmt.Sprintf("npm run %s", nodejs.ScriptApphostingBuild), err))
 				}
 				return err
 			}

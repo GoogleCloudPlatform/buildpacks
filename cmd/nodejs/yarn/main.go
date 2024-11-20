@@ -26,6 +26,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 )
@@ -183,11 +184,11 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 	if gcpBuild || appHostingBuildEnvPresent || appHostingBuildScriptPresent {
 		if appHostingBuildScriptPresent {
 			if _, err := ctx.Exec([]string{"yarn", "run", "apphosting:build"}, gcp.WithUserAttribution); err != nil {
-				return err
+				return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(fmt.Sprintf("yarn run %s", nodejs.ScriptApphostingBuild), err))
 			}
 		} else if appHostingBuildEnvPresent {
 			if _, err := ctx.Exec(strings.Split(appHostingBuildEnv, " "), gcp.WithUserAttribution); err != nil {
-				return err
+				return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(appHostingBuildEnv, err))
 			}
 		} else {
 			if _, err := ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution); err != nil {
