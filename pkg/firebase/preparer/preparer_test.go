@@ -7,10 +7,11 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/fakesecretmanager"
-	apphostingschema "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/envvars"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/google/go-cmp/cmp"
+	"google3/third_party/golang/cmp/cmpopts/cmpopts"
 	smpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 	"google3/third_party/golang/protobuf/v2/proto/proto"
 )
@@ -100,23 +101,26 @@ func TestPrepare(t *testing.T) {
 			},
 		},
 		{
-			desc:               "server side env vars with apphosting.yaml",
+			desc:               "merges server side env vars with apphosting.yaml",
 			appHostingYAMLPath: appHostingYAMLPath,
 			projectID:          "test-project",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
-				{Variable: "SERVER_SIDE_ENV_VAR_NUMBER", Value: "54321", Availability: []string{"BUILD", "RUNTIME"}},
-				{Variable: "SERVER_SIDE_ENV_VAR_MULTILINE_FROM_SERVER_SIDE", Value: "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n", Availability: []string{"BUILD"}},
-				{Variable: "SERVER_SIDE_ENV_VAR_QUOTED_SPECIAL", Value: "api_from_server_side.service.com::", Availability: []string{"RUNTIME"}},
-				{Variable: "SERVER_SIDE_ENV_VAR_SPACED", Value: "api3 - service -  com", Availability: []string{"BUILD"}},
-				{Variable: "SERVER_SIDE_ENV_VAR_SINGLE_QUOTES", Value: "GOLANG is awesome!'", Availability: []string{"BUILD"}},
-				{Variable: "SERVER_SIDE_ENV_VAR_DOUBLE_QUOTES", Value: "\"api4.service.com\"", Availability: []string{"BUILD", "RUNTIME"}},
+				{Variable: "API_URL", Value: "override.service.com", Availability: []string{"BUILD"}},
+				{Variable: "SERVER_SIDE_VAR", Value: "I'm a server side var!", Availability: []string{"RUNTIME"}},
 			},
 			wantEnvMap: map[string]string{
-				"SERVER_SIDE_ENV_VAR_NUMBER":                     "54321",
-				"SERVER_SIDE_ENV_VAR_MULTILINE_FROM_SERVER_SIDE": "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n",
-				"SERVER_SIDE_ENV_VAR_SPACED":                     "api3 - service -  com",
-				"SERVER_SIDE_ENV_VAR_SINGLE_QUOTES":              "GOLANG is awesome!'",
-				"SERVER_SIDE_ENV_VAR_DOUBLE_QUOTES":              "\"api4.service.com\"",
+				"API_URL":                "override.service.com", // The apphosting.yaml value is 'api.service.com'.
+				"VAR_QUOTED_SPECIAL":     "api2.service.com::",
+				"VAR_SPACED":             "api3 - service -  com",
+				"VAR_SINGLE_QUOTES":      "I said, 'I'm learning YAML!'",
+				"VAR_DOUBLE_QUOTES":      "\"api4.service.com\"",
+				"MULTILINE_VAR":          "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n",
+				"VAR_NUMBER":             "12345",
+				"FIREBASE_CONFIG":        userProvidedFirebaseConfig,
+				"API_KEY":                secretString,
+				"PINNED_API_KEY":         secretString,
+				"VERBOSE_API_KEY":        secretString,
+				"PINNED_VERBOSE_API_KEY": secretString,
 			},
 			wantSchema: apphostingschema.AppHostingSchema{
 				RunConfig: apphostingschema.RunConfig{
@@ -127,29 +131,73 @@ func TestPrepare(t *testing.T) {
 					MinInstances: proto.Int32(0),
 				},
 				Env: []apphostingschema.EnvironmentVariable{
-					{Variable: "SERVER_SIDE_ENV_VAR_NUMBER", Value: "54321", Availability: []string{"BUILD", "RUNTIME"}},
-					{Variable: "SERVER_SIDE_ENV_VAR_MULTILINE_FROM_SERVER_SIDE", Value: "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n", Availability: []string{"BUILD"}},
-					{Variable: "SERVER_SIDE_ENV_VAR_QUOTED_SPECIAL", Value: "api_from_server_side.service.com::", Availability: []string{"RUNTIME"}},
-					{Variable: "SERVER_SIDE_ENV_VAR_SPACED", Value: "api3 - service -  com", Availability: []string{"BUILD"}},
-					{Variable: "SERVER_SIDE_ENV_VAR_SINGLE_QUOTES", Value: "GOLANG is awesome!'", Availability: []string{"BUILD"}},
-					{Variable: "SERVER_SIDE_ENV_VAR_DOUBLE_QUOTES", Value: "\"api4.service.com\"", Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "API_URL", Value: "override.service.com", Availability: []string{"BUILD"}},             // This var is overridden from serverSideEnvVars.
+					{Variable: "SERVER_SIDE_VAR", Value: "I'm a server side var!", Availability: []string{"RUNTIME"}}, // This var is only defined server-side.
+					{Variable: "VAR_QUOTED_SPECIAL", Value: "api2.service.com::", Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "VAR_SPACED", Value: "api3 - service -  com", Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "VAR_SINGLE_QUOTES", Value: "I said, 'I'm learning YAML!'", Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "VAR_DOUBLE_QUOTES", Value: "\"api4.service.com\"", Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "MULTILINE_VAR", Value: "211 Broadway\nApt. 17\nNew York, NY 10019\n", Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "VAR_NUMBER", Value: "12345", Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
+					{Variable: "FIREBASE_CONFIG", Value: userProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
+					{Variable: "PINNED_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "VERBOSE_API_KEY", Secret: latestSecretName, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "PINNED_VERBOSE_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}},
 				},
 			},
 		},
 		{
-			desc:               "server side env vars enabled but empty without apphosting.yaml",
+			desc:               "server side env vars without apphosting.yaml",
+			appHostingYAMLPath: "",
+			projectID:          "test-project",
+			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
+				{Variable: "SERVER_SIDE_VAR", Value: "I'm a server side var!", Availability: []string{"RUNTIME"}},
+			},
+			wantEnvMap: map[string]string{
+				"FIREBASE_CONFIG": serverProvidedFirebaseConfig,
+			},
+			wantSchema: apphostingschema.AppHostingSchema{
+				Env: []apphostingschema.EnvironmentVariable{
+					{Variable: "SERVER_SIDE_VAR", Value: "I'm a server side var!", Availability: []string{"RUNTIME"}}, // This var is only defined server-side.
+					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}},
+				},
+			},
+		},
+		{
+			desc:               "server side env vars enabled and empty without apphosting.yaml",
 			appHostingYAMLPath: "",
 			projectID:          "test-project",
 			serverSideEnvVars:  []apphostingschema.EnvironmentVariable{},
-			wantEnvMap:         map[string]string{},
-			wantSchema:         apphostingschema.AppHostingSchema{},
+			wantEnvMap: map[string]string{
+				"FIREBASE_CONFIG": serverProvidedFirebaseConfig,
+			},
+			wantSchema: apphostingschema.AppHostingSchema{
+				Env: []apphostingschema.EnvironmentVariable{
+					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}},
+				},
+			},
 		},
 		{
-			desc:               "server side env vars enabled but empty with apphosting.yaml",
+			desc:               "server side env vars enabled and empty with apphosting.yaml",
 			appHostingYAMLPath: appHostingYAMLPath,
 			projectID:          "test-project",
 			serverSideEnvVars:  []apphostingschema.EnvironmentVariable{},
-			wantEnvMap:         map[string]string{},
+			wantEnvMap: map[string]string{
+				"API_URL":                "api.service.com",
+				"VAR_QUOTED_SPECIAL":     "api2.service.com::",
+				"VAR_SPACED":             "api3 - service -  com",
+				"VAR_SINGLE_QUOTES":      "I said, 'I'm learning YAML!'",
+				"VAR_DOUBLE_QUOTES":      "\"api4.service.com\"",
+				"MULTILINE_VAR":          "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n",
+				"VAR_NUMBER":             "12345",
+				"FIREBASE_CONFIG":        userProvidedFirebaseConfig,
+				"API_KEY":                secretString,
+				"PINNED_API_KEY":         secretString,
+				"VERBOSE_API_KEY":        secretString,
+				"PINNED_VERBOSE_API_KEY": secretString,
+			},
 			wantSchema: apphostingschema.AppHostingSchema{
 				RunConfig: apphostingschema.RunConfig{
 					CPU:          proto.Float32(3),
@@ -157,6 +205,21 @@ func TestPrepare(t *testing.T) {
 					Concurrency:  proto.Int32(100),
 					MaxInstances: proto.Int32(4),
 					MinInstances: proto.Int32(0),
+				},
+				Env: []apphostingschema.EnvironmentVariable{
+					{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD"}},
+					{Variable: "VAR_QUOTED_SPECIAL", Value: "api2.service.com::", Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "VAR_SPACED", Value: "api3 - service -  com", Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "VAR_SINGLE_QUOTES", Value: "I said, 'I'm learning YAML!'", Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "VAR_DOUBLE_QUOTES", Value: "\"api4.service.com\"", Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "MULTILINE_VAR", Value: "211 Broadway\nApt. 17\nNew York, NY 10019\n", Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "VAR_NUMBER", Value: "12345", Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
+					{Variable: "FIREBASE_CONFIG", Value: userProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
+					{Variable: "PINNED_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "VERBOSE_API_KEY", Secret: latestSecretName, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "PINNED_VERBOSE_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}},
 				},
 			},
 		},
@@ -225,7 +288,7 @@ func TestPrepare(t *testing.T) {
 			t.Errorf("Error reading in temp file: %v", err)
 		}
 
-		if diff := cmp.Diff(test.wantEnvMap, actualEnvMapDereferenced); diff != "" {
+		if diff := cmp.Diff(test.wantEnvMap, actualEnvMapDereferenced, cmpopts.SortMaps(func(a, b string) bool { return a < b })); diff != "" {
 			t.Errorf("Unexpected env map for test %v (-want, +got):\n%v", test.desc, diff)
 		}
 
@@ -235,7 +298,7 @@ func TestPrepare(t *testing.T) {
 			t.Errorf("reading in and validating apphosting.yaml at path %v: %v", outputFilePathYAML, err)
 		}
 
-		if diff := cmp.Diff(test.wantSchema, actualAppHostingSchema); diff != "" {
+		if diff := cmp.Diff(test.wantSchema, actualAppHostingSchema, cmpopts.SortSlices(func(a, b apphostingschema.EnvironmentVariable) bool { return a.Variable < b.Variable })); diff != "" {
 			t.Errorf("unexpected prepared YAML schema for test %q (-want, +got):\n%v", test.desc, diff)
 		}
 	}

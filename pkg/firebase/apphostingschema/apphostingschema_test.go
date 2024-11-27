@@ -6,6 +6,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/google/go-cmp/cmp"
+	"google3/third_party/golang/cmp/cmpopts/cmpopts"
 	"google3/third_party/golang/protobuf/v2/proto/proto"
 )
 
@@ -352,7 +353,7 @@ func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
 			t.Fatalf("unexpected error for TestMergeWithEnvironmentSpecificYAML(%q): %v", test.desc, err)
 		}
 
-		if diff := cmp.Diff(test.wantSchema, test.appHostingSchema); diff != "" {
+		if diff := cmp.Diff(test.wantSchema, test.appHostingSchema, cmpopts.SortSlices(func(a, b EnvironmentVariable) bool { return a.Variable < b.Variable })); diff != "" {
 			t.Errorf("unexpected merged apphosting schema for test %q (-want, +got):\n%v", test.desc, diff)
 		}
 	}
@@ -453,6 +454,70 @@ func TestWriteToFile(t *testing.T) {
 
 		if diff := cmp.Diff(test.inputSchema, actualSchema); diff != "" {
 			t.Errorf("unexpected schema for test %q, (-want, +got):\n%v", test.desc, diff)
+		}
+	}
+}
+
+func TestMergeEnvVars(t *testing.T) {
+	testCases := []struct {
+		desc       string
+		original   []EnvironmentVariable
+		override   []EnvironmentVariable
+		wantMerged []EnvironmentVariable
+	}{
+		{
+			desc: "Merge environment variables",
+			original: []EnvironmentVariable{
+				EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+				EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
+			},
+			override: []EnvironmentVariable{
+				EnvironmentVariable{Variable: "API_URL", Value: "api.staging.service.com", Availability: []string{"BUILD"}},
+				EnvironmentVariable{Variable: "DATABASE_URL", Secret: "secretStagingDatabaseURL"},
+			},
+			wantMerged: []EnvironmentVariable{
+				EnvironmentVariable{Variable: "API_URL", Value: "api.staging.service.com", Availability: []string{"BUILD"}},
+				EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
+				EnvironmentVariable{Variable: "DATABASE_URL", Secret: "secretStagingDatabaseURL"},
+			},
+		},
+		{
+			desc: "Takes original list when there are no overrides",
+			original: []EnvironmentVariable{
+				EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+				EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
+				EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+			},
+			override: []EnvironmentVariable{},
+			wantMerged: []EnvironmentVariable{
+				EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+				EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
+				EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+			},
+		},
+		{
+			desc:     "Takes override list when there are no original list",
+			original: []EnvironmentVariable{},
+			override: []EnvironmentVariable{
+				EnvironmentVariable{Variable: "API_URL", Value: "api.staging.service.com", Availability: []string{"BUILD"}},
+				EnvironmentVariable{Variable: "DATABASE_URL", Secret: "secretStagingDatabaseURL"},
+			},
+			wantMerged: []EnvironmentVariable{
+				EnvironmentVariable{Variable: "API_URL", Value: "api.staging.service.com", Availability: []string{"BUILD"}},
+				EnvironmentVariable{Variable: "DATABASE_URL", Secret: "secretStagingDatabaseURL"},
+			},
+		},
+		{
+			desc:       "Handles empty lists",
+			original:   []EnvironmentVariable{},
+			override:   []EnvironmentVariable{},
+			wantMerged: []EnvironmentVariable{},
+		},
+	}
+	for _, test := range testCases {
+		gotMerged := MergeEnvVars(test.original, test.override)
+		if diff := cmp.Diff(test.wantMerged, gotMerged, cmpopts.SortSlices(func(a, b EnvironmentVariable) bool { return a.Variable < b.Variable })); diff != "" {
+			t.Errorf("unexpected merged environment variables for test %q (-want, +got):\n%v", test.desc, diff)
 		}
 	}
 }

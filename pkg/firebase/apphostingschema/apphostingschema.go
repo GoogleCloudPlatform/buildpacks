@@ -214,20 +214,27 @@ func mergeAppHostingSchemas(appHostingSchema *AppHostingSchema, envSpecificSchem
 	appHostingSchema.RunConfig.VpcAccess = MergeVpcAccess(appHostingSchema.RunConfig.VpcAccess, envSpecificSchema.RunConfig.VpcAccess)
 
 	// Merge Environment Variables
-	envVarMap := make(map[string]*EnvironmentVariable)
-	for i := range appHostingSchema.Env {
-		envVarMap[appHostingSchema.Env[i].Variable] = &appHostingSchema.Env[i]
+	appHostingSchema.Env = MergeEnvVars(appHostingSchema.Env, envSpecificSchema.Env)
+}
+
+// MergeEnvVars merges the environment variables from the original list with the override list.
+// If there is a conflict between the environment variables, use the value/secret from the override list.
+func MergeEnvVars(original, override []EnvironmentVariable) []EnvironmentVariable {
+	merged := override
+	varByName := make(map[string]EnvironmentVariable)
+	for _, ev := range override {
+		varByName[ev.Variable] = ev
 	}
 
-	for _, envVar := range envSpecificSchema.Env {
-		if existingVar, exists := envVarMap[envVar.Variable]; exists {
-			// Overwrite existing variable
-			*existingVar = envVar
+	for _, ev := range original {
+		if _, found := varByName[ev.Variable]; !found {
+			merged = append(merged, ev)
 		} else {
-			// Add new variable
-			appHostingSchema.Env = append(appHostingSchema.Env, envVar)
+			log.Printf("Skipping environment variable %v from original list since it is already defined in the override list\n", ev.Variable)
 		}
 	}
+
+	return merged
 }
 
 // MergeWithEnvironmentSpecificYAML merges the environment specific apphosting.<environmentName>.yaml with the base apphosting schema found in apphosting.yaml

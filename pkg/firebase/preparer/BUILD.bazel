@@ -30,6 +30,7 @@ go_test(
         "//pkg/testdata",
         "//third_party/golang/protobuf/v2/proto",
         "@com_github_google_go-cmp//cmp:go_default_library",
+        "@com_github_google_go-cmp//cmp:go_default_library/cmpopts",
         "@org_golang_google_genproto//googleapis/cloud/secretmanager/v1:go_default_library",
     ],
 )

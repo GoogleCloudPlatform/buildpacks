@@ -23,7 +23,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/envvars"
-	secrets "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/secrets"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/secrets"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
 )
 
@@ -78,7 +78,7 @@ func Prepare(ctx context.Context, opts Options) error {
 			return fmt.Errorf("parsing server side env vars %v: %w", opts.ServerSideEnvVars, err)
 		}
 
-		appHostingYAML.Env = parsedServerSideEnvVars
+		appHostingYAML.Env = apphostingschema.MergeEnvVars(appHostingYAML.Env, parsedServerSideEnvVars)
 	}
 
 	apphostingschema.Sanitize(&appHostingYAML)
