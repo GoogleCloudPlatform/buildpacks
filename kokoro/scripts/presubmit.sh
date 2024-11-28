@@ -38,7 +38,7 @@ if [[ ! -v FILTER ]]; then
   exit 1
 fi
 
-readonly PACK_VERSION="0.33.1"
+readonly PACK_VERSION="0.35.1"
 
 temp="$(mktemp -d)"
 CURL_OPTS="--retry 5 -fsSL"

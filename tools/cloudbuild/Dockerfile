@@ -19,7 +19,7 @@
 FROM gcr.io/cloud-builders/bazel
 
 # Binaries must be in /usr/bin to be visible to Bazel.
-ARG PACK_VERSION=0.33.1
+ARG PACK_VERSION=0.35.1
 RUN curl -fsSL https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64 -o /usr/bin/container-structure-test && chmod +x /usr/bin/container-structure-test
 RUN curl -fsSL https://github.com/buildpacks/pack/releases/download/v${PACK_VERSION}/pack-v${PACK_VERSION}-linux.tgz | tar xz -C /usr/bin
 RUN curl -fsSL https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -o /usr/bin/jq && chmod +x /usr/bin/jq
