@@ -5,13 +5,13 @@ runtimes.
 
 ## Run Image
 
-[gcr.io/gae-runtimes/buildpacks/stacks/google-gae-22/run](https://gcr.io/gae-runtimes/buildpacks/stacks/google-gae-22/run)
+[us-docker.pkg.dev/serverless-runtimes/google-22-full/run](https://us-docker.pkg.dev/serverless-runtimes/google-22-full/run)
 
 Available packages listed in [run-packages.txt](./run-packages.txt)
 
 ## Build Image
 
-[gcr.io/gae-runtimes/buildpacks/stacks/google-gae-22/build](https://gcr.io/gae-runtimes/buildpacks/stacks/google-gae-22/build)
+[us-docker.pkg.dev/serverless-runtimes/google-22-full/build/go](https://us-docker.pkg.dev/serverless-runtimes/google-22-full/build/go)
 
 Available packages listed in [build-packages.txt](./build-packages.txt)
 
@@ -27,7 +27,7 @@ To build the run image:
 DOCKER_BUILDKIT=1 docker build . \
   --build-arg CANDIDATE_NAME=test \
   --file run.Dockerfile \
-  --tag gcr.io/gae-runtimes/buildpacks/stacks/google-gae-22/run
+  --tag <REMOTE_RUN_URL>
 ```
 
 To build the build image:
@@ -36,7 +36,7 @@ To build the build image:
 DOCKER_BUILDKIT=1 docker build . \
   --build-arg CANDIDATE_NAME=test \
   --file build.Dockerfile \
-  --tag gcr.io/gae-runtimes/buildpacks/stacks/google-gae-22/build
+  --tag <REMOTE_BUILD_URL>
 ```
 
 ## Run Tests
@@ -48,7 +48,7 @@ To test the run image:
 
 ```
 container-structure-test test \
-  --image gcr.io/gae-runtimes/buildpacks/stacks/google-gae-22/run \
+  --image <REMOTE_RUN_URL> \
   --config run_structure_test.yaml
 ```
 
@@ -56,6 +56,6 @@ To test the build image:
 
 ```
 container-structure-test test \
-  --image gcr.io/gae-runtimes/buildpacks/stacks/google-gae-22/build \
+  --image <REMOTE_BUILD_URL> \
   --config build_structure_test.yaml
 ```
