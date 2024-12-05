@@ -172,11 +172,11 @@ func TestMergeVpcAccess(t *testing.T) {
 			},
 			envAccess: &VpcAccess{
 				Connector: "my-connector",
-				Egress:    "PRIVATE_IP_ONLY",
+				Egress:    "PRIVATE_RANGES_ONLY",
 			},
 			wantVpcAccess: &VpcAccess{
 				Connector: "my-connector",
-				Egress:    "PRIVATE_IP_ONLY",
+				Egress:    "PRIVATE_RANGES_ONLY",
 			},
 		},
 		{

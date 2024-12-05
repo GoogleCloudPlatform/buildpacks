@@ -17,7 +17,7 @@ var (
 	NetworkAddress = regexp.MustCompile(`([0-9]{1,3}\.){3}[0-9]{1,3}`)
 
 	// ValidEgress is the list of valid egress settings.
-	ValidEgress = []string{"ALL_TRAFFIC", "PRIVATE_IP_ONLY"}
+	ValidEgress = []string{"ALL_TRAFFIC", "PRIVATE_RANGES_ONLY"}
 )
 
 // ValidateVpcAccess validates the form of a vpcAccess struct.
