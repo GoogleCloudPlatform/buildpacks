@@ -7,7 +7,7 @@ require (
 	cloud.google.com/go/secretmanager v1.11.1
 	github.com/BurntSushi/toml v1.2.1
 	github.com/Masterminds/semver v1.5.0
-	github.com/buildpacks/libcnb v1.27.0
+	github.com/buildpacks/libcnb v1.30.3
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.16.1
 	github.com/googleapis/gax-go/v2 v2.12.0

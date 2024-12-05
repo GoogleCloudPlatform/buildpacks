@@ -27,9 +27,9 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
-	"github.com/buildpacks/libcnb"
 	"github.com/google/go-cmp/cmp"
 	"google3/third_party/golang/cmp/cmpopts/cmpopts"
+	"github.com/buildpacks/libcnb"
 )
 
 func TestReadProjectFile(t *testing.T) {
