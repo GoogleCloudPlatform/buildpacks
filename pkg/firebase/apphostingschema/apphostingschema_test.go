@@ -30,8 +30,8 @@ func TestReadAndValidateFromFile(t *testing.T) {
 						Egress: "ALL_TRAFFIC",
 						NetworkInterfaces: []NetworkInterface{
 							NetworkInterface{
-								Network:    "10.0.0.0",
-								Subnetwork: "10.0.0.1",
+								Network:    "projects/test-project/global/networks/test-network",
+								Subnetwork: "projects/test-project/regions/us-central1/subnetworks/test-subnetwork",
 								Tags:       []string{"test-tag"},
 							},
 						},

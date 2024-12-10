@@ -30,8 +30,9 @@ func TestValidateVpcAccess(t *testing.T) {
 			vpcAccess: &VpcAccess{
 				NetworkInterfaces: []NetworkInterface{
 					{
-						Network:    "10.0.0.0",
-						Subnetwork: "10.0.0.1",
+						Network:    "projects/project-id/global/networks/test-network",
+						Subnetwork: "projects/project-id/regions/us-central1/subnetworks/test-subnetwork",
+						Tags:       []string{"test-tag"},
 					},
 				},
 			},
@@ -56,8 +57,8 @@ func TestValidateVpcAccess(t *testing.T) {
 			vpcAccess: &VpcAccess{
 				NetworkInterfaces: []NetworkInterface{
 					{
-						Network:    "10.0",
-						Subnetwork: "10.0.0.1",
+						Network:    "invalid/network",
+						Subnetwork: "projects/project-id/regions/us-central1/subnetworks/test-subnetwork",
 					},
 				},
 			},
@@ -68,8 +69,8 @@ func TestValidateVpcAccess(t *testing.T) {
 			vpcAccess: &VpcAccess{
 				NetworkInterfaces: []NetworkInterface{
 					{
-						Network:    "10.0.0.0",
-						Subnetwork: "10.0",
+						Network:    "projects/project-id/global/networks/test-network",
+						Subnetwork: "invalid/subnetwork",
 					},
 				},
 			},
@@ -81,8 +82,8 @@ func TestValidateVpcAccess(t *testing.T) {
 				Connector: "my-connector",
 				NetworkInterfaces: []NetworkInterface{
 					{
-						Network:    "10.0.0.0",
-						Subnetwork: "10.0.0.1",
+						Network:    "network",
+						Subnetwork: "subnetwork",
 					},
 				},
 			},
@@ -124,8 +125,8 @@ func TestMergeVpcAccess(t *testing.T) {
 				Egress: "ALL_TRAFFIC",
 				NetworkInterfaces: []NetworkInterface{
 					{
-						Network:    "10.0.0.0",
-						Subnetwork: "10.0.0.1",
+						Network:    "network",
+						Subnetwork: "subnetwork",
 					},
 				},
 			},
@@ -133,8 +134,8 @@ func TestMergeVpcAccess(t *testing.T) {
 				Egress: "ALL_TRAFFIC",
 				NetworkInterfaces: []NetworkInterface{
 					{
-						Network:    "10.0.0.0",
-						Subnetwork: "10.0.0.1",
+						Network:    "network",
+						Subnetwork: "subnetwork",
 					},
 				},
 			},
@@ -145,8 +146,8 @@ func TestMergeVpcAccess(t *testing.T) {
 				Egress: "ALL_TRAFFIC",
 				NetworkInterfaces: []NetworkInterface{
 					{
-						Network:    "1.0.0.0",
-						Subnetwork: "1.0.0.1",
+						Network:    "network",
+						Subnetwork: "subnetwork",
 					},
 				},
 			},
@@ -154,8 +155,8 @@ func TestMergeVpcAccess(t *testing.T) {
 				Egress: "ALL_TRAFFIC",
 				NetworkInterfaces: []NetworkInterface{
 					{
-						Network:    "1.0.0.0",
-						Subnetwork: "1.0.0.1",
+						Network:    "network",
+						Subnetwork: "subnetwork",
 					},
 				},
 			},
@@ -184,8 +185,8 @@ func TestMergeVpcAccess(t *testing.T) {
 			yamlAccess: &VpcAccess{
 				NetworkInterfaces: []NetworkInterface{
 					{
-						Network:    "1.0.0.0",
-						Subnetwork: "1.0.0.1",
+						Network:    "network",
+						Subnetwork: "subnetwork",
 						Tags:       []string{"tag1"},
 					},
 				},
@@ -193,8 +194,8 @@ func TestMergeVpcAccess(t *testing.T) {
 			envAccess: &VpcAccess{
 				NetworkInterfaces: []NetworkInterface{
 					{
-						Network:    "2.0.0.0",
-						Subnetwork: "2.0.0.1",
+						Network:    "network2",
+						Subnetwork: "subnetwork2",
 						Tags:       []string{"tag2"},
 					},
 				},
@@ -202,8 +203,8 @@ func TestMergeVpcAccess(t *testing.T) {
 			wantVpcAccess: &VpcAccess{
 				NetworkInterfaces: []NetworkInterface{
 					{
-						Network:    "2.0.0.0",
-						Subnetwork: "2.0.0.1",
+						Network:    "network2",
+						Subnetwork: "subnetwork2",
 						Tags:       []string{"tag2"},
 					},
 				},
@@ -229,8 +230,8 @@ func TestMergeVpcAccess(t *testing.T) {
 			envAccess: &VpcAccess{
 				NetworkInterfaces: []NetworkInterface{
 					{
-						Network:    "2.0.0.0",
-						Subnetwork: "2.0.0.1",
+						Network:    "network",
+						Subnetwork: "subnetwork",
 						Tags:       []string{"tag2"},
 					},
 				},
@@ -238,8 +239,8 @@ func TestMergeVpcAccess(t *testing.T) {
 			wantVpcAccess: &VpcAccess{
 				NetworkInterfaces: []NetworkInterface{
 					{
-						Network:    "2.0.0.0",
-						Subnetwork: "2.0.0.1",
+						Network:    "network",
+						Subnetwork: "subnetwork",
 						Tags:       []string{"tag2"},
 					},
 				},
@@ -250,8 +251,8 @@ func TestMergeVpcAccess(t *testing.T) {
 			yamlAccess: &VpcAccess{
 				NetworkInterfaces: []NetworkInterface{
 					{
-						Network:    "1.0.0.0",
-						Subnetwork: "1.0.0.1",
+						Network:    "network",
+						Subnetwork: "subnetwork",
 						Tags:       []string{"tag1"},
 					},
 				},
@@ -319,12 +320,12 @@ func TestNormalizeVpcAccess(t *testing.T) {
 			},
 		},
 		{
-			desc: "network interface is not normalized",
+			desc: "network interface id is normalized",
 			vpcAccess: &VpcAccess{
 				NetworkInterfaces: []NetworkInterface{
 					{
-						Network:    "10.0.0.0",
-						Subnetwork: "10.0.0.1",
+						Network:    "test-network",
+						Subnetwork: "test-subnetwork",
 					},
 				},
 			},
@@ -333,8 +334,29 @@ func TestNormalizeVpcAccess(t *testing.T) {
 			wantVpcAccess: &VpcAccess{
 				NetworkInterfaces: []NetworkInterface{
 					{
-						Network:    "10.0.0.0",
-						Subnetwork: "10.0.0.1",
+						Network:    "projects/project-id/global/networks/test-network",
+						Subnetwork: "projects/project-id/regions/us-central1/subnetworks/test-subnetwork",
+					},
+				},
+			},
+		},
+		{
+			desc: "network interface is not normalized",
+			vpcAccess: &VpcAccess{
+				NetworkInterfaces: []NetworkInterface{
+					{
+						Network:    "projects/project-id/global/networks/test-network",
+						Subnetwork: "projects/project-id/regions/us-central1/subnetworks/test-subnetwork",
+					},
+				},
+			},
+			project: "project-id",
+			region:  "us-central1",
+			wantVpcAccess: &VpcAccess{
+				NetworkInterfaces: []NetworkInterface{
+					{
+						Network:    "projects/project-id/global/networks/test-network",
+						Subnetwork: "projects/project-id/regions/us-central1/subnetworks/test-subnetwork",
 					},
 				},
 			},

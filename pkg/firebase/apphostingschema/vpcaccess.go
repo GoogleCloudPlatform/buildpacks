@@ -7,17 +7,20 @@ import (
 )
 
 var (
-	// FullyQualifiedConnector is the regular expression for a full VPC Connector name.
-	FullyQualifiedConnector = regexp.MustCompile(`^projects/[^/]+/locations/[^/]+/connectors/[^/]+$`)
+	// fullyQualifiedConnector is the regular expression for a full VPC Connector name.
+	fullyQualifiedConnector = regexp.MustCompile(`^projects/[^/]+/locations/[^/]+/connectors/[^/]+$`)
 
-	// ConnectorID is the regular expression for a VPC Connector ID.
-	ConnectorID = regexp.MustCompile(`^[^/]+$`)
+	// resourceID is the regular expression for a resource ID.
+	resourceID = regexp.MustCompile(`^[^/]+$`)
 
-	// NetworkAddress is the regular expression for an IP address.
-	NetworkAddress = regexp.MustCompile(`([0-9]{1,3}\.){3}[0-9]{1,3}`)
+	// fullyQualifiedNetwork is the regular expression for a fully qualified network name.
+	fullyQualifiedNetwork = regexp.MustCompile(`^projects/[^/]+/global/networks/[^/]+$`)
 
-	// ValidEgress is the list of valid egress settings.
-	ValidEgress = []string{"ALL_TRAFFIC", "PRIVATE_RANGES_ONLY"}
+	// fullyQualifiedSubnetwork is the regular expression for a fully qualified subnetwork name.
+	fullyQualifiedSubnetwork = regexp.MustCompile(`^projects/[^/]+/regions/[^/]+/subnetworks/[^/]+$`)
+
+	// validEgress is the list of valid egress settings.
+	validEgress = []string{"ALL_TRAFFIC", "PRIVATE_RANGES_ONLY"}
 )
 
 // ValidateVpcAccess validates the form of a vpcAccess struct.
@@ -25,10 +28,10 @@ func ValidateVpcAccess(vpcAccess *VpcAccess) error {
 	if vpcAccess == nil {
 		return nil
 	}
-	if vpcAccess.Egress != "" && !slices.Contains(ValidEgress, vpcAccess.Egress) {
-		return fmt.Errorf("egress must be one of %v, got: %q", ValidEgress, vpcAccess.Egress)
+	if vpcAccess.Egress != "" && !slices.Contains(validEgress, vpcAccess.Egress) {
+		return fmt.Errorf("egress must be one of %v, got: %q", validEgress, vpcAccess.Egress)
 	}
-	if vpcAccess.Connector != "" && !FullyQualifiedConnector.MatchString(vpcAccess.Connector) && !ConnectorID.MatchString(vpcAccess.Connector) {
+	if vpcAccess.Connector != "" && !fullyQualifiedConnector.MatchString(vpcAccess.Connector) && !resourceID.MatchString(vpcAccess.Connector) {
 		return fmt.Errorf("connector must be fully qualified or an ID, got: %q", vpcAccess.Connector)
 	}
 	if vpcAccess.Connector == "" && len(vpcAccess.NetworkInterfaces) == 0 {
@@ -41,11 +44,11 @@ func ValidateVpcAccess(vpcAccess *VpcAccess) error {
 		if ni.Network == "" && ni.Subnetwork == "" {
 			return fmt.Errorf("at least one of network or subnetwork is required")
 		}
-		if ni.Network != "" && !NetworkAddress.MatchString(ni.Network) {
-			return fmt.Errorf("network must be a network address, got: %q", ni.Network)
+		if ni.Network != "" && !fullyQualifiedNetwork.MatchString(ni.Network) && !resourceID.MatchString(ni.Network) {
+			return fmt.Errorf("network must be fully qualified or an ID, got: %q", ni.Network)
 		}
-		if ni.Subnetwork != "" && !NetworkAddress.MatchString(ni.Subnetwork) {
-			return fmt.Errorf("subnetwork must be a network address, got: %q", ni.Subnetwork)
+		if ni.Subnetwork != "" && !fullyQualifiedSubnetwork.MatchString(ni.Subnetwork) && !resourceID.MatchString(ni.Subnetwork) {
+			return fmt.Errorf("subnetwork must be fully qualified or an ID, got: %q", ni.Subnetwork)
 		}
 	}
 	return nil
@@ -87,7 +90,17 @@ func MergeVpcAccess(yamlAccess, envAccess *VpcAccess) *VpcAccess {
 
 // NormalizeVpcAccess ensures that any connector is a fully qualified resource name.
 func NormalizeVpcAccess(vpcAccess *VpcAccess, project, region string) {
-	if ConnectorID.MatchString(vpcAccess.Connector) {
+	if resourceID.MatchString(vpcAccess.Connector) {
 		vpcAccess.Connector = fmt.Sprintf("projects/%s/locations/%s/connectors/%s", project, region, vpcAccess.Connector)
+	}
+	// N.B. range returns copies, so editing the value directly would not affect the original.
+	ni := vpcAccess.NetworkInterfaces
+	for x := range ni {
+		if resourceID.MatchString(ni[x].Network) {
+			ni[x].Network = fmt.Sprintf("projects/%s/global/networks/%s", project, ni[x].Network)
+		}
+		if resourceID.MatchString(ni[x].Subnetwork) {
+			ni[x].Subnetwork = fmt.Sprintf("projects/%s/regions/%s/subnetworks/%s", project, region, ni[x].Subnetwork)
+		}
 	}
 }
