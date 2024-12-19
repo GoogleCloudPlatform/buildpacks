@@ -165,11 +165,14 @@ steps:
         docker tag gcr.io/buildpacks/gcp/run:v1 gcr.io/$PROJECT_ID/gcp/run:latest
         && docker tag gcr.io/buildpacks/gcp/run:v1 gcr.io/$PROJECT_ID/gcp/run:v1
         && docker tag gcr.io/buildpacks/gcp/run:v1 gcr.io/$PROJECT_ID/gcp/run:$COMMIT_SHA
+        && docker tag gcr.io/buildpacks/gcp/run:v1 gcr.io/$PROJECT_ID/gcp/run:deprecated-public-image-$COMMIT_SHA
         && docker tag gcr.io/buildpacks/gcp/build:v1 gcr.io/$PROJECT_ID/gcp/build:latest
         && docker tag gcr.io/buildpacks/gcp/build:v1 gcr.io/$PROJECT_ID/gcp/build:v1
         && docker tag gcr.io/buildpacks/gcp/build:v1 gcr.io/$PROJECT_ID/gcp/build:$COMMIT_SHA
+        && docker tag gcr.io/buildpacks/gcp/build:v1 gcr.io/$PROJECT_ID/gcp/build:deprecated-public-image-$COMMIT_SHA
         && docker tag gcp/base gcr.io/$PROJECT_ID/builder:v1
         && docker tag gcp/base gcr.io/$PROJECT_ID/builder:$COMMIT_SHA
+        && docker tag gcp/base gcr.io/$PROJECT_ID/builder:deprecated-public-image-$COMMIT_SHA
         && docker tag gcr.io/buildpacks/google-22/run:latest gcr.io/$PROJECT_ID/google-22/run:latest
         && docker tag gcr.io/buildpacks/google-22/run:latest gcr.io/$PROJECT_ID/google-22/run:$COMMIT_SHA
         && docker tag gcr.io/buildpacks/google-22/build:latest gcr.io/$PROJECT_ID/google-22/build:latest
@@ -243,12 +246,15 @@ images:
   - 'gcr.io/$PROJECT_ID/builder:latest'
   - 'gcr.io/$PROJECT_ID/builder:v1'
   - 'gcr.io/$PROJECT_ID/builder:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/builder:deprecated-public-image-$COMMIT_SHA'
   - 'gcr.io/$PROJECT_ID/gcp/run:latest'
   - 'gcr.io/$PROJECT_ID/gcp/run:v1'
   - 'gcr.io/$PROJECT_ID/gcp/run:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/gcp/run:deprecated-public-image-$COMMIT_SHA'
   - 'gcr.io/$PROJECT_ID/gcp/build:latest'
   - 'gcr.io/$PROJECT_ID/gcp/build:v1'
   - 'gcr.io/$PROJECT_ID/gcp/build:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/gcp/build:deprecated-public-image-$COMMIT_SHA'
   - 'gcr.io/$PROJECT_ID/google-22/build:latest'
   - 'gcr.io/$PROJECT_ID/google-22/build:$COMMIT_SHA'
   - 'gcr.io/$PROJECT_ID/google-22/run:latest'
