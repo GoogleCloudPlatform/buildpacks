@@ -21,6 +21,7 @@ package acceptance
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -910,7 +911,7 @@ func readBuilderTOML(path string) (*builderTOML, error) {
 
 func buildCommand(srcDir, image, builderName, runName string, env map[string]string, cache bool) []string {
 	// Pack command to build app.
-	args := strings.Fields(fmt.Sprintf("%s build %s --builder %s --path %s --pull-policy never --verbose --no-color --trust-builder %s", packBin, image, builderName, srcDir, cacheOptions(image)))
+	args := strings.Fields(fmt.Sprintf("%s build %s --builder %s --path %s --pull-policy never --verbose --no-color --trust-builder", packBin, image, builderName, srcDir))
 	if runName != "" {
 		args = append(args, "--run-image", runName)
 		if hasRuntimePreinstalled(runName) {
@@ -934,11 +935,6 @@ func buildCommand(srcDir, image, builderName, runName string, env map[string]str
 	args = append(args, "--network", "host")
 	log.Printf("Running %v\n", args)
 	return args
-}
-
-func cacheOptions(image string) string {
-	buildVolume, launchVolume := volumeNames(image)
-	return fmt.Sprintf("--cache type=build;format=volume;name=%s --cache type=launch;format=volume;name=%s", buildVolume, launchVolume)
 }
 
 // hasRuntimePreinstalled returns whether or not the image is the "generic" run image that does not
@@ -1327,15 +1323,10 @@ func cleanUpVolumes(t *testing.T, image string) {
 		return
 	}
 
-	buildVolume, launchVolume := volumeNames(image)
-	if _, err := runOutput("docker", "volume", "rm", "-f", launchVolume, buildVolume); err != nil {
-		t.Logf("Failed to clean up cache volumes: %v", err)
-	}
-}
-
-func volumeNames(image string) (string, string) {
-	// This logic is copied from pack's codebase. See:
-	// https://github.com/buildpacks/pack/blob/92bc87b297695e4ac6baf559bad2efd55aecec1f/internal/paths/paths.go#L81
+	// This logic is copied from pack's codebase.
+	fqn := "index.docker.io/library/" + image + ":latest"
+	digest := sha256.Sum256([]byte(fqn))
+	prefix := fmt.Sprintf("library_%v_latest-%x", image, digest[:6])
 	reservedNameConversions := map[string]string{
 		"aux": "a_u_x",
 		"com": "c_o_m",
@@ -1343,12 +1334,15 @@ func volumeNames(image string) (string, string) {
 		"lpt": "l_p_t",
 		"nul": "n_u_l",
 		"prn": "p_r_n",
-		":":   "_",
 	}
 	for k, v := range reservedNameConversions {
-		image = strings.ReplaceAll(image, k, v)
+		prefix = strings.Replace(prefix, k, v, -1)
 	}
-	return image + ".build", image + ".launch"
+	prefix = "pack-cache-" + prefix
+
+	if _, err := runOutput("docker", "volume", "rm", "-f", prefix+".launch", prefix+".build"); err != nil {
+		t.Logf("Failed to clean up cache volumes: %v", err)
+	}
 }
 
 // PullImages returns the value of the -pull-images flag.
