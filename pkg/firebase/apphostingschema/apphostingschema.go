@@ -253,10 +253,10 @@ func MergeWithEnvironmentSpecificYAML(appHostingSchema *AppHostingSchema, appHos
 	return nil
 }
 
-// IsFirebaseConfigUserDefined determines whether the FIREBASE_CONFIG environment variable is user defined.
-func IsFirebaseConfigUserDefined(schema *AppHostingSchema) bool {
+// IsKeyUserDefined determines whether the provided KEY environment variable is already user defined.
+func IsKeyUserDefined(schema *AppHostingSchema, key string) bool {
 	for _, e := range schema.Env {
-		if e.Variable == "FIREBASE_CONFIG" {
+		if e.Variable == key {
 			return true
 		}
 	}

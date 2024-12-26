@@ -50,7 +50,14 @@ env:
   # FIREBASE_CONFIG is a special key that should override the one provided by the control plane.
   # Used for Admin SDK AutoInit
   - variable: FIREBASE_CONFIG
-    value: '{"apiKey":"myApiKey","appId":"app:123","authDomain":"project-id.firebaseapp.com","databaseURL":"https://project-id-default-rtdb.firebaseio.com","messagingSenderId":"0123456789","projectId":"project-id","storageBucket":"project-id.firebasestorage.app"}'
+    value: '{"databaseURL":"https://custom-user-database-rtdb.firebaseio.com","projectId":"project-id","storageBucket":"customStorageBucket.firebasestorage.app"}'
+
+  # FIREBASE_WEBAPP_CONFIG is a special key that should override the one provided by the control plane.
+  # Used for Client SDK AutoInit
+  - variable: FIREBASE_WEBAPP_CONFIG
+    value: '{"apiKey":"myApiKey","appId":"app:123","authDomain":"project-id.firebaseapp.com","databaseURL":"https://custom-user-database-rtdb.firebaseio.com","messagingSenderId":"0123456789","projectId":"project-id","storageBucket":"customStorageBucket.firebasestorage.app"}'
+    availability:
+      - BUILD
 
   # PORT is a reserved key and should be removed
   - variable: PORT

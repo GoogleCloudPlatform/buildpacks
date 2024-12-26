@@ -359,14 +359,16 @@ func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
 	}
 }
 
-func TestIsFirebaseConfigUserDefined(t *testing.T) {
+func TestIsKeyUserDefined(t *testing.T) {
 	testCases := []struct {
 		desc             string
+		key              string
 		appHostingSchema AppHostingSchema
 		wantBool         bool
 	}{
 		{
 			desc: "Return true when FIREBASE_CONFIG is user defined",
+			key:  "FIREBASE_CONFIG",
 			appHostingSchema: AppHostingSchema{
 				Env: []EnvironmentVariable{
 					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
@@ -377,6 +379,7 @@ func TestIsFirebaseConfigUserDefined(t *testing.T) {
 		},
 		{
 			desc: "Return false when FIREBASE_CONFIG is not user defined",
+			key:  "FIREBASE_CONFIG",
 			appHostingSchema: AppHostingSchema{
 				Env: []EnvironmentVariable{
 					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
@@ -387,10 +390,10 @@ func TestIsFirebaseConfigUserDefined(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		gotBool := IsFirebaseConfigUserDefined(&test.appHostingSchema)
+		gotBool := IsKeyUserDefined(&test.appHostingSchema, test.key)
 
 		if gotBool != test.wantBool {
-			t.Errorf("IsFirebaseConfigUserDefined(%q) = %v, want %v", test.desc, gotBool, test.wantBool)
+			t.Errorf("IsKeyUserDefined(%q) = %v, want %v", test.desc, gotBool, test.wantBool)
 		}
 	}
 }

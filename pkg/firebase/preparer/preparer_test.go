@@ -17,13 +17,15 @@ import (
 )
 
 var (
-	appHostingYAMLPath           string = testdata.MustGetPath("testdata/apphosting.yaml")
-	latestSecretName             string = "projects/test-project/secrets/secretID/versions/12"
-	pinnedSecretName             string = "projects/test-project/secrets/secretID/versions/11"
-	secretString                 string = "secretString"
-	secretStringChecksum         int64  = int64(crc32.Checksum([]byte(secretString), crc32.MakeTable(crc32.Castagnoli)))
-	serverProvidedFirebaseConfig string = `{"apiKey":"myApiKey","appId":"app:123","authDomain":"project-id.firebaseapp.com","databaseURL":"https://custom-user-database-rtdb.firebaseio.com","messagingSenderId":"0123456789","projectId":"project-id","storageBucket":"customStorageBucket.firebasestorage.app"}`
-	userProvidedFirebaseConfig   string = `{"apiKey":"myApiKey","appId":"app:123","authDomain":"project-id.firebaseapp.com","databaseURL":"https://project-id-default-rtdb.firebaseio.com","messagingSenderId":"0123456789","projectId":"project-id","storageBucket":"project-id.firebasestorage.app"}`
+	appHostingYAMLPath                 string = testdata.MustGetPath("testdata/apphosting.yaml")
+	latestSecretName                   string = "projects/test-project/secrets/secretID/versions/12"
+	pinnedSecretName                   string = "projects/test-project/secrets/secretID/versions/11"
+	secretString                       string = "secretString"
+	secretStringChecksum               int64  = int64(crc32.Checksum([]byte(secretString), crc32.MakeTable(crc32.Castagnoli)))
+	serverProvidedFirebaseConfig       string = `{"databaseURL":"https://project-id-default-rtdb.firebaseio.com","projectId":"project-id","storageBucket":"project-id.firebasestorage.app"}`
+	userProvidedFirebaseConfig         string = `{"databaseURL":"https://custom-user-database-rtdb.firebaseio.com","projectId":"project-id","storageBucket":"customStorageBucket.firebasestorage.app"}`
+	serverProvidedFirebaseWebAppConfig string = `{"apiKey":"myApiKey","appId":"app:123","authDomain":"project-id.firebaseapp.com","databaseURL":"https://project-id-default-rtdb.firebaseio.com","messagingSenderId":"0123456789","projectId":"project-id","storageBucket":"project-id.firebasestorage.app"}`
+	userProvidedFirebaseWebAppConfig   string = `{"apiKey":"myApiKey","appId":"app:123","authDomain":"project-id.firebaseapp.com","databaseURL":"https://custom-user-database-rtdb.firebaseio.com","messagingSenderId":"0123456789","projectId":"project-id","storageBucket":"customStorageBucket.firebasestorage.app"}`
 )
 
 func TestPrepare(t *testing.T) {
@@ -55,6 +57,7 @@ func TestPrepare(t *testing.T) {
 				"MULTILINE_VAR":           "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n",
 				"VAR_NUMBER":              "12345",
 				"FIREBASE_CONFIG":         userProvidedFirebaseConfig,
+				"FIREBASE_WEBAPP_CONFIG":  userProvidedFirebaseWebAppConfig,
 				"API_KEY":                 secretString,
 				"PINNED_API_KEY":          secretString,
 				"VERBOSE_API_KEY":         secretString,
@@ -79,6 +82,7 @@ func TestPrepare(t *testing.T) {
 					{Variable: "VAR_NUMBER", Value: "12345", Availability: []string{"BUILD", "RUNTIME"}},
 					{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
 					{Variable: "FIREBASE_CONFIG", Value: userProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: userProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}},
 					{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
 					{Variable: "PINNED_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}},
 					{Variable: "VERBOSE_API_KEY", Secret: latestSecretName, Availability: []string{"BUILD", "RUNTIME"}},
@@ -92,11 +96,13 @@ func TestPrepare(t *testing.T) {
 			appHostingYAMLPath: "",
 			projectID:          "test-project",
 			wantEnvMap: map[string]string{
-				"FIREBASE_CONFIG": serverProvidedFirebaseConfig,
+				"FIREBASE_CONFIG":        serverProvidedFirebaseConfig,
+				"FIREBASE_WEBAPP_CONFIG": serverProvidedFirebaseWebAppConfig,
 			},
 			wantSchema: apphostingschema.AppHostingSchema{
 				Env: []apphostingschema.EnvironmentVariable{
 					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}},
 				},
 			},
 		},
@@ -117,6 +123,7 @@ func TestPrepare(t *testing.T) {
 				"MULTILINE_VAR":          "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n",
 				"VAR_NUMBER":             "12345",
 				"FIREBASE_CONFIG":        userProvidedFirebaseConfig,
+				"FIREBASE_WEBAPP_CONFIG": userProvidedFirebaseWebAppConfig,
 				"API_KEY":                secretString,
 				"PINNED_API_KEY":         secretString,
 				"VERBOSE_API_KEY":        secretString,
@@ -141,6 +148,7 @@ func TestPrepare(t *testing.T) {
 					{Variable: "VAR_NUMBER", Value: "12345", Availability: []string{"BUILD", "RUNTIME"}},
 					{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
 					{Variable: "FIREBASE_CONFIG", Value: userProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: userProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}},
 					{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
 					{Variable: "PINNED_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}},
 					{Variable: "VERBOSE_API_KEY", Secret: latestSecretName, Availability: []string{"BUILD", "RUNTIME"}},
@@ -156,12 +164,14 @@ func TestPrepare(t *testing.T) {
 				{Variable: "SERVER_SIDE_VAR", Value: "I'm a server side var!", Availability: []string{"RUNTIME"}},
 			},
 			wantEnvMap: map[string]string{
-				"FIREBASE_CONFIG": serverProvidedFirebaseConfig,
+				"FIREBASE_CONFIG":        serverProvidedFirebaseConfig,
+				"FIREBASE_WEBAPP_CONFIG": serverProvidedFirebaseWebAppConfig,
 			},
 			wantSchema: apphostingschema.AppHostingSchema{
 				Env: []apphostingschema.EnvironmentVariable{
 					{Variable: "SERVER_SIDE_VAR", Value: "I'm a server side var!", Availability: []string{"RUNTIME"}}, // This var is only defined server-side.
 					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}},
 				},
 			},
 		},
@@ -171,11 +181,13 @@ func TestPrepare(t *testing.T) {
 			projectID:          "test-project",
 			serverSideEnvVars:  []apphostingschema.EnvironmentVariable{},
 			wantEnvMap: map[string]string{
-				"FIREBASE_CONFIG": serverProvidedFirebaseConfig,
+				"FIREBASE_CONFIG":        serverProvidedFirebaseConfig,
+				"FIREBASE_WEBAPP_CONFIG": serverProvidedFirebaseWebAppConfig,
 			},
 			wantSchema: apphostingschema.AppHostingSchema{
 				Env: []apphostingschema.EnvironmentVariable{
 					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}},
 				},
 			},
 		},
@@ -193,6 +205,7 @@ func TestPrepare(t *testing.T) {
 				"MULTILINE_VAR":          "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n",
 				"VAR_NUMBER":             "12345",
 				"FIREBASE_CONFIG":        userProvidedFirebaseConfig,
+				"FIREBASE_WEBAPP_CONFIG": userProvidedFirebaseWebAppConfig,
 				"API_KEY":                secretString,
 				"PINNED_API_KEY":         secretString,
 				"VERBOSE_API_KEY":        secretString,
@@ -216,6 +229,7 @@ func TestPrepare(t *testing.T) {
 					{Variable: "VAR_NUMBER", Value: "12345", Availability: []string{"BUILD", "RUNTIME"}},
 					{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
 					{Variable: "FIREBASE_CONFIG", Value: userProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: userProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}},
 					{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
 					{Variable: "PINNED_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}},
 					{Variable: "VERBOSE_API_KEY", Secret: latestSecretName, Availability: []string{"BUILD", "RUNTIME"}},
@@ -276,6 +290,7 @@ func TestPrepare(t *testing.T) {
 			BackendRootDirectory:          "",
 			BuildpackConfigOutputFilePath: outputFilePathBuildpackConfig,
 			FirebaseConfig:                serverProvidedFirebaseConfig,
+			FirebaseWebappConfig:          serverProvidedFirebaseWebAppConfig,
 			ServerSideEnvVars:             serverSideEnvVars,
 		}
 
