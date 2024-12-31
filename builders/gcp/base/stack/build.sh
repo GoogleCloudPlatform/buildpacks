@@ -13,13 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The build.sh script builds stack images for the gcp/base and gcp/php builder.
+# The build.sh script builds stack images for the gcp/base builder.
 #
 # The script builds the following images:
 #   gcr.io/buildpacks/gcp/run:$tag
 #   gcr.io/buildpacks/gcp/build:$tag
-#   gcr.io/buildpacks/gcp/php/run:$tag
-#   gcr.io/buildpacks/gcp/php/build:$tag
 #
 # It also validates that the build image includes all required licenses.
 #
