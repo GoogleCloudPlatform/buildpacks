@@ -16,7 +16,7 @@
 # Cloud Build builder that extends the bazel builder with pack and
 # container-structure-test binaries, as well as the Go toolchain.
 
-FROM gcr.io/cloud-builders/bazel
+FROM gcr.io/cloud-builders/bazel:7.3.2
 
 # Binaries must be in /usr/bin to be visible to Bazel.
 ARG PACK_VERSION=0.36.0
