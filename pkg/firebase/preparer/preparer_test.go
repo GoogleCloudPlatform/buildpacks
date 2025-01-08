@@ -18,6 +18,7 @@ import (
 
 var (
 	appHostingYAMLPath                 string = testdata.MustGetPath("testdata/apphosting.yaml")
+	appHostingYAMLPathNonexistent      string = testdata.MustGetPath("testdata/nonexistent.yaml")
 	latestSecretName                   string = "projects/test-project/secrets/secretID/versions/12"
 	pinnedSecretName                   string = "projects/test-project/secrets/secretID/versions/11"
 	secretString                       string = "secretString"
@@ -92,8 +93,33 @@ func TestPrepare(t *testing.T) {
 			},
 		},
 		{
-			desc:               "non-existent apphosting.yaml",
-			appHostingYAMLPath: "",
+			desc:               "merges apphosting.<ENV>.yaml when apphosting.yaml not present",
+			appHostingYAMLPath: appHostingYAMLPathNonexistent,
+			projectID:          "test-project",
+			environmentName:    "staging",
+			wantEnvMap: map[string]string{
+				"API_URL":                 "api.staging.service.com",
+				"STAGING_SECRET_VARIABLE": secretString,
+				"FIREBASE_CONFIG":         serverProvidedFirebaseConfig,
+				"FIREBASE_WEBAPP_CONFIG":  serverProvidedFirebaseWebAppConfig,
+			},
+			wantSchema: apphostingschema.AppHostingSchema{
+				RunConfig: apphostingschema.RunConfig{
+					CPU:          proto.Float32(1),
+					MemoryMiB:    proto.Int32(512),
+					MaxInstances: proto.Int32(2),
+				},
+				Env: []apphostingschema.EnvironmentVariable{
+					{Variable: "API_URL", Value: "api.staging.service.com", Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "STAGING_SECRET_VARIABLE", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}},
+				},
+			},
+		},
+		{
+			desc:               "non-existent apphosting.yaml nor apphosting.<ENV>.yaml",
+			appHostingYAMLPath: appHostingYAMLPathNonexistent,
 			projectID:          "test-project",
 			wantEnvMap: map[string]string{
 				"FIREBASE_CONFIG":        serverProvidedFirebaseConfig,
