@@ -36,7 +36,7 @@ func TestAcceptance(t *testing.T) {
 			Path:       "/Func",
 			MustOutput: []string{"Found function with vendored dependencies excluding functions-framework"},
 			Labels: map[string]string{
-				"google.functions-framework-version": `{"runtime":"go","version":"v1.7.0","injected":true}`,
+				"google.functions-framework-version": `{"runtime":"go","version":"v1.8.1","injected":true}`,
 			},
 		},
 		{
@@ -47,7 +47,7 @@ func TestAcceptance(t *testing.T) {
 			MustOutput:      []string{"go.sum not found, generating"},
 			EnableCacheTest: true,
 			Labels: map[string]string{
-				"google.functions-framework-version": `{"runtime":"go","version":"v1.7.0","injected":true}`,
+				"google.functions-framework-version": `{"runtime":"go","version":"v1.8.1","injected":true}`,
 			},
 		},
 		{
@@ -57,7 +57,7 @@ func TestAcceptance(t *testing.T) {
 			Path:          "/Func",
 			MustNotOutput: []string{"go.sum not found, generating"},
 			Labels: map[string]string{
-				"google.functions-framework-version": `{"runtime":"go","version":"v1.7.0","injected":true}`,
+				"google.functions-framework-version": `{"runtime":"go","version":"v1.8.1","injected":true}`,
 			},
 		},
 		{
