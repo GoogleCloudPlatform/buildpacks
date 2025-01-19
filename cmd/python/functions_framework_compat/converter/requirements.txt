@@ -28,7 +28,7 @@ opencensus==0.8.0
 opencensus-context==0.1.2
 packaging==21.3
 proto-plus==1.19.8
-protobuf==3.19.1
+protobuf==3.19.5
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pyparsing==3.0.6
