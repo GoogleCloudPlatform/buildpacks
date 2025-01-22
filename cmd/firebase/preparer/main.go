@@ -24,12 +24,14 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/preparer"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util/filesystem"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"cloud.google.com/go/secretmanager/apiv1"
 )
 
 var (
 	apphostingYAMLFilePath        = flag.String("apphostingyaml_filepath", "", "File path to user defined apphosting.yaml")
+	workspacePath                 = flag.String("workspace_path", "/workspace", "File path to the workspace directory")
 	projectID                     = flag.String("project_id", "", "User's GCP project ID")
 	environmentName               = flag.String("environment_name", "", "Environment name tied to the build, if applicable")
 	appHostingYAMLOutputFilePath  = flag.String("apphostingyaml_output_filepath", "", "File path to write the validated and formatted apphosting.yaml to")
@@ -86,16 +88,28 @@ func main() {
 
 	gcpCtx := gcpbuildpack.NewContext()
 
-	if err = preparer.Prepare(context.Background(), opts); err != nil {
-		var fe *faherror.FahError
-		if errors.As(err, &fe) {
-			// Known App Hosting user errors are wrapped by a GCP User Error to avoid being labeled
-			// as internal status errors.
-			err = gcpbuildpack.UserErrorf("%w", fe)
-		} else {
-			err = faherror.InternalErrorf("%w", err)
+	// If no apphosting.yaml path is provided, try to detect the root directory containing the file.
+	if opts.AppHostingYAMLPath == "" && *backendRootDirectory != "" {
+		opts.AppHostingYAMLPath, err = filesystem.DetectAppHostingYAMLPath(*workspacePath, *backendRootDirectory)
+
+		if err != nil {
+			gcpCtx.Exit(1, handleError(err))
 		}
-		gcpCtx.Exit(1, err)
 	}
+
+	if err = preparer.Prepare(context.Background(), opts); err != nil {
+		gcpCtx.Exit(1, handleError(err))
+	}
+
 	gcpCtx.Exit(0, nil)
+}
+
+func handleError(err error) error {
+	var fe *faherror.FahError
+	if errors.As(err, &fe) {
+		// Known App Hosting user errors are wrapped by a GCP User Error to avoid being labeled
+		// as internal status errors.
+		return gcpbuildpack.UserErrorf("%w", fe)
+	}
+	return faherror.InternalErrorf("%w", err)
 }
