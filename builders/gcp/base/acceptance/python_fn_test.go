@@ -45,7 +45,7 @@ func TestAcceptancePythonFn(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 		{
-			Name:       "function with dependencies",
+			Name:       "function with dependencies", // Adding dummy comment to trigger postsubmit
 			App:        "with_dependencies",
 			Path:       "/testFunction",
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction"},
