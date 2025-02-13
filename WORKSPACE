@@ -4,10 +4,10 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "6734a719993b1ba4ebe9806e853864395a8d3968ad27f9dd759c196b3eb3abe8",
+    sha256 = "0936c9bc3c4321ee372cb8f66dd972d368cb940ed01a9ba9fd7debcf0093f09b",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.45.1/rules_go-v0.45.1.zip",
-        "https://github.com/bazelbuild/rules_go/releases/download/v0.45.1/rules_go-v0.45.1.zip",
+        "https://mirror.bazel.build/github.com/bazel-contrib/rules_go/releases/download/v0.51.0/rules_go-v0.51.0.zip",
+        "https://github.com/bazel-contrib/rules_go/releases/download/v0.51.0/rules_go-v0.51.0.zip",
     ],
 )
 
@@ -15,7 +15,7 @@ load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_depe
 
 go_rules_dependencies()
 
-go_register_toolchains(version = "1.21.6")
+go_register_toolchains(version = "1.23.4")
 
 http_archive(
     name = "com_google_googleapis",
@@ -1737,8 +1737,8 @@ maven_install(
 go_repository(
     name = "com_github_buildpacks_libcnb",
     importpath = "github.com/buildpacks/libcnb",
-    sum = "h1:Jwp5EDGJWYBLPn902w/648w3S+H2HL7/Xw8FLcrXgAo=",
-    version = "v1.27.0",
+    sum = "h1:JtFMFPO2450uDLzpE1b50TvmM1GEZa8YT9cQ2ZZtHqA=",
+    version = "v1.30.3",
 )
 
 go_repository(

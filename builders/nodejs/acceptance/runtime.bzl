@@ -8,9 +8,9 @@ gae_runtimes = {
     "nodejs12": "12.22.12",
     "nodejs14": "14.21.3",
     "nodejs16": "16.20.2",
-    "nodejs18": "18.20.5",
-    "nodejs20": "20.18.0",
-    "nodejs22": "22.11.0",
+    "nodejs18": "18.20.6",
+    "nodejs20": "20.18.2",
+    "nodejs22": "22.13.1",
 }
 
 gcf_runtimes = {
@@ -19,13 +19,13 @@ gcf_runtimes = {
     "nodejs12": "12.22.12",
     "nodejs14": "14.21.3",
     "nodejs16": "16.20.2",
-    "nodejs18": "18.20.5",
-    "nodejs20": "20.18.0",
-    "nodejs22": "22.11.0",
+    "nodejs18": "18.20.6",
+    "nodejs20": "20.18.2",
+    "nodejs22": "22.13.1",
 }
 
 flex_runtimes = {
-    "nodejs18": "18.20.5",
-    "nodejs20": "20.18.0",
-    "nodejs22": "22.11.0",
+    "nodejs18": "18.20.6",
+    "nodejs20": "20.18.2",
+    "nodejs22": "22.13.1",
 }

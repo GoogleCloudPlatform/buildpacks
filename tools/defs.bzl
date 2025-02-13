@@ -148,32 +148,17 @@ def builder(
     """
     srcs = []
 
-    # Generating builder.toml from template and stack
+    # Determine the builder descriptor source.
+    # If a builder template and stack are provided, generate a custom descriptor.
+    # Otherwise, use the default descriptor.
     if builder_template and stack:
-        gae_stack = "google-gae-18"
-        if stack == "google.gae.22":
-            gae_stack = "google-gae-22"
-        image_prefix = "gcr.io/gae-runtimes/buildpacks/stacks/{}/".format(gae_stack)
-        build_image = image_prefix + "build"
-        run_image = image_prefix + "run"
-        _builder_descriptor(
-            name = name + ".descriptor",
-            stack_id = stack,
-            stack_build_image = build_image,
-            stack_run_image = run_image,
-            template = builder_template,
-            output = name + "/" + descriptor,
-        )
-        srcs.append(name + ".descriptor")
+        srcs.append(_generate_builder_descriptor(name, descriptor, builder_template, stack))
     else:
         srcs.append(descriptor)
-    if buildpacks:
-        srcs += buildpacks
-    deps = []
-    if groups:
-        for (k, v) in groups.items():
-            pkg_tar(name = name + "_" + k, srcs = v, package_dir = k)
-            deps.append(name + "_" + k)
+
+    srcs += buildpacks if buildpacks else []
+
+    deps = _package_buildpack_groups(name, groups) if groups else []
 
     # `name` and `name.tar` rules.
     pkg_tar(
@@ -202,6 +187,33 @@ def builder(
             create_script = "//tools:create_builder",
         ),
     )
+
+def _generate_builder_descriptor(name, descriptor, builder_template, stack):
+    """Generates a builder descriptor from a template for a specific stack."""
+
+    gae_stack = "google-gae-22" if stack == "google.gae.22" else "google-gae-18"
+    image_prefix = "gcr.io/gae-runtimes/buildpacks/stacks/{}/".format(gae_stack)
+    build_image = image_prefix + "build"
+    run_image = image_prefix + "run"
+
+    _builder_descriptor(
+        name = name + ".descriptor",
+        stack_id = stack,
+        stack_build_image = build_image,
+        stack_run_image = run_image,
+        template = builder_template,
+        output = name + "/" + descriptor,
+    )
+    return name + ".descriptor"
+
+def _package_buildpack_groups(name, groups):
+    """Packages buildpacks into groups."""
+
+    deps = []
+    for (k, v) in groups.items():
+        pkg_tar(name = name + "_" + k, srcs = v, package_dir = k)
+        deps.append(name + "_" + k)
+    return deps
 
 def _builder_descriptor_impl(ctx):
     ctx.actions.expand_template(

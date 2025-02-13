@@ -38,6 +38,7 @@ type Options struct {
 	BackendRootDirectory          string
 	BuildpackConfigOutputFilePath string
 	FirebaseConfig                string
+	FirebaseWebappConfig          string
 	ServerSideEnvVars             string
 }
 
@@ -65,9 +66,16 @@ func Prepare(ctx context.Context, opts Options) error {
 	}
 
 	// Add FIREBASE_CONFIG env var for Admin SDK AutoInit, only if it is not already user-defined.
-	if !apphostingschema.IsFirebaseConfigUserDefined(&appHostingYAML) {
+	if !apphostingschema.IsKeyUserDefined(&appHostingYAML, "FIREBASE_CONFIG") {
 		if opts.FirebaseConfig != "" {
 			appHostingYAML.Env = append(appHostingYAML.Env, apphostingschema.EnvironmentVariable{Variable: "FIREBASE_CONFIG", Value: opts.FirebaseConfig})
+		}
+	}
+
+	// Add FIREBASE_WEBAPP_CONFIG env var for Client SDK AutoInit, only if it is not already user-defined.
+	if !apphostingschema.IsKeyUserDefined(&appHostingYAML, "FIREBASE_WEBAPP_CONFIG") {
+		if opts.FirebaseWebappConfig != "" {
+			appHostingYAML.Env = append(appHostingYAML.Env, apphostingschema.EnvironmentVariable{Variable: "FIREBASE_WEBAPP_CONFIG", Value: opts.FirebaseWebappConfig, Availability: []string{"BUILD"}})
 		}
 	}
 

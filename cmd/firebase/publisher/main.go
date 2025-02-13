@@ -18,6 +18,7 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 	"path/filepath"
 
 	publisher "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/publisher"
@@ -40,7 +41,11 @@ func main() {
 		log.Fatal("--output_bundle_dir flag not specified.")
 	}
 	if *outputFilePath == "" {
-		log.Fatal("--output_filepath flag not specified.")
+		if builderOutput := os.Getenv("BUILDER_OUTPUT"); builderOutput != "" {
+			*outputFilePath = builderOutput + "/output"
+		} else {
+			log.Fatal("--output_filepath flag not specified.")
+		}
 	}
 
 	err := publisher.Publish(

@@ -27,8 +27,8 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/builderoutput"
 
-	"github.com/buildpacks/libcnb"
 	"github.com/google/go-cmp/cmp"
+	"github.com/buildpacks/libcnb"
 )
 
 func TestSaveErrorOutput(t *testing.T) {

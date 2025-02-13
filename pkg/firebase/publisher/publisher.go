@@ -135,6 +135,9 @@ func mergeRunConfig(arc apphostingschema.RunConfig, brc bundleschema.RunConfig) 
 	if arc.MaxInstances != nil {
 		merged.MaxInstances = arc.MaxInstances
 	}
+	if arc.VpcAccess != nil {
+		merged.VpcAccess = arc.VpcAccess
+	}
 
 	return merged
 }

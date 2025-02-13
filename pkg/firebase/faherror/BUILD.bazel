@@ -1,10 +1,6 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
-package(default_visibility = [
-    "//cmd/firebase:__subpackages__",
-    "//cmd/nodejs:__subpackages__",
-    "//pkg/firebase:__subpackages__",
-])
+package(default_visibility = ["//visibility:public"])
 
 go_library(
     name = "faherror",

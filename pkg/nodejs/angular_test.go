@@ -19,8 +19,8 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpacks/libcnb"
 	"github.com/google/go-cmp/cmp"
+	"github.com/buildpacks/libcnb"
 )
 
 func TestInstallAngularBuildAdaptor(t *testing.T) {

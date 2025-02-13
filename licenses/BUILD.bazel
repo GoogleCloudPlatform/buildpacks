@@ -4,6 +4,11 @@ licenses(["notice"])
 
 package(default_visibility = ["//:__subpackages__"])
 
+exports_files([
+    "buildpacks/licenses.yaml",
+    "lifecycle-v0.17.7/licenses.yaml",
+])
+
 pkg_tar(
     name = "licenses",
     srcs = glob(["**/licenses.yaml"]),

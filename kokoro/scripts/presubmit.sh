@@ -23,7 +23,7 @@ set -euo pipefail
 
 if [[ -v KOKORO_ARTIFACTS_DIR ]]; then
   cd "${KOKORO_ARTIFACTS_DIR}/git/buildpacks"
-  use_bazel.sh 5.4.0
+  use_bazel.sh 7.4.1
 else
   export KOKORO_ARTIFACTS_DIR="$(mktemp -d)"
   echo "Setting KOKORO_ARTIFACTS_DIR=$KOKORO_ARTIFACTS_DIR"
@@ -38,7 +38,7 @@ if [[ ! -v FILTER ]]; then
   exit 1
 fi
 
-readonly PACK_VERSION="0.35.1"
+readonly PACK_VERSION="0.36.0"
 
 temp="$(mktemp -d)"
 CURL_OPTS="--retry 5 -fsSL"
