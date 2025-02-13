@@ -151,7 +151,6 @@ def builder(
     # Determine the builder descriptor source.
     # If a builder template and stack are provided, generate a custom descriptor.
     # Otherwise, use the default descriptor.
-    srcs = []
     if builder_template and stack:
         srcs.append(_generate_builder_descriptor(name, descriptor, builder_template, stack))
     else:

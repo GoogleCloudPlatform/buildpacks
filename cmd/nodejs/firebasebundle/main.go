@@ -20,7 +20,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -33,6 +35,8 @@ import (
 const (
 	defaultPublicDir        = "public"
 	firebaseOutputBundleDir = "FIREBASE_OUTPUT_BUNDLE_DIR"
+	apphostingYamlPath      = "APPHOSTINGYAML_FILEPATH"
+	environmentName         = "ENVIRONMENT_NAME"
 )
 
 func main() {
@@ -63,21 +67,23 @@ func buildFn(ctx *gcp.Context) error {
 
 	workspacePublicDir := filepath.Join(ctx.ApplicationRoot(), defaultPublicDir)
 	outputPublicDir := filepath.Join(outputBundleDir, defaultPublicDir)
+
+	apphostingYamlPath, ok := os.LookupEnv(apphostingYamlPath)
+
+	if !ok {
+		return gcp.InternalErrorf("looking up apphosting.yaml env %s", apphostingYamlPath)
+	}
+	apphostingYaml, err := readAppHostingYaml(ctx, apphostingYamlPath)
+	if err != nil {
+		return err
+	}
 	if bundleYaml == nil {
 		ctx.Logf("bundle.yaml does not exist, assuming default configs")
 
-		// if public folder exists assume that the code there should be in cdn
-		ctx.Logf("No static assets declared, copying public directory (if it exists) to staticAssets by default")
-		err := copyPublicDirToOutputBundleDir(outputPublicDir, workspacePublicDir, ctx)
+		err = generateDefaultBundleYaml(bundlePath, ctx)
 		if err != nil {
 			return err
 		}
-		err = generateDefaultBundleYaml(outputBundleDir, ctx)
-		if err != nil {
-			return err
-		}
-
-		return nil
 	}
 
 	ctx.Logf("Copying static assets.")
@@ -89,50 +95,42 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
+	err = deleteFilesNotIncluded(apphostingYaml, bundleYaml, ctx.ApplicationRoot())
+	if err != nil {
+		return err
+	}
 
-	if bundleYaml.RunConfig.RunCommand != "" {
+	if bundleYaml != nil && bundleYaml.RunConfig.RunCommand != "" {
 		ctx.AddWebProcess(strings.Split(bundleYaml.RunConfig.RunCommand, " "))
 	}
 	return nil
 }
 
-// bundleYaml represents the contents of a bundle.yaml file.
+// apphostingYaml represents the relevant contents of a apphosting.yaml file.
+type apphostingYaml struct {
+	OutputFiles outputFiles `yaml:"outputFiles,omitempty"`
+}
+
+// bundleYaml represents the relevant contents of a bundle.yaml file.
 type bundleYaml struct {
-	Version   string    `yaml:"version"`
-	RunConfig runConfig `yaml:"runConfig"`
-	Metadata  metadata  `yaml:"metadata"`
+	Version     string      `yaml:"version"`
+	RunConfig   runConfig   `yaml:"runConfig"`
+	OutputFiles outputFiles `yaml:"outputFiles,omitempty"`
 }
 
+// runConfig is the struct representation of the passed run config.
 type runConfig struct {
-	RunCommand           string         `yaml:"runCommand"`
-	EnvironmentVariables []envVarConfig `yaml:"environmentVariables"`
-	Concurrency          string         `yaml:"concurrency"`
-	CPU                  string         `yaml:"cpu"`
-	MemoryMiB            string         `yaml:"memory"`
-	MinInstances         string         `yaml:"minInstances"`
-	MaxInstances         string         `yaml:"maxInstances"`
+	RunCommand string `yaml:"runCommand"`
 }
 
-type metadata struct {
-	AdapterPackageName string `yaml:"name"`
-	AdapterVersion     string `yaml:"path"`
-	Framework          string `yaml:"framework"`
-	FrameworkVersion   string `yaml:"frameworkVersion"`
+// outputFiles is the struct representation of the passed output files.
+type outputFiles struct {
+	ServerApp serverApp `yaml:"serverApp"`
 }
 
-type envVarConfig struct {
-	Variable     string   `yaml:"variable"`
-	Value        string   `yaml:"value"`
-	Availability []string `yaml:"availability"`
-}
-
-func convertToMap(slice []string) map[string]bool {
-	var newMap map[string]bool
-	newMap = make(map[string]bool)
-	for _, s := range slice {
-		newMap[s] = true
-	}
-	return newMap
+// serverApp is the struct representation of the passed server app files.
+type serverApp struct {
+	Include []string `yaml:"include"`
 }
 
 func readBundleYaml(ctx *gcp.Context, bundlePath string) (*bundleYaml, error) {
@@ -155,9 +153,29 @@ func readBundleYaml(ctx *gcp.Context, bundlePath string) (*bundleYaml, error) {
 	return &bundleYaml, nil
 }
 
-func generateDefaultBundleYaml(outputBundleDir string, ctx *gcp.Context) error {
-	ctx.MkdirAll(outputBundleDir, 0744)
-	f, err := ctx.CreateFile(filepath.Join(outputBundleDir, "bundle.yaml"))
+func readAppHostingYaml(ctx *gcp.Context, appHostingPath string) (*apphostingYaml, error) {
+	appHostingYamlExists, err := ctx.FileExists(appHostingPath)
+	if err != nil {
+		return nil, err
+	}
+	if !appHostingYamlExists {
+		// return an empty struct if the file doesn't exist
+		return nil, nil
+	}
+	rawAppHostingYaml, err := ctx.ReadFile(appHostingPath)
+	if err != nil {
+		return nil, gcp.InternalErrorf("reading %s: %w", appHostingPath, err)
+	}
+	var appHostingYaml apphostingYaml
+	if err := yaml.Unmarshal(rawAppHostingYaml, &appHostingYaml); err != nil {
+		return nil, gcp.UserErrorf("invalid %s: %w", appHostingPath, err)
+	}
+	return &appHostingYaml, nil
+}
+
+func generateDefaultBundleYaml(bundleYamlPath string, ctx *gcp.Context) error {
+	ctx.MkdirAll(path.Dir(bundleYamlPath), 0744)
+	f, err := ctx.CreateFile(filepath.Join(bundleYamlPath))
 	if err != nil {
 		return err
 	}
@@ -181,4 +199,117 @@ func copyPublicDirToOutputBundleDir(outputPublicDir string, workspacePublicDir s
 		return err
 	}
 	return nil
+}
+
+func convertToMap(slice []string) map[string]bool {
+	var newMap map[string]bool
+	newMap = make(map[string]bool)
+	for _, s := range slice {
+		newMap[s] = true
+	}
+	return newMap
+}
+
+func extractAllDirs(files []string) []string {
+	var result []string
+	for _, file := range files {
+		dir := file
+		for dir != "." && dir != "/" { // Stop at root directory
+			result = append(result, dir)
+			dir = filepath.Dir(dir)
+		}
+	}
+	return result
+}
+
+// walkDirStructureAndDeleteAllFilesNotIncluded walks the directory structure and deletes all files that are not included.
+// If a directory is labeled as included, all files in that directory will be kept.
+// "." in either apphosting.yaml or bundle.yaml will include all files.
+func walkDirStructureAndDeleteAllFilesNotIncluded(rootDir string, filesToInclude []string, dirsToIncludeAll []string) error {
+	filesToIncludeMap := convertToMap(filesToInclude)
+
+	dirsToIncludeAllMap := convertToMap(dirsToIncludeAll)
+
+	return filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil // Skip this file/directory
+			}
+
+			return fmt.Errorf("walking directory structure: %w", err)
+		}
+
+		relPath, err := filepath.Rel(rootDir, path)
+		if err != nil {
+			return fmt.Errorf("getting relative path: %w", err)
+		}
+
+		// Keep the root directory
+		if relPath == "." {
+			return nil
+		}
+
+		if !filesToIncludeMap[relPath] && !anyParentDirMatches(relPath, dirsToIncludeAllMap) {
+			if info.IsDir() {
+				return os.RemoveAll(path)
+			}
+			return os.Remove(path)
+		}
+
+		return nil
+	})
+}
+
+func anyParentDirMatches(path string, targets map[string]bool) bool {
+	dir := path
+	for dir != "." && dir != "/" { // Stop at the root directory
+		if targets[dir] {
+			return true
+		}
+
+		dir = filepath.Dir(dir) // Move to the parent directory
+	}
+
+	return false
+}
+
+// deleteFilesNotIncluded deletes all files that are not included in the apphosting.yaml or bundle.yaml.
+// This is done by walking the directory structure and deleting all files that are not included.
+// if a directory is labeled as included, all files in that directory will be kept.
+// "." in either apphosting.yaml or bundle.yaml will include all files.
+func deleteFilesNotIncluded(apphostingSchema *apphostingYaml, bundleSchema *bundleYaml, appPath string) error {
+	// always include apphosting.yaml
+	includedFiles := originalApphostingYamlPaths()
+	// always include all of .apphosting
+	fullyIncludedDirs := []string{".apphosting"}
+	if bundleSchema != nil && bundleSchema.OutputFiles.ServerApp.Include != nil {
+		includedFiles = append(extractAllDirs(bundleSchema.OutputFiles.ServerApp.Include), includedFiles...)
+		fullyIncludedDirs = append(bundleSchema.OutputFiles.ServerApp.Include, fullyIncludedDirs...)
+	}
+	if apphostingSchema != nil && apphostingSchema.OutputFiles.ServerApp.Include != nil {
+		includedFiles = append(extractAllDirs(apphostingSchema.OutputFiles.ServerApp.Include), includedFiles...)
+		fullyIncludedDirs = append(apphostingSchema.OutputFiles.ServerApp.Include, fullyIncludedDirs...)
+	}
+	// if both apphosting.yaml and bundle.yaml are empty, don't delete anything
+	if (apphostingSchema == nil || apphostingSchema.OutputFiles.ServerApp.Include == nil) && (bundleSchema == nil || bundleSchema.OutputFiles.ServerApp.Include == nil) {
+		return nil
+	}
+	// Check if "." is present in either include list
+	for _, dir := range fullyIncludedDirs {
+		if dir == "." {
+			// If "." is present, don't delete anything
+			return nil
+		}
+	}
+
+	return walkDirStructureAndDeleteAllFilesNotIncluded(appPath, includedFiles, fullyIncludedDirs)
+}
+
+func originalApphostingYamlPaths() []string {
+	paths := []string{"apphosting.yaml"}
+	envName, ok := os.LookupEnv(environmentName)
+	if ok {
+		paths = append(paths, fmt.Sprintf("apphosting.%v.yaml", envName))
+	}
+	return paths
 }

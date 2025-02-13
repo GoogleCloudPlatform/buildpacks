@@ -2,6 +2,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 package(default_visibility = ["//:__subpackages__"])
 
+exports_files([
+    "main.go",
+])
+
 licenses(["notice"])
 
 go_binary(

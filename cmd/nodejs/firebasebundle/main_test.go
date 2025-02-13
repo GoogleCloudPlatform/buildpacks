@@ -16,11 +16,13 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
 	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestDetect(t *testing.T) {
@@ -63,7 +65,7 @@ func TestBuild(t *testing.T) {
 				"public/test1":  "",
 				"test_dir/test": "",
 			},
-			expectedFiles: []string{"test_dir/public/test1", "test_dir/bundle.yaml"},
+			expectedFiles: []string{".apphosting", ".apphosting/bundle.yaml", "public", "public/test1", "test_dir", "test_dir/bundle.yaml", "test_dir/public", "test_dir/public/test1", "test_dir/test"},
 			codeDir:       "CodeDir-no-bundleyaml",
 		},
 		{
@@ -73,8 +75,61 @@ func TestBuild(t *testing.T) {
 				".apphosting/bundle.yaml": "",
 				"test_dir/test":           "",
 			},
-			expectedFiles: []string{"test_dir/public/test1", "public/test1", "test_dir/bundle.yaml", ".apphosting/bundle.yaml"},
+			expectedFiles: []string{".apphosting", ".apphosting/bundle.yaml", "public", "public/test1", "test_dir", "test_dir/bundle.yaml", "test_dir/public", "test_dir/public/test1", "test_dir/test"},
 			codeDir:       "CodeDir-empty-bundleyaml",
+		},
+		{
+			name: "nonexistent apphosting.yaml",
+			files: map[string]string{
+				".apphosting/bundle.yaml": `version: v1
+runConfig:
+  runCommand: node .output/server/index.mjs
+outputFiles:
+  serverApp:
+    include:
+      - .output`,
+				"tobe_deleted/test": "",
+				".output/test":      "",
+				"test_dir/test":     "",
+			},
+			expectedFiles: []string{".apphosting", ".apphosting/bundle.yaml", ".output", ".output/test"},
+			codeDir:       "CodeDir-required-dirs-no-apphosting",
+		},
+		{
+			name: "nonexistent bundle.yaml",
+			files: map[string]string{
+				"apphosting.yaml": `outputFiles:
+  serverApp:
+    include:
+      - keepthis_dir/keep_this_file`,
+				".output/test":                "",
+				"keepthis_dir/keep_this_file": "",
+				"test_dir/test":               "",
+			},
+			expectedFiles: []string{".apphosting", ".apphosting/bundle.yaml", "apphosting.yaml", "keepthis_dir", "keepthis_dir/keep_this_file"},
+			codeDir:       "CodeDir-required-dirs-no-bundle",
+		},
+		{
+			name: "keeps only files included indicated by bundle.yaml and apphosting.yaml",
+			files: map[string]string{
+				"apphosting.yaml": `outputFiles:
+  serverApp:
+    include:
+      - keepthis_dir/keep_this_file`,
+				".apphosting/bundle.yaml": `version: v1
+runConfig:
+  runCommand: node .output/server/index.mjs
+outputFiles:
+  serverApp:
+    include:
+      - .output`,
+				"tobe_deleted/test":           "",
+				".output/test":                "",
+				"keepthis_dir/keep_this_file": "",
+				"test_dir/test":               "",
+			},
+			expectedFiles: []string{".apphosting", ".apphosting/bundle.yaml", ".output", ".output/test", "apphosting.yaml", "keepthis_dir", "keepthis_dir/keep_this_file"},
+			codeDir:       "CodeDir-required-dirs",
 		},
 	}
 	for _, tc := range testCases {
@@ -83,20 +138,162 @@ func TestBuild(t *testing.T) {
 				bpt.WithTestName(tc.name),
 				bpt.WithFiles(tc.files),
 				bpt.WithTempDir(tc.codeDir),
-				bpt.WithEnvs(fmt.Sprintf("%s=test_dir", firebaseOutputBundleDir)),
+				bpt.WithEnvs(fmt.Sprintf("%s=test_dir", firebaseOutputBundleDir), fmt.Sprintf("%s=%sapphosting.yaml", apphostingYamlPath, filepath.Join(os.TempDir(), tc.codeDir)+"/")),
 			}
 			result, err := bpt.RunBuild(t, buildFn, opts...)
 			if err != nil {
 				t.Fatalf("error running build: %v, result: %#v", err, result)
 			}
-			if tc.expectedFiles != nil {
-				for _, f := range tc.expectedFiles {
-					_, err := os.ReadFile(filepath.Join(os.TempDir(), tc.codeDir, f))
-					if err != nil {
-						t.Errorf("reading file %s: %v", f, err)
-					}
-				}
+
+			// Compare the remaining files with the expected files
+			if diff := cmp.Diff(tc.expectedFiles, existingFiles(t, filepath.Join(os.TempDir(), tc.codeDir))); diff != "" {
+				t.Errorf("Unexpected files after deletion (-want +got):\n%s", diff)
 			}
 		})
 	}
+}
+
+func TestWalkDirStructureAndDeleteAllFilesNotIncluded(t *testing.T) {
+	testCases := []struct {
+		desc              string
+		filesToInclude    []string
+		existingFiles     []string
+		expectedFiles     []string
+		expectedError     bool
+		apphostingInclude []string
+		bundleInclude     []string
+	}{
+		{
+			desc:              "Simple case - delete one file with bundle.yaml include",
+			apphostingInclude: []string{},
+			bundleInclude:     []string{"dir1/file1.txt"},
+			existingFiles:     []string{"dir1/file1.txt", "dir1/file2.txt"},
+			expectedFiles:     []string{"dir1", "dir1/file1.txt"},
+		},
+		{
+			desc:              "Simple case - delete one file with apphosting.yaml include",
+			apphostingInclude: []string{"dir1/file1.txt"},
+			bundleInclude:     []string{},
+			existingFiles:     []string{"dir1/file1.txt", "dir1/file2.txt"},
+			expectedFiles:     []string{"dir1", "dir1/file1.txt"},
+		},
+		{
+			desc:              "Keep nested files and directories with bundle.yaml include",
+			apphostingInclude: []string{},
+			bundleInclude:     []string{"dir1/dir2/file2.txt", "dir1/file1.txt"},
+			existingFiles:     []string{"dir1/dir2/file2.txt", "dir1/file1.txt", "dir1/file3.txt"},
+			expectedFiles:     []string{"dir1", "dir1/dir2", "dir1/dir2/file2.txt", "dir1/file1.txt"},
+		},
+		{
+			desc:              "Keep nested files and directories with apphosting.yaml include",
+			apphostingInclude: []string{"dir1/dir2/file2.txt", "dir1/file1.txt"},
+			bundleInclude:     []string{},
+			existingFiles:     []string{"dir1/dir2/file2.txt", "dir1/file1.txt", "dir1/file3.txt"},
+			expectedFiles:     []string{"dir1", "dir1/dir2", "dir1/dir2/file2.txt", "dir1/file1.txt"},
+		},
+		{
+			desc:              "Delete everything except root",
+			apphostingInclude: []string{},
+			bundleInclude:     []string{},
+			existingFiles:     []string{"dir1/file1.txt", "dir2/file2.txt"},
+			expectedFiles:     nil,
+		},
+		{
+			desc:              "Test include all of a directory",
+			apphostingInclude: []string{"dir2"},
+			bundleInclude:     []string{},
+			existingFiles:     []string{"dir2/file1.txt", "dir2/file2.txt", "dir3/file3.txt", "dir2/dir3/file4.txt"},
+			expectedFiles:     []string{"dir2", "dir2/dir3", "dir2/dir3/file4.txt", "dir2/file1.txt", "dir2/file2.txt"},
+		},
+		{
+			desc:              "Test include all files bundle.yaml",
+			apphostingInclude: []string{"."},
+			bundleInclude:     []string{},
+			existingFiles:     []string{"dir2/file1.txt", "dir2/file2.txt", "dir3/file3.txt", "dir2/dir3/file4.txt"},
+			expectedFiles:     []string{"dir2", "dir2/dir3", "dir2/dir3/file4.txt", "dir2/file1.txt", "dir2/file2.txt", "dir3", "dir3/file3.txt"},
+		},
+		{
+			desc:              "Test include all files apphosting.yaml",
+			apphostingInclude: []string{},
+			bundleInclude:     []string{"."},
+			existingFiles:     []string{"dir2/file1.txt", "dir2/file2.txt", "dir3/file3.txt", "dir2/dir3/file4.txt"},
+			expectedFiles:     []string{"dir2", "dir2/dir3", "dir2/dir3/file4.txt", "dir2/file1.txt", "dir2/file2.txt", "dir3", "dir3/file3.txt"},
+		},
+		{
+			desc:              "Test with nested directories and overlapping includes",
+			apphostingInclude: []string{"dir1/subdir1/file1.txt", "dir2"},
+			bundleInclude:     []string{"dir1/subdir1/file1.txt", "dir3/subdir2"},
+			existingFiles:     []string{"dir1/subdir1/file1.txt", "dir1/subdir1/file2.txt", "dir2/file2.txt", "dir3/subdir1/file3.txt", "dir3/subdir2/file4.txt"},
+			expectedFiles:     []string{"dir1", "dir1/subdir1", "dir1/subdir1/file1.txt", "dir2", "dir2/file2.txt", "dir3", "dir3/subdir2", "dir3/subdir2/file4.txt"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			tempDir, err := ioutil.TempDir("", "test-")
+			if err != nil {
+				t.Fatalf("Error creating temporary directory: %v", err)
+			}
+			defer os.RemoveAll(tempDir)
+			for _, filePath := range tc.existingFiles {
+				// Construct the full file path inside tempDir
+				fullPath := filepath.Join(tempDir, filePath)
+
+				// Create any necessary directories
+				dir := filepath.Dir(fullPath)
+				err := os.MkdirAll(dir, 0755)
+				if err != nil {
+					fmt.Printf("Error creating directory: %v\n", err)
+					continue // Skip to the next file
+				}
+
+				// Create the file and write content
+				err = os.WriteFile(fullPath, []byte("test"), 0644)
+				if err != nil {
+					fmt.Printf("Error creating file: %v\n", err)
+				}
+			}
+
+			bundleSchema := &bundleYaml{OutputFiles: outputFiles{ServerApp: serverApp{Include: tc.bundleInclude}}}
+			apphostingSchema := &apphostingYaml{OutputFiles: outputFiles{ServerApp: serverApp{Include: tc.apphostingInclude}}}
+			err = deleteFilesNotIncluded(apphostingSchema, bundleSchema, tempDir)
+			if tc.expectedError {
+				if err == nil {
+					t.Error("Expected an error, but got nil")
+				}
+				return // If error is expected, skip the remaining checks
+			}
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
+
+			// Compare the remaining files with the expected files
+			if diff := cmp.Diff(tc.expectedFiles, existingFiles(t, tempDir)); diff != "" {
+				t.Errorf("Unexpected files after deletion (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+// existingFiles returns all files that exist inside the given directory.
+func existingFiles(t *testing.T, tempDir string) []string {
+	t.Helper()
+	var actualFiles []string
+	err := filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("walking directory structure: %w", err)
+		}
+		relPath, err := filepath.Rel(tempDir, path)
+		if err != nil {
+			return fmt.Errorf("getting relative path: %w", err)
+		}
+		if relPath != "." { // Exclude the root directory itself
+			actualFiles = append(actualFiles, relPath)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	return actualFiles
 }
