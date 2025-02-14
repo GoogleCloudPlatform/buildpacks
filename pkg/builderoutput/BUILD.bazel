@@ -11,6 +11,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/buildererror",
+        "//pkg/buildermetadata",
         "//pkg/buildermetrics",
     ],
 )
@@ -25,6 +26,7 @@ go_test(
     rundir = ".",
     deps = [
         "//pkg/buildererror",
+        "//pkg/buildermetadata",
         "//pkg/buildermetrics",
         "@com_github_google_go-cmp//cmp:go_default_library",
     ],

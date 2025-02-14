@@ -24,15 +24,17 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/builderoutput"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/builderoutput"
 	"github.com/google/go-cmp/cmp"
 	"github.com/buildpacks/libcnb"
 )
 
 func TestSaveErrorOutput(t *testing.T) {
 	t.Cleanup(buildermetrics.Reset)
+	t.Cleanup(buildermetadata.Reset)
 	tempDir, err := ioutil.TempDir("", "save-error-output-")
 	if err != nil {
 		t.Fatalf("creating temp dir: %v", err)
@@ -52,8 +54,9 @@ func TestSaveErrorOutput(t *testing.T) {
 	msg := "This is a long message that will be truncated."
 
 	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(3)
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.IsUsingGenkit, "true")
 
-	ctx.saveErrorOutput(buildererror.Errorf(buildererror.StatusInternal, msg))
+	ctx.saveErrorOutput(buildererror.Errorf(buildererror.StatusInternal, "%s", msg))
 
 	data, err := ioutil.ReadFile(filepath.Join(tempDir, "output"))
 	if err != nil {
@@ -66,6 +69,8 @@ func TestSaveErrorOutput(t *testing.T) {
 
 	bm := buildermetrics.NewBuilderMetrics()
 	bm.GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(3)
+	bmd := buildermetadata.NewBuilderMetadata()
+	bmd.SetValue(buildermetadata.IsUsingGenkit, "true")
 	want := builderoutput.BuilderOutput{
 		Metrics: bm,
 		Error: buildererror.Error{
@@ -76,9 +81,10 @@ func TestSaveErrorOutput(t *testing.T) {
 			ID:               buildererror.GenerateErrorID(msg),
 			Message:          "...ated.",
 		},
+		Metadata: bmd,
 	}
 
-	if !cmp.Equal(got, want, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{}, buildererror.Error{})) {
+	if !cmp.Equal(got, want, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{}, buildererror.Error{}, buildermetadata.BuilderMetadata{})) {
 		t.Errorf("TestSaveErrorOutput expected output does not match\ngot:\n%#v\nwant:\n%#v", got, want)
 	}
 }
@@ -266,9 +272,13 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 	metrics6 := buildermetrics.NewBuilderMetrics()
 	metrics6.GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(6)
 
+	metadataUsingGenkitTrue := buildermetadata.NewBuilderMetadata()
+	metadataUsingGenkitTrue.SetValue(buildermetadata.IsUsingGenkit, "true")
+
 	testCases := []struct {
 		name                     string
 		addMetrics               bool
+		addMetadata              bool
 		installedRuntimeVersions []string
 		initial                  *builderoutput.BuilderOutput
 		warnings                 []string
@@ -278,7 +288,8 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 			name:       "no file",
 			addMetrics: true, // adds 3
 			want: builderoutput.BuilderOutput{
-				Metrics: metrics3,
+				Metrics:  metrics3,
+				Metadata: buildermetadata.NewBuilderMetadata(),
 				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
@@ -288,7 +299,8 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 			name:     "no file warnings",
 			warnings: []string{"Test warning about a conflicting file."},
 			want: builderoutput.BuilderOutput{
-				Metrics: buildermetrics.NewBuilderMetrics(),
+				Metrics:  buildermetrics.NewBuilderMetrics(),
+				Metadata: buildermetadata.NewBuilderMetadata(),
 				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
@@ -300,6 +312,7 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 			initial: &builderoutput.BuilderOutput{
 				InstalledRuntimeVersions: []string{"1.0.0"},
 				Metrics:                  metrics3,
+				Metadata:                 metadataUsingGenkitTrue,
 				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
 					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
@@ -307,12 +320,26 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 			},
 			installedRuntimeVersions: []string{"3.2.1", "6.0.3"},
 			addMetrics:               true, // adds 3
+			addMetadata:              true, // Set isUsingGenkit to true
 			want: builderoutput.BuilderOutput{
 				InstalledRuntimeVersions: []string{"1.0.0", "3.2.1", "6.0.3"},
 				Metrics:                  metrics6,
+				Metadata:                 metadataUsingGenkitTrue,
 				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
 					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
+					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
+				},
+				CustomImage: false,
+			},
+		},
+		{
+			name:        "propagates Metadata",
+			addMetadata: true,
+			want: builderoutput.BuilderOutput{
+				Metadata: metadataUsingGenkitTrue,
+				Metrics:  buildermetrics.NewBuilderMetrics(),
+				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
 				CustomImage: false,
@@ -324,6 +351,7 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 			want: builderoutput.BuilderOutput{
 				InstalledRuntimeVersions: []string{"3.2.1", "6.0.3"},
 				Metrics:                  buildermetrics.NewBuilderMetrics(),
+				Metadata:                 buildermetadata.NewBuilderMetadata(),
 				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
@@ -340,7 +368,8 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 			},
 			warnings: []string{"Test warning about a conflicting file."},
 			want: builderoutput.BuilderOutput{
-				Metrics: buildermetrics.NewBuilderMetrics(),
+				Metrics:  buildermetrics.NewBuilderMetrics(),
+				Metadata: buildermetadata.NewBuilderMetadata(),
 				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
 					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
@@ -353,7 +382,8 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 		{
 			name: "existing file existing warnings",
 			initial: &builderoutput.BuilderOutput{
-				Metrics: buildermetrics.NewBuilderMetrics(),
+				Metrics:  buildermetrics.NewBuilderMetrics(),
+				Metadata: buildermetadata.NewBuilderMetadata(),
 				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
 					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
@@ -362,7 +392,8 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 			},
 			warnings: []string{"Test warning about a conflicting file."},
 			want: builderoutput.BuilderOutput{
-				Metrics: buildermetrics.NewBuilderMetrics(),
+				Metrics:  buildermetrics.NewBuilderMetrics(),
+				Metadata: buildermetadata.NewBuilderMetadata(),
 				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: "bp1", BuildpackVersion: "v1", DurationMs: 1000, UserDurationMs: 100},
 					{BuildpackID: "bp2", BuildpackVersion: "v2", DurationMs: 2000, UserDurationMs: 200},
@@ -382,13 +413,14 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 				strings.Repeat("x", maxMessageBytes),
 			},
 			want: builderoutput.BuilderOutput{
-				Metrics: buildermetrics.NewBuilderMetrics(),
+				Metrics:  buildermetrics.NewBuilderMetrics(),
+				Metadata: buildermetadata.NewBuilderMetadata(),
 				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
 				Warnings: []string{
 					"Test warning about a conflicting file.",
-					strings.Repeat("x", 48676) + "...",
+					strings.Repeat("x", 48662) + "...",
 				},
 				CustomImage: false,
 			},
@@ -396,17 +428,18 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 		{
 			name: "warnings trim last short",
 			warnings: []string{"Test warning about a conflicting file.",
-				strings.Repeat("x", 48676-4), // Four bytes shorter than the maximum which should leave exactly one character for the second warning.
+				strings.Repeat("x", 48662-4), // Four bytes shorter than the maximum which should leave exactly one character for the second warning.
 				strings.Repeat("y", maxMessageBytes),
 			},
 			want: builderoutput.BuilderOutput{
-				Metrics: buildermetrics.NewBuilderMetrics(),
+				Metrics:  buildermetrics.NewBuilderMetrics(),
+				Metadata: buildermetadata.NewBuilderMetadata(),
 				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
 				Warnings: []string{
 					"Test warning about a conflicting file.",
-					strings.Repeat("x", 48672),
+					strings.Repeat("x", 48658),
 					"y...",
 				},
 				CustomImage: false,
@@ -415,17 +448,18 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 		{
 			name: "warnings drop last short",
 			warnings: []string{"Test warning about a conflicting file.",
-				strings.Repeat("x", 48676-3), // Three bytes shorter than the maximum, which would leave 3 characters for the last warning so we drop it.
+				strings.Repeat("x", 48662-3), // Three bytes shorter than the maximum, which would leave 3 characters for the last warning so we drop it.
 				strings.Repeat("y", maxMessageBytes),
 			},
 			want: builderoutput.BuilderOutput{
-				Metrics: buildermetrics.NewBuilderMetrics(),
+				Metrics:  buildermetrics.NewBuilderMetrics(),
+				Metadata: buildermetadata.NewBuilderMetadata(),
 				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
 				Warnings: []string{
 					"Test warning about a conflicting file.",
-					strings.Repeat("x", 48673),
+					strings.Repeat("x", 48659),
 				},
 				CustomImage: false,
 			},
@@ -437,13 +471,14 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 				strings.Repeat("y", maxMessageBytes),
 			},
 			want: builderoutput.BuilderOutput{
-				Metrics: buildermetrics.NewBuilderMetrics(),
+				Metrics:  buildermetrics.NewBuilderMetrics(),
+				Metadata: buildermetadata.NewBuilderMetadata(),
 				Stats: []builderoutput.BuilderStat{
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
 				Warnings: []string{
 					"Test warning about a conflicting file.",
-					strings.Repeat("x", 48676) + "...",
+					strings.Repeat("x", 48662) + "...",
 				},
 				CustomImage: false,
 			},
@@ -453,6 +488,7 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Cleanup(buildermetrics.Reset)
+			t.Cleanup(buildermetadata.Reset)
 			tempDir, err := ioutil.TempDir("", "save-success-output-")
 			if err != nil {
 				t.Fatalf("TestSaveBuilderSuccessOutput creating temp dir: %v", err)
@@ -480,6 +516,9 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 			}
 			ctx.stats.user = userDur
 			ctx.warnings = tc.warnings
+			if tc.addMetadata {
+				buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.IsUsingGenkit, "true")
+			}
 			for _, version := range tc.installedRuntimeVersions {
 				ctx.AddInstalledRuntimeVersion(version)
 			}
@@ -495,9 +534,10 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 				t.Fatalf("Failed to unmarshal: %v", err)
 			}
 
-			if !cmp.Equal(got, tc.want, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{}, buildererror.Error{})) {
+			if !cmp.Equal(got, tc.want, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{}, buildererror.Error{}, buildermetadata.BuilderMetadata{})) {
 				t.Errorf("%v: Expected stats do not match got %#v, want %#v", tc.name, got, tc.want)
 				t.Errorf("saveBuilderSuccessOutput metrics proto: got: %v, want: %v", got.Metrics, tc.want.Metrics)
+				t.Errorf("saveBuilderSuccessOutput firebase metadata proto: got: %v, want: %v", got.Metadata, tc.want.Metadata)
 			}
 		})
 	}

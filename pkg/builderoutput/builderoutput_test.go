@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/google/go-cmp/cmp"
 )
@@ -37,6 +38,7 @@ func TestFromJSON(t *testing.T) {
 		"errorMessage": "error-message",
 		"anotherThing": 123
 	},
+	"metadata": {"m":{"1":"true", "2":"false"}},
 	"stats": [
 		{
 			"buildpackId": "buildpack-1",
@@ -68,6 +70,9 @@ func TestFromJSON(t *testing.T) {
 	bm := buildermetrics.NewBuilderMetrics()
 	bm.GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(3)
 	bm.GetFloatDP(buildermetrics.ComposerInstallLatencyID).Add(18.3)
+	fm := buildermetadata.NewBuilderMetadata()
+	fm.SetValue(buildermetadata.IsUsingGenkit, "true")
+	fm.SetValue(buildermetadata.IsUsingGenAI, "false")
 	want := BuilderOutput{
 		InstalledRuntimeVersions: []string{"6.0.6"},
 		Metrics:                  bm,
@@ -79,6 +84,7 @@ func TestFromJSON(t *testing.T) {
 			ID:               "abc123",
 			Message:          "error-message",
 		},
+		Metadata: fm,
 		Stats: []BuilderStat{
 			{
 				BuildpackID:      "buildpack-1",
@@ -100,18 +106,21 @@ func TestFromJSON(t *testing.T) {
 		CustomImage: true,
 	}
 
-	if diff := cmp.Diff(got, want, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{}, buildermetrics.FloatDP{}, buildererror.Error{})); diff != "" {
-		t.Errorf("builder output parsing failed.  diff: %v", diff)
+	if diff := cmp.Diff(got, want, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{}, buildermetrics.FloatDP{}, buildererror.Error{}, buildermetadata.BuilderMetadata{})); diff != "" {
+		t.Errorf("builder output parsing failed.  diff (-got +want):\n%v", diff)
 	}
 }
 
 func TestJSON(t *testing.T) {
 	bm := buildermetrics.NewBuilderMetrics()
 	bm.GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(3)
+	fm := buildermetadata.NewBuilderMetadata()
+	fm.SetValue(buildermetadata.IsUsingGenkit, "true")
 	b := BuilderOutput{
 		InstalledRuntimeVersions: []string{"6.0.6"},
 		Metrics:                  bm,
 		Error:                    buildererror.Error{Status: buildererror.StatusInternal},
+		Metadata:                 fm,
 	}
 
 	s, err := b.JSON()
@@ -126,6 +135,9 @@ func TestJSON(t *testing.T) {
 		t.Errorf("Expected string %q not found in %s", want, s)
 	}
 	if want := `{"c":{"1":3}}`; !strings.Contains(string(s), want) {
+		t.Errorf(`Expected string %q not found in %s`, want, s)
+	}
+	if want := `{"m":{"1":"true"}}`; !strings.Contains(string(s), want) {
 		t.Errorf(`Expected string %q not found in %s`, want, s)
 	}
 }

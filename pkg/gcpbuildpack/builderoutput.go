@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/builderoutput"
 )
@@ -70,7 +71,7 @@ var KeepStdoutHead = func(result *ExecResult) string { return keepHead(result.St
 func (ctx *Context) saveErrorOutput(err error) {
 	var be *buildererror.Error
 	if !errors.As(err, &be) {
-		be = buildererror.Errorf(buildererror.StatusInternal, err.Error())
+		be = buildererror.Errorf(buildererror.StatusInternal, "%s", err.Error())
 	}
 	outputDir := os.Getenv(builderOutputEnv)
 	if outputDir == "" {
@@ -84,7 +85,9 @@ func (ctx *Context) saveErrorOutput(err error) {
 	be.BuildpackID, be.BuildpackVersion = ctx.BuildpackID(), ctx.BuildpackVersion()
 	bo := builderoutput.BuilderOutput{Error: *be}
 	bm := buildermetrics.GlobalBuilderMetrics()
+	bmd := buildermetadata.GlobalBuilderMetadata()
 	bo.Metrics = *bm
+	bo.Metadata = *bmd
 	data, err := bo.JSON()
 	if err != nil {
 		ctx.Warnf("Failed to marshal, skipping structured error output: %v", err)
@@ -188,6 +191,10 @@ func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 	bm.ForEachCounter(func(id buildermetrics.MetricID, c *buildermetrics.Counter) {
 		count := bo.Metrics.GetCounter(id)
 		count.Increment(c.Value())
+	})
+	bmd := buildermetadata.GlobalBuilderMetadata()
+	bmd.ForEachValue(func(id buildermetadata.MetadataID, m buildermetadata.MetadataValue) {
+		(&bo.Metadata).SetValue(id, m)
 	})
 
 	var content []byte

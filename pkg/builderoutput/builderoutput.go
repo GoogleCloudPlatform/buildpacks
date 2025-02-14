@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 )
 
@@ -43,18 +44,20 @@ func (bo BuilderOutput) JSON() ([]byte, error) {
 
 // BuilderOutput contains data about the outcome of a build
 type BuilderOutput struct {
-	InstalledRuntimeVersions []string                      `json:"rtVersions,omitempty"`
-	Metrics                  buildermetrics.BuilderMetrics `json:"metrics"`
-	Error                    buildererror.Error            `json:"error"`
-	Stats                    []BuilderStat                 `json:"stats"`
-	Warnings                 []string                      `json:"warnings"`
-	CustomImage              bool                          `json:"customImage"`
+	InstalledRuntimeVersions []string                        `json:"rtVersions,omitempty"`
+	Metrics                  buildermetrics.BuilderMetrics   `json:"metrics"`
+	Error                    buildererror.Error              `json:"error"`
+	Metadata                 buildermetadata.BuilderMetadata `json:"metadata"`
+	Stats                    []BuilderStat                   `json:"stats"`
+	Warnings                 []string                        `json:"warnings"`
+	CustomImage              bool                            `json:"customImage"`
 }
 
 // New constructs a BuilderOutput and returns a pointer.
 func New() *BuilderOutput {
 	return &BuilderOutput{
-		Metrics: buildermetrics.NewBuilderMetrics(),
+		Metrics:  buildermetrics.NewBuilderMetrics(),
+		Metadata: buildermetadata.NewBuilderMetadata(),
 	}
 }
 

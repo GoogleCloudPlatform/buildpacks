@@ -1,0 +1,24 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+package(default_visibility = ["//:__subpackages__"])
+
+go_library(
+    name = "buildermetadata",
+    srcs = [
+        "buildermetadata.go",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "buildermetadata_test",
+    srcs = [
+        "buildermetadata_test.go",
+    ],
+    embed = [":buildermetadata"],
+    rundir = ".",
+    deps = ["@com_github_google_go-cmp//cmp:go_default_library"],
+)
