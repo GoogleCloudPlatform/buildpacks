@@ -263,15 +263,33 @@ func createMainGoModVendored(ctx *gcp.Context, fn fnInfo) error {
 		Injected: false,
 	})
 
-	appVendorDir := filepath.Join(fn.Source, "vendor", appModule)
-	if err := ctx.MkdirAll(appVendorDir, 0755); err != nil {
+	var buildablePackagePath string
+	var appDir string
+
+	supportsVendorModification, err := golang.SupportsVendorModificaton(ctx)
+	if err != nil {
+		return fmt.Errorf("checking if vendor modification is supported: %w", err)
+	}
+
+	if !supportsVendorModification {
+		appDir = filepath.Join(fn.Source, appModule)
+		buildablePackagePath = appDir
+
+	} else {
+		appDir = filepath.Join(fn.Source, "vendor", appModule)
+		buildablePackagePath = appModule
+	}
+
+	if err := ctx.MkdirAll(appDir, 0755); err != nil {
 		return err
 	}
 
-	l.BuildEnvironment.Override(env.Buildable, appModule)
+	appMainPath := filepath.Join(appDir, "main.go")
+
+	l.BuildEnvironment.Override(env.Buildable, buildablePackagePath)
 	l.BuildEnvironment.Override(golang.BuildDirEnv, fn.Source)
 
-	return createMainGoFile(ctx, fn, filepath.Join(appVendorDir, "main.go"), version)
+	return createMainGoFile(ctx, fn, appMainPath, version)
 }
 
 // moduleAndPackageNames extracts the module name and package name of the function.

@@ -103,6 +103,34 @@ func SupportsGoGet(ctx *gcp.Context) (bool, error) {
 	return VersionMatches(ctx, "<1.22.0", v)
 }
 
+// SupportsVendorModificaton returns true if the Go version supports modifying vendor directory without modifying vendor/modules.txt.
+// Versions 1.23.0 and later require vendored packages to be present in vendor/modules.txt to be imported.
+func SupportsVendorModificaton(ctx *gcp.Context) (bool, error) {
+	v, _ := RuntimeVersion(ctx)
+
+	// if runtimeVersion is not set, it uses latest version (which is going to be >=1.23.0) which does not support vendor modification without modifying vendor/modules.txt.
+	if v == "" {
+		return false, nil
+	}
+
+	// if runtimeVersion is set, check if it is <1.23.0.
+	version, err := semver.NewVersion(v)
+	if err != nil {
+		return false, gcp.InternalErrorf("unable to parse version string %q: %w", v, err)
+	}
+
+	goVersionMatches, err := semver.NewConstraint("<1.23.0")
+	if err != nil {
+		return false, gcp.InternalErrorf("unable to parse version range %q: %w", v, err)
+	}
+
+	if goVersionMatches.Check(version) {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 // VersionMatches checks if the installed version of Go and the version specified in go.mod match the given version range.
 // The range string has the following format: https://github.com/blang/semver#ranges.
 func VersionMatches(ctx *gcp.Context, versionRange string, goVersions ...string) (bool, error) {

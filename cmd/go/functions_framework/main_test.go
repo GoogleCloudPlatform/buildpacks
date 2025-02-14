@@ -120,7 +120,31 @@ func TestBuild(t *testing.T) {
 			wantExitCode: 1,
 		},
 		{
-			name:      "with framework vendored",
+			name: "with framework vendored for go 1.22 and below",
+			app:  "with_framework_vendored",
+			envs: []string{
+				"GOOGLE_RUNTIME_VERSION=1.22.11",
+			},
+			fnPkgName: "myfunc",
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`^go list -m$`, mockprocess.WithStdout("example.com/myfunc")),
+				mockprocess.New(`^go list -m -f {{.Version}}.*`, mockprocess.WithStdout("v1.0.0")),
+			},
+		},
+		{
+			name: "with framework vendored for go 1.23 and above",
+			app:  "with_framework_vendored",
+			envs: []string{
+				"GOOGLE_RUNTIME_VERSION=1.23.5",
+			},
+			fnPkgName: "myfunc",
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`^go list -m$`, mockprocess.WithStdout("example.com/myfunc")),
+				mockprocess.New(`^go list -m -f {{.Version}}.*`, mockprocess.WithStdout("v1.0.0")),
+			},
+		},
+		{
+			name:      "with framework vendored for go 1.23 and above, version not specified",
 			app:       "with_framework_vendored",
 			fnPkgName: "myfunc",
 			mocks: []*mockprocess.Mock{

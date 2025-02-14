@@ -30,5 +30,5 @@ func init() {
 
 // Func declares an HTTP handler.
 func Func(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello from Func")
+	fmt.Fprintf(w, "PASS")
 }
