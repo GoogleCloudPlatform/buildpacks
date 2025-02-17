@@ -18,7 +18,7 @@ go_library(
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/runtime",
-        "@com_github_buildpacks_libcnb//:go_default_library",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
     ],
 )
 

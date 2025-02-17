@@ -7,7 +7,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
-	"github.com/buildpacks/libcnb"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 const (

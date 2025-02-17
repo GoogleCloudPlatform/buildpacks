@@ -28,7 +28,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/builderoutput"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	"github.com/buildpacks/libcnb"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 func TestDebugModeInitialized(t *testing.T) {
@@ -281,7 +281,7 @@ func TestAddProcess(t *testing.T) {
 			name: "web",
 			cmd:  []string{"/web"},
 			want: []libcnb.Process{
-				libcnb.Process{Command: "/web", Type: "web"},
+				libcnb.Process{Command: []string{"bash", "-c", "/web"}, Type: "web"},
 			},
 		},
 		{
@@ -289,13 +289,13 @@ func TestAddProcess(t *testing.T) {
 			name: "web",
 			cmd:  []string{"/web"},
 			initial: []libcnb.Process{
-				libcnb.Process{Command: "/dev", Type: "dev"},
-				libcnb.Process{Command: "/cli", Type: "cli"},
+				libcnb.Process{Command: []string{"bash", "-c", "/dev"}, Type: "dev"},
+				libcnb.Process{Command: []string{"bash", "-c", "/cli"}, Type: "cli"},
 			},
 			want: []libcnb.Process{
-				libcnb.Process{Command: "/dev", Type: "dev"},
-				libcnb.Process{Command: "/cli", Type: "cli"},
-				libcnb.Process{Command: "/web", Type: "web"},
+				libcnb.Process{Command: []string{"bash", "-c", "/dev"}, Type: "dev"},
+				libcnb.Process{Command: []string{"bash", "-c", "/cli"}, Type: "cli"},
+				libcnb.Process{Command: []string{"bash", "-c", "/web"}, Type: "web"},
 			},
 		},
 		{
@@ -303,14 +303,14 @@ func TestAddProcess(t *testing.T) {
 			name: "web",
 			cmd:  []string{"/OVERRIDE"},
 			initial: []libcnb.Process{
-				libcnb.Process{Command: "/dev", Type: "dev"},
-				libcnb.Process{Command: "/web", Type: "web"},
-				libcnb.Process{Command: "/cli", Type: "cli"},
+				libcnb.Process{Command: []string{"bash", "-c", "/dev"}, Type: "dev"},
+				libcnb.Process{Command: []string{"bash", "-c", "/web"}, Type: "web"},
+				libcnb.Process{Command: []string{"bash", "-c", "/cli"}, Type: "cli"},
 			},
 			want: []libcnb.Process{
-				libcnb.Process{Command: "/dev", Type: "dev"},
-				libcnb.Process{Command: "/cli", Type: "cli"},
-				libcnb.Process{Command: "/OVERRIDE", Type: "web"},
+				libcnb.Process{Command: []string{"bash", "-c", "/dev"}, Type: "dev"},
+				libcnb.Process{Command: []string{"bash", "-c", "/cli"}, Type: "cli"},
+				libcnb.Process{Command: []string{"bash", "-c", "/OVERRIDE"}, Type: "web"},
 			},
 		},
 		{
@@ -318,7 +318,7 @@ func TestAddProcess(t *testing.T) {
 			name: "foo",
 			cmd:  []string{"/start"},
 			want: []libcnb.Process{
-				libcnb.Process{Command: "/start", Type: "foo"},
+				libcnb.Process{Command: []string{"bash", "-c", "/start"}, Type: "foo"},
 			},
 		},
 		{
@@ -326,7 +326,7 @@ func TestAddProcess(t *testing.T) {
 			name: "foo",
 			cmd:  []string{"/start", "arg1", "arg2"},
 			want: []libcnb.Process{
-				libcnb.Process{Command: "/start", Arguments: []string{"arg1", "arg2"}, Type: "foo"},
+				libcnb.Process{Command: []string{"bash", "-c", "/start arg1 arg2"}, Type: "foo"},
 			},
 		},
 		{
@@ -335,7 +335,7 @@ func TestAddProcess(t *testing.T) {
 			cmd:  []string{"/start", "arg1", "arg2"},
 			opts: []processOption{AsDirectProcess()},
 			want: []libcnb.Process{
-				libcnb.Process{Command: "/start", Arguments: []string{"arg1", "arg2"}, Type: "foo", Direct: true},
+				libcnb.Process{Command: []string{"/start"}, Arguments: []string{"arg1", "arg2"}, Type: "foo"},
 			},
 		},
 		{
@@ -344,7 +344,7 @@ func TestAddProcess(t *testing.T) {
 			cmd:  []string{"/start", "arg1", "arg2"},
 			opts: []processOption{AsDefaultProcess()},
 			want: []libcnb.Process{
-				libcnb.Process{Command: "/start", Arguments: []string{"arg1", "arg2"}, Type: "foo", Default: true},
+				libcnb.Process{Command: []string{"bash", "-c", "/start arg1 arg2"}, Type: "foo", Default: true},
 			},
 		},
 		{
@@ -353,7 +353,7 @@ func TestAddProcess(t *testing.T) {
 			cmd:  []string{"/start", "arg1", "arg2"},
 			opts: []processOption{AsDirectProcess(), AsDefaultProcess()},
 			want: []libcnb.Process{
-				libcnb.Process{Command: "/start", Arguments: []string{"arg1", "arg2"}, Type: "foo", Direct: true, Default: true},
+				libcnb.Process{Command: []string{"/start"}, Arguments: []string{"arg1", "arg2"}, Type: "foo", Default: true},
 			},
 		},
 	}
@@ -663,7 +663,7 @@ func TestHasAtLeastOneOutsideDependencyDirectories(t *testing.T) {
 }
 
 func proc(command, commandType string) libcnb.Process {
-	return libcnb.Process{Command: command, Type: commandType, Default: true, Direct: true}
+	return libcnb.Process{Command: []string{command}, Type: commandType, Default: true}
 }
 
 // fakeExitHandler allows libcnb's Detect() function to be called without causing an os.Exit().

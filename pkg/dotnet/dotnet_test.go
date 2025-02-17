@@ -29,7 +29,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/google/go-cmp/cmp"
 	"google3/third_party/golang/cmp/cmpopts/cmpopts"
-	"github.com/buildpacks/libcnb"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 func TestReadProjectFile(t *testing.T) {

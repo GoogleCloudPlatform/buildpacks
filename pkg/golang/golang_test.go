@@ -24,7 +24,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
-	"github.com/buildpacks/libcnb"
+	"github.com/buildpacks/libcnb/v2"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )

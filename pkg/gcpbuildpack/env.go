@@ -18,7 +18,7 @@ import (
 	"os"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	"github.com/buildpacks/libcnb"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 // SetFunctionsEnvVars sets launch-time functions environment variables.

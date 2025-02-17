@@ -1753,10 +1753,10 @@ maven_install(
 )
 
 go_repository(
-    name = "com_github_buildpacks_libcnb",
-    importpath = "github.com/buildpacks/libcnb",
-    sum = "h1:JtFMFPO2450uDLzpE1b50TvmM1GEZa8YT9cQ2ZZtHqA=",
-    version = "v1.30.3",
+    name = "com_github_buildpacks_libcnb_v2",
+    importpath = "github.com/buildpacks/libcnb/v2",
+    sum = "h1:RvoUy2g1K/6tuxpIeV9lFrAwvLZsFvdOXbjtxtaeIr8=",
+    version = "v2.0.0",
 )
 
 go_repository(

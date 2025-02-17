@@ -19,7 +19,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/buildpacks/libcnb"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 func TestOpt(t *testing.T) {

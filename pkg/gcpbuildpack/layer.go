@@ -20,7 +20,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	"github.com/buildpacks/libcnb"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 const (
@@ -92,7 +92,8 @@ func (ctx *Context) Layer(name string, opts ...layerOption) (*libcnb.Layer, erro
 	if l.Metadata == nil {
 		l.Metadata = make(map[string]interface{})
 	}
-	ctx.buildResult.Layers = append(ctx.buildResult.Layers, layerContributor{&l})
+	ctx.layerContributors = append(ctx.layerContributors, layerContributor{l: &l})
+	ctx.buildResult.Layers = append(ctx.buildResult.Layers, l)
 	return &l, nil
 }
 

@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/buildpacks/libcnb"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 // DetectResult represents the result of the detect run and the reason for it.

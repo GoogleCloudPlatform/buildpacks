@@ -86,7 +86,7 @@ func SetUpTempDirs(t *testing.T, customCodeDir string) TempDirs {
 
 	stack := "com.stack"
 	buildpackTOML := fmt.Sprintf(`
-api = "0.6"
+api = "0.9"
 
 [buildpack]
 id = "my-id"
@@ -116,6 +116,30 @@ version = "entry-version"
 		t.Fatalf("setting env var CNB_STACK_ID: %v", err)
 	}
 
+	if err := os.Setenv("CNB_BUILDPACK_DIR", buildpackDir); err != nil {
+		t.Fatalf("setting env var CNB_BUILDPACK_DIR: %v", err)
+	}
+
+	// Set Plartform dir
+	if err := os.Setenv("CNB_PLATFORM_DIR", platformDir); err != nil {
+		t.Fatalf("setting env var CNB_PLATFORM_DIR: %v", err)
+	}
+
+	// Set Build plan path
+	if err := os.Setenv("CNB_BUILD_PLAN_PATH", filepath.Join(buildpackDir, "plan.toml")); err != nil {
+		t.Fatalf("setting env var CNB_BUILD_PLAN_PATH: %v", err)
+	}
+
+	// Set Layers dir
+	if err := os.Setenv("CNB_LAYERS_DIR", layersDir); err != nil {
+		t.Fatalf("setting env var CNB_LAYERS_DIR: %v", err)
+	}
+
+	// Set CNB_BP_PLAN_PATH
+	if err := os.Setenv("CNB_BP_PLAN_PATH", filepath.Join(buildpackDir, "plan.toml")); err != nil {
+		t.Fatalf("setting env var CNB_BP_PLAN_PATH: %v", err)
+	}
+
 	temps := TempDirs{
 		CodeDir:      codeDir,
 		LayersDir:    layersDir,
@@ -130,6 +154,15 @@ version = "entry-version"
 		}
 		if err := os.Unsetenv("CNB_STACK_ID"); err != nil {
 			t.Fatalf("unsetting CNB_STACK_ID: %v", err)
+		}
+		if err := os.Unsetenv("CNB_BUILDPACK_DIR"); err != nil {
+			t.Fatalf("unsetting CNB_BUILDPACK_DIR: %v", err)
+		}
+		if err := os.Unsetenv("CNB_PLATFORM_DIR"); err != nil {
+			t.Fatalf("unsetting CNB_PLATFORM_DIR: %v", err)
+		}
+		if err := os.Unsetenv("CNB_BUILD_PLAN_PATH"); err != nil {
+			t.Fatalf("unsetting CNB_BUILD_PLAN_PATH: %v", err)
 		}
 	})
 	return temps

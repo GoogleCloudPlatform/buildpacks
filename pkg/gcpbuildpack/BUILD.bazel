@@ -26,7 +26,7 @@ go_library(
         "//pkg/buildermetrics",
         "//pkg/builderoutput",
         "//pkg/env",
-        "@com_github_buildpacks_libcnb//:go_default_library",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
         "@org_golang_x_sys//unix:go_default_library",
     ],
 )
@@ -51,7 +51,7 @@ go_test(
         "//pkg/buildermetrics",
         "//pkg/builderoutput",
         "//pkg/env",
-        "@com_github_buildpacks_libcnb//:go_default_library",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
         "@com_github_google_go-cmp//cmp:go_default_library",
     ],
 )

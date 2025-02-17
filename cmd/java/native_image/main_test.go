@@ -26,7 +26,7 @@ import (
 	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
-	"github.com/buildpacks/libcnb"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 func TestDetect(t *testing.T) {

@@ -21,9 +21,9 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/buildpacks/cloud.google.com/go/secretmanager/LICENSE
 
-- package: github.com/buildpacks/libcnb
+- package: github.com/buildpacks/libcnb/v2
   license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/buildpacks/github.com/buildpacks/libcnb/LICENSE
+  license_path: /usr/local/share/licenses/buildpacks/github.com/buildpacks/libcnb/v2/LICENSE
 
 - package: github.com/BurntSushi/toml
   license_name: MIT
@@ -104,10 +104,6 @@
 - package: github.com/Masterminds/semver
   license_name: MIT
   license_path: /usr/local/share/licenses/buildpacks/github.com/Masterminds/semver/LICENSE.txt
-
-- package: github.com/Masterminds/semver/v3
-  license_name: MIT
-  license_path: /usr/local/share/licenses/buildpacks/github.com/Masterminds/semver/v3/LICENSE.txt
 
 - package: github.com/mitchellh/go-homedir
   license_name: MIT

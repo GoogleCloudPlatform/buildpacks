@@ -29,7 +29,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	"github.com/buildpacks/libcnb"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 const (
@@ -87,8 +87,9 @@ type Context struct {
 	detectContext libcnb.DetectContext
 
 	// build items
-	buildContext libcnb.BuildContext
-	buildResult  libcnb.BuildResult
+	buildContext      libcnb.BuildContext
+	buildResult       libcnb.BuildResult
+	layerContributors []layerContributor
 
 	execCmd func(name string, arg ...string) *exec.Cmd
 }
@@ -170,7 +171,7 @@ func NewContext(opts ...ContextOption) *Context {
 func newDetectContext(detectContext libcnb.DetectContext) *Context {
 	ctx := NewContext(WithBuildpackInfo(detectContext.Buildpack.Info))
 	ctx.detectContext = detectContext
-	ctx.applicationRoot = ctx.detectContext.Application.Path
+	ctx.applicationRoot = ctx.detectContext.ApplicationPath
 	ctx.buildpackRoot = ctx.detectContext.Buildpack.Path
 	return ctx
 }
@@ -178,7 +179,7 @@ func newDetectContext(detectContext libcnb.DetectContext) *Context {
 func newBuildContext(buildContext libcnb.BuildContext) *Context {
 	ctx := NewContext(WithBuildpackInfo(buildContext.Buildpack.Info))
 	ctx.buildContext = buildContext
-	ctx.applicationRoot = ctx.buildContext.Application.Path
+	ctx.applicationRoot = ctx.buildContext.ApplicationPath
 	ctx.buildpackRoot = ctx.buildContext.Buildpack.Path
 	ctx.buildResult = libcnb.NewBuildResult()
 	return ctx
@@ -241,16 +242,48 @@ type gcpdetector struct {
 	detectFn DetectFn
 }
 
+// detectFnWrapper creates a DetectFunc that wraps the given detectFn.
+func detectFnWrapper(detectFn DetectFn) libcnb.DetectFunc {
+	return func(ldctx libcnb.DetectContext) (libcnb.DetectResult, error) {
+
+		ctx := newDetectContext(ldctx)
+		status := buildererror.StatusInternal
+		defer func(now time.Time) {
+			ctx.Span(fmt.Sprintf("Buildpack Detect %q", ctx.info.ID), now, status)
+		}(time.Now())
+
+		result, err := detectFn(ctx)
+		if err != nil {
+			msg := fmt.Sprintf("failed to run /bin/detect: %v", err)
+			var be *buildererror.Error
+			if errors.As(err, &be) {
+				status = be.Status
+				return libcnb.DetectResult{}, be
+			}
+			return libcnb.DetectResult{}, buildererror.Errorf(status, msg)
+		}
+		// detectFn has an interface return type so result may be nil.
+		if result == nil {
+			return libcnb.DetectResult{}, InternalErrorf("detect did not return a result or an error")
+		}
+
+		status = buildererror.StatusOk
+		ctx.Logf(result.Reason())
+		return result.Result(), nil
+	}
+}
+
+// TODO: hemantgoyal - Remove this function once the libcnb is migrated
 func (gcpd gcpdetector) Detect(ldctx libcnb.DetectContext) (libcnb.DetectResult, error) {
 	ctx := newDetectContext(ldctx)
 	status := buildererror.StatusInternal
 	defer func(now time.Time) {
-		ctx.Span(fmt.Sprintf("Buildpack Detect %s", ctx.info.ID), now, status)
+		ctx.Span(fmt.Sprintf("Buildpack Detect %q", ctx.info.ID), now, status)
 	}(time.Now())
 
 	result, err := gcpd.detectFn(ctx)
 	if err != nil {
-		msg := fmt.Sprintf("Failed to run /bin/detect: %v", err)
+		msg := fmt.Sprintf("failed to run /bin/detect: %v", err)
 		var be *buildererror.Error
 		if errors.As(err, &be) {
 			status = be.Status
@@ -270,14 +303,16 @@ func (gcpd gcpdetector) Detect(ldctx libcnb.DetectContext) (libcnb.DetectResult,
 
 // detect implements the /bin/detect phase of the buildpack.
 func detect(detectFn DetectFn, opts ...libcnb.Option) {
-	gcpd := gcpdetector{detectFn: detectFn}
-	libcnb.Detect(gcpd, opts...)
+	config := libcnb.NewConfig(opts...)
+	wrappedDetectFn := detectFnWrapper(detectFn)
+	libcnb.Detect(wrappedDetectFn, config)
 }
 
 type gcpbuilder struct {
 	buildFn BuildFn
 }
 
+// TODO: hemantgoyal - Remove this function once the libcnb is migrated
 func (gcpb gcpbuilder) Build(lbctx libcnb.BuildContext) (libcnb.BuildResult, error) {
 	start := time.Now()
 	ctx := newBuildContext(lbctx)
@@ -285,7 +320,7 @@ func (gcpb gcpbuilder) Build(lbctx libcnb.BuildContext) (libcnb.BuildResult, err
 
 	status := buildererror.StatusInternal
 	defer func(now time.Time) {
-		ctx.Span(fmt.Sprintf("Buildpack Build %s", ctx.BuildpackID()), now, status)
+		ctx.Span(fmt.Sprintf("Buildpack Build %q", ctx.BuildpackID()), now, status)
 	}(time.Now())
 
 	if err := gcpb.buildFn(ctx); err != nil {
@@ -302,14 +337,49 @@ func (gcpb gcpbuilder) Build(lbctx libcnb.BuildContext) (libcnb.BuildResult, err
 	return ctx.buildResult, nil
 }
 
+// buildFnWrapper creates a libcnb.BuildFunc that wraps the given buildFn.
+func buildFnWrapper(buildFn BuildFn) libcnb.BuildFunc {
+	return func(lbctx libcnb.BuildContext) (libcnb.BuildResult, error) {
+		start := time.Now()
+		ctx := newBuildContext(lbctx)
+		ctx.Logf("=== %s (%s@%s) ===", ctx.BuildpackName(), ctx.BuildpackID(), ctx.BuildpackVersion())
+
+		status := buildererror.StatusInternal
+		defer func(now time.Time) {
+			ctx.Span(fmt.Sprintf("Buildpack Build %q", ctx.BuildpackID()), now, status)
+		}(time.Now())
+
+		if err := buildFn(ctx); err != nil {
+			var be *buildererror.Error
+			if errors.As(err, &be) {
+				status = be.Status
+			}
+			err := fmt.Errorf("failed to build: %w", err)
+			ctx.Exit(1, err)
+		}
+
+		for i := 0; i < len(ctx.buildResult.Layers); i++ {
+			creator := ctx.layerContributors[i]
+			name := creator.Name()
+			layer, _ := ctx.buildContext.Layers.Layer(name)
+			layer, _ = creator.Contribute(layer)
+			ctx.buildResult.Layers[i] = layer
+		}
+		status = buildererror.StatusOk
+		ctx.saveSuccessOutput(time.Since(start))
+		return ctx.buildResult, nil
+	}
+}
+
 func build(buildFn BuildFn) {
 	options := []libcnb.Option{
 		// Without this flag the build SBOM is NOT written to the image's "io.buildpacks.build.metadata" label.
 		// The acceptence tests rely on this being present.
-		libcnb.WithBOMLabel(true),
+		// libcnb.WithBOMLabel(true),
 	}
-	gcpb := gcpbuilder{buildFn: buildFn}
-	libcnb.Build(gcpb, options...)
+	config := libcnb.NewConfig(options...)
+	wrappedBuildFn := buildFnWrapper(buildFn)
+	libcnb.Build(wrappedBuildFn, config)
 }
 
 // Exit causes the buildpack to exit with the given exit code and message.
@@ -390,7 +460,20 @@ type processOption func(o *libcnb.Process)
 
 // AsDirectProcess causes the process to be executed directly, i.e. without a shell.
 func AsDirectProcess() processOption {
-	return func(o *libcnb.Process) { o.Direct = true }
+	return func(o *libcnb.Process) {
+		cmd := []string{}
+		if len(o.Command) > 2 {
+			cmd = o.Command[2:]
+		}
+		if len(cmd) > 0 {
+			o.Command = []string{cmd[0]}
+		} else {
+			o.Command = []string{}
+		}
+		if len(cmd) > 1 {
+			o.Arguments = cmd[1:]
+		}
+	}
 }
 
 // AsDefaultProcess marks the process as the default one for when launcher is invoked without arguments.
@@ -409,17 +492,20 @@ func (ctx *Context) AddProcess(name string, cmd []string, opts ...processOption)
 		}
 		ctx.buildResult.Processes = append(ctx.buildResult.Processes, p)
 	}
+
+	cmdWithDirectAsFalse := append([]string{"bash", "-c"}, cmd...)
 	p := libcnb.Process{
 		Type:    name,
-		Command: cmd[0],
-	}
-	if len(cmd) > 1 {
-		p.Arguments = cmd[1:]
+		Command: cmdWithDirectAsFalse,
 	}
 	for _, opt := range opts {
 		opt(&p)
 	}
+	if len(p.Command) > 2 {
+		p.Command = []string{"bash", "-c", strings.Join(p.Command[2:], " ")}
+	}
 	ctx.buildResult.Processes = append(ctx.buildResult.Processes, p)
+
 }
 
 // HTTPStatus returns the status code for a url.

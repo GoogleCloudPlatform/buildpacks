@@ -3,7 +3,7 @@
 load("@rules_pkg//pkg:mappings.bzl", "pkg_mklink")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
-def buildpack(name, executables, prefix, version, api = "0.8", srcs = None, extension = "tgz", strip_prefix = ".", visibility = None):
+def buildpack(name, executables, prefix, version, api = "0.9", srcs = None, extension = "tgz", strip_prefix = ".", visibility = None):
     """Macro to create a single buildpack as a tgz or tar archive.
 
     The result is a tar or tgz archive with a buildpack descriptor

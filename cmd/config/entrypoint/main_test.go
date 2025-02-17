@@ -20,7 +20,7 @@ import (
 
 	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpacks/libcnb"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 func TestDetect(t *testing.T) {
@@ -87,42 +87,42 @@ func TestProcfileProcesses(t *testing.T) {
 			name:    "simple",
 			content: "web: foo bar baz",
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo bar baz", Default: true},
+				{Type: "web", Command: []string{"bash", "-c", "foo bar baz"}, Default: true},
 			},
 		},
 		{
 			name:    "dollar sign",
 			content: "web: foo $bar baz",
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo $bar baz", Default: true},
+				{Type: "web", Command: []string{"bash", "-c", "foo $bar baz"}, Default: true},
 			},
 		},
 		{
 			name:    "whitespace start",
 			content: "web:  foo bar baz",
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo bar baz", Default: true},
+				{Type: "web", Command: []string{"bash", "-c", "foo bar baz"}, Default: true},
 			},
 		},
 		{
 			name:    "whitespace end",
 			content: "web:  foo bar baz  ",
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo bar baz", Default: true},
+				{Type: "web", Command: []string{"bash", "-c", "foo bar baz"}, Default: true},
 			},
 		},
 		{
 			name:    "carriage return",
 			content: "web: foo bar baz\r\n",
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo bar baz", Default: true},
+				{Type: "web", Command: []string{"bash", "-c", "foo bar baz"}, Default: true},
 			},
 		},
 		{
 			name:    "no space",
 			content: "web:foo",
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo", Default: true},
+				{Type: "web", Command: []string{"bash", "-c", "foo"}, Default: true},
 			},
 		},
 		{
@@ -131,8 +131,8 @@ func TestProcfileProcesses(t *testing.T) {
 web: bar baz
 `,
 			want: []libcnb.Process{
-				{Type: "dev", Command: "java --foo=web:something"},
-				{Type: "web", Command: "bar baz", Default: true},
+				{Type: "dev", Command: []string{"bash", "-c", "java --foo=web:something"}},
+				{Type: "web", Command: []string{"bash", "-c", "bar baz"}, Default: true},
 			},
 		},
 		{
@@ -141,7 +141,7 @@ web: bar baz
 web: bar
 `,
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo", Default: true},
+				{Type: "web", Command: []string{"bash", "-c", "foo"}, Default: true},
 			},
 		},
 		{
@@ -150,14 +150,14 @@ web: bar
 web: bar
 `,
 			want: []libcnb.Process{
-				{Type: "web", Command: "bar", Default: true},
+				{Type: "web", Command: []string{"bash", "-c", "bar"}, Default: true},
 			},
 		},
 		{
 			name:    "trailing newline",
 			content: "web: foo bar baz\n",
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo bar baz", Default: true},
+				{Type: "web", Command: []string{"bash", "-c", "foo bar baz"}, Default: true},
 			},
 		},
 		{
@@ -167,9 +167,9 @@ release: baz
 dev:     foo
 `,
 			want: []libcnb.Process{
-				{Type: "web", Command: "foo bar", Default: true},
-				{Type: "release", Command: "baz"},
-				{Type: "dev", Command: "foo"},
+				{Type: "web", Command: []string{"bash", "-c", "foo bar"}, Default: true},
+				{Type: "release", Command: []string{"bash", "-c", "baz"}},
+				{Type: "dev", Command: []string{"bash", "-c", "foo"}},
 			},
 		},
 	}

@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpacks/libcnb"
+	"github.com/buildpacks/libcnb/v2"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"

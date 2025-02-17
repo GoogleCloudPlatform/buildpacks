@@ -27,7 +27,7 @@ go_binary(
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/java",
-        "@com_github_buildpacks_libcnb//:go_default_library",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
     ],
 )
 
@@ -41,6 +41,6 @@ go_test(
         "//internal/buildpacktest",
         "//pkg/gcpbuildpack",
         "//pkg/java",
-        "@com_github_buildpacks_libcnb//:go_default_library",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
     ],
 )
