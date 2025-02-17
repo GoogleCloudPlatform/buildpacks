@@ -2,9 +2,7 @@ load("//tools:defs.bzl", "builder")
 
 licenses(["notice"])
 
-package(default_visibility = [
-    "//builders/firebase/apphosting/acceptance:__pkg__",
-])
+package(default_visibility = ["//builders/firebase/apphosting/acceptance:__pkg__"])
 
 builder(
     name = "builder",
