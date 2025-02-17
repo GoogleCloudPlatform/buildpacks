@@ -93,6 +93,9 @@ post_max_size = 32M
 
 	// NginxServesStaticFiles is an environment variable to configure Nginx to serve static files.
 	NginxServesStaticFiles = "NGINX_SERVES_STATIC_FILES"
+
+	// NginxDocumentRoot overrides the document root of nginx.
+	NginxDocumentRoot = "NGINX_DOCUMENT_ROOT"
 )
 
 type composerScriptsJSON struct {
