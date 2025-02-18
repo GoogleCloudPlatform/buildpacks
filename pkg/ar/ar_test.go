@@ -62,6 +62,7 @@ machine australia-southeast1-python.pkg.dev login oauth2accesstoken password tok
 machine australia-southeast2-python.pkg.dev login oauth2accesstoken password token
 machine europe-central2-python.pkg.dev login oauth2accesstoken password token
 machine europe-north1-python.pkg.dev login oauth2accesstoken password token
+machine europe-north2-python.pkg.dev login oauth2accesstoken password token
 machine europe-python.pkg.dev login oauth2accesstoken password token
 machine europe-southwest1-python.pkg.dev login oauth2accesstoken password token
 machine europe-west1-python.pkg.dev login oauth2accesstoken password token
