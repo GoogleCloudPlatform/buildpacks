@@ -28,6 +28,7 @@ go_binary(
     deps = [
         "//pkg/appengine",
         "//pkg/appstart",
+        "//pkg/buildermetrics",
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/java",

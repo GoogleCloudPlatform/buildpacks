@@ -21,6 +21,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
@@ -47,6 +48,7 @@ func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
 		return nil, err
 	}
 	if webXMLExists {
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.JavaGAEWebXMLConfigUsageCounterID).Increment(1)
 		return &appstart.Entrypoint{
 			Type:    appstart.EntrypointGenerated.String(),
 			Command: "serve WEB-INF/appengine-web.xml",

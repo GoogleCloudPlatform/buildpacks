@@ -40,6 +40,7 @@ const (
 	NpmInstallLatencyID                   MetricID = "8"
 	ComposerInstallLatencyID              MetricID = "9"
 	PipInstallLatencyID                   MetricID = "10"
+	JavaGAEWebXMLConfigUsageCounterID     MetricID = "11"
 )
 
 var (
@@ -93,6 +94,11 @@ var (
 			PipInstallLatencyID,
 			"pip_install_latency",
 			"The latency for executions of `pip install`",
+		),
+		JavaGAEWebXMLConfigUsageCounterID: newDescriptor(
+			JavaGAEWebXMLConfigUsageCounterID,
+			"java_gae_web_xml_config_uses",
+			"The number of times the appengine-web.xml is used by developers",
 		),
 	}
 )
