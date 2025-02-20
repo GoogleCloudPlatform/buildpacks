@@ -2,7 +2,7 @@ click==8.1.7
 cloudevents==1.11.0
 deprecation==2.1.0
 Flask==2.2.5
-functions-framework==3.8.1
+functions-framework==3.8.2
 gunicorn==23.0.0
 importlib-metadata==6.7.0
 itsdangerous==2.1.2
