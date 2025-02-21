@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
@@ -49,6 +50,7 @@ func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
 	}
 	if webXMLExists {
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.JavaGAEWebXMLConfigUsageCounterID).Increment(1)
+		processAppEngineWebXML(ctx)
 		return &appstart.Entrypoint{
 			Type:    appstart.EntrypointGenerated.String(),
 			Command: "serve WEB-INF/appengine-web.xml",
@@ -64,4 +66,23 @@ func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
 		Type:    appstart.EntrypointGenerated.String(),
 		Command: "serve " + executable,
 	}, nil
+}
+
+func processAppEngineWebXML(ctx *gcp.Context) {
+	fullPath := filepath.Join(ctx.ApplicationRoot(), "WEB-INF/appengine-web.xml")
+	appEngineWebXML, err := ctx.ReadFile(fullPath)
+	if err != nil {
+		ctx.Warnf("Error reading appengine-web.xml: %v", err)
+		return
+	}
+
+	appEngineWebXMLApp, err := java.ParseAppEngineWebXML(appEngineWebXML)
+	if err != nil {
+		ctx.Warnf("Error parsing appengine-web.xml: %v", err)
+		return
+	}
+
+	if appEngineWebXMLApp.SessionsEnabled {
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.JavaGAESessionsEnabledCounterID).Increment(1)
+	}
 }

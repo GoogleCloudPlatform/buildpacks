@@ -41,6 +41,7 @@ const (
 	ComposerInstallLatencyID              MetricID = "9"
 	PipInstallLatencyID                   MetricID = "10"
 	JavaGAEWebXMLConfigUsageCounterID     MetricID = "11"
+	JavaGAESessionsEnabledCounterID       MetricID = "12"
 )
 
 var (
@@ -99,6 +100,11 @@ var (
 			JavaGAEWebXMLConfigUsageCounterID,
 			"java_gae_web_xml_config_uses",
 			"The number of times the appengine-web.xml is used by developers",
+		),
+		JavaGAESessionsEnabledCounterID: newDescriptor(
+			JavaGAESessionsEnabledCounterID,
+			"java_gae_session_handler_uses",
+			"The number of times the session handler is used by developers",
 		),
 	}
 )
