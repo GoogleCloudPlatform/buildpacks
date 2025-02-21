@@ -59,8 +59,9 @@ func TestAcceptance(t *testing.T) {
 			RequestType: acceptance.CloudEventType,
 		},
 		{
-			Name: "function with framework and dependency bin",
-			App:  "with_framework_bin_conflict",
+			Name:                       "function with framework and dependency bin",
+			App:                        "with_framework_bin_conflict",
+			VersionInclusionConstraint: "< 3.13.0",
 		},
 		{
 			Name:   "function with runtime env var",

@@ -37,7 +37,8 @@ func TestAcceptance(t *testing.T) {
 			EnableCacheTest: true,
 		},
 		{
-			App: "requirements_bin_conflict",
+			App:                        "requirements_bin_conflict",
+			VersionInclusionConstraint: "< 3.13.0",
 		},
 		{
 			App: "requirements_builtin_conflict",
