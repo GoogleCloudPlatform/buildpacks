@@ -70,6 +70,11 @@ func buildFn(ctx *gcp.Context) error {
 	overrides := webconfig.OverriddenProperties(ctx, runtimeConfig)
 	webconfig.SetEnvVariables(l, overrides)
 
+	err = overrides.UpdateFromEnvironment(ctx)
+	if err != nil {
+		return err
+	}
+
 	fpmConfFile, err := writeFpmConfig(l.Path, overrides)
 	if err != nil {
 		return err
@@ -164,11 +169,17 @@ func nginxConfig(layer string, overrides webconfig.OverrideProperties) nginx.Con
 		frontController = overrides.FrontController
 	}
 
+	root := defaultRoot
+	if overrides.DocumentRoot != "" {
+		root = filepath.Join(defaultRoot, overrides.DocumentRoot)
+	}
+
 	nginx := nginx.Config{
 		Port:                  defaultNginxPort,
 		FrontControllerScript: frontController,
-		Root:                  filepath.Join(defaultRoot, overrides.DocumentRoot),
+		Root:                  root,
 		AppListenAddress:      defaultAddress,
+		ServesStaticFiles:     overrides.NginxServesStaticFiles,
 	}
 
 	if overrides.NginxServerConfInclude {
@@ -203,6 +214,14 @@ func fpmConfig(layer string, overrides webconfig.OverrideProperties) (nginx.FPMC
 		DynamicWorkers:       defaultDynamicWorkers,
 		Username:             user.Username,
 		AddNoDecorateWorkers: true,
+	}
+
+	if overrides.PHPFPMDynamicWorkers {
+		fpm.DynamicWorkers = overrides.PHPFPMDynamicWorkers
+	}
+
+	if overrides.PHPFPMWorkers > 0 {
+		fpm.NumWorkers = overrides.PHPFPMWorkers
 	}
 
 	if overrides.PHPFPMOverride {
