@@ -76,7 +76,7 @@ func TestAcceptance(t *testing.T) {
 			SkipStacks: []string{"google.min.22"},
 		},
 	}
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := applyStaticTestOptions(tc)
 		t.Run(tc.Name, func(t *testing.T) {
 			// Running these tests in parallel causes the server to run out of disk space.
