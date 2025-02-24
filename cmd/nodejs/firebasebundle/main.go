@@ -26,9 +26,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"gopkg.in/yaml.v2"
 )
 
@@ -67,6 +70,7 @@ func buildFn(ctx *gcp.Context) error {
 
 	workspacePublicDir := filepath.Join(ctx.ApplicationRoot(), defaultPublicDir)
 	outputPublicDir := filepath.Join(outputBundleDir, defaultPublicDir)
+	appDir := util.ApplicationDirectory(ctx)
 
 	apphostingYamlPath, ok := os.LookupEnv(apphostingYamlPath)
 
@@ -94,6 +98,11 @@ func buildFn(ctx *gcp.Context) error {
 	err = copyPublicDirToOutputBundleDir(outputPublicDir, workspacePublicDir, ctx)
 	if err != nil {
 		return err
+	}
+	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, appDir)
+	// We don't want to fail builds for failing to collect optional metadata. Ignore error.
+	if err == nil {
+		setMetadata(nodeDeps.PackageJSON)
 	}
 	err = deleteFilesNotIncluded(apphostingYaml, bundleYaml, ctx.ApplicationRoot())
 	if err != nil {
@@ -199,6 +208,20 @@ func copyPublicDirToOutputBundleDir(outputPublicDir string, workspacePublicDir s
 		return err
 	}
 	return nil
+}
+
+// detect if the app uses AI (Genkit or GenAI API) and the corresponding version, and set metadata accordingly
+func setMetadata(packageJSON *nodejs.PackageJSON) {
+	if packageJSON != nil {
+		genkitVersion := nodejs.DependencyVersion(packageJSON, "genkit")
+		genAIVersion := nodejs.DependencyVersion(packageJSON, "@google/generative-ai")
+		if genkitVersion != "" {
+			buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.IsUsingGenkit, buildermetadata.MetadataValue(genkitVersion))
+		}
+		if genAIVersion != "" {
+			buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.IsUsingGenAI, buildermetadata.MetadataValue(genAIVersion))
+		}
+	}
 }
 
 func convertToMap(slice []string) map[string]bool {

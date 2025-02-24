@@ -227,6 +227,15 @@ func HasDevDependencies(p *PackageJSON) bool {
 	return p != nil && len(p.DevDependencies) > 0
 }
 
+// DependencyVersion returns the version of the given dependency in the given package.json file.
+func DependencyVersion(p *PackageJSON, name string) string {
+	if p == nil || len(p.Dependencies) == 0 {
+		return ""
+	}
+	version := p.Dependencies[name]
+	return version
+}
+
 // RequestedNodejsVersion returns any customer provided Node.js version constraint by inspecting the
 // environment and the package.json.
 func RequestedNodejsVersion(ctx *gcp.Context, pjs *PackageJSON) (string, error) {

@@ -217,6 +217,58 @@ func TestHasDevDependencies(t *testing.T) {
 	}
 }
 
+func TestDependencyVersion(t *testing.T) {
+	testCases := []struct {
+		name        string
+		packageJSON *PackageJSON
+		dependency  string
+		want        string
+	}{
+		{
+			name:        "nil package.json",
+			packageJSON: nil,
+			want:        "",
+		},
+		{
+			name: "matching dependency",
+			packageJSON: &PackageJSON{
+				Dependencies: map[string]string{
+					"genkit": "1.0.0",
+				},
+			},
+			dependency: "genkit",
+			want:       "1.0.0",
+		},
+		{
+			name: "mismatching dependency",
+			packageJSON: &PackageJSON{
+				Dependencies: map[string]string{
+					"genkit": "1.0.0",
+				},
+			},
+			dependency: "@google/generative-ai",
+			want:       "",
+		},
+		{
+			name: "empty dependencies",
+			packageJSON: &PackageJSON{
+				Dependencies: map[string]string{},
+			},
+			dependency: "genkit",
+			want:       "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := DependencyVersion(tc.packageJSON, tc.dependency)
+			if got != tc.want {
+				t.Errorf("DependencyVersion(%v) = %s, want %s", tc.packageJSON, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestRequestedNodejsVersion(t *testing.T) {
 	testCases := []struct {
 		name        string

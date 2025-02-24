@@ -15,6 +15,8 @@
 package main
 
 import (
+	"embed"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -22,8 +24,13 @@ import (
 	"testing"
 
 	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	bmd "github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/google/go-cmp/cmp"
 )
+
+//go:embed testdata/*
+var testData embed.FS
 
 func TestDetect(t *testing.T) {
 	testCases := []struct {
@@ -296,4 +303,45 @@ func existingFiles(t *testing.T, tempDir string) []string {
 		t.Errorf("Unexpected error: %v", err)
 	}
 	return actualFiles
+}
+
+func TestSetMetadata(t *testing.T) {
+	testCases := []struct {
+		name        string
+		packageJSON string
+		metadataID  bmd.MetadataID
+		want        bmd.MetadataValue
+	}{
+		{
+			name:        "sets metadata correctly when detect genkit dependency",
+			packageJSON: "testdata/genkit_app_package.json",
+			metadataID:  bmd.IsUsingGenkit,
+			want:        "^1.0.4",
+		},
+		{
+			name:        "sets metadata correctly when detect genAI dependency",
+			packageJSON: "testdata/gemini_app_package.json",
+			metadataID:  bmd.IsUsingGenAI,
+			want:        "^0.16.0",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var got bmd.MetadataValue
+			rawpjs, err := testData.ReadFile(tc.packageJSON)
+			if err != nil {
+				t.Errorf("Error reading json file %s: %v", tc.packageJSON, err)
+			}
+			var pjs nodejs.PackageJSON
+			if err := json.Unmarshal(rawpjs, &pjs); err != nil {
+				t.Errorf("Error unmarshalling json file %s: %v", tc.packageJSON, err)
+			}
+			setMetadata(&pjs)
+			got = bmd.GlobalBuilderMetadata().GetValue(tc.metadataID)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("setMetadata() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
 }
