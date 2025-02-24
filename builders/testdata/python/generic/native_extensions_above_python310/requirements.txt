@@ -1,5 +1,5 @@
 flask==2.0.3
 gunicorn==20.0.4
-numpy==1.26.0 # Python 3.12.0 is supported by numpy >= 1.26.0
+numpy==2.1.0 ## Python 3.13.0 is supported by numpy >= 2.1.0
 setuptools==66.1.0 # Python 3.12.0 is supported by setuptools >= 1.26.0
 Werkzeug==2.2.2 # Flask 2.x incompatible with latest Werkzeug 3.x as of 10/2023

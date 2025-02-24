@@ -77,12 +77,12 @@ func TestAcceptancePython(t *testing.T) {
 			VersionInclusionConstraint: ">=3.8.0 <3.12.0",
 		},
 		{
-			Name:    "python module dependency using a native extension for 3.9 and above",
-			App:     "native_extensions_above_python39",
+			Name:    "python module dependency using a native extension for 3.10 and above",
+			App:     "native_extensions_above_python310",
 			Env:     []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
-			// numpy 1.26.0 needed to support 3.12 only works on python 3.9 and above.
-			VersionInclusionConstraint: ">= 3.9.0",
+			// numpy 2.1 needed to support 3.13 only works on python 3.10 and above.
+			VersionInclusionConstraint: ">= 3.10.0",
 		},
 		{
 			Name:    "pip vendored dependencies",

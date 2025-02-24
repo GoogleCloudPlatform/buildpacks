@@ -59,8 +59,9 @@ func TestAcceptance(t *testing.T) {
 			RequestType: acceptance.CloudEventType,
 		},
 		{
-			Name:                       "function with framework and dependency bin",
-			App:                        "with_framework_bin_conflict",
+			Name: "function with framework and dependency bin",
+			App:  "with_framework_bin_conflict",
+			// TODO(harisam): Remove this constraint once spacy support is added for python 3.13.
 			VersionInclusionConstraint: "< 3.13.0",
 		},
 		{

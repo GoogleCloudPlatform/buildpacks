@@ -41,10 +41,16 @@ func TestAcceptance(t *testing.T) {
 		},
 
 		{
-			Name: "gunicorn with django entrypoint",
-			App:  "gunicorn_django_entrypoint",
+			Name:                       "gunicorn with django entrypoint",
+			App:                        "gunicorn_django_entrypoint",
+			VersionInclusionConstraint: "< 3.13.0",
 		},
-
+		{
+			Name: "gunicorn with django entrypoint for python 3.10 and above",
+			App:  "gunicorn_django_entrypoint_above_python310",
+			// django 5.1.3 needed to support python 3.13 only works on python 3.10 and above.
+			VersionInclusionConstraint: ">= 3.10.0",
+		},
 		{
 			Name: "uwsgi with flask",
 			App:  "uwsgi_flask",
