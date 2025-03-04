@@ -90,6 +90,10 @@ func MergeVpcAccess(yamlAccess, envAccess *VpcAccess) *VpcAccess {
 
 // NormalizeVpcAccess ensures that any connector is a fully qualified resource name.
 func NormalizeVpcAccess(vpcAccess *VpcAccess, project, region string) {
+	if vpcAccess == nil {
+		return
+	}
+
 	if resourceID.MatchString(vpcAccess.Connector) {
 		vpcAccess.Connector = fmt.Sprintf("projects/%s/locations/%s/connectors/%s", project, region, vpcAccess.Connector)
 	}

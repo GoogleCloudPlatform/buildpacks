@@ -106,9 +106,10 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse:             []string{npm},
 		},
 		{
-			App:        "gcp_build_pnpm",
-			MustUse:    []string{pnpm},
-			MustNotUse: []string{npm, yarn},
+			VersionInclusionConstraint: ">= 13.0.0",
+			App:                        "gcp_build_pnpm",
+			MustUse:                    []string{pnpm},
+			MustNotUse:                 []string{npm, yarn},
 		},
 		{
 			App:        "gcp_build_npm_no_dependencies",

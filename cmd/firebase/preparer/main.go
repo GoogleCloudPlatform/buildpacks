@@ -15,6 +15,9 @@
 // The preparer binary runs preprocessing steps for App Hosting backend builds.
 package main
 
+// This file is going to be replaced by apphosting_preparer in apphosting directory.
+// Be sure to mirror all changes to that file.
+// (-- LINT.IfChange --)
 import (
 	"context"
 	"errors"
@@ -33,6 +36,7 @@ var (
 	apphostingYAMLFilePath        = flag.String("apphostingyaml_filepath", "", "File path to user defined apphosting.yaml")
 	workspacePath                 = flag.String("workspace_path", "/workspace", "File path to the workspace directory")
 	projectID                     = flag.String("project_id", "", "User's GCP project ID")
+	region                        = flag.String("region", "", "Current GCP Region. Used to expand resource IDs.")
 	environmentName               = flag.String("environment_name", "", "Environment name tied to the build, if applicable")
 	appHostingYAMLOutputFilePath  = flag.String("apphostingyaml_output_filepath", "", "File path to write the validated and formatted apphosting.yaml to")
 	dotEnvOutputFilePath          = flag.String("dot_env_output_filepath", "", "File path to write the output .env file to")
@@ -66,6 +70,8 @@ func main() {
 		log.Fatal("--buildpack_config_output_filepath flag not specified.")
 	}
 
+	// TODO: inlined - Add a check for region once it has rolled out in the backend.
+
 	secretClient, err := secretmanager.NewClient(context.Background())
 	if err != nil {
 		log.Fatal(fmt.Errorf("failed to create secretmanager client: %w", err))
@@ -76,6 +82,7 @@ func main() {
 		SecretClient:                  secretClient,
 		AppHostingYAMLPath:            *apphostingYAMLFilePath,
 		ProjectID:                     *projectID,
+		Region:                        *region,
 		EnvironmentName:               *environmentName,
 		AppHostingYAMLOutputFilePath:  *appHostingYAMLOutputFilePath,
 		EnvDereferencedOutputFilePath: *dotEnvOutputFilePath,
@@ -113,3 +120,7 @@ func handleError(err error) error {
 	}
 	return faherror.InternalErrorf("%w", err)
 }
+
+// (--
+// LINT.ThenChange(//depot/google3/apphosting/runtime/titanium/tools/apphosting_preparer/main.go)
+// --)

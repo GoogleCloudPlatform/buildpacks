@@ -19,6 +19,10 @@ import (
 var (
 	appHostingYAMLPath                 string = testdata.MustGetPath("testdata/apphosting.yaml")
 	appHostingYAMLPathNonexistent      string = testdata.MustGetPath("testdata/nonexistent.yaml")
+	appHostingYAMLConnectorIDPath      string = testdata.MustGetPath("testdata/apphosting.vpc-connector-id.yaml")
+	appHostingYAMLConnectorNamePath    string = testdata.MustGetPath("testdata/apphosting.vpc-connector-name.yaml")
+	appHostingYAMLNetworkIDPath        string = testdata.MustGetPath("testdata/apphosting.vpc-network-id.yaml")
+	appHostingYAMLNetworkNamePath      string = testdata.MustGetPath("testdata/apphosting.vpc-network-name.yaml")
 	apphostingStagingYAMLPath          string = testdata.MustGetPath("testdata/apphosting.staging.yaml")
 	latestSecretName                   string = "projects/test-project/secrets/secretID/versions/12"
 	pinnedSecretName                   string = "projects/test-project/secrets/secretID/versions/11"
@@ -40,6 +44,7 @@ func TestPrepare(t *testing.T) {
 		desc               string
 		appHostingYAMLPath string
 		projectID          string
+		regionID           string
 		environmentName    string
 		serverSideEnvVars  []apphostingschema.EnvironmentVariable
 		wantEnvMap         map[string]string
@@ -289,6 +294,100 @@ func TestPrepare(t *testing.T) {
 				},
 			},
 		},
+		{
+			desc:               "noops vpc connector names",
+			appHostingYAMLPath: appHostingYAMLConnectorNamePath,
+			projectID:          "test-project",
+			regionID:           "us-central1",
+			wantSchema: apphostingschema.AppHostingSchema{
+				RunConfig: apphostingschema.RunConfig{
+					VpcAccess: &apphostingschema.VpcAccess{
+						Connector: "projects/test-project/locations/us-central1/connectors/my-connector",
+					},
+				},
+				Env: []apphostingschema.EnvironmentVariable{
+					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}},
+				},
+			},
+			wantEnvMap: map[string]string{
+				"FIREBASE_CONFIG":        serverProvidedFirebaseConfig,
+				"FIREBASE_WEBAPP_CONFIG": serverProvidedFirebaseWebAppConfig,
+			},
+		},
+		{
+			desc:               "expands vpc connector ids",
+			appHostingYAMLPath: appHostingYAMLConnectorIDPath,
+			projectID:          "test-project",
+			regionID:           "us-central1",
+			wantSchema: apphostingschema.AppHostingSchema{
+				RunConfig: apphostingschema.RunConfig{
+					VpcAccess: &apphostingschema.VpcAccess{
+						Connector: "projects/test-project/locations/us-central1/connectors/my-connector",
+					},
+				},
+				Env: []apphostingschema.EnvironmentVariable{
+					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}},
+				},
+			},
+			wantEnvMap: map[string]string{
+				"FIREBASE_CONFIG":        serverProvidedFirebaseConfig,
+				"FIREBASE_WEBAPP_CONFIG": serverProvidedFirebaseWebAppConfig,
+			},
+		},
+		{
+			desc:               "noops vpc network names",
+			appHostingYAMLPath: appHostingYAMLNetworkNamePath,
+			projectID:          "test-project",
+			regionID:           "us-central1",
+			wantSchema: apphostingschema.AppHostingSchema{
+				RunConfig: apphostingschema.RunConfig{
+					VpcAccess: &apphostingschema.VpcAccess{
+						NetworkInterfaces: []apphostingschema.NetworkInterface{
+							{
+								Network:    "projects/test-project/global/networks/my-network",
+								Subnetwork: "projects/test-project/regions/us-central1/subnetworks/my-subnet",
+							},
+						},
+					},
+				},
+				Env: []apphostingschema.EnvironmentVariable{
+					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}},
+				},
+			},
+			wantEnvMap: map[string]string{
+				"FIREBASE_CONFIG":        serverProvidedFirebaseConfig,
+				"FIREBASE_WEBAPP_CONFIG": serverProvidedFirebaseWebAppConfig,
+			},
+		},
+		{
+			desc:               "expands vpc network ids",
+			appHostingYAMLPath: appHostingYAMLNetworkIDPath,
+			projectID:          "test-project",
+			regionID:           "us-central1",
+			wantSchema: apphostingschema.AppHostingSchema{
+				RunConfig: apphostingschema.RunConfig{
+					VpcAccess: &apphostingschema.VpcAccess{
+						NetworkInterfaces: []apphostingschema.NetworkInterface{
+							{
+								Network:    "projects/test-project/global/networks/my-network",
+								Subnetwork: "projects/test-project/regions/us-central1/subnetworks/my-subnet",
+							},
+						},
+					},
+				},
+				Env: []apphostingschema.EnvironmentVariable{
+					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}},
+					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}},
+				},
+			},
+			wantEnvMap: map[string]string{
+				"FIREBASE_CONFIG":        serverProvidedFirebaseConfig,
+				"FIREBASE_WEBAPP_CONFIG": serverProvidedFirebaseWebAppConfig,
+			},
+		},
 	}
 
 	fakeSecretClient := &fakesecretmanager.FakeSecretClient{
@@ -336,6 +435,7 @@ func TestPrepare(t *testing.T) {
 			SecretClient:                  fakeSecretClient,
 			AppHostingYAMLPath:            test.appHostingYAMLPath,
 			ProjectID:                     test.projectID,
+			Region:                        test.regionID,
 			EnvironmentName:               test.environmentName,
 			AppHostingYAMLOutputFilePath:  outputFilePathYAML,
 			EnvDereferencedOutputFilePath: outputFilePathEnv,

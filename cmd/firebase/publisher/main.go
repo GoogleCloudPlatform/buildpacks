@@ -15,6 +15,9 @@
 // The main binary will in the future run AppHosting publisher logic.
 package main
 
+// This file is going to be replaced by apphosting_publisher in apphosting directory.
+// Be sure to mirror all changes to that file.
+// (-- LINT.IfChange --)
 import (
 	"flag"
 	"log"
@@ -54,3 +57,7 @@ func main() {
 		log.Fatal(err)
 	}
 }
+
+// (--
+// LINT.ThenChange(//depot/google3/apphosting/runtime/titanium/tools/apphosting_publisher/main.go)
+// --)

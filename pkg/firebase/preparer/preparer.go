@@ -32,6 +32,7 @@ type Options struct {
 	SecretClient                  secrets.SecretManager
 	AppHostingYAMLPath            string
 	ProjectID                     string
+	Region                        string
 	EnvironmentName               string
 	AppHostingYAMLOutputFilePath  string
 	EnvDereferencedOutputFilePath string
@@ -102,6 +103,8 @@ func Prepare(ctx context.Context, opts Options) error {
 	if dereferencedEnvMap, err = secrets.GenerateBuildDereferencedEnvMap(ctx, opts.SecretClient, appHostingYAML.Env); err != nil {
 		return fmt.Errorf("dereferencing secrets in apphosting.yaml: %w", err)
 	}
+
+	apphostingschema.NormalizeVpcAccess(appHostingYAML.RunConfig.VpcAccess, opts.ProjectID, opts.Region)
 
 	if err := appHostingYAML.WriteToFile(opts.AppHostingYAMLOutputFilePath); err != nil {
 		return fmt.Errorf("writing final apphosting.yaml to %v: %w", opts.AppHostingYAMLOutputFilePath, err)

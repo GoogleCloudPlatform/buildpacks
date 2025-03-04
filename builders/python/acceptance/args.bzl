@@ -24,6 +24,10 @@ def newArgs(version, runImageTag, stack):
     }
 
 def runImage(version, runImageTag, stack):
+    # TODO(b/371521232): Newer runtimes do not publish to gcr.
+    if version == "313":
+        return "us-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/python313:latest"
+
     if stack != "":
         if runImageTag != "":
             return "us-docker.pkg.dev/gae-runtimes-private/" + stack + "/runtimes/python" + version + ":" + runImageTag

@@ -189,11 +189,12 @@ func TestAcceptance(t *testing.T) {
 			},
 		},
 		{
-			SkipPreReleaseVersions: true,
-			Name:                   "function with pnpm and typescript",
-			App:                    "pnpm_typescript",
-			MustUse:                []string{pnpm},
-			MustNotUse:             []string{npm, yarn},
+			VersionInclusionConstraint: ">= 13.0.0",
+			SkipPreReleaseVersions:     true,
+			Name:                       "function with pnpm and typescript",
+			App:                        "pnpm_typescript",
+			MustUse:                    []string{pnpm},
+			MustNotUse:                 []string{npm, yarn},
 		},
 		{
 			Name:          "function with vendored deps",

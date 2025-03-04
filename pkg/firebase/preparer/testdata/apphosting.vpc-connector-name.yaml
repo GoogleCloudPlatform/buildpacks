@@ -1,0 +1,3 @@
+runConfig:
+  vpcAccess:
+    connector: "projects/test-project/locations/us-central1/connectors/my-connector"

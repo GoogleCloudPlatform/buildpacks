@@ -149,13 +149,9 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/chrismellard/docker-credential-acr-env/pkg/LICENSE
 
-- package: github.com/cilium/ebpf
-  license_name: MIT
-  license_path: /usr/local/share/licenses/lifecycle/github.com/cilium/ebpf/LICENSE
-
-- package: github.com/containerd/cgroups/v3
+- package: github.com/containerd/containerd/api
   license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/cgroups/v3/LICENSE
+  license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/containerd/api/LICENSE
 
 - package: github.com/containerd/containerd
   license_name: Apache-2.0
@@ -165,6 +161,10 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/continuity/LICENSE
 
+- package: github.com/containerd/errdefs
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/errdefs/LICENSE
+
 - package: github.com/containerd/fifo
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/fifo/LICENSE
@@ -172,6 +172,10 @@
 - package: github.com/containerd/log
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/log/LICENSE
+
+- package: github.com/containerd/platforms
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/platforms/LICENSE
 
 - package: github.com/containerd/stargz-snapshotter/estargz
   license_name: Apache-2.0
@@ -184,10 +188,6 @@
 - package: github.com/containerd/typeurl/v2
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/typeurl/v2/LICENSE
-
-- package: github.com/coreos/go-systemd/v22/dbus
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/coreos/go-systemd/v22/dbus/LICENSE
 
 - package: github.com/dimchansky/utfbom
   license_name: Apache-2.0
@@ -237,10 +237,6 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/felixge/httpsnoop/LICENSE.txt
 
-- package: github.com/godbus/dbus/v5
-  license_name: BSD-2-Clause
-  license_path: /usr/local/share/licenses/lifecycle/github.com/godbus/dbus/v5/LICENSE
-
 - package: github.com/gogo/protobuf
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/github.com/gogo/protobuf/LICENSE
@@ -253,9 +249,9 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/golang/mock/gomock/LICENSE
 
-- package: github.com/golang/protobuf
+- package: github.com/golang/protobuf/proto
   license_name: BSD-3-Clause
-  license_path: /usr/local/share/licenses/lifecycle/github.com/golang/protobuf/LICENSE
+  license_path: /usr/local/share/licenses/lifecycle/github.com/golang/protobuf/proto/LICENSE
 
 - package: github.com/go-logr/logr
   license_name: Apache-2.0
@@ -280,6 +276,10 @@
 - package: github.com/google/uuid
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/github.com/google/uuid/LICENSE
+
+- package: github.com/gorilla/mux
+  license_name: BSD-3-Clause
+  license_path: /usr/local/share/licenses/lifecycle/github.com/gorilla/mux/LICENSE
 
 - package: github.com/hashicorp/go-immutable-radix
   license_name: MPL-2.0
@@ -324,10 +324,6 @@
 - package: github.com/mattn/go-isatty
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/mattn/go-isatty/LICENSE
-
-- package: github.com/matttproud/golang_protobuf_extensions/pbutil
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/matttproud/golang_protobuf_extensions/pbutil/LICENSE
 
 - package: github.com/minio/highwayhash
   license_name: Apache-2.0
@@ -380,6 +376,10 @@
 - package: github.com/moby/sys/user
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/moby/sys/user/LICENSE
+
+- package: github.com/moby/sys/userns
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/moby/sys/userns/LICENSE
 
 - package: github.com/moby/term
   license_name: Apache-2.0
