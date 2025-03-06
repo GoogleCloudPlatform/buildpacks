@@ -33,18 +33,19 @@ import (
 )
 
 var (
-	apphostingYAMLFilePath        = flag.String("apphostingyaml_filepath", "", "File path to user defined apphosting.yaml")
-	workspacePath                 = flag.String("workspace_path", "/workspace", "File path to the workspace directory")
-	projectID                     = flag.String("project_id", "", "User's GCP project ID")
-	region                        = flag.String("region", "", "Current GCP Region. Used to expand resource IDs.")
-	environmentName               = flag.String("environment_name", "", "Environment name tied to the build, if applicable")
-	appHostingYAMLOutputFilePath  = flag.String("apphostingyaml_output_filepath", "", "File path to write the validated and formatted apphosting.yaml to")
-	dotEnvOutputFilePath          = flag.String("dot_env_output_filepath", "", "File path to write the output .env file to")
-	backendRootDirectory          = flag.String("backend_root_directory", "", "File path to the application directory specified by the user")
-	buildpackConfigOutputFilePath = flag.String("buildpack_config_output_filepath", "", "File path to write the buildpack config to")
-	firebaseConfig                = flag.String("firebase_config", "", "JSON serialized Firebase config used by Firebase Admin SDK")
-	firebaseWebappConfig          = flag.String("firebase_webapp_config", "", "JSON serialized Firebase config used by Firebase Client SDK")
-	serverSideEnvVars             = flag.String("server_side_env_vars", "", "List of server side env vars to set. An empty string indicates server side environment variables are disabled. Any other value indicates enablement and to use these vars over yaml defined env vars.")
+	apphostingYAMLFilePath            = flag.String("apphostingyaml_filepath", "", "File path to user defined apphosting.yaml")
+	workspacePath                     = flag.String("workspace_path", "/workspace", "File path to the workspace directory")
+	projectID                         = flag.String("project_id", "", "User's GCP project ID")
+	region                            = flag.String("region", "", "Current GCP Region. Used to expand resource IDs.")
+	environmentName                   = flag.String("environment_name", "", "Environment name tied to the build, if applicable")
+	appHostingYAMLOutputFilePath      = flag.String("apphostingyaml_output_filepath", "", "File path to write the validated and formatted apphosting.yaml to")
+	apphostingPreprocessedPathForPack = flag.String("apphosting_preprocessed_path_for_pack", "/workspace/apphosting_preprocessed", "File path to write the preprocessed apphosting.yaml to for pack step to consume")
+	dotEnvOutputFilePath              = flag.String("dot_env_output_filepath", "", "File path to write the output .env file to")
+	backendRootDirectory              = flag.String("backend_root_directory", "", "File path to the application directory specified by the user")
+	buildpackConfigOutputFilePath     = flag.String("buildpack_config_output_filepath", "", "File path to write the buildpack config to")
+	firebaseConfig                    = flag.String("firebase_config", "", "JSON serialized Firebase config used by Firebase Admin SDK")
+	firebaseWebappConfig              = flag.String("firebase_webapp_config", "", "JSON serialized Firebase config used by Firebase Client SDK")
+	serverSideEnvVars                 = flag.String("server_side_env_vars", "", "List of server side env vars to set. An empty string indicates server side environment variables are disabled. Any other value indicates enablement and to use these vars over yaml defined env vars.")
 )
 
 func main() {
@@ -79,18 +80,19 @@ func main() {
 	defer secretClient.Close()
 
 	opts := preparer.Options{
-		SecretClient:                  secretClient,
-		AppHostingYAMLPath:            *apphostingYAMLFilePath,
-		ProjectID:                     *projectID,
-		Region:                        *region,
-		EnvironmentName:               *environmentName,
-		AppHostingYAMLOutputFilePath:  *appHostingYAMLOutputFilePath,
-		EnvDereferencedOutputFilePath: *dotEnvOutputFilePath,
-		BackendRootDirectory:          *backendRootDirectory,
-		BuildpackConfigOutputFilePath: *buildpackConfigOutputFilePath,
-		FirebaseConfig:                *firebaseConfig,
-		FirebaseWebappConfig:          *firebaseWebappConfig,
-		ServerSideEnvVars:             *serverSideEnvVars,
+		SecretClient:                      secretClient,
+		AppHostingYAMLPath:                *apphostingYAMLFilePath,
+		ProjectID:                         *projectID,
+		Region:                            *region,
+		EnvironmentName:                   *environmentName,
+		AppHostingYAMLOutputFilePath:      *appHostingYAMLOutputFilePath,
+		EnvDereferencedOutputFilePath:     *dotEnvOutputFilePath,
+		BackendRootDirectory:              *backendRootDirectory,
+		BuildpackConfigOutputFilePath:     *buildpackConfigOutputFilePath,
+		FirebaseConfig:                    *firebaseConfig,
+		FirebaseWebappConfig:              *firebaseWebappConfig,
+		ServerSideEnvVars:                 *serverSideEnvVars,
+		ApphostingPreprocessedPathForPack: *apphostingPreprocessedPathForPack,
 	}
 
 	gcpCtx := gcpbuildpack.NewContext()

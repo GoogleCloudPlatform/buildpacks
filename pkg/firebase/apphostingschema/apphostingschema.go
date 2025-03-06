@@ -40,8 +40,10 @@ var (
 
 // AppHostingSchema is the struct representation of apphosting.yaml.
 type AppHostingSchema struct {
-	RunConfig RunConfig             `yaml:"runConfig,omitempty"`
-	Env       []EnvironmentVariable `yaml:"env,omitempty"`
+	RunConfig   RunConfig             `yaml:"runConfig,omitempty"`
+	Env         []EnvironmentVariable `yaml:"env,omitempty"`
+	Scripts     Scripts               `yaml:"scripts,omitempty"`
+	OutputFiles OutputFiles           `yaml:"outputFiles,omitempty"`
 }
 
 // NetworkInterface is the struct representation of the passed network interface in VPC direct connect.
@@ -75,6 +77,21 @@ type EnvironmentVariable struct {
 	Value        string   `yaml:"value,omitempty"`  // Optional: Can be value xor secret
 	Secret       string   `yaml:"secret,omitempty"` // Optional: Can be value xor secret
 	Availability []string `yaml:"availability,omitempty"`
+}
+
+// Scripts is the struct representation of the scripts in apphosting.yaml.
+type Scripts struct {
+	RunCommand string `yaml:"runCommand,omitempty"`
+}
+
+// OutputFiles is the struct representation of the passed output files.
+type OutputFiles struct {
+	ServerApp serverApp `yaml:"serverApp"`
+}
+
+// serverApp is the struct representation of the passed server app files.
+type serverApp struct {
+	Include []string `yaml:"include"`
 }
 
 // UnmarshalYAML provides custom validation logic to validate EnvironmentVariable

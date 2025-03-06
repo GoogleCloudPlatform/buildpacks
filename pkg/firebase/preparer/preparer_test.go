@@ -39,6 +39,7 @@ func TestPrepare(t *testing.T) {
 	outputFilePathYAML := testDir + "/outputYAML"
 	outputFilePathEnv := testDir + "/outputEnv"
 	outputFilePathBuildpackConfig := testDir + "/outputBuildpackConfig"
+	appHostingYAMLForPackPath := testDir + "/outputYAMLForPack"
 
 	testCases := []struct {
 		desc               string
@@ -432,18 +433,19 @@ func TestPrepare(t *testing.T) {
 			serverSideEnvVars = string(parsedServerSideEnvVars)
 		}
 		opts := Options{
-			SecretClient:                  fakeSecretClient,
-			AppHostingYAMLPath:            test.appHostingYAMLPath,
-			ProjectID:                     test.projectID,
-			Region:                        test.regionID,
-			EnvironmentName:               test.environmentName,
-			AppHostingYAMLOutputFilePath:  outputFilePathYAML,
-			EnvDereferencedOutputFilePath: outputFilePathEnv,
-			BackendRootDirectory:          "",
-			BuildpackConfigOutputFilePath: outputFilePathBuildpackConfig,
-			FirebaseConfig:                serverProvidedFirebaseConfig,
-			FirebaseWebappConfig:          serverProvidedFirebaseWebAppConfig,
-			ServerSideEnvVars:             serverSideEnvVars,
+			SecretClient:                      fakeSecretClient,
+			AppHostingYAMLPath:                test.appHostingYAMLPath,
+			ProjectID:                         test.projectID,
+			Region:                            test.regionID,
+			EnvironmentName:                   test.environmentName,
+			AppHostingYAMLOutputFilePath:      outputFilePathYAML,
+			EnvDereferencedOutputFilePath:     outputFilePathEnv,
+			BackendRootDirectory:              "",
+			BuildpackConfigOutputFilePath:     outputFilePathBuildpackConfig,
+			FirebaseConfig:                    serverProvidedFirebaseConfig,
+			FirebaseWebappConfig:              serverProvidedFirebaseWebAppConfig,
+			ServerSideEnvVars:                 serverSideEnvVars,
+			ApphostingPreprocessedPathForPack: appHostingYAMLForPackPath,
 		}
 
 		if err := Prepare(context.Background(), opts); err != nil {

@@ -29,18 +29,19 @@ import (
 
 // Options contains data for the preparer to perform pre-build logic.
 type Options struct {
-	SecretClient                  secrets.SecretManager
-	AppHostingYAMLPath            string
-	ProjectID                     string
-	Region                        string
-	EnvironmentName               string
-	AppHostingYAMLOutputFilePath  string
-	EnvDereferencedOutputFilePath string
-	BackendRootDirectory          string
-	BuildpackConfigOutputFilePath string
-	FirebaseConfig                string
-	FirebaseWebappConfig          string
-	ServerSideEnvVars             string
+	SecretClient                      secrets.SecretManager
+	AppHostingYAMLPath                string
+	ProjectID                         string
+	Region                            string
+	EnvironmentName                   string
+	AppHostingYAMLOutputFilePath      string
+	EnvDereferencedOutputFilePath     string
+	BackendRootDirectory              string
+	BuildpackConfigOutputFilePath     string
+	FirebaseConfig                    string
+	FirebaseWebappConfig              string
+	ServerSideEnvVars                 string
+	ApphostingPreprocessedPathForPack string
 }
 
 // Prepare performs pre-build logic for App Hosting backends including:
@@ -110,6 +111,10 @@ func Prepare(ctx context.Context, opts Options) error {
 		return fmt.Errorf("writing final apphosting.yaml to %v: %w", opts.AppHostingYAMLOutputFilePath, err)
 	}
 
+	// The processed apphosting.yaml needs to be written to ApphostingPreprocessedPathForPack since the pack command cannot read from volumes (/yaml in this case)
+	if err := appHostingYAML.WriteToFile(opts.ApphostingPreprocessedPathForPack); err != nil {
+		return fmt.Errorf("writing final apphosting.yaml to %v: %w", opts.ApphostingPreprocessedPathForPack, err)
+	}
 	if err := envvars.Write(dereferencedEnvMap, opts.EnvDereferencedOutputFilePath); err != nil {
 		return fmt.Errorf("writing final dereferenced environment variables to %v: %w", opts.EnvDereferencedOutputFilePath, err)
 	}

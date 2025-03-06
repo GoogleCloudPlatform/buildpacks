@@ -21,10 +21,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 	bmd "github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/google/go-cmp/cmp"
 )
@@ -145,7 +147,7 @@ outputFiles:
 				bpt.WithTestName(tc.name),
 				bpt.WithFiles(tc.files),
 				bpt.WithTempDir(tc.codeDir),
-				bpt.WithEnvs(fmt.Sprintf("%s=test_dir", firebaseOutputBundleDir), fmt.Sprintf("%s=%sapphosting.yaml", apphostingYamlPath, filepath.Join(os.TempDir(), tc.codeDir)+"/")),
+				bpt.WithEnvs(fmt.Sprintf("%s=test_dir", firebaseOutputBundleDir), fmt.Sprintf("%s=%sapphosting.yaml", apphostingYamlPathTestsEnv, filepath.Join(os.TempDir(), tc.codeDir)+"/")),
 			}
 			result, err := bpt.RunBuild(t, buildFn, opts...)
 			if err != nil {
@@ -342,6 +344,149 @@ func TestSetMetadata(t *testing.T) {
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("setMetadata() mismatch (-want +got):\n%s", diff)
 			}
+		})
+	}
+}
+func TestParseCommand(t *testing.T) {
+	tests := []struct {
+		name      string
+		command   string
+		want      []string
+		wantError bool
+	}{
+		{
+			name:    "simple command",
+			command: "npm run start",
+			want:    []string{"npm", "run", "start"},
+		},
+		{
+			name:    "command with quoted argument",
+			command: `npm run "node package" test`,
+			want:    []string{"npm", "run", "node package", "test"},
+		},
+		{
+			name:    "command with multiple quoted arguments",
+			command: `mycommand "arg with spaces" anotherarg`,
+			want:    []string{"mycommand", "arg with spaces", "anotherarg"},
+		},
+		{
+			name:    "no quotes",
+			command: `noquotes`,
+			want:    []string{"noquotes"},
+		},
+		{
+			name:    "quoted string only",
+			command: `"quoted string"`,
+			want:    []string{"quoted string"},
+		},
+		{
+			name:    "leading and trailing spaces",
+			command: `  leading spaces  and trailing spaces  `,
+			want:    []string{"leading", "spaces", "and", "trailing", "spaces"},
+		},
+		{
+			name:    "quoted string with spaces",
+			command: `  "quoted and spaced"  `,
+			want:    []string{"quoted and spaced"},
+		},
+		{
+			name:    "multiple spaces",
+			command: "test   multiple   spaces",
+			want:    []string{"test", "multiple", "spaces"},
+		},
+		{
+			name:    `test "test string" test2`,
+			command: `test "test string" test2`,
+			want:    []string{"test", "test string", "test2"},
+		},
+		{
+			name:    `"test string"`,
+			command: `"test string"`,
+			want:    []string{"test string"},
+		},
+		{
+			name:    `""`,
+			command: `""`,
+			want:    []string{""},
+		},
+		{
+			name:      `npm run "node package test`,
+			command:   `npm run "node package test`,
+			wantError: true,
+		},
+		{
+			name:    `test "" test2`,
+			command: `test "" test2`,
+			want:    []string{"test", "", "test2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseCommand(tt.command)
+			if tt.wantError {
+				if err == nil {
+					t.Errorf("parseCommand() = %v, want error", got)
+				}
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("parseCommand() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSetRunCommand(t *testing.T) {
+	testCases := []struct {
+		name            string
+		apphostingYaml  *apphostingYaml
+		bundleYaml      *bundleYaml
+		expectedCommand []string
+		expectedArgs    []string
+	}{
+		{
+			name:            "bundle.yaml command",
+			apphostingYaml:  nil,
+			bundleYaml:      &bundleYaml{RunConfig: runConfig{RunCommand: "npm run custom"}},
+			expectedCommand: []string{"npm"},
+			expectedArgs:    []string{"run", "custom"},
+		},
+		{
+			name:            "apphosting.yaml command",
+			apphostingYaml:  &apphostingYaml{Scripts: scripts{RunCommand: "npm run apphosting"}},
+			bundleYaml:      nil,
+			expectedCommand: []string{"npm"},
+			expectedArgs:    []string{"run", "apphosting"},
+		},
+		{
+			name:            "both yaml files, apphosting wins",
+			apphostingYaml:  &apphostingYaml{Scripts: scripts{RunCommand: "npm run server.go"}},
+			bundleYaml:      &bundleYaml{RunConfig: runConfig{RunCommand: "npm start"}},
+			expectedCommand: []string{"npm"},
+			expectedArgs:    []string{"run", "server.go"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext() // Use a mock context
+
+			SetRunCommand(tc.apphostingYaml, tc.bundleYaml, ctx)
+
+			if len(ctx.Processes()) > 0 {
+				if !reflect.DeepEqual(ctx.Processes()[0].Command, tc.expectedCommand) {
+					t.Errorf("SetRunCommand() command = %v, want %v", ctx.Processes()[0].Command, tc.expectedCommand)
+				}
+				if !reflect.DeepEqual(ctx.Processes()[0].Arguments, tc.expectedArgs) {
+					t.Errorf("SetRunCommand() arguments = %v, want %v", ctx.Processes()[0].Arguments, tc.expectedArgs)
+				}
+			} else {
+				if len(tc.expectedCommand) > 0 {
+					t.Errorf("SetRunCommand() command was not set, expected %v", tc.expectedCommand)
+				}
+			}
+
 		})
 	}
 }

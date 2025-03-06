@@ -25,6 +25,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -38,8 +39,10 @@ import (
 const (
 	defaultPublicDir        = "public"
 	firebaseOutputBundleDir = "FIREBASE_OUTPUT_BUNDLE_DIR"
-	apphostingYamlPath      = "APPHOSTINGYAML_FILEPATH"
-	environmentName         = "ENVIRONMENT_NAME"
+	// TODO(b/401016345): Remove this env var once there is a better way to pass the apphosting.yaml file path in tests.
+	apphostingYamlPathTestsEnv        = "APPHOSTINGYAML_FILEPATH_TESTS"
+	environmentName                   = "ENVIRONMENT_NAME"
+	apphostingPreprocessedPathForPack = "/workspace/apphosting_preprocessed"
 )
 
 func main() {
@@ -72,12 +75,15 @@ func buildFn(ctx *gcp.Context) error {
 	outputPublicDir := filepath.Join(outputBundleDir, defaultPublicDir)
 	appDir := util.ApplicationDirectory(ctx)
 
-	apphostingYamlPath, ok := os.LookupEnv(apphostingYamlPath)
+	apphostingYamlPathTests, ok := os.LookupEnv(apphostingYamlPathTestsEnv)
 
-	if !ok {
-		return gcp.InternalErrorf("looking up apphosting.yaml env %s", apphostingYamlPath)
+	var apphostingYaml *apphostingYaml
+	if ok {
+		apphostingYaml, err = readAppHostingYaml(ctx, apphostingYamlPathTests)
+	} else {
+		apphostingYaml, err = readAppHostingYaml(ctx, apphostingPreprocessedPathForPack)
 	}
-	apphostingYaml, err := readAppHostingYaml(ctx, apphostingYamlPath)
+
 	if err != nil {
 		return err
 	}
@@ -109,8 +115,9 @@ func buildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	if bundleYaml != nil && bundleYaml.RunConfig.RunCommand != "" {
-		ctx.AddWebProcess(strings.Split(bundleYaml.RunConfig.RunCommand, " "))
+	err = SetRunCommand(apphostingYaml, bundleYaml, ctx)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -118,6 +125,7 @@ func buildFn(ctx *gcp.Context) error {
 // apphostingYaml represents the relevant contents of a apphosting.yaml file.
 type apphostingYaml struct {
 	OutputFiles outputFiles `yaml:"outputFiles,omitempty"`
+	Scripts     scripts     `yaml:"scripts,omitempty"`
 }
 
 // bundleYaml represents the relevant contents of a bundle.yaml file.
@@ -140,6 +148,11 @@ type outputFiles struct {
 // serverApp is the struct representation of the passed server app files.
 type serverApp struct {
 	Include []string `yaml:"include"`
+}
+
+// scripts is the struct representation of the apphosting.yaml scripts section.
+type scripts struct {
+	RunCommand string `yaml:"runCommand"`
 }
 
 func readBundleYaml(ctx *gcp.Context, bundlePath string) (*bundleYaml, error) {
@@ -222,6 +235,75 @@ func setMetadata(packageJSON *nodejs.PackageJSON) {
 			buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.IsUsingGenAI, buildermetadata.MetadataValue(genAIVersion))
 		}
 	}
+}
+
+// parseCommand parses a command string into a list of arguments.
+// The command string is expected to be in the format of a shell command.
+// It will split the command string on spaces and remove any leading and trailing spaces.
+// It will also handle quoted strings and arguments.
+// For example, the command string "npm run start" will be parsed into the list ["npm", "run", "start"].
+// The command string `npm run "node package" test` will be parsed into the list ["npm", "run", "node package", "test"].
+// The command string `mycommand "arg with spaces" anotherarg` will be parsed into the list ["mycommand", "arg with spaces", "anotherarg"].
+// The command string `noquotes` will be parsed into the list ["noquotes"].
+// The command string `npm run "node package test` will return an error because the quotes are not closed.
+func parseCommand(command string) ([]string, error) {
+	var result []string
+	var currCmdUnit strings.Builder
+	inQuotes := false
+
+	for _, r := range command {
+		if r == '"' {
+			inQuotes = !inQuotes
+			if !inQuotes {
+				result = append(result, currCmdUnit.String())
+				currCmdUnit.Reset()
+			}
+			continue
+		}
+
+		if unicode.IsSpace(r) && !inQuotes {
+			if currCmdUnit.Len() > 0 {
+				result = append(result, currCmdUnit.String())
+				currCmdUnit.Reset()
+			}
+			continue
+		}
+
+		currCmdUnit.WriteRune(r)
+	}
+
+	if currCmdUnit.Len() > 0 {
+		result = append(result, currCmdUnit.String())
+	}
+
+	if inQuotes {
+		return nil, gcp.UserErrorf("parsing command, there was an unclosed quote %s", command)
+	}
+	return result, nil
+}
+
+// SetRunCommand sets the run command for the web process.
+// The run command is set from the apphosting.yaml file if it exists, otherwise it is set from the bundle.yaml file.
+// If neither exists, the run command is set to the default "npm run start".
+func SetRunCommand(apphostingYaml *apphostingYaml, bundleYaml *bundleYaml, ctx *gcp.Context) error {
+	if apphostingYaml != nil && apphostingYaml.Scripts.RunCommand != "" {
+		ctx.Logf("Setting run command from apphosting.yaml: %s", apphostingYaml.Scripts.RunCommand)
+		parsedCommand, err := parseCommand(apphostingYaml.Scripts.RunCommand)
+		if err != nil {
+			return err
+		}
+		ctx.AddWebProcess(parsedCommand)
+		return nil
+	}
+	if bundleYaml != nil && bundleYaml.RunConfig.RunCommand != "" {
+		ctx.Logf("Setting run command from bundle.yaml: %s", bundleYaml.RunConfig.RunCommand)
+		parsedCommand, err := parseCommand(bundleYaml.RunConfig.RunCommand)
+		if err != nil {
+			return err
+		}
+		ctx.AddWebProcess(parsedCommand)
+	}
+	return nil
 }
 
 func convertToMap(slice []string) map[string]bool {
