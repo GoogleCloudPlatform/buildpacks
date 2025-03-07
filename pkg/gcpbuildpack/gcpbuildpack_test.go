@@ -335,7 +335,7 @@ func TestAddProcess(t *testing.T) {
 			cmd:  []string{"/start", "arg1", "arg2"},
 			opts: []processOption{AsDirectProcess()},
 			want: []libcnb.Process{
-				libcnb.Process{Command: []string{"/start"}, Arguments: []string{"arg1", "arg2"}, Type: "foo"},
+				libcnb.Process{Command: []string{"/start", "arg1", "arg2"}, Type: "foo"},
 			},
 		},
 		{
@@ -353,7 +353,7 @@ func TestAddProcess(t *testing.T) {
 			cmd:  []string{"/start", "arg1", "arg2"},
 			opts: []processOption{AsDirectProcess(), AsDefaultProcess()},
 			want: []libcnb.Process{
-				libcnb.Process{Command: []string{"/start"}, Arguments: []string{"arg1", "arg2"}, Type: "foo", Default: true},
+				libcnb.Process{Command: []string{"/start", "arg1", "arg2"}, Type: "foo", Default: true},
 			},
 		},
 	}

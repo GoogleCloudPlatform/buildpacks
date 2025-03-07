@@ -443,28 +443,24 @@ func TestSetRunCommand(t *testing.T) {
 		apphostingYaml  *apphostingYaml
 		bundleYaml      *bundleYaml
 		expectedCommand []string
-		expectedArgs    []string
 	}{
 		{
 			name:            "bundle.yaml command",
 			apphostingYaml:  nil,
 			bundleYaml:      &bundleYaml{RunConfig: runConfig{RunCommand: "npm run custom"}},
-			expectedCommand: []string{"npm"},
-			expectedArgs:    []string{"run", "custom"},
+			expectedCommand: []string{"npm", "run", "custom"},
 		},
 		{
 			name:            "apphosting.yaml command",
 			apphostingYaml:  &apphostingYaml{Scripts: scripts{RunCommand: "npm run apphosting"}},
 			bundleYaml:      nil,
-			expectedCommand: []string{"npm"},
-			expectedArgs:    []string{"run", "apphosting"},
+			expectedCommand: []string{"npm", "run", "apphosting"},
 		},
 		{
 			name:            "both yaml files, apphosting wins",
 			apphostingYaml:  &apphostingYaml{Scripts: scripts{RunCommand: "npm run server.go"}},
 			bundleYaml:      &bundleYaml{RunConfig: runConfig{RunCommand: "npm start"}},
-			expectedCommand: []string{"npm"},
-			expectedArgs:    []string{"run", "server.go"},
+			expectedCommand: []string{"npm", "run", "server.go"},
 		},
 	}
 
@@ -477,9 +473,6 @@ func TestSetRunCommand(t *testing.T) {
 			if len(ctx.Processes()) > 0 {
 				if !reflect.DeepEqual(ctx.Processes()[0].Command, tc.expectedCommand) {
 					t.Errorf("SetRunCommand() command = %v, want %v", ctx.Processes()[0].Command, tc.expectedCommand)
-				}
-				if !reflect.DeepEqual(ctx.Processes()[0].Arguments, tc.expectedArgs) {
-					t.Errorf("SetRunCommand() arguments = %v, want %v", ctx.Processes()[0].Arguments, tc.expectedArgs)
 				}
 			} else {
 				if len(tc.expectedCommand) > 0 {

@@ -461,18 +461,7 @@ type processOption func(o *libcnb.Process)
 // AsDirectProcess causes the process to be executed directly, i.e. without a shell.
 func AsDirectProcess() processOption {
 	return func(o *libcnb.Process) {
-		cmd := []string{}
-		if len(o.Command) > 2 {
-			cmd = o.Command[2:]
-		}
-		if len(cmd) > 0 {
-			o.Command = []string{cmd[0]}
-		} else {
-			o.Command = []string{}
-		}
-		if len(cmd) > 1 {
-			o.Arguments = cmd[1:]
-		}
+		o.Command = o.Command[2:]
 	}
 }
 
@@ -501,7 +490,7 @@ func (ctx *Context) AddProcess(name string, cmd []string, opts ...processOption)
 	for _, opt := range opts {
 		opt(&p)
 	}
-	if len(p.Command) > 2 {
+	if len(p.Command) > 0 && p.Command[0] == "bash" {
 		p.Command = []string{"bash", "-c", strings.Join(p.Command[2:], " ")}
 	}
 	ctx.buildResult.Processes = append(ctx.buildResult.Processes, p)
