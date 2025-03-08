@@ -33,7 +33,7 @@ import (
 const (
 	layerName                     = "functions-framework"
 	javaFunctionInvokerURLBase    = "https://maven-central.storage-download.googleapis.com/maven2/com/google/cloud/functions/invoker/java-function-invoker/"
-	defaultFrameworkVersion       = "1.3.3"
+	defaultFrameworkVersion       = "1.4.1"
 	functionsFrameworkURLTemplate = javaFunctionInvokerURLBase + "%[1]s/java-function-invoker-%[1]s.jar"
 	versionKey                    = "version"
 	invokerMain                   = "com.google.cloud.functions.invoker.runner.Invoker"
