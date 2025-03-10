@@ -35,8 +35,19 @@ var (
 
 func main() {
 
-	flag.Parse()
+	// Flag parsing, ensuring that unknown flags are ignored and logged.
+	flag.CommandLine.Init(flag.CommandLine.Name(), flag.ContinueOnError)
+	if err := flag.CommandLine.Parse(os.Args[1:]); err != nil {
+		log.Printf("Flag parsing error: %v.", err)
+	}
 
+	// Get any remaining arguments after flag parsing
+	remainingArgs := flag.Args()
+	if len(remainingArgs) > 0 {
+		log.Printf("Ignored command-line arguments: %v", remainingArgs)
+	}
+
+	// Validate flag values are what we expect.
 	if *apphostingYAMLFilePath == "" {
 		log.Fatal("--apphostingyaml_filepath flag not specified.")
 	}
