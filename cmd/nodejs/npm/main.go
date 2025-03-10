@@ -86,7 +86,10 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
-
+	pjs, err = nodejs.OverrideAppHostingBuildScript(ctx, nodejs.ApphostingPreprocessedPathForPack)
+	if err != nil {
+		return err
+	}
 	buildCmds, isCustomBuild := nodejs.DetermineBuildCommands(pjs, "npm")
 	// Respect the user's NODE_ENV value if it's set
 	buildNodeEnv, nodeEnvPresent := os.LookupEnv(nodejs.EnvNodeEnv)
@@ -158,8 +161,8 @@ NOTE: Running the default build script can be skipped by passing the empty envir
 				if fahCmd, fahCmdPresent := os.LookupEnv(nodejs.AppHostingBuildEnv); fahCmdPresent {
 					return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(fahCmd, err))
 				}
-				if nodejs.HasApphostingBuild(pjs) {
-					return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(fmt.Sprintf("npm run %s", nodejs.ScriptApphostingBuild), err))
+				if nodejs.HasApphostingPackageBuild(pjs) {
+					return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(pjs.Scripts[nodejs.ScriptApphostingBuild], err))
 				}
 				return err
 			}

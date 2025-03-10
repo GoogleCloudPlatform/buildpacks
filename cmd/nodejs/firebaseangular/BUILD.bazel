@@ -27,6 +27,7 @@ go_binary(
     ],
     deps = [
         "//pkg/env",
+        "//pkg/firebase/apphostingschema",
         "//pkg/firebase/faherror",
         "//pkg/firebase/util",
         "//pkg/gcpbuildpack",

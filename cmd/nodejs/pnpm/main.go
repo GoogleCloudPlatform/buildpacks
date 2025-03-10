@@ -17,7 +17,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,6 +82,10 @@ func buildFn(ctx *gcp.Context) error {
 }
 
 func pnpmInstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
+	pjs, err := nodejs.OverrideAppHostingBuildScript(ctx, nodejs.ApphostingPreprocessedPathForPack)
+	if err != nil {
+		return err
+	}
 	buildCmds, _ := nodejs.DetermineBuildCommands(pjs, "pnpm")
 	// Respect the user's NODE_ENV value if it's set
 	buildNodeEnv, nodeEnvPresent := os.LookupEnv(nodejs.EnvNodeEnv)
@@ -108,8 +111,8 @@ func pnpmInstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 				if fahCmd, fahCmdPresent := os.LookupEnv(nodejs.AppHostingBuildEnv); fahCmdPresent {
 					return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(fahCmd, err))
 				}
-				if nodejs.HasApphostingBuild(pjs) {
-					return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(fmt.Sprintf("pnpm run %s", nodejs.ScriptApphostingBuild), err))
+				if nodejs.HasApphostingPackageBuild(pjs) {
+					return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(pjs.Scripts[nodejs.ScriptApphostingBuild], err))
 				}
 				return err
 			}

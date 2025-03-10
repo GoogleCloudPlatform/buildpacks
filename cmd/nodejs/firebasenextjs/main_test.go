@@ -104,6 +104,15 @@ func TestDetect(t *testing.T) {
 			},
 			want: 100,
 		},
+		{
+			name: "with apphosting.yaml buildcommand",
+			files: map[string]string{
+				"apphosting.yaml": `outputFiles:
+  scripts:
+    buildCommand: ng build`,
+			},
+			want: 100,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

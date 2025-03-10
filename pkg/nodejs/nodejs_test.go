@@ -17,8 +17,12 @@ package nodejs
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
+	"github.com/google/go-cmp/cmp"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
@@ -120,7 +124,114 @@ func TestSkipSyntaxCheck(t *testing.T) {
 		})
 	}
 }
+func TestHasApphostingBuild(t *testing.T) {
+	tests := []struct {
+		name             string
+		packageJSON      *PackageJSON
+		apphostingSchema apphostingschema.AppHostingSchema
+		want             bool
+	}{
+		{
+			name: "package.json has apphosting:build script",
+			packageJSON: &PackageJSON{
+				Scripts: map[string]string{
+					"apphosting:build": "some command",
+				},
+			},
+			want: true,
+		},
+		{
+			name: "apphosting schema has build command",
+			apphostingSchema: apphostingschema.AppHostingSchema{
+				Scripts: apphostingschema.Scripts{
+					BuildCommand: "some command",
+				},
+			},
+			want: true,
+		},
+		{
+			name: "both package.json and schema have build command",
+			packageJSON: &PackageJSON{
+				Scripts: map[string]string{
+					ScriptApphostingBuild: "some command",
+				},
+			},
+			apphostingSchema: apphostingschema.AppHostingSchema{
+				Scripts: apphostingschema.Scripts{
+					BuildCommand: "another command",
+				},
+			},
+			want: true,
+		},
+		{
+			name: "neither package.json nor schema has build command",
+			packageJSON: &PackageJSON{
+				Scripts: map[string]string{
+					"some other script": "some command",
+				},
+			},
+			apphostingSchema: apphostingschema.AppHostingSchema{
+				Scripts: apphostingschema.Scripts{},
+			},
+			want: false,
+		},
+		{
+			name:             "nil package.json and nil schema scripts",
+			packageJSON:      nil,
+			apphostingSchema: apphostingschema.AppHostingSchema{},
+			want:             false,
+		},
+		{
+			name:        "nil PackageJson, valid schema",
+			packageJSON: nil,
+			apphostingSchema: apphostingschema.AppHostingSchema{
+				Scripts: apphostingschema.Scripts{
+					BuildCommand: "some command",
+				},
+			},
+			want: true,
+		},
+		{
+			name: "valid packageJson, nil schema",
+			packageJSON: &PackageJSON{
+				Scripts: map[string]string{
+					ScriptApphostingBuild: "some command",
+				},
+			},
+			apphostingSchema: apphostingschema.AppHostingSchema{},
+			want:             true,
+		},
+		{
+			name:        "nil PackageJson, empty schema scripts",
+			packageJSON: nil,
+			apphostingSchema: apphostingschema.AppHostingSchema{
+				Scripts: apphostingschema.Scripts{},
+			},
+			want: false,
+		},
+		{
+			name: "valid PackageJson, empty schema scripts",
+			packageJSON: &PackageJSON{
+				Scripts: map[string]string{
+					"some other script": "some command",
+				},
+			},
+			apphostingSchema: apphostingschema.AppHostingSchema{
+				Scripts: apphostingschema.Scripts{},
+			},
+			want: false,
+		},
+	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := HasApphostingPackageOrYamlBuild(tt.packageJSON, tt.apphostingSchema)
+			if got != tt.want {
+				t.Errorf("HasApphostingBuild() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 func TestHasScript(t *testing.T) {
 	testCases := []struct {
 		name        string
@@ -547,7 +658,98 @@ func TestVersion(t *testing.T) {
 		})
 	}
 }
+func TestOverrideAppHostingBuildScript(t *testing.T) {
+	testCases := []struct {
+		name                  string
+		packageJSONContent    PackageJSON
+		apphostingYAMLContent string
+		expectedPackageJSON   *PackageJSON
+	}{
+		{
+			name:                  "no package.json, no apphosting.yaml",
+			packageJSONContent:    PackageJSON{},
+			apphostingYAMLContent: ``,
+			expectedPackageJSON:   &PackageJSON{},
+		},
+		{
+			name:               "no package.json, apphosting.yaml with build command",
+			packageJSONContent: PackageJSON{},
+			apphostingYAMLContent: `scripts:
+  buildCommand: custom-build`,
+			expectedPackageJSON: &PackageJSON{Scripts: map[string]string{ScriptApphostingBuild: "custom-build"}},
+		},
+		{
+			name:               "package.json with existing scripts, apphosting.yaml with build command",
+			packageJSONContent: PackageJSON{Scripts: map[string]string{"test": "echo test"}},
+			apphostingYAMLContent: `scripts:
+  buildCommand: custom-build`,
+			expectedPackageJSON: &PackageJSON{Scripts: map[string]string{"test": "echo test", ScriptApphostingBuild: "custom-build"}},
+		},
+		{
+			name:               "package.json with existing apphosting:build, apphosting.yaml with build command",
+			packageJSONContent: PackageJSON{Scripts: map[string]string{ScriptApphostingBuild: "old-build"}},
+			apphostingYAMLContent: `scripts:
+  buildCommand: custom-build`,
+			expectedPackageJSON: &PackageJSON{Scripts: map[string]string{ScriptApphostingBuild: "custom-build"}},
+		},
+		{
+			name:                  "package.json with existing apphosting:build, apphosting.yaml without build command",
+			packageJSONContent:    PackageJSON{Scripts: map[string]string{ScriptApphostingBuild: "old-build"}},
+			apphostingYAMLContent: ``,
+			expectedPackageJSON:   &PackageJSON{Scripts: map[string]string{ScriptApphostingBuild: "old-build"}},
+		},
+	}
 
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			packageJSONPath := filepath.Join(tempDir, "package.json")
+			preprocessedApphostingPath := filepath.Join(tempDir, "apphosting_preprocessed")
+			marshaledJSONSchema, err := json.Marshal(tc.packageJSONContent)
+			if err != nil {
+				t.Fatalf("failed to marshal apphosting schema: %v", err)
+			}
+			err = os.WriteFile(packageJSONPath, marshaledJSONSchema, 0644)
+			if err != nil {
+				t.Fatalf("Failed to write package.json: %v", err)
+			}
+
+			err = os.WriteFile(preprocessedApphostingPath, []byte(tc.apphostingYAMLContent), 0644)
+
+			if err != nil {
+				t.Fatalf("Failed to write apphosting_preprocessed: %v", err)
+			}
+
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(tempDir))
+			result, err := OverrideAppHostingBuildScript(ctx, preprocessedApphostingPath)
+
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+				return
+			}
+
+			if diff := cmp.Diff(tc.expectedPackageJSON, result); diff != "" {
+				t.Errorf("OverrideAppHostingBuildScript() mismatch (-want +got):\n%s", diff)
+			}
+
+			if tc.expectedPackageJSON != nil {
+				actualPackageJSONContent, err := os.ReadFile(packageJSONPath)
+				if err != nil {
+					t.Fatalf("Failed to read package.json: %v", err)
+				}
+				var actualPackageJSON PackageJSON
+				err = json.Unmarshal(actualPackageJSONContent, &actualPackageJSON)
+				if err != nil {
+					t.Fatalf("Failed to unmarshal package.json: %v", err)
+				}
+
+				if diff := cmp.Diff(tc.expectedPackageJSON, &actualPackageJSON); diff != "" {
+					t.Errorf("package.json file mismatch (-want +got):\n%s", diff)
+				}
+			}
+		})
+	}
+}
 func setGoogleRuntime(t *testing.T, value string) {
 	googleRuntimeEnv := "GOOGLE_RUNTIME"
 	t.Cleanup(func() {

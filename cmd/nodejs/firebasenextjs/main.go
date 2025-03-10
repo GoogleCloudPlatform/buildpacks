@@ -17,6 +17,7 @@
 package main
 
 import (
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
@@ -50,9 +51,12 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	if nodejs.HasApphostingBuild(nodeDeps.PackageJSON) {
-		return gcp.OptOut("apphosting:build script found, running custom adapter"), nil
+	apphostingSchema, err := apphostingschema.ReadAndValidateFromFile(nodejs.ApphostingPreprocessedPathForPack)
+	if err != nil {
+		return nil, err
+	}
+	if nodejs.HasApphostingPackageOrYamlBuild(nodeDeps.PackageJSON, apphostingSchema) {
+		return gcp.OptOut("apphosting build script found"), nil
 	}
 
 	nextConfigExists, err := ctx.FileExists(appDir, "next.config.js")

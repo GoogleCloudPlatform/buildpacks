@@ -166,7 +166,6 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		cmd = append(cmd, "--frozen-lockfile")
 	}
 	gcpBuild := nodejs.HasGCPBuild(pjs)
-	appHostingBuildScriptPresent := nodejs.HasApphostingBuild(pjs)
 	appHostingBuildEnv, appHostingBuildEnvPresent := os.LookupEnv(nodejs.AppHostingBuildEnv)
 	if gcpBuild || appHostingBuildEnvPresent {
 		// Setting --production=false causes the devDependencies to be installed regardless of the
@@ -180,11 +179,15 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution, gcp.WithEnv(fmt.Sprintf("PATH=%s:%s", os.Getenv("PATH"), nodeBin))); err != nil {
 		return err
 	}
-
+	pjs, err = nodejs.OverrideAppHostingBuildScript(ctx, nodejs.ApphostingPreprocessedPathForPack)
+	if err != nil {
+		return err
+	}
+	appHostingBuildScriptPresent := nodejs.HasApphostingPackageBuild(pjs)
 	if gcpBuild || appHostingBuildEnvPresent || appHostingBuildScriptPresent {
 		if appHostingBuildScriptPresent {
 			if _, err := ctx.Exec([]string{"yarn", "run", "apphosting:build"}, gcp.WithUserAttribution); err != nil {
-				return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(fmt.Sprintf("yarn run %s", nodejs.ScriptApphostingBuild), err))
+				return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(pjs.Scripts[nodejs.ScriptApphostingBuild], err))
 			}
 		} else if appHostingBuildEnvPresent {
 			if _, err := ctx.Exec(strings.Split(appHostingBuildEnv, " "), gcp.WithUserAttribution); err != nil {

@@ -20,6 +20,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/Masterminds/semver"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
 
@@ -60,8 +61,12 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	if nodejs.HasApphostingBuild(nodeDeps.PackageJSON) {
-		return gcp.OptOut("apphosting:build script found"), nil
+	apphostingSchema, err := apphostingschema.ReadAndValidateFromFile(nodejs.ApphostingPreprocessedPathForPack)
+	if err != nil {
+		return nil, err
+	}
+	if nodejs.HasApphostingPackageOrYamlBuild(nodeDeps.PackageJSON, apphostingSchema) {
+		return gcp.OptOut("apphosting build script found"), nil
 	}
 
 	version, err := nodejs.Version(nodeDeps, "@angular-devkit/build-angular")

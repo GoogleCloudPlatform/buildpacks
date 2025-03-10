@@ -26,6 +26,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb/v2"
 	"github.com/Masterminds/semver"
@@ -41,6 +42,9 @@ const (
 	EnvProduction = "production"
 	// EnvNodeVersion can be used to specify the version of Node.js is used for an app.
 	EnvNodeVersion = "GOOGLE_NODEJS_VERSION"
+
+	// ApphostingPreprocessedPathForPack is the path to the preprocessed apphosting.yaml file in the workspace.
+	ApphostingPreprocessedPathForPack = "/workspace/apphosting_preprocessed"
 
 	nodeVersionKey    = "node_version"
 	dependencyHashKey = "dependency_hash"
@@ -78,14 +82,14 @@ const (
 // PackageJSON represents the contents of a package.json file.
 type PackageJSON struct {
 	Name            string             `json:"name"`
-	Main            string             `json:"main"`
-	Type            string             `json:"type"`
-	Version         string             `json:"version"`
-	Engines         packageEnginesJSON `json:"engines"`
+	Main            string             `json:"main,omitempty"`
+	Type            string             `json:"type,omitempty"`
+	Version         string             `json:"version,omitempty"`
+	Engines         packageEnginesJSON `json:"engines,omitempty"`
 	Scripts         map[string]string  `json:"scripts"`
 	Dependencies    map[string]string  `json:"dependencies"`
 	DevDependencies map[string]string  `json:"devDependencies"`
-	PackageManager  string             `json:"packageManager"`
+	PackageManager  string             `json:"packageManager,omitempty"`
 }
 
 // NpmLockfile represents the contents of a lock file generated with npm.
@@ -207,8 +211,13 @@ func HasGCPBuild(p *PackageJSON) bool {
 	return HasScript(p, ScriptGCPBuild)
 }
 
-// HasApphostingBuild returns true if the given package.json file includes a "apphosting-build" script.
-func HasApphostingBuild(p *PackageJSON) bool {
+// HasApphostingPackageOrYamlBuild returns true if the given package.json file includes a "apphosting:build" script or if apphosting.yaml contains a build command..
+func HasApphostingPackageOrYamlBuild(p *PackageJSON, apphostingSchema apphostingschema.AppHostingSchema) bool {
+	return HasApphostingPackageBuild(p) || apphostingSchema.Scripts.BuildCommand != ""
+}
+
+// HasApphostingPackageBuild returns true if the given package.json file includes a "apphosting:build" script.
+func HasApphostingPackageBuild(p *PackageJSON) bool {
 	return HasScript(p, ScriptApphostingBuild)
 }
 
@@ -428,4 +437,40 @@ func MajorVersion(versionString string) (string, error) {
 	}
 
 	return parts[0], nil
+}
+
+// OverrideAppHostingBuildScript overrides the "apphosting:build" script in package.json
+// with the build command from the preprocessed apphosting.yaml.
+func OverrideAppHostingBuildScript(ctx *gcp.Context, preprocessedApphostingPath string) (*PackageJSON, error) {
+	pjs, err := ReadPackageJSONIfExists(ctx.ApplicationRoot())
+	if err != nil {
+		return nil, err
+	}
+	apphostingSchema, err := apphostingschema.ReadAndValidateFromFile(preprocessedApphostingPath)
+	if err != nil {
+		return nil, err
+	}
+	if apphostingSchema.Scripts.BuildCommand == "" {
+		return pjs, nil
+	}
+	if pjs == nil {
+		pjs = &PackageJSON{}
+	}
+
+	if pjs.Scripts == nil {
+		pjs.Scripts = make(map[string]string)
+	}
+
+	pjs.Scripts[ScriptApphostingBuild] = apphostingSchema.Scripts.BuildCommand
+	marshalledJSON, err := json.Marshal(pjs)
+	if err != nil {
+		return nil, gcp.InternalErrorf("marshaling package.json: %w", err)
+	}
+
+	err = os.WriteFile(filepath.Join(ctx.ApplicationRoot(), "package.json"), marshalledJSON, 0644)
+	if err != nil {
+		return nil, gcp.InternalErrorf("writing package.json: %w", err)
+	}
+
+	return pjs, nil
 }

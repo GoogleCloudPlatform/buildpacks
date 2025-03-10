@@ -81,7 +81,8 @@ type EnvironmentVariable struct {
 
 // Scripts is the struct representation of the scripts in apphosting.yaml.
 type Scripts struct {
-	RunCommand string `yaml:"runCommand,omitempty"`
+	RunCommand   string `yaml:"runCommand,omitempty"`
+	BuildCommand string `yaml:"buildCommand,omitempty"`
 }
 
 // OutputFiles is the struct representation of the passed output files.
@@ -161,8 +162,8 @@ func (rc *RunConfig) UnmarshalYAML(unmarshal func(any) error) error {
 func ReadAndValidateFromFile(filePath string) (AppHostingSchema, error) {
 	var a AppHostingSchema
 	apphostingBuffer, err := os.ReadFile(filePath)
+	fmt.Println("apphostingBuffer: ", apphostingBuffer)
 	if os.IsNotExist(err) {
-		log.Printf("Missing apphosting config at %v, using reasonable defaults\n", filePath)
 		return a, nil
 	} else if err != nil {
 		return a, fmt.Errorf("reading apphosting config at %v: %w", filePath, err)
