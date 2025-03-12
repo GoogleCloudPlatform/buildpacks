@@ -351,6 +351,8 @@ def _build_step(name, bin_name, version, args, testdata_label):
 
 _default_cloudbuild_bin_targets = ["flex_test_cloudbuild_bin", "gae_test_cloudbuild_bin", "gcf_test_cloudbuild_bin", "gcp_test_cloudbuild_bin"]
 
+_universal_acceptance_test_cloudbuild_bin_targets = ["nodejs_acceptance_test_cloudbuild_bin", "nodejs_fn_acceptance_test_cloudbuild_bin"]
+
 def _build_argo_source_testdata_fileset_target(name, testdata):
     fileset_name = name + "_testdata"
     testdata_pkg, testdata_label = testdata.split(":")
@@ -367,16 +369,21 @@ def _build_argo_source_testdata_fileset_target(name, testdata):
     )
     return fileset_name
 
-def acceptance_test_argo_source(name, testdata, srcs = [], structure_test_config = ":config.yaml"):
+def acceptance_test_argo_source(name, testdata, srcs = [], structure_test_config = ":config.yaml", isUniversal = False):
     # this hack is to conditionally prevent testdata from being zipped in bazel, as
     # _build_testdata_target makes use of Fileset which is not available in bazel.
     if is_bazel_build(testdata):
         return
 
     testdata_fileset_target = _build_argo_source_testdata_fileset_target(name, testdata)
+
+    cloudbuild_bin_targets = _default_cloudbuild_bin_targets
+    if isUniversal:
+        cloudbuild_bin_targets = _universal_acceptance_test_cloudbuild_bin_targets
+
     pkg_zip(
         name = name,
-        srcs = srcs + _default_cloudbuild_bin_targets + [
+        srcs = srcs + cloudbuild_bin_targets + [
             testdata_fileset_target,
             structure_test_config,
         ],

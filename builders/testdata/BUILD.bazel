@@ -24,3 +24,11 @@ filegroup(
         for subpkg in subpackages(include = ["**"])
     ],
 )
+
+filegroup(
+    name = "nodejs_generic_and_function_files",
+    srcs = [
+        "//builders/testdata/nodejs:functions_files",
+        "//builders/testdata/nodejs:generic_files",
+    ],
+)
