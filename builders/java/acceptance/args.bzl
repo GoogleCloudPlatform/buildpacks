@@ -9,6 +9,7 @@ flex_runtime_versions = {n: n.replace("java", "") for n in flex_runtimes}
 
 # The union of all versions across all products.
 gcp_runtime_versions = dict(dict(flex_runtime_versions, **gae_runtime_versions), **gcf_runtime_versions)
+java_gcp_runtime_versions = [key for key in gcp_runtime_versions.keys()]
 
 def javaargs(runImageTag = "", stack = ""):
     """Create a new key-value map of arguments for java test

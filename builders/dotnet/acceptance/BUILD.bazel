@@ -3,7 +3,10 @@ load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_
 
 licenses(["notice"])
 
-exports_files(["config.yaml"])
+exports_files([
+    "config.yaml",
+    "args.bzl",
+])
 
 create_acceptance_versions_dict_file(
     name = "gen_acceptance_targets_list",

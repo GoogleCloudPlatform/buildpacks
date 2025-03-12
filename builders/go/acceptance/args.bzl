@@ -12,6 +12,7 @@ gcf_runtime_versions = {n: v for n, v in gcf_runtimes.items() if n != "go111"}
 
 # The union of all versions across all products.
 gcp_runtime_versions = dict(dict(flex_runtime_versions, **gae_runtime_versions), **gcf_runtime_versions)
+go_gcp_runtime_versions = [key for key in gcp_runtime_versions.keys()]
 
 def goargs(runImageTag = "", stack = ""):
     """Create a new key-value map of arguments for go test
