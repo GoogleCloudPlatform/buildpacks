@@ -59,22 +59,28 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return gcp.OptOut("apphosting build script found"), nil
 	}
 
-	nextConfigExists, err := ctx.FileExists(appDir, "next.config.js")
-	if err != nil {
-		return nil, err
-	}
-	if nextConfigExists {
-		return gcp.OptInFileFound("next.config.js"), nil
+	supportedNextConfigFiles := []string{"next.config.js", "next.config.mjs", "next.config.ts"}
+
+	for _, configFile := range supportedNextConfigFiles {
+		exists, err := ctx.FileExists(appDir, configFile)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			return gcp.OptInFileFound(configFile), nil
+		}
 	}
 
-	nextConfigModuleExists, err := ctx.FileExists(appDir, "next.config.mjs")
+	version, err := nodejs.Version(nodeDeps, "next")
 	if err != nil {
-		return nil, err
+		ctx.Warnf("Error parsing version from lock file, defaulting to package.json version")
+		version = nodeDeps.PackageJSON.Dependencies["next"]
 	}
-	if nextConfigModuleExists {
-		return gcp.OptInFileFound("next.config.mjs"), nil
+	if version != "" {
+		return gcp.OptIn("nextjs dependency found"), nil
 	}
-	return gcp.OptOut("nextjs config not found"), nil
+
+	return gcp.OptOut("nextjs config or dependency not found"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {

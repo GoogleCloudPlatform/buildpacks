@@ -55,6 +55,42 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
+			name: "with next config module",
+			files: map[string]string{
+				"index.js":        "",
+				"next.config.mjs": "",
+				"package.json": `{
+					"scripts": {
+						"build": "adapter build"
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+					}
+				}`,
+			},
+			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
+			want: 0,
+		},
+		{
+			name: "with next config ts",
+			files: map[string]string{
+				"index.js":       "",
+				"next.config.ts": "",
+				"package.json": `{
+					"scripts": {
+						"build": "adapter build"
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+					}
+				}`,
+			},
+			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
+			want: 0,
+		},
+		{
 			name: "without next config",
 			files: map[string]string{
 				"index.js": "",
@@ -87,6 +123,24 @@ func TestDetect(t *testing.T) {
 				}`,
 			},
 			envs: []string{"GOOGLE_BUILDABLE=apps/next-app", "X_GOOGLE_TARGET_PLATFORM=fah"},
+			want: 0,
+		},
+		{
+			name: "with next dependency in package-lock.json",
+			files: map[string]string{
+				"package.json": `{
+					"dependencies": {
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+						"node_modules/next": {
+							"version": "15.2.0"
+						}
+					}
+				}`,
+			},
+			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
 			want: 0,
 		},
 		{
