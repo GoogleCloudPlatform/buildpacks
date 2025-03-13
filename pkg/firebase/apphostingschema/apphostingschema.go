@@ -162,7 +162,6 @@ func (rc *RunConfig) UnmarshalYAML(unmarshal func(any) error) error {
 func ReadAndValidateFromFile(filePath string) (AppHostingSchema, error) {
 	var a AppHostingSchema
 	apphostingBuffer, err := os.ReadFile(filePath)
-	fmt.Println("apphostingBuffer: ", apphostingBuffer)
 	if os.IsNotExist(err) {
 		return a, nil
 	} else if err != nil {
