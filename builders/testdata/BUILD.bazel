@@ -32,3 +32,10 @@ filegroup(
         "//builders/testdata/nodejs:generic_files",
     ],
 )
+
+filegroup(
+    name = "firebase_files",
+    srcs = [
+        "//builders/testdata/nodejs:generic_files",
+    ],
+)
