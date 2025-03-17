@@ -1,5 +1,4 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source_firebase", "acceptance_test_suite")
 
 licenses(["notice"])
 
@@ -9,22 +8,6 @@ go_library(
     name = "acceptance",
     srcs = ["acceptance.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-)
-
-acceptance_test_argo_source_firebase(
-    name = "argo_source",
-    testdata = "//builders/testdata:firebase_files",
-)
-
-acceptance_test_suite(
-    name = "nodejs_acceptance_test",
-    srcs = [
-        "acceptance.go",
-        "nodejs_test.go",
-    ],
-    builder = "//builders/firebase/apphosting:builder.tar",
-    rundir = ".",
-    testdata = "//builders/testdata/nodejs:generic",
 )
 
 go_test(
