@@ -60,3 +60,13 @@ filegroup(
         for subpkg in subpackages(include = ["**"])
     ],
 )
+
+filegroup(
+    name = "generic_files",
+    srcs = glob(["generic/**"]),
+)
+
+filegroup(
+    name = "functions_files",
+    srcs = glob(["functions/**"]),
+)

@@ -351,8 +351,6 @@ def _build_step(name, bin_name, version, args, testdata_label):
 
 _default_cloudbuild_bin_targets = ["flex_test_cloudbuild_bin", "gae_test_cloudbuild_bin", "gcf_test_cloudbuild_bin", "gcp_test_cloudbuild_bin"]
 
-_universal_acceptance_test_cloudbuild_bin_targets = ["nodejs_acceptance_test_cloudbuild_bin", "nodejs_fn_acceptance_test_cloudbuild_bin"]
-
 _firebase_acceptance_test_cloudbuild_bin_targets = ["nodejs_acceptance_test_cloudbuild_bin"]
 
 def _build_argo_source_testdata_fileset_target(name, testdata):
@@ -371,6 +369,38 @@ def _build_argo_source_testdata_fileset_target(name, testdata):
     )
     return fileset_name
 
+def generate_universal_acceptance_test_cloudbuild_bin_targets():
+    """Generates the cloudbuild binary targets for universal builder acceptance tests.
+
+    Returns:
+      A list of cloudbuild binary targets for universal builder acceptance tests.
+    """
+
+    language_products_map = {
+        "nodejs": ["generic", "functions"],
+        "cpp": ["functions"],
+        "dart": ["generic"],
+        "dotnet": ["generic", "functions"],
+        "go": ["generic", "functions"],
+        "java": ["generic", "functions"],
+        "php": ["generic"],
+        "python": ["generic", "functions"],
+        "ruby": ["generic", "functions"],
+    }
+
+    _universal_acceptance_test_cloudbuild_bin_targets = []
+    bin_name_suffix = "_acceptance_test_cloudbuild_bin"
+
+    for language, products in language_products_map.items():
+        for product in products:
+            bin_name_prefix = language
+            if product == "functions":
+                bin_name_prefix += "_fn"
+
+            _universal_acceptance_test_cloudbuild_bin_targets.append(bin_name_prefix + bin_name_suffix)
+
+    return _universal_acceptance_test_cloudbuild_bin_targets
+
 def acceptance_test_argo_source(name, testdata, srcs = [], structure_test_config = ":config.yaml", isUniversal = False):
     # this hack is to conditionally prevent testdata from being zipped in bazel, as
     # _build_testdata_target makes use of Fileset which is not available in bazel.
@@ -381,6 +411,7 @@ def acceptance_test_argo_source(name, testdata, srcs = [], structure_test_config
 
     cloudbuild_bin_targets = _default_cloudbuild_bin_targets
     if isUniversal:
+        _universal_acceptance_test_cloudbuild_bin_targets = generate_universal_acceptance_test_cloudbuild_bin_targets()
         cloudbuild_bin_targets = _universal_acceptance_test_cloudbuild_bin_targets
 
     pkg_zip(

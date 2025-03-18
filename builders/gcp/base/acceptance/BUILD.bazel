@@ -2,7 +2,25 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 licenses(["notice"])
 
-exports_files(["config.yaml"])
+exports_files([
+    "nodejs_test.go",
+    "nodejs_fn_test.go",
+    "go_test.go",
+    "go_fn_test.go",
+    "java_test.go",
+    "java_fn_test.go",
+    "python_test.go",
+    "python_fn_test.go",
+    "ruby_test.go",
+    "ruby_fn_test.go",
+    "cpp_fn_test.go",
+    "dotnet_fn_test.go",
+    "dotnet_test.go",
+    "dart_test.go",
+    "php_test.go",
+    "acceptance.go",
+    "config.yaml",
+])
 
 go_library(
     name = "acceptance",

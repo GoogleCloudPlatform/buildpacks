@@ -34,6 +34,26 @@ filegroup(
 )
 
 filegroup(
+    name = "all_generic_and_function_files",
+    srcs = glob(["**"]) + [
+        "//builders/testdata/{}:generic_files".format(subpkg)
+        for subpkg in subpackages(
+            include = ["**"],
+            exclude = ["cpp/**"],
+        )
+    ] + [
+        "//builders/testdata/{}:functions_files".format(subpkg)
+        for subpkg in subpackages(
+            include = ["**"],
+            exclude = [
+                "dart/**",
+                "php/**",
+            ],
+        )
+    ],
+)
+
+filegroup(
     name = "firebase_files",
     srcs = [
         "//builders/testdata/nodejs:generic_files",
