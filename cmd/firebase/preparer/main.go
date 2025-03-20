@@ -109,13 +109,11 @@ func main() {
 
 	gcpCtx := gcpbuildpack.NewContext()
 
-	// If no apphosting.yaml path is provided, try to detect the root directory containing the file.
-	if opts.AppHostingYAMLPath == "" && *backendRootDirectory != "" {
-		opts.AppHostingYAMLPath, err = filesystem.DetectAppHostingYAMLPath(*workspacePath, *backendRootDirectory)
+	// Detect the apphosting.yaml path.
+	opts.AppHostingYAMLPath, err = filesystem.DetectAppHostingYAMLPath(*workspacePath, *backendRootDirectory)
 
-		if err != nil {
-			gcpCtx.Exit(1, handleError(err))
-		}
+	if err != nil {
+		gcpCtx.Exit(1, handleError(err))
 	}
 
 	if err = preparer.Prepare(context.Background(), opts); err != nil {
