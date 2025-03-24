@@ -15,3 +15,5 @@
 source "https://rubygems.org"
 gem "sinatra", "~> 2.2"
 gem "puma", "~> 5.6"
+gem "base64", "~> 0.2"
+gem 'mutex_m', "~> 0.3.0"
