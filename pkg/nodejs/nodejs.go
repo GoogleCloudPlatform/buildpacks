@@ -51,7 +51,7 @@ const (
 	// defaultVersionConstraint is used if the project does not provide a Node.js version specifier in
 	// their package.json or via an env var. This pins them to the active LTS version, instead of the
 	// the latest available version.
-	defaultVersionConstraint = "20.*.*"
+	defaultVersionConstraint = "22.*.*"
 )
 
 // semVer11 is the smallest possible semantic version with major version 11.
