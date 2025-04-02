@@ -273,34 +273,6 @@ func detectFnWrapper(detectFn DetectFn) libcnb.DetectFunc {
 	}
 }
 
-// TODO: hemantgoyal - Remove this function once the libcnb is migrated
-func (gcpd gcpdetector) Detect(ldctx libcnb.DetectContext) (libcnb.DetectResult, error) {
-	ctx := newDetectContext(ldctx)
-	status := buildererror.StatusInternal
-	defer func(now time.Time) {
-		ctx.Span(fmt.Sprintf("Buildpack Detect %q", ctx.info.ID), now, status)
-	}(time.Now())
-
-	result, err := gcpd.detectFn(ctx)
-	if err != nil {
-		msg := fmt.Sprintf("failed to run /bin/detect: %v", err)
-		var be *buildererror.Error
-		if errors.As(err, &be) {
-			status = be.Status
-			return libcnb.DetectResult{}, be
-		}
-		return libcnb.DetectResult{}, buildererror.Errorf(status, msg)
-	}
-	// detectFn has an interface return type so result may be nil.
-	if result == nil {
-		return libcnb.DetectResult{}, InternalErrorf("detect did not return a result or an error")
-	}
-
-	status = buildererror.StatusOk
-	ctx.Logf(result.Reason())
-	return result.Result(), nil
-}
-
 // detect implements the /bin/detect phase of the buildpack.
 func detect(detectFn DetectFn, opts ...libcnb.Option) {
 	config := libcnb.NewConfig(opts...)
@@ -310,31 +282,6 @@ func detect(detectFn DetectFn, opts ...libcnb.Option) {
 
 type gcpbuilder struct {
 	buildFn BuildFn
-}
-
-// TODO: hemantgoyal - Remove this function once the libcnb is migrated
-func (gcpb gcpbuilder) Build(lbctx libcnb.BuildContext) (libcnb.BuildResult, error) {
-	start := time.Now()
-	ctx := newBuildContext(lbctx)
-	ctx.Logf("=== %s (%s@%s) ===", ctx.BuildpackName(), ctx.BuildpackID(), ctx.BuildpackVersion())
-
-	status := buildererror.StatusInternal
-	defer func(now time.Time) {
-		ctx.Span(fmt.Sprintf("Buildpack Build %q", ctx.BuildpackID()), now, status)
-	}(time.Now())
-
-	if err := gcpb.buildFn(ctx); err != nil {
-		var be *buildererror.Error
-		if errors.As(err, &be) {
-			status = be.Status
-		}
-		err := fmt.Errorf("failed to build: %w", err)
-		ctx.Exit(1, err)
-	}
-
-	status = buildererror.StatusOk
-	ctx.saveSuccessOutput(time.Since(start))
-	return ctx.buildResult, nil
 }
 
 // buildFnWrapper creates a libcnb.BuildFunc that wraps the given buildFn.
