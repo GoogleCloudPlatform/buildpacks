@@ -28,6 +28,9 @@ def newArgs(version, runImageTag, stack):
 # This can be used in Rapid pipelines and for local testing.
 # If no 'runImageTag' is provided, we get the latest runtime image being used in PROD.
 def runImage(version, runImageTag, stack):
+    # TODO(b/371521232): Newer runtimes do not publish to gcr.
+    if version == "34":
+        return "us-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/ruby34:latest"
     if stack != "":
         if runImageTag != "":
             return "us-docker.pkg.dev/gae-runtimes-private/" + stack + "/runtimes/ruby" + version + ":" + runImageTag

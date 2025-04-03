@@ -38,6 +38,7 @@ acceptance_test_suite(
     runtime_to_builder_map = {
         "ruby32": "//builders/ruby:builder_22.tar",
         "ruby33": "//builders/ruby:builder_22.tar",
+        "ruby34": "//builders/ruby:builder_22.tar",
     },
     testdata = "//builders/testdata/ruby:generic",
     versions = gcp_runtime_versions,
@@ -56,6 +57,7 @@ acceptance_test_suite(
     runtime_to_builder_map = {
         "ruby32": "//builders/ruby:builder_22.tar",
         "ruby33": "//builders/ruby:builder_22.tar",
+        "ruby34": "//builders/ruby:builder_22.tar",
     },
     testdata = "//builders/testdata/ruby:appengine",
     versions = gae_runtime_versions,
@@ -74,6 +76,7 @@ acceptance_test_suite(
     runtime_to_builder_map = {
         "ruby32": "//builders/ruby:builder_22.tar",
         "ruby33": "//builders/ruby:builder_22.tar",
+        "ruby34": "//builders/ruby:builder_22.tar",
     },
     testdata = "//builders/testdata/ruby:appengine",
     versions = gae_runtime_versions,
@@ -92,6 +95,7 @@ acceptance_test_suite(
     runtime_to_builder_map = {
         "ruby32": "//builders/ruby:builder_22.tar",
         "ruby33": "//builders/ruby:builder_22.tar",
+        "ruby34": "//builders/ruby:builder_22.tar",
     },
     testdata = "//builders/testdata/ruby:appengine",
     versions = gae_runtime_versions,
@@ -109,6 +113,7 @@ acceptance_test_suite(
     runtime_to_builder_map = {
         "ruby32": "//builders/ruby:builder_22.tar",
         "ruby33": "//builders/ruby:builder_22.tar",
+        "ruby34": "//builders/ruby:builder_22.tar",
     },
     testdata = "//builders/testdata/ruby:functions",
     versions = gcf_runtime_versions,
@@ -124,6 +129,7 @@ acceptance_test_suite(
     runtime_to_builder_map = {
         "ruby32": "//builders/ruby:builder_22.tar",
         "ruby33": "//builders/ruby:builder_22.tar",
+        "ruby34": "//builders/ruby:builder_22.tar",
     },
     testdata = "//builders/testdata/ruby:flex",
     versions = flex_runtime_versions,

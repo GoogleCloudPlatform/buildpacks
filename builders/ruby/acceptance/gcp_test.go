@@ -107,11 +107,12 @@ func TestAcceptance(t *testing.T) {
 			VersionInclusionConstraint: ">2.7.0",
 		},
 		{
-			Name:       "rails precompiled",
-			App:        "rails_precompiled",
-			Env:        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
-			MustUse:    []string{rubyRuntime, rubyBundle, entrypoint},
-			MustNotUse: []string{rubyRails},
+			Name:                       "rails precompiled",
+			App:                        "rails_precompiled",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			MustUse:                    []string{rubyRuntime, rubyBundle, entrypoint},
+			MustNotUse:                 []string{rubyRails},
+			VersionInclusionConstraint: ">= 2.6.0",
 		},
 		{
 			Name:            "Ruby native extensions",

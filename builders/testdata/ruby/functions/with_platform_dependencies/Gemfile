@@ -17,3 +17,5 @@ gem "grpc", "~> 1.36"
 gem "webrick", "~> 1.7"
 
 gem "functions_framework", "~> 1.1"
+
+gem "base64", "~> 0.2"
