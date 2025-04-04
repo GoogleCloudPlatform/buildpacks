@@ -7,7 +7,7 @@
   "main": "worker.js",
   "dependencies": {
     "express": "4.16.3",
-    "body-parser": "1.18.2",
+    "body-parser": "1.20.3",
     "on-finished": "2.3.0"
   },
   "private": true
