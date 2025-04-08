@@ -14,7 +14,9 @@
 
 source "https://rubygems.org"
 gem "webrick", "~> 1.7"
-gem "sinatra", "~> 2.1"
+gem "sinatra", "~> 4.1"
+gem "rackup", "~> 2.2"
+gem "puma", "~> 6.6"
 
 # This file should be pre-processed by substituting the runtime version
 # placeholder with the Ruby version being tested.
