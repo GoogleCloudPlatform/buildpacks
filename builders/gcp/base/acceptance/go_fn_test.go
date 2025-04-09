@@ -29,11 +29,10 @@ func TestAcceptanceGoFn(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name: "function without deps",
-			App:  "no_deps",
-			Path: "/Func",
-			// Use Go 1.13 because Go 1.14 requires a go.mod file.
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func", "GOOGLE_RUNTIME_VERSION=1.13.8"},
+			Name:       "function without deps",
+			App:        "no_deps",
+			Path:       "/Func",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			MustUse:    []string{goRuntime, goFF, goBuild},
 			MustNotUse: []string{entrypoint},
 		},
@@ -46,11 +45,10 @@ func TestAcceptanceGoFn(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 		{
-			Name: "vendored function without framwork",
-			App:  "no_framework_vendored_no_go_mod",
-			Path: "/Func",
-			// Use Go 1.13 because Go 1.14 requires a go.mod file.
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func", "GOOGLE_RUNTIME_VERSION=1.13.8"},
+			Name:       "vendored function without framwork",
+			App:        "no_framework_vendored_no_go_mod",
+			Path:       "/Func",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=Func"},
 			MustUse:    []string{goRuntime, goFF, goBuild},
 			MustNotUse: []string{entrypoint},
 		},
