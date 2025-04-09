@@ -24,6 +24,13 @@
 #      --substitutions _CANDIDATE_NAME=my-local-build _ACCOUNT_NAME=keyless
 
 steps:
+  # --- STEP THAT ALWAYS FAILS ---
+  # This step is intentionally failing to ensure that the build fails.
+  # We need a way to disable the release pipeline through this file.
+  - id: 'INTENTIONALLY-FAILING-STEP'
+    name: 'ubuntu'
+    entrypoint: '/bin/false'
+
   - id: build-bazel-pack-image
     name: gcr.io/cloud-builders/docker
     args: ['build', '-t=bazel-pack', '-f=tools/cloudbuild/Dockerfile', '.']
