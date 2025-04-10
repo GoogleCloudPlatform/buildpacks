@@ -100,7 +100,7 @@ func TestAcceptanceRuby(t *testing.T) {
 		{
 			Name:    "rails minimal",
 			App:     "rails_minimal",
-			Env:     []string{"GOOGLE_RUNTIME_VERSION=3.1.0", "GOOGLE_ENTRYPOINT=ruby bin/rails server -b 0.0.0.0 -p $PORT"},
+			Env:     []string{"GOOGLE_RUNTIME_VERSION=3.2.7", "GOOGLE_ENTRYPOINT=ruby bin/rails server -b 0.0.0.0 -p $PORT"},
 			MustUse: []string{rubyRuntime, rubyRails, rubyBundle, entrypoint},
 		},
 		{
