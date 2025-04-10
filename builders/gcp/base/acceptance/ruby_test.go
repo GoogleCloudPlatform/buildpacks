@@ -93,7 +93,7 @@ func TestAcceptanceRuby(t *testing.T) {
 		{
 			Name:            "rails",
 			App:             "rails",
-			Env:             []string{"GOOGLE_RUNTIME_VERSION=3.1.2", "GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
+			Env:             []string{"GOOGLE_RUNTIME_VERSION=3.2.7", "GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
 			MustUse:         []string{rubyRuntime, rubyRails, rubyBundle, entrypoint, nodeRuntime},
 			EnableCacheTest: true,
 		},
@@ -106,7 +106,7 @@ func TestAcceptanceRuby(t *testing.T) {
 		{
 			Name:       "rails precompiled",
 			App:        "rails_precompiled",
-			Env:        []string{"GOOGLE_RUNTIME_VERSION=3.1.2", "GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			Env:        []string{"GOOGLE_RUNTIME_VERSION=3.2.7", "GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 			MustUse:    []string{rubyRuntime, rubyBundle, entrypoint},
 			MustNotUse: []string{rubyRails, nodeRuntime},
 		},
