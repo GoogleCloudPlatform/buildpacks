@@ -31,17 +31,6 @@ acceptance_test_suite(
 )
 
 acceptance_test_suite(
-    name = "cpp_fn_acceptance_test",
-    srcs = [
-        "//builders/gcp/base/acceptance:acceptance.go",
-        "//builders/gcp/base/acceptance:cpp_fn_test.go",
-    ],
-    builder = "//builders/gcp/base:builder.tar",
-    rundir = ".",
-    testdata = "//builders/testdata/cpp:functions",
-)
-
-acceptance_test_suite(
     name = "dart_acceptance_test",
     srcs = [
         "//builders/gcp/base/acceptance:acceptance.go",

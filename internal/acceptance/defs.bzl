@@ -378,7 +378,6 @@ def generate_universal_acceptance_test_cloudbuild_bin_targets():
 
     language_products_map = {
         "nodejs": ["generic", "functions"],
-        "cpp": ["functions"],
         "dart": ["generic"],
         "dotnet": ["generic", "functions"],
         "go": ["generic", "functions"],

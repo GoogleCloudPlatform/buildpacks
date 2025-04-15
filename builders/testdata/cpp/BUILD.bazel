@@ -14,8 +14,3 @@ filegroup(
     name = "all_files",
     srcs = glob(["**"]),
 )
-
-filegroup(
-    name = "functions_files",
-    srcs = glob(["functions/**"]),
-)

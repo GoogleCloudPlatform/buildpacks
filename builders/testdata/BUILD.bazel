@@ -48,6 +48,7 @@ filegroup(
             exclude = [
                 "dart/**",
                 "php/**",
+                "cpp/**",
             ],
         )
     ],
