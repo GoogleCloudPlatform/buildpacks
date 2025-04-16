@@ -2,9 +2,12 @@
 package webconfig
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
 	"github.com/buildpacks/libcnb/v2"
@@ -44,6 +47,10 @@ type OverrideProperties struct {
 	NginxHTTPInclude bool
 	// NginxHTTPIncludeFileName name of the partial nginx config to be included in the http section.
 	NginxHTTPIncludeFileName string
+	// PHPFPMDynamicWorkers boolean to toggle dynamic workers in the php-fpm config file.
+	PHPFPMDynamicWorkers bool
+	// PHPFPMWorkers integer to specify the worker thread count in the php-fpm config file.
+	PHPFPMWorkers int
 	// PHPFPMOverride boolean to check if user-provided php-fpm config exists.
 	PHPFPMOverride bool
 	// PHPFPMOverrideFileName name of the user-provided php-fpm config file.
@@ -54,6 +61,44 @@ type OverrideProperties struct {
 	PHPIniOverrideFileName string
 	// NginxServesStaticFiles whether Nginx also serves static files for matching URIs.
 	NginxServesStaticFiles bool
+}
+
+func (overrides *OverrideProperties) UpdateFromEnvironment(ctx *gcp.Context) error {
+	if customNginxConf, present := os.LookupEnv(php.CustomNginxConfig); present {
+		overrides.NginxConfOverride = true
+		overrides.NginxConfOverrideFileName = filepath.Join(defaultRoot, customNginxConf)
+	}
+
+	nginxServesStaticFiles, err := env.IsPresentAndTrue(php.NginxServesStaticFiles)
+	if err != nil {
+		return err
+	}
+	overrides.NginxServesStaticFiles = nginxServesStaticFiles
+
+	nginxDocumentRoot := os.Getenv(php.NginxDocumentRoot)
+	if nginxDocumentRoot != "" {
+		overrides.DocumentRoot = nginxDocumentRoot
+	}
+
+	phpFPMDynamicWorkers, err := env.IsPresentAndTrue(php.PHPFPMDynamicWorkers)
+	if err != nil {
+		return err
+	}
+	overrides.PHPFPMDynamicWorkers = phpFPMDynamicWorkers
+
+	phpFPMWorkerCountPresent, phpFPMWorkerCount, err := env.IsPresentAndInt(php.PHPFPMWorkerCount)
+	if err != nil {
+		return err
+	}
+	if phpFPMWorkerCountPresent {
+		if phpFPMWorkerCount > 0 {
+			overrides.PHPFPMWorkers = phpFPMWorkerCount
+		} else {
+			return fmt.Errorf("invalid %s value, must be greater than 0", php.PHPFPMWorkerCount)
+		}
+	}
+
+	return nil
 }
 
 // OverriddenProperties returns whether the property has been overridden and the path to the file.
