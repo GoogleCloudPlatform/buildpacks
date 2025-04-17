@@ -38,6 +38,7 @@ acceptance_test_suite(
     runtime_to_builder_map = {
         "php82": "//builders/php:builder_22.tar",
         "php83": "//builders/php:builder_22.tar",
+        "php84": "//builders/php:builder_22.tar",
     },
     testdata = "//builders/testdata/php:generic",
     versions = gcp_runtime_versions,
@@ -56,6 +57,7 @@ acceptance_test_suite(
     runtime_to_builder_map = {
         "php82": "//builders/php:builder_22.tar",
         "php83": "//builders/php:builder_22.tar",
+        "php84": "//builders/php:builder_22.tar",
     },
     testdata = "//builders/testdata/php:appengine",
     versions = gae_runtime_versions,
@@ -74,6 +76,7 @@ acceptance_test_suite(
     runtime_to_builder_map = {
         "php82": "//builders/php:builder_22.tar",
         "php83": "//builders/php:builder_22.tar",
+        "php84": "//builders/php:builder_22.tar",
     },
     testdata = "//builders/testdata/php:appengine",
     versions = gae_runtime_versions,
@@ -92,6 +95,7 @@ acceptance_test_suite(
     runtime_to_builder_map = {
         "php82": "//builders/php:builder_22.tar",
         "php83": "//builders/php:builder_22.tar",
+        "php84": "//builders/php:builder_22.tar",
     },
     testdata = "//builders/testdata/php:appengine",
     versions = gae_runtime_versions,
@@ -108,6 +112,7 @@ acceptance_test_suite(
     runtime_to_builder_map = {
         "php82": "//builders/php:builder_22.tar",
         "php83": "//builders/php:builder_22.tar",
+        "php84": "//builders/php:builder_22.tar",
     },
     testdata = "//builders/testdata/php:functions",
     versions = gcf_runtime_versions,
@@ -124,6 +129,7 @@ acceptance_test_suite(
     runtime_to_builder_map = {
         "php82": "//builders/php:builder_22.tar",
         "php83": "//builders/php:builder_22.tar",
+        "php84": "//builders/php:builder_22.tar",
     },
     testdata = "//builders/testdata/php:flex",
     versions = flex_runtime_versions,

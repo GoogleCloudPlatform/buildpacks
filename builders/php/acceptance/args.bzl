@@ -28,6 +28,9 @@ def newArgs(runtime, runImageTag, stack):
     }
 
 def runImage(runtime, runImageTag, stack):
+    if runtime == "php84":
+        return "us-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/php84:latest"
+
     if stack != "":
         if runImageTag != "":
             return "us-docker.pkg.dev/gae-runtimes-private/" + stack + "/runtimes/" + runtime + ":" + runImageTag
