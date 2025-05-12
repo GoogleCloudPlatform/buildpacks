@@ -50,8 +50,12 @@ type MetadataID string
 //
 //	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.IsUsingGenkit, "true")
 const (
-	IsUsingGenkit MetadataID = "1" // Whether the application is using Genkit
-	IsUsingGenAI  MetadataID = "2" // Whether the application is using GenAI API
+	IsUsingGenkit    MetadataID = "1" // Whether the application is using Genkit
+	IsUsingGenAI     MetadataID = "2" // Whether the application is using GenAI API
+	FrameworkName    MetadataID = "3" // The framework name used in the build.
+	FrameworkVersion MetadataID = "4" // The framework version used in the build.
+	AdapterName      MetadataID = "5" // The adapter name used in the build.
+	AdapterVersion   MetadataID = "6" // The adapter version used in the build.
 )
 
 // GetValue returns the Metadata value with MetadataID id, or creates it if it doesn't exist.

@@ -38,7 +38,7 @@ func TestFromJSON(t *testing.T) {
 		"errorMessage": "error-message",
 		"anotherThing": 123
 	},
-	"metadata": {"m":{"1":"true", "2":"false"}},
+	"metadata": {"m":{"1":"true", "2":"false", "3":"angular", "4":"17.0.0", "5":"@apphosting/adapter-angular", "6":"17.2.3"}},
 	"stats": [
 		{
 			"buildpackId": "buildpack-1",
@@ -73,6 +73,10 @@ func TestFromJSON(t *testing.T) {
 	fm := buildermetadata.NewBuilderMetadata()
 	fm.SetValue(buildermetadata.IsUsingGenkit, "true")
 	fm.SetValue(buildermetadata.IsUsingGenAI, "false")
+	fm.SetValue(buildermetadata.FrameworkName, "angular")
+	fm.SetValue(buildermetadata.FrameworkVersion, "17.0.0")
+	fm.SetValue(buildermetadata.AdapterName, "@apphosting/adapter-angular")
+	fm.SetValue(buildermetadata.AdapterVersion, "17.2.3")
 	want := BuilderOutput{
 		InstalledRuntimeVersions: []string{"6.0.6"},
 		Metrics:                  bm,
@@ -116,6 +120,11 @@ func TestJSON(t *testing.T) {
 	bm.GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(3)
 	fm := buildermetadata.NewBuilderMetadata()
 	fm.SetValue(buildermetadata.IsUsingGenkit, "true")
+	fm.SetValue(buildermetadata.IsUsingGenAI, "false")
+	fm.SetValue(buildermetadata.FrameworkName, "angular")
+	fm.SetValue(buildermetadata.FrameworkVersion, "17.0.0")
+	fm.SetValue(buildermetadata.AdapterName, "@apphosting/adapter-angular")
+	fm.SetValue(buildermetadata.AdapterVersion, "17.2.3")
 	b := BuilderOutput{
 		InstalledRuntimeVersions: []string{"6.0.6"},
 		Metrics:                  bm,
@@ -137,7 +146,7 @@ func TestJSON(t *testing.T) {
 	if want := `{"c":{"1":3}}`; !strings.Contains(string(s), want) {
 		t.Errorf(`Expected string %q not found in %s`, want, s)
 	}
-	if want := `{"m":{"1":"true"}}`; !strings.Contains(string(s), want) {
+	if want := `{"m":{"1":"true","2":"false","3":"angular","4":"17.0.0","5":"@apphosting/adapter-angular","6":"17.2.3"}}`; !strings.Contains(string(s), want) {
 		t.Errorf(`Expected string %q not found in %s`, want, s)
 	}
 }
