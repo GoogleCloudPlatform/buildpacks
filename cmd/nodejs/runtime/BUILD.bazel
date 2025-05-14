@@ -7,6 +7,9 @@ licenses(["notice"])
 
 buildpack(
     name = "runtime",
+    srcs = [
+        "exec/heapsize.sh",
+    ],
     executables = [
         ":main",
     ],

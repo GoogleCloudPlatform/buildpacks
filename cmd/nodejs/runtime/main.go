@@ -18,7 +18,9 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -29,6 +31,7 @@ import (
 
 const (
 	nodeLayer           = "node"
+	heapsizeLayer       = "heapsize"
 	runtimeVersionLabel = "runtime_version"
 )
 
@@ -90,6 +93,37 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", nodeLayer, err)
 	}
-	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.Nodejs, version, nrl)
+	if _, err = runtime.InstallTarballIfNotCached(ctx, runtime.Nodejs, version, nrl); err != nil {
+		return fmt.Errorf("installing nodejs: %w", err)
+	}
+	setHeapSize, err := env.IsPresentAndTrue("X_GOOGLE_SET_NODE_HEAP_SIZE")
+	if err != nil {
+		return fmt.Errorf("checking X_GOOGLE_SET_NODE_HEAP_SIZE: %w", err)
+	}
+	if setHeapSize {
+		if err = installHeapsizeScript(ctx); err != nil {
+			return fmt.Errorf("installing heapsize script: %w", err)
+		}
+	}
 	return err
+}
+
+// installHeapsizeScript copies the exec/heapsize.sh script into the layer's exec.d directory.
+func installHeapsizeScript(ctx *gcp.Context) error {
+	l, err := ctx.Layer(heapsizeLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", heapsizeLayer, err)
+	}
+	ctx.Logf("Installing the heapsize.sh exec.d script.")
+	scriptPath := filepath.Join(ctx.BuildpackRoot(), "exec", "heapsize.sh")
+	destPath := filepath.Join(l.Exec.Path, "heapsize.sh")
+	data, err := ioutil.ReadFile(scriptPath)
+	if err != nil {
+		return fmt.Errorf("reading %s: %w", scriptPath, err)
+	}
+	ctx.MkdirAll(l.Exec.Path, 0755)
+	if err := ioutil.WriteFile(destPath, data, 0777); err != nil {
+		return fmt.Errorf("writing %s: %w", destPath, err)
+	}
+	return nil
 }
