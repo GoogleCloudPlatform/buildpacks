@@ -63,6 +63,7 @@ const (
 
 	ubuntu1804 string = "ubuntu1804"
 	ubuntu2204 string = "ubuntu2204"
+	ubuntu2404 string = "ubuntu2404"
 )
 
 // User friendly display name of all runtime (e.g. for use in error message).
@@ -85,6 +86,8 @@ var stackToOS = map[string]string{
 	"google.gae.22":          ubuntu2204,
 	"google.min.22":          ubuntu2204,
 	"firebase.apphosting.22": ubuntu2204,
+	"google.24":              ubuntu2404,
+	"google.24.full":         ubuntu2404,
 }
 
 var languageRuntimes = []InstallableRuntime{Nodejs, PHP, Python, Ruby, OpenJDK, CanonicalJDK, Go, DotnetSDK, AspNetCore}

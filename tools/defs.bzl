@@ -144,7 +144,7 @@ def builder(
         the buildpacks are grouped under a single-level directory named <key>
       visibility: the visibility
       builder_template: if builder.toml needs to be generated for input stack
-      stack: Either of google.gae.22 or google.gae.18 representing ubuntu-22 or ubuntu-18 stacks
+      stack: Either of google.24.full or google.gae.22 or google.gae.18 representing ubuntu-24 or ubuntu-22 or ubuntu-18 stacks
     """
     srcs = []
 
@@ -191,7 +191,12 @@ def builder(
 def _generate_builder_descriptor(name, descriptor, builder_template, stack):
     """Generates a builder descriptor from a template for a specific stack."""
 
-    gae_stack = "google-gae-22" if stack == "google.gae.22" else "google-gae-18"
+    stack_to_gae_stack = {
+        "google.gae.18": "google-gae-18",
+        "google.gae.22": "google-gae-22",
+        "google.24.full": "google-24-full",
+    }
+    gae_stack = stack_to_gae_stack.get(stack)
     image_prefix = "gcr.io/gae-runtimes/buildpacks/stacks/{}/".format(gae_stack)
     build_image = image_prefix + "build"
     run_image = image_prefix + "run"
