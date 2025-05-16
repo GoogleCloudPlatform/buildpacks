@@ -8,6 +8,13 @@ exports_files([
     "args.bzl",
 ])
 
+RUNTIME_TO_BUILDER_MAP = {
+    "python310": "//builders/python:builder_22.tar",
+    "python311": "//builders/python:builder_22.tar",
+    "python312": "//builders/python:builder_22.tar",
+    "python313": "//builders/python:builder_22.tar",
+}
+
 create_acceptance_versions_dict_file(
     name = "gen_acceptance_targets_list",
     file = "acceptance_targets.dict",
@@ -34,12 +41,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/python:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "python310": "//builders/python:builder_22.tar",
-        "python311": "//builders/python:builder_22.tar",
-        "python312": "//builders/python:builder_22.tar",
-        "python313": "//builders/python:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/python:generic",
     versions = gcp_runtime_versions,
 )
@@ -52,12 +54,7 @@ acceptance_test_suite(
     argsmap = pythonargs(),
     builder = "//builders/python:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "python310": "//builders/python:builder_22.tar",
-        "python311": "//builders/python:builder_22.tar",
-        "python312": "//builders/python:builder_22.tar",
-        "python313": "//builders/python:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/python:appengine",
     versions = gae_runtime_versions,
 )
@@ -69,12 +66,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/python:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "python310": "//builders/python:builder_22.tar",
-        "python311": "//builders/python:builder_22.tar",
-        "python312": "//builders/python:builder_22.tar",
-        "python313": "//builders/python:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/python:functions",
     versions = gcf_runtime_versions,
 )
@@ -84,12 +76,7 @@ acceptance_test_suite(
     srcs = ["flex_test.go"],
     builder = "//builders/python:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "python310": "//builders/python:builder_22.tar",
-        "python311": "//builders/python:builder_22.tar",
-        "python312": "//builders/python:builder_22.tar",
-        "python313": "//builders/python:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/python:flex",
     versions = flex_runtime_versions,
 )

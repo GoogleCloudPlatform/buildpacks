@@ -8,6 +8,12 @@ exports_files([
     "args.bzl",
 ])
 
+RUNTIME_TO_BUILDER_MAP = {
+    "php82": "//builders/php:builder_22.tar",
+    "php83": "//builders/php:builder_22.tar",
+    "php84": "//builders/php:builder_22.tar",
+}
+
 create_acceptance_versions_dict_file(
     name = "gen_acceptance_targets_list",
     file = "acceptance_targets.dict",
@@ -35,11 +41,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/php:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "php82": "//builders/php:builder_22.tar",
-        "php83": "//builders/php:builder_22.tar",
-        "php84": "//builders/php:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/php:generic",
     versions = gcp_runtime_versions,
 )
@@ -54,11 +56,7 @@ acceptance_test_suite(
     argsmap = phpargs(),
     builder = "//builders/php:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "php82": "//builders/php:builder_22.tar",
-        "php83": "//builders/php:builder_22.tar",
-        "php84": "//builders/php:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/php:appengine",
     versions = gae_runtime_versions,
 )
@@ -73,11 +71,7 @@ acceptance_test_suite(
     argsmap = phpargs("$${_CANDIDATE_NAME}"),
     builder = "//builders/php:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "php82": "//builders/php:builder_22.tar",
-        "php83": "//builders/php:builder_22.tar",
-        "php84": "//builders/php:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/php:appengine",
     versions = gae_runtime_versions,
 )
@@ -92,11 +86,7 @@ acceptance_test_suite(
     argsmap = phpargs("$${_CANDIDATE_NAME}", "$${_STACK}"),
     builder = "//builders/php:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "php82": "//builders/php:builder_22.tar",
-        "php83": "//builders/php:builder_22.tar",
-        "php84": "//builders/php:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/php:appengine",
     versions = gae_runtime_versions,
 )
@@ -109,11 +99,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/php:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "php82": "//builders/php:builder_22.tar",
-        "php83": "//builders/php:builder_22.tar",
-        "php84": "//builders/php:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/php:functions",
     versions = gcf_runtime_versions,
 )
@@ -126,11 +112,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/php:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "php82": "//builders/php:builder_22.tar",
-        "php83": "//builders/php:builder_22.tar",
-        "php84": "//builders/php:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/php:flex",
     versions = flex_runtime_versions,
 )

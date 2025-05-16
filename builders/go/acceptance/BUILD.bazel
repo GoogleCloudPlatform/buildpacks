@@ -8,6 +8,14 @@ exports_files([
     "args.bzl",
 ])
 
+RUNTIME_TO_BUILDER_MAP = {
+    "go118": "//builders/go:builder_22.tar",
+    "go119": "//builders/go:builder_22.tar",
+    "go120": "//builders/go:builder_22.tar",
+    "go121": "//builders/go:builder_22.tar",
+    "go122": "//builders/go:builder_22.tar",
+}
+
 create_acceptance_versions_dict_file(
     name = "gen_acceptance_targets_list",
     file = "acceptance_targets.dict",
@@ -40,13 +48,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/go:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "go118": "//builders/go:builder_22.tar",
-        "go119": "//builders/go:builder_22.tar",
-        "go120": "//builders/go:builder_22.tar",
-        "go121": "//builders/go:builder_22.tar",
-        "go122": "//builders/go:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/go:functions",
     versions = gcf_runtime_versions,
 )
@@ -59,13 +61,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/go:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "go118": "//builders/go:builder_22.tar",
-        "go119": "//builders/go:builder_22.tar",
-        "go120": "//builders/go:builder_22.tar",
-        "go121": "//builders/go:builder_22.tar",
-        "go122": "//builders/go:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/go:generic",
     versions = gcp_runtime_versions,
 )
@@ -80,13 +76,7 @@ acceptance_test_suite(
     argsmap = goargs(),
     builder = "//builders/go:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "go118": "//builders/go:builder_22.tar",
-        "go119": "//builders/go:builder_22.tar",
-        "go120": "//builders/go:builder_22.tar",
-        "go121": "//builders/go:builder_22.tar",
-        "go122": "//builders/go:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/go:appengine",
     versions = gae_runtime_versions,
 )
@@ -101,13 +91,7 @@ acceptance_test_suite(
     argsmap = goargs("$${_CANDIDATE_NAME}"),
     builder = "//builders/go:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "go118": "//builders/go:builder_22.tar",
-        "go119": "//builders/go:builder_22.tar",
-        "go120": "//builders/go:builder_22.tar",
-        "go121": "//builders/go:builder_22.tar",
-        "go122": "//builders/go:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/go:appengine",
     versions = gae_runtime_versions,
 )
@@ -122,13 +106,7 @@ acceptance_test_suite(
     argsmap = goargs("$${_CANDIDATE_NAME}", "$${_STACK}"),
     builder = "//builders/go:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "go118": "//builders/go:builder_22.tar",
-        "go119": "//builders/go:builder_22.tar",
-        "go120": "//builders/go:builder_22.tar",
-        "go121": "//builders/go:builder_22.tar",
-        "go122": "//builders/go:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/go:appengine",
     versions = gae_runtime_versions,
 )
@@ -157,13 +135,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/go:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "go118": "//builders/go:builder_22.tar",
-        "go119": "//builders/go:builder_22.tar",
-        "go120": "//builders/go:builder_22.tar",
-        "go121": "//builders/go:builder_22.tar",
-        "go122": "//builders/go:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/go:flex",
     versions = flex_runtime_versions,
 )

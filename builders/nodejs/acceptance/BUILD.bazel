@@ -9,6 +9,10 @@ exports_files([
     "args.bzl",
 ])
 
+RUNTIME_TO_BUILDER_MAP = {
+    "nodejs22": "//builders/nodejs:builder_22.tar",
+}
+
 create_acceptance_versions_dict_file(
     name = "gen_acceptance_targets_list",
     file = "acceptance_targets.dict",
@@ -41,9 +45,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "nodejs22": "//builders/nodejs:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/nodejs:generic",
     versions = gcp_runtime_versions,
 )
@@ -57,9 +59,7 @@ acceptance_test_suite(
     argsmap = nodejsargs(),
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "nodejs22": "//builders/nodejs:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/nodejs:appengine",
     versions = gae_runtime_versions,
 )
@@ -73,9 +73,7 @@ acceptance_test_suite(
     argsmap = nodejsargs("$${_CANDIDATE_NAME}"),
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "nodejs22": "//builders/nodejs:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/nodejs:appengine",
     versions = gae_runtime_versions,
 )
@@ -89,9 +87,7 @@ acceptance_test_suite(
     argsmap = nodejsargs("$${_CANDIDATE_NAME}", "$${_STACK}"),
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "nodejs22": "//builders/nodejs:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/nodejs:appengine",
     versions = gae_runtime_versions,
 )
@@ -103,9 +99,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "nodejs22": "//builders/nodejs:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/nodejs:functions",
     versions = gcf_runtime_versions,
 )
@@ -136,9 +130,7 @@ acceptance_test_suite(
     srcs = ["flex_test.go"],
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "nodejs22": "//builders/nodejs:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/nodejs:flex",
     versions = flex_runtime_versions,
 )
