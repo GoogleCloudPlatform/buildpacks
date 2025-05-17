@@ -3,7 +3,7 @@ aiosignal==1.2.0
 async-timeout==4.0.2
 attrs==21.4.0
 cachetools==4.2.4
-certifi==2021.10.8
+certifi==2024.7.4
 chardet==4.0.0
 charset-normalizer==2.0.10
 click==8.0.3
