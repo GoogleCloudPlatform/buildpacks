@@ -40,7 +40,7 @@ builder(
     builder_template = ":builder.toml.template",
     buildpacks = BUILDPACKS,
     descriptor = "builder.toml",
-    image = "gcp/nodejs",
+    image = "gcp/nodejs-22",
     stack = "google.gae.22",
 )
 
@@ -49,6 +49,6 @@ builder(
     builder_template = ":builder.toml.template",
     buildpacks = BUILDPACKS,
     descriptor = "builder.toml",
-    image = "gcp/nodejs",
+    image = "gcp/nodejs-24",
     stack = "google.24.full",
 )
