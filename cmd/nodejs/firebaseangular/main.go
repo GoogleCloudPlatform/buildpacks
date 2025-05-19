@@ -17,6 +17,7 @@
 package main
 
 import (
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/Masterminds/semver"
 
@@ -127,6 +128,15 @@ func buildFn(ctx *gcp.Context) error {
 
 	// pass angular version as environment variable that will configure the build for version matching
 	al.BuildEnvironment.Override(frameworkVersion, builderVersion)
+
+	// add angular and its version to the builder metadata
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.FrameworkName, "angular")
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.FrameworkVersion, buildermetadata.MetadataValue(builderVersion))
+
+	// add the adapter name and the adapter version to the builder metadata
+	adapterVersion := ctx.GetMetadata(al, nodejs.AngularVersionKey)
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.AdapterName, "@apphosting/adapter-angular")
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.AdapterVersion, buildermetadata.MetadataValue(adapterVersion))
 
 	// This env var indicates to the package manager buildpack that a different command needs to be run
 	nodejs.OverrideAngularBuildScript(al)

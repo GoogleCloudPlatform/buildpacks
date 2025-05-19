@@ -19,6 +19,7 @@ import (
 
 	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
+	bmd "github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 )
 
@@ -137,12 +138,13 @@ func TestDetect(t *testing.T) {
 
 func TestBuild(t *testing.T) {
 	testCases := []struct {
-		name             string
-		wantExitCode     int
-		wantCommands     []string
-		dontWantCommands []string
-		mocks            []*mockprocess.Mock
-		files            map[string]string
+		name                string
+		wantExitCode        int
+		wantCommands        []string
+		dontWantCommands    []string
+		wantBuilderMetadata map[bmd.MetadataID]bmd.MetadataValue
+		mocks               []*mockprocess.Mock
+		files               map[string]string
 	}{
 		{
 			name: "replace build script",
@@ -450,6 +452,37 @@ unsupported:
 			mocks: []*mockprocess.Mock{
 				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
+		}, {
+			name: "set builder metadata correctly",
+			files: map[string]string{
+				"package.json": `{
+					"scripts": {
+						"build": "apphosting-adapter-angular-build"
+					},
+					"dependencies": {
+						"@angular/core": "17.2.0"
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+						"node_modules/@angular/core": {
+							"version": "17.2.0"
+						},
+						"node_modules/@angular-devkit/build-angular": {
+							"version": "17.2.0"
+						}
+					}
+				}`,
+			},
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+			},
+			wantBuilderMetadata: map[bmd.MetadataID]bmd.MetadataValue{
+				bmd.FrameworkName:    bmd.MetadataValue("angular"),
+				bmd.FrameworkVersion: bmd.MetadataValue("17.2.0"),
+				bmd.AdapterName:      bmd.MetadataValue("@apphosting/adapter-angular"),
+				bmd.AdapterVersion:   bmd.MetadataValue(nodejs.PinnedAngularAdapterVersion),
+			},
 		},
 	}
 
@@ -477,6 +510,12 @@ unsupported:
 			for _, cmd := range tc.dontWantCommands {
 				if result.CommandExecuted(cmd) {
 					t.Errorf("didn't expect command %q to be executed, but it was, build output: %s", cmd, result.Output)
+				}
+			}
+
+			for id, m := range tc.wantBuilderMetadata {
+				if m != result.MetadataAdded()[id] {
+					t.Errorf("builder metadata %q mismatch, got: %s, want: %s", bmd.MetadataIDNames[id], result.MetadataAdded()[id], m)
 				}
 			}
 		})

@@ -58,6 +58,16 @@ const (
 	AdapterVersion   MetadataID = "6" // The adapter version used in the build.
 )
 
+// MetadataIDNames is a lookup map from MetadataID to its name.
+var MetadataIDNames = map[MetadataID]string{
+	IsUsingGenkit:    "IsUsingGenkit",
+	IsUsingGenAI:     "IsUsingGenAI",
+	FrameworkName:    "FrameworkName",
+	FrameworkVersion: "FrameworkVersion",
+	AdapterName:      "AdapterName",
+	AdapterVersion:   "AdapterVersion",
+}
+
 // GetValue returns the Metadata value with MetadataID id, or creates it if it doesn't exist.
 func (b *BuilderMetadata) GetValue(id MetadataID) MetadataValue {
 	if _, found := b.metadata[id]; !found {

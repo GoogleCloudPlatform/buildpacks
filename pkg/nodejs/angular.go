@@ -23,8 +23,8 @@ import (
 )
 
 var (
-	// angularVersionKey is the metadata key used to store the angular build adaptor version in the angular layer.
-	angularVersionKey = "version"
+	// AngularVersionKey is the metadata key used to store the angular build adapter version in the angular layer.
+	AngularVersionKey = "version"
 	// PinnedAngularAdapterVersion is the version of the angular adapter that will be used.
 	PinnedAngularAdapterVersion = "17.2.14"
 )
@@ -38,7 +38,7 @@ func InstallAngularBuildAdaptor(ctx *gcp.Context, al *libcnb.Layer, version stri
 	}
 
 	// Check the metadata in the cache layer to determine if we need to proceed.
-	metaVersion := ctx.GetMetadata(al, angularVersionKey)
+	metaVersion := ctx.GetMetadata(al, AngularVersionKey)
 	if version == metaVersion {
 		ctx.CacheHit(layerName)
 		ctx.Logf("angular adaptor cache hit: %q, %q, skipping installation.", version, metaVersion)
@@ -55,7 +55,7 @@ func InstallAngularBuildAdaptor(ctx *gcp.Context, al *libcnb.Layer, version stri
 	}
 
 	// Store layer flags and metadata.
-	ctx.SetMetadata(al, angularVersionKey, version)
+	ctx.SetMetadata(al, AngularVersionKey, version)
 	return nil
 }
 
