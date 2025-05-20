@@ -11,6 +11,7 @@ exports_files([
 
 RUNTIME_TO_BUILDER_MAP = {
     "nodejs22": "//builders/nodejs:builder_22.tar",
+    "nodejs24": "//builders/nodejs:builder_24.tar",
 }
 
 create_acceptance_versions_dict_file(
