@@ -22,8 +22,8 @@ import (
 )
 
 var (
-	// nextJsVersionKey is the metadata key used to store the nextjs build adaptor version in the nextjs layer.
-	nextJsVersionKey = "version"
+	// NextJsVersionKey is the metadata key used to store the nextjs build adaptor version in the nextjs layer.
+	NextJsVersionKey = "version"
 	// PinnedNextjsAdapterVersion is the version of the nextjs adapter that will be used.
 	PinnedNextjsAdapterVersion = "14.0.13"
 )
@@ -38,7 +38,7 @@ func InstallNextJsBuildAdaptor(ctx *gcp.Context, njsl *libcnb.Layer, njsVersion 
 	}
 
 	// Check the metadata in the cache layer to determine if we need to proceed.
-	metaVersion := ctx.GetMetadata(njsl, nextJsVersionKey)
+	metaVersion := ctx.GetMetadata(njsl, NextJsVersionKey)
 	if version == metaVersion {
 		ctx.CacheHit(layerName)
 		ctx.Logf("nextjs adaptor cache hit: %q, %q, skipping installation.", version, metaVersion)
@@ -55,7 +55,7 @@ func InstallNextJsBuildAdaptor(ctx *gcp.Context, njsl *libcnb.Layer, njsVersion 
 	}
 
 	// Store layer flags and metadata.
-	ctx.SetMetadata(njsl, nextJsVersionKey, version)
+	ctx.SetMetadata(njsl, NextJsVersionKey, version)
 	return nil
 }
 

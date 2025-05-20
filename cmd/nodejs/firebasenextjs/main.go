@@ -17,6 +17,7 @@
 package main
 
 import (
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
@@ -127,6 +128,15 @@ func buildFn(ctx *gcp.Context) error {
 
 	// pass nextjs version as environment variable that will configure the build for version matching
 	njsl.BuildEnvironment.Override(frameworkVersion, version)
+
+	// add nextjs and its version to the builder metadata
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.FrameworkName, "nextjs")
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.FrameworkVersion, buildermetadata.MetadataValue(version))
+
+	// add the adapter name and the adapter version to the builder metadata
+	adapterVersion := ctx.GetMetadata(njsl, nodejs.NextJsVersionKey)
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.AdapterName, "@apphosting/adapter-nextjs")
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.AdapterVersion, buildermetadata.MetadataValue(adapterVersion))
 
 	// This env var indicates to the package manager buildpack that a different command needs to be run
 	nodejs.OverrideNextjsBuildScript(njsl)

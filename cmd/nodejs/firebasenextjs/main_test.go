@@ -19,6 +19,7 @@ import (
 
 	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
+	bmd "github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 )
 
@@ -181,6 +182,7 @@ func TestBuild(t *testing.T) {
 		wantExitCode         int
 		files                map[string]string
 		shouldInstallAdapter bool
+		wantBuilderMetadata  map[bmd.MetadataID]bmd.MetadataValue
 	}{
 		{
 			name: "replace build script",
@@ -399,6 +401,33 @@ unsupported:
 			},
 			shouldInstallAdapter: true,
 		},
+		{
+			name: "set builder metadata correctly",
+			files: map[string]string{
+				"package.json": `{
+					"scripts": {
+						"build": "apphosting-adapter-nextjs-build"
+					},
+					"dependencies": {
+						"next": "13.0.0"
+					}
+				}`,
+				"package-lock.json": `{
+					"packages": {
+						"node_modules/next": {
+							"version": "13.0.0"
+						}
+					}
+				}`,
+			},
+			shouldInstallAdapter: true,
+			wantBuilderMetadata: map[bmd.MetadataID]bmd.MetadataValue{
+				bmd.FrameworkName:    bmd.MetadataValue("nextjs"),
+				bmd.FrameworkVersion: bmd.MetadataValue("13.0.0"),
+				bmd.AdapterName:      bmd.MetadataValue("@apphosting/adapter-nextjs"),
+				bmd.AdapterVersion:   bmd.MetadataValue(nodejs.PinnedNextjsAdapterVersion),
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -428,6 +457,12 @@ unsupported:
 				}
 				if result.ExitCode == 0 && result.CommandExecuted(cmd) && !tc.shouldInstallAdapter {
 					t.Errorf("didn't expect command %q to be executed, but it was, build output: %s", cmd, result.Output)
+				}
+			}
+
+			for id, m := range tc.wantBuilderMetadata {
+				if m != result.MetadataAdded()[id] {
+					t.Errorf("builder metadata %q mismatch, got: %s, want: %s", bmd.MetadataIDNames[id], result.MetadataAdded()[id], m)
 				}
 			}
 		})
