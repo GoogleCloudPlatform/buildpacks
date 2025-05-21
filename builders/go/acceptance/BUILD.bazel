@@ -14,6 +14,8 @@ RUNTIME_TO_BUILDER_MAP = {
     "go120": "//builders/go:builder_22.tar",
     "go121": "//builders/go:builder_22.tar",
     "go122": "//builders/go:builder_22.tar",
+    "go123": "//builders/go:builder_22.tar",
+    "go124": "//builders/go:builder_22.tar",
 }
 
 create_acceptance_versions_dict_file(
