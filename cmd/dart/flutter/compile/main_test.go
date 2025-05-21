@@ -17,7 +17,7 @@ package main
 import (
 	"testing"
 
-	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 )
 
 func TestDetect(t *testing.T) {
@@ -27,26 +27,16 @@ func TestDetect(t *testing.T) {
 		want  int
 	}{
 		{
-			name: "with pubspec",
+			name: ".dart files",
 			files: map[string]string{
-				"foo.dart":     "",
-				"pubspec.yaml": "",
-			},
-			want: 0,
-		},
-		{
-			name: "without pubspec",
-			files: map[string]string{
-				"foo.dart": "",
-			},
-			want: 0,
-		},
-		{
-			name: "without dart files",
-			files: map[string]string{
-				"index.txt": "",
+				"main.dart": "",
 			},
 			want: 100,
+		},
+		{
+			name:  "no files",
+			files: map[string]string{},
+			want:  100,
 		},
 		{
 			name: "with flutter",
@@ -58,9 +48,27 @@ name: example_flutter_app
 dependencies:
   flutter:       # Required for every Flutter project
     sdk: flutter # Required for every Flutter project
+
+buildpack:
+  server: exe
+  static: app
+`,
+				"exe/pubspec.yaml": `
+name: example_server
+
+dependencies:
+	build_runner: 1.0.0
+`,
+				"app/pubspec.yaml": `
+name: example_flutter_app
+
+dependencies:
+  flutter:       # Required for every Flutter project
+    sdk: flutter # Required for every Flutter project
+	build_runner: 1.0.0
 `,
 			},
-			want: 100, // The dart-sdk cannot compile this project.
+			want: 0,
 		},
 	}
 	for _, tc := range testCases {

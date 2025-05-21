@@ -17,6 +17,18 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   uri = "dart/sdk.tgz"
 
 [[buildpacks]]
+  id = "google.dart.flutter.compile"
+  uri = "flutter/compile.tgz"
+
+[[buildpacks]]
+  id = "google.dart.flutter.pub"
+  uri = "flutter/pub.tgz"
+
+[[buildpacks]]
+  id = "google.dart.flutter.sdk"
+  uri = "flutter/sdk.tgz"
+
+[[buildpacks]]
   id = "google.dotnet.runtime"
   uri = "dotnet/runtime.tgz"
 
@@ -169,6 +181,21 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.dart.compile"
+
+###########
+# Flutter #
+###########
+
+[[order]]
+
+  [[order.group]]
+    id = "google.dart.flutter.sdk"
+
+  [[order.group]]
+    id = "google.dart.flutter.pub"
+
+  [[order.group]]
+    id = "google.dart.flutter.compile"
 
 ######
 # Go #

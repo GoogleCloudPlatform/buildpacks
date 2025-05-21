@@ -41,8 +41,8 @@ type releaseInfo struct {
 
 // pubspec represents the contents of a pubspec.yaml.
 type pubspec struct {
-	Dependencies    map[string]string `yaml:"dependencies"`
-	DevDependencies map[string]string `yaml:"dev_dependencies"`
+	Dependencies    map[string]any `yaml:"dependencies"`
+	DevDependencies map[string]any `yaml:"dev_dependencies"`
 }
 
 // DetectSDKVersion detects which SDK version should be installed from the environment or fetches

@@ -39,28 +39,7 @@ func TestDetect(t *testing.T) {
 			files: map[string]string{
 				"foo.dart": "",
 			},
-			want: 0,
-		},
-		{
-			name: "without dart files",
-			files: map[string]string{
-				"index.txt": "",
-			},
 			want: 100,
-		},
-		{
-			name: "with flutter",
-			files: map[string]string{
-				"foo.dart": "",
-				"pubspec.yaml": `
-name: example_flutter_app
-
-dependencies:
-  flutter:       # Required for every Flutter project
-    sdk: flutter # Required for every Flutter project
-`,
-			},
-			want: 100, // The dart-sdk cannot compile this project.
 		},
 	}
 	for _, tc := range testCases {

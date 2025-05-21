@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements dart/sdk buildpack.
-// The sdk buildpack installs the Dart SDK.
+// Implements flutter/sdk buildpack.
+// The sdk buildpack installs the Fart SDK.
 package main
 
 import (
@@ -25,8 +25,8 @@ import (
 )
 
 const (
-	dartLayer      = "dart"
-	defaultVersion = "2.16.0"
+	flutterLayer   = "flutter"
+	defaultVersion = "3.29.3"
 )
 
 func main() {
@@ -34,7 +34,7 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if result := runtime.CheckOverride("dart"); result != nil {
+	if result := runtime.CheckOverride("flutter"); result != nil {
 		return result, nil
 	}
 	pubspecExists, err := ctx.FileExists("pubspec.yaml")
@@ -46,41 +46,34 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		if err != nil {
 			return nil, err
 		}
-		if flutter {
-			return gcp.OptOut("pubspec.yaml haa a flutter dependency"), nil
+		if !flutter {
+			return gcp.OptOut("pubspec.yaml does not include flutter dependency"), nil
 		}
 		return gcp.OptInFileFound("pubspec.yaml"), nil
 	}
-	dartFiles, err := ctx.Glob("*.dart")
-	if err != nil {
-		return nil, fmt.Errorf("finding .dart files: %w", err)
-	}
-	if len(dartFiles) > 0 {
-		return gcp.OptIn("found .dart files"), nil
-	}
 
-	return gcp.OptOut("neither pubspec.yaml nor any .dart files found"), nil
+	return gcp.OptOut("no pubspec.yaml file found"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {
-	version, err := dart.DetectSDKVersion()
+	version, archive, err := dart.DetectFlutterSDKArchive()
 	if err != nil {
 		return err
 	}
-	ctx.Logf("Using Dart SDK version %s", version)
+	ctx.Logf("Using Flutter SDK version %s", version)
 
-	// The Dart SDK is only required at compile time. It is not included in the run image.
-	drl, err := ctx.Layer(dartLayer, gcp.BuildLayer, gcp.CacheLayer)
+	// The Flutter SDK is only required at compile time. It is not included in the run image.
+	drl, err := ctx.Layer(flutterLayer, gcp.BuildLayer, gcp.CacheLayer)
 	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", dartLayer, err)
+		return fmt.Errorf("creating %v layer: %w", flutterLayer, err)
 	}
 
 	if runtime.IsCached(ctx, drl, version) {
-		ctx.CacheHit(dartLayer)
+		ctx.CacheHit(flutterLayer)
 		ctx.Logf("Runtime cache hit, skipping installation.")
 		return nil
 	}
-	ctx.CacheMiss(dartLayer)
+	ctx.CacheMiss(flutterLayer)
 
-	return runtime.InstallDartSDK(ctx, drl, version)
+	return runtime.InstallFlutterSDK(ctx, drl, version, archive)
 }

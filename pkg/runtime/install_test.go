@@ -64,7 +64,7 @@ func TestInstallDartSDK(t *testing.T) {
 			ctx := gcp.NewContext()
 			l := &libcnb.Layer{
 				Path:     t.TempDir(),
-				Metadata: map[string]interface{}{},
+				Metadata: map[string]any{},
 			}
 			testserver.New(
 				t,
@@ -74,6 +74,67 @@ func TestInstallDartSDK(t *testing.T) {
 
 			version := "2.15.1"
 			err := InstallDartSDK(ctx, l, version)
+
+			if tc.wantError && err == nil {
+				t.Fatalf("Expecting error but got nil")
+			}
+			if !tc.wantError && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if tc.wantFile != "" {
+				fp := filepath.Join(l.Path, tc.wantFile)
+				if _, err := os.Stat(fp); err != nil {
+					t.Errorf("Failed to extract. Missing file: %s (%v)", fp, err)
+				}
+				if l.Metadata["version"] != version {
+					t.Errorf("Layer Metadata.version = %q, want %q", l.Metadata["version"], version)
+				}
+			}
+		})
+	}
+}
+
+func TestInstallFlutterSDK(t *testing.T) {
+	testCases := []struct {
+		name         string
+		httpStatus   int
+		responseFile string
+		wantFile     string
+		wantError    bool
+	}{
+		{
+			name:         "successful install",
+			responseFile: "testdata/dummy-flutter-sdk.tar.xz",
+			wantFile:     "bin/flutter",
+		},
+		{
+			name:       "invalid version",
+			httpStatus: http.StatusNotFound,
+			wantError:  true,
+		},
+		{
+			name:       "corrupt tar file",
+			httpStatus: http.StatusOK,
+			wantError:  true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext()
+			l := &libcnb.Layer{
+				Path:     t.TempDir(),
+				Metadata: map[string]any{},
+			}
+			testserver.New(
+				t,
+				testserver.WithStatus(tc.httpStatus),
+				testserver.WithFile(testdata.MustGetPath(tc.responseFile)),
+				testserver.WithMockURL(&flutterSdkURL))
+
+			version := "3.29.3"
+			err := InstallFlutterSDK(ctx, l, version, "stable/linux/flutter_linux_3.29.3-stable.tar.xz")
 
 			if tc.wantError && err == nil {
 				t.Fatalf("Expecting error but got nil")
@@ -174,7 +235,7 @@ func TestInstallRuby(t *testing.T) {
 
 			layer := &libcnb.Layer{
 				Path:     t.TempDir(),
-				Metadata: map[string]interface{}{},
+				Metadata: map[string]any{},
 			}
 			layer.Cache = true
 			if tc.stackID == "" {

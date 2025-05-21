@@ -6,6 +6,7 @@ go_library(
     name = "dart",
     srcs = [
         "dart.go",
+        "flutter.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
@@ -24,6 +25,7 @@ go_test(
     name = "dart_test",
     srcs = [
         "dart_test.go",
+        "flutter_test.go",
     ],
     embed = [":dart"],
     rundir = ".",
