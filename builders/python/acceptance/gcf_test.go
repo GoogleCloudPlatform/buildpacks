@@ -29,34 +29,39 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:          "function without framework",
-			App:           "without_framework",
-			MustNotOutput: []string{`WARNING: You are using pip version`},
+			Name:                       "function without framework",
+			App:                        "without_framework",
+			MustNotOutput:              []string{`WARNING: You are using pip version`},
+			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
-			Name:          "function without framework and allow injection",
-			App:           "without_framework",
-			Env:           []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=False"},
-			MustNotOutput: []string{`WARNING: You are using pip version`},
+			Name:                       "function without framework and allow injection",
+			App:                        "without_framework",
+			Env:                        []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=False"},
+			MustNotOutput:              []string{`WARNING: You are using pip version`},
+			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
-			Name:            "function with dependencies",
-			App:             "with_dependencies",
-			EnableCacheTest: true,
+			Name:                       "function with dependencies",
+			App:                        "with_dependencies",
+			EnableCacheTest:            true,
+			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
 			Name: "function with framework",
 			App:  "with_framework",
 		},
 		{
-			Name: "function using http declarative function signatures",
-			App:  "use_declarative",
+			Name:                       "function using http declarative function signatures",
+			App:                        "use_declarative",
+			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
-			Name:        "function using CloudEvent declarative function signatures",
-			App:         "use_cloud_event_declarative",
-			MustMatch:   "OK",
-			RequestType: acceptance.CloudEventType,
+			Name:                       "function using CloudEvent declarative function signatures",
+			App:                        "use_cloud_event_declarative",
+			MustMatch:                  "OK",
+			RequestType:                acceptance.CloudEventType,
+			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
 			Name: "function with framework and dependency bin",
@@ -65,16 +70,18 @@ func TestAcceptance(t *testing.T) {
 			VersionInclusionConstraint: "< 3.13.0",
 		},
 		{
-			Name:   "function with runtime env var",
-			App:    "with_env_var",
-			RunEnv: []string{"FOO=foo"},
+			Name:                       "function with runtime env var",
+			App:                        "with_env_var",
+			RunEnv:                     []string{"FOO=foo"},
+			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
 			Name: "function has right number of dependencies",
 			App:  "list_dependencies",
 			// The list_dependencies app has a dependency on the libexpat OS package which isn't installed
 			// in the min run image.
-			SkipStacks: []string{"google.min.22"},
+			SkipStacks:                 []string{"google.min.22"},
+			VersionInclusionConstraint: ">= 3.8.0",
 		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
