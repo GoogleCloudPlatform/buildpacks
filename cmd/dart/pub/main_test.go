@@ -35,6 +35,20 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
+			name: "with flutter pubspec",
+			files: map[string]string{
+				"foo.dart": "",
+				"pubspec.yaml": `
+name: example_flutter_app
+
+dependencies:
+	flutter:
+		sdk: flutter
+`,
+			},
+			want: 0,
+		},
+		{
 			name: "without pubspec",
 			files: map[string]string{
 				"foo.dart": "",

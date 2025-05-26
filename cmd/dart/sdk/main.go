@@ -25,8 +25,10 @@ import (
 )
 
 const (
-	dartLayer      = "dart"
-	defaultVersion = "2.16.0"
+	dartLayer             = "dart"
+	defaultVersion        = "2.16.0"
+	flutterLayer          = "flutter"
+	defaultFlutterVersion = "3.29.3"
 )
 
 func main() {
@@ -42,13 +44,6 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return nil, err
 	}
 	if pubspecExists {
-		flutter, err := dart.IsFlutter(ctx.ApplicationRoot())
-		if err != nil {
-			return nil, err
-		}
-		if flutter {
-			return gcp.OptOut("pubspec.yaml haa a flutter dependency"), nil
-		}
 		return gcp.OptInFileFound("pubspec.yaml"), nil
 	}
 	dartFiles, err := ctx.Glob("*.dart")
@@ -63,6 +58,14 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	flutter, err := dart.IsFlutter(ctx.ApplicationRoot())
+	if err == nil && flutter {
+		return buildFlutterFn(ctx)
+	}
+	return buildDartFn(ctx)
+}
+
+func buildDartFn(ctx *gcp.Context) error {
 	version, err := dart.DetectSDKVersion()
 	if err != nil {
 		return err
@@ -83,4 +86,27 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.CacheMiss(dartLayer)
 
 	return runtime.InstallDartSDK(ctx, drl, version)
+}
+
+func buildFlutterFn(ctx *gcp.Context) error {
+	version, archive, err := dart.DetectFlutterSDKArchive()
+	if err != nil {
+		return err
+	}
+	ctx.Logf("Using Flutter SDK version %s", version)
+
+	// The Flutter SDK is only required at compile time. It is not included in the run image.
+	drl, err := ctx.Layer(flutterLayer, gcp.BuildLayer, gcp.CacheLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", flutterLayer, err)
+	}
+
+	if runtime.IsCached(ctx, drl, version) {
+		ctx.CacheHit(flutterLayer)
+		ctx.Logf("Runtime cache hit, skipping installation.")
+		return nil
+	}
+	ctx.CacheMiss(flutterLayer)
+
+	return runtime.InstallFlutterSDK(ctx, drl, version, archive)
 }

@@ -36,7 +36,7 @@ go_test(
         "-test-data=$(location //builders/testdata/dart:generic)",
         "-structure-test-config=$(location :config.yaml)",
         "-builder-source=$(location //builders/gcp/base:builder.tar)",
-        "-builder-prefix=gcpbase-dotnet-test-",
+        "-builder-prefix=gcpbase-dart-test-",
     ],
     data = [
         ":config.yaml",

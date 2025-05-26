@@ -38,6 +38,38 @@ func TestDetect(t *testing.T) {
 			files: map[string]string{},
 			want:  100,
 		},
+		{
+			name: "with flutter",
+			files: map[string]string{
+				"foo.dart": "",
+				"pubspec.yaml": `
+name: example_flutter_app
+
+dependencies:
+  flutter:       # Required for every Flutter project
+    sdk: flutter # Required for every Flutter project
+
+buildpack:
+  server: exe
+  static: app
+`,
+				"exe/pubspec.yaml": `
+name: example_server
+
+dependencies:
+	build_runner: 1.0.0
+`,
+				"app/pubspec.yaml": `
+name: example_flutter_app
+
+dependencies:
+  flutter:       # Required for every Flutter project
+    sdk: flutter # Required for every Flutter project
+	build_runner: 1.0.0
+`,
+			},
+			want: 0,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -25,7 +25,10 @@ go_binary(
         "-s",
         "-w",
     ],
-    deps = ["//pkg/gcpbuildpack"],
+    deps = [
+        "//pkg/dart",
+        "//pkg/gcpbuildpack",
+    ],
 )
 
 go_test(

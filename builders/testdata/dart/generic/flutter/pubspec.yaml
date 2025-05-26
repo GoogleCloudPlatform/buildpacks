@@ -1,0 +1,23 @@
+name: sample_flutter_web
+
+workspace:
+  - http
+  - app
+
+environment:
+  sdk: ">=3.7.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.4.0
+  shelf: ^1.4.0
+  shelf_router: ^1.1.0
+
+buildpack:
+  server: http
+  static: app
+  prebuild: |
+    echo "prebuild flutter!"
+  postbuild: |
+    echo "post build flutter!"

@@ -219,3 +219,94 @@ dependencies:
 		})
 	}
 }
+
+func TestGetPubspec(t *testing.T) {
+	testCases := []struct {
+		name    string
+		pubspec string
+		want    *Buildpack
+		wantErr bool
+	}{
+		{
+			name: "no pubspec.yaml",
+		},
+		{
+			name:    "no dependencies",
+			pubspec: `name: test`,
+		},
+		{
+			name: "no buildpack key",
+			pubspec: `
+name: example_app
+
+dependencies:
+  functions_framework: ^0.4.0
+`,
+		},
+		{
+			name: "with buildpack defaults",
+			pubspec: `
+name: example_json_function
+
+dependencies:
+  flutter:
+    sdk: flutter
+buildpack:
+  invalid_key: test
+`,
+			want: &Buildpack{
+				Server: ptr("server"),
+				Static: ptr("static"),
+			},
+		},
+		{
+			name: "with buildpack specifics",
+			pubspec: `
+name: example_json_function
+
+dependencies:
+  flutter:
+    sdk: flutter
+buildpack:
+  server: server_test
+  static: static_test
+`,
+			want: &Buildpack{
+				Server: ptr("server_test"),
+				Static: ptr("static_test"),
+			},
+		},
+		{
+			name:    "invalid yaml",
+			pubspec: "\t",
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if tc.pubspec != "" {
+				path := filepath.Join(dir, "pubspec.yaml")
+				if err := os.WriteFile(path, []byte(tc.pubspec), 0744); err != nil {
+					t.Fatalf("writing %s: %v", path, err)
+				}
+			}
+			got, err := GetPubspec(dir)
+			if tc.wantErr == (err == nil) {
+				t.Errorf("GetPubspec(%q) got error: %v, want err? %t", dir, err, tc.wantErr)
+			}
+			if (tc.want == nil && got.Buildpack != nil) || (tc.want != nil && got.Buildpack == nil) {
+				t.Errorf("GetPubspec(%q) = want/got nil missmatch", dir)
+			}
+			if got.Buildpack != nil && *got.Buildpack.Server != *tc.want.Server {
+				t.Errorf("GetPubspec(%q) = %q, want server %q", dir, *got.Buildpack.Server, *tc.want.Server)
+			}
+			if got.Buildpack != nil && *got.Buildpack.Static != *tc.want.Static {
+				t.Errorf("GetPubspec(%q) = %q, want static %q", dir, *got.Buildpack.Static, *tc.want.Static)
+			}
+		})
+	}
+}
+
+func ptr(s string) *string { return &s }

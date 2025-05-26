@@ -191,16 +191,17 @@ func GetPubspec(dir string) (Pubspec, error) {
 	if err := yaml.Unmarshal(rawpjs, &ps); err != nil {
 		return Pubspec{}, gcp.UserErrorf("unmarshalling pubspec.yaml: %v", err)
 	}
-	if ps.Buildpack == nil {
-		ps.Buildpack = &Buildpack{}
-	}
-	if ps.Buildpack.Server == nil {
-		server := "server"
-		ps.Buildpack.Server = &server
-	}
-	if ps.Buildpack.Static == nil {
-		static := "static"
-		ps.Buildpack.Static = &static
+
+	if ps.Buildpack != nil {
+		// Only insure defaults if the buildpack key is defined.
+		if ps.Buildpack.Server == nil {
+			server := "server"
+			ps.Buildpack.Server = &server
+		}
+		if ps.Buildpack.Static == nil {
+			static := "static"
+			ps.Buildpack.Static = &static
+		}
 	}
 	return ps, nil
 }

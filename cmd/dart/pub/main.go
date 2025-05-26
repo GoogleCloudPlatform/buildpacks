@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/dart"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -52,6 +53,16 @@ func buildFn(ctx *gcp.Context) error {
 	if err := os.Setenv(pubCacheEnv, ml.Path); err != nil {
 		return fmt.Errorf("setting env %s=%s: %w", pubCacheEnv, pubLayer, err)
 	}
+
+	// Must use `flutter` for pub get if the project has a Flutter dependency.
+	flutter, err := dart.IsFlutter(ctx.ApplicationRoot())
+	if err == nil && flutter {
+		if _, err := ctx.Exec([]string{"flutter", "pub", "get"}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+		return nil
+	}
+
 	if _, err := ctx.Exec([]string{"dart", "pub", "get"}, gcp.WithUserAttribution); err != nil {
 		return err
 	}
