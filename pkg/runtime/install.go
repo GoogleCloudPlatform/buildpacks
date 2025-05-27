@@ -62,9 +62,9 @@ const (
 	CanonicalJDK InstallableRuntime = "canonicaljdk"
 	Go           InstallableRuntime = "go"
 
-	ubuntu1804 string = "ubuntu1804"
-	ubuntu2204 string = "ubuntu2204"
-	ubuntu2404 string = "ubuntu2404"
+	Ubuntu1804 string = "ubuntu1804"
+	Ubuntu2204 string = "ubuntu2204"
+	Ubuntu2404 string = "ubuntu2404"
 )
 
 // User friendly display name of all runtime (e.g. for use in error message).
@@ -81,14 +81,14 @@ var runtimeNames = map[InstallableRuntime]string{
 
 // stackToOS contains the mapping of Stack to OS.
 var stackToOS = map[string]string{
-	"google":                 ubuntu1804,
-	"google.gae.18":          ubuntu1804,
-	"google.22":              ubuntu2204,
-	"google.gae.22":          ubuntu2204,
-	"google.min.22":          ubuntu2204,
-	"firebase.apphosting.22": ubuntu2204,
-	"google.24":              ubuntu2404,
-	"google.24.full":         ubuntu2404,
+	"google":                 Ubuntu1804,
+	"google.gae.18":          Ubuntu1804,
+	"google.22":              Ubuntu2204,
+	"google.gae.22":          Ubuntu2204,
+	"google.min.22":          Ubuntu2204,
+	"firebase.apphosting.22": Ubuntu2204,
+	"google.24":              Ubuntu2404,
+	"google.24.full":         Ubuntu2404,
 }
 
 var languageRuntimes = []InstallableRuntime{Nodejs, PHP, Python, Ruby, OpenJDK, CanonicalJDK, Go, DotnetSDK, AspNetCore}
@@ -105,7 +105,7 @@ func OSForStack(ctx *gcp.Context) string {
 	os, ok := stackToOS[ctx.StackID()]
 	if !ok {
 		ctx.Warnf("unknown stack ID %q, falling back to Ubuntu 18.04", ctx.StackID())
-		os = ubuntu1804
+		os = Ubuntu1804
 	}
 	return os
 }

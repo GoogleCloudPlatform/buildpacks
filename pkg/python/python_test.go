@@ -31,8 +31,8 @@ func TestRuntimeVersion(t *testing.T) {
 		wantErr        bool
 	}{
 		{
-			name: "default to *",
-			want: "*",
+			name: "default to latest for default stack (ubuntu1804 is default for unit tests)",
+			want: "3.9.*",
 		},
 		{
 			name:    "version from GOOGLE_PYTHON_VERSION",

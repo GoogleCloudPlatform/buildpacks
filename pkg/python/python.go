@@ -27,6 +27,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/buildpacks/libcnb/v2"
 )
 
@@ -67,6 +68,12 @@ var (
 	RequirementsProvidesPlan = libcnb.BuildPlan{Provides: RequirementsProvides}
 	// RequirementsProvidesRequiresPlan is a build plan returned by buildpacks that consume requirements.txt.
 	RequirementsProvidesRequiresPlan = libcnb.BuildPlan{Provides: RequirementsProvides, Requires: RequirementsRequires}
+
+	// latestPythonVersionPerStack is the latest Python version per stack to use if not specified by the user.
+	latestPythonVersionPerStack = map[string]string{
+		runtime.Ubuntu1804: "3.9.*",
+		runtime.Ubuntu2204: "3.13.*",
+	}
 )
 
 // Version returns the installed version of Python.
@@ -101,9 +108,15 @@ func RuntimeVersion(ctx *gcp.Context, dir string) (string, error) {
 		return v, nil
 	}
 
-	// This will use the highest listed at https://dl.google.com/runtimes/python/version.json.
-	ctx.Logf("Python version not specified, using the latest available version.")
-	return "*", nil
+	os := runtime.OSForStack(ctx)
+
+	latestPythonVersionForStack, ok := latestPythonVersionPerStack[os]
+	if !ok {
+		return "", gcp.UserErrorf("invalid stack for Python runtime: %q", os)
+	}
+
+	ctx.Logf("Python version not specified, using the latest available Python runtime for the stack %q", os)
+	return latestPythonVersionForStack, nil
 }
 
 func versionFromFile(ctx *gcp.Context, dir string) (string, error) {
