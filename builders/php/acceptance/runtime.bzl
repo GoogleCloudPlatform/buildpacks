@@ -28,3 +28,14 @@ flex_runtimes = {
     "php83": "8.3.21",
     "php84": "8.4.7",
 }
+
+version_to_stack = {
+    "php55": "google-18-full",
+    "php72": "google-18-full",
+    "php73": "google-18-full",
+    "php74": "google-18-full",
+    "php81": "google-18-full",
+    "php82": "google-22-full",
+    "php83": "google-22-full",
+    "php84": "google-22-full",
+}

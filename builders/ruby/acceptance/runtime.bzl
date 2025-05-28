@@ -26,3 +26,13 @@ flex_runtimes = {
     "ruby33": "3.3.8",
     "ruby34": "3.4.4",
 }
+
+version_to_stack = {
+    "ruby25": "google-18-full",
+    "ruby26": "google-18-full",
+    "ruby27": "google-18-full",
+    "ruby30": "google-18-full",
+    "ruby32": "google-22-full",
+    "ruby33": "google-22-full",
+    "ruby34": "google-22-full",
+}

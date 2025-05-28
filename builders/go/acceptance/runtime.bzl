@@ -40,3 +40,19 @@ flex_runtimes = {
     "go123": "1.23.9",
     "go124": "1.24.3",
 }
+
+version_to_stack = {
+    "go111": "google-18-full",
+    "go112": "google-18-full",
+    "go113": "google-18-full",
+    "go114": "google-18-full",
+    "go115": "google-18-full",
+    "go116": "google-18-full",
+    "go118": "google-22-full",
+    "go119": "google-22-full",
+    "go120": "google-22-full",
+    "go121": "google-22-full",
+    "go122": "google-22-full",
+    "go123": "google-22-full",
+    "go124": "google-22-full",
+}

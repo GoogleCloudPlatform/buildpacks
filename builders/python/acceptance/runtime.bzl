@@ -31,3 +31,14 @@ flex_runtimes = {
     "python312": "3.12.10",
     "python313": "3.13.3",
 }
+
+version_to_stack = {
+    "python27": "google-18-full",
+    "python310": "google-22-full",
+    "python311": "google-22-full",
+    "python312": "google-22-full",
+    "python313": "google-22-full",
+    "python37": "google-18-full",
+    "python38": "google-18-full",
+    "python39": "google-18-full",
+}
