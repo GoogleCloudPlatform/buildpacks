@@ -2,10 +2,22 @@
 This directory contains the definition of the Java builder.
 
 ## Build the Image
-To build the builder image, run:
+To build the builder image for ubuntu-18 builder, run:
 
 ```bash
 bazel build //builders/java:builder.image
+```
+
+To build the builder image for ubuntu-22 builder, run:
+
+```bash
+bazel build //builders/java:builder_22.image
+```
+
+To build the builder image for ubuntu-24 builder, run:
+
+```bash
+bazel build //builders/java:builder_24.image
 ```
 
 ## Build a Test Application

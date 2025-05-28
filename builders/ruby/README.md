@@ -15,6 +15,12 @@ To build the builder image for ubuntu-22 builder, run:
 bazel build //builders/ruby:builder_22.image
 ```
 
+To build the builder image for ubuntu-24 builder, run:
+
+```bash
+bazel build //builders/ruby:builder_24.image
+```
+
 ## Build a Test Application
 To build the sample application [simple](../testdata/ruby/generic/simple/), run:
 

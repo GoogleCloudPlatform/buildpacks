@@ -37,6 +37,15 @@ builder(
     builder_template = ":builder.toml.template",
     buildpacks = BUILDPACKS,
     descriptor = "builder.toml",
-    image = "gcp/python",
+    image = "gcp/python-22",
     stack = "google.gae.22",
+)
+
+builder(
+    name = "builder_24",
+    builder_template = ":builder.toml.template",
+    buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
+    image = "gcp/python-24",
+    stack = "google.24.full",
 )

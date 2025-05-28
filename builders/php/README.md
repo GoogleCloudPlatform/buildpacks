@@ -14,6 +14,12 @@ To build the builder image for ubuntu-22 builder, run:
 bazel build //builders/php:builder_22.image
 ```
 
+To build the builder image for ubuntu-24 builder, run:
+
+```bash
+bazel build //builders/php:builder_24.image
+```
+
 ## Acceptance Tests
 To run the acceptance tests across all the products, run:
 
