@@ -115,6 +115,7 @@ def _new_go_test(name, srcs, args, data, deps, **kwargs):
             "local",
         ],
         gc_linkopts = [],
+        target_compatible_with = [],
         deps = deps,
         **kwargs
     )
