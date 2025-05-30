@@ -20,7 +20,10 @@ import (
 	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 	bmd "github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
+)
+
+const (
+	mockLatestAngularAdapterVersion = "17.2.14"
 )
 
 func TestDetect(t *testing.T) {
@@ -170,10 +173,11 @@ func TestBuild(t *testing.T) {
 			}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
 			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-angular@" + nodejs.PinnedAngularAdapterVersion,
+				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
 			},
 		},
 		{
@@ -196,7 +200,11 @@ func TestBuild(t *testing.T) {
 				}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+			},
+			wantCommands: []string{
+				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
 			},
 		},
 		{
@@ -222,7 +230,11 @@ func TestBuild(t *testing.T) {
 				}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+			},
+			wantCommands: []string{
+				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
 			},
 		},
 		{
@@ -248,7 +260,8 @@ func TestBuild(t *testing.T) {
 				}`,
 			},
 			dontWantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-angular@" + nodejs.PinnedAngularAdapterVersion,
+				"npm view @apphosting/adapter-angular version",
+				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
 			},
 		},
 		{
@@ -294,7 +307,11 @@ func TestBuild(t *testing.T) {
 			}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+			},
+			wantCommands: []string{
+				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
 			},
 			wantExitCode: 0,
 		},
@@ -322,7 +339,11 @@ func TestBuild(t *testing.T) {
 				}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+			},
+			wantCommands: []string{
+				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
 			},
 		},
 		{
@@ -346,7 +367,11 @@ func TestBuild(t *testing.T) {
 				}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+			},
+			wantCommands: []string{
+				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
 			},
 		},
 		{
@@ -367,7 +392,11 @@ dependencies:
 `,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+			},
+			wantCommands: []string{
+				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
 			},
 		},
 		{
@@ -386,7 +415,11 @@ dependencies:
   version: 17.2.0`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+			},
+			wantCommands: []string{
+				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
 			},
 		},
 		{
@@ -406,7 +439,11 @@ dependencies:
 	`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+			},
+			wantCommands: []string{
+				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
 			},
 		}, {
 			name: "read supported concrete version from package.json with unsupported lock file format",
@@ -428,7 +465,11 @@ unsupported:
 `,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+			},
+			wantCommands: []string{
+				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
 			},
 		}, {
 			name: "read version range from package.json with unsupported lock file format",
@@ -450,7 +491,11 @@ unsupported:
 `,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+			},
+			wantCommands: []string{
+				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
 			},
 		}, {
 			name: "set builder metadata correctly",
@@ -475,13 +520,17 @@ unsupported:
 				}`,
 			},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+nodejs.PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+			},
+			wantCommands: []string{
+				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
 			},
 			wantBuilderMetadata: map[bmd.MetadataID]bmd.MetadataValue{
 				bmd.FrameworkName:    bmd.MetadataValue("angular"),
 				bmd.FrameworkVersion: bmd.MetadataValue("17.2.0"),
 				bmd.AdapterName:      bmd.MetadataValue("@apphosting/adapter-angular"),
-				bmd.AdapterVersion:   bmd.MetadataValue(nodejs.PinnedAngularAdapterVersion),
+				bmd.AdapterVersion:   bmd.MetadataValue(mockLatestAngularAdapterVersion),
 			},
 		},
 	}

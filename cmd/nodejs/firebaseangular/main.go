@@ -122,7 +122,7 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
-	if err = nodejs.InstallAngularBuildAdaptor(ctx, al, builderVersion); err != nil {
+	if err = nodejs.InstallAngularBuildAdapter(ctx, al); err != nil {
 		return err
 	}
 
