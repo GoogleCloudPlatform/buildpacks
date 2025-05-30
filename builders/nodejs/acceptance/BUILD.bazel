@@ -1,5 +1,5 @@
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
-load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions", "nodejsargs")
+load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions", "get_runtime_to_builder_map", "nodejsargs")
 load(":runtime.bzl", "gcf_runtimes")
 
 licenses(["notice"])
@@ -9,10 +9,7 @@ exports_files([
     "args.bzl",
 ])
 
-RUNTIME_TO_BUILDER_MAP = {
-    "nodejs22": "//builders/nodejs:builder_22.tar",
-    "nodejs24": "//builders/nodejs:builder_24.tar",
-}
+RUNTIME_TO_BUILDER_MAP = get_runtime_to_builder_map()
 
 create_acceptance_versions_dict_file(
     name = "gen_acceptance_targets_list",
@@ -98,6 +95,7 @@ acceptance_test_suite(
     srcs = [
         "gcf_test.go",
     ],
+    argsmap = nodejsargs(),
     builder = "//builders/nodejs:builder.tar",
     rundir = ".",
     runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
