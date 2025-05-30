@@ -48,8 +48,9 @@ func TestAcceptance(t *testing.T) {
 			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
-			Name: "function with framework",
-			App:  "with_framework",
+			Name:                       "function with framework",
+			App:                        "with_framework",
+			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
 			Name:                       "function using http declarative function signatures",
@@ -67,7 +68,7 @@ func TestAcceptance(t *testing.T) {
 			Name: "function with framework and dependency bin",
 			App:  "with_framework_bin_conflict",
 			// TODO(harisam): Remove this constraint once spacy support is added for python 3.13.
-			VersionInclusionConstraint: "< 3.13.0",
+			VersionInclusionConstraint: ">= 3.8.0 < 3.13.0",
 		},
 		{
 			Name:                       "function with runtime env var",
