@@ -1,5 +1,7 @@
+load("//internal/acceptance:args.bzl", "get_runtime_to_builder_map", "languageargs")
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
-load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions", "goargs")
+load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions")
+load(":runtime.bzl", "gae_runtimes", "gcf_runtimes", "version_to_stack")
 
 licenses(["notice"])
 
@@ -8,15 +10,7 @@ exports_files([
     "args.bzl",
 ])
 
-RUNTIME_TO_BUILDER_MAP = {
-    "go118": "//builders/go:builder_22.tar",
-    "go119": "//builders/go:builder_22.tar",
-    "go120": "//builders/go:builder_22.tar",
-    "go121": "//builders/go:builder_22.tar",
-    "go122": "//builders/go:builder_22.tar",
-    "go123": "//builders/go:builder_22.tar",
-    "go124": "//builders/go:builder_22.tar",
-}
+RUNTIME_TO_BUILDER_MAP = get_runtime_to_builder_map(version_to_stack, "go")
 
 create_acceptance_versions_dict_file(
     name = "gen_acceptance_targets_list",
@@ -48,6 +42,7 @@ acceptance_test_suite(
         "common_test.go",
         "gcf_test.go",
     ],
+    argsmap = languageargs(gcf_runtimes, version_to_stack),
     builder = "//builders/go:builder.tar",
     rundir = ".",
     runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
@@ -75,7 +70,7 @@ acceptance_test_suite(
         "common_test.go",
         "gae_test.go",
     ],
-    argsmap = goargs(),
+    argsmap = languageargs(gae_runtimes, version_to_stack),
     builder = "//builders/go:builder.tar",
     rundir = ".",
     runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
@@ -90,7 +85,7 @@ acceptance_test_suite(
         "common_test.go",
         "gae_test.go",
     ],
-    argsmap = goargs("$${_CANDIDATE_NAME}"),
+    argsmap = languageargs(gae_runtimes, version_to_stack, "$${_CANDIDATE_NAME}"),
     builder = "//builders/go:builder.tar",
     rundir = ".",
     runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
@@ -105,7 +100,7 @@ acceptance_test_suite(
         "common_test.go",
         "gae_test.go",
     ],
-    argsmap = goargs("$${_CANDIDATE_NAME}", "$${_STACK}"),
+    argsmap = languageargs(gae_runtimes, version_to_stack, "$${_CANDIDATE_NAME}", "$${_STACK}"),
     builder = "//builders/go:builder.tar",
     rundir = ".",
     runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,

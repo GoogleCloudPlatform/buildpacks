@@ -1,5 +1,7 @@
+load("//internal/acceptance:args.bzl", "get_runtime_to_builder_map", "languageargs")
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
-load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions", "phpargs")
+load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions")
+load(":runtime.bzl", "gae_runtimes", "gcf_runtimes", "version_to_stack")
 
 licenses(["notice"])
 
@@ -8,11 +10,7 @@ exports_files([
     "args.bzl",
 ])
 
-RUNTIME_TO_BUILDER_MAP = {
-    "php82": "//builders/php:builder_22.tar",
-    "php83": "//builders/php:builder_22.tar",
-    "php84": "//builders/php:builder_22.tar",
-}
+RUNTIME_TO_BUILDER_MAP = get_runtime_to_builder_map(version_to_stack, "php")
 
 create_acceptance_versions_dict_file(
     name = "gen_acceptance_targets_list",
@@ -53,7 +51,7 @@ acceptance_test_suite(
         "common_test.go",
         "gae_test.go",
     ],
-    argsmap = phpargs(),
+    argsmap = languageargs(gae_runtimes, version_to_stack),
     builder = "//builders/php:builder.tar",
     rundir = ".",
     runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
@@ -68,7 +66,7 @@ acceptance_test_suite(
         "common_test.go",
         "gae_test.go",
     ],
-    argsmap = phpargs("$${_CANDIDATE_NAME}"),
+    argsmap = languageargs(gae_runtimes, version_to_stack, "$${_CANDIDATE_NAME}"),
     builder = "//builders/php:builder.tar",
     rundir = ".",
     runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
@@ -83,7 +81,7 @@ acceptance_test_suite(
         "common_test.go",
         "gae_test.go",
     ],
-    argsmap = phpargs("$${_CANDIDATE_NAME}", "$${_STACK}"),
+    argsmap = languageargs(gae_runtimes, version_to_stack, "$${_CANDIDATE_NAME}", "$${_STACK}"),
     builder = "//builders/php:builder.tar",
     rundir = ".",
     runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
@@ -97,6 +95,7 @@ acceptance_test_suite(
         "common_test.go",
         "gcf_test.go",
     ],
+    argsmap = languageargs(gcf_runtimes, version_to_stack),
     builder = "//builders/php:builder.tar",
     rundir = ".",
     runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
