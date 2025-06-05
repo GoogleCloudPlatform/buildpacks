@@ -1,5 +1,7 @@
+load("//internal/acceptance:args.bzl", "get_runtime_to_builder_map", "languageargs")
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
-load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions", "javaargs")
+load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions")
+load(":runtime.bzl", "version_to_stack")
 
 licenses(["notice"])
 
@@ -8,10 +10,7 @@ exports_files([
     "args.bzl",
 ])
 
-RUNTIME_TO_BUILDER_MAP = {
-    "java17": "//builders/java:builder_22.tar",
-    "java21": "//builders/java:builder_22.tar",
-}
+RUNTIME_TO_BUILDER_MAP = get_runtime_to_builder_map(version_to_stack, "java")
 
 create_acceptance_versions_dict_file(
     name = "gen_acceptance_targets_list",
@@ -38,7 +37,7 @@ acceptance_test_suite(
     srcs = [
         "gae_test.go",
     ],
-    argsmap = javaargs(),
+    argsmap = languageargs(gae_runtime_versions, version_to_stack),
     builder = "//builders/java:builder.tar",
     rundir = ".",
     runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
@@ -52,7 +51,7 @@ acceptance_test_suite(
     srcs = [
         "gae_test.go",
     ],
-    argsmap = javaargs("$${_CANDIDATE_NAME}"),
+    argsmap = languageargs(gae_runtime_versions, version_to_stack, "$${_CANDIDATE_NAME}"),
     builder = "//builders/java:builder.tar",
     rundir = ".",
     runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
@@ -65,7 +64,7 @@ acceptance_test_suite(
     srcs = [
         "gae_test.go",
     ],
-    argsmap = javaargs("$${_CANDIDATE_NAME}", "$${_STACK}"),
+    argsmap = languageargs(gae_runtime_versions, version_to_stack, "$${_CANDIDATE_NAME}", "$${_STACK}"),
     builder = "//builders/java:builder.tar",
     rundir = ".",
     runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
@@ -78,6 +77,7 @@ acceptance_test_suite(
     srcs = [
         "gcf_test.go",
     ],
+    argsmap = languageargs(gcf_runtime_versions, version_to_stack),
     builder = "//builders/java:builder.tar",
     rundir = ".",
     runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
