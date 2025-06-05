@@ -1,5 +1,6 @@
 """
 Generated bzl file. Do not update manually.
+We run acceptance tests only on full stacks.
 """
 
 gae_runtimes = {
@@ -38,6 +39,5 @@ version_to_stack = {
     "nodejs18": "google-22-full",
     "nodejs20": "google-22-full",
     "nodejs22": "google-22-full",
-    "nodejs24": "google-24-full",
     "nodejs8": "google-18-full",
 }

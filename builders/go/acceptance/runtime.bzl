@@ -1,5 +1,6 @@
 """
 Generated bzl file. Do not update manually.
+We run acceptance tests only on full stacks.
 """
 
 gae_runtimes = {
