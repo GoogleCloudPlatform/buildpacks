@@ -76,6 +76,11 @@ func (b *BuilderMetadata) GetValue(id MetadataID) MetadataValue {
 	return b.metadata[id]
 }
 
+// IsEmpty checks if the BuilderMetadata is empty.
+func (b *BuilderMetadata) IsEmpty() bool {
+	return b == nil || len(b.metadata) == 0
+}
+
 // SetValue sets the Metadata value with MetadataID id.
 func (b *BuilderMetadata) SetValue(id MetadataID, value MetadataValue) {
 	b.metadata[id] = value
