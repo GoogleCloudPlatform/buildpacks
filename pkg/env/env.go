@@ -151,6 +151,9 @@ const (
 
 	// ServerlessRuntimesTarballs is an experiment flag to fetch tarballs from serverless-runtimes AR
 	ServerlessRuntimesTarballs = "GOOGLE_USE_SERVERLESS_RUNTIMES_TARBALLS"
+
+	// ColdStartImprovementsBuildStudy is an experiment flag to enable cold start improvements build study.
+	ColdStartImprovementsBuildStudy = "EXPERIMENTAL_RUNTIMES_COLD_START_BUILD"
 )
 
 // IsGAE returns true if the buildpack target platform is gae.
