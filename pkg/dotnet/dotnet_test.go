@@ -150,6 +150,8 @@ func TestGetSDKVersion(t *testing.T) {
 		RuntimeVersionEnvVar string
 		ApplicationRoot      string
 		ExpectedResult       string
+		StackID              string
+		WantError            bool
 	}{
 		{
 			Name:                 "Should read from GOOGLE_RUNTIME_VERSION",
@@ -188,11 +190,39 @@ func TestGetSDKVersion(t *testing.T) {
 			ApplicationRoot:      testdata.MustGetPath("testdata/"),
 			ExpectedResult:       "3.1.100",
 		},
+		{
+			Name:                 "Should return latest version available for ubuntu2204",
+			RuntimeVersionEnvVar: "",
+			ApplicationRoot:      "",
+			ExpectedResult:       "8.*.*",
+			StackID:              "google.22",
+		},
+		{
+			Name:                 "Should error out for ubuntu1804, since no supported version on that",
+			RuntimeVersionEnvVar: "",
+			ApplicationRoot:      "",
+			ExpectedResult:       "",
+			StackID:              "google.18",
+			WantError:            true,
+		},
+		{
+			Name:                 "Should error out: will pickup ubuntu1804 by default, no supported version on that.",
+			RuntimeVersionEnvVar: "",
+			ApplicationRoot:      "",
+			ExpectedResult:       "",
+			WantError:            true,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
-			ctx := gcp.NewContext(gcp.WithApplicationRoot(tc.ApplicationRoot))
+
+			opts := []gcp.ContextOption{gcp.WithApplicationRoot(tc.ApplicationRoot)}
+			if tc.StackID != "" {
+				opts = append(opts, gcp.WithStackID(tc.StackID))
+			}
+
+			ctx := gcp.NewContext(opts...)
 			if tc.SDKVersionEnvVar != "" {
 				t.Setenv(envSdkVersion, tc.SDKVersionEnvVar)
 			}
@@ -201,6 +231,13 @@ func TestGetSDKVersion(t *testing.T) {
 			}
 
 			result, err := GetSDKVersion(ctx)
+
+			if tc.WantError {
+				if err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				return
+			}
 
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
