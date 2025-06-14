@@ -1,5 +1,5 @@
 # List of licenses and source for software packages included in image.
-#
+# Copyright ©️ {2025} {Joseph Thornton jr} all rights reserved.
 # Valid keys:
 #   package: (required) Name of the package
 #   license_name: (required) Name of the license, e.g., APL-2, MIT. "Custom" may be used for composite license files.
