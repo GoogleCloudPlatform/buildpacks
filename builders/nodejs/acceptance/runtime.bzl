@@ -12,6 +12,7 @@ gae_runtimes = {
     "nodejs18": "18.20.8",
     "nodejs20": "20.19.2",
     "nodejs22": "22.16.0",
+    "nodejs24": "24.1.0",
 }
 
 gcf_runtimes = {
@@ -23,12 +24,14 @@ gcf_runtimes = {
     "nodejs18": "18.20.8",
     "nodejs20": "20.19.2",
     "nodejs22": "22.16.0",
+    "nodejs24": "24.1.0",
 }
 
 flex_runtimes = {
     "nodejs18": "18.20.8",
     "nodejs20": "20.19.2",
     "nodejs22": "22.16.0",
+    "nodejs24": "24.1.0",
 }
 
 version_to_stack = {
@@ -39,5 +42,6 @@ version_to_stack = {
     "nodejs18": "google-22-full",
     "nodejs20": "google-22-full",
     "nodejs22": "google-22-full",
+    "nodejs24": "google-24-full",
     "nodejs8": "google-18-full",
 }
