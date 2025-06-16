@@ -83,8 +83,7 @@ func TestDetect(t *testing.T) {
 						"build": "ng build"
 					},
 					"dependencies": {
-						"@angular/core": "17.2.0",
-						"@angular-devkit/build-angular": "17.2.0"
+						"@angular/core": "17.2.0"
 					}
 				}`,
 				"package-lock.json": `{
@@ -157,8 +156,7 @@ func TestBuild(t *testing.T) {
 					"build": "ng build"
 				},
 				"dependencies": {
-					"@angular/core": "17.2.0",
-					"@angular-devkit/build-angular": "17.2.0"
+					"@angular/core": "17.2.0"
 				}
 			}`,
 				"package-lock.json": `{
@@ -193,9 +191,6 @@ func TestBuild(t *testing.T) {
 						"node_modules/@angular/core": {
 							"version": "17.2.0"
 						},
-						"node_modules/@angular-devkit/build-angular": {
-							"version": "17.2.0"
-						}
 					}
 				}`,
 			},
@@ -223,9 +218,6 @@ func TestBuild(t *testing.T) {
 						"node_modules/@angular/core": {
 							"version": "17.2.0"
 						},
-						"node_modules/@angular-devkit/build-angular": {
-							"version": "17.2.0"
-						}
 					}
 				}`,
 			},
@@ -253,9 +245,6 @@ func TestBuild(t *testing.T) {
 						"node_modules/@angular/core": {
 							"version": "17.2.0"
 						},
-						"node_modules/@angular-devkit/build-angular": {
-							"version": "17.2.0"
-						}
 					}
 				}`,
 			},
@@ -278,9 +267,6 @@ func TestBuild(t *testing.T) {
 					"node_modules/@angular/core": {
 						"version": "17.2.0"
 					},
-					"node_modules/@angular-devkit/build-angular": {
-						"version": "17.0.0"
-					}
 				}
 			}`,
 			},
@@ -300,9 +286,6 @@ func TestBuild(t *testing.T) {
 					"node_modules/@angular/core": {
 						"version": "17.2.0"
 					},
-					"node_modules/@angular-devkit/build-angular": {
-						"version": "17.2.0"
-					}
 				}
 			}`,
 			},
@@ -323,8 +306,7 @@ func TestBuild(t *testing.T) {
 						"build": "apphosting-adapter-angular-build"
 					},
 					"dependencies": {
-						"@angular/core": "^17.0.0",
-						"@angular-devkit/build-angular": "^17.0.0"
+						"@angular/core": "^17.0.0"
 					}
 				}`,
 				"package-lock.json": `{
@@ -332,9 +314,6 @@ func TestBuild(t *testing.T) {
 						"node_modules/@angular/core": {
 							"version": "17.2.1"
 						},
-						"node_modules/@angular-devkit/build-angular": {
-							"version": "17.2.1"
-						}
 					}
 				}`,
 			},
@@ -351,8 +330,7 @@ func TestBuild(t *testing.T) {
 			files: map[string]string{
 				"package.json": `{
 					"dependencies": {
-						"@angular/core": "15.0.0 - 17.2.0",
-						"@angular-devkit/build-angular": "15.0.0 - 17.2.0"
+						"@angular/core": "15.0.0 - 17.2.0"
 					}
 				}`,
 				"package-lock.json": `{
@@ -360,9 +338,6 @@ func TestBuild(t *testing.T) {
 						"node_modules/@angular/core": {
 							"version": "17.2.0"
 						},
-						"node_modules/@angular-devkit/build-angular": {
-							"version": "17.2.0"
-						}
 					}
 				}`,
 			},
@@ -379,15 +354,12 @@ func TestBuild(t *testing.T) {
 			files: map[string]string{
 				"package.json": `{
 					"dependencies": {
-						"@angular/core": "15.0.0 - 17.2.0",
-						"@angular-devkit/build-angular": "15.0.0 - 17.2.0"
+						"@angular/core": "15.0.0 - 17.2.0"
 					}
 				}`,
 				"pnpm-lock.yaml": `
 dependencies:
   '@angular/core':
-    version: 17.2.3(rxjs@7.8.1)(zone.js@0.14.4)
-  '@angular-devkit/build-angular':
     version: 17.2.3(rxjs@7.8.1)(zone.js@0.14.4)
 `,
 			},
@@ -404,15 +376,12 @@ dependencies:
 			files: map[string]string{
 				"package.json": `{
 					"dependencies": {
-						"@angular/core": "^17.1.0",
-						"@angular-devkit/build-angular": "^17.1.0"
+						"@angular/core": "^17.1.0"
 					}
 				}`,
 				"yarn.lock": `
 	"@angular/core@npm:^17.1.0":
-	version: 17.2.0
-	"@angular-devkit/build-angular@npm:^17.1.0":
-  version: 17.2.0`,
+	version: 17.2.0`,
 			},
 			mocks: []*mockprocess.Mock{
 				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
@@ -427,14 +396,11 @@ dependencies:
 			files: map[string]string{
 				"package.json": `{
 					"dependencies": {
-						"@angular/core": "^17.1.0",
-						"@angular-devkit/build-angular": "^17.1.0"
+						"@angular/core": "^17.1.0"
 					}
 				}`,
 				"yarn.lock": `
 				@angular/core@^17.1.0:
-	version: "17.2.0"
-@angular-devkit/build-angular@^17.1.0:
 	version: "17.2.0"
 	`,
 			},
@@ -451,16 +417,11 @@ dependencies:
 				"package.json": `{
 					"dependencies": {
 						"@angular/core": "17.2.0"
-					},
-					"devDependencies": {
-						"@angular-devkit/build-angular": "17.2.0"
 					}
 				}`,
 				"pnpm-lock.yaml": `
 unsupported:
   '@angular/core':
-    version: 17.2.3(rxjs@7.8.1)(zone.js@0.14.4)
-  '@angular-devkit/build-angular':
     version: 17.2.3(rxjs@7.8.1)(zone.js@0.14.4)
 `,
 			},
@@ -477,16 +438,11 @@ unsupported:
 				"package.json": `{
 					"dependencies": {
 						"@angular/core": "17.2.0 - 18.0.0"
-					},
-					"devDependencies": {
-						"@angular-devkit/build-angular": "^17.2.0"
 					}
 				}`,
 				"pnpm-lock.yaml": `
 unsupported:
   '@angular/core':
-    version: 17.2.3(rxjs@7.8.1)(zone.js@0.14.4)
-  '@angular-devkit/build-angular':
     version: 17.2.3(rxjs@7.8.1)(zone.js@0.14.4)
 `,
 			},
@@ -511,9 +467,6 @@ unsupported:
 				"package-lock.json": `{
 					"packages": {
 						"node_modules/@angular/core": {
-							"version": "17.2.0"
-						},
-						"node_modules/@angular-devkit/build-angular": {
 							"version": "17.2.0"
 						}
 					}

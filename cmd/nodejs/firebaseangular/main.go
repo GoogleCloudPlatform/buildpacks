@@ -57,7 +57,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	}
 
 	// Some Angular project configurations don't require an angular.json file (e.g. Nx projects).
-	// In these cases, we check if the angular builder is specified as a dependency.
+	// In these cases, we check if the angular core is specified as a dependency.
 	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, appDir)
 	if err != nil {
 		return nil, err
@@ -70,18 +70,18 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return gcp.OptOut("apphosting build script found"), nil
 	}
 
-	version, err := nodejs.Version(nodeDeps, "@angular-devkit/build-angular")
+	version, err := nodejs.Version(nodeDeps, "@angular/core")
 	if err != nil {
 		ctx.Warnf("Error parsing version from lock file, defaulting to package.json version")
-		if nodeDeps.PackageJSON.DevDependencies["@angular-devkit/build-angular"] != "" {
-			return gcp.OptIn("angular builder dependency found"), nil
+		if nodeDeps.PackageJSON.DevDependencies["@angular/core"] != "" {
+			return gcp.OptIn("angular dependency found"), nil
 		}
-		return gcp.OptOut("angular builder dependency not found"), err
+		return gcp.OptOut("angular dependency not found"), err
 	}
 	if version != "" {
-		return gcp.OptIn("angular builder dependency found"), nil
+		return gcp.OptIn("angular dependency found"), nil
 	}
-	return gcp.OptOut("angular builder dependency not found"), nil
+	return gcp.OptOut("angular dependency not found"), nil
 }
 
 func buildFn(ctx *gcp.Context) error {
@@ -96,10 +96,10 @@ func buildFn(ctx *gcp.Context) error {
 	}
 
 	// Ensure that the right version of the application builder is installed.
-	builderVersion, err := nodejs.Version(nodeDeps, "@angular-devkit/build-angular")
+	builderVersion, err := nodejs.Version(nodeDeps, "@angular/core")
 	if err != nil {
 		ctx.Warnf("Error parsing version from lock file, defaulting to package.json version")
-		builderVersion = nodeDeps.PackageJSON.DevDependencies["@angular-devkit/build-angular"]
+		builderVersion = nodeDeps.PackageJSON.DevDependencies["@angular/core"]
 	}
 	err = validateVersion(ctx, builderVersion)
 	if err != nil {
