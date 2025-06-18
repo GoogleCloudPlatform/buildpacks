@@ -4,159 +4,100 @@ licenses(["notice"])
 
 package(default_visibility = ["//builders/gcp/base/acceptance:__pkg__"])
 
+BUILDPACKS = [
+    "//cmd/config/entrypoint:entrypoint.tgz",
+    "//cmd/utils/archive_source:archive_source.tgz",
+    "//cmd/utils/label:label_image.tgz",
+    "//cmd/utils/nginx:nginx.tgz",
+    "//cmd/config/flex:flex.tgz",
+    "//cmd/python/webserver:webserver.tgz",
+    "//cmd/python/appengine:appengine.tgz",
+]
+
+GROUPS = {
+    "cpp": [
+        "//cmd/cpp/clear_source:clear_source.tgz",
+        "//cmd/cpp/functions_framework:functions_framework.tgz",
+    ],
+    "dart": [
+        "//cmd/dart/compile:compile.tgz",
+        "//cmd/dart/pub:pub.tgz",
+        "//cmd/dart/sdk:sdk.tgz",
+    ],
+    "dotnet": [
+        "//cmd/dotnet/functions_framework:functions_framework.tgz",
+        "//cmd/dotnet/publish:publish.tgz",
+        "//cmd/dotnet/runtime:runtime.tgz",
+        "//cmd/dotnet/sdk:sdk.tgz",
+    ],
+    "go": [
+        "//cmd/go/build:build.tgz",
+        "//cmd/go/clear_source:clear_source.tgz",
+        "//cmd/go/functions_framework:functions_framework.tgz",
+        "//cmd/go/gomod:gomod.tgz",
+        "//cmd/go/gopath:gopath.tgz",
+        "//cmd/go/runtime:runtime.tgz",
+    ],
+    "java": [
+        "//cmd/java/clear_source:clear_source.tgz",
+        "//cmd/java/entrypoint:entrypoint.tgz",
+        "//cmd/java/exploded_jar:exploded_jar.tgz",
+        "//cmd/java/functions_framework:functions_framework.tgz",
+        "//cmd/java/gradle:gradle.tgz",
+        "//cmd/java/maven:maven.tgz",
+        "//cmd/java/runtime:runtime.tgz",
+        "//cmd/java/graalvm:graalvm.tgz",
+        "//cmd/java/native_image:native_image.tgz",
+    ],
+    "nodejs": [
+        "//cmd/nodejs/functions_framework:functions_framework.tgz",
+        "//cmd/nodejs/npm:npm.tgz",
+        "//cmd/nodejs/runtime:runtime.tgz",
+        "//cmd/nodejs/yarn:yarn.tgz",
+        "//cmd/nodejs/pnpm:pnpm.tgz",
+    ],
+    "python": [
+        "//cmd/python/functions_framework:functions_framework.tgz",
+        "//cmd/python/missing_entrypoint:missing_entrypoint.tgz",
+        "//cmd/python/pip:pip.tgz",
+        "//cmd/python/runtime:runtime.tgz",
+    ],
+    "ruby": [
+        "//cmd/ruby/missing_entrypoint:missing_entrypoint.tgz",
+        "//cmd/ruby/functions_framework:functions_framework.tgz",
+        "//cmd/ruby/rubygems:rubygems.tgz",
+        "//cmd/ruby/bundle:bundle.tgz",
+        "//cmd/ruby/rails:rails.tgz",
+        "//cmd/ruby/runtime:runtime.tgz",
+    ],
+    "php": [
+        "//cmd/php/composer:composer.tgz",
+        "//cmd/php/composer_install:composer_install.tgz",
+        "//cmd/php/composer_gcp_build:composer_gcp_build.tgz",
+        "//cmd/php/runtime:runtime.tgz",
+        "//cmd/php/webconfig:webconfig.tgz",
+    ],
+}
+
 builder(
     name = "builder",
-    buildpacks = [
-        "//cmd/config/entrypoint:entrypoint.tgz",
-        "//cmd/utils/archive_source:archive_source.tgz",
-        "//cmd/utils/label:label_image.tgz",
-        "//cmd/utils/nginx:nginx.tgz",
-        "//cmd/config/flex:flex.tgz",
-        "//cmd/python/webserver:webserver.tgz",
-        "//cmd/python/appengine:appengine.tgz",
-    ],
-    groups = {
-        "cpp": [
-            "//cmd/cpp/clear_source:clear_source.tgz",
-            "//cmd/cpp/functions_framework:functions_framework.tgz",
-        ],
-        "dart": [
-            "//cmd/dart/compile:compile.tgz",
-            "//cmd/dart/pub:pub.tgz",
-            "//cmd/dart/sdk:sdk.tgz",
-        ],
-        "dotnet": [
-            "//cmd/dotnet/functions_framework:functions_framework.tgz",
-            "//cmd/dotnet/publish:publish.tgz",
-            "//cmd/dotnet/runtime:runtime.tgz",
-            "//cmd/dotnet/sdk:sdk.tgz",
-        ],
-        "go": [
-            "//cmd/go/build:build.tgz",
-            "//cmd/go/clear_source:clear_source.tgz",
-            "//cmd/go/functions_framework:functions_framework.tgz",
-            "//cmd/go/gomod:gomod.tgz",
-            "//cmd/go/gopath:gopath.tgz",
-            "//cmd/go/runtime:runtime.tgz",
-        ],
-        "java": [
-            "//cmd/java/clear_source:clear_source.tgz",
-            "//cmd/java/entrypoint:entrypoint.tgz",
-            "//cmd/java/exploded_jar:exploded_jar.tgz",
-            "//cmd/java/functions_framework:functions_framework.tgz",
-            "//cmd/java/gradle:gradle.tgz",
-            "//cmd/java/maven:maven.tgz",
-            "//cmd/java/runtime:runtime.tgz",
-            "//cmd/java/graalvm:graalvm.tgz",
-            "//cmd/java/native_image:native_image.tgz",
-        ],
-        "nodejs": [
-            "//cmd/nodejs/functions_framework:functions_framework.tgz",
-            "//cmd/nodejs/npm:npm.tgz",
-            "//cmd/nodejs/runtime:runtime.tgz",
-            "//cmd/nodejs/yarn:yarn.tgz",
-            "//cmd/nodejs/pnpm:pnpm.tgz",
-        ],
-        "python": [
-            "//cmd/python/functions_framework:functions_framework.tgz",
-            "//cmd/python/missing_entrypoint:missing_entrypoint.tgz",
-            "//cmd/python/pip:pip.tgz",
-            "//cmd/python/runtime:runtime.tgz",
-        ],
-        "ruby": [
-            "//cmd/ruby/missing_entrypoint:missing_entrypoint.tgz",
-            "//cmd/ruby/functions_framework:functions_framework.tgz",
-            "//cmd/ruby/rubygems:rubygems.tgz",
-            "//cmd/ruby/bundle:bundle.tgz",
-            "//cmd/ruby/rails:rails.tgz",
-            "//cmd/ruby/runtime:runtime.tgz",
-        ],
-        "php": [
-            "//cmd/php/composer:composer.tgz",
-            "//cmd/php/composer_install:composer_install.tgz",
-            "//cmd/php/composer_gcp_build:composer_gcp_build.tgz",
-            "//cmd/php/runtime:runtime.tgz",
-            "//cmd/php/webconfig:webconfig.tgz",
-        ],
-    },
+    buildpacks = BUILDPACKS,
+    groups = GROUPS,
     image = "gcp/base",
 )
 
 builder(
     name = "google_22_builder",
-    buildpacks = [
-        "//cmd/config/entrypoint:entrypoint.tgz",
-        "//cmd/utils/archive_source:archive_source.tgz",
-        "//cmd/utils/label:label_image.tgz",
-        "//cmd/utils/nginx:nginx.tgz",
-        "//cmd/config/flex:flex.tgz",
-        "//cmd/python/webserver:webserver.tgz",
-        "//cmd/python/appengine:appengine.tgz",
-    ],
+    buildpacks = BUILDPACKS,
     descriptor = "google.22.builder.toml",
-    groups = {
-        "cpp": [
-            "//cmd/cpp/clear_source:clear_source.tgz",
-            "//cmd/cpp/functions_framework:functions_framework.tgz",
-        ],
-        "dart": [
-            "//cmd/dart/compile:compile.tgz",
-            "//cmd/dart/pub:pub.tgz",
-            "//cmd/dart/sdk:sdk.tgz",
-        ],
-        "dotnet": [
-            "//cmd/dotnet/functions_framework:functions_framework.tgz",
-            "//cmd/dotnet/publish:publish.tgz",
-            "//cmd/dotnet/runtime:runtime.tgz",
-            "//cmd/dotnet/sdk:sdk.tgz",
-        ],
-        "go": [
-            "//cmd/go/build:build.tgz",
-            "//cmd/go/clear_source:clear_source.tgz",
-            "//cmd/go/functions_framework:functions_framework.tgz",
-            "//cmd/go/gomod:gomod.tgz",
-            "//cmd/go/gopath:gopath.tgz",
-            "//cmd/go/runtime:runtime.tgz",
-        ],
-        "java": [
-            "//cmd/java/clear_source:clear_source.tgz",
-            "//cmd/java/entrypoint:entrypoint.tgz",
-            "//cmd/java/exploded_jar:exploded_jar.tgz",
-            "//cmd/java/functions_framework:functions_framework.tgz",
-            "//cmd/java/gradle:gradle.tgz",
-            "//cmd/java/maven:maven.tgz",
-            "//cmd/java/runtime:runtime.tgz",
-            "//cmd/java/graalvm:graalvm.tgz",
-            "//cmd/java/native_image:native_image.tgz",
-        ],
-        "nodejs": [
-            "//cmd/nodejs/functions_framework:functions_framework.tgz",
-            "//cmd/nodejs/npm:npm.tgz",
-            "//cmd/nodejs/runtime:runtime.tgz",
-            "//cmd/nodejs/yarn:yarn.tgz",
-            "//cmd/nodejs/pnpm:pnpm.tgz",
-        ],
-        "python": [
-            "//cmd/python/functions_framework:functions_framework.tgz",
-            "//cmd/python/missing_entrypoint:missing_entrypoint.tgz",
-            "//cmd/python/pip:pip.tgz",
-            "//cmd/python/runtime:runtime.tgz",
-        ],
-        "ruby": [
-            "//cmd/ruby/missing_entrypoint:missing_entrypoint.tgz",
-            "//cmd/ruby/functions_framework:functions_framework.tgz",
-            "//cmd/ruby/rubygems:rubygems.tgz",
-            "//cmd/ruby/bundle:bundle.tgz",
-            "//cmd/ruby/rails:rails.tgz",
-            "//cmd/ruby/runtime:runtime.tgz",
-        ],
-        "php": [
-            "//cmd/php/composer:composer.tgz",
-            "//cmd/php/composer_install:composer_install.tgz",
-            "//cmd/php/composer_gcp_build:composer_gcp_build.tgz",
-            "//cmd/php/runtime:runtime.tgz",
-            "//cmd/php/webconfig:webconfig.tgz",
-        ],
-    },
+    groups = GROUPS,
     image = "google-22/builder",
+)
+
+builder(
+    name = "google_24_builder",
+    buildpacks = BUILDPACKS,
+    descriptor = "google.24.builder.toml",
+    groups = GROUPS,
+    image = "google-24/builder",
 )
