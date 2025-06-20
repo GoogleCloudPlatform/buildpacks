@@ -27,6 +27,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/version"
 	"github.com/buildpacks/libcnb/v2"
 	"github.com/Masterminds/semver"
@@ -53,6 +54,11 @@ var (
 
 	// goVersionsURL can be use to download a list of available, stable versions of Go.
 	goVersionsURL = "https://go.dev/dl/?mode=json"
+
+	// latestGoVersionPerStack is the latest Go version per stack to use if not specified by the user.
+	latestGoVersionPerStack = map[string]string{
+		runtime.Ubuntu2204: "1.23.*",
+	}
 )
 
 // goRelease represents an entry on the go.dev downloads page.
@@ -327,22 +333,38 @@ func IsGo111Runtime() bool {
 
 // RuntimeVersion returns the runtime version for the go app.
 func RuntimeVersion(ctx *gcp.Context) (string, error) {
-	if version := os.Getenv(envGoVersion); version != "" {
+	var version string
+
+	switch {
+	case os.Getenv(envGoVersion) != "":
+		version = os.Getenv(envGoVersion)
 		ctx.Logf("Using runtime version from %s: %s", envGoVersion, version)
-		return version, nil
-	}
 
-	if version := os.Getenv(env.RuntimeVersion); version != "" {
+	case os.Getenv(env.RuntimeVersion) != "":
+		version = os.Getenv(env.RuntimeVersion)
 		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, version)
-		return version, nil
+
+	default:
+		os := runtime.OSForStack(ctx)
+		var ok bool
+		version, ok = latestGoVersionPerStack[os]
+		if !ok {
+			return "", gcp.UserErrorf("invalid stack for Go runtime: %q", os)
+		}
+		ctx.Logf("Go version not specified, using latest available Go runtime for the stack %q", os)
 	}
 
-	ctx.Logf("Using latest stable Go version")
-	return "", nil
+	resolvedVersion, err := ResolveGoVersion(version)
+	if err != nil {
+		return "", err
+	}
+
+	return resolvedVersion, nil
+
 }
 
 // ResolveGoVersion finds the latest version of Go that matches the provided semver constraint.
-func ResolveGoVersion(verConstraint string) (string, error) {
+var ResolveGoVersion = func(verConstraint string) (string, error) {
 	if isSupportedUnstableGoVersion(verConstraint) || isExactGoSemver(verConstraint) {
 		return verConstraint, nil
 	}

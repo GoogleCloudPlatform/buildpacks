@@ -26,7 +26,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/version"
 	"github.com/buildpacks/libcnb/v2"
 	"github.com/Masterminds/semver"
@@ -332,8 +331,8 @@ func IsReleaseCandidate(verConstraint string) bool {
 // version constraint.
 func ResolveVersion(ctx *gcp.Context, runtime InstallableRuntime, verConstraint, osName string) (string, error) {
 	if runtime == Go {
-		// Go provides its own version manifest so it has its own version resolution logic.
-		return golang.ResolveGoVersion(verConstraint)
+		// verConstraint will be resolved to the exact version in golang.RuntimeVersion() already.
+		return verConstraint, nil
 	}
 	// Some release candidates do not follow the convention for semver
 	// Specifically php. example - 8.3.0RC4.
