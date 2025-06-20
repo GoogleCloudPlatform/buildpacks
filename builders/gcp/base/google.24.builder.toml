@@ -732,10 +732,11 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.ruby.missing-entrypoint"
 
 # Currently built with //builders/gcp/base/stack/stack:build.
+# TODO(b/426397345): Use gcr.io/buildpacks/google-24 images.
 [stack]
-  id = "google.24"
-  build-image = "gcr.io/buildpacks/google-24/build"
-  run-image = "gcr.io/buildpacks/google-24/run"
+  id = "google.24.full"
+  build-image = "us-docker.pkg.dev/serverless-runtimes-qa/google-24-full/build/base:public-image-next"
+  run-image = "us-docker.pkg.dev/serverless-runtimes-qa/google-24-full/run/base:public-image-next"
 
 [lifecycle]
   version = "0.20.5"
