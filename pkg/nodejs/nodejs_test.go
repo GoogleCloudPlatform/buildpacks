@@ -613,6 +613,34 @@ func TestVersion(t *testing.T) {
 			wantVersion: "14.1.4",
 		},
 		{
+			name: "Parses yarn.lock nextjs with other `next` dependencies",
+			pkg:  "next",
+			nodeDeps: &NodeDependencies{
+				PackageJSON: &PackageJSON{
+					Dependencies: map[string]string{
+						"next":            "14.1.4",
+						"@prismicio/next": "^2.0.1",
+					},
+				},
+				LockfilePath: testdata.MustGetPath("testdata/lock-files/classic-yarn.lock"),
+			},
+			wantVersion: "14.1.4",
+		},
+		{
+			name: "Parses yarn.lock for scoped packages",
+			pkg:  "@prismicio/next",
+			nodeDeps: &NodeDependencies{
+				PackageJSON: &PackageJSON{
+					Dependencies: map[string]string{
+						"next":            "14.1.4",
+						"@prismicio/next": "^2.0.1",
+					},
+				},
+				LockfilePath: testdata.MustGetPath("testdata/lock-files/classic-yarn.lock"),
+			},
+			wantVersion: "2.0.1",
+		},
+		{
 			name: "Parses pnpm-lock v6 version nextjs",
 			pkg:  "next",
 			nodeDeps: &NodeDependencies{

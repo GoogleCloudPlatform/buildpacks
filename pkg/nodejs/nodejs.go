@@ -382,7 +382,11 @@ func versionFromYarnLock(rawPackageLock []byte, pjs *PackageJSON, pkg string) (s
 	dependencies := dependencyRegex.Split(string(rawPackageLock), -1)
 
 	for _, dependency := range dependencies {
-		if strings.Contains(dependency, pkg+"@") && strings.Contains(dependency, pjs.Dependencies[pkg]) {
+		if (strings.HasPrefix(dependency, pkg+"@") ||
+			// For scoped package names, which begin with '@', the yarn lockfile wraps the name in quotes.
+			// e.g. "@yarnpkg/lockfile@1.1.0".
+			strings.HasPrefix(dependency, fmt.Sprintf("\"%s@", pkg))) &&
+			strings.Contains(dependency, pjs.Dependencies[pkg]) {
 			for _, line := range strings.Split(dependency, "\n") {
 				if strings.Contains(line, "version") {
 					return strings.Trim(strings.Fields(line)[1], `"`), nil

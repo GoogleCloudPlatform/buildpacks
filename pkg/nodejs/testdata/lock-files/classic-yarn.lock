@@ -66,6 +66,13 @@
   resolved "https://registry.yarnpkg.com/@next/swc-win32-x64-msvc/-/swc-win32-x64-msvc-14.1.4.tgz#bccf5beccfde66d6c66fa4e2509118c796385eda"
   integrity sha512-4Rto21sPfw555sZ/XNLqfxDUNeLhNYGO2dlPqsnuCg8N8a2a9u1ltqBOPQ4vj1Gf7eJC0W2hHG2eYUHuiXgY2w==
 
+"@prismicio/next@^2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@prismicio/next/-/next-2.0.1.tgz#161c02f51c78d919f07dc51a8ecf3b4393d3b861"
+  integrity sha512-wIC7pNd6nmdK3ZzlF1U+XGPRER7vL1zQdasvU3USdxWO1cxjdaK3LgFrpU28YZYH2RaGHmC5Wa303faILH86HQ==
+  dependencies:
+    imgix-url-builder "^0.0.5"
+
 eslint-config-next@14.1.4:
   version "14.1.4"
   resolved "https://registry.npmjs.org/eslint-config-next/-/eslint-config-next-14.1.4.tgz"
