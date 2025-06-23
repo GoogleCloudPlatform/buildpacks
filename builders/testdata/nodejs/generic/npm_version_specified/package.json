@@ -9,7 +9,7 @@
     "preinstall": "npm --version"
   },
   "engines": {
-    "node": "16.x.x",
+    "node": "22.x.x",
     "npm": "8.3.1"
   }
 }

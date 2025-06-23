@@ -32,6 +32,7 @@ func TestAcceptanceDotNetFn(t *testing.T) {
 		{
 			Name:       "cs single target",
 			App:        "cs_single_target",
+			SkipStacks: []string{"google.24.full", "google.24"},
 			Path:       "/function",
 			MustUse:    []string{dotnetRuntime, dotnetPublish},
 			MustNotUse: []string{entrypoint},
@@ -39,6 +40,7 @@ func TestAcceptanceDotNetFn(t *testing.T) {
 		{
 			Name:       "cs multiple targets",
 			App:        "cs_multiple_targets",
+			SkipStacks: []string{"google.24.full", "google.24"},
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=TestFunction.Function"},
 			Path:       "/function",
 			MustUse:    []string{dotnetRuntime, dotnetPublish, dotnetFF},
@@ -61,7 +63,7 @@ func TestAcceptanceDotNetFn(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 	}
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()

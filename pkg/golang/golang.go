@@ -58,6 +58,7 @@ var (
 	// latestGoVersionPerStack is the latest Go version per stack to use if not specified by the user.
 	latestGoVersionPerStack = map[string]string{
 		runtime.Ubuntu2204: "1.23.*",
+		runtime.Ubuntu2404: "1.23.*",
 	}
 )
 

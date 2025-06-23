@@ -73,6 +73,7 @@ var (
 	latestPythonVersionPerStack = map[string]string{
 		runtime.Ubuntu1804: "3.9.*",
 		runtime.Ubuntu2204: "3.13.*",
+		runtime.Ubuntu2404: "3.13.*",
 	}
 )
 

@@ -73,7 +73,7 @@ func TestAcceptance(t *testing.T) {
 		},
 		{
 			// Ubuntu 22 only supports php82 And does not support the version 7.4.27.
-			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22"},
+			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22", "google.24.full", "google.24"},
 			Name:       "runtime version 7.4.27",
 			App:        "simple",
 			Path:       "/version?want=7.4.27",

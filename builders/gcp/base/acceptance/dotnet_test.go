@@ -34,6 +34,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 		{
 			Name:              "simple dotnet app",
 			App:               "simple",
+			SkipStacks:        []string{"google.24.full", "google.24"},
 			MustUse:           []string{dotnetSDK, dotnetRuntime, dotnetPublish},
 			FilesMustNotExist: []string{sdk},
 			EnableCacheTest:   true,
@@ -55,7 +56,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 		{
 			Name: "simple dotnet app with runtime version",
 			// .NET 3.1 is not supported on Ubuntu 22.04.
-			SkipStacks:        []string{"google.22", "google.min.22", "google.gae.22"},
+			SkipStacks:        []string{"google.22", "google.min.22", "google.gae.22", "google.24", "google.24.full"},
 			App:               "simple",
 			Path:              "/version?want=3.1.30",
 			Env:               []string{"GOOGLE_ASP_NET_CORE_VERSION=3.1.30"},
@@ -67,7 +68,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 			// simple_prebuilt is a dotnet 3 app.
 			VersionInclusionConstraint: "3",
 			// .NET 3.1 is not supported on Ubuntu 22.04.
-			SkipStacks:        []string{"google.22", "google.min.22", "google.gae.22"},
+			SkipStacks:        []string{"google.22", "google.min.22", "google.gae.22", "google.24", "google.24.full"},
 			App:               "simple_prebuilt",
 			Env:               []string{"GOOGLE_ENTRYPOINT=./simple"},
 			MustUse:           []string{dotnetRuntime},
@@ -77,7 +78,7 @@ func TestAcceptanceDotNet(t *testing.T) {
 		{
 			Name: "Dev mode",
 			// Hot reloading only works on .NET 3.1, which is not supported on Ubuntu 22.04.
-			SkipStacks:          []string{"google.22", "google.min.22", "google.gae.22"},
+			SkipStacks:          []string{"google.22", "google.min.22", "google.gae.22", "google.24", "google.24.full"},
 			App:                 "simple",
 			Env:                 []string{"GOOGLE_DEVMODE=1", "GOOGLE_DOTNET_SDK_VERSION=3.1.x"},
 			MustUse:             []string{dotnetSDK, dotnetRuntime, dotnetPublish},

@@ -34,12 +34,14 @@ const (
 // Map with key as stackId and value as the default feature version for that stack.
 // We still need to support Java11 on ubuntu18 for OSS applications.
 var defaultFeatureVersion = map[string]string{
-	"google":        "11",
-	"google.gae.18": "11",
-	"google.18":     "11",
-	"google.gae.22": "21",
-	"google.min.22": "21",
-	"google.22":     "21",
+	"google":         "11",
+	"google.gae.18":  "11",
+	"google.18":      "11",
+	"google.gae.22":  "21",
+	"google.min.22":  "21",
+	"google.22":      "21",
+	"google.24":      "21",
+	"google.24.full": "21",
 }
 
 func main() {

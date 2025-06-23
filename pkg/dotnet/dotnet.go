@@ -45,6 +45,7 @@ var (
 	// latestDotnetSDKVersionPerStack is the latest .NET version per stack to use if not specified by the user.
 	latestDotnetSDKVersionPerStack = map[string]string{
 		runtime.Ubuntu2204: "8.*.*",
+		runtime.Ubuntu2404: "8.*.*",
 	}
 )
 
@@ -265,7 +266,6 @@ func getRuntimeVersionFromRtCfgDir(ctx *gcp.Context, dir string) (string, string
 	if err != nil {
 		return "", "", gcp.InternalErrorf("finding runtimeconfig.json: %v", err)
 	}
-
 	if len(rtCfgFiles) > 1 {
 		return "", "", fmt.Errorf("more than one runtimeconfig.json file found: %v", rtCfgFiles)
 	}

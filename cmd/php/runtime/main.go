@@ -62,7 +62,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 func buildFn(ctx *gcp.Context) error {
 	version, err := php.ExtractVersion(ctx)
 	if version == "" {
-		version = "8.3.x"
+		version = "8.4.x"
 	}
 	if err != nil {
 		return fmt.Errorf("determining runtime version: %w", err)

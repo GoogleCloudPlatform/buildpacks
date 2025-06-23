@@ -995,7 +995,7 @@ func buildApp(t *testing.T, srcDir, image, builderName, runName string, env map[
 				t.Fatalf("Error building application %s: %v, logs:\n%s\n%s", image, err, outb.String(), errb.String())
 			}
 		} else {
-			// The application built successfully.
+			t.Logf("Successfully built application %s: %v, logs:\n%s\n%s", image, err, outb.String(), errb.String())
 			break
 		}
 	}
