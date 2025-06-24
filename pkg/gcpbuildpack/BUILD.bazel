@@ -39,6 +39,7 @@ go_test(
         "detect_test.go",
         "exec_test.go",
         "gcpbuildpack_test.go",
+        "layer_test.go",
         "os_test.go",
         "span_test.go",
     ],

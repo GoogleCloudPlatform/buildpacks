@@ -60,6 +60,9 @@ const (
 	// Example: `-Pprod` for Maven apps run "mvn clear package ... -Pprod" command.
 	BuildArgs = "GOOGLE_BUILD_ARGS"
 
+	// NoCache is an env var used to disable creation of cache layers.
+	NoCache = "GOOGLE_NO_CACHE"
+
 	// GAEMain is an env var used to specify path or fully qualified package name of the main package in App Engine buildpacks.
 	// Behavior: In Go, the value is cleaned up and passed on to subsequent buildpacks as GOOGLE_BUILDABLE.
 	GAEMain = "GAE_YAML_MAIN"
