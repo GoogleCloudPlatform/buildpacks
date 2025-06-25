@@ -129,6 +129,7 @@ func TestBuild(t *testing.T) {
 			mocks: []*mockprocess.Mock{
 				mockprocess.New(`^go list -m$`, mockprocess.WithStdout("example.com/myfunc")),
 				mockprocess.New(`^go list -m -f {{.Version}}.*`, mockprocess.WithStdout("v1.0.0")),
+				mockprocess.New(`^go version$`, mockprocess.WithStdout("go version go1.22 linux/amd64")),
 			},
 		},
 		{

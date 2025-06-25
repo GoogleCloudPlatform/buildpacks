@@ -115,27 +115,9 @@ func SupportsGoGet(ctx *gcp.Context) (bool, error) {
 func SupportsVendorModificaton(ctx *gcp.Context) (bool, error) {
 	v, _ := RuntimeVersion(ctx)
 
-	// if runtimeVersion is not set, it uses latest version (which is going to be >=1.23.0) which does not support vendor modification without modifying vendor/modules.txt.
-	if v == "" {
-		return false, nil
-	}
-
-	// if runtimeVersion is set, check if it is <1.23.0.
-	version, err := semver.NewVersion(v)
-	if err != nil {
-		return false, gcp.InternalErrorf("unable to parse version string %q: %w", v, err)
-	}
-
-	goVersionMatches, err := semver.NewConstraint("<1.23.0")
-	if err != nil {
-		return false, gcp.InternalErrorf("unable to parse version range %q: %w", v, err)
-	}
-
-	if goVersionMatches.Check(version) {
-		return true, nil
-	}
-
-	return false, nil
+	// If runtimeVersion is not set, it uses latest version (which is going to be >=1.23.0) which does
+	// not support vendor modification without modifying vendor/modules.txt.
+	return VersionMatches(ctx, "<1.23.0", v)
 }
 
 // VersionMatches checks if the installed version of Go and the version specified in go.mod match the given version range.
@@ -156,6 +138,14 @@ func VersionMatches(ctx *gcp.Context, versionRange string, goVersions ...string)
 
 	if v == "" {
 		return false, nil
+	}
+
+	if isSupportedUnstableGoVersion(v) {
+		// The format of Go pre-release version e.g. 1.20rc1 doesn't follow the semver rule
+		// that requires a hyphen before the identifier "rc".
+		if strings.Contains(v, "rc") && !strings.Contains(v, "-rc") {
+			v = strings.Replace(v, "rc", "-rc", 1)
+		}
 	}
 
 	version, err := semver.NewVersion(v)
