@@ -297,6 +297,10 @@ func goModPath(ctx *gcp.Context) string {
 // versions, we explictly disable GOPROXY and try again on any error.
 // For newer versions of Go, we take advantage of the "pipe" character which has the same effect.
 func ExecWithGoproxyFallback(ctx *gcp.Context, cmd []string, opts ...gcp.ExecOption) (*gcp.ExecResult, error) {
+	if _, present := os.LookupEnv("GOPROXY"); present {
+		// If the user has explicitly set GOPROXY, we shouldn't clobber it.
+		return ctx.Exec(cmd, opts...)
+	}
 	supportsGoProxy, err := SupportsGoProxyFallback(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("checking for go proxy support: %w", err)
