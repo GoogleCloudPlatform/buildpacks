@@ -24,6 +24,8 @@ import (
 	"github.com/Masterminds/semver"
 )
 
+var skipKeywords = []string{"deprecated", "public-image", "latest"}
+
 type resolveParams struct {
 	noSanitize bool
 }
@@ -52,13 +54,16 @@ func ResolveVersion(constraint string, versions []string, opts ...ResolveVersion
 		return "", err
 	}
 
-	semvers := make([]*semver.Version, len(versions))
-	for i, version := range versions {
+	semvers := []*semver.Version(nil)
+	for _, version := range versions {
+		if shouldSkipVersion(version, skipKeywords) {
+			continue
+		}
 		s, err := semver.NewVersion(version)
 		if err != nil {
 			return "", err
 		}
-		semvers[i] = s
+		semvers = append(semvers, s)
 	}
 
 	// Sort in descending order so that the first version in the list to satisfy a constraint will be
@@ -74,6 +79,15 @@ func ResolveVersion(constraint string, versions []string, opts ...ResolveVersion
 	}
 
 	return "", fmt.Errorf("failed to resolve version matching: %v", c)
+}
+
+func shouldSkipVersion(version string, keywords []string) bool {
+	for _, keyword := range keywords {
+		if strings.HasPrefix(strings.ToLower(version), strings.ToLower(keyword)) {
+			return true
+		}
+	}
+	return false
 }
 
 // IsExactSemver returns true if a given string is valid semantic version.
