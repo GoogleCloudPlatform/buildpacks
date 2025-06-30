@@ -45,11 +45,12 @@ func TestAcceptanceNodeJs(t *testing.T) {
 		},
 		{
 			// Tests a specific versions of Node.js available on dl.google.com.
-			Name:    "runtime version 22.10.0",
-			App:     "simple",
-			Path:    "/version?want=22.10.0",
-			Env:     []string{"GOOGLE_NODEJS_VERSION=22.10.0"},
-			MustUse: []string{nodeRuntime},
+			Name:       "runtime version 22.10.0",
+			App:        "simple",
+			Path:       "/version?want=22.10.0",
+			Env:        []string{"GOOGLE_NODEJS_VERSION=22.10.0"},
+			MustUse:    []string{nodeRuntime},
+			SkipStacks: []string{"google.gae.18", "google.18", "google"},
 		},
 		{
 			Name:                "Dev mode",
@@ -100,6 +101,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			Env:        []string{"GOOGLE_RUNTIME_VERSION=22.10.0"},
 			MustUse:    []string{nodeRuntime, nodeNPM},
 			MustNotUse: []string{nodePNPM, nodeYarn},
+			SkipStacks: []string{"google.gae.18", "google.18", "google"},
 		},
 		{
 			Name:       "without package.json",
