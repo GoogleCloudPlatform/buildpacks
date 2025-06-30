@@ -34,7 +34,6 @@ func TestInstallAngularBuildAdaptor(t *testing.T) {
 		angularVersion        string
 		mocks                 []*mockprocess.Mock
 		expectedLayerMetadata map[string]any
-		wantErr               bool
 	}{
 		{
 			name:          "download adaptor not needed since it is cached",

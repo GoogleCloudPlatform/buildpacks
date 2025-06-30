@@ -21,60 +21,51 @@ import (
 	"github.com/buildpacks/libcnb/v2"
 )
 
-var (
+const (
 	// NextJsVersionKey is the metadata key used to store the nextjs build adaptor version in the nextjs layer.
 	NextJsVersionKey = "version"
-	// PinnedNextjsAdapterVersion is the version of the nextjs adapter that will be used.
-	PinnedNextjsAdapterVersion = "14.0.13"
 )
 
-// InstallNextJsBuildAdaptor installs the nextjs build adaptor in the given layer if it is not already cached.
-func InstallNextJsBuildAdaptor(ctx *gcp.Context, njsl *libcnb.Layer, njsVersion string) error {
-	layerName := njsl.Name
-	version, err := detectNextjsAdaptorVersion(njsVersion)
-
+// InstallNextJsBuildAdapter installs the nextjs build adaptor in the given layer if it is not already cached.
+func InstallNextJsBuildAdapter(ctx *gcp.Context, njsl *libcnb.Layer) error {
+	version, err := nextjsAdapterVersion(ctx)
 	if err != nil {
-		return err
+		return gcp.InternalErrorf("failed to resolve latest nextjs adapter version: %w", err)
 	}
 
-	// Check the metadata in the cache layer to determine if we need to proceed.
+	// Check the metadata in the cache layer to determine if version is already installed.
 	metaVersion := ctx.GetMetadata(njsl, NextJsVersionKey)
 	if version == metaVersion {
-		ctx.CacheHit(layerName)
+		ctx.CacheHit(njsl.Name)
 		ctx.Logf("nextjs adaptor cache hit: %q, %q, skipping installation.", version, metaVersion)
-	} else {
-		ctx.CacheMiss(layerName)
-		if err := ctx.ClearLayer(njsl); err != nil {
-			return fmt.Errorf("clearing layer %q: %w", layerName, err)
-		}
-		// Download and install nextjs adaptor in layer.
-		ctx.Logf("Installing nextjs adaptor %s", version)
-		if err := downloadNextJsAdaptor(ctx, njsl.Path, version); err != nil {
-			return gcp.InternalErrorf("downloading nextjs adapter: %w", err)
-		}
+		return nil
 	}
 
+	ctx.CacheMiss(njsl.Name)
+	if err := ctx.ClearLayer(njsl); err != nil {
+		return fmt.Errorf("clearing layer %q: %w", njsl.Name, err)
+	}
+	ctx.Logf("Installing nextjs adaptor %s", version)
+	// TODO(b/323280044) account for different versions
+	if _, err := ctx.Exec([]string{"npm", "install", "--prefix", njsl.Path, "@apphosting/adapter-nextjs@" + version}); err != nil {
+		return err
+	}
 	// Store layer flags and metadata.
 	ctx.SetMetadata(njsl, NextJsVersionKey, version)
 	return nil
 }
 
-// detectNextjsAdaptorVersion determines the version of Nextjs that is needed by a nextjs project.
-func detectNextjsAdaptorVersion(njsVersion string) (string, error) {
-	// TODO(b/323280044) account for different versions once development is more stable.
-	adapterVersion := PinnedNextjsAdapterVersion
-	return adapterVersion, nil
-}
-
-// downloadNextJsAdaptor downloads the Nextjs build adaptor into the provided directory.
-func downloadNextJsAdaptor(ctx *gcp.Context, dirPath string, version string) error {
-	if _, err := ctx.Exec([]string{"npm", "install", "--prefix", dirPath, "@apphosting/adapter-nextjs@" + version}); err != nil {
-		ctx.Logf("Failed to install nextjs adaptor version: %s. Falling back to latest", version)
-		if _, err := ctx.Exec([]string{"npm", "install", "--prefix", dirPath, "@apphosting/adapter-nextjs@latest"}); err != nil {
-			return gcp.InternalErrorf("installing nextjs adaptor: %w", err)
-		}
+// nextjsAdapterVersion determines the latest version of the Nextjs build adaptor.
+func nextjsAdapterVersion(ctx *gcp.Context) (string, error) {
+	// TODO(b/323280044) account for different MAJOR.MINOR versions once development is more stable.
+	version, err := ctx.Exec([]string{"npm", "view", "@apphosting/adapter-nextjs", "version"})
+	if err != nil {
+		return "", gcp.InternalErrorf("npm view failed: %w", err)
 	}
-	return nil
+	if version.Stdout == "" {
+		return "", gcp.InternalErrorf("npm view failed: no output")
+	}
+	return version.Stdout, nil
 }
 
 // OverrideNextjsBuildScript overrides the build script to be the Nextjs build script

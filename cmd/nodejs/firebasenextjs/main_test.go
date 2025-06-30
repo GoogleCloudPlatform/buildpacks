@@ -20,7 +20,10 @@ import (
 	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 	bmd "github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
+)
+
+const (
+	mockLatestNextjsAdapterVersion = "1.1.1"
 )
 
 func TestDetect(t *testing.T) {
@@ -425,7 +428,7 @@ unsupported:
 				bmd.FrameworkName:    bmd.MetadataValue("nextjs"),
 				bmd.FrameworkVersion: bmd.MetadataValue("13.0.0"),
 				bmd.AdapterName:      bmd.MetadataValue("@apphosting/adapter-nextjs"),
-				bmd.AdapterVersion:   bmd.MetadataValue(nodejs.PinnedNextjsAdapterVersion),
+				bmd.AdapterVersion:   mockLatestNextjsAdapterVersion,
 			},
 		},
 	}
@@ -436,7 +439,8 @@ unsupported:
 				bpt.WithTestName(tc.name),
 				bpt.WithFiles(tc.files),
 				bpt.WithExecMocks(
-					mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@`+nodejs.PinnedNextjsAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+					mockprocess.New(`npm view @apphosting/adapter-nextjs version`, mockprocess.WithStdout(mockLatestNextjsAdapterVersion)),
+					mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@`+mockLatestNextjsAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 				),
 			}
 			result, err := bpt.RunBuild(t, buildFn, opts...)
@@ -449,7 +453,7 @@ unsupported:
 			}
 
 			wantCommands := []string{
-				"npm install --prefix npm_modules @apphosting/adapter-nextjs@" + nodejs.PinnedNextjsAdapterVersion,
+				"npm install --prefix npm_modules @apphosting/adapter-nextjs@" + mockLatestNextjsAdapterVersion,
 			}
 			for _, cmd := range wantCommands {
 				if result.ExitCode == 0 && !result.CommandExecuted(cmd) && tc.shouldInstallAdapter {
