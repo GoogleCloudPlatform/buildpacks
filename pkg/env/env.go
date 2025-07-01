@@ -157,6 +157,9 @@ const (
 
 	// ColdStartImprovementsBuildStudy is an experiment flag to enable cold start improvements build study.
 	ColdStartImprovementsBuildStudy = "EXPERIMENTAL_RUNTIMES_COLD_START_BUILD"
+
+	// FastAPISmartDefaults is an experiment flag to enable fastapi smart defaults with uvicorn.
+	FastAPISmartDefaults = "X_GOOGLE_FASTAPI_SMART_DEFAULTS"
 )
 
 // IsGAE returns true if the buildpack target platform is gae.

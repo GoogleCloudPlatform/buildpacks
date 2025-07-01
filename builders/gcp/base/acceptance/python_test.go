@@ -61,6 +61,12 @@ func TestAcceptancePython(t *testing.T) {
 			MustUse: []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
 		},
 		{
+			Name:    "missing entrypoint with uvicorn and X_GOOGLE_FASTAPI_SMART_DEFAULTS",
+			App:     "fastapi_uvicorn",
+			Env:     []string{"X_GOOGLE_FASTAPI_SMART_DEFAULTS=true"},
+			MustUse: []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
+		},
+		{
 			Name:       "runtime version 3.9",
 			SkipStacks: []string{"google.24.full", "google.24"},
 			App:        "version",

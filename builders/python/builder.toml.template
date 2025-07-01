@@ -142,12 +142,26 @@ description = "Unified builder all Python runtimes"
     id = "google.utils.label-image"
 
 # gcp only
-# This buildpack group will always fail but with a clear message that the
-# entrypoint is missing. It must be the last group otherwise projects with
-# a single .py file and no entrypoint will fail
+# This buildpack group will attempt to install a webserver if the entrypoint 
+# is not provided. And set a default entrypoint if it is not provided given a 
+# main.py file exists else it will fail with a message to the user.
 [[order]]
   [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
     id = "google.python.missing-entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
 
 [stack]
   id = "${STACK_ID}"

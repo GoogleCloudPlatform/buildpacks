@@ -20,10 +20,12 @@ import (
 )
 
 const (
-	entrypoint    = "google.config.entrypoint"
-	pythonFF      = "google.python.functions-framework"
-	pythonPIP     = "google.python.pip"
-	pythonRuntime = "google.python.runtime"
+	entrypoint              = "google.config.entrypoint"
+	pythonFF                = "google.python.functions-framework"
+	pythonPIP               = "google.python.pip"
+	pythonRuntime           = "google.python.runtime"
+	pythonMissingEntrypoint = "google.python.missing-entrypoint"
+	pythonWebserver         = "google.python.webserver"
 )
 
 func init() {
@@ -89,6 +91,12 @@ func TestAcceptancePython(t *testing.T) {
 			App:     "pip_vendored_dependencies",
 			Env:     []string{"GOOGLE_VENDOR_PIP_DEPENDENCIES=package"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+		},
+		{
+			Name:    "python with fastapi smart default entrypoint",
+			App:     "fastapi_uvicorn",
+			Env:     []string{"X_GOOGLE_FASTAPI_SMART_DEFAULTS=true"},
+			MustUse: []string{pythonRuntime, pythonPIP, pythonMissingEntrypoint},
 		},
 	}
 
