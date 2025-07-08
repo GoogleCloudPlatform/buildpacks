@@ -14,6 +14,7 @@
 package acceptance
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
@@ -61,10 +62,21 @@ func TestAcceptancePython(t *testing.T) {
 			MustUse: []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
 		},
 		{
-			Name:    "missing entrypoint with uvicorn and X_GOOGLE_FASTAPI_SMART_DEFAULTS",
-			App:     "fastapi_uvicorn",
-			Env:     []string{"X_GOOGLE_FASTAPI_SMART_DEFAULTS=true"},
-			MustUse: []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
+			Name:                       "fastapi_smart_default_entrypoint_for_3.13_and_above",
+			App:                        "fastapi_uvicorn",
+			SkipStacks:                 []string{"google.gae.18"},
+			Env:                        []string{"X_GOOGLE_FASTAPI_SMART_DEFAULTS=true"},
+			MustUse:                    []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
+			VersionInclusionConstraint: ">=3.13.0",
+		},
+		{
+			Name:                       "no_fastapi_smart_default_entrypoint_for_3.13_and_below",
+			App:                        "fastapi_uvicorn",
+			Env:                        []string{"X_GOOGLE_FASTAPI_SMART_DEFAULTS=true"},
+			MustUse:                    []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
+			VersionInclusionConstraint: "<3.13.0",
+			MustMatchStatusCode:        http.StatusInternalServerError,
+			MustMatch:                  "<h1><p>Internal Server Error</p></h1>\n    \n  </body>\n</html>",
 		},
 		{
 			Name:       "runtime version 3.9",

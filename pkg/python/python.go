@@ -29,6 +29,7 @@ import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/buildpacks/libcnb/v2"
+	"github.com/Masterminds/semver"
 )
 
 const (
@@ -118,6 +119,39 @@ func RuntimeVersion(ctx *gcp.Context, dir string) (string, error) {
 
 	ctx.Logf("Python version not specified, using the latest available Python runtime for the stack %q", os)
 	return latestPythonVersionForStack, nil
+}
+
+// SupportsSmartDefaultEntrypoint returns true if the runtime version supports smart default entrypoint.
+func SupportsSmartDefaultEntrypoint(ctx *gcp.Context) (bool, error) {
+	v, err := RuntimeVersion(ctx, ctx.ApplicationRoot())
+	if err != nil {
+		return false, err
+	}
+	// If the version contains a wildcard, we will replace with 0 for the semver comparison.
+	v = strings.ReplaceAll(v, "*", "0")
+
+	return versionMatchesSemver(ctx, ">=3.13.0", v)
+}
+
+// versionMatchesSemver checks if the provided version matches the given version semver range.
+// The range string has the following format: https://github.com/blang/semver#ranges.
+func versionMatchesSemver(ctx *gcp.Context, versionRange string, version string) (bool, error) {
+	if version == "" {
+		return false, nil
+	}
+	constraint, err := semver.NewConstraint(versionRange)
+	if err != nil {
+		return false, fmt.Errorf("invalid version range %q: %w", versionRange, err)
+	}
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return false, fmt.Errorf("invalid version %q: %w", version, err)
+	}
+	if !constraint.Check(v) {
+		ctx.Logf("Python version %q does not match the semver constraint %q", version, versionRange)
+		return false, nil
+	}
+	return true, nil
 }
 
 func versionFromFile(ctx *gcp.Context, dir string) (string, error) {

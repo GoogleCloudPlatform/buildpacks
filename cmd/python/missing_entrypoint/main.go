@@ -61,10 +61,14 @@ func buildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("for Python, provide a main.py file or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
 	}
 	cmd := []string{"gunicorn", "-b", ":8080", "main:app"}
-	if os.Getenv(env.FastAPISmartDefaults) == "true" {
-		cmd, err = smartDefaultEntrypoint(ctx)
-		if err != nil {
-			return fmt.Errorf("error detecting smart default entrypoint: %w", err)
+
+	// We will use the smart default entrypoint if the runtime version supports it (>=3.13)
+	if supports, err := python.SupportsSmartDefaultEntrypoint(ctx); err == nil && supports {
+		if os.Getenv(env.FastAPISmartDefaults) == "true" {
+			cmd, err = smartDefaultEntrypoint(ctx)
+			if err != nil {
+				return fmt.Errorf("error detecting smart default entrypoint: %w", err)
+			}
 		}
 	}
 	ctx.Warnf("Setting default entrypoint: %q", strings.Join(cmd, " "))
