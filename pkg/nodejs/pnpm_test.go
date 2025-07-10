@@ -151,7 +151,7 @@ func TestDetectPNPMVersion(t *testing.T) {
 				},
 				"modified": "2022-01-27T21:10:55.626Z"
 			}`,
-			wantVersion: "9.2.0",
+			wantVersion: "10.12.4",
 		},
 		{
 			name: "only engines version",

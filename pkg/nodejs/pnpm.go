@@ -77,11 +77,13 @@ func downloadPNPM(ctx *gcp.Context, dir, version string) error {
 // package manager version function.
 func detectPNPMVersion(pjs *PackageJSON) (string, error) {
 	if pjs == nil || (pjs.Engines.PNPM == "" && pjs.PackageManager == "") {
-		version, err := latestPackageVersion("pnpm")
-		if err != nil {
-			return "", gcp.InternalErrorf("fetching available pnpm versions: %w", err)
-		}
-		return version, nil
+		// version, err := latestPackageVersion("pnpm")
+		// if err != nil {
+		// 	return "", gcp.InternalErrorf("fetching available pnpm versions: %w", err)
+		// }
+
+		// TODO - Remove this once the pnpm fix is released.
+		return "10.12.4", nil
 	}
 	var requestedVersion string
 	if pjs.Engines.PNPM != "" {
