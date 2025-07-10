@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/Masterminds/semver"
 )
 
@@ -61,7 +62,7 @@ func ResolveVersion(constraint string, versions []string, opts ...ResolveVersion
 		}
 		s, err := semver.NewVersion(version)
 		if err != nil {
-			return "", err
+			return "", buildererror.Errorf(buildererror.StatusInternal, "failed to parse version %q: %v", version, err)
 		}
 		semvers = append(semvers, s)
 	}

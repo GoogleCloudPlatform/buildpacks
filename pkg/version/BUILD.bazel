@@ -11,6 +11,7 @@ go_library(
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     deps = [
+        "//pkg/buildererror",
         "@com_github_masterminds_semver//:go_default_library",
     ],
 )
