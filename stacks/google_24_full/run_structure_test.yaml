@@ -26,7 +26,7 @@ metadataTest:
     - key: PORT
       value: 8080
     - key: 'CNB_STACK_ID'
-      value: 'google.+'
+      value: 'google.24'
       isRegex: true
     - key: 'CNB_USER_ID'
       value: '33'
@@ -34,7 +34,7 @@ metadataTest:
       value: '33'
   labels:
     - key: 'io.buildpacks.stack.id'
-      value: 'google.24.full'
+      value: 'google.24'
       isRegex: true
     - key: 'io.buildpacks.stack.distro.name'
       value: 'Ubuntu'
@@ -45,7 +45,7 @@ metadataTest:
     - key: 'io.buildpacks.stack.mixins'
       value: '[]'
     - key: 'io.buildpacks.stack.homepage'
-      value: 'https://github.com/GoogleCloudPlatform/buildpacks/stacks/google_24_full'
+      value: 'https://github.com/GoogleCloudPlatform/buildpacks/tree/main/stacks/google_24_full'
   exposedPorts: ['8080']
   entrypoint: []
   cmd: []

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 FROM marketplace.gcr.io/google/ubuntu2404:latest
-RUN touch /var/mail/ubuntu && chown ubuntu /var/mail/ubuntu && userdel -r ubuntu
 
 ARG cnb_uid=33
 ARG cnb_gid=33
@@ -36,7 +35,7 @@ RUN --mount=type=secret,id=pro-attach-config \
   # Disable multiverse repositories
   mv /etc/apt/sources.list /etc/apt/sources.list.universe && \
   cat /etc/apt/sources.list.universe \
-    | sed 's/^deb\(.*\(multiverse\)/# deb\1/g' >/etc/apt/sources.list && \
+    | sed 's/^deb\(.*\multiverse\)/# deb\1/g' >/etc/apt/sources.list && \
   # Install packages
   export DEBIAN_FRONTEND=noninteractive && \
   apt-get update -y && \
@@ -54,11 +53,12 @@ RUN --mount=type=secret,id=pro-attach-config \
   # Configure the system locale
   locale-gen en_US.UTF-8 && \
   update-locale LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8 && \
-  # Configure the user
-  groupadd cnb --gid ${cnb_gid} && \
-  useradd --uid ${cnb_uid} --gid ${cnb_gid} -m -s /bin/bash cnb
+  # Configure the user's home directory
+  mkdir /www-data-home && \
+  chown www-data:www-data /www-data-home && \
+  usermod -d /www-data-home www-data
 
-USER cnb
+USER ${cnb_uid}:${cnb_gid}
 
 ENV LANG="en_US.UTF-8"
 ENV LANGUAGE="en_US:en"

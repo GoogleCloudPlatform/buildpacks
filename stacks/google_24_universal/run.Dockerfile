@@ -51,9 +51,10 @@ RUN --mount=type=secret,id=pro-attach-config,target=/etc/secrets/pro-attach-conf
   # Configure the system locale
   locale-gen en_US.UTF-8 && \
   update-locale LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8 && \
-  # Configure the user
-  groupadd cnb --gid ${cnb_gid} && \
-  useradd --uid ${cnb_uid} --gid ${cnb_gid} -m -s /bin/bash cnb && \
+  # Configure the user's home directory
+  mkdir /www-data-home && \
+  chown www-data:www-data /www-data-home && \
+  usermod -d /www-data-home www-data && \
   # Nothing in this image requires an additional license, but we need to add an
   # empty license.yaml so the license validation doesn't fail.
   mkdir -p /.google/usr/local/share/licenses/base_runtime/ && \
@@ -62,15 +63,7 @@ RUN --mount=type=secret,id=pro-attach-config,target=/etc/secrets/pro-attach-conf
   chmod a+w /var/log && \
   rm -rf /var/log/*
 
-# Install the following packages separately as putting them in packages.txt 
-# will cause "unable to locate packages" error
-RUN export DEBIAN_FRONTEND=noninteractive && \
-  apt-get update -y && \
-  apt-get upgrade -y --no-install-recommends --allow-remove-essential && \
-  apt-get -y -qq --no-install-recommends --allow-remove-essential install \
-    libzip4
-
-USER cnb
+USER ${cnb_uid}:${cnb_gid}
 
 ENV LANG="en_US.UTF-8"
 ENV LANGUAGE="en_US:en"
