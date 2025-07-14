@@ -17,6 +17,7 @@ gae_runtimes = {
     "go122": "1.22.12",
     "go123": "1.23.11",
     "go124": "1.24.5",
+    "go125": "1.25rc2",
 }
 
 gcf_runtimes = {
@@ -30,6 +31,7 @@ gcf_runtimes = {
     "go122": "1.22.12",
     "go123": "1.23.11",
     "go124": "1.24.5",
+    "go125": "1.25rc2",
 }
 
 flex_runtimes = {
@@ -40,6 +42,7 @@ flex_runtimes = {
     "go122": "1.22.12",
     "go123": "1.23.11",
     "go124": "1.24.5",
+    "go125": "1.25rc2",
 }
 
 version_to_stack = {
@@ -56,4 +59,5 @@ version_to_stack = {
     "go122": "google-22-full",
     "go123": "google-22-full",
     "go124": "google-22-full",
+    "go125": "google-22-full",
 }
