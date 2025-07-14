@@ -26,7 +26,7 @@ string can be provided for local development.
 To build the run image:
 
 ```
-docker build . \
+DOCKER_BUILDKIT=1 docker build . \
   --build-arg CANDIDATE_NAME=test \
   --file run.Dockerfile \
   --tag gcr.io/buildpacks/google-24/run
@@ -35,7 +35,7 @@ docker build . \
 To build the build image:
 
 ```
-docker build . \
+DOCKER_BUILDKIT=1 docker build . \
   --build-arg CANDIDATE_NAME=test \
   --file build.Dockerfile \
   --tag gcr.io/buildpacks/google-24/build

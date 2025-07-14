@@ -18,6 +18,7 @@ libtidy5deb1
 libxml2
 libxslt1.1
 libyaml-0-2
+libzip4
 locales
 openssl
 python3

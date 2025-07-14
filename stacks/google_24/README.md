@@ -1,4 +1,4 @@
-# Buildpack Stack `google.min.24`
+# Buildpack Stack `google.24`
 
 A minimal buildpack stack based on Ubuntu 24.04 LTS (Noble Numbat).
 

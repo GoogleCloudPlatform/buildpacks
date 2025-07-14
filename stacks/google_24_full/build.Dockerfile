@@ -64,15 +64,15 @@ ENTRYPOINT []
 ENV LANG="en_US.UTF-8"
 ENV LANGUAGE="en_US:en"
 ENV LC_ALL="en_US.UTF-8"
-ENV CNB_STACK_ID="google.24.full"
+ENV CNB_STACK_ID="google.24"
 ENV CNB_USER_ID=${cnb_uid}
 ENV CNB_GROUP_ID=${cnb_gid}
 
 # Standard buildpacks metadata
-LABEL io.buildpacks.stack.id="google.24.full"
+LABEL io.buildpacks.stack.id="google.24"
 LABEL io.buildpacks.stack.distro.name="Ubuntu"
 LABEL io.buildpacks.stack.distro.version="24.04"
 LABEL io.buildpacks.stack.maintainer="Google"
 LABEL io.buildpacks.stack.mixins="[]"
 LABEL io.buildpacks.stack.homepage \
-  "https://github.com/GoogleCloudPlatform/buildpacks/stacks/google_24_full"
+  "https://github.com/GoogleCloudPlatform/buildpacks/tree/main/stacks/google_24_full"

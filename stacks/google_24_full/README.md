@@ -1,4 +1,4 @@
-# Buildpack Stack `google.gae.24`
+# Buildpack Stack `google.24`
 
 A Ubuntu 24.04 LTS (Noble Numbat) buildpack stack used for Google App Engine
 runtimes.
