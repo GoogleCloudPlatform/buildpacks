@@ -223,3 +223,98 @@ func TestContainsUvicorn(t *testing.T) {
 		})
 	}
 }
+
+func TestContainsGradio(t *testing.T) {
+	testCases := []struct {
+		name string
+		str  string
+		want bool
+	}{
+		{
+			name: "gradio_present",
+			str:  "gradio==19.9.0\nfastapi\n",
+			want: true,
+		},
+		{
+			name: "gradio_present_with_comment",
+			str:  "gradio #my-comment\nfastapi\n",
+			want: true,
+		},
+		{
+			name: "gradio_present_second_line",
+			str:  "fastapi\ngradio==19.9.0",
+			want: true,
+		},
+		{
+			name: "no_gradio_present",
+			str:  "gradio-logging==0.1.0\nfastapi\n",
+			want: false,
+		},
+		{
+			name: "gradio_egg_present",
+			str:  "git+git://github.com/gradio@master#egg=gradio\nfastapi\n",
+			want: true,
+		},
+		{
+			name: "gradio_egg_not_present",
+			str:  "git+git://github.com/gradio-logging@master#egg=gradio-logging\nfastapi\n",
+			want: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := containsPackage(tc.str, "gradio")
+			if got != tc.want {
+				t.Errorf("containsPackage(gradio) got %t, want %t", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestContainsStreamlit(t *testing.T) {
+	testCases := []struct {
+		name string
+		str  string
+		want bool
+	}{
+		{
+			name: "streamlit_present",
+			str:  "streamlit==19.9.0\nfastapi\n",
+			want: true,
+		},
+		{
+			name: "streamlit_present_with_comment",
+			str:  "streamlit #my-comment\nfastapi\n",
+			want: true,
+		},
+		{
+			name: "streamlit_present_second_line",
+			str:  "fastapi\nstreamlit==19.9.0",
+			want: true,
+		},
+		{
+			name: "no_streamlit_present",
+			str:  "streamlit-logging==0.1.0\nfastapi\n",
+			want: false,
+		},
+		{
+			name: "streamlit_egg_present",
+			str:  "git+git://github.com/streamlit@master#egg=streamlit\nfastapi\n",
+			want: true,
+		},
+		{
+			name: "streamlit_egg_not_present",
+			str:  "git+git://github.com/streamlit-logging@master#egg=streamlit-logging\nfastapi\n",
+			want: false,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := containsPackage(tc.str, "streamlit")
+			if got != tc.want {
+				t.Errorf("containsPackage(streamlit) got %t, want %t", got, tc.want)
+			}
+		})
+	}
+}

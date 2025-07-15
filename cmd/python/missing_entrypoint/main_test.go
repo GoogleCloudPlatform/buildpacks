@@ -15,9 +15,13 @@
 package main
 
 import (
+	"fmt"
+	"regexp"
+	"strings"
 	"testing"
 
-	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 )
 
 func TestDetect(t *testing.T) {
@@ -53,7 +57,238 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
+			bpt.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
 		})
 	}
+}
+
+func TestBuild(t *testing.T) {
+	testCases := []struct {
+		name         string
+		files        map[string]string
+		env          []string
+		wantCmd      []string
+		runtime      string
+		wantExitCode int
+	}{
+		{
+			name: "default_gunicorn",
+			files: map[string]string{
+				"main.py": "",
+			},
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "fastapi_smart_defaults_gunicorn",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "gunicorn",
+			},
+			env: []string{
+				env.FastAPISmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "fastapi_smart defaults_uvicorn",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "uvicorn",
+			},
+			env: []string{
+				env.FastAPISmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "fastapi_smart_defaults_none",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "",
+			},
+			env: []string{
+				env.FastAPISmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "fastapi_smart_defaults_below_3.13_uvicorn",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "",
+			},
+			env: []string{
+				env.FastAPISmartDefaults + "=true",
+				env.RuntimeVersion + "=3.12.0",
+			},
+			runtime: "python3.12",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "fastapi_smart_defaults_with_no_version",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "uvicorn",
+			},
+			env: []string{
+				env.FastAPISmartDefaults + "=true",
+			},
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "python_smart_defaults_gunicorn",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "gunicorn",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "python_smart_defaults_uvicorn",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "uvicorn",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "python_smart_defaults_gradio",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "gradio",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"python", "main.py"},
+		},
+		{
+			name: "python_smart_defaults_streamlit",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "streamlit",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"streamlit", "run", "main.py", "--server.address", "0.0.0.0", "--server.port", "8080"},
+		},
+		{
+			name: "python_smart_defaults_none",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "python_smart_defaults_below_3.13_uvicorn",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.RuntimeVersion + "=3.12.0",
+			},
+			runtime: "python3.12",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "python_smart_defaults_below_3.13_gradio",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "gradio",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.RuntimeVersion + "=3.12.0",
+			},
+			runtime: "python3.12",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "python_smart_defaults_below_3.13_streamlit",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "streamlit",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.RuntimeVersion + "=3.12.0",
+			},
+			runtime: "python3.12",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "python_smart_defaults_with_no_version",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "uvicorn",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+			},
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "no main.py",
+			files: map[string]string{
+				"app.py": "",
+			},
+			wantExitCode: 1,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			opts := []bpt.Option{
+				bpt.WithTestName(tc.name),
+				bpt.WithFiles(tc.files),
+				bpt.WithEnvs(tc.env...),
+			}
+			result, err := bpt.RunBuild(t, buildFn, opts...)
+			if err != nil && tc.wantExitCode == 0 {
+				t.Fatalf("error running build: %v, logs: %s", err, result.Output)
+			}
+
+			if result.ExitCode != tc.wantExitCode {
+				t.Errorf("build exit code mismatch, got: %d, want: %d", result.ExitCode, tc.wantExitCode)
+			}
+			wantCommand := strings.Join(tc.wantCmd, " ")
+			if result.ExitCode == 0 && !processAdded(result, wantCommand) {
+				t.Errorf("expected command %q to be added as Process, but it was not, build output: %s", wantCommand, result.Output)
+			}
+		})
+	}
+}
+
+// ProcessAdded returns the true if the process added to the context.
+func processAdded(r *bpt.Result, command string) bool {
+	re := regexp.MustCompile(fmt.Sprintf(`(?s)Setting default entrypoint: .*?%s`, command))
+	return re.FindString(r.Output) != ""
 }

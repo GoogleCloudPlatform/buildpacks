@@ -160,6 +160,10 @@ const (
 
 	// FastAPISmartDefaults is an experiment flag to enable fastapi smart defaults with uvicorn.
 	FastAPISmartDefaults = "X_GOOGLE_FASTAPI_SMART_DEFAULTS"
+
+	// PythonSmartDefaults is an experiment flag to enable python smart defaults for
+	// gradio, streamlit, and maybe future frameworks.
+	PythonSmartDefaults = "X_GOOGLE_PYTHON_SMART_DEFAULTS"
 )
 
 // IsGAE returns true if the buildpack target platform is gae.

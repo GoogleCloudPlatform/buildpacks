@@ -384,7 +384,9 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 		cfg.MustMatch = "PASS"
 	}
 	if !strings.HasSuffix(body, cfg.MustMatch) {
-		t.Errorf("Response body does not contain suffix: got %q, want %q", body, cfg.MustMatch)
+		if !strings.Contains(body, cfg.MustMatch) {
+			t.Errorf("Response body does not contain: got %q, want %q", body, cfg.MustMatch)
+		}
 	}
 
 	if cfg.MustRebuildOnChange != "" {

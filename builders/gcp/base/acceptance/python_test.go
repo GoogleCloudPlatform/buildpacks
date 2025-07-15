@@ -61,14 +61,6 @@ func TestAcceptancePython(t *testing.T) {
 			MustUse: []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
 		},
 		{
-			Name:                       "fastapi_smart_default_entrypoint_for_3.13_and_above",
-			App:                        "fastapi_uvicorn",
-			SkipStacks:                 []string{"google.gae.18"},
-			Env:                        []string{"X_GOOGLE_FASTAPI_SMART_DEFAULTS=true"},
-			MustUse:                    []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
-			VersionInclusionConstraint: ">=3.13.0",
-		},
-		{
 			Name:       "runtime version 3.9",
 			SkipStacks: []string{"google.24.full", "google.24"},
 			App:        "version",
