@@ -50,5 +50,5 @@ builder(
     buildpacks = BUILDPACKS,
     descriptor = "builder.toml",
     image = "gcp/nodejs-24",
-    stack = "google.24.full",
+    stack = "google.24",
 )

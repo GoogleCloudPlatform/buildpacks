@@ -194,6 +194,7 @@ def _generate_builder_descriptor(name, descriptor, builder_template, stack):
     stack_to_gae_stack = {
         "google.gae.18": "google-gae-18",
         "google.gae.22": "google-gae-22",
+        "google.24": "google-24-full",
         "google.24.full": "google-24-full",
     }
     gae_stack = stack_to_gae_stack.get(stack)
