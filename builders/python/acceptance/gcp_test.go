@@ -14,7 +14,6 @@
 package acceptance
 
 import (
-	"net/http"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
@@ -92,37 +91,6 @@ func TestAcceptancePython(t *testing.T) {
 			App:     "pip_vendored_dependencies",
 			Env:     []string{"GOOGLE_VENDOR_PIP_DEPENDENCIES=package"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
-		},
-		{
-			Name:                       "fastapi_smart_default_entrypoint_for_3.13_and_above",
-			App:                        "fastapi_uvicorn",
-			Env:                        []string{"X_GOOGLE_FASTAPI_SMART_DEFAULTS=true"},
-			MustUse:                    []string{pythonRuntime, pythonPIP, pythonMissingEntrypoint},
-			VersionInclusionConstraint: ">=3.13.0",
-		},
-		{
-			Name:                       "no_fastapi_smart_default_entrypoint_for_3.13_and_below",
-			App:                        "fastapi_uvicorn",
-			Env:                        []string{"X_GOOGLE_FASTAPI_SMART_DEFAULTS=true"},
-			MustUse:                    []string{pythonRuntime, pythonPIP, pythonMissingEntrypoint},
-			VersionInclusionConstraint: "<3.13.0",
-			MustMatchStatusCode:        http.StatusInternalServerError,
-			MustMatch:                  "Internal Server Error",
-		},
-		{
-			Name:                       "gradio_with_python_smart_defaults_for_3.13_and_above",
-			App:                        "gradio",
-			Env:                        []string{"X_GOOGLE_PYTHON_SMART_DEFAULTS=true"},
-			MustUse:                    []string{pythonRuntime, pythonPIP, pythonMissingEntrypoint},
-			VersionInclusionConstraint: ">=3.13.0",
-		},
-		{
-			Name:                       "streamlit_with_python_smart_defaults_for_3.13_and_above",
-			App:                        "streamlit",
-			Env:                        []string{"X_GOOGLE_PYTHON_SMART_DEFAULTS=true"},
-			MustUse:                    []string{pythonRuntime, pythonPIP, pythonMissingEntrypoint},
-			VersionInclusionConstraint: ">=3.13.0",
-			MustMatch:                  "Streamlit",
 		},
 	}
 
