@@ -1,8 +1,16 @@
-description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java, Node.js, PHP, Python, and Ruby"
+description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js, and Python"
 
 [[buildpacks]]
   id = "google.config.entrypoint"
   uri = "entrypoint.tgz"
+
+[[buildpacks]]
+  id = "google.cpp.clear-source"
+  uri = "cpp/clear_source.tgz"
+
+[[buildpacks]]
+  id = "google.cpp.functions-framework"
+  uri = "cpp/functions_framework.tgz"
 
 [[buildpacks]]
   id = "google.dart.compile"
@@ -511,7 +519,7 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
   [[order.group]]
     id = "google.utils.label-image"
 
-# Python applications with default entrypoint or fail with a message.
+# Python applications with user provided entrypoints.
 [[order]]
   [[order.group]]
     id = "google.python.runtime"
@@ -525,6 +533,7 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.utils.label-image"
+    
 
 ###########
 # Ruby applications #
@@ -702,6 +711,26 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
   [[order.group]]
     id = "google.utils.label-image"
 
+########
+# C++  #
+########
+
+# This buildpack group is last in the order because (a) it is the newest one,
+# we do not want to break existing application by having it erronously match
+# an existing application, and (b) it could trigger if the application contains
+# C++ code, but it is not just C++.
+[[order]]
+
+  [[order.group]]
+    id = "google.cpp.functions-framework"
+
+  [[order.group]]
+    id = "google.cpp.clear-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
 ##############
 # Python 2/2 #
 ##############
@@ -733,9 +762,9 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
 
 # Currently built with //builders/gcp/base/stack/stack:build.
 [stack]
-  id = "google.22"
-  build-image = "gcr.io/buildpacks/google-22/build"
-  run-image = "gcr.io/buildpacks/google-22/run"
+  id = "google"
+  build-image = "gcr.io/buildpacks/gcp/build:v1"
+  run-image = "gcr.io/buildpacks/gcp/run:v1"
 
 [lifecycle]
   version = "0.20.5"

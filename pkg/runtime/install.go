@@ -82,6 +82,7 @@ var runtimeNames = map[InstallableRuntime]string{
 var stackToOS = map[string]string{
 	"google":                 Ubuntu1804,
 	"google.gae.18":          Ubuntu1804,
+	"google.18":              Ubuntu1804,
 	"google.22":              Ubuntu2204,
 	"google.gae.22":          Ubuntu2204,
 	"google.min.22":          Ubuntu2204,
@@ -103,8 +104,8 @@ const (
 func OSForStack(ctx *gcp.Context) string {
 	os, ok := stackToOS[ctx.StackID()]
 	if !ok {
-		ctx.Warnf("unknown stack ID %q, falling back to Ubuntu 18.04", ctx.StackID())
-		os = Ubuntu1804
+		ctx.Warnf("unknown stack ID %q, falling back to Ubuntu 22.04", ctx.StackID())
+		os = Ubuntu2204
 	}
 	return os
 }

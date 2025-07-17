@@ -202,15 +202,14 @@ func TestGetSDKVersion(t *testing.T) {
 			RuntimeVersionEnvVar: "",
 			ApplicationRoot:      "",
 			ExpectedResult:       "",
-			StackID:              "google.18",
+			StackID:              "google.gae.18",
 			WantError:            true,
 		},
 		{
-			Name:                 "Should error out: will pickup ubuntu1804 by default, no supported version on that.",
+			Name:                 "Will pickup ubuntu2204 by default, pick up latest version",
 			RuntimeVersionEnvVar: "",
 			ApplicationRoot:      "",
-			ExpectedResult:       "",
-			WantError:            true,
+			ExpectedResult:       "8.*.*",
 		},
 	}
 

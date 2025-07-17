@@ -80,8 +80,17 @@ GROUPS = {
 }
 
 builder(
+    name = "google_18_builder",
+    buildpacks = BUILDPACKS,
+    descriptor = "google.18.builder.toml",
+    groups = GROUPS,
+    image = "google-18/builder",
+)
+
+builder(
     name = "builder",
     buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
     groups = GROUPS,
     image = "gcp/base",
 )

@@ -34,8 +34,13 @@ func TestRuntimeVersion(t *testing.T) {
 		stackID        string
 	}{
 		{
-			name: "default_to_latest_for_default_stack_ubuntu1804_is_default_for_unit_tests",
-			want: "3.9.*",
+			name: "default_to_latest_for_default_stack_ubuntu2204_is_default_for_unit_tests",
+			want: "3.13.*",
+		},
+		{
+			name:    "default_to_latest_for_stack_ubuntu1804",
+			stackID: "google.gae.18",
+			want:    "3.9.*",
 		},
 		{
 			name:    "version_from_GOOGLE_PYTHON_VERSION",
@@ -186,8 +191,13 @@ func TestSupportSmartDefaultEntrypoint(t *testing.T) {
 		wantErr        bool
 	}{
 		{
-			name: "default_to_latest_for_default_stack_ubuntu1804_is_default_for_unit_tests",
-			want: false,
+			name: "default_to_latest_for_default_stack_ubuntu2204_is_default_for_unit_tests",
+			want: true,
+		},
+		{
+			name:    "default_to_latest_for_stack_ubuntu1804",
+			stackID: "google.gae.18",
+			want:    false,
 		},
 		{
 			name:    "supported_version_from_GOOGLE_PYTHON_VERSION",

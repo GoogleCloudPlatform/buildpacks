@@ -634,6 +634,11 @@ func TestRuntimeVersion(t *testing.T) {
 			stackID: "google.22",
 			want:    "1.23.*",
 		},
+		{
+			name:    "invalid stack id, will fallback to ubuntu2204 and pass",
+			stackID: "abc",
+			want:    "1.23.*",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -660,11 +665,6 @@ func TestRuntimeVersionError(t *testing.T) {
 		stackID               string
 		resolveGoVersionError error
 	}{
-		{
-			name:                  "invalid stack id, will fallback to ubuntu1804 and fail",
-			stackID:               "abc",
-			resolveGoVersionError: nil,
-		},
 		{
 			name:                  "valid stack id but resolveGoVersion errors out",
 			stackID:               "google.22",

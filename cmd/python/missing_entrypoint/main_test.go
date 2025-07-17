@@ -139,7 +139,7 @@ func TestBuild(t *testing.T) {
 			env: []string{
 				env.FastAPISmartDefaults + "=true",
 			},
-			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
 		},
 		{
 			name: "python_smart_defaults_gunicorn",
@@ -254,7 +254,7 @@ func TestBuild(t *testing.T) {
 			env: []string{
 				env.PythonSmartDefaults + "=true",
 			},
-			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
 		},
 		{
 			name: "no main.py",
