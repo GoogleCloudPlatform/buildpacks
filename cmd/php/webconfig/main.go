@@ -148,7 +148,14 @@ func getInstalledPhpVersion(ctx *gcp.Context) (string, error) {
 	return resolvedVersion, nil
 }
 
-func supportsDecorateWorkersOutput(ctx *gcp.Context) (bool, error) {
+// isVersion73OrGreater checks if the installed PHP version is 7.3.0 or newer.
+// This is used to enable features like 'decorate_workers_output = no' and 'log_limit'.
+// (1) For php >= 7.3.0, the directive decorate_workers_output prevents php from prepending a warning
+// message to all logged entries.  Prior to 7.3.0, decorate_workers_output was not available, and
+// these warning messages were prepended to all logged entries.  Here we choose to set
+// decorate_workers_output = no if the runtime version is >= 7.3.0.
+// (2) Set log_limit to 256kb.
+func isVersion73OrGreater(ctx *gcp.Context) (bool, error) {
 	v, err := getInstalledPhpVersion(ctx)
 	if err != nil {
 		return false, err
@@ -172,22 +179,18 @@ func supportsDecorateWorkersOutput(ctx *gcp.Context) (bool, error) {
 }
 
 func writeFpmConfig(ctx *gcp.Context, path string, overrides webconfig.OverrideProperties) (*os.File, error) {
-	// For php >= 7.3.0, the directive decorate_workers_output prevents php from prepending a warning
-	// message to all logged entries.  Prior to 7.3.0, decorate_workers_output was not available, and
-	// these warning messages are prepended to all logged entries.  Here we choose to set
-	// decorate_workers_output if the runtime version is >= 7.3.0.
-	addNoDecorateWorkers, err := supportsDecorateWorkersOutput(ctx)
+	isVersion73OrGreater, err := isVersion73OrGreater(ctx)
 	if err != nil {
 		return nil, err
 	}
-	conf, err := fpmConfig(path, addNoDecorateWorkers, overrides)
+	conf, err := fpmConfig(path, isVersion73OrGreater, overrides)
 	if err != nil {
 		return nil, err
 	}
 	return nginx.WriteFpmConfigToPath(path, conf)
 }
 
-func fpmConfig(layer string, addNoDecorateWorkers bool, overrides webconfig.OverrideProperties) (nginx.FPMConfig, error) {
+func fpmConfig(layer string, isVersion73OrGreater bool, overrides webconfig.OverrideProperties) (nginx.FPMConfig, error) {
 	user, err := user.Current()
 	if err != nil {
 		return nginx.FPMConfig{}, fmt.Errorf("getting current user: %w", err)
@@ -199,7 +202,8 @@ func fpmConfig(layer string, addNoDecorateWorkers bool, overrides webconfig.Over
 		ListenAddress:        filepath.Join(layer, appSocket),
 		DynamicWorkers:       defaultDynamicWorkers,
 		Username:             user.Username,
-		AddNoDecorateWorkers: addNoDecorateWorkers,
+		AddNoDecorateWorkers: isVersion73OrGreater,
+		UseLogLimit:          isVersion73OrGreater,
 	}
 
 	if env.IsFlex() {

@@ -24,6 +24,10 @@ import (
 
 // PHPFpmTemplate is a template that produces a snippet of php-fpm config that sets up the PHP with Nginx.
 var PHPFpmTemplate = template.Must(template.New("phpfpm").Parse(`
+{{- if .UseLogLimit}}
+log_limit = 262144 ; 256 kb
+{{- end}}
+
 ; Send errors to stderr.
 error_log = /proc/self/fd/2
 
@@ -158,6 +162,7 @@ type FPMConfig struct {
 	Username             string
 	AddNoDecorateWorkers bool
 	ConfOverride         string
+	UseLogLimit          bool
 }
 
 // Config represents the content values of a nginx config file.

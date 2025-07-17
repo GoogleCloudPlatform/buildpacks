@@ -203,6 +203,7 @@ func fpmConfig(layer string, overrides webconfig.OverrideProperties) (nginx.FPMC
 		DynamicWorkers:       defaultDynamicWorkers,
 		Username:             user.Username,
 		AddNoDecorateWorkers: true,
+		UseLogLimit:          true,
 	}
 
 	if overrides.PHPFPMOverride {
