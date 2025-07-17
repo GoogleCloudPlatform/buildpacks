@@ -19,7 +19,6 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -214,12 +213,10 @@ func installMaven(ctx *gcp.Context) (string, error) {
 	// Download and install maven in layer.
 	ctx.Logf("Installing Maven v%s", mavenVersion)
 	archiveURL := fmt.Sprintf(mavenURL, mavenVersion)
-	code, err := ctx.HTTPStatus(archiveURL)
-	if err != nil {
-		return "", err
-	}
-	if code != http.StatusOK {
-		return "", gcp.InternalErrorf("Maven version %s does not exist at %s (status %d).", mavenVersion, archiveURL, code)
+	curlHead := fmt.Sprintf("curl --head --fail --silent --location %s", archiveURL)
+	result, err := ctx.Exec([]string{"bash", "-c", curlHead})
+	if err != nil || !strings.Contains(result.Stdout, "200 OK") {
+		return "", gcp.InternalErrorf("Maven version %s does not exist at %s (status not 200).", mavenVersion, archiveURL)
 	}
 	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, mvnl.Path)
 	if _, err := ctx.Exec([]string{"bash", "-c", command}); err != nil {
