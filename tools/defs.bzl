@@ -201,9 +201,14 @@ def _generate_builder_descriptor(name, descriptor, builder_template, stack):
     build_image = image_prefix + "build"
     run_image = image_prefix + "run"
 
+    # Transform stack_id to google.24 for google.24.full.
+    transformed_stack_id = stack
+    if stack == "google.24.full":
+        transformed_stack_id = "google.24"
+
     _builder_descriptor(
         name = name + ".descriptor",
-        stack_id = stack,
+        stack_id = transformed_stack_id,
         stack_build_image = build_image,
         stack_run_image = run_image,
         template = builder_template,
