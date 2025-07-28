@@ -27,11 +27,11 @@ def testFunction(request):
   # it means another transitive dependency has been added. This transitive
   # dependency should be explicitly pinned in the functions_framework and
   # functions_framework_compat buildpacks and the number here should be updated.
-  want = 15
+  want = 24
   if sys.version_info.minor == 7:
     want = 53
   elif sys.version_info.minor >= 12:
-    want = 17  # 3.12 added setuptools==71.1.0, wheel==0.43.0
+    want = 26  # 3.12 added setuptools==71.1.0, wheel==0.43.0
   return (
       'PASS'
       if length == want
