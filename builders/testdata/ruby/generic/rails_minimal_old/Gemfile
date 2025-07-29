@@ -11,6 +11,15 @@ gem "tzinfo-data", platforms: %i[ mingw mswin x64_mingw jruby ]
 gem "base64", "~> 0.2"
 gem 'mutex_m', "~> 0.3.0"
 gem "bigdecimal", "~> 3.1.8"
+gem "abbrev", "~> 0.1.0"
+gem "csv", "~> 3.2.6"
+gem "drb", "~> 2.2.0"
+gem "getoptlong", "~> 0.2.0"
+gem "nkf", "~> 0.4.0"
+gem "observer", "~> 0.1.2"
+gem "resolv-replace", "~> 0.1.0"
+gem "rinda", "~> 0.2.0"
+gem "syslog", "~> 0.1.0"
 group :development do
   # Speed up commands on slow machines / big apps [https://github.com/rails/spring]
   # gem "spring"
