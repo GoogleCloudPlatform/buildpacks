@@ -6,6 +6,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/google/go-cmp/cmp"
+	"google3/third_party/golang/protobuf/v2/proto/proto" // Added dependency
 )
 
 func TestReadAndValidateFromFile(t *testing.T) {
@@ -20,6 +21,7 @@ func TestReadAndValidateFromFile(t *testing.T) {
 			inputBundleYAML: testdata.MustGetPath("testdata/bundle_valid.yaml"),
 			wantBundleSchema: BundleSchema{
 				RunConfig: RunConfig{
+					CPUAlwaysAllocated: proto.Bool(true),
 					VpcAccess: &apphostingschema.VpcAccess{
 						Connector: "projects/my-project/locations/us-central1/connectors/my-connector",
 					},

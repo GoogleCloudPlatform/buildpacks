@@ -50,6 +50,7 @@ type RunConfig struct {
 	MaxInstances         *int32                      `yaml:"maxInstances"`
 	MinInstances         *int32                      `yaml:"minInstances"`
 	VpcAccess            *apphostingschema.VpcAccess `yaml:"vpcAccess"`
+	CPUAlwaysAllocated   *bool                       `yaml:"cpuAlwaysAllocated"`
 }
 
 // Metadata is the struct representation of the metadata from bundle.yaml.

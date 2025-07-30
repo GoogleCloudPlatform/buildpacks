@@ -6,6 +6,7 @@ runConfig:
   maxInstances: 4
   minInstances: 0
   concurrency: 100
+  cpuAlwaysAllocated: true
 
 env:
   - variable: API_URL

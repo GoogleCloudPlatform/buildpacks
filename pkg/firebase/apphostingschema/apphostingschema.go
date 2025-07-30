@@ -63,12 +63,13 @@ type VpcAccess struct {
 // RunConfig is the struct representation of the passed run config.
 type RunConfig struct {
 	// value types used must match server field types. pointers are used to capture unset vs zero-like values.
-	CPU          *float32   `yaml:"cpu"`
-	MemoryMiB    *int32     `yaml:"memoryMiB"`
-	Concurrency  *int32     `yaml:"concurrency"`
-	MaxInstances *int32     `yaml:"maxInstances"`
-	MinInstances *int32     `yaml:"minInstances"`
-	VpcAccess    *VpcAccess `yaml:"vpcAccess"`
+	CPU                *float32   `yaml:"cpu"`
+	MemoryMiB          *int32     `yaml:"memoryMiB"`
+	Concurrency        *int32     `yaml:"concurrency"`
+	MaxInstances       *int32     `yaml:"maxInstances"`
+	MinInstances       *int32     `yaml:"minInstances"`
+	VpcAccess          *VpcAccess `yaml:"vpcAccess"`
+	CPUAlwaysAllocated *bool      `yaml:"cpuAlwaysAllocated"`
 }
 
 // EnvironmentVariable is the struct representation of the passed environment variables.

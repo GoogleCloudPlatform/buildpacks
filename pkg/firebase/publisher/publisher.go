@@ -114,11 +114,12 @@ func mergeEnvironmentVariables(aevs []apphostingschema.EnvironmentVariable, bevs
 // If there is a conflict between the fields, use the value from apphosting.yaml.
 func mergeRunConfig(arc apphostingschema.RunConfig, brc bundleschema.RunConfig) *apphostingschema.RunConfig {
 	merged := &apphostingschema.RunConfig{
-		CPU:          brc.CPU,
-		MemoryMiB:    brc.MemoryMiB,
-		Concurrency:  brc.Concurrency,
-		MinInstances: brc.MinInstances,
-		MaxInstances: brc.MaxInstances,
+		CPU:                brc.CPU,
+		MemoryMiB:          brc.MemoryMiB,
+		Concurrency:        brc.Concurrency,
+		MinInstances:       brc.MinInstances,
+		MaxInstances:       brc.MaxInstances,
+		CPUAlwaysAllocated: brc.CPUAlwaysAllocated,
 	}
 	if arc.CPU != nil {
 		merged.CPU = arc.CPU
@@ -137,6 +138,9 @@ func mergeRunConfig(arc apphostingschema.RunConfig, brc bundleschema.RunConfig) 
 	}
 	if arc.VpcAccess != nil {
 		merged.VpcAccess = arc.VpcAccess
+	}
+	if arc.CPUAlwaysAllocated != nil {
+		merged.CPUAlwaysAllocated = arc.CPUAlwaysAllocated
 	}
 
 	return merged

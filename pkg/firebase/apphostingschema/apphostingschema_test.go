@@ -22,10 +22,11 @@ func TestReadAndValidateFromFile(t *testing.T) {
 			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_valid.yaml"),
 			wantAppHostingSchema: AppHostingSchema{
 				RunConfig: RunConfig{
-					CPU:          proto.Float32(3),
-					MemoryMiB:    proto.Int32(1024),
-					Concurrency:  proto.Int32(100),
-					MaxInstances: proto.Int32(4),
+					CPU:                proto.Float32(3),
+					CPUAlwaysAllocated: proto.Bool(true),
+					MemoryMiB:          proto.Int32(1024),
+					Concurrency:        proto.Int32(100),
+					MaxInstances:       proto.Int32(4),
 					VpcAccess: &VpcAccess{
 						Egress: "ALL_TRAFFIC",
 						NetworkInterfaces: []NetworkInterface{
