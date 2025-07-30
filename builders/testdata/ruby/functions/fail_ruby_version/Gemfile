@@ -14,4 +14,5 @@
 
 source "https://rubygems.org"
 ruby "2.6.0"
-gem "functions_framework", "~> 0.7"
+gem "functions_framework", "~> 1.1"
+gem "base64", "~> 0.2"

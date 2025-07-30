@@ -3,6 +3,7 @@ GEM
   specs:
     base64 (0.2.0)
     cloud_events (0.7.1)
+    ffi (1.17.0)
     functions_framework (1.4.1)
       cloud_events (>= 0.7.0, < 2.a)
       puma (>= 4.3.0, < 7.a)
@@ -18,9 +19,10 @@ PLATFORMS
 
 DEPENDENCIES
   base64 (~> 0.2)
+  ffi
   functions_framework (~> 1.4)
   rack (~> 3.0)
   webrick (~> 1.8)
 
 BUNDLED WITH
-   2.3.15
+   2.6.6

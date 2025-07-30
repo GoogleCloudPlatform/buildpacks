@@ -19,3 +19,4 @@ gem "webrick", "~> 1.8"
 gem "functions_framework", "~> 1.4"
 
 gem "base64", "~> 0.2"
+gem "ffi", force_ruby_platform: true
