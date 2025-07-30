@@ -1,6 +1,9 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    base64 (0.2.0)
+    ffi (1.15.5)
+      ruby2_keywords
     mustermann (1.1.1)
       ruby2_keywords (~> 0.0.1)
     rack (2.2.3)
@@ -19,6 +22,8 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  base64 (>= 0)
+  ffi (~> 1.9)
   sinatra (~> 2.1)
   webrick (~> 1.7)
 
