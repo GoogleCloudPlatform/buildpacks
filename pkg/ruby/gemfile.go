@@ -66,25 +66,52 @@ func ParseBundlerVersion(path string) (string, error) {
 	return fmt.Sprintf("%d.%d.%d", semver.Major(), semver.Minor(), semver.Patch()), nil
 }
 
-func readLineAfter(path string, token string) (string, error) {
-	file, err := os.Open(path)
+// AddBundledGemsIfNecessary checks the ruby version and adds bundled gems to the Gemfile if they are not present.
+func AddBundledGemsIfNecessary(ctx *gcp.Context, rubyVersion, gemfilePath string) error {
+	v, err := semver.NewVersion(rubyVersion)
 	if err != nil {
-		return "", err
+		return fmt.Errorf("parsing ruby version %q: %w", rubyVersion, err)
+	}
+	// This logic should only apply to Ruby 3.4 and greater.
+	ruby34, _ := semver.NewVersion("3.4.0")
+	if v.LessThan(ruby34) {
+		return nil
 	}
 
-	defer file.Close()
+	bundledGems := []string{
+		"rexml", "rss", "webrick", "net-ftp", "net-imap", "net-pop", "net-smtp", "matrix", "prime", "open-uri",
+	}
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		if strings.TrimSpace(scanner.Text()) == token {
-			// Read the next line once the token is found
-			if !scanner.Scan() {
-				break
-			}
+	content, err := ctx.ReadFile(gemfilePath)
+	if err != nil {
+		return fmt.Errorf("reading Gemfile: %w", err)
+	}
 
-			return scanner.Text(), nil
+	var gemsToAdd []string
+	for _, gem := range bundledGems {
+		// A simple check to see if the gem is already in the Gemfile.
+		// This is not perfect, as it could match comments or parts of other gem names,
+		// but it's a good enough heuristic for now.
+		if !strings.Contains(string(content), fmt.Sprintf("gem '%s'", gem)) &&
+			!strings.Contains(string(content), fmt.Sprintf("gem \"%s\"", gem)) {
+			gemsToAdd = append(gemsToAdd, gem)
 		}
 	}
 
-	return "", nil
+	if len(gemsToAdd) > 0 {
+		ctx.Logf("Adding bundled gems to Gemfile: %s", strings.Join(gemsToAdd, ", "))
+		f, err := os.OpenFile(gemfilePath, os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			return fmt.Errorf("opening Gemfile for appending: %w", err)
+		}
+		defer f.Close()
+
+		for _, gem := range gemsToAdd {
+			if _, err := f.WriteString(fmt.Sprintf("\ngem '%s'", gem)); err != nil {
+				return fmt.Errorf("appending gem %q to Gemfile: %w", gem, err)
+			}
+		}
+	}
+
+	return nil
 }

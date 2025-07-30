@@ -18,18 +18,19 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
 	"github.com/buildpacks/libcnb/v2"
 )
 
 const (
 	layerName         = "gems"
 	dependencyHashKey = "dependency_hash"
-	rubyVersionKey    = "ruby_version"
 )
 
 func main() {
@@ -100,6 +101,12 @@ func buildFn(ctx *gcp.Context) error {
 	// This layer directory contains the files installed by bundler into the application .bundle directory
 	bundleOutput := filepath.Join(deps.Path, ".bundle")
 
+	rubyVersion := os.Getenv(ruby.RubyVersionKey)
+	gemfilePath := filepath.Join(ctx.ApplicationRoot(), "Gemfile")
+	if err := ruby.AddBundledGemsIfNecessary(ctx, rubyVersion, gemfilePath); err != nil {
+		return fmt.Errorf("adding bundled gems: %w", err)
+	}
+
 	cached, err := checkCache(ctx, deps, cache.WithFiles(lockFile))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
@@ -128,6 +135,10 @@ func buildFn(ctx *gcp.Context) error {
 	}
 	if err := ctx.RemoveAll(".bundle"); err != nil {
 		return err
+	}
+
+	if err := ruby.AddBundledGemsIfNecessary(ctx, rubyVersion, gemfilePath); err != nil {
+		return fmt.Errorf("adding bundled gems: %w", err)
 	}
 
 	if cached {
