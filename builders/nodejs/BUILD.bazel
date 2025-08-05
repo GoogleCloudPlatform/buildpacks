@@ -24,6 +24,7 @@ BUILDPACKS = [
     "//cmd/nodejs/firebaseangular:firebaseangular.tgz",
     "//cmd/nodejs/firebasebundle:firebasebundle.tgz",
     "//cmd/nodejs/firebasenx:firebasenx.tgz",
+    "//cmd/nodejs/turborepo:turborepo.tgz",
 ]
 
 builder(
