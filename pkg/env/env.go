@@ -164,7 +164,30 @@ const (
 	// PythonSmartDefaults is an experiment flag to enable python smart defaults for
 	// gradio, streamlit, and maybe future frameworks.
 	PythonSmartDefaults = "X_GOOGLE_PYTHON_SMART_DEFAULTS"
+
+	// ReleaseTrack is an env var used to specify the release track for the Build.
+	// Example: `ALPHA`, `BETA`, `GA`
+	ReleaseTrack = "X_GOOGLE_RELEASE_TRACK"
 )
+
+const (
+	// ALPHA is the release track for alpha.
+	ALPHA = "ALPHA"
+	// BETA is the release track for beta.
+	BETA = "BETA"
+	// GA is the release track for GA.
+	GA = "GA"
+)
+
+// IsAlphaSupported returns true if the release track is alpha.
+func IsAlphaSupported() bool {
+	return ALPHA == os.Getenv(ReleaseTrack)
+}
+
+// IsBetaSupported returns true if the release track is alpha or beta.
+func IsBetaSupported() bool {
+	return BETA == os.Getenv(ReleaseTrack) || IsAlphaSupported()
+}
 
 // IsGAE returns true if the buildpack target platform is gae.
 func IsGAE() bool {
