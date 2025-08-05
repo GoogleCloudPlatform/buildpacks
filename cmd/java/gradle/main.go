@@ -161,6 +161,10 @@ func installGradle(ctx *gcp.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("getting latest gradle version: %w", err)
 	}
+	// Java 11 is not supported from Gradle 9.0.0
+	if os.Getenv(env.RuntimeVersion) == "11" || ctx.StackID() == "google" || ctx.StackID() == "google.gae.18" || ctx.StackID() == "google.18" {
+		gradleVersion = "8.14.3"
+	}
 	if gradleVersion == metaVersion {
 		ctx.CacheHit(gradleLayer)
 		ctx.Logf("Gradle cache hit, skipping installation.")

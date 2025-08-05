@@ -1,7 +1,7 @@
 // This gradle project is meant to fail on a default build.
 // System property "env" must be set to "test" in order to pass.
 plugins {
-    id "com.github.johnrengelman.shadow" version "7.1.2"
+    id "com.gradleup.shadow" version "8.3.8"
     id "application"
 }
 
@@ -48,7 +48,10 @@ dependencies {
 
 test.classpath += configurations.developmentOnly
 
-mainClassName = "example.Application"
+application {
+    mainClass = "example.Application"
+}
+
 // use JUnit 5 platform
 test {
     useJUnitPlatform()
