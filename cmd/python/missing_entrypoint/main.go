@@ -59,23 +59,35 @@ func buildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("finding main.py files: %w", err)
 	}
-	if !hasMain {
-		return fmt.Errorf("for Python, provide a main.py file or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
+	hasApp, err := ctx.HasAtLeastOne("app.py")
+	if err != nil {
+		return fmt.Errorf("finding app.py files: %w", err)
 	}
-	cmd := []string{"gunicorn", "-b", ":8080", "main:app"}
+	if !hasMain && !hasApp {
+		return fmt.Errorf("for Python, provide a main.py or app.py file or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
+	}
+
+	// If both main.py and app.py are present, we will use main.py as the python module.
+	pyModule := "app:app"
+	pyFile := "app.py"
+	if hasMain {
+		pyModule = "main:app"
+		pyFile = "main.py"
+	}
+	cmd := []string{"gunicorn", "-b", ":8080", pyModule}
 
 	// We will use the smart default entrypoint if the runtime version supports it (>=3.13)
 	if supports, err := python.SupportsSmartDefaultEntrypoint(ctx); err == nil && supports {
 		// We will eventually remove the FastAPISmartDefaults flag and use smartdefaultEntrypoint for
 		// all use-cases.
 		if os.Getenv(env.FastAPISmartDefaults) == "true" {
-			cmd, err = uvicornEntrypoint(ctx)
+			cmd, err = uvicornEntrypoint(ctx, pyModule)
 			if err != nil {
 				return fmt.Errorf("error detecting smart default entrypoint: %w", err)
 			}
 		}
 		if os.Getenv(env.PythonSmartDefaults) == "true" {
-			cmd, err = smartDefaultEntrypoint(ctx)
+			cmd, err = smartDefaultEntrypoint(ctx, pyModule, pyFile)
 			if err != nil {
 				return fmt.Errorf("error detecting smart default entrypoint: %w", err)
 			}
@@ -87,16 +99,17 @@ func buildFn(ctx *gcp.Context) error {
 	return nil
 }
 
-func uvicornEntrypoint(ctx *gcp.Context) ([]string, error) {
+func uvicornEntrypoint(ctx *gcp.Context, pyModule string) ([]string, error) {
 	// To be compatible with the old builder, we will use below priority order:
 	// 1. gunicorn 2. uvicorn
+
 	// If gunicorn is present in requirements.txt, we will use gunicorn as the entrypoint.
 	gPresent, err := python.PackagePresent(ctx, "requirements.txt", gunicorn)
 	if err != nil {
 		return nil, fmt.Errorf("error detecting gunicorn: %w", err)
 	}
 	if gPresent {
-		return []string{"gunicorn", "-b", ":8080", "main:app"}, nil
+		return []string{"gunicorn", "-b", ":8080", pyModule}, nil
 	}
 	// If uvicorn is present in requirements.txt, we will use uvicorn as the entrypoint.
 	uPresent, err := python.PackagePresent(ctx, "requirements.txt", uvicorn)
@@ -104,21 +117,22 @@ func uvicornEntrypoint(ctx *gcp.Context) ([]string, error) {
 		return nil, fmt.Errorf("error detecting uvicorn: %w", err)
 	}
 	if uPresent {
-		return []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"}, nil
+		return []string{"uvicorn", pyModule, "--port", "8080", "--host", "0.0.0.0"}, nil
 	}
-	return []string{"gunicorn", "-b", ":8080", "main:app"}, nil
+	return []string{"gunicorn", "-b", ":8080", pyModule}, nil
 }
 
-func smartDefaultEntrypoint(ctx *gcp.Context) ([]string, error) {
+func smartDefaultEntrypoint(ctx *gcp.Context, pyModule string, pyFile string) ([]string, error) {
 	// To be compatible with the old builder, we will use below priority order:
 	// 1. gunicorn 2. uvicorn 3. gradio 4. streamlit
+
 	// If gunicorn is present in requirements.txt, we will use gunicorn as the entrypoint.
 	gPresent, err := python.PackagePresent(ctx, "requirements.txt", gunicorn)
 	if err != nil {
 		return nil, fmt.Errorf("error detecting gunicorn: %w", err)
 	}
 	if gPresent {
-		return []string{"gunicorn", "-b", ":8080", "main:app"}, nil
+		return []string{"gunicorn", "-b", ":8080", pyModule}, nil
 	}
 	// If uvicorn is present in requirements.txt, we will use uvicorn as the entrypoint.
 	uPresent, err := python.PackagePresent(ctx, "requirements.txt", uvicorn)
@@ -126,7 +140,7 @@ func smartDefaultEntrypoint(ctx *gcp.Context) ([]string, error) {
 		return nil, fmt.Errorf("error detecting uvicorn: %w", err)
 	}
 	if uPresent {
-		return []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"}, nil
+		return []string{"uvicorn", pyModule, "--port", "8080", "--host", "0.0.0.0"}, nil
 	}
 	// If gradio is present in requirements.txt, we will use gradio as the entrypoint.
 	gradioPresent, err := python.PackagePresent(ctx, "requirements.txt", gradio)
@@ -137,7 +151,7 @@ func smartDefaultEntrypoint(ctx *gcp.Context) ([]string, error) {
 		if err := addGradioEnvVarLayer(ctx); err != nil {
 			return nil, fmt.Errorf("error adding gradio env var layer: %w", err)
 		}
-		return []string{"python", "main.py"}, nil
+		return []string{"python", pyFile}, nil
 	}
 	// If streamlit is present in requirements.txt, we will use streamlit as the entrypoint.
 	sPresent, err := python.PackagePresent(ctx, "requirements.txt", streamlit)
@@ -145,10 +159,10 @@ func smartDefaultEntrypoint(ctx *gcp.Context) ([]string, error) {
 		return nil, fmt.Errorf("error detecting streamlit: %w", err)
 	}
 	if sPresent {
-		return []string{"streamlit", "run", "main.py", "--server.address", "0.0.0.0", "--server.port", "8080"}, nil
+		return []string{"streamlit", "run", pyFile, "--server.address", "0.0.0.0", "--server.port", "8080"}, nil
 	}
 
-	return []string{"gunicorn", "-b", ":8080", "main:app"}, nil
+	return []string{"gunicorn", "-b", ":8080", pyModule}, nil
 }
 
 func addGradioEnvVarLayer(ctx *gcp.Context) error {

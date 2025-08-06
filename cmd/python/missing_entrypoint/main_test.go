@@ -257,9 +257,76 @@ func TestBuild(t *testing.T) {
 			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
 		},
 		{
-			name: "no main.py",
+			name: "default_gunicorn_app_py",
 			files: map[string]string{
 				"app.py": "",
+			},
+			wantCmd: []string{"gunicorn", "-b", ":8080", "app:app"},
+		},
+		{
+			name: "default_gunicorn_main_py_and_app_py",
+			files: map[string]string{
+				"main.py": "",
+				"app.py":  "",
+			},
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "python_smart_defaults_gunicorn_app_py",
+			files: map[string]string{
+				"app.py":           "",
+				"requirements.txt": "gunicorn",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "app:app"},
+		},
+		{
+			name: "python_smart_defaults_uvicorn_app_py",
+			files: map[string]string{
+				"app.py":           "",
+				"requirements.txt": "uvicorn",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"uvicorn", "app:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "python_smart_defaults_gradio_app_py",
+			files: map[string]string{
+				"app.py":           "",
+				"requirements.txt": "gradio",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"python", "app.py"},
+		},
+		{
+			name: "python_smart_defaults_streamlit_app_py",
+			files: map[string]string{
+				"app.py":           "",
+				"requirements.txt": "streamlit",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"streamlit", "run", "app.py", "--server.address", "0.0.0.0", "--server.port", "8080"},
+		},
+		{
+			name: "no_main_or_app",
+			files: map[string]string{
+				"other.py": "",
 			},
 			wantExitCode: 1,
 		},
