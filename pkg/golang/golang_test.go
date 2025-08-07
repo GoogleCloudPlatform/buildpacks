@@ -632,12 +632,12 @@ func TestRuntimeVersion(t *testing.T) {
 		{
 			name:    "no_env_use_latest for the stack id",
 			stackID: "google.22",
-			want:    "1.23.*",
+			want:    "1.24.*",
 		},
 		{
 			name:    "invalid stack id, will fallback to ubuntu2204 and pass",
 			stackID: "abc",
-			want:    "1.23.*",
+			want:    "1.24.*",
 		},
 	}
 
