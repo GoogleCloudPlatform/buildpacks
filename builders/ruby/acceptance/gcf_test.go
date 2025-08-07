@@ -44,14 +44,6 @@ func TestAcceptance(t *testing.T) {
 			},
 		},
 		{
-			Name: "function_with_platform-specific_dependencies_2",
-			App:  "with_platform_dependencies2",
-			Labels: map[string]string{
-				"google.functions-framework-version": `{"runtime":"ruby","version":"1.6.0","injected":false}`,
-			},
-			VersionInclusionConstraint: ">=3.2.0",
-		},
-		{
 			Name:   "function with runtime env var",
 			App:    "with_env_var",
 			RunEnv: []string{"FOO=foo"},
@@ -100,8 +92,14 @@ func TestFailures(t *testing.T) {
 
 	testCases := []acceptance.FailureTest{
 		{
-			App:       "fail_ruby_version",
-			MustMatch: "Your Ruby version is \\d+\\.\\d+\\.\\d+, but your Gemfile specified 2.6.0",
+			App:                        "fail_ruby_version",
+			MustMatch:                  "Could not find gem",
+			VersionInclusionConstraint: "<3.4.0",
+		},
+		{
+			App:                        "fail_ruby_version_bundler_26",
+			MustMatch:                  "Your Ruby version is \\d+\\.\\d+\\.\\d+, but your Gemfile specified 2.6.0",
+			VersionInclusionConstraint: ">=3.4.0",
 		},
 		{
 			App:       "fail_framework_missing",

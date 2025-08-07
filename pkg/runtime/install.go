@@ -272,9 +272,9 @@ func tarballDownloadURL(runtime InstallableRuntime, os, version string) string {
 // unexpected behaviors with new versions. This is only expected to be called if the target
 // platform is GAE or GCF.
 func PinGemAndBundlerVersion(ctx *gcp.Context, version string, layer *libcnb.Layer) error {
-	rubygemsVersion := "3.3.21"
+	rubygemsVersion := "3.3.15"
 	bundler1Version := "1.17.3"
-	bundler2Version := "2.3.21"
+	bundler2Version := "2.1.4"
 	installBundler1 := false
 
 	// Bundler 1 is only installed for older versions of Ruby

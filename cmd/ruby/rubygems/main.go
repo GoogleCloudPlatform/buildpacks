@@ -32,9 +32,9 @@ import (
 
 // source: https://rubygems.org/pages/download
 var (
-	rubygemsURL     = "https://rubygems.org/rubygems/rubygems-3.3.21.tgz"
+	rubygemsURL     = "https://rubygems.org/rubygems/rubygems-3.3.15.tgz"
 	bundler1Version = "1.17.3"
-	bundler2Version = "2.3.21"
+	bundler2Version = "2.3.15"
 )
 
 const (
