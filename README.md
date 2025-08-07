@@ -72,15 +72,15 @@ Locally, your application might depend on App Engine [enviroment variables](http
 
 This project implements the Cloud Native Buildpacks specification. 
 To read more, see Cloud Native Buildpacks project
-[documentation](https://buildpacks.io/docs/concepts/).
+[documentation](https://buildpacks.io/docs/for-app-developers/concepts/).
 
 For those new to buildpacks, these concepts are good starting points:
 
-* **[Builder](https://buildpacks.io/docs/concepts/components/builder/)** A container image that contains buildpacks and detection order in which builds are executed.
-* **[Buildpack](https://buildpacks.io/docs/concepts/components/buildpack/)** An executable that "inspects your app source code and formulates a plan to build and run your application".
+* **[Builder](https://buildpacks.io/docs/concepts/components/for-app-developers/builder/)** A container image that contains buildpacks and detection order in which builds are executed.
+* **[Buildpack](https://buildpacks.io/docs/concepts/components/for-app-developers/buildpack/)** An executable that "inspects your app source code and formulates a plan to build and run your application".
 * **Buildpack Group** Several buildpacks which together provide support for a
 specific language or framework.
-* **[Run Image](https://buildpacks.io/docs/concepts/components/stack/)** The container image that serves as the base for the built application.
+* **[Run Image](https://buildpacks.io/docs/for-app-developers/concepts/base-images/stack/)** The container image that serves as the base for the built application.
 
 ## Support
 
