@@ -318,3 +318,70 @@ func TestContainsStreamlit(t *testing.T) {
 		})
 	}
 }
+
+func TestContainsFastAPIStandard(t *testing.T) {
+	testCases := []struct {
+		name string
+		str  string
+		want bool
+	}{
+		{
+			name: "fastapi[standard]_present",
+			str:  "fastapi[standard]",
+			want: true,
+		},
+		{
+			name: "fastapi[standard]_present_with_version",
+			str:  "fastapi[standard]==0.1.0",
+			want: true,
+		},
+		{
+			name: "fastapi[standard]_present_with_comment",
+			str:  "fastapi[standard] # a comment",
+			want: true,
+		},
+		{
+			name: "fastapi[standard]_present_second_line",
+			str:  "gradio\nfastapi[standard]",
+			want: true,
+		},
+		{
+			name: "no_fastapi[standard]_present",
+			str:  "fastapi[standard]-logging==0.1.0\nfastapi\n",
+			want: false,
+		},
+		{
+			name: "fastapi_only_present",
+			str:  "fastapi",
+			want: false,
+		},
+		{
+			name: "fastapi_only_present_with_version",
+			str:  "fastapi==0.1.0",
+			want: false,
+		},
+		{
+			name: "fastapi[standard]_egg_present",
+			str:  "git+https://github.com/tiangolo/fastapi.git@master#egg=fastapi[standard]",
+			want: true,
+		},
+		{
+			name: "fastapi_egg_present",
+			str:  "git+https://github.com/tiangolo/fastapi.git@master#egg=fastapi",
+			want: false,
+		},
+		{
+			name: "another_package_with_fastapi[standard]_as_substring",
+			str:  "not-fastapi[standard]",
+			want: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := containsPackage(tc.str, "fastapi[standard]"); got != tc.want {
+				t.Errorf("containsPackage(%q, %q) = %v, want %v", tc.str, "fastapi[standard]", got, tc.want)
+			}
+		})
+	}
+}

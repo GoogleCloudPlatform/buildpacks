@@ -21,16 +21,18 @@ import (
 )
 
 var packageRegex = map[string]*regexp.Regexp{
-	"gunicorn":  regexp.MustCompile(`(?m)^gunicorn\b([^-]|$)`),
-	"uvicorn":   regexp.MustCompile(`(?m)^uvicorn\b([^-]|$)`),
-	"gradio":    regexp.MustCompile(`(?m)^gradio\b([^-]|$)`),
-	"streamlit": regexp.MustCompile(`(?m)^streamlit\b([^-]|$)`),
+	"gunicorn":          regexp.MustCompile(`(?m)^gunicorn\b([^-]|$)`),
+	"uvicorn":           regexp.MustCompile(`(?m)^uvicorn\b([^-]|$)`),
+	"gradio":            regexp.MustCompile(`(?m)^gradio\b([^-]|$)`),
+	"streamlit":         regexp.MustCompile(`(?m)^streamlit\b([^-]|$)`),
+	"fastapi[standard]": regexp.MustCompile(`(?m)^fastapi\[standard\]([^-]|$)`),
 }
 var eggRegex = map[string]*regexp.Regexp{
-	"gunicorn":  regexp.MustCompile(`(?m)#egg=gunicorn$`),
-	"uvicorn":   regexp.MustCompile(`(?m)#egg=uvicorn$`),
-	"gradio":    regexp.MustCompile(`(?m)#egg=gradio$`),
-	"streamlit": regexp.MustCompile(`(?m)#egg=streamlit$`),
+	"gunicorn":          regexp.MustCompile(`(?m)#egg=gunicorn$`),
+	"uvicorn":           regexp.MustCompile(`(?m)#egg=uvicorn$`),
+	"gradio":            regexp.MustCompile(`(?m)#egg=gradio$`),
+	"streamlit":         regexp.MustCompile(`(?m)#egg=streamlit$`),
+	"fastapi[standard]": regexp.MustCompile(`(?m)#egg=fastapi\[standard\]$`),
 }
 
 // PackagePresent checks if a given package is present in the requirements file.

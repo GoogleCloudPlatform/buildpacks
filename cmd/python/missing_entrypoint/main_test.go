@@ -121,7 +121,7 @@ func TestBuild(t *testing.T) {
 			name: "fastapi_smart_defaults_below_3.13_uvicorn",
 			files: map[string]string{
 				"main.py":          "",
-				"requirements.txt": "",
+				"requirements.txt": "uvicorn",
 			},
 			env: []string{
 				env.FastAPISmartDefaults + "=true",
@@ -139,6 +139,108 @@ func TestBuild(t *testing.T) {
 			env: []string{
 				env.FastAPISmartDefaults + "=true",
 			},
+			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "fastapi_smart_defaults_fastapi_standard",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "fastapi[standard]",
+			},
+			env: []string{
+				env.FastAPISmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "fastapi_smart_defaults_fastapi_standard_below_3.13",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "fastapi[standard]",
+			},
+			env: []string{
+				env.FastAPISmartDefaults + "=true",
+				env.RuntimeVersion + "=3.12.0",
+			},
+			runtime: "python3.12",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "fastapi_smart_defaults_fastapi_standard_with_no_version",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "fastapi[standard]",
+			},
+			env: []string{
+				env.FastAPISmartDefaults + "=true",
+			},
+			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "fastapi_smart_defaults_fastapi_standard_with_gunicorn",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "fastapi[standard]\ngunicorn",
+			},
+			env: []string{
+				env.FastAPISmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "fastapi_smart_defaults_fastapi_standard_with_uvicorn",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "fastapi[standard]\nuvicorn",
+			},
+			env: []string{
+				env.FastAPISmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "fastapi_smart_defaults_fastapi",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "fastapi",
+			},
+			env: []string{
+				env.FastAPISmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "fastapi_smart_defaults_fastapi_with_gunicorn",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "fastapi\ngunicorn",
+			},
+			env: []string{
+				env.FastAPISmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "fastapi_smart_defaults_fastapi_with_uvicorn",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "fastapi\nuvicorn",
+			},
+			env: []string{
+				env.FastAPISmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
 			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
 		},
 		{
@@ -166,6 +268,56 @@ func TestBuild(t *testing.T) {
 			},
 			runtime: "python3.13",
 			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "python_smart_defaults_fastapi_standard",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "fastapi[standard]",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "python_smart_defaults_fastapi_standard_below_3.13",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "fastapi[standard]",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.RuntimeVersion + "=3.12.0",
+			},
+			runtime: "python3.12",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "python_smart_defaults_fastapi_standard_with_no_version",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "fastapi[standard]",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+			},
+			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "python_smart_defaults_fastapi",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "fastapi",
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
 		},
 		{
 			name: "python_smart_defaults_gradio",

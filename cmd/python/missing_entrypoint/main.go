@@ -29,10 +29,11 @@ import (
 )
 
 const (
-	gunicorn  = "gunicorn"
-	uvicorn   = "uvicorn"
-	gradio    = "gradio"
-	streamlit = "streamlit"
+	gunicorn        = "gunicorn"
+	uvicorn         = "uvicorn"
+	gradio          = "gradio"
+	streamlit       = "streamlit"
+	fastapiStandard = "fastapi[standard]"
 )
 
 func main() {
@@ -119,6 +120,14 @@ func uvicornEntrypoint(ctx *gcp.Context, pyModule string) ([]string, error) {
 	if uPresent {
 		return []string{"uvicorn", pyModule, "--port", "8080", "--host", "0.0.0.0"}, nil
 	}
+	// If fastapi[standard] is present in requirements.txt, we will use uvicorn as the entrypoint.
+	fastapiStandardPresent, err := python.PackagePresent(ctx, "requirements.txt", fastapiStandard)
+	if err != nil {
+		return nil, fmt.Errorf("error detecting fastapi: %w", err)
+	}
+	if fastapiStandardPresent {
+		return []string{"uvicorn", pyModule, "--port", "8080", "--host", "0.0.0.0"}, nil
+	}
 	return []string{"gunicorn", "-b", ":8080", pyModule}, nil
 }
 
@@ -140,6 +149,14 @@ func smartDefaultEntrypoint(ctx *gcp.Context, pyModule string, pyFile string) ([
 		return nil, fmt.Errorf("error detecting uvicorn: %w", err)
 	}
 	if uPresent {
+		return []string{"uvicorn", pyModule, "--port", "8080", "--host", "0.0.0.0"}, nil
+	}
+	// If fastapi[standard] is present in requirements.txt, we will use uvicorn as the entrypoint.
+	fastapiStandardPresent, err := python.PackagePresent(ctx, "requirements.txt", fastapiStandard)
+	if err != nil {
+		return nil, fmt.Errorf("error detecting fastapi: %w", err)
+	}
+	if fastapiStandardPresent {
 		return []string{"uvicorn", pyModule, "--port", "8080", "--host", "0.0.0.0"}, nil
 	}
 	// If gradio is present in requirements.txt, we will use gradio as the entrypoint.

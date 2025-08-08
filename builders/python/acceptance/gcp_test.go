@@ -117,6 +117,47 @@ func TestAcceptancePython(t *testing.T) {
 			MustMatch:                  "Internal Server Error",
 		},
 		{
+			Name:                       "no_fastapi_smart_default_entrypoint_for_3.13_and_below_app_py",
+			App:                        "fastapi_uvicorn_app_py",
+			Env:                        []string{"X_GOOGLE_FASTAPI_SMART_DEFAULTS=true"},
+			MustUse:                    []string{pythonRuntime, pythonPIP, pythonMissingEntrypoint},
+			VersionInclusionConstraint: "<3.13.0",
+			MustMatchStatusCode:        http.StatusInternalServerError,
+			MustMatch:                  "Internal Server Error",
+		},
+		{
+			Name:                       "fastapi_standard_smart_default_entrypoint_for_3.13_and_above",
+			App:                        "fastapi_standard",
+			Env:                        []string{"X_GOOGLE_FASTAPI_SMART_DEFAULTS=true"},
+			MustUse:                    []string{pythonRuntime, pythonPIP, pythonMissingEntrypoint},
+			VersionInclusionConstraint: ">=3.13.0",
+		},
+		{
+			Name:                       "fastapi_standard_app_py_smart_default_entrypoint_for_3.13_and_above",
+			App:                        "fastapi_standard_app_py",
+			Env:                        []string{"X_GOOGLE_FASTAPI_SMART_DEFAULTS=true"},
+			MustUse:                    []string{pythonRuntime, pythonPIP, pythonMissingEntrypoint},
+			VersionInclusionConstraint: ">=3.13.0",
+		},
+		{
+			Name:                       "fastapi_standard_smart_default_entrypoint_for_3.13_and_below",
+			App:                        "fastapi_standard",
+			Env:                        []string{"X_GOOGLE_FASTAPI_SMART_DEFAULTS=true"},
+			MustUse:                    []string{pythonRuntime, pythonPIP, pythonMissingEntrypoint},
+			VersionInclusionConstraint: "<3.13.0",
+			MustMatchStatusCode:        http.StatusInternalServerError,
+			MustMatch:                  "Internal Server Error",
+		},
+		{
+			Name:                       "fastapi_standard_smart_default_entrypoint_for_3.13_and_below_app_py",
+			App:                        "fastapi_standard_app_py",
+			Env:                        []string{"X_GOOGLE_FASTAPI_SMART_DEFAULTS=true"},
+			MustUse:                    []string{pythonRuntime, pythonPIP, pythonMissingEntrypoint},
+			VersionInclusionConstraint: "<3.13.0",
+			MustMatchStatusCode:        http.StatusInternalServerError,
+			MustMatch:                  "Internal Server Error",
+		},
+		{
 			Name:                       "gradio_with_python_smart_defaults_for_3.13_and_above",
 			App:                        "gradio",
 			Env:                        []string{"X_GOOGLE_PYTHON_SMART_DEFAULTS=true"},
@@ -137,6 +178,16 @@ func TestAcceptancePython(t *testing.T) {
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonMissingEntrypoint},
 			VersionInclusionConstraint: ">=3.13.0",
 			MustMatch:                  "Streamlit",
+		},
+		{
+			Name:    "missing_entrypoint_main_py",
+			App:     "missing_entrypoint_main_py",
+			MustUse: []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
+		},
+		{
+			Name:    "missing_entrypoint_app_py",
+			App:     "missing_entrypoint_app_py",
+			MustUse: []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
 		},
 	}
 
@@ -161,6 +212,11 @@ func TestFailuresPython(t *testing.T) {
 			App:       "simple",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS", "GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustMatch: "invalid Python version specified",
+		},
+		{
+			Name:      "missing_main_and_app",
+			App:       "missing_main_and_app",
+			MustMatch: `.*for Python, provide a main.py or app.py file or set an entrypoint with "GOOGLE_ENTRYPOINT" env var or by creating a "Procfile" file`,
 		},
 	}
 
