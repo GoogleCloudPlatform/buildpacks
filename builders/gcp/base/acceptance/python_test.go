@@ -62,9 +62,17 @@ func TestAcceptancePython(t *testing.T) {
 			MustUse: []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
 		},
 		{
-			Name:    "missing_entrypoint_app_py",
-			App:     "missing_entrypoint_app_py",
-			MustUse: []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
+			Name:                       "missing_entrypoint_app_py",
+			App:                        "missing_entrypoint_app_py",
+			MustUse:                    []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
+			Env:                        []string{"GOOGLE_RUNTIME_VERSION=3.8.20"},
+			VersionInclusionConstraint: "<3.9.0",
+		},
+		{
+			Name:                       "missing_entrypoint_upgraded_app_py",
+			App:                        "missing_entrypoint_upgraded_app_py",
+			MustUse:                    []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
+			VersionInclusionConstraint: ">=3.9.0",
 		},
 		{
 			Name:                       "no_fastapi_smart_default_entrypoint_for_3.13_and_below",
