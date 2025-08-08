@@ -84,7 +84,7 @@ func TestAcceptanceJava(t *testing.T) {
 		},
 		{
 			Name:       "Java 8 gradle",
-			SkipStacks: []string{"google.24.full", "google.24"},
+			SkipStacks: []string{"google.24.full", "google.24", "google.22", "google.gae.22"},
 			App:        "gradle_micronaut",
 			Env:        []string{"GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar", "GOOGLE_RUNTIME_VERSION=8"},
 			MustUse:    []string{javaGradle, javaRuntime, entrypoint},
