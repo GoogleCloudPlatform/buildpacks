@@ -74,7 +74,7 @@ func buildFn(ctx *gcp.Context) error {
 		return gcp.UserErrorf("target application in Turbo monorepo is ambiguous. Please specify the application directory path during onboarding.")
 	}
 
-	buildArgs := []string{fmt.Sprintf("--filter=%s", appName)}
+	buildArgs := []string{fmt.Sprintf("--filter=%s", appName), "--env-mode=loose"}
 
 	turbol, err := ctx.Layer("turbo", gcp.BuildLayer, gcp.CacheLayer)
 	if err != nil {
