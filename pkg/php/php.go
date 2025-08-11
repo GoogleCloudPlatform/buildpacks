@@ -147,6 +147,15 @@ func composerInstall(ctx *gcp.Context, flags []string) error {
 	return nil
 }
 
+// composerDumpAutoload runs `composer dump-autoload` with the given flags.
+func composerDumpAutoload(ctx *gcp.Context, flags []string) error {
+	cmd := append([]string{"composer", "dump-autoload"}, flags...)
+	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
+		return err
+	}
+	return nil
+}
+
 // ComposerInstall runs `composer install`, using the cache iff a lock file is present.
 // It creates a layer, so it returns the layer so that the caller may further modify it
 // if they desire.
@@ -199,6 +208,12 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 	if cached {
 		// PHP expects the vendor/ directory to be in the application directory.
 		if _, err := ctx.Exec([]string{"cp", "--archive", layerVendor, Vendor}, gcp.WithUserTimingAttribution); err != nil {
+			return nil, err
+		}
+		// Why re-generate the autoload files? Since these autoload files include list of all PSR auto-loaded files (including local workspace files)
+		// This will cause issues for files added/removed since the last cache as these won't be within the classmap
+		ctx.Logf("Re-generating autoload files.")
+		if err := composerDumpAutoload(ctx, []string{"--optimize"}); err != nil {
 			return nil, err
 		}
 	} else {
