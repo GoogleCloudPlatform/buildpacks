@@ -246,6 +246,14 @@ func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
 					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
 					EnvironmentVariable{Variable: "DATABASE_URL", Secret: "secretStagingDatabaseURL"},
 				},
+				OutputFiles: OutputFiles{
+					ServerApp: serverApp{
+						Include: []string{"dist", "node_modules", "package.json"},
+					},
+				},
+				Scripts: Scripts{
+					BuildCommand: "npm run build",
+				},
 			},
 		},
 		{

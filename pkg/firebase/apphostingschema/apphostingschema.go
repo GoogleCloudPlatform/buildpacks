@@ -229,10 +229,22 @@ func mergeAppHostingSchemas(appHostingSchema *AppHostingSchema, envSpecificSchem
 	if envSpecificSchema.RunConfig.MinInstances != nil {
 		appHostingSchema.RunConfig.MinInstances = envSpecificSchema.RunConfig.MinInstances
 	}
+	if envSpecificSchema.Scripts.BuildCommand != "" {
+		appHostingSchema.Scripts.BuildCommand = envSpecificSchema.Scripts.BuildCommand
+	}
+	if envSpecificSchema.Scripts.RunCommand != "" {
+		appHostingSchema.Scripts.RunCommand = envSpecificSchema.Scripts.RunCommand
+	}
 	appHostingSchema.RunConfig.VpcAccess = MergeVpcAccess(appHostingSchema.RunConfig.VpcAccess, envSpecificSchema.RunConfig.VpcAccess)
 
 	// Merge Environment Variables
 	appHostingSchema.Env = MergeEnvVars(appHostingSchema.Env, envSpecificSchema.Env)
+
+	// Merge OutputFiles
+	// If the override schema includes any files, it replaces the entire list from the base schema.
+	if len(envSpecificSchema.OutputFiles.ServerApp.Include) > 0 {
+		appHostingSchema.OutputFiles.ServerApp.Include = envSpecificSchema.OutputFiles.ServerApp.Include
+	}
 }
 
 // MergeEnvVars merges the environment variables from the original list with the override list.
