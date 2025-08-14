@@ -94,8 +94,8 @@ func TestAcceptance(t *testing.T) {
 			// Test installs a specific version of node and only needs to be run with a single version
 			VersionInclusionConstraint: "12",
 			App:                        "simple",
-			Path:                       "/version?want=16.9.1",
-			Env:                        []string{"GOOGLE_RUNTIME_VERSION=16.9.1"},
+			Path:                       "/version?want=16.16.0",
+			Env:                        []string{"GOOGLE_RUNTIME_VERSION=16.16.0"},
 			MustUse:                    []string{nodeRuntime, nodeNPM},
 		},
 		{

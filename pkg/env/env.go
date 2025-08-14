@@ -168,6 +168,10 @@ const (
 	// ReleaseTrack is an env var used to specify the release track for the Build.
 	// Example: `ALPHA`, `BETA`, `GA`
 	ReleaseTrack = "X_GOOGLE_RELEASE_TRACK"
+
+	// BuildEnv is an env var used to specify the environment for the Build.
+	// Example: dev, qual, prod.
+	BuildEnv = "GOOGLE_BUILD_ENV"
 )
 
 const (

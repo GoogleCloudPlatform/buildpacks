@@ -170,44 +170,44 @@ func TestInstallRuby(t *testing.T) {
 		wantCached   bool
 	}{
 		{
-			name:         "successful install",
+			name:         "successful_install",
 			version:      "2.x.x",
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
 			wantFile:     "lib/foo.txt",
 			wantVersion:  "2.2.2",
 		},
 		{
-			name:         "successful cached install",
+			name:         "successful_cached_install",
 			version:      "2.2.2",
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
 			wantCached:   true,
 		},
 		{
-			name:         "default to highest available verions",
+			name:         "default_to_highest_available_verions",
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
 			wantFile:     "lib/foo.txt",
 			wantVersion:  "3.3.3",
 		},
 		{
-			name:         "invalid version",
+			name:         "invalid_version",
 			version:      ">9.9.9",
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
 			wantError:    true,
 		},
 		{
-			name:       "not found",
+			name:       "not_found",
 			version:    "2.2.2",
 			httpStatus: http.StatusNotFound,
 			wantError:  true,
 		},
 		{
-			name:       "corrupt tar file",
+			name:       "corrupt_tar_file",
 			version:    "2.2.2",
 			httpStatus: http.StatusOK,
 			wantError:  true,
 		},
 		{
-			name:         "successful install - invalid stackID fallback to ubuntu1804",
+			name:         "successful_install-invalid_stackID_fallback_to_ubuntu1804",
 			version:      "2.x.x",
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
 			wantFile:     "lib/foo.txt",
@@ -276,6 +276,7 @@ func TestInstallSource(t *testing.T) {
 		stackID                    string
 		responseFile               string
 		runtimeImageRegion         string
+		buildEnv                   string
 		wantFile                   string
 		wantVersion                string
 		wantError                  bool
@@ -283,7 +284,7 @@ func TestInstallSource(t *testing.T) {
 		serverlessRuntimesTarballs string
 	}{
 		{
-			name:         "install with lorry",
+			name:         "Lorry_when_region_is_not_set",
 			runtime:      Ruby,
 			version:      "2.x.x",
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
@@ -292,7 +293,50 @@ func TestInstallSource(t *testing.T) {
 			wantAR:       false,
 		},
 		{
-			name:               "install with artifact registry",
+			name:               "Lorry_when_GOOGLE_BUILD_ENV_is_dev",
+			runtime:            Ruby,
+			version:            "2.x.x",
+			responseFile:       "testdata/dummy-ruby-runtime.tar.gz",
+			buildEnv:           "dev",
+			runtimeImageRegion: "us-west1",
+			wantFile:           "lib/foo.txt",
+			wantVersion:        "2.2.2",
+			wantAR:             false,
+		},
+		{
+			name:               "Lorry_for_Go_runtime_even_when_region_and_prod_env_are_set",
+			runtime:            Go,
+			version:            "1.24.5",
+			runtimeImageRegion: "us-west1",
+			responseFile:       "testdata/dummy-ruby-runtime.tar.gz",
+			buildEnv:           "prod",
+			wantAR:             false,
+		},
+		{
+			name:               "AR_QA_when_GOOGLE_BUILD_ENV_is_qual",
+			runtime:            Python,
+			version:            "3.10.0",
+			runtimeImageRegion: "us-west1",
+			buildEnv:           "qual",
+			wantAR:             true,
+		},
+		{
+			name:               "AR_Prod_when_GOOGLE_BUILD_ENV_is_prod",
+			runtime:            Nodejs,
+			version:            "16.20.0",
+			runtimeImageRegion: "us-central1",
+			buildEnv:           "prod",
+			wantAR:             true,
+		},
+		{
+			name:               "AR_Prod_when_GOOGLE_BUILD_ENV_is_not_set",
+			runtime:            Nodejs,
+			version:            "16.20.0",
+			runtimeImageRegion: "us-central1",
+			wantAR:             true,
+		},
+		{
+			name:               "install_with_artifact_registry_1",
 			runtime:            Python,
 			version:            "3.10.0",
 			runtimeImageRegion: "us-west1",
@@ -300,7 +344,7 @@ func TestInstallSource(t *testing.T) {
 			wantAR:             true,
 		},
 		{
-			name:                       "install with artifact registry serverless runtimes",
+			name:                       "install_with_artifact_registry_serverless_runtimes",
 			runtime:                    Python,
 			version:                    "3.10.0",
 			runtimeImageRegion:         "us-west1",
@@ -309,7 +353,7 @@ func TestInstallSource(t *testing.T) {
 			serverlessRuntimesTarballs: "true",
 		},
 		{
-			name:               "install from artifact registry",
+			name:               "install_from_artifact_registry_2",
 			runtime:            Nodejs,
 			version:            "16.20.0",
 			responseFile:       "testdata/dummy-ruby-runtime.tar.gz",
@@ -318,7 +362,7 @@ func TestInstallSource(t *testing.T) {
 			wantAR:             true,
 		},
 		{
-			name:               "install from artifact registry",
+			name:               "install_from_artifact_registry_3",
 			runtime:            OpenJDK,
 			version:            "17.1.0",
 			responseFile:       "testdata/dummy-ruby-runtime.tar.gz",
@@ -327,7 +371,7 @@ func TestInstallSource(t *testing.T) {
 			wantAR:             true,
 		},
 		{
-			name:               "install from artifact registry for java 21.0",
+			name:               "install_from_artifact_registry_for_java_21.0",
 			runtime:            CanonicalJDK,
 			version:            "21.0",
 			stackID:            "google.gae.22",
@@ -337,7 +381,7 @@ func TestInstallSource(t *testing.T) {
 			wantAR:             true,
 		},
 		{
-			name:         "missing runtimeImageRegion",
+			name:         "missing_runtimeImageRegion",
 			runtime:      Nodejs,
 			version:      "16.20.0",
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
@@ -354,6 +398,12 @@ func TestInstallSource(t *testing.T) {
 				testserver.WithStatus(tc.httpStatus),
 				testserver.WithFile(testdata.MustGetPath(tc.responseFile)),
 				testserver.WithMockURL(&googleTarballURL))
+
+			testserver.New(
+				t,
+				testserver.WithStatus(tc.httpStatus),
+				testserver.WithFile(testdata.MustGetPath(tc.responseFile)),
+				testserver.WithMockURL(&goTarballURL))
 
 			// stub the version manifest
 			testserver.New(
@@ -395,6 +445,9 @@ func TestInstallSource(t *testing.T) {
 			}
 			if tc.serverlessRuntimesTarballs != "" {
 				t.Setenv(env.ServerlessRuntimesTarballs, tc.serverlessRuntimesTarballs)
+			}
+			if tc.buildEnv != "" {
+				t.Setenv(env.BuildEnv, tc.buildEnv)
 			}
 			_, err := InstallTarballIfNotCached(ctx, tc.runtime, tc.version, layer)
 			if tc.wantError == (err == nil) {
@@ -535,53 +588,104 @@ func TestPinGemAndBundlerVersion(t *testing.T) {
 
 func TestRuntimeImageURL(t *testing.T) {
 	testCases := []struct {
-		runtime                    InstallableRuntime
-		osName                     string
-		version                    string
-		region                     string
-		serverlessRuntimesTarballs string
-		want                       string
+		name     string
+		runtime  InstallableRuntime
+		osName   string
+		version  string
+		region   string
+		registry string
+		want     string
 	}{
 		{
-			runtime: "python",
-			osName:  "ubuntu1804",
-			version: "3.7.2",
-			region:  "us",
-			want:    "us-docker.pkg.dev/gae-runtimes/runtimes-ubuntu1804/python:3.7.2",
+			name:     "python_qual",
+			runtime:  "python",
+			osName:   "ubuntu2204",
+			version:  "3.7.2",
+			region:   "us",
+			registry: "serverless-runtimes-qa",
+			want:     "us-docker.pkg.dev/serverless-runtimes-qa/runtimes-ubuntu2204/python:3.7.2",
 		},
 		{
-			runtime: "nodejs",
-			osName:  "ubuntu2204",
-			version: "18.18.1",
-			region:  "eu",
-			want:    "eu-docker.pkg.dev/gae-runtimes/runtimes-ubuntu2204/nodejs:18.18.1",
+			name:     "nodejs_prod_gae",
+			runtime:  "nodejs",
+			osName:   "ubuntu2204",
+			version:  "18.18.1",
+			region:   "eu",
+			registry: "gae-runtimes",
+			want:     "eu-docker.pkg.dev/gae-runtimes/runtimes-ubuntu2204/nodejs:18.18.1",
 		},
 		{
-			runtime: "php",
-			osName:  "ubuntu2204",
-			version: "8.2.0",
-			region:  "us-west1",
-			want:    "us-west1-docker.pkg.dev/gae-runtimes/runtimes-ubuntu2204/php:8.2.0",
-		},
-		{
-			runtime:                    "python",
-			osName:                     "ubuntu1804",
-			version:                    "3.7.2",
-			region:                     "us-west1",
-			serverlessRuntimesTarballs: "true",
-			want:                       "us-west1-docker.pkg.dev/serverless-runtimes/runtimes-ubuntu1804/python:3.7.2",
+			name:     "php_prod_serverless",
+			runtime:  "php",
+			osName:   "ubuntu2204",
+			version:  "8.2.0",
+			region:   "us-west1",
+			registry: "serverless-runtimes",
+			want:     "us-west1-docker.pkg.dev/serverless-runtimes/runtimes-ubuntu2204/php:8.2.0",
 		},
 	}
 
 	for _, tc := range testCases {
-		if tc.serverlessRuntimesTarballs != "" {
-			t.Setenv(env.ServerlessRuntimesTarballs, tc.serverlessRuntimesTarballs)
-		}
-		t.Run(fmt.Sprintf("%s-%s-%s-%s", tc.runtime, tc.osName, tc.version, tc.region), func(t *testing.T) {
-			runtimeImageURL := runtimeImageURL(tc.runtime, tc.osName, tc.version, tc.region)
+		t.Run(tc.name, func(t *testing.T) {
+			got := runtimeImageURL(tc.runtime, tc.osName, tc.version, tc.region, tc.registry)
 
-			if runtimeImageURL != tc.want {
-				t.Errorf("runtimeImageURL got %s, want %s", runtimeImageURL, tc.want)
+			if got != tc.want {
+				t.Errorf("runtimeImageURL() got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestGetTarballRegistry(t *testing.T) {
+	testCases := []struct {
+		name                       string
+		buildEnv                   string
+		serverlessRuntimesTarballs string
+		want                       string
+	}{
+		{
+			name:     "dev_env",
+			buildEnv: "dev",
+			want:     tarballRegistryDev,
+		},
+		{
+			name:     "qual_env",
+			buildEnv: "qual",
+			want:     tarballRegistryQual,
+		},
+		{
+			name:     "prod_env_without_serverless_runtimes_flag",
+			buildEnv: "prod",
+			want:     tarballRegistryProdGae,
+		},
+		{
+			name:                       "prod_env_with_serverless_runtimes_flag",
+			buildEnv:                   "prod",
+			serverlessRuntimesTarballs: "true",
+			want:                       tarballRegistryProdServerless,
+		},
+		{
+			name: "unspecified_env_defaults_to_prod",
+			want: tarballRegistryProdGae,
+		},
+		{
+			name:                       "unspecified_env_with_serverless_runtimes_flag",
+			serverlessRuntimesTarballs: "true",
+			want:                       tarballRegistryProdServerless,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.buildEnv != "" {
+				t.Setenv(env.BuildEnv, tc.buildEnv)
+			}
+			if tc.serverlessRuntimesTarballs != "" {
+				t.Setenv(env.ServerlessRuntimesTarballs, tc.serverlessRuntimesTarballs)
+			}
+			got := tarballRegistry()
+			if got != tc.want {
+				t.Errorf("tarballRegistry() = %q, want %q", got, tc.want)
 			}
 		})
 	}

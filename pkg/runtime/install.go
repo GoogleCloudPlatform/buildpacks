@@ -39,8 +39,8 @@ var (
 	// goTarballURL is the location from which we download Go. This is different from other runtimes
 	// because the Go team already provides re-built tarballs on the same CDN.
 	goTarballURL          = "https://dl.google.com/go/go%s.linux-amd64.tar.gz"
-	runtimeImageARURL     = "%s-docker.pkg.dev/gae-runtimes/runtimes-%s/%s:%s"
-	runtimeImageARRepoURL = "%s-docker.pkg.dev/gae-runtimes/runtimes-%s/%s"
+	runtimeImageARURL     = "%s-docker.pkg.dev/%s/runtimes-%s/%s:%s"
+	runtimeImageARRepoURL = "%s-docker.pkg.dev/%s/runtimes-%s/%s"
 	fallbackRegion        = "us"
 )
 
@@ -64,6 +64,11 @@ const (
 	Ubuntu1804 string = "ubuntu1804"
 	Ubuntu2204 string = "ubuntu2204"
 	Ubuntu2404 string = "ubuntu2404"
+
+	tarballRegistryProdGae        = "gae-runtimes"
+	tarballRegistryProdServerless = "serverless-runtimes"
+	tarballRegistryQual           = "serverless-runtimes-qa"
+	tarballRegistryDev            = "lorry"
 )
 
 // User friendly display name of all runtime (e.g. for use in error message).
@@ -108,6 +113,22 @@ func OSForStack(ctx *gcp.Context) string {
 		os = Ubuntu2204
 	}
 	return os
+}
+
+func tarballRegistry() string {
+	buildEnv := os.Getenv(env.BuildEnv)
+	switch buildEnv {
+	case "qual":
+		return tarballRegistryQual
+	case "dev":
+		return tarballRegistryDev
+	default: // prod and any other case
+		flag, present := os.LookupEnv(env.ServerlessRuntimesTarballs)
+		if present && flag == "true" {
+			return tarballRegistryProdServerless
+		}
+		return tarballRegistryProdGae
+	}
 }
 
 // IsCached returns true if the requested version of a runtime is installed in the given layer.
@@ -226,22 +247,26 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	}
 	ctx.Logf("Installing %s v%s.", runtimeName, version)
 
-	runtimeURL := tarballDownloadURL(runtime, osName, version)
 	stripComponents := 0
 	if runtime == OpenJDK || runtime == Go {
 		stripComponents = 1
 	}
+
+	registry := tarballRegistry()
 	region, present := os.LookupEnv(env.RuntimeImageRegion)
-	if present && runtime != Go {
-		url := runtimeImageURL(runtime, osName, version, region)
-		fallbackURL := runtimeImageURL(runtime, osName, version, fallbackRegion)
-		if err := fetch.ARImage(url, fallbackURL, layer.Path, stripComponents, ctx); err != nil {
-			ctx.Warnf("Failed to download %s version %s osName %s from artifact registry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
+	if registry == tarballRegistryDev || runtime == Go || !present {
+		// Use Lorry for dev env, Go runtime, or if the region is not set.
+		runtimeURL := tarballDownloadURL(runtime, osName, version)
+		if err := fetch.Tarball(runtimeURL, layer.Path, stripComponents); err != nil {
+			ctx.Warnf("Failed to download %s version %s osName %s from lorry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable. To use Artifact Registry instead, set the GOOGLE_RUNTIME_IMAGE_REGION environment variable (e.g., 'us').", runtimeName, version, osName)
 			return false, err
 		}
 	} else {
-		if err := fetch.Tarball(runtimeURL, layer.Path, stripComponents); err != nil {
-			ctx.Warnf("Failed to download %s version %s osName %s from lorry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
+		// Use Artifact Registry for other cases.
+		url := runtimeImageURL(runtime, osName, version, region, registry)
+		fallbackURL := runtimeImageURL(runtime, osName, version, fallbackRegion, registry)
+		if err := fetch.ARImage(url, fallbackURL, layer.Path, stripComponents, ctx); err != nil {
+			ctx.Warnf("Failed to download %s version %s osName %s from artifact registry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
 			return false, err
 		}
 	}
@@ -252,13 +277,8 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	return false, nil
 }
 
-func runtimeImageURL(runtime InstallableRuntime, osName, version, region string) string {
-	flag, present := os.LookupEnv(env.ServerlessRuntimesTarballs)
-	if present && flag == "true" {
-		newRuntimeImageARURL := "%s-docker.pkg.dev/serverless-runtimes/runtimes-%s/%s:%s"
-		return fmt.Sprintf(newRuntimeImageARURL, region, osName, runtime, version)
-	}
-	return fmt.Sprintf(runtimeImageARURL, region, osName, runtime, version)
+func runtimeImageURL(runtime InstallableRuntime, osName, version, region, registry string) string {
+	return fmt.Sprintf(runtimeImageARURL, region, registry, osName, runtime, version)
 }
 
 func tarballDownloadURL(runtime InstallableRuntime, os, version string) string {
@@ -343,15 +363,19 @@ func ResolveVersion(ctx *gcp.Context, runtime InstallableRuntime, verConstraint,
 
 	var versions []string
 	var err error
+	registry := tarballRegistry()
 	region, present := os.LookupEnv(env.RuntimeImageRegion)
-	if present {
-		url := fmt.Sprintf(runtimeImageARRepoURL, region, osName, runtime)
-		fallbackURL := fmt.Sprintf(runtimeImageARRepoURL, fallbackRegion, osName, runtime)
-		versions, err = fetch.ARVersions(url, fallbackURL, ctx)
-	} else {
+	if registry == tarballRegistryDev || !present {
+		// Use Lorry for dev env or if the region is not set.
 		url := fmt.Sprintf(runtimeVersionsURL, osName, runtime)
 		err = fetch.JSON(url, &versions)
+	} else {
+		// Use Artifact Registry.
+		url := fmt.Sprintf(runtimeImageARRepoURL, region, registry, osName, runtime)
+		fallbackURL := fmt.Sprintf(runtimeImageARRepoURL, fallbackRegion, registry, osName, runtime)
+		versions, err = fetch.ARVersions(url, fallbackURL, ctx)
 	}
+
 	if err != nil {
 		return "", gcp.InternalErrorf("fetching %s versions %s osName: %v", runtimeNames[runtime], osName, err)
 	}

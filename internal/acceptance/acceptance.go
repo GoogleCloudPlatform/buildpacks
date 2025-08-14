@@ -934,6 +934,7 @@ func buildCommand(srcDir, image, builderName, runName string, env map[string]str
 	// not affect other builds running concurrently.
 	args = append(args, "--env", "GOOGLE_RANDOM="+randString(8), "--env", "GOOGLE_DEBUG=true")
 	args = append(args, "--network", "host")
+	args = append(args, "--env", "GOOGLE_RUNTIME_IMAGE_REGION=us")
 	log.Printf("Running %v\n", args)
 	return args
 }
