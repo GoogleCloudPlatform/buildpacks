@@ -158,6 +158,9 @@ const (
 	// ColdStartImprovementsBuildStudy is an experiment flag to enable cold start improvements build study.
 	ColdStartImprovementsBuildStudy = "EXPERIMENTAL_RUNTIMES_COLD_START_BUILD"
 
+	// NodeCompileCache is an env var used to enable bytecode caching for Node.js applications.
+	NodeCompileCache = "NODE_COMPILE_CACHE"
+
 	// FastAPISmartDefaults is an experiment flag to enable fastapi smart defaults with uvicorn.
 	FastAPISmartDefaults = "X_GOOGLE_FASTAPI_SMART_DEFAULTS"
 

@@ -42,6 +42,7 @@ const (
 	PipInstallLatencyID                   MetricID = "10"
 	JavaGAEWebXMLConfigUsageCounterID     MetricID = "11"
 	JavaGAESessionsEnabledCounterID       MetricID = "12"
+	NodejsBytecodeCacheGeneratedCounterID MetricID = "13"
 )
 
 var (
@@ -105,6 +106,11 @@ var (
 			JavaGAESessionsEnabledCounterID,
 			"java_gae_session_handler_uses",
 			"The number of times the session handler is used by developers",
+		),
+		NodejsBytecodeCacheGeneratedCounterID: newDescriptor(
+			NodejsBytecodeCacheGeneratedCounterID,
+			"nodejs_bytecode_cache_generated",
+			"The number of times the bytecode cache is generated for Node.js applications",
 		),
 	}
 )

@@ -24,6 +24,7 @@ import (
 	"strconv"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cloudfunctions"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -38,6 +39,9 @@ const (
 
 	// nodeJSHeadroomMB is the amount of memory we'll set aside before computing the max memory size.
 	nodeJSHeadroomMB int = 64
+
+	bytecodeCacheLayer = "compile-cache"
+	cacheDirName       = ".google_node_compile_cache"
 )
 
 var functionsFrameworkNodeModulePath = path.Join("node_modules", functionsFrameworkPackage)
@@ -191,6 +195,18 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	}
 
+	if env.ColdStartImprovementsBuildStudy == "byte_code_caching" {
+		// Generate the bytecode cache. This step is best-effort and will not fail the build.
+		if err := generateBytecodeCache(ctx, fnFile); err != nil {
+			ctx.Logf("WARNING: Bytecode cache generation failed, skipping cache layer setup: %v", err)
+		} else {
+			// Create a layer for the cache and set the environment variable.
+			if err := setupCacheLayer(ctx); err != nil {
+				return err
+			}
+		}
+	}
+
 	// Get and set the valid value for --max-old-space-size node_options.
 	// Keep the existing behaviour if the value is not provided or invalid
 	if size, err := getMaxOldSpaceSize(); err != nil {
@@ -302,4 +318,54 @@ func usingYarnModuleResolution(ctx *gcp.Context) (bool, error) {
 	}
 	linker := result.Stdout
 	return linker == "pnp", nil
+}
+
+// generateBytecodeCache executes a script to generate a bytecode cache for the user's function.
+func generateBytecodeCache(ctx *gcp.Context, fnFile string) error {
+	ctx.Logf("Attempting to generate bytecode cache to improve cold start performance.")
+
+	scriptPath := filepath.Join(ctx.BuildpackRoot(), "bytecode_cache", "main.js")
+	absFnFile := filepath.Join(ctx.ApplicationRoot(), fnFile)
+	execArgs := []string{"node", scriptPath, absFnFile, cacheDirName}
+
+	// We execute the script, which in turn 'requires' user code.
+	if result, err := ctx.Exec(execArgs); err != nil {
+		if result != nil && result.Combined != "" {
+			return fmt.Errorf("bytecode cache generation script failed: %v, output: %s", err, result.Combined)
+		}
+		return fmt.Errorf("bytecode cache generation script failed: %v", err)
+	}
+	return nil
+}
+
+// setupCacheLayer checks for a generated cache and, if found, moves it into a launch layer
+// and sets the NODE_COMPILE_CACHE environment variable.
+func setupCacheLayer(ctx *gcp.Context) error {
+	cacheDir := filepath.Join(ctx.ApplicationRoot(), cacheDirName)
+	cacheDirExists, err := ctx.FileExists(cacheDir)
+	if err != nil {
+		return fmt.Errorf("checking for cache directory: %w", err)
+	}
+
+	if !cacheDirExists {
+		ctx.Logf("Bytecode cache not found, skipping layer creation.")
+		return nil
+	}
+
+	ctx.Logf("Bytecode cache found, adding it to the application image.")
+	l, err := ctx.Layer(bytecodeCacheLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", bytecodeCacheLayer, err)
+	}
+
+	// Copy the generated cache directory into the new layer.
+	if _, err := ctx.Exec([]string{"cp", "-a", cacheDir + "/.", l.Path}); err != nil {
+		return fmt.Errorf("copying cache directory: %w", err)
+	}
+	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NodejsBytecodeCacheGeneratedCounterID).Increment(1)
+	// Set the environment variable so Node.js uses the cache at runtime.
+	l.LaunchEnvironment.Default(env.NodeCompileCache, l.Path)
+	ctx.Logf("NODE_COMPILE_CACHE will be set to %s at runtime.", l.Path)
+
+	return nil
 }
