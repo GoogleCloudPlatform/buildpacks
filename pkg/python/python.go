@@ -148,7 +148,7 @@ func versionMatchesSemver(ctx *gcp.Context, versionRange string, version string)
 		return false, fmt.Errorf("invalid version %q: %w", version, err)
 	}
 	if !constraint.Check(v) {
-		ctx.Logf("Python version %q does not match the semver constraint %q", version, versionRange)
+		ctx.Debugf("Python version %q does not match the semver constraint %q", version, versionRange)
 		return false, nil
 	}
 	return true, nil
