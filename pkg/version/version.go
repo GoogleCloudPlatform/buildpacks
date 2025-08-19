@@ -83,6 +83,9 @@ func ResolveVersion(constraint string, versions []string, opts ...ResolveVersion
 }
 
 func shouldSkipVersion(version string, keywords []string) bool {
+	if IsReleaseCandidate(version) {
+		return true
+	}
 	for _, keyword := range keywords {
 		if strings.HasPrefix(strings.ToLower(version), strings.ToLower(keyword)) {
 			return true
