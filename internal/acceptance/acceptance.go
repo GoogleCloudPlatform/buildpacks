@@ -69,6 +69,7 @@ var (
 	runtimeVersion      string // A runtime version which will be applied to tests that do not explicilty set a version.
 	runtimeName         string // The name of the runtime (aka the language name such as 'go' or 'dotnet'). Used to properly set GOOGLE_RUNTIME.
 	specialChars        = regexp.MustCompile("[^a-zA-Z0-9]+")
+	buildEnv            string // The build environment (dev, qual, or prod).
 )
 
 type requestType string
@@ -105,7 +106,7 @@ func DefineFlags() {
 	flag.BoolVar(&cloudbuild, "cloudbuild", false, "Use cloudbuild network; required for Cloud Build.")
 	flag.StringVar(&runtimeVersion, "runtime-version", "", "A default runtime version which will be applied to the tests that do not explicitly set a version.")
 	flag.StringVar(&runtimeName, "runtime-name", "", "The name of the runtime (aka the language name such as 'go' or 'dotnet'). Used to properly set GOOGLE_RUNTIME.")
-
+	flag.StringVar(&buildEnv, "build-env", "", "The build environment to use (dev, qual, or prod). Sets GOOGLE_BUILD_ENV.")
 }
 
 // UnarchiveTestData extracts the test-data tgz into a temp dir and returns a cleanup function to be deferred.
@@ -933,8 +934,10 @@ func buildCommand(srcDir, image, builderName, runName string, env map[string]str
 	// value ensures that the generated builder sha is unique and removing it after one build will
 	// not affect other builds running concurrently.
 	args = append(args, "--env", "GOOGLE_RANDOM="+randString(8), "--env", "GOOGLE_DEBUG=true")
-	args = append(args, "--network", "host")
 	args = append(args, "--env", "GOOGLE_RUNTIME_IMAGE_REGION=us")
+	if buildEnv != "" {
+		args = append(args, "--env", fmt.Sprintf("GOOGLE_BUILD_ENV=%s", buildEnv))
+	}
 	log.Printf("Running %v\n", args)
 	return args
 }
