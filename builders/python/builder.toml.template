@@ -48,6 +48,10 @@ description = "Unified builder all Python runtimes"
   id = "google.python.link-runtime"
   uri = "link_runtime.tgz"
 
+[[buildpacks]]
+  id = "google.python.poetry"
+  uri = "poetry.tgz"
+
 # GAE Flex
 [[order]]
   [[order.group]]
@@ -124,7 +128,6 @@ description = "Unified builder all Python runtimes"
     id = "google.python.link-runtime"
     optional = true
 
-
 # Python applications (gcp)
 [[order]]
   [[order.group]]
@@ -132,6 +135,10 @@ description = "Unified builder all Python runtimes"
 
   [[order.group]]
     id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.poetry"
     optional = true
 
   # Entrypoint buildpack is required because it cannot be easily inferred.
@@ -155,6 +162,10 @@ description = "Unified builder all Python runtimes"
 
   [[order.group]]
     id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.poetry"
     optional = true
 
   [[order.group]]

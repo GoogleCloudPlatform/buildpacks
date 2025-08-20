@@ -121,6 +121,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
   uri = "python/pip.tgz"
 
 [[buildpacks]]
+  id = "google.python.poetry"
+  uri = "python/poetry.tgz"
+
+[[buildpacks]]
   id = "google.python.functions-framework"
   uri = "python/functions_framework.tgz"
 
@@ -521,6 +525,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
     optional = true
 
   [[order.group]]
+    id = "google.python.poetry"
+    optional = true
+
+  [[order.group]]
     id = "google.config.entrypoint"
 
   [[order.group]]
@@ -716,6 +724,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.poetry"
     optional = true
 
   [[order.group]]

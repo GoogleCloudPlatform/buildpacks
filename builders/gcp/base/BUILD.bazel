@@ -61,6 +61,7 @@ GROUPS = {
         "//cmd/python/missing_entrypoint:missing_entrypoint.tgz",
         "//cmd/python/pip:pip.tgz",
         "//cmd/python/runtime:runtime.tgz",
+        "//cmd/python/poetry:poetry.tgz",
     ],
     "ruby": [
         "//cmd/ruby/missing_entrypoint:missing_entrypoint.tgz",

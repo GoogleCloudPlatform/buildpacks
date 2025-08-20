@@ -21,6 +21,7 @@ BUILDPACKS = [
     "//cmd/python/webserver:webserver.tgz",
     "//cmd/utils/archive_source:archive_source.tgz",
     "//cmd/utils/label:label_image.tgz",
+    "//cmd/python/poetry:poetry.tgz",
 ]
 
 builder(

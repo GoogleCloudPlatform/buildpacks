@@ -196,6 +196,34 @@ func TestAcceptancePython(t *testing.T) {
 			Env:     []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 		},
+		{
+			Name:                       "poetry_app",
+			App:                        "poetry_app",
+			MustUse:                    []string{pythonRuntime, pythonPoetry},
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			VersionInclusionConstraint: ">=3.9.0",
+		},
+		{
+			Name:                       "poetry_main",
+			App:                        "poetry_main",
+			MustUse:                    []string{pythonRuntime, pythonPoetry},
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			VersionInclusionConstraint: ">=3.9.0",
+		},
+		{
+			Name:                       "poetry_lock",
+			App:                        "poetry_lock",
+			MustUse:                    []string{pythonRuntime, pythonPoetry},
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			VersionInclusionConstraint: ">=3.9.0",
+		},
+		{
+			Name:                       "poetry_setuptools",
+			App:                        "poetry_setuptools",
+			MustUse:                    []string{pythonRuntime, pythonPoetry},
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			VersionInclusionConstraint: ">=3.9.0",
+		},
 	}
 
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {

@@ -1,0 +1,18 @@
+[project]
+name = "poetry-demo"
+version = "0.1.0"
+description = ""
+authors = []
+requires-python = ">=3.9"
+dependencies = [
+    "pendulum (>=3.1.0,<4.0.0)",
+    "flask (>=3.1.1,<4.0.0)",
+    "gunicorn (>=20.1.0)"
+]
+
+[tool.poetry]
+packages = [{include = "main.py"}]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

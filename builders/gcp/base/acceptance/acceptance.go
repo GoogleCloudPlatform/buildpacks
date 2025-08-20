@@ -54,6 +54,7 @@ const (
 	pythonRuntime           = "google.python.runtime"
 	pythonMissingEntrypoint = "google.python.missing-entrypoint"
 	pythonWebserver         = "google.python.webserver"
+	pythonPoetry            = "google.python.poetry"
 	rubyBundle              = "google.ruby.bundle"
 	rubyFF                  = "google.ruby.functions-framework"
 	rubyRails               = "google.ruby.rails"

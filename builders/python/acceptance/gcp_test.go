@@ -27,6 +27,7 @@ const (
 	pythonRuntime           = "google.python.runtime"
 	pythonMissingEntrypoint = "google.python.missing-entrypoint"
 	pythonWebserver         = "google.python.webserver"
+	pythonPoetry            = "google.python.poetry"
 )
 
 func init() {
@@ -188,6 +189,34 @@ func TestAcceptancePython(t *testing.T) {
 			Name:    "missing_entrypoint_app_py",
 			App:     "missing_entrypoint_app_py",
 			MustUse: []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
+		},
+		{
+			Name:                       "poetry_app",
+			App:                        "poetry_app",
+			MustUse:                    []string{pythonRuntime, pythonPoetry},
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			VersionInclusionConstraint: ">=3.9.0",
+		},
+		{
+			Name:                       "poetry_main",
+			App:                        "poetry_main",
+			MustUse:                    []string{pythonRuntime, pythonPoetry},
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			VersionInclusionConstraint: ">=3.9.0",
+		},
+		{
+			Name:                       "poetry_lock",
+			App:                        "poetry_lock",
+			MustUse:                    []string{pythonRuntime, pythonPoetry},
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			VersionInclusionConstraint: ">=3.9.0",
+		},
+		{
+			Name:                       "poetry_setuptools",
+			App:                        "poetry_setuptools",
+			MustUse:                    []string{pythonRuntime, pythonPoetry},
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			VersionInclusionConstraint: ">=3.9.0",
 		},
 	}
 
