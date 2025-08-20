@@ -365,6 +365,8 @@ func setupCacheLayer(ctx *gcp.Context) error {
 	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NodejsBytecodeCacheGeneratedCounterID).Increment(1)
 	// Set the environment variable so Node.js uses the cache at runtime.
 	l.LaunchEnvironment.Default(env.NodeCompileCache, l.Path)
+	// To verify the cache is getting utilized, set the native debug flag to compile_cache.
+	l.LaunchEnvironment.Default("NODE_DEBUG_NATIVE", "compile_cache")
 	ctx.Logf("NODE_COMPILE_CACHE will be set to %s at runtime.", l.Path)
 
 	return nil
