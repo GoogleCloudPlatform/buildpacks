@@ -64,6 +64,7 @@ func TestAcceptancePython(t *testing.T) {
 		{
 			Name:                       "missing_entrypoint_app_py",
 			App:                        "missing_entrypoint_app_py",
+			SkipStacks:                 []string{"google.24.full", "google.24"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
 			Env:                        []string{"GOOGLE_RUNTIME_VERSION=3.8.20"},
 			VersionInclusionConstraint: "<3.9.0",
@@ -76,6 +77,7 @@ func TestAcceptancePython(t *testing.T) {
 		},
 		{
 			Name:                       "no_fastapi_smart_default_entrypoint_for_3.13_and_below",
+			SkipStacks:                 []string{"google.24.full", "google.24"},
 			App:                        "fastapi_uvicorn",
 			Env:                        []string{"X_GOOGLE_FASTAPI_SMART_DEFAULTS=true", "GOOGLE_RUNTIME_VERSION=3.12.0"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
@@ -114,6 +116,7 @@ func TestAcceptancePython(t *testing.T) {
 		{
 			Name:                       "fastapi_standard_smart_default_entrypoint_for_3.13_and_below",
 			App:                        "fastapi_standard",
+			SkipStacks:                 []string{"google.24.full", "google.24"},
 			Env:                        []string{"X_GOOGLE_FASTAPI_SMART_DEFAULTS=true", "GOOGLE_RUNTIME_VERSION=3.12.0"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
 			VersionInclusionConstraint: "<3.13.0",
@@ -123,6 +126,7 @@ func TestAcceptancePython(t *testing.T) {
 		{
 			Name:                       "fastapi_standard_app_py_smart_default_entrypoint_for_3.13_and_below",
 			App:                        "fastapi_standard_app_py",
+			SkipStacks:                 []string{"google.24.full", "google.24"},
 			Env:                        []string{"X_GOOGLE_FASTAPI_SMART_DEFAULTS=true", "GOOGLE_RUNTIME_VERSION=3.12.0"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
 			VersionInclusionConstraint: "<3.13.0",
