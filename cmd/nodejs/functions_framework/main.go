@@ -195,7 +195,7 @@ func buildFn(ctx *gcp.Context) error {
 		}
 	}
 
-	if env.ColdStartImprovementsBuildStudy == "byte_code_caching" {
+	if os.Getenv(env.ColdStartImprovementsBuildStudy) != "" {
 		// Generate the bytecode cache. This step is best-effort and will not fail the build.
 		if err := generateBytecodeCache(ctx, fnFile); err != nil {
 			ctx.Logf("WARNING: Bytecode cache generation failed, skipping cache layer setup: %v", err)
