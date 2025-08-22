@@ -7,6 +7,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/buildpacks/libcnb/v2"
 )
 
@@ -23,7 +24,8 @@ var (
 func InstallPNPM(ctx *gcp.Context, pnpmLayer *libcnb.Layer, pjs *PackageJSON) error {
 	layerName := pnpmLayer.Name
 	installDir := filepath.Join(pnpmLayer.Path, "bin")
-	version, err := detectPNPMVersion(pjs)
+	stackID := runtime.OSForStack(ctx)
+	version, err := detectPNPMVersion(pjs, stackID)
 	if err != nil {
 		return err
 	}
@@ -75,15 +77,17 @@ func downloadPNPM(ctx *gcp.Context, dir, version string) error {
 // returns the latest stable version available.
 // TODO(b/338411091) create a shared packagejson util library and refactor out a generic detect
 // package manager version function.
-func detectPNPMVersion(pjs *PackageJSON) (string, error) {
+func detectPNPMVersion(pjs *PackageJSON, stackID string) (string, error) {
 	if pjs == nil || (pjs.Engines.PNPM == "" && pjs.PackageManager == "") {
-		// version, err := latestPackageVersion("pnpm")
-		// if err != nil {
-		// 	return "", gcp.InternalErrorf("fetching available pnpm versions: %w", err)
-		// }
-
-		// TODO - Remove this once the pnpm fix is released.
-		return "10.12.4", nil
+		if stackID == runtime.Ubuntu1804 {
+			// Ubuntu 18.04 uses a fixed older version of pnpm due to compatibility constraints with GLIBC.
+			return "10.12.4", nil
+		}
+		version, err := latestPackageVersion("pnpm")
+		if err != nil {
+			return "", gcp.InternalErrorf("fetching available pnpm versions: %w", err)
+		}
+		return version, nil
 	}
 	var requestedVersion string
 	if pjs.Engines.PNPM != "" {

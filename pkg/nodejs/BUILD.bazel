@@ -30,6 +30,7 @@ go_library(
         "//pkg/fetch",
         "//pkg/firebase/apphostingschema",
         "//pkg/gcpbuildpack",
+        "//pkg/runtime",
         "//pkg/version",
         "@com_github_buildpacks_libcnb_v2//:go_default_library",
         "@com_github_hashicorp_go_retryablehttp//:go_default_library",
