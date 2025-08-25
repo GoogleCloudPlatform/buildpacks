@@ -20,7 +20,7 @@
 # we set the env var by writing to the third file descriptor. For more details
 # see https://buildpacks.io/docs/for-buildpack-authors/how-to/write-buildpacks/use-exec.d/
 if [ -f /sys/fs/cgroup/memory/memory.limit_in_bytes ]; then
-  TOTAL_MEM_MB=$(cat /sys/fs/cgroup/memory/memory.limit_in_bytes | awk '{print int($1 / 1024 / 1024)}')
+  TOTAL_MEM_MB=$(cat /sys/fs/cgroup/memory/memory.limit_in_bytes | awk '{printf "%d", $1 / 1024 / 1024}')
   HEAP_LIMIT_MB=$(($TOTAL_MEM_MB * 80 / 100)) # use 80% of available memory
   if [[ -z "${NODE_OPTIONS}" ]]; then
     # NODE_OPTIONS is not defined so we just set it
