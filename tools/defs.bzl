@@ -2,6 +2,7 @@
 
 load("@rules_pkg//pkg:mappings.bzl", "pkg_mklink")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
 
 def buildpack(name, executables, prefix, version, api = "0.9", srcs = None, extension = "tgz", strip_prefix = ".", visibility = None):
     """Macro to create a single buildpack as a tgz or tar archive.
@@ -59,6 +60,101 @@ def buildpack(name, executables, prefix, version, api = "0.9", srcs = None, exte
         files = {
             executables[0]: "/bin/main",
         },
+        strip_prefix = strip_prefix,
+        visibility = visibility,
+    )
+
+def buildpack_using_runner(
+        name,
+        prefix,
+        version,
+        buildpack_id,
+        api = "0.9",
+        srcs = None,
+        extension = "tgz",
+        strip_prefix = ".",
+        visibility = None):
+    """Macro to create a single buildpack as a tgz or tar archive.
+
+      The result is a tar or tgz archive with a buildpack descriptor
+      (`buildpack.toml`) and interface scripts (bin/detect, bin/build).
+
+      As this is a macro, the actual target name for the buildpack is `name_using_runner.extension`.
+      The builder.toml spec allows either tar or tgz archives.
+
+      Args:
+        name: Base name for the targets.
+        prefix: Namespace prefix.
+        version: Buildpack version.
+        buildpack_id: The full unique ID of the buildpack (e.g., google.nodejs.runtime).
+        api: Buildpacks API version.
+        srcs: Additional files to include.
+        extension: Archive extension ("tgz" or "tar").
+        strip_prefix: Prefix to strip from srcs.
+        visibility: Target visibility.
+      """
+    descriptor_target_name = name + "_using_runner.descriptor"
+    descriptor_output_filename = name + "_using_runner.buildpack.toml"
+
+    _buildpack_descriptor(
+        name = descriptor_target_name,
+        api = api,
+        version = version,
+        prefix = prefix,
+        bp_name = name,
+        output = descriptor_output_filename,
+    )
+
+    if not srcs:
+        srcs = []
+
+    detect_script_name = name + "_detect_script"
+    write_file(
+        name = detect_script_name,
+        out = "detect.sh",
+        content = ["""#!/usr/bin/env bash
+    /usr/local/bin/runner -buildpack="{id}" -phase="detect" "$@"
+    """.format(id = buildpack_id)],
+        is_executable = True,
+    )
+
+    build_script_name = name + "_build_script"
+    write_file(
+        name = build_script_name,
+        out = "build.sh",
+        content = ["""#!/usr/bin/env bash
+    /usr/local/bin/runner -buildpack="{id}" -phase="build" "$@"
+    """.format(id = buildpack_id)],
+        is_executable = True,
+    )
+
+    pkg_mklink(
+        name = name + "_detect_link",
+        link_name = "bin/detect",
+        target = "../detect.sh",
+    )
+
+    pkg_mklink(
+        name = name + "_build_link",
+        link_name = "bin/build",
+        target = "../build.sh",
+    )
+
+    pkg_tar(
+        name = name + "_using_runner",
+        extension = extension,
+        srcs = [
+            descriptor_target_name,
+            detect_script_name,
+            build_script_name,
+            name + "_detect_link",
+            name + "_build_link",
+        ] + srcs,
+        files = {
+            ":" + descriptor_output_filename: "buildpack.toml",
+        },
+        mode = "0755",
+        package_dir = "/",
         strip_prefix = strip_prefix,
         visibility = visibility,
     )
