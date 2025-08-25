@@ -26,6 +26,7 @@ go_binary(
         "-w",
     ],
     deps = [
+        "//pkg/buildermetrics",
         "//pkg/env",
         "//pkg/firebase/faherror",
         "//pkg/gcpbuildpack",

@@ -51,6 +51,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NPMUsageCounterID).Increment(1)
 	ml, err := ctx.Layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)

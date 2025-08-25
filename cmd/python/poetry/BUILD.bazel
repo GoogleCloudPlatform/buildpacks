@@ -23,6 +23,7 @@ go_binary(
         "-w",
     ],
     deps = [
+        "//pkg/buildermetrics",
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/python",

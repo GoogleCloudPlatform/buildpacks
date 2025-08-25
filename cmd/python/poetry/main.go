@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
@@ -45,6 +46,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.PoetryUsageCounterID).Increment(1)
 	// Install Poetry.
 	if err := python.InstallPoetry(ctx); err != nil {
 		return fmt.Errorf("installing poetry: %w", err)

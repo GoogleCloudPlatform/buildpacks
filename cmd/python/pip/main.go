@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
 	"github.com/buildpacks/libcnb/v2"
@@ -58,6 +59,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.PIPUsageCounterID).Increment(1)
 	// Remove leading and trailing : because otherwise SplitList will add empty strings.
 	reqs := filepath.SplitList(strings.Trim(os.Getenv(python.RequirementsFilesEnv), string(os.PathListSeparator)))
 	ctx.Debugf("Found requirements.txt files provided by other buildpacks: %s", reqs)

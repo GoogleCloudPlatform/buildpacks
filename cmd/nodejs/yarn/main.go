@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -61,6 +62,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 }
 
 func buildFn(ctx *gcp.Context) error {
+	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.YarnUsageCounterID).Increment(1)
 	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
 	if err != nil {
 		return err
