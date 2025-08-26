@@ -165,7 +165,7 @@ const (
 	FastAPISmartDefaults = "X_GOOGLE_FASTAPI_SMART_DEFAULTS"
 
 	// PythonSmartDefaults is an experiment flag to enable python smart defaults for
-	// gradio, streamlit, and maybe future frameworks.
+	// gunicorn, uvicorn, fastapi[standard], gradio, streamlit, and maybe future frameworks.
 	PythonSmartDefaults = "X_GOOGLE_PYTHON_SMART_DEFAULTS"
 
 	// ReleaseTrack is an env var used to specify the release track for the Build.

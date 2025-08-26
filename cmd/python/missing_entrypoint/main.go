@@ -79,14 +79,6 @@ func buildFn(ctx *gcp.Context) error {
 
 	// We will use the smart default entrypoint if the runtime version supports it (>=3.13)
 	if supports, err := python.SupportsSmartDefaultEntrypoint(ctx); err == nil && supports {
-		// We will eventually remove the FastAPISmartDefaults flag and use smartdefaultEntrypoint for
-		// all use-cases.
-		if os.Getenv(env.FastAPISmartDefaults) == "true" {
-			cmd, err = uvicornEntrypoint(ctx, pyModule)
-			if err != nil {
-				return fmt.Errorf("error detecting smart default entrypoint: %w", err)
-			}
-		}
 		if os.Getenv(env.PythonSmartDefaults) == "true" {
 			cmd, err = smartDefaultEntrypoint(ctx, pyModule, pyFile)
 			if err != nil {
@@ -98,37 +90,6 @@ func buildFn(ctx *gcp.Context) error {
 	ctx.AddProcess(gcp.WebProcess, cmd, gcp.AsDefaultProcess())
 
 	return nil
-}
-
-func uvicornEntrypoint(ctx *gcp.Context, pyModule string) ([]string, error) {
-	// To be compatible with the old builder, we will use below priority order:
-	// 1. gunicorn 2. uvicorn
-
-	// If gunicorn is present in requirements.txt, we will use gunicorn as the entrypoint.
-	gPresent, err := python.PackagePresent(ctx, "requirements.txt", gunicorn)
-	if err != nil {
-		return nil, fmt.Errorf("error detecting gunicorn: %w", err)
-	}
-	if gPresent {
-		return []string{"gunicorn", "-b", ":8080", pyModule}, nil
-	}
-	// If uvicorn is present in requirements.txt, we will use uvicorn as the entrypoint.
-	uPresent, err := python.PackagePresent(ctx, "requirements.txt", uvicorn)
-	if err != nil {
-		return nil, fmt.Errorf("error detecting uvicorn: %w", err)
-	}
-	if uPresent {
-		return []string{"uvicorn", pyModule, "--port", "8080", "--host", "0.0.0.0"}, nil
-	}
-	// If fastapi[standard] is present in requirements.txt, we will use uvicorn as the entrypoint.
-	fastapiStandardPresent, err := python.PackagePresent(ctx, "requirements.txt", fastapiStandard)
-	if err != nil {
-		return nil, fmt.Errorf("error detecting fastapi: %w", err)
-	}
-	if fastapiStandardPresent {
-		return []string{"uvicorn", pyModule, "--port", "8080", "--host", "0.0.0.0"}, nil
-	}
-	return []string{"gunicorn", "-b", ":8080", pyModule}, nil
 }
 
 func smartDefaultEntrypoint(ctx *gcp.Context, pyModule string, pyFile string) ([]string, error) {
