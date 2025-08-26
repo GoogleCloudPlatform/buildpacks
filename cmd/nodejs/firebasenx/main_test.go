@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	bmd "github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 )
 
 func TestDetect(t *testing.T) {
@@ -47,10 +48,11 @@ func TestDetect(t *testing.T) {
 
 func TestBuild(t *testing.T) {
 	testCases := []struct {
-		name         string
-		envs         []string
-		files        map[string]string
-		wantExitCode int
+		name                string
+		envs                []string
+		files               map[string]string
+		wantExitCode        int
+		wantBuilderMetadata map[bmd.MetadataID]bmd.MetadataValue
 	}{
 		{
 			name: "successfully read project.json",
@@ -70,6 +72,9 @@ func TestBuild(t *testing.T) {
 				}`,
 			},
 			wantExitCode: 0,
+			wantBuilderMetadata: map[bmd.MetadataID]bmd.MetadataValue{
+				bmd.MonorepoName: bmd.MetadataValue("nx"),
+			},
 		},
 		{
 			name: "ambiguous project name",
@@ -104,6 +109,11 @@ func TestBuild(t *testing.T) {
 			}
 			if result.ExitCode != tc.wantExitCode {
 				t.Fatalf("build exit code mismatch, got: %d, want: %d", result.ExitCode, tc.wantExitCode)
+			}
+			for id, m := range tc.wantBuilderMetadata {
+				if m != result.MetadataAdded()[id] {
+					t.Errorf("builder metadata %q mismatch, got: %s, want: %s", bmd.MetadataIDNames[id], result.MetadataAdded()[id], m)
+				}
 			}
 		})
 	}

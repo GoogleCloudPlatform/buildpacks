@@ -36,6 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
+        "//pkg/buildermetadata",
         "//pkg/firebase/util",
         "//pkg/gcpbuildpack",
         "//pkg/nodejs",
@@ -47,5 +48,8 @@ go_test(
     srcs = ["main_test.go"],
     embed = [":main"],
     rundir = ".",
-    deps = ["//internal/buildpacktest"],
+    deps = [
+        "//internal/buildpacktest",
+        "//pkg/buildermetadata",
+    ],
 )

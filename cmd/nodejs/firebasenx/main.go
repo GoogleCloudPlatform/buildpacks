@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -97,6 +98,9 @@ func buildFn(ctx *gcp.Context) error {
 	// remote caching until we can fully investigate how to support making external network requests
 	// to the Nx API.
 	nxl.BuildEnvironment.Override(nxNoCloud, "true")
+
+	// add nx as the monorepo name to the builder metadata
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.MonorepoName, "nx")
 
 	return nil
 }

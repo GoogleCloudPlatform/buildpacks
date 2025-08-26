@@ -36,6 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
+        "//pkg/buildermetadata",
         "//pkg/env",
         "//pkg/firebase/util",
         "//pkg/gcpbuildpack",
@@ -50,5 +51,6 @@ go_test(
     rundir = ".",
     deps = [
         "//internal/buildpacktest",
+        "//pkg/buildermetadata",
     ],
 )

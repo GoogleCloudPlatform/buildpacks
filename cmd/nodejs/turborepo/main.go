@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
@@ -84,6 +85,9 @@ func buildFn(ctx *gcp.Context) error {
 	turbol.BuildEnvironment.Override(monorepoProject, appName)
 	turbol.BuildEnvironment.Override(monorepoCommand, "turbo")
 	turbol.BuildEnvironment.Override(monorepoBuildArgs, strings.Join(buildArgs, ","))
+
+	// add turbo as the monorepo name to the builder metadata
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.MonorepoName, "turbo")
 
 	return nil
 }
