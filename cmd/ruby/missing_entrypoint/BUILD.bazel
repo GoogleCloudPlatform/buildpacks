@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack for the Ruby missing-entrypoint.
-load("//tools:defs.bzl", "buildpack")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -10,6 +10,16 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "ruby",
+    version = "0.0.1",
+    visibility = [
+        "//builders:ruby_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "missing_entrypoint_using_runner",
+    buildpack_id = "google.ruby.missing_entrypoint",
     prefix = "ruby",
     version = "0.0.1",
     visibility = [

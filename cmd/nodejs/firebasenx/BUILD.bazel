@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
 
 # Buildpack for the Nx monorepo build system.
-load("//tools:defs.bzl", "buildpack")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -10,6 +10,16 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "nodejs",
+    version = "0.0.1",
+    visibility = [
+        "//builders:nodejs_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "firebasenx_using_runner",
+    buildpack_id = "google.nodejs.firebasenx",
     prefix = "nodejs",
     version = "0.0.1",
     visibility = [

@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
 
 # Buildpack for archiving user's source code.
-load("//tools:defs.bzl", "buildpack")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -10,6 +10,16 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "utils",
+    version = "0.0.1",
+    visibility = [
+        "//builders:__subpackages__",
+    ],
+)
+
+buildpack_using_runner(
+    name = "archive_source_using_runner",
+    buildpack_id = "google.utils.archive_source",
     prefix = "utils",
     version = "0.0.1",
     visibility = [

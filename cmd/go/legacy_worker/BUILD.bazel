@@ -1,7 +1,7 @@
 # Buildpack for the Go functions framework
 
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
-load("//tools:defs.bzl", "buildpack")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -13,6 +13,16 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "go",
+    version = "0.1.0",
+    visibility = [
+        "//builders:go_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "legacy_worker_using_runner",
+    buildpack_id = "google.go.legacy_worker",
     prefix = "go",
     version = "0.1.0",
     visibility = [

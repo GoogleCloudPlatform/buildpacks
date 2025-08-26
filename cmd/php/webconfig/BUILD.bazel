@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
 
 # Buildpack to generate web server configs for PHP runtime.
-load("//tools:defs.bzl", "buildpack")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -10,6 +10,16 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "php",
+    version = "0.0.1",
+    visibility = [
+        "//builders:php_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "webconfig_using_runner",
+    buildpack_id = "google.php.webconfig",
     prefix = "php",
     version = "0.0.1",
     visibility = [

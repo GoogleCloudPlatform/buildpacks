@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
 
 # Buildpack for detecting GAE Flex applications.
-load("//tools:defs.bzl", "buildpack")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -10,6 +10,16 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "config",
+    version = "0.9.1",
+    visibility = [
+        "//builders:__subpackages__",
+    ],
+)
+
+buildpack_using_runner(
+    name = "flex_using_runner",
+    buildpack_id = "google.config.flex",
     prefix = "config",
     version = "0.9.1",
     visibility = [
