@@ -93,8 +93,8 @@ def buildpack_using_runner(
         strip_prefix: Prefix to strip from srcs.
         visibility: Target visibility.
       """
-    descriptor_target_name = name + "_using_runner.descriptor"
-    descriptor_output_filename = name + "_using_runner.buildpack.toml"
+    descriptor_target_name = name + ".descriptor"
+    descriptor_output_filename = name + ".buildpack.toml"
 
     _buildpack_descriptor(
         name = descriptor_target_name,
@@ -141,7 +141,7 @@ def buildpack_using_runner(
     )
 
     pkg_tar(
-        name = name + "_using_runner",
+        name = name,
         extension = extension,
         srcs = [
             descriptor_target_name,
