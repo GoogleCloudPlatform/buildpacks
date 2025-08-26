@@ -19,7 +19,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def hello_world():
-    now = pendulum.now()
+    now = pendulum.now('UTC')
     return "PASS"
 
 if __name__ == '__main__':
