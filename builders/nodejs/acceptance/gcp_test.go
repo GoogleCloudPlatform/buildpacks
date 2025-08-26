@@ -130,6 +130,12 @@ func TestAcceptance(t *testing.T) {
 			MustUse:                []string{nodeRuntime, nodeNPM, entrypoint},
 			SkipStacks:             []string{"google.min.22"},
 		},
+		{
+			Name:                       "nextjs",
+			App:                        "nextjs",
+			MustUse:                    []string{nodeRuntime, nodeNPM},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
 	}
 
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
