@@ -133,7 +133,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			bpt.TestDetect(t, detectFn, tc.name, tc.files, tc.envs, tc.want)
+			bpt.TestDetect(t, DetectFn, tc.name, tc.files, tc.envs, tc.want)
 		})
 	}
 }
@@ -495,7 +495,7 @@ unsupported:
 				bpt.WithFiles(tc.files),
 				bpt.WithExecMocks(tc.mocks...),
 			}
-			result, err := bpt.RunBuild(t, buildFn, opts...)
+			result, err := bpt.RunBuild(t, BuildFn, opts...)
 			if err != nil && tc.wantExitCode == 0 {
 				t.Fatalf("error running build: %v, logs: %s", err, result.Output)
 			}

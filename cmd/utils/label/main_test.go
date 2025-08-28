@@ -24,7 +24,7 @@ import (
 const labelLog = "Adding image label"
 
 func TestDetect(t *testing.T) {
-	buildpacktest.TestDetect(t, detectFn, "Always opt-in", map[string]string{}, []string{}, 0)
+	buildpacktest.TestDetect(t, DetectFn, "Always opt-in", map[string]string{}, []string{}, 0)
 }
 
 func TestBuild(t *testing.T) {
@@ -49,7 +49,7 @@ func TestBuild(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := buildpacktest.RunBuild(t, buildFn, buildpacktest.WithEnvs(tc.envs...), buildpacktest.WithTestName(tc.name))
+			result, err := buildpacktest.RunBuild(t, BuildFn, buildpacktest.WithEnvs(tc.envs...), buildpacktest.WithTestName(tc.name))
 			if err != nil {
 				t.Fatalf("error running build: %v, result: %#v", err, result)
 			}

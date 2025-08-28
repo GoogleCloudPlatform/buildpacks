@@ -29,10 +29,11 @@ const (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	railsExists, err := ctx.FileExists("bin", "rails")
 	if err != nil {
 		return nil, err
@@ -50,7 +51,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptIn("found Rails assets to precompile"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	ctx.Logf("Running Rails asset precompilation")
 
 	// Install Yarn as it is needed for asset precompilation.

@@ -36,10 +36,11 @@ const (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn detects if package.json is present.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	pkgJSONExists, err := ctx.FileExists("package.json")
 	if err != nil {
 		return nil, err
@@ -50,7 +51,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptInFileFound("package.json"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn installs dependencies using npm.
+func BuildFn(ctx *gcp.Context) error {
 	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NPMUsageCounterID).Increment(1)
 	ml, err := ctx.Layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
 	if err != nil {

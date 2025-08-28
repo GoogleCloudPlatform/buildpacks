@@ -31,10 +31,11 @@ const (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !env.IsGCF() {
 		return gcp.OptOut("Env var X_GOOGLE_TARGET_PLATFORM is not set to gcf."), nil
 	}
@@ -51,7 +52,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptInAlways(), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	sl, err := ctx.Layer("src", gcp.LaunchLayer)
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)

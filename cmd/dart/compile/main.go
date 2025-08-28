@@ -27,10 +27,11 @@ import (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	atLeastOne, err := ctx.HasAtLeastOne("*.dart")
 	if err != nil {
 		return nil, fmt.Errorf("finding *.dart files: %w", err)
@@ -55,7 +56,8 @@ func maybeRunBuildRunner(ctx *gcp.Context, dir string) error {
 	return nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	flutter, _ := dart.IsFlutter(ctx.ApplicationRoot())
 
 	static := ""

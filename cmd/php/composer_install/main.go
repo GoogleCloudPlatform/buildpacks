@@ -40,10 +40,11 @@ var (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
 		// functions-frameworks buildpack expect composer sdk to be installed always.
 		return gcp.OptInAlways(), nil
@@ -58,7 +59,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptInFileFound(composerJSON), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	if ver, present := os.LookupEnv(php.ComposerVersion); present {
 		composerVer = ver
 	}

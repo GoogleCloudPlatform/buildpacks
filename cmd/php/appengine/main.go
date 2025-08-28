@@ -26,10 +26,11 @@ import (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if env.IsGAE() {
 		return gcp.OptInEnvSet(env.XGoogleTargetPlatform), nil
 	}
@@ -37,7 +38,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptOutEnvNotSet(env.XGoogleTargetPlatform), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	if err := validateAppEngineAPIs(ctx); err != nil {
 		return err
 	}

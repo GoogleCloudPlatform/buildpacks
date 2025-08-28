@@ -58,7 +58,7 @@ dependencies:
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+			buildpacktest.TestDetect(t, DetectFn, tc.name, tc.files, []string{}, tc.want)
 		})
 	}
 }

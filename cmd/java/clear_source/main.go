@@ -25,10 +25,11 @@ import (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if result, err := clearsource.DetectFn(ctx); result != nil || err != nil {
 		return result, err
 	}
@@ -50,6 +51,7 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptOut(fmt.Sprintf("none of %s found. Clearing souce only supported on maven and gradle projects.", strings.Join(files, ", "))), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	return clearsource.BuildFn(ctx, []string{"target", "build"})
 }

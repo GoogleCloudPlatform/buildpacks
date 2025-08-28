@@ -39,10 +39,11 @@ var (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	appDir := util.ApplicationDirectory(ctx)
 
 	if !env.IsFAH() {
@@ -84,7 +85,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptOut("nextjs config or dependency not found"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	appDir := util.ApplicationDirectory(ctx)
 
 	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, appDir)

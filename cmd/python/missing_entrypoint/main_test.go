@@ -57,7 +57,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			bpt.TestDetect(t, detectFn, tc.name, tc.files, tc.env, tc.want)
+			bpt.TestDetect(t, DetectFn, tc.name, tc.files, tc.env, tc.want)
 		})
 	}
 }
@@ -377,7 +377,7 @@ func TestBuild(t *testing.T) {
 				bpt.WithFiles(tc.files),
 				bpt.WithEnvs(tc.env...),
 			}
-			result, err := bpt.RunBuild(t, buildFn, opts...)
+			result, err := bpt.RunBuild(t, BuildFn, opts...)
 			if err != nil && tc.wantExitCode == 0 {
 				t.Fatalf("error running build: %v, logs: %s", err, result.Output)
 			}

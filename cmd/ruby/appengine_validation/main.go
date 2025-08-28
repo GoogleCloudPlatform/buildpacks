@@ -23,10 +23,11 @@ import (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	gemfileExists, err := ctx.FileExists("Gemfile")
 	if err != nil {
 		return nil, err
@@ -44,7 +45,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptOut("no Gemfile or gems.rb found"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	gemfile := ""
 	gemfileExists, err := ctx.FileExists("Gemfile")
 	if err != nil {

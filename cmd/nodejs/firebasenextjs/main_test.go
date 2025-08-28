@@ -174,7 +174,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			bpt.TestDetect(t, detectFn, tc.name, tc.files, tc.envs, tc.want)
+			bpt.TestDetect(t, DetectFn, tc.name, tc.files, tc.envs, tc.want)
 		})
 	}
 }
@@ -443,7 +443,7 @@ unsupported:
 					mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@`+mockLatestNextjsAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 				),
 			}
-			result, err := bpt.RunBuild(t, buildFn, opts...)
+			result, err := bpt.RunBuild(t, BuildFn, opts...)
 			if err != nil && tc.wantExitCode == 0 {
 				t.Fatalf("error running build: %v, logs: %s", err, result.Output)
 			}

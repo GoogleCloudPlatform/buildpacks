@@ -47,10 +47,11 @@ const (
 var functionsFrameworkNodeModulePath = path.Join("node_modules", functionsFrameworkPackage)
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn detects if the function is a Node.js function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if nodejs.IsNodeJS8Runtime() {
 		return gcp.OptOut("Incompatible with nodejs8"), nil
 	}
@@ -60,12 +61,12 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptOutEnvNotSet(env.FunctionTarget), nil
 }
 
-// buildFn sets up the execution environment for the function.
+// BuildFn sets up the execution environment for the function.
 // For a function that specifies the framework as a dependency, only set
 // environment variables and define a web process. The framework is
 // installed in the npm or yarn buildpack with other dependencies.
 // For a function that does not, also install the framework.
-func buildFn(ctx *gcp.Context) error {
+func BuildFn(ctx *gcp.Context) error {
 	if _, ok := os.LookupEnv(env.FunctionSource); ok {
 		return gcp.UserErrorf("%s is not currently supported for Node.js buildpacks", env.FunctionSource)
 	}

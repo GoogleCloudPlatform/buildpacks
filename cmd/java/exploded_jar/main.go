@@ -23,10 +23,11 @@ import (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	manifestExists, err := ctx.FileExists(java.ManifestPath)
 	if err != nil {
 		return nil, err
@@ -37,7 +38,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptOutFileNotFound(java.ManifestPath), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	main, err := java.MainFromManifest(ctx, java.ManifestPath)
 	if err != nil {
 		return fmt.Errorf("extracting Main-Class from %s: %w", java.ManifestPath, err)

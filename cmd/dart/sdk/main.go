@@ -32,10 +32,11 @@ const (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if result := runtime.CheckOverride("dart"); result != nil {
 		return result, nil
 	}
@@ -57,7 +58,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptOut("neither pubspec.yaml nor any .dart files found"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	flutter, err := dart.IsFlutter(ctx.ApplicationRoot())
 	if err == nil && flutter {
 		return buildFlutterFn(ctx)

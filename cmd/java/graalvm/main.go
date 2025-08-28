@@ -41,10 +41,11 @@ var (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	useNativeImage, err := env.IsUsingNativeImage()
 	if err != nil {
 		return nil, gcp.UserErrorf("failed to parse GOOGLE_JAVA_USE_NATIVE_IMAGE: %v", err)
@@ -58,7 +59,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptOutEnvNotSet(env.UseNativeImage), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	if err := installGraalVM(ctx); err != nil {
 		return err
 	}

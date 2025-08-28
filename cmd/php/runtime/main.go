@@ -33,10 +33,11 @@ const (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if result := runtime.CheckOverride("php"); result != nil {
 		return result, nil
 	}
@@ -59,7 +60,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	version, err := php.ExtractVersion(ctx)
 	if version == "" {
 		version = "8.4.x"

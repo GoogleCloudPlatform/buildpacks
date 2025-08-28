@@ -38,10 +38,11 @@ const (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	files := []string{
 		"build.gradle",
 		"build.gradle.kts",
@@ -60,7 +61,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptOut(fmt.Sprintf("none of the following found: %s", strings.Join(files, ", "))), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	gradleCachedRepo, err := ctx.Layer(cacheLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", cacheLayer, err)

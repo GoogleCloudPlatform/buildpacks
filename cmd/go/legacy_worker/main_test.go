@@ -46,7 +46,7 @@ func TestDetect(t *testing.T) {
 	for _, tc := range testCases {
 		tc.env = append(tc.env, "GOOGLE_RUNTIME=go111")
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetectWithStack(t, detectFn, tc.name, tc.files, tc.env, tc.stack, tc.want)
+			buildpacktest.TestDetectWithStack(t, DetectFn, tc.name, tc.files, tc.env, tc.stack, tc.want)
 		})
 	}
 }

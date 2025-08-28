@@ -57,7 +57,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			bpt.TestDetect(t, detectFn, tc.name, tc.files, nil, tc.want)
+			bpt.TestDetect(t, DetectFn, tc.name, tc.files, nil, tc.want)
 		})
 	}
 }

@@ -39,10 +39,11 @@ func getRailsNodeVersion(ctx *gcp.Context) string {
 }
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if result := runtime.CheckOverride("ruby"); result != nil {
 		return result, nil
 	}
@@ -72,7 +73,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	version, err := ruby.DetectVersion(ctx)
 	if err != nil {
 		return fmt.Errorf("determining runtime version: %w", err)

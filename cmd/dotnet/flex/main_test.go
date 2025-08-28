@@ -45,7 +45,7 @@ func TestDetect(t *testing.T) {
 	var files map[string]string
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := buildpacktest.RunDetectPhaseForTest(t, detectFn, tc.name, files, tc.env, defaultStack, tc.want)
+			result, err := buildpacktest.RunDetectPhaseForTest(t, DetectFn, tc.name, files, tc.env, defaultStack, tc.want)
 
 			if result.ExitCode != tc.want {
 				t.Errorf("unexpected exit status %d, want %d", result.ExitCode, tc.want)

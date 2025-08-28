@@ -23,16 +23,18 @@ import (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn detects if the target platform is GAE.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if env.IsGAE() {
 		return appengine.OptInTargetPlatformGAE(), nil
 	}
 	return appengine.OptOutTargetPlatformNotGAE(), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn sets the image entrypoint.
+func BuildFn(ctx *gcp.Context) error {
 	return appengine.Build(ctx, "nodejs", nil)
 }

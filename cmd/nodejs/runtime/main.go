@@ -36,10 +36,11 @@ const (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn detects if package.json or .js files are present.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	result := runtime.CheckOverride("nodejs")
 	isRailsApp, _ := ruby.NeedsRailsAssetPrecompile(ctx)
 
@@ -66,7 +67,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptOut("neither package.json nor any .js files found"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn installs the Node.js runtime.
+func BuildFn(ctx *gcp.Context) error {
 	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
 	if err != nil {
 		return err

@@ -40,10 +40,11 @@ const (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if flex.NeedsSupervisorPackage(ctx) {
 		return gcp.OptIn("supervisor package is required"), nil
 	}
@@ -51,7 +52,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptOut("supervisor package is not required"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	l, err := ctx.Layer("supervisor", gcp.CacheLayer, gcp.LaunchLayerUnlessSkipRuntimeLaunch, gcp.BuildLayer)
 	if err != nil {
 		return err

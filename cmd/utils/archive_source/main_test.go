@@ -76,7 +76,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetectWithStack(t, detectFn, tc.name, tc.files, tc.env, tc.stack, tc.want)
+			buildpacktest.TestDetectWithStack(t, DetectFn, tc.name, tc.files, tc.env, tc.stack, tc.want)
 		})
 	}
 }

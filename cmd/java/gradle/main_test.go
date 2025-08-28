@@ -51,7 +51,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+			buildpacktest.TestDetect(t, DetectFn, tc.name, tc.files, []string{}, tc.want)
 		})
 	}
 }
@@ -93,7 +93,7 @@ func TestBuildCommand(t *testing.T) {
 			}
 
 			opts = append(opts, tc.opts...)
-			result, err := buildpacktest.RunBuild(t, buildFn, opts...)
+			result, err := buildpacktest.RunBuild(t, BuildFn, opts...)
 			if err != nil {
 				t.Fatalf("error running build: %v, logs: %s", err, result.Output)
 			}

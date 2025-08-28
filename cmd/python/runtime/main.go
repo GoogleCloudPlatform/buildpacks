@@ -36,10 +36,11 @@ const (
 var execPrefixRegex = regexp.MustCompile(`exec_prefix\s*=\s*"([^"]+)`)
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if flex.NeedsSupervisorPackage(ctx) {
 		return gcp.OptIn("supervisor package is required"), nil
 	}
@@ -57,7 +58,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptIn("found .py files"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	// We don't cache the python runtime because the python/link-runtime buildpack may clobber
 	// everything in the layer directory anyway.
 	layer, err := ctx.Layer(pythonLayer, gcp.BuildLayer, gcp.LaunchLayer)

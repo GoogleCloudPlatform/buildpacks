@@ -26,10 +26,11 @@ import (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	goModExists, err := ctx.FileExists("go.mod")
 	if err != nil {
 		return nil, err
@@ -40,7 +41,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptIn("go.mod file not found, assuming GOPATH build"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	l, err := ctx.Layer("gopath", gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
 	if err != nil {
 		return fmt.Errorf("creating GOPATH layer: %w", err)

@@ -46,7 +46,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, detectFn, tc.name, map[string]string{}, tc.env, tc.want)
+			buildpacktest.TestDetect(t, DetectFn, tc.name, map[string]string{}, tc.env, tc.want)
 		})
 	}
 }

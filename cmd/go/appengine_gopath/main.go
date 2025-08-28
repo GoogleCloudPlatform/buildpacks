@@ -30,10 +30,11 @@ import (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !env.IsGAE() && !env.IsFlex() {
 		return gcp.OptOut("not a GAE Standard or Flex app."), nil
 	}
@@ -54,7 +55,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptIn("go.mod file not found, assuming GOPATH build"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	l, err := ctx.Layer("gopath", gcp.BuildLayer)
 	if err != nil {
 		return fmt.Errorf("creating gopath layer: %w", err)

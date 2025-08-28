@@ -40,10 +40,11 @@ type metadata struct {
 }
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	plan := libcnb.BuildPlan{Requires: python.RequirementsRequires}
 	// If a requirement.txt file exists, the buildpack needs to provide the Requirements dependency.
 	// If the dependency is not provided by any buildpacks, lifecycle will exclude the pip
@@ -58,7 +59,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptInAlways(gcp.WithBuildPlans(plan)), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.PIPUsageCounterID).Increment(1)
 	// Remove leading and trailing : because otherwise SplitList will add empty strings.
 	reqs := filepath.SplitList(strings.Trim(os.Getenv(python.RequirementsFilesEnv), string(os.PathListSeparator)))

@@ -38,10 +38,11 @@ var (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !env.IsFAH() {
 		return gcp.OptOut("not a firebase apphosting application"), nil
 	}
@@ -55,7 +56,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptInFileFound("nx.json"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	appDir := util.ApplicationDirectory(ctx)
 
 	nxJSON, err := nodejs.ReadNxJSONIfExists(ctx.ApplicationRoot())

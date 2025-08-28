@@ -30,10 +30,11 @@ const (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn detects if .go files are present.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if result := runtime.CheckOverride("go"); result != nil {
 		return result, nil
 	}
@@ -47,7 +48,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptOut("no .go files found"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn installs the Go toolchain.
+func BuildFn(ctx *gcp.Context) error {
 	version, err := golang.RuntimeVersion(ctx)
 	if err != nil {
 		return err

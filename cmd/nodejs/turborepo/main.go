@@ -36,10 +36,11 @@ var (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	turboJSONExists, err := ctx.FileExists("turbo.json")
 	if err != nil {
 		return nil, err
@@ -50,7 +51,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptInFileFound("turbo.json"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	appDir := util.ApplicationDirectory(ctx)
 
 	turboJSON, err := nodejs.ReadTurboJSONIfExists(ctx.ApplicationRoot())

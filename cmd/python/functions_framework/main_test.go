@@ -122,7 +122,7 @@ func TestBuild(t *testing.T) {
 				buildpacktest.WithExecMocks(mocks...),
 			}
 			opts = append(opts, tc.opts...)
-			result, err := buildpacktest.RunBuild(t, buildFn, opts...)
+			result, err := buildpacktest.RunBuild(t, BuildFn, opts...)
 			if err != nil && tc.wantExitCode == 0 {
 				t.Fatalf("error running build: %v, logs: %s", err, result.Output)
 			}
@@ -160,7 +160,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetectWithStack(t, detectFn, tc.name, tc.files, tc.env, tc.stack, tc.want)
+			buildpacktest.TestDetectWithStack(t, DetectFn, tc.name, tc.files, tc.env, tc.stack, tc.want)
 		})
 	}
 }

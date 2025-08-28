@@ -34,10 +34,11 @@ const (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	atLeastOne, err := ctx.HasAtLeastOne("*.go")
 	if err != nil {
 		return nil, fmt.Errorf("finding *.go files: %w", err)
@@ -48,7 +49,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptIn("found .go files"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	// Keep GOCACHE in Devmode for faster rebuilds.
 	cl, err := ctx.Layer("gocache", gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
 	if err != nil {

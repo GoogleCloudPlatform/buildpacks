@@ -26,10 +26,11 @@ import (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !env.IsAlphaSupported() {
 		return gcp.OptOut("Python Poetry Buildpack is only supported in ALPHA release tracks."), nil
 	}
@@ -45,7 +46,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptOut(message), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.PoetryUsageCounterID).Increment(1)
 	// Install Poetry.
 	if err := python.InstallPoetry(ctx); err != nil {

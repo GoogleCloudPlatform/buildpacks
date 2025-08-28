@@ -45,10 +45,11 @@ var linkDirs = []string{
 }
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	skip, err := env.IsPresentAndTrue(env.XGoogleSkipRuntimeLaunch)
 	if err != nil {
 		return nil, err
@@ -62,7 +63,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptOut("GOOGLE_RUNTIME env var not a python runtime"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	pythonPath, err := pythonSystemDir(ctx)
 	if err != nil {
 		return err

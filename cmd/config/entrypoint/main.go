@@ -33,10 +33,11 @@ var (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	// Detection for GAE and GCF
 	if env.IsGAE() || env.IsGCF() {
 		return gcp.OptInEnvSet(env.XGoogleTargetPlatform), nil
@@ -61,7 +62,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		"%s not set, no valid entrypoint in app.yaml and Procfile not found", env.Entrypoint)), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	if env.IsGCF() {
 		// Function Frameworks with the function target will automatically build correctly without entrypoint modification.
 		return nil

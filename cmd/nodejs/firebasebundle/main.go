@@ -46,10 +46,11 @@ const (
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn detects if it is a firebase apphosting application.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	// This buildpack handles some necessary setup for future app hosting processes,
 	// it should always run for any app hosting initial build.
 	if !env.IsFAH() {
@@ -58,7 +59,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptIn("firebase apphosting application"), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn sets up the output bundle for future steps.
+func BuildFn(ctx *gcp.Context) error {
 	bundlePath := filepath.Join(ctx.ApplicationRoot(), ".apphosting", "bundle.yaml")
 	bundleYaml, err := readBundleYaml(ctx, bundlePath)
 	if err != nil {

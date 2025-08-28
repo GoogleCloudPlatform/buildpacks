@@ -57,7 +57,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			bpt.TestDetect(t, detectFn, tc.name, tc.files, tc.envs, tc.want)
+			bpt.TestDetect(t, DetectFn, tc.name, tc.files, tc.envs, tc.want)
 		})
 	}
 }
@@ -149,7 +149,7 @@ outputFiles:
 				bpt.WithTempDir(tc.codeDir),
 				bpt.WithEnvs(fmt.Sprintf("%s=test_dir", firebaseOutputBundleDir), fmt.Sprintf("%s=%sapphosting.yaml", apphostingYamlPathTestsEnv, filepath.Join(os.TempDir(), tc.codeDir)+"/")),
 			}
-			result, err := bpt.RunBuild(t, buildFn, opts...)
+			result, err := bpt.RunBuild(t, BuildFn, opts...)
 			if err != nil {
 				t.Fatalf("error running build: %v, result: %#v", err, result)
 			}

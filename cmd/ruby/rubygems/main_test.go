@@ -62,7 +62,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, detectFn, tc.name, tc.files, []string{}, tc.want)
+			buildpacktest.TestDetect(t, DetectFn, tc.name, tc.files, []string{}, tc.want)
 		})
 	}
 }
@@ -183,7 +183,7 @@ func TestBuild(t *testing.T) {
 			}
 
 			t.Setenv(ruby.RubyVersionKey, tc.rubyVersion)
-			result, err := buildpacktest.RunBuild(t, buildFn, opts...)
+			result, err := buildpacktest.RunBuild(t, BuildFn, opts...)
 			if err != nil && tc.wantExitCode == 0 {
 				t.Fatalf("error running build: %v, result: %#v", err, result)
 			}

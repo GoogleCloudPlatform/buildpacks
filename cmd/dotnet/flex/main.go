@@ -31,17 +31,19 @@ const (
 )
 
 func main() {
-	gcpbuildpack.Main(detectFn, buildFn)
+	gcpbuildpack.Main(DetectFn, BuildFn)
 }
 
-func detectFn(ctx *gcpbuildpack.Context) (gcpbuildpack.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcpbuildpack.Context) (gcpbuildpack.DetectResult, error) {
 	if !env.IsFlex() {
 		return gcpbuildpack.OptOut("not a GAE Flex app."), nil
 	}
 	return gcpbuildpack.OptIn("this is a GAE Flex app."), nil
 }
 
-func buildFn(ctx *gcpbuildpack.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcpbuildpack.Context) error {
 	l, err := ctx.Layer("main_env", gcpbuildpack.LaunchLayer)
 	if err != nil {
 		return fmt.Errorf("creating main_env layer: %v", err)

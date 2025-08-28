@@ -79,7 +79,7 @@ type fnInfo struct {
 }
 
 func main() {
-	gcp.Main(detectFn, buildFn)
+	gcp.Main(DetectFn, BuildFn)
 }
 
 func hasCppCode(ctx *gcp.Context) (bool, error) {
@@ -103,7 +103,8 @@ func hasCppCode(ctx *gcp.Context) (bool, error) {
 	return false, nil
 }
 
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+// DetectFn is the exported detect function.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	hasCpp, err := hasCppCode(ctx)
 	if err != nil {
 		return nil, err
@@ -117,7 +118,8 @@ func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptOutEnvNotSet(env.FunctionTarget), nil
 }
 
-func buildFn(ctx *gcp.Context) error {
+// BuildFn is the exported build function.
+func BuildFn(ctx *gcp.Context) error {
 	vcpkgPath, err := installVcpkg(ctx)
 	if err != nil {
 		return err
