@@ -28,6 +28,26 @@ GROUPS = {
     ],
 }
 
+BUILDPACKS_USING_RUNNER = [
+    "//cmd/config/entrypoint:entrypoint_using_runner.tgz",
+    "//cmd/utils/label:label_image_using_runner.tgz",
+    "//cmd/config/flex:flex_using_runner.tgz",
+    "//cmd/java/appengine:appengine_using_runner.tgz",
+    "//cmd/utils/archive_source:archive_source_using_runner.tgz",
+]
+
+GROUPS_USING_RUNNER = {
+    "java": [
+        "//cmd/java/clear_source:clear_source_using_runner.tgz",
+        "//cmd/java/entrypoint:entrypoint_using_runner.tgz",
+        "//cmd/java/exploded_jar:exploded_jar_using_runner.tgz",
+        "//cmd/java/functions_framework:functions_framework_using_runner.tgz",
+        "//cmd/java/gradle:gradle_using_runner.tgz",
+        "//cmd/java/maven:maven_using_runner.tgz",
+        "//cmd/java/runtime:runtime_using_runner.tgz",
+    ],
+}
+
 builder(
     name = "builder",
     builder_template = ":builder.toml.template",

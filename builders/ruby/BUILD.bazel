@@ -31,6 +31,29 @@ GROUPS = {
     ],
 }
 
+BUILDPACKS_USING_RUNNER = [
+    "//cmd/config/entrypoint:entrypoint_using_runner.tgz",
+    "//cmd/config/flex:flex_using_runner.tgz",
+    "//cmd/ruby/missing_entrypoint:missing_entrypoint_using_runner.tgz",
+    "//cmd/ruby/appengine_validation:appengine_validation_using_runner.tgz",
+    "//cmd/ruby/appengine:appengine_using_runner.tgz",
+    "//cmd/ruby/flex_entrypoint:flex_entrypoint_using_runner.tgz",
+    "//cmd/ruby/rubygems:rubygems_using_runner.tgz",
+    "//cmd/ruby/bundle:bundle_using_runner.tgz",
+    "//cmd/ruby/rails:rails_using_runner.tgz",
+    "//cmd/ruby/runtime:runtime_using_runner.tgz",
+    "//cmd/utils/label:label_image_using_runner.tgz",
+    "//cmd/ruby/functions_framework:functions_framework_using_runner.tgz",
+    "//cmd/utils/archive_source:archive_source_using_runner.tgz",
+]
+
+GROUPS_USING_RUNNER = {
+    "nodejs": [
+        "//cmd/nodejs/runtime:runtime_using_runner.tgz",
+        "//cmd/nodejs/yarn:yarn_using_runner.tgz",
+    ],
+}
+
 builder(
     name = "builder",
     builder_template = ":builder.toml.template",

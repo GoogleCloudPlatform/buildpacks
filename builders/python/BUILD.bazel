@@ -24,6 +24,22 @@ BUILDPACKS = [
     "//cmd/python/poetry:poetry.tgz",
 ]
 
+BUILDPACKS_USING_RUNNER = [
+    "//cmd/config/entrypoint:entrypoint_using_runner.tgz",
+    "//cmd/python/appengine:appengine_using_runner.tgz",
+    "//cmd/config/flex:flex_using_runner.tgz",
+    "//cmd/python/functions_framework:functions_framework_using_runner.tgz",
+    "//cmd/python/functions_framework_compat:functions_framework_compat_using_runner.tgz",
+    "//cmd/python/link_runtime:link_runtime_using_runner.tgz",
+    "//cmd/python/missing_entrypoint:missing_entrypoint_using_runner.tgz",
+    "//cmd/python/pip:pip_using_runner.tgz",
+    "//cmd/python/runtime:runtime_using_runner.tgz",
+    "//cmd/python/webserver:webserver_using_runner.tgz",
+    "//cmd/utils/archive_source:archive_source_using_runner.tgz",
+    "//cmd/utils/label:label_image_using_runner.tgz",
+    "//cmd/python/poetry:poetry_using_runner.tgz",
+]
+
 builder(
     name = "builder",
     builder_template = ":builder.toml.template",

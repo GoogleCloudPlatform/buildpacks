@@ -26,6 +26,24 @@ BUILDPACKS = [
     "//cmd/utils/label:label_image.tgz",
 ]
 
+BUILDPACKS_USING_RUNNER = [
+    "//cmd/config/entrypoint:entrypoint_using_runner.tgz",
+    "//cmd/config/flex:flex_using_runner.tgz",
+    "//cmd/go/appengine:appengine_using_runner.tgz",
+    "//cmd/go/appengine_gomod:appengine_gomod_using_runner.tgz",
+    "//cmd/go/flex_gomod:flex_gomod_using_runner.tgz",
+    "//cmd/go/appengine_gopath:appengine_gopath_using_runner.tgz",
+    "//cmd/go/build:build_using_runner.tgz",
+    "//cmd/go/clear_source:clear_source_using_runner.tgz",
+    "//cmd/go/functions_framework:functions_framework_using_runner.tgz",
+    "//cmd/go/gomod:gomod_using_runner.tgz",
+    "//cmd/go/gopath:gopath_using_runner.tgz",
+    "//cmd/go/legacy_worker:legacy_worker_using_runner.tgz",
+    "//cmd/go/runtime:runtime_using_runner.tgz",
+    "//cmd/utils/archive_source:archive_source_using_runner.tgz",
+    "//cmd/utils/label:label_image_using_runner.tgz",
+]
+
 builder(
     name = "builder",
     builder_template = ":builder.toml.template",

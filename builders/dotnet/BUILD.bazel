@@ -27,6 +27,25 @@ GROUPS = {
     ],
 }
 
+BUILDPACKS_USING_RUNNER = [
+    "//cmd/config/entrypoint:entrypoint_using_runner.tgz",
+    "//cmd/config/flex:flex_using_runner.tgz",
+    "//cmd/dotnet/appengine:appengine_using_runner.tgz",
+    "//cmd/dotnet/appengine_main:appengine_main_using_runner.tgz",
+    "//cmd/dotnet/functions_framework:functions_framework_using_runner.tgz",
+    "//cmd/dotnet/publish:publish_using_runner.tgz",
+    "//cmd/dotnet/runtime:runtime_using_runner.tgz",
+    "//cmd/dotnet/sdk:sdk_using_runner.tgz",
+    "//cmd/utils/archive_source:archive_source_using_runner.tgz",
+    "//cmd/utils/label:label_image_using_runner.tgz",
+]
+
+GROUPS_USING_RUNNER = {
+    "dotnet": [
+        "//cmd/dotnet/flex:flex_using_runner.tgz",
+    ],
+}
+
 builder(
     name = "builder",
     builder_template = ":builder.toml.template",
