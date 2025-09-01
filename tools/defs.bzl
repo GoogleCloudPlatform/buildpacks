@@ -103,6 +103,7 @@ def buildpack_using_runner(
         prefix = prefix,
         bp_name = name,
         output = descriptor_output_filename,
+        buildpack_id = buildpack_id,
     )
 
     if not srcs:
@@ -160,15 +161,18 @@ def buildpack_using_runner(
     )
 
 def _buildpack_descriptor_impl(ctx):
+    buildpack_id = ctx.attr.buildpack_id
+    if not buildpack_id:
+        buildpack_id = "google.{prefix}.{name}".format(
+            prefix = ctx.attr.prefix,
+            name = ctx.attr.bp_name.replace("_", "-"),
+        )
     ctx.actions.expand_template(
         output = ctx.outputs.output,
         substitutions = {
             "${API}": ctx.attr.api,
             "${VERSION}": ctx.attr.version,
-            "${ID}": "google.{prefix}.{name}".format(
-                prefix = ctx.attr.prefix,
-                name = ctx.attr.bp_name.replace("_", "-"),
-            ),
+            "${ID}": buildpack_id,
             "${NAME}": "{prefix} - {name}".format(
                 prefix = _pretty_prefix(ctx.attr.prefix),
                 name = ctx.attr.bp_name.replace("_", " ").title(),
@@ -185,6 +189,7 @@ _buildpack_descriptor = rule(
         "bp_name": attr.string(mandatory = True),
         "prefix": attr.string(mandatory = True),
         "output": attr.output(mandatory = True),
+        "buildpack_id": attr.string(),
         "_template": attr.label(
             default = ":buildpack.toml.template",
             allow_single_file = True,
