@@ -130,7 +130,7 @@ func SupportsSmartDefaultEntrypoint(ctx *gcp.Context) (bool, error) {
 	// If the version contains a wildcard, we will replace with 0 for the semver comparison.
 	v = strings.ReplaceAll(v, "*", "0")
 
-	return versionMatchesSemver(ctx, ">=3.13.0", v)
+	return versionMatchesSemver(ctx, ">=3.13.0-0", v)
 }
 
 // versionMatchesSemver checks if the provided version matches the given version semver range.
@@ -138,6 +138,13 @@ func SupportsSmartDefaultEntrypoint(ctx *gcp.Context) (bool, error) {
 func versionMatchesSemver(ctx *gcp.Context, versionRange string, version string) (bool, error) {
 	if version == "" {
 		return false, nil
+	}
+	if isSupportedUnstablePythonVersion(version) {
+		// The format of Python pre-release version e.g. 3.14.0rc1 doesn't follow the semver rule
+		// that requires a hyphen before the identifier "rc".
+		if strings.Contains(version, "rc") && !strings.Contains(version, "-rc") {
+			version = strings.Replace(version, "rc", "-rc", 1)
+		}
 	}
 	constraint, err := semver.NewConstraint(versionRange)
 	if err != nil {
@@ -373,4 +380,9 @@ func copySharedLibs(ctx *gcp.Context, l *libcnb.Layer) error {
 		}
 	}
 	return nil
+}
+
+// Checks if the Python version is an unstable supported release candidate.
+func isSupportedUnstablePythonVersion(constraint string) bool {
+	return strings.Count(constraint, ".") == 2 && strings.Count(constraint, "rc") == 1
 }

@@ -242,9 +242,9 @@ func TestSupportSmartDefaultEntrypoint(t *testing.T) {
 		},
 		{
 			name:    "version_with_RC",
-			version: "3.13.0rc1",
-			wantErr: true,
-			want:    false, // We don't support RC versions. Modify once we add support for RC versions.
+			version: "3.14.0rc1",
+			wantErr: false,
+			want:    true, // Support for RC versions added.
 		},
 		{
 			name:    "No_version_but_stackID_is_google.22",
