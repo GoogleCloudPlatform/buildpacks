@@ -1,0 +1,238 @@
+description = "Unified builder for the Go runtime"
+
+[[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.config.entrypoint"
+  uri = "entrypoint_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.config.flex"
+  uri = "flex_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.go.appengine"
+  uri = "appengine_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.go.appengine-gopath"
+  uri = "appengine_gopath_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.go.appengine-gomod"
+  uri = "appengine_gomod_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.go.clear-source"
+  uri = "clear_source_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.go.flex-gomod"
+  uri = "flex_gomod_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.go.legacy-worker"
+  uri = "legacy_worker_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.go.runtime"
+  uri = "runtime_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.go.gomod"
+  uri = "gomod_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.go.build"
+  uri = "build_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.go.gopath"
+  uri = "gopath_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.go.functions-framework"
+  uri = "functions_framework_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.utils.label-image"
+  uri = "label_image_using_runner.tgz"
+
+# GAE Flex with go.mod
+[[order]]
+  [[order.group]]
+    id = "google.go.flex-gomod"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.gomod"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# GAE Flex without go.mod
+[[order]]
+
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.go.appengine-gopath"
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.appengine-gomod"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.gomod"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.go.appengine"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.appengine-gopath"
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.go.appengine"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# The GCF go111 order group. The legacy worker is the "functions-framework"
+# buildpack for go111.
+[[order]]
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.legacy-worker"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.go.clear-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# The GCF order group.
+[[order]]
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.functions-framework"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.go.clear-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.gomod"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.clear-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.gopath"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.clear-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[stack]
+  id = "${STACK_ID}"
+  build-image = "${STACK_BUILD_IMAGE}"
+  run-image = "${STACK_RUN_IMAGE}"
+
+[lifecycle]
+  version = "0.20.5"

@@ -1,0 +1,213 @@
+description = "Unified builder for the PHP runtime"
+
+[[buildpacks]]
+  id = "google.config.entrypoint"
+  uri = "entrypoint_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.php.composer"
+  uri = "composer_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.php.composer-install"
+  uri = "composer_install_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.php.supervisor"
+  uri = "php/supervisor_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.config.flex"
+  uri = "flex_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.python.runtime"
+  uri = "python/runtime_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.php.composer-gcp-build"
+  uri = "composer_gcp_build_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.php.appengine"
+  uri = "appengine_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.php.runtime"
+  uri = "runtime_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.php.webconfig"
+  uri = "webconfig_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.utils.label-image"
+  uri = "label_image_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.utils.nginx"
+  uri = "nginx_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.php.functions-framework"
+  uri = "functions_framework_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.php.cloudfunctions"
+  uri = "cloudfunctions_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source_using_runner.tgz"
+
+# PHP Flex supervisor
+[[order]]
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.php.runtime"
+
+  [[order.group]]
+    id = "google.utils.nginx"
+
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.php.supervisor"
+
+  [[order.group]]
+    id = "google.php.composer-install"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer-gcp-build"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# PHP Flex pid1
+[[order]]
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.php.runtime"
+
+  [[order.group]]
+    id = "google.utils.nginx"
+
+  [[order.group]]
+    id = "google.php.webconfig"
+
+  [[order.group]]
+    id = "google.php.composer-install"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer-gcp-build"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# PHP applications (gcf)
+[[order]]
+  [[order.group]]
+    id = "google.php.runtime"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer-install"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer-gcp-build"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.functions-framework"
+
+  [[order.group]]
+    id = "google.php.cloudfunctions"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# PHP applications (gae)
+[[order]]
+  [[order.group]]
+    id = "google.php.runtime"
+
+  [[order.group]]
+    id = "google.php.composer-install"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer-gcp-build"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.appengine"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# PHP applications (gcp and cloud-run)
+[[order]]
+  [[order.group]]
+    id = "google.php.runtime"
+
+  [[order.group]]
+    id = "google.utils.nginx"
+
+  [[order.group]]
+    id = "google.php.composer-install"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer-gcp-build"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.webconfig"
+
+[stack]
+  id = "${STACK_ID}"
+  build-image = "${STACK_BUILD_IMAGE}"
+  run-image = "${STACK_RUN_IMAGE}"
+
+[lifecycle]
+  version = "0.20.5"

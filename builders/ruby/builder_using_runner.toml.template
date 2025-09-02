@@ -1,0 +1,168 @@
+description = "Unified builder for the Ruby runtime"
+
+[[buildpacks]]
+  id = "google.ruby.functions-framework"
+  uri = "functions_framework_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.config.flex"
+  uri = "flex_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.appengine-validation"
+  uri = "appengine_validation_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.appengine"
+  uri = "appengine_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.flex-entrypoint"
+  uri = "flex_entrypoint_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.config.entrypoint"
+  uri = "entrypoint_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.runtime"
+  uri = "runtime_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.rubygems"
+  uri = "rubygems_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.bundle"
+  uri = "bundle_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.rails"
+  uri = "rails_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.runtime"
+  uri = "nodejs/runtime_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.missing-entrypoint"
+  uri = "missing_entrypoint_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.utils.label-image"
+  uri = "label_image_using_runner.tgz"
+
+# The GAE Flex order group.
+[[order]]
+    [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.ruby.runtime"
+
+  [[order.group]]
+    id = "google.ruby.bundle"
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.rails"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.flex-entrypoint"
+
+    [[order.group]]
+    id = "google.utils.label-image"
+
+# The GAE order group.
+[[order]]
+  [[order.group]]
+    id = "google.ruby.runtime"
+
+  [[order.group]]
+    id = "google.ruby.appengine-validation"
+    optional = true
+
+  [[order.group]]
+  id = "google.ruby.bundle"
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.rails"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.appengine"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# The GCF order group
+[[order]]
+  [[order.group]]
+    id = "google.ruby.runtime"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.bundle"
+
+  [[order.group]]
+    id = "google.ruby.functions-framework"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# The GCP order group.
+[[order]]
+  [[order.group]]
+    id = "google.ruby.runtime"
+
+  [[order.group]]
+    id = "google.ruby.rubygems"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.bundle"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.rails"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# This buildpack group will always fail but with a clear message that the
+# entrypoint is missing. It must be the last group otherwise projects with
+# a single .rb file and no entrypoint will fail
+[[order]]
+  [[order.group]]
+    id = "google.ruby.missing-entrypoint"
+
+[stack]
+  id = "${STACK_ID}"
+  build-image = "${STACK_BUILD_IMAGE}"
+  run-image = "${STACK_RUN_IMAGE}"
+
+[lifecycle]
+  version = "0.20.5"

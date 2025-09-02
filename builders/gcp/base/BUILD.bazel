@@ -187,3 +187,11 @@ builder(
     groups = GROUPS,
     image = "google-24/builder",
 )
+
+builder(
+    name = "google_24_builder_using_runner",
+    buildpacks = BUILDPACKS_USING_RUNNER,
+    descriptor = "google.24.builder.runner.toml",
+    groups = GROUPS_USING_RUNNER,
+    image = "google-24/builder-runner",
+)
