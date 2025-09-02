@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 # Buildpack for the Python runtime.
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -37,6 +37,20 @@ go_binary(
     gc_linkopts = [
         "-s",
         "-w",
+    ],
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+        "//pkg/python",
+    ],
+)
+
+go_library(
+    name = "webserverlib",
+    srcs = ["main.go"],  #keep
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//builders:python_builders",
     ],
     deps = [
         "//pkg/env",

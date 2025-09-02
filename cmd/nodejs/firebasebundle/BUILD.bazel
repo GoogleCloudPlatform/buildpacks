@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 # Buildpack for the Firebase output bundle.
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -33,6 +33,24 @@ go_binary(
     gc_linkopts = [
         "-s",
         "-w",
+    ],
+    deps = [
+        "//pkg/buildermetadata",
+        "//pkg/env",
+        "//pkg/fileutil",
+        "//pkg/firebase/util",
+        "//pkg/gcpbuildpack",
+        "//pkg/nodejs",
+        "@in_gopkg_yaml_v2//:go_default_library",
+    ],
+)
+
+go_library(
+    name = "firebasebundlelib",
+    srcs = ["main.go"],  #keep
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//builders:nodejs_builders",
     ],
     deps = [
         "//pkg/buildermetadata",

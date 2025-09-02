@@ -1,6 +1,6 @@
 # Buildpack for the Go functions framework
 
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
@@ -43,6 +43,24 @@ go_binary(
     gc_linkopts = [
         "-s",
         "-w",
+    ],
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+        "//pkg/golang",
+    ],
+)
+
+go_library(
+    name = "legacy_workerlib",
+    srcs = ["main.go"],  #keep
+    embedsrcs = [
+        "converter/worker/gomod.tmpl",
+        "converter/worker/main.tmpl",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//builders:go_builders",
     ],
     deps = [
         "//pkg/env",

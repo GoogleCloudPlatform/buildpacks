@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 # Go appengine_gopath Buildpack
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -34,6 +34,19 @@ go_binary(
     gc_linkopts = [
         "-s",
         "-w",
+    ],
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+    ],
+)
+
+go_library(
+    name = "appengine_gopathlib",
+    srcs = ["main.go"],  #keep
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//builders:go_builders",
     ],
     deps = [
         "//pkg/env",

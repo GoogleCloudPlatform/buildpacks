@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 # Buildpack for Gradle.
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -34,6 +34,22 @@ go_binary(
     gc_linkopts = [
         "-s",
         "-w",
+    ],
+    deps = [
+        "//pkg/devmode",
+        "//pkg/env",
+        "//pkg/fileutil",
+        "//pkg/gcpbuildpack",
+        "//pkg/java",
+    ],
+)
+
+go_library(
+    name = "gradlelib",
+    srcs = ["main.go"],  #keep
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//builders:java_builders",
     ],
     deps = [
         "//pkg/devmode",

@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 # Buildpack for the Node.js runtime.
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -34,6 +34,21 @@ go_binary(
     gc_linkopts = [
         "-s",
         "-w",
+    ],
+    deps = [
+        "//pkg/buildererror",
+        "//pkg/cache",
+        "//pkg/gcpbuildpack",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
+    ],
+)
+
+go_library(
+    name = "bundlelib",
+    srcs = ["main.go"],  #keep
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//builders:ruby_builders",
     ],
     deps = [
         "//pkg/buildererror",

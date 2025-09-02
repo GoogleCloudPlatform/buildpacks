@@ -1,6 +1,6 @@
 # Buildpack for the Go functions framework
 
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
@@ -44,6 +44,28 @@ go_binary(
     gc_linkopts = [
         "-s",
         "-w",
+    ],
+    deps = [
+        "//pkg/cloudfunctions",
+        "//pkg/env",
+        "//pkg/fileutil",
+        "//pkg/gcpbuildpack",
+        "//pkg/golang",
+        "@com_github_masterminds_semver//:go_default_library",
+    ],
+)
+
+go_library(
+    name = "functions_frameworklib",
+    srcs = [
+        "main.go",
+        "template_declarative.go",
+        "template_v0.go",
+        "template_v1_1.go",
+    ],  #keep
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//builders:go_builders",
     ],
     deps = [
         "//pkg/cloudfunctions",

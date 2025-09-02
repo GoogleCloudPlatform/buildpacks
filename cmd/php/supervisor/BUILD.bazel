@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
@@ -32,6 +32,22 @@ go_binary(
     gc_linkopts = [
         "-s",
         "-w",
+    ],
+    deps = [
+        "//pkg/appyaml",
+        "//pkg/flex",
+        "//pkg/gcpbuildpack",
+        "//pkg/nginx",
+        "//pkg/webconfig",
+    ],
+)
+
+go_library(
+    name = "supervisorlib",
+    srcs = ["main.go"],  #keep
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//builders:php_builders",
     ],
     deps = [
         "//pkg/appyaml",

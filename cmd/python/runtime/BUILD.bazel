@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 # Buildpack for the Python runtime.
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -38,6 +38,24 @@ go_binary(
     gc_linkopts = [
         "-s",
         "-w",
+    ],
+    deps = [
+        "//pkg/env",
+        "//pkg/flex",
+        "//pkg/gcpbuildpack",
+        "//pkg/python",
+        "//pkg/runtime",
+    ],
+)
+
+go_library(
+    name = "runtimelib",
+    srcs = ["main.go"],  #keep
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//builders:python_builders",
+        # PHP on Flex needs python to support supervisor pkg.
+        "//builders:php_builders",
     ],
     deps = [
         "//pkg/env",
