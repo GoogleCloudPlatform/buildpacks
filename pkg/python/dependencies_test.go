@@ -15,8 +15,169 @@
 package python
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
+
+func TestPackagePresent(t *testing.T) {
+	testCases := []struct {
+		name         string
+		files        map[string]string
+		releaseTrack string
+		pkgName      string
+		want         bool
+	}{
+		{
+			name:    "requirements.txt_exists_and_contains_gunicorn",
+			pkgName: "gunicorn",
+			files: map[string]string{
+				"requirements.txt": "gunicorn==19.9.0",
+			},
+			want: true,
+		},
+		{
+			name:    "requirements.txt_exists_and_does_not_contain_gunicorn",
+			pkgName: "gunicorn",
+			files: map[string]string{
+				"requirements.txt": "flask",
+			},
+			want: false,
+		},
+		{
+			name:         "pyproject.toml_exists_and_contains_gunicorn_in_project.dependencies",
+			pkgName:      "gunicorn",
+			releaseTrack: "ALPHA",
+			files: map[string]string{
+				"pyproject.toml": `
+					[project]
+					dependencies = ["gunicorn>=20.1.0"]
+				`,
+			},
+			want: true,
+		},
+		{
+			name:         "pyproject.toml_exists_and_contains_gunicorn_in_project.dependencies_and_release_track_is_beta",
+			pkgName:      "gunicorn",
+			releaseTrack: "BETA",
+			files: map[string]string{
+				"pyproject.toml": `
+					[project]
+					dependencies = ["gunicorn>=20.1.0"]
+				`,
+			},
+			want: false,
+		},
+		{
+			name:         "pyproject.toml_exists_and_contains_gunicorn_in_tool.poetry.dependencies",
+			pkgName:      "gunicorn",
+			releaseTrack: "ALPHA",
+			files: map[string]string{
+				"pyproject.toml": `
+					[tool.poetry]
+					dependencies = { python = ">=3.9", gunicorn = ">=20.1.0" }
+				`,
+			},
+			want: true,
+		},
+		{
+			name:         "pyproject.toml_exists_and_does_not_contain_gunicorn",
+			pkgName:      "gunicorn",
+			releaseTrack: "ALPHA",
+			files: map[string]string{
+				"pyproject.toml": `
+					[project]
+					dependencies = ["requests>=2.0"]
+				`,
+			},
+			want: false,
+		},
+		{
+			name:         "Check_uvicorn_in_pyproject.toml",
+			pkgName:      "uvicorn",
+			releaseTrack: "ALPHA",
+			files: map[string]string{
+				"pyproject.toml": `
+					[project]
+					dependencies = ["uvicorn>=0.13.0"]
+				`,
+			},
+			want: true,
+		},
+		{
+			name:         "Check_gradio_in_pyproject.toml",
+			pkgName:      "gradio",
+			releaseTrack: "ALPHA",
+			files: map[string]string{
+				"pyproject.toml": `
+					[tool.poetry.dependencies]
+					python = ">=3.9"
+					gradio = ">=4.0"
+				`,
+			},
+			want: true,
+		},
+		{
+			name:         "Check_gradio_not_present_in_pyproject.toml",
+			pkgName:      "gradio",
+			releaseTrack: "ALPHA",
+			files: map[string]string{
+				"pyproject.toml": `
+					[tool.poetry.dependencies]
+					python = ">=3.9"
+				`,
+			},
+			want: false,
+		},
+		{
+			name:         "Neither_file_exists",
+			pkgName:      "gunicorn",
+			releaseTrack: "ALPHA",
+			files:        map[string]string{},
+			want:         false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+
+			cwd, err := os.Getwd()
+			if err != nil {
+				t.Fatalf("failed to get current working directory: %v", err)
+			}
+			if err := os.Chdir(dir); err != nil {
+				t.Fatalf("failed to change directory to %s: %v", dir, err)
+			}
+
+			defer os.Chdir(cwd)
+
+			for path, content := range tc.files {
+				fullPath := filepath.Join(dir, path)
+				if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
+					t.Fatalf("writing file %q: %v", fullPath, err)
+				}
+			}
+
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(dir))
+
+			if tc.releaseTrack != "" {
+				t.Setenv(env.ReleaseTrack, tc.releaseTrack)
+			}
+
+			got, err := PackagePresent(ctx, tc.pkgName)
+			if err != nil {
+				t.Fatalf("PackagePresent() returned unexpected error: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("PackagePresent() got %t, want %t", got, tc.want)
+			}
+		})
+	}
+}
 
 func TestContainsGunicorn(t *testing.T) {
 	testCases := []struct {

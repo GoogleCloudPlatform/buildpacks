@@ -98,32 +98,32 @@ func smartDefaultEntrypoint(ctx *gcp.Context, pyModule string, pyFile string) ([
 	// To be compatible with the old builder, we will use below priority order:
 	// 1. gunicorn 2. uvicorn 3. gradio 4. streamlit
 
-	// If gunicorn is present in requirements.txt, we will use gunicorn as the entrypoint.
-	gPresent, err := python.PackagePresent(ctx, "requirements.txt", gunicorn)
+	// If gunicorn is present in requirements.txt or pyproject.toml, we will use gunicorn as the entrypoint.
+	gPresent, err := python.PackagePresent(ctx, gunicorn)
 	if err != nil {
 		return nil, fmt.Errorf("error detecting gunicorn: %w", err)
 	}
 	if gPresent {
 		return []string{"gunicorn", "-b", ":8080", pyModule}, nil
 	}
-	// If uvicorn is present in requirements.txt, we will use uvicorn as the entrypoint.
-	uPresent, err := python.PackagePresent(ctx, "requirements.txt", uvicorn)
+	// If uvicorn is present in requirements.txt or pyproject.toml, we will use uvicorn as the entrypoint.
+	uPresent, err := python.PackagePresent(ctx, uvicorn)
 	if err != nil {
 		return nil, fmt.Errorf("error detecting uvicorn: %w", err)
 	}
 	if uPresent {
 		return []string{"uvicorn", pyModule, "--port", "8080", "--host", "0.0.0.0"}, nil
 	}
-	// If fastapi[standard] is present in requirements.txt, we will use uvicorn as the entrypoint.
-	fastapiStandardPresent, err := python.PackagePresent(ctx, "requirements.txt", fastapiStandard)
+	// If fastapi[standard] is present in requirements.txt or pyproject.toml, we will use uvicorn as the entrypoint.
+	fastapiStandardPresent, err := python.PackagePresent(ctx, fastapiStandard)
 	if err != nil {
 		return nil, fmt.Errorf("error detecting fastapi: %w", err)
 	}
 	if fastapiStandardPresent {
 		return []string{"uvicorn", pyModule, "--port", "8080", "--host", "0.0.0.0"}, nil
 	}
-	// If gradio is present in requirements.txt, we will use gradio as the entrypoint.
-	gradioPresent, err := python.PackagePresent(ctx, "requirements.txt", gradio)
+	// If gradio is present in requirements.txt or pyproject.toml, we will use gradio as the entrypoint.
+	gradioPresent, err := python.PackagePresent(ctx, gradio)
 	if err != nil {
 		return nil, fmt.Errorf("error detecting gradio: %w", err)
 	}
@@ -133,8 +133,8 @@ func smartDefaultEntrypoint(ctx *gcp.Context, pyModule string, pyFile string) ([
 		}
 		return []string{"python", pyFile}, nil
 	}
-	// If streamlit is present in requirements.txt, we will use streamlit as the entrypoint.
-	sPresent, err := python.PackagePresent(ctx, "requirements.txt", streamlit)
+	// If streamlit is present in requirements.txt or pyproject.toml, we will use streamlit as the entrypoint.
+	sPresent, err := python.PackagePresent(ctx, streamlit)
 	if err != nil {
 		return nil, fmt.Errorf("error detecting streamlit: %w", err)
 	}

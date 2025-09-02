@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -31,14 +30,13 @@ const (
 	layerName = "gunicorn"
 )
 
-var (
-	gunicornRegexp = regexp.MustCompile(`(?m)^gunicorn\b([^-]|$)`)
-	eggRegexp      = regexp.MustCompile(`(?m)#egg=gunicorn$`)
-)
-
 func main() {
 	gcp.Main(DetectFn, BuildFn)
 }
+
+var (
+	gunicorn = "gunicorn"
+)
 
 // DetectFn is the exported detect function.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
@@ -50,7 +48,7 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return nil, err
 	}
 	if requirementsExists {
-		present, err := gunicornPresentInRequirements(ctx, "requirements.txt")
+		present, err := python.RequirementsPackagePresent(ctx, gunicorn)
 		if err != nil {
 			return nil, fmt.Errorf("error detecting gunicorn: %w", err)
 		}
@@ -74,16 +72,4 @@ func BuildFn(ctx *gcp.Context) error {
 	r := filepath.Join(ctx.BuildpackRoot(), "requirements.txt")
 	l.BuildEnvironment.Append(python.RequirementsFilesEnv, string(os.PathListSeparator), r)
 	return nil
-}
-
-func gunicornPresentInRequirements(ctx *gcp.Context, path string) (bool, error) {
-	content, err := ctx.ReadFile(path)
-	if err != nil {
-		return false, err
-	}
-	return containsGunicorn(string(content)), nil
-}
-
-func containsGunicorn(s string) bool {
-	return gunicornRegexp.MatchString(s) || eggRegexp.MatchString(s)
 }

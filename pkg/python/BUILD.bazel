@@ -5,9 +5,9 @@ licenses(["notice"])
 go_library(
     name = "python",
     srcs = [
+        "dependencies.go",
         "pyproject.go",
         "python.go",
-        "requirements.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = ["//cmd/python:__subpackages__"],
@@ -27,11 +27,14 @@ go_library(
 go_test(
     name = "python_test",
     srcs = [
+        "dependencies_test.go",
         "pyproject_test.go",
         "python_test.go",
-        "requirements_test.go",
     ],
     embed = [":python"],
     rundir = ".",
-    deps = ["//pkg/gcpbuildpack"],
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+    ],
 )
