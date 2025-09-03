@@ -62,6 +62,7 @@ GROUPS = {
         "//cmd/python/pip:pip.tgz",
         "//cmd/python/runtime:runtime.tgz",
         "//cmd/python/poetry:poetry.tgz",
+        "//cmd/python/uv:uv.tgz",
     ],
     "ruby": [
         "//cmd/ruby/missing_entrypoint:missing_entrypoint.tgz",
@@ -138,6 +139,7 @@ GROUPS_USING_RUNNER = {
         "//cmd/python/pip:pip_using_runner.tgz",
         "//cmd/python/runtime:runtime_using_runner.tgz",
         "//cmd/python/poetry:poetry_using_runner.tgz",
+        "//cmd/python/uv:uv_using_runner.tgz",
     ],
     "ruby": [
         "//cmd/ruby/missing_entrypoint:missing_entrypoint_using_runner.tgz",

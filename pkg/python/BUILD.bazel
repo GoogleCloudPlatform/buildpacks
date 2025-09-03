@@ -13,6 +13,7 @@ go_library(
     visibility = ["//cmd/python:__subpackages__"],
     deps = [
         "//pkg/ar",
+        "//pkg/buildererror",
         "//pkg/buildermetrics",
         "//pkg/cache",
         "//pkg/env",

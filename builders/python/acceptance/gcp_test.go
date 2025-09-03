@@ -28,6 +28,7 @@ const (
 	pythonMissingEntrypoint = "google.python.missing-entrypoint"
 	pythonWebserver         = "google.python.webserver"
 	pythonPoetry            = "google.python.poetry"
+	pythonUV                = "google.python.uv"
 )
 
 func init() {
@@ -224,6 +225,27 @@ func TestAcceptancePython(t *testing.T) {
 			MustUse:                    []string{pythonRuntime, pythonPoetry, pythonMissingEntrypoint},
 			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA", "X_GOOGLE_PYTHON_SMART_DEFAULTS=true"},
 			VersionInclusionConstraint: ">=3.13.0",
+		},
+		{
+			Name:                       "uv_main",
+			App:                        "uv_main",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:                    []string{pythonRuntime, pythonUV},
+			VersionInclusionConstraint: ">= 3.8.0",
+		},
+		{
+			Name:                       "uv_app",
+			App:                        "uv_app",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:                    []string{pythonRuntime, pythonUV},
+			VersionInclusionConstraint: ">= 3.8.0",
+		},
+		{
+			Name:                       "pyproject_without_lock",
+			App:                        "pyproject_without_lock",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:                    []string{pythonRuntime, pythonUV},
+			VersionInclusionConstraint: ">= 3.8.0",
 		},
 	}
 

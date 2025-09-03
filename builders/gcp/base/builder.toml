@@ -125,6 +125,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
   uri = "python/poetry.tgz"
 
 [[buildpacks]]
+  id = "google.python.uv"
+  uri = "python/uv.tgz"
+
+[[buildpacks]]
   id = "google.python.functions-framework"
   uri = "python/functions_framework.tgz"
 
@@ -516,16 +520,41 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.utils.label-image"
 
 # Python applications with default entrypoint or fail with a message.
+# Poetry order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.poetry"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# UV order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.uv"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Pip order group.
 [[order]]
   [[order.group]]
     id = "google.python.runtime"
 
   [[order.group]]
     id = "google.python.pip"
-    optional = true
-
-  [[order.group]]
-    id = "google.python.poetry"
     optional = true
 
   [[order.group]]
@@ -714,6 +743,43 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
 # Python 2/2 #
 ##############
 # Python applications with default entrypoint or fail with a message.
+# Poetry order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.poetry"
+
+  [[order.group]]
+    id = "google.python.missing-entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# UV order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.uv"
+
+  [[order.group]]
+    id = "google.python.missing-entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Pip order group.
 [[order]]
   [[order.group]]
     id = "google.python.runtime"
@@ -724,10 +790,6 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.python.pip"
-    optional = true
-
-  [[order.group]]
-    id = "google.python.poetry"
     optional = true
 
   [[order.group]]

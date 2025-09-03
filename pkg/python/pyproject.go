@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/BurntSushi/toml"
 )
@@ -30,15 +31,17 @@ const (
 	pyprojectToml      = "pyproject.toml"
 	poetryLock         = "poetry.lock"
 	poetryVenvsPathEnv = "POETRY_VIRTUALENVS_PATH"
+	uvLock             = "uv.lock"
+	uvLayer            = "uv"
+	uvDepsLayer        = "uv-dependencies"
 )
 
 var (
-	// PoetryInstallCmd defines the command to install project dependencies.
-	PoetryInstallCmd = []string{"poetry", "install", "--no-interaction", "--sync", "--only", "main", "--no-root"}
-	// PoetryEnvInfoCmd defines the command to find the virtual environment path.
-	PoetryEnvInfoCmd = []string{"poetry", "env", "info", "--path"}
-	// PoetryLockCmd defines the command to generate a lock file.
-	PoetryLockCmd = []string{"poetry", "lock", "--no-interaction"}
+	poetryInstallCmd = []string{"poetry", "install", "--no-interaction", "--sync", "--only", "main", "--no-root"}
+	poetryEnvInfoCmd = []string{"poetry", "env", "info", "--path"}
+	poetryLockCmd    = []string{"poetry", "lock", "--no-interaction"}
+	uvLockCmd        = []string{"uv", "lock"}
+	uvSyncCmd        = []string{"uv", "sync", "--active"}
 )
 
 // IsPoetryProject checks if the application is a Poetry project.
@@ -131,8 +134,7 @@ func RequestedPoetryVersion(ctx *gcp.Context) (string, error) {
 		} `toml:"tool"`
 	}
 	if _, err := toml.Decode(string(pyprojectTomlContent), &parsedTOML); err != nil {
-		ctx.Warnf("Could not parse %s: %v", pyprojectToml, err)
-		return "", nil
+		return "", fmt.Errorf("could not parse %s to check for poetry version: %w", pyprojectToml, err)
 	}
 
 	return parsedTOML.Tool.Poetry.RequiresPoetry, nil
@@ -154,8 +156,8 @@ func PoetryInstallDependenciesAndConfigureEnv(ctx *gcp.Context) error {
 		gcp.WithEnv("POETRY_VIRTUALENVS_IN_PROJECT=false"),
 	}
 
-	ctx.Logf("Running: %s", strings.Join(PoetryInstallCmd, " "))
-	result, err := ctx.Exec(PoetryInstallCmd, execOpts...)
+	ctx.Logf("Running: %s", strings.Join(poetryInstallCmd, " "))
+	result, err := ctx.Exec(poetryInstallCmd, execOpts...)
 	if err != nil {
 		return fmt.Errorf("running poetry install: %w", err)
 	}
@@ -165,8 +167,8 @@ func PoetryInstallDependenciesAndConfigureEnv(ctx *gcp.Context) error {
 	ctx.Logf("Poetry install successful.")
 
 	// Find the virtual environment path.
-	ctx.Logf("Running: %s", strings.Join(PoetryEnvInfoCmd, " "))
-	pathResult, err := ctx.Exec(PoetryEnvInfoCmd, execOpts...)
+	ctx.Logf("Running: %s", strings.Join(poetryEnvInfoCmd, " "))
+	pathResult, err := ctx.Exec(poetryEnvInfoCmd, execOpts...)
 	if err != nil {
 		return fmt.Errorf("getting poetry env info: %w", err)
 	}
@@ -193,12 +195,147 @@ func EnsurePoetryLockfile(ctx *gcp.Context) error {
 	}
 	if !exists {
 		ctx.Warnf("*** To improve build performance, generate and commit %s.", poetryLock)
-		ctx.Logf("Running: %s", strings.Join(PoetryLockCmd, " "))
-		if _, err := ctx.Exec(PoetryLockCmd, gcp.WithUserAttribution); err != nil {
+		ctx.Logf("Running: %s", strings.Join(poetryLockCmd, " "))
+		if _, err := ctx.Exec(poetryLockCmd, gcp.WithUserAttribution); err != nil {
 			return fmt.Errorf("running poetry lock: %w", err)
 		}
 	} else {
 		ctx.Logf("Using existing %s.", poetryLock)
 	}
+	return nil
+}
+
+// IsUVProject checks if the application is a UV project.
+func IsUVProject(ctx *gcp.Context) (bool, string, error) {
+	pyprojectTomlExists, err := ctx.FileExists(pyprojectToml)
+	if err != nil {
+		return false, "", fmt.Errorf("checking for %s: %w", pyprojectToml, err)
+	}
+	if !pyprojectTomlExists {
+		return false, fmt.Sprintf("%s not found", pyprojectToml), nil
+	}
+
+	uvLockExists, err := ctx.FileExists(uvLock)
+	if err != nil {
+		return false, "", fmt.Errorf("checking for %s: %w", uvLock, err)
+	}
+
+	if uvLockExists {
+		return true, fmt.Sprintf("found %s and %s", pyprojectToml, uvLock), nil
+	}
+
+	return true, fmt.Sprintf("found %s", pyprojectToml), nil
+}
+
+// RequestedUVVersion returns the requested uv version from pyproject.toml.
+func RequestedUVVersion(ctx *gcp.Context) (string, error) {
+	pyprojectTomlContent, err := ctx.ReadFile(pyprojectToml)
+	if err != nil {
+		return "", fmt.Errorf("reading %s: %w", pyprojectToml, err)
+	}
+
+	var parsedTOML struct {
+		Tool struct {
+			UV struct {
+				RequiredVersion string `toml:"required-version"`
+			} `toml:"uv"`
+		} `toml:"tool"`
+	}
+	if _, err := toml.Decode(string(pyprojectTomlContent), &parsedTOML); err != nil {
+		return "", fmt.Errorf("could not parse %s to check for uv version: %w", pyprojectToml, err)
+	}
+
+	return parsedTOML.Tool.UV.RequiredVersion, nil
+}
+
+// InstallUV installs UV into a dedicated layer, respecting version constraints.
+func InstallUV(ctx *gcp.Context) error {
+	layer, err := ctx.Layer(uvLayer, gcp.BuildLayer, gcp.CacheLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", uvLayer, err)
+	}
+
+	uvVersionConstraint, err := RequestedUVVersion(ctx)
+	if err != nil {
+		return fmt.Errorf("getting uv version constraint: %w", err)
+	}
+
+	installCmd := []string{"python3", "-m", "pip", "install"}
+	if uvVersionConstraint != "" {
+		ctx.Logf("Using uv version constraint from pyproject.toml: %s", uvVersionConstraint)
+		installCmd = append(installCmd, fmt.Sprintf("uv%s", uvVersionConstraint))
+	} else {
+		ctx.Logf("No uv version constraint found in pyproject.toml, installing latest.")
+		installCmd = append(installCmd, "uv")
+	}
+
+	ctx.Logf("Installing uv into %s", layer.Path)
+
+	os.Setenv("PYTHONUSERBASE", layer.Path)
+	ctx.Logf("Running: %s", strings.Join(installCmd, " "))
+	_, err = ctx.Exec(installCmd)
+	os.Unsetenv("PYTHONUSERBASE")
+	if err != nil {
+		if uvVersionConstraint == "" {
+			return buildererror.Errorf(buildererror.StatusInternal, "failed to install uv: %v", err)
+		}
+		return fmt.Errorf("installing uv with version constraint %s: %w", uvVersionConstraint, err)
+	}
+
+	ctx.Logf("uv installed successfully.")
+
+	binDir := filepath.Join(layer.Path, "bin")
+	layer.BuildEnvironment.Prepend("PATH", string(os.PathListSeparator), binDir)
+
+	return nil
+}
+
+// EnsureUVLockfile checks for uv.lock and generates it if it doesn't exist.
+func EnsureUVLockfile(ctx *gcp.Context) error {
+	exists, err := ctx.FileExists(uvLock)
+	if err != nil {
+		return fmt.Errorf("checking for %s: %w", uvLock, err)
+	}
+	if !exists {
+		ctx.Warnf("*** To improve build performance, generate and commit %s.", uvLock)
+		ctx.Logf("uv.lock not found, generating it using `uv lock`...")
+		if _, err := ctx.Exec(uvLockCmd, gcp.WithUserAttribution); err != nil {
+			return fmt.Errorf("failed to generate uv.lock with uv: %w", err)
+		}
+		ctx.Logf("uv.lock generated successfully.")
+	} else {
+		ctx.Logf("Using existing %s.", uvLock)
+	}
+	return nil
+}
+
+// UVInstallDependenciesAndConfigureEnv installs dependencies and sets up the runtime environment using uv.
+func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context) error {
+	layer, err := ctx.Layer(uvDepsLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", uvDepsLayer, err)
+	}
+
+	pythonVersion, err := Version(ctx)
+	if err != nil {
+		return err
+	}
+	pythonVersion = strings.TrimPrefix(pythonVersion, "Python ")
+
+	venvDir := filepath.Join(layer.Path, ".venv")
+	ctx.Logf("Creating virtual environment at %s with Python %s", venvDir, pythonVersion)
+	venvCmd := []string{"uv", "venv", venvDir, "--python", pythonVersion}
+	if _, err := ctx.Exec(venvCmd, gcp.WithUserAttribution); err != nil {
+		return fmt.Errorf("failed to create virtual environment with uv: %w", err)
+	}
+
+	ctx.Logf("Installing dependencies with `uv sync` into the virtual environment...")
+	if _, err := ctx.Exec(uvSyncCmd, gcp.WithUserAttribution, gcp.WithEnv("VIRTUAL_ENV="+venvDir)); err != nil {
+		return fmt.Errorf("failed to sync dependencies with uv: %w", err)
+	}
+	ctx.Logf("Dependencies installed to virtual environment at %s", venvDir)
+
+	venvBinDir := filepath.Join(venvDir, "bin")
+	layer.SharedEnvironment.Prepend("PATH", string(filepath.ListSeparator), venvBinDir)
 	return nil
 }

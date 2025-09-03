@@ -52,6 +52,10 @@ description = "Unified builder all Python runtimes"
   id = "google.python.poetry"
   uri = "poetry.tgz"
 
+[[buildpacks]]
+  id = "google.python.uv"
+  uri = "uv.tgz"
+
 # GAE Flex
 [[order]]
   [[order.group]]
@@ -130,7 +134,7 @@ description = "Unified builder all Python runtimes"
 
 # Python applications (gcp)
 
-# Poetry order group
+# Poetry order group.
 [[order]]
   [[order.group]]
     id = "google.python.runtime"
@@ -145,7 +149,22 @@ description = "Unified builder all Python runtimes"
   [[order.group]]
     id = "google.utils.label-image"
 
-# Pip order group
+# UV order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.uv"
+
+  # Entrypoint buildpack is required because it cannot be easily inferred.
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Pip order group.
 [[order]]
   [[order.group]]
     id = "google.python.runtime"
@@ -166,7 +185,7 @@ description = "Unified builder all Python runtimes"
 # is not provided. And set a default entrypoint if it is not provided given a 
 # main.py file exists else it will fail with a message to the user.
 
-# Poetry order group
+# Poetry order group.
 [[order]]
   [[order.group]]
     id = "google.python.runtime"
@@ -184,7 +203,25 @@ description = "Unified builder all Python runtimes"
   [[order.group]]
     id = "google.utils.label-image"
 
-# Pip order group
+# UV order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.uv"
+
+  [[order.group]]
+    id = "google.python.missing-entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Pip order group.
 [[order]]
   [[order.group]]
     id = "google.python.runtime"

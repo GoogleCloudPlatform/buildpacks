@@ -22,6 +22,7 @@ BUILDPACKS = [
     "//cmd/utils/archive_source:archive_source.tgz",
     "//cmd/utils/label:label_image.tgz",
     "//cmd/python/poetry:poetry.tgz",
+    "//cmd/python/uv:uv.tgz",
 ]
 
 BUILDPACKS_USING_RUNNER = [
@@ -38,6 +39,7 @@ BUILDPACKS_USING_RUNNER = [
     "//cmd/utils/archive_source:archive_source_using_runner.tgz",
     "//cmd/utils/label:label_image_using_runner.tgz",
     "//cmd/python/poetry:poetry_using_runner.tgz",
+    "//cmd/python/uv:uv_using_runner.tgz",
 ]
 
 builder(

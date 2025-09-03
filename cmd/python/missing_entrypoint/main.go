@@ -34,6 +34,8 @@ const (
 	gradio          = "gradio"
 	streamlit       = "streamlit"
 	fastapiStandard = "fastapi[standard]"
+	requirements    = "requirements.txt"
+	pyprojectToml   = "pyproject.toml"
 )
 
 func main() {
@@ -88,6 +90,27 @@ func BuildFn(ctx *gcp.Context) error {
 			}
 		}
 	}
+
+	if env.IsAlphaSupported() {
+		isPoetry, _, err := python.IsPoetryProject(ctx)
+		if err != nil {
+			return fmt.Errorf("error detecting poetry project: %w", err)
+		}
+		reqExists, err := ctx.FileExists(requirements)
+		if err != nil {
+			return fmt.Errorf("error checking for requirements.txt: %w", err)
+		}
+		pyprojectExists, err := ctx.FileExists(pyprojectToml)
+		if err != nil {
+			return fmt.Errorf("error checking for pyproject.toml: %w", err)
+		}
+		// If the app is a pyproject app, but not a poetry app, and requirements.txt does not exist,
+		// then we will use uv to run the app.
+		if pyprojectExists && !isPoetry && !reqExists {
+			cmd = []string{"uv", "run", "gunicorn", "-b", ":8080", pyModule}
+		}
+	}
+
 	ctx.Warnf("Setting default entrypoint: %q", strings.Join(cmd, " "))
 	ctx.AddProcess(gcp.WebProcess, cmd, gcp.AsDefaultProcess())
 

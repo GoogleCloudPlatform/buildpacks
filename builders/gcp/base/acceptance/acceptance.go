@@ -55,6 +55,7 @@ const (
 	pythonMissingEntrypoint = "google.python.missing-entrypoint"
 	pythonWebserver         = "google.python.webserver"
 	pythonPoetry            = "google.python.poetry"
+	pythonUV                = "google.python.uv"
 	rubyBundle              = "google.ruby.bundle"
 	rubyFF                  = "google.ruby.functions-framework"
 	rubyRails               = "google.ruby.rails"
