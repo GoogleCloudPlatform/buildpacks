@@ -196,9 +196,15 @@ func BuildFn(ctx *gcp.Context) error {
 		}
 	}
 
+	// Get the valid value for --max-old-space-size.
+	size, err := getMaxOldSpaceSize()
+	if err != nil {
+		return err
+	}
+
 	if os.Getenv(env.ColdStartImprovementsBuildStudy) != "" {
 		// Generate the bytecode cache. This step is best-effort and will not fail the build.
-		if err := generateBytecodeCache(ctx, fnFile); err != nil {
+		if err := generateBytecodeCache(ctx, fnFile, size); err != nil {
 			ctx.Logf("WARNING: Bytecode cache generation failed, skipping cache layer setup: %v", err)
 		} else {
 			// Create a layer for the cache and set the environment variable.
@@ -208,11 +214,9 @@ func BuildFn(ctx *gcp.Context) error {
 		}
 	}
 
-	// Get and set the valid value for --max-old-space-size node_options.
+	// Set the --max-old-space-size node_option for launch.
 	// Keep the existing behaviour if the value is not provided or invalid
-	if size, err := getMaxOldSpaceSize(); err != nil {
-		return err
-	} else if size > 0 {
+	if size > 0 {
 		l.LaunchEnvironment.Prepend("NODE_OPTIONS", " ", fmt.Sprintf("--max-old-space-size=%d", size))
 	}
 
@@ -322,12 +326,18 @@ func usingYarnModuleResolution(ctx *gcp.Context) (bool, error) {
 }
 
 // generateBytecodeCache executes a script to generate a bytecode cache for the user's function.
-func generateBytecodeCache(ctx *gcp.Context, fnFile string) error {
+func generateBytecodeCache(ctx *gcp.Context, fnFile string, maxOldSpaceSize int) error {
 	ctx.Logf("Attempting to generate bytecode cache to improve cold start performance.")
 
 	scriptPath := filepath.Join(ctx.BuildpackRoot(), "bytecode_cache", "main.js")
 	absFnFile := filepath.Join(ctx.ApplicationRoot(), fnFile)
-	execArgs := []string{"node", scriptPath, absFnFile, cacheDirName}
+	var execArgs []string
+	if maxOldSpaceSize > 0 {
+		nodeOptions := fmt.Sprintf("NODE_OPTIONS=--max-old-space-size=%d", maxOldSpaceSize)
+		execArgs = []string{"env", nodeOptions, "node", scriptPath, absFnFile, cacheDirName}
+	} else {
+		execArgs = []string{"node", scriptPath, absFnFile, cacheDirName}
+	}
 
 	// We execute the script, which in turn 'requires' user code.
 	if result, err := ctx.Exec(execArgs); err != nil {
@@ -350,6 +360,25 @@ func setupCacheLayer(ctx *gcp.Context) error {
 
 	if !cacheDirExists {
 		ctx.Logf("Bytecode cache not found, skipping layer creation.")
+		return nil
+	}
+
+	// The cache generation step now uses the correct NODE_OPTIONS, so we don't need to
+	// predict and rename the hash directory. We just need to verify a directory was created.
+	files, err := os.ReadDir(cacheDir)
+	if err != nil {
+		return fmt.Errorf("reading cache dir: %w", err)
+	}
+	hasCacheSubdir := false
+	for _, f := range files {
+		if f.IsDir() {
+			hasCacheSubdir = true
+			break
+		}
+	}
+
+	if !hasCacheSubdir {
+		ctx.Logf("No cache subdirectory found, skipping layer creation.")
 		return nil
 	}
 
