@@ -18,7 +18,7 @@ package version
 import (
 	"fmt"
 	"regexp"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
@@ -69,7 +69,7 @@ func ResolveVersion(constraint string, versions []string, opts ...ResolveVersion
 
 	// Sort in descending order so that the first version in the list to satisfy a constraint will be
 	// the highest possible version.
-	sort.Sort(sort.Reverse(semver.Collection(semvers)))
+	sortVersionsDesc(semvers)
 	for _, s := range semvers {
 		if c.Check(s) {
 			if params.noSanitize {
@@ -79,7 +79,16 @@ func ResolveVersion(constraint string, versions []string, opts ...ResolveVersion
 		}
 	}
 
-	return "", fmt.Errorf("failed to resolve version matching: %v", c)
+	return "", fmt.Errorf("failed to resolve version matching: %s against %v", c.String(), semvers)
+}
+
+func sortVersionsDesc(versions []*semver.Version) {
+	slices.SortStableFunc(versions, func(a, b *semver.Version) int {
+		if a.Equal(b) {
+			return strings.Compare(b.Metadata(), a.Metadata())
+		}
+		return b.Compare(a)
+	})
 }
 
 func shouldSkipVersion(version string, keywords []string) bool {

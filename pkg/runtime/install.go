@@ -17,6 +17,7 @@ package runtime
 import (
 	"fmt"
 	"io/ioutil"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -380,23 +381,25 @@ func ResolveVersion(ctx *gcp.Context, runtime InstallableRuntime, verConstraint,
 		return "", gcp.InternalErrorf("fetching %s versions %s osName: %v", runtimeNames[runtime], osName, err)
 	}
 
-	if present && (runtime == OpenJDK || runtime == CanonicalJDK) {
-		for i, v := range versions {
+	normalizedVersions := make(map[string]string)
+	doNormalize := present && (runtime == OpenJDK || runtime == CanonicalJDK)
+	for _, v := range versions {
+		if doNormalize {
 			// When resolving version openjdk versions should be decoded to align with semver requirement. (eg. 11.0.21_9 -> 11.0.21+9)
-			versions[i] = strings.ReplaceAll(v, "_", "+")
+			// Also replace the -beta suffix with empty string so that we can properly compare EA versions.
+			replacer := strings.NewReplacer("_", "+", "-beta", "")
+			normalizedV := replacer.Replace(v)
+			normalizedVersions[normalizedV] = v
+		} else {
+			normalizedVersions[v] = v
 		}
 	}
-	v, err := version.ResolveVersion(verConstraint, versions)
+	v, err := version.ResolveVersion(verConstraint, slices.Collect(maps.Keys(normalizedVersions)))
 	if err != nil {
 		return "", gcp.UserErrorf("invalid %s version specified: %v. You may need to use a different builder. Please check if the language version specified is supported by the os: %v. You can refer to https://cloud.google.com/docs/buildpacks/builders for a list of compatible runtime languages per builder", runtimeNames[runtime], err, osName)
 	}
-	// When downloading from AR the openjdk version should be encoded to align with tag format requirement. (eg. 11.0.21+9 -> 11.0.21_9)
-	if present {
-		if runtime == OpenJDK || runtime == CanonicalJDK {
-			v = strings.ReplaceAll(v, "+", "_")
-		}
-	}
-	return v, nil
+	// Denormalize the version to fetch from AR(eg. 11.0.21+9 -> 11.0.21_9)
+	return normalizedVersions[v], nil
 }
 
 // ValidateFlexMinVersion validates the minimum flex version for a given runtime.
