@@ -60,13 +60,13 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 // BuildFn is the exported build function.
 func BuildFn(ctx *gcp.Context) error {
-	hasMain, err := ctx.HasAtLeastOne("main.py")
+	hasMain, err := ctx.FileExists("main.py")
 	if err != nil {
-		return fmt.Errorf("finding main.py files: %w", err)
+		return fmt.Errorf("finding main.py file: %w", err)
 	}
-	hasApp, err := ctx.HasAtLeastOne("app.py")
+	hasApp, err := ctx.FileExists("app.py")
 	if err != nil {
-		return fmt.Errorf("finding app.py files: %w", err)
+		return fmt.Errorf("finding app.py file: %w", err)
 	}
 	if !hasMain && !hasApp {
 		return fmt.Errorf("for Python, provide a main.py or app.py file or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")

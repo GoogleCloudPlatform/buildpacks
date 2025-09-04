@@ -32,25 +32,33 @@ func TestDetect(t *testing.T) {
 		want  int
 	}{
 		{
-			name: "no py files",
+			name: "no_py_files",
 			files: map[string]string{
 				"index.js": "",
 			},
 			want: 100,
 		},
 		{
-			name: "has py file",
+			name: "has_main_py_file",
 			files: map[string]string{
 				"main.py": "",
 			},
 			want: 0,
 		},
 		{
-			name: "has multiple py files",
+			name: "has_multiple_py_files",
 			files: map[string]string{
 				"main.py":  "",
 				"app.py":   "",
 				"utils.py": "",
+			},
+			want: 0,
+		},
+		{
+			name: "has_multiple_py_files_with_nested_directory",
+			files: map[string]string{
+				"folder/main.py":     "",
+				"folder/__init__.py": "",
 			},
 			want: 0,
 		},
@@ -366,6 +374,13 @@ func TestBuild(t *testing.T) {
 			name: "no_main_or_app",
 			files: map[string]string{
 				"other.py": "",
+			},
+			wantExitCode: 1,
+		},
+		{
+			name: "main_in_nested_directory",
+			files: map[string]string{
+				"folder/main.py": "",
 			},
 			wantExitCode: 1,
 		},
