@@ -121,7 +121,8 @@ func IsExactSemver(constraint string) bool {
 // Example dotnet rc version - 8.0.100-rc.1
 // Example php rc version - 8.3.0RC4
 // Example ruby rc version - 3.2.0-rc1
+// Example java rc version - 25.0.0-beta+36.0.ea
 func IsReleaseCandidate(constraint string) bool {
-	m := regexp.MustCompile(`(\d+)\.(\d+)\.(.*)(rc|RC)(.*)`)
+	m := regexp.MustCompile(`(\d+)\.(\d+)\.(.*)(rc|RC|beta)(.*)`)
 	return m.MatchString(constraint)
 }

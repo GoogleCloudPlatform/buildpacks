@@ -359,6 +359,7 @@ func ResolveVersion(ctx *gcp.Context, runtime InstallableRuntime, verConstraint,
 	// Some release candidates do not follow the convention for semver
 	// Specifically php. example - 8.3.0RC4.
 	if IsReleaseCandidate(verConstraint) || version.IsExactSemver(verConstraint) {
+		ctx.Logf("Using exact version %s for %s", verConstraint, runtimeNames[runtime])
 		return verConstraint, nil
 	}
 
