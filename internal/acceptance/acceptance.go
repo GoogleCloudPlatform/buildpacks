@@ -1433,6 +1433,11 @@ func ShouldTestVersion(t *testing.T, inclusionConstraint string) bool {
 	if strings.Contains(v, "RC") && !strings.Contains(v, "-RC") {
 		v = strings.Replace(v, "RC", "-RC", 1)
 	}
+	// The format of Java candidates such as 23.0.1_11 needs to be converted to valid semver 23.0.1+11
+	if strings.HasPrefix(runtimeName, "java") && strings.Contains(v, "_") {
+		v = strings.Replace(v, "_", "+", 1)
+	}
+
 	rtVer, err := semver.NewVersion(v)
 	if err != nil {
 		t.Fatalf("Unable to use %q as a semver.Version: %v", v, err)
