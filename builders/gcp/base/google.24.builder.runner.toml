@@ -501,6 +501,43 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.utils.label-image"
 
 # Python functions.
+# Poetry order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  [[order.group]]
+    id = "google.python.poetry"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# UV order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  [[order.group]]
+    id = "google.python.uv"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Pip order group.
 [[order]]
   [[order.group]]
     id = "google.python.runtime"

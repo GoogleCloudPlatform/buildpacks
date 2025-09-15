@@ -21,54 +21,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 )
 
-func TestContainsFF(t *testing.T) {
-	testCases := []struct {
-		name string
-		str  string
-		want bool
-	}{
-		{
-			name: "ff_present",
-			str:  "functions-framework==19.9.0\nflask\n",
-			want: true,
-		},
-		{
-			name: "ff_present_with_comment",
-			str:  "functions-framework #my-comment\nflask\n",
-			want: true,
-		},
-		{
-			name: "ff_present_second_line",
-			str:  "flask\nfunctions-framework==19.9.0",
-			want: true,
-		},
-		{
-			name: "no_ff_present",
-			str:  "functions-framework-example==0.1.0\nflask\n",
-			want: false,
-		},
-		{
-			name: "ff_egg_present",
-			str:  "git+git://github.com/functions-framework@master#egg=functions-framework\nflask\n",
-			want: true,
-		},
-		{
-			name: "ff_egg_not_present",
-			str:  "git+git://github.com/functions-framework-example@master#egg=functions-framework-example\nflask\n",
-			want: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := containsFF(tc.str)
-			if got != tc.want {
-				t.Errorf("containsFF() got %q, want %q", got, tc.want)
-			}
-		})
-	}
-}
-
 func TestBuild(t *testing.T) {
 	testCases := []struct {
 		name         string
@@ -99,6 +51,28 @@ func TestBuild(t *testing.T) {
 			app:  "without_framework",
 			envs: []string{
 				"GOOGLE_SKIP_FRAMEWORK_INJECTION=True",
+			},
+			wantExitCode: 1,
+		},
+		{
+			name: "poetry",
+			app:  "poetry",
+			envs: []string{
+				"X_GOOGLE_RELEASE_TRACK=ALPHA",
+			},
+		},
+		{
+			name: "uv",
+			app:  "uv",
+			envs: []string{
+				"X_GOOGLE_RELEASE_TRACK=ALPHA",
+			},
+		},
+		{
+			name: "pyproject_without_framework_fails",
+			app:  "pyproject_without_framework",
+			envs: []string{
+				"X_GOOGLE_RELEASE_TRACK=ALPHA",
 			},
 			wantExitCode: 1,
 		},

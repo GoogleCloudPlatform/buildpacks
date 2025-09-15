@@ -28,18 +28,20 @@ var (
 )
 
 var packageRegex = map[string]*regexp.Regexp{
-	"gunicorn":          regexp.MustCompile(`(?m)^gunicorn\b([^-]|$)`),
-	"uvicorn":           regexp.MustCompile(`(?m)^uvicorn\b([^-]|$)`),
-	"gradio":            regexp.MustCompile(`(?m)^gradio\b([^-]|$)`),
-	"streamlit":         regexp.MustCompile(`(?m)^streamlit\b([^-]|$)`),
-	"fastapi[standard]": regexp.MustCompile(`(?m)^fastapi\[standard\]([^-]|$)`),
+	"gunicorn":            regexp.MustCompile(`(?m)^gunicorn\b([^-]|$)`),
+	"uvicorn":             regexp.MustCompile(`(?m)^uvicorn\b([^-]|$)`),
+	"gradio":              regexp.MustCompile(`(?m)^gradio\b([^-]|$)`),
+	"streamlit":           regexp.MustCompile(`(?m)^streamlit\b([^-]|$)`),
+	"fastapi[standard]":   regexp.MustCompile(`(?m)^fastapi\[standard\]([^-]|$)`),
+	"functions-framework": regexp.MustCompile(`(?m)^functions-framework\b([^-]|$)`),
 }
 var eggRegex = map[string]*regexp.Regexp{
-	"gunicorn":          regexp.MustCompile(`(?m)#egg=gunicorn$`),
-	"uvicorn":           regexp.MustCompile(`(?m)#egg=uvicorn$`),
-	"gradio":            regexp.MustCompile(`(?m)#egg=gradio$`),
-	"streamlit":         regexp.MustCompile(`(?m)#egg=streamlit$`),
-	"fastapi[standard]": regexp.MustCompile(`(?m)#egg=fastapi\[standard\]$`),
+	"gunicorn":            regexp.MustCompile(`(?m)#egg=gunicorn$`),
+	"uvicorn":             regexp.MustCompile(`(?m)#egg=uvicorn$`),
+	"gradio":              regexp.MustCompile(`(?m)#egg=gradio$`),
+	"streamlit":           regexp.MustCompile(`(?m)#egg=streamlit$`),
+	"fastapi[standard]":   regexp.MustCompile(`(?m)#egg=fastapi\[standard\]$`),
+	"functions-framework": regexp.MustCompile(`(?m)#egg=functions-framework$`),
 }
 
 // PackagePresent checks if a given package is present in the requirements file.
@@ -83,7 +85,7 @@ func PyprojectPackagePresent(ctx *gcpbuildpack.Context, name string) (bool, erro
 		} `toml:"project"`
 		Tool struct {
 			Poetry struct {
-				Dependencies map[string]string `toml:"dependencies"`
+				Dependencies map[string]any `toml:"dependencies"`
 			} `toml:"poetry"`
 		} `toml:"tool"`
 	}

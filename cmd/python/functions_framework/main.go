@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cloudfunctions"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -33,8 +32,9 @@ const (
 )
 
 var (
-	ffRegexp  = regexp.MustCompile(`(?m)^functions-framework\b([^-]|$)`)
-	eggRegexp = regexp.MustCompile(`(?m)#egg=functions-framework$`)
+	functionsFramework = "functions-framework"
+	requirementsTxt    = "requirements.txt"
+	pyprojectToml      = "pyproject.toml"
 )
 
 func main() {
@@ -44,6 +44,10 @@ func main() {
 // DetectFn is the exported detect function.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
+		pyprojectTomlExists, _ := ctx.FileExists(pyprojectToml)
+		if pyprojectTomlExists && env.IsAlphaSupported() {
+			return gcp.OptInEnvSet(env.FunctionTarget), nil
+		}
 		return gcp.OptInEnvSet(env.FunctionTarget, gcp.WithBuildPlans(python.RequirementsProvidesPlan)), nil
 	}
 	return gcp.OptOutEnvNotSet(env.FunctionTarget), nil
@@ -62,16 +66,14 @@ func BuildFn(ctx *gcp.Context) error {
 
 	// Determine if the function has dependency on functions-framework.
 	hasFrameworkDependency := false
-	requirementsExists, err := ctx.FileExists("requirements.txt")
+	pyprojectTomlExists, err := ctx.FileExists(pyprojectToml)
 	if err != nil {
 		return err
 	}
-	if requirementsExists {
-		content, err := ctx.ReadFile("requirements.txt")
-		if err != nil {
-			return err
-		}
-		hasFrameworkDependency = containsFF(string(content))
+
+	hasFrameworkDependency, err = python.PackagePresent(ctx, functionsFramework)
+	if err != nil {
+		return err
 	}
 
 	// Install functions-framework if necessary.
@@ -85,6 +87,10 @@ func BuildFn(ctx *gcp.Context) error {
 			return fmt.Errorf("clearing layer %q: %w", l.Name, err)
 		}
 	} else {
+		if pyprojectTomlExists && env.IsAlphaSupported() {
+			return gcp.UserErrorf("This project is using pyproject.toml but you have not included the Functions Framework in your dependencies. Please add it by running: 'poetry add functions-framework' or 'uv add functions-framework'.")
+		}
+
 		if _, isVendored := os.LookupEnv(python.VendorPipDepsEnv); isVendored {
 			return gcp.UserErrorf("Vendored dependencies detected, please add functions-framework to requirements.txt and download it using pip")
 		}
@@ -127,8 +133,4 @@ func validateSource(ctx *gcp.Context) error {
 		}
 	}
 	return nil
-}
-
-func containsFF(s string) bool {
-	return ffRegexp.MatchString(s) || eggRegexp.MatchString(s)
 }

@@ -80,6 +80,56 @@ description = "Unified builder all Python runtimes"
     id = "google.utils.label-image"
 
 # Python functions (gcf and gcp).
+
+# Poetry order group.
+[[order]]
+
+  # gcf only
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  [[order.group]]
+    id = "google.python.poetry"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
+
+# UV order group.
+[[order]]
+
+  # gcf only
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  [[order.group]]
+    id = "google.python.uv"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
+
+# Pip order group.
 [[order]]
 
   # gcf only

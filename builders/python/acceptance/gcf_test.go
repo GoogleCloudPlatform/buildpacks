@@ -19,6 +19,15 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
+const (
+	entrypoint    = "google.config.entrypoint"
+	pythonFF      = "google.python.functions-framework"
+	pythonPIP     = "google.python.pip"
+	pythonRuntime = "google.python.runtime"
+	pythonPoetry  = "google.python.poetry"
+	pythonUV      = "google.python.uv"
+)
+
 func init() {
 	acceptance.DefineFlags()
 }
@@ -84,6 +93,27 @@ func TestAcceptance(t *testing.T) {
 			SkipStacks:                 []string{"google.min.22"},
 			VersionInclusionConstraint: ">= 3.8.0",
 		},
+		{
+			Name:                       "poetry",
+			App:                        "poetry",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			VersionInclusionConstraint: ">=3.9.0",
+			MustUse:                    []string{pythonRuntime, pythonPoetry, pythonFF},
+		},
+		{
+			Name:                       "pyproject",
+			App:                        "pyproject",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			VersionInclusionConstraint: ">=3.9.0",
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
+		},
+		{
+			Name:                       "uv",
+			App:                        "uv",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			VersionInclusionConstraint: ">=3.9.0",
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
+		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := applyStaticTestOptions(tc)
@@ -134,6 +164,12 @@ func TestFailures(t *testing.T) {
 			App:       "without_framework",
 			Env:       []string{"GOOGLE_VENDOR_PIP_DEPENDENCIES=vendor"},
 			MustMatch: "Vendored dependencies detected, please add functions-framework to requirements.txt and download it using pip",
+		},
+		{
+			Name:      "fail_pyproject_without_framework",
+			App:       "fail_pyproject_without_framework",
+			Env:       []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustMatch: "This project is using pyproject.toml but you have not included the Functions Framework in your dependencies. Please add it by running: 'poetry add functions-framework' or 'uv add functions-framework'.",
 		},
 	}
 

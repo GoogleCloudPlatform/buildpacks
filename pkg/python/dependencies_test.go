@@ -133,6 +133,18 @@ func TestPackagePresent(t *testing.T) {
 			want: false,
 		},
 		{
+			name:         "check_functions_framework_in_pyproject.toml",
+			pkgName:      "functions-framework",
+			releaseTrack: "ALPHA",
+			files: map[string]string{
+				"pyproject.toml": `
+					[project]
+					dependencies = ["functions-framework>=3.1.0"]
+				`,
+			},
+			want: true,
+		},
+		{
 			name:         "Neither_file_exists",
 			pkgName:      "gunicorn",
 			releaseTrack: "ALPHA",
@@ -174,6 +186,48 @@ func TestPackagePresent(t *testing.T) {
 			}
 			if got != tc.want {
 				t.Errorf("PackagePresent() got %t, want %t", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestContainsFF(t *testing.T) {
+	testCases := []struct {
+		name string
+		str  string
+		want bool
+	}{
+		{
+			name: "functions_framework_present",
+			str:  "functions-framework==3.1.0\nflask\n",
+			want: true,
+		},
+		{
+			name: "functions_framework_present_with_comment",
+			str:  "functions-framework #my-comment\nflask\n",
+			want: true,
+		},
+		{
+			name: "functions_framework_present_second_line",
+			str:  "flask\nfunctions-framework==3.1.0",
+			want: true,
+		},
+		{
+			name: "no_functions_framework_present",
+			str:  "functions-framework-logging==0.1.0\nflask\n",
+			want: false,
+		},
+		{
+			name: "functions_framework_egg_present",
+			str:  "git+git://github.com/functions-framework@master#egg=functions-framework\nflask\n",
+			want: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := containsPackage(tc.str, "functions-framework")
+			if got != tc.want {
+				t.Errorf("containsPackage(functions-framework) got %t, want %t", got, tc.want)
 			}
 		})
 	}
