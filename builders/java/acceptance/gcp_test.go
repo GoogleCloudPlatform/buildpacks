@@ -185,7 +185,7 @@ func TestAcceptanceJava(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 	}
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, imageContext, testCases) {
 		tc := tc
 		tc.FlakyBuildAttempts = 3
 
