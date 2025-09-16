@@ -46,6 +46,7 @@ func TestAcceptanceJava(t *testing.T) {
 				"GOOGLE_ENTRYPOINT=java Main.java",
 				"GOOGLE_RUNTIME_VERSION=11",
 			},
+			SkipStacks:      []string{"google.24.full", "google.24"}, // Java11 not supported on Ubuntu24 stack
 			MustUse:         []string{javaRuntime, entrypoint},
 			MustNotUse:      []string{javaEntrypoint},
 			EnableCacheTest: true,
@@ -70,6 +71,7 @@ func TestAcceptanceJava(t *testing.T) {
 				"GOOGLE_ENTRYPOINT=javac Main.java; java Main",
 				"GOOGLE_RUNTIME_VERSION=8",
 			},
+			SkipStacks: []string{"google.24.full", "google.24"},
 			MustUse:    []string{javaRuntime, entrypoint},
 			MustNotUse: []string{javaEntrypoint},
 		},
@@ -113,6 +115,7 @@ func TestAcceptanceJava(t *testing.T) {
 			Env: []string{
 				"GOOGLE_RUNTIME_VERSION=11",
 			},
+			SkipStacks: []string{"google.24.full", "google.24"},
 			MustUse:    []string{javaMaven, javaRuntime, javaEntrypoint},
 			MustNotUse: []string{entrypoint},
 		},
@@ -140,8 +143,9 @@ func TestAcceptanceJava(t *testing.T) {
 			MustNotUse: []string{javaEntrypoint},
 		},
 		{
-			Name: "Exploded Jar java 11",
-			App:  "exploded_jar",
+			Name:       "Exploded Jar java 11",
+			App:        "exploded_jar",
+			SkipStacks: []string{"google.24.full", "google.24"},
 			Env: []string{
 				"GOOGLE_RUNTIME_VERSION=11",
 			},

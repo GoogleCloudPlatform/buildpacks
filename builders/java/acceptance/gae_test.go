@@ -133,9 +133,10 @@ func TestAcceptance(t *testing.T) {
 			EnableCacheTest: true,
 		},
 		{
-			Name: "Ktor Kotlin maven mwnw",
-			App:  "ktordemo",
-			Env:  []string{"GOOGLE_ENTRYPOINT=java -jar target/ktor-0.0.1-jar-with-dependencies.jar"},
+			Name:                       "Ktor Kotlin maven mwnw",
+			App:                        "ktordemo",
+			VersionInclusionConstraint: "<25.0.0",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=java -jar target/ktor-0.0.1-jar-with-dependencies.jar"},
 			// We don't check for WARNING, because our project-artifact-generated code produces several of them.
 		},
 		{
@@ -152,15 +153,17 @@ func TestAcceptance(t *testing.T) {
 			Setup:           updateGradleVersions,
 		},
 		{
-			Name:          "gradlew micronaut",
-			App:           "gradlew_micronaut",
-			MustNotOutput: []string{"WARNING"},
-			Setup:         updateGradleVersions,
+			Name:                       "gradlew micronaut",
+			App:                        "gradlew_micronaut",
+			VersionInclusionConstraint: "<25.0.0",
+			MustNotOutput:              []string{"WARNING"},
+			Setup:                      updateGradleVersions,
 		},
 		{
-			Name:  "gradle kotlin",
-			App:   "gradle-kotlin",
-			Setup: updateGradleVersions,
+			Name:                       "gradle kotlin",
+			App:                        "gradle-kotlin",
+			VersionInclusionConstraint: "<25.0.0",
+			Setup:                      updateGradleVersions,
 		},
 		{
 			Name:              "Gradle with source clearing",
@@ -171,10 +174,11 @@ func TestAcceptance(t *testing.T) {
 			Setup:             updateGradleVersions,
 		},
 		{
-			Name:          "Java gradle quarkus",
-			App:           "gradle_quarkus",
-			MustNotOutput: []string{"WARNING"},
-			Setup:         updateGradleVersions,
+			Name:                       "Java gradle quarkus",
+			App:                        "gradle_quarkus",
+			VersionInclusionConstraint: "<25.0.0",
+			MustNotOutput:              []string{"WARNING"},
+			Setup:                      updateGradleVersions,
 		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
