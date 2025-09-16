@@ -1438,6 +1438,8 @@ func ShouldTestVersion(t *testing.T, inclusionConstraint string) bool {
 		v = strings.Replace(v, "_", "+", 1)
 	}
 
+	re := regexp.MustCompile(`(?i)[-.]?rc.*`)
+	v = re.ReplaceAllString(v, "")
 	rtVer, err := semver.NewVersion(v)
 	if err != nil {
 		t.Fatalf("Unable to use %q as a semver.Version: %v", v, err)
