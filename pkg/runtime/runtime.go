@@ -76,7 +76,7 @@ func formatVersion(languageName, version string) (string, error) {
 		version = strings.Replace(version, "RC", "-RC", 1)
 	}
 	// The format of Java candidates such as 23.0.1_11 needs to be converted to valid semver 23.0.1+11
-	if languageName == "java" && strings.Contains(version, "_") {
+	if strings.HasPrefix(languageName, "java") && strings.Contains(version, "_") {
 		version = strings.Replace(version, "_", "+", 1)
 	}
 
