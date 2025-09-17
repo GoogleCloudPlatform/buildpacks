@@ -83,40 +83,11 @@ func IsPoetryProject(ctx *gcp.Context) (bool, string, error) {
 
 // InstallPoetry installs the poetry CLI into a dedicated layer, respecting version constraints.
 func InstallPoetry(ctx *gcp.Context) error {
-	layer, err := ctx.Layer(poetryLayer, gcp.BuildLayer, gcp.CacheLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", poetryLayer, err)
-	}
-
 	poetryVersionConstraint, err := RequestedPoetryVersion(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting poetry version constraint: %w", err)
 	}
-	installCmd := []string{"python3", "-m", "pip", "install"}
-	if poetryVersionConstraint != "" {
-		ctx.Logf("Using Poetry version constraint: %s", poetryVersionConstraint)
-		installCmd = append(installCmd, fmt.Sprintf("poetry%s", poetryVersionConstraint))
-	} else {
-		ctx.Logf("No Poetry version constraint found, installing latest.")
-		installCmd = append(installCmd, "poetry")
-	}
-
-	ctx.Logf("Installing Poetry latest into %s", layer.Path)
-
-	os.Setenv("PYTHONUSERBASE", layer.Path)
-	ctx.Logf("Running: %s", strings.Join(installCmd, " "))
-	_, err = ctx.Exec(installCmd, gcp.WithUserAttribution)
-	os.Unsetenv("PYTHONUSERBASE")
-	if err != nil {
-		return fmt.Errorf("installing poetry via pip: %w", err)
-	}
-
-	ctx.Logf("Poetry installed successfully.")
-
-	binDir := filepath.Join(layer.Path, "bin")
-	layer.BuildEnvironment.Prepend("PATH", string(os.PathListSeparator), binDir)
-
-	return nil
+	return installPythonTool(ctx, "poetry", poetryLayer, poetryVersionConstraint)
 }
 
 // RequestedPoetryVersion returns the requested poetry version from pyproject.toml.
@@ -189,20 +160,7 @@ func PoetryInstallDependenciesAndConfigureEnv(ctx *gcp.Context) error {
 
 // EnsurePoetryLockfile checks for poetry.lock and generates it if it doesn't exist.
 func EnsurePoetryLockfile(ctx *gcp.Context) error {
-	exists, err := ctx.FileExists(poetryLock)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		ctx.Warnf("*** To improve build performance, generate and commit %s.", poetryLock)
-		ctx.Logf("Running: %s", strings.Join(poetryLockCmd, " "))
-		if _, err := ctx.Exec(poetryLockCmd, gcp.WithUserAttribution); err != nil {
-			return fmt.Errorf("running poetry lock: %w", err)
-		}
-	} else {
-		ctx.Logf("Using existing %s.", poetryLock)
-	}
-	return nil
+	return ensureLockfile(ctx, "poetry", poetryLock, poetryLockCmd)
 }
 
 // IsUVProject checks if the application is a UV project.
@@ -250,63 +208,16 @@ func RequestedUVVersion(ctx *gcp.Context) (string, error) {
 
 // InstallUV installs UV into a dedicated layer, respecting version constraints.
 func InstallUV(ctx *gcp.Context) error {
-	layer, err := ctx.Layer(uvLayer, gcp.BuildLayer, gcp.CacheLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", uvLayer, err)
-	}
-
 	uvVersionConstraint, err := RequestedUVVersion(ctx)
 	if err != nil {
 		return fmt.Errorf("getting uv version constraint: %w", err)
 	}
-
-	installCmd := []string{"python3", "-m", "pip", "install"}
-	if uvVersionConstraint != "" {
-		ctx.Logf("Using uv version constraint from pyproject.toml: %s", uvVersionConstraint)
-		installCmd = append(installCmd, fmt.Sprintf("uv%s", uvVersionConstraint))
-	} else {
-		ctx.Logf("No uv version constraint found in pyproject.toml, installing latest.")
-		installCmd = append(installCmd, "uv")
-	}
-
-	ctx.Logf("Installing uv into %s", layer.Path)
-
-	os.Setenv("PYTHONUSERBASE", layer.Path)
-	ctx.Logf("Running: %s", strings.Join(installCmd, " "))
-	_, err = ctx.Exec(installCmd)
-	os.Unsetenv("PYTHONUSERBASE")
-	if err != nil {
-		if uvVersionConstraint == "" {
-			return buildererror.Errorf(buildererror.StatusInternal, "failed to install uv: %v", err)
-		}
-		return fmt.Errorf("installing uv with version constraint %s: %w", uvVersionConstraint, err)
-	}
-
-	ctx.Logf("uv installed successfully.")
-
-	binDir := filepath.Join(layer.Path, "bin")
-	layer.BuildEnvironment.Prepend("PATH", string(os.PathListSeparator), binDir)
-
-	return nil
+	return installPythonTool(ctx, "uv", uvLayer, uvVersionConstraint)
 }
 
 // EnsureUVLockfile checks for uv.lock and generates it if it doesn't exist.
 func EnsureUVLockfile(ctx *gcp.Context) error {
-	exists, err := ctx.FileExists(uvLock)
-	if err != nil {
-		return fmt.Errorf("checking for %s: %w", uvLock, err)
-	}
-	if !exists {
-		ctx.Warnf("*** To improve build performance, generate and commit %s.", uvLock)
-		ctx.Logf("uv.lock not found, generating it using `uv lock`...")
-		if _, err := ctx.Exec(uvLockCmd, gcp.WithUserAttribution); err != nil {
-			return fmt.Errorf("failed to generate uv.lock with uv: %w", err)
-		}
-		ctx.Logf("uv.lock generated successfully.")
-	} else {
-		ctx.Logf("Using existing %s.", uvLock)
-	}
-	return nil
+	return ensureLockfile(ctx, "uv", uvLock, uvLockCmd)
 }
 
 // UVInstallDependenciesAndConfigureEnv installs dependencies and sets up the runtime environment using uv.
@@ -337,5 +248,61 @@ func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context) error {
 
 	venvBinDir := filepath.Join(venvDir, "bin")
 	layer.SharedEnvironment.Prepend("PATH", string(filepath.ListSeparator), venvBinDir)
+	return nil
+}
+
+// installPythonTool handles the common logic of installing a python tool with pip.
+func installPythonTool(ctx *gcp.Context, toolName, layerName, versionConstraint string) error {
+	layer, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", layerName, err)
+	}
+
+	installCmd := []string{"python3", "-m", "pip", "install"}
+	if versionConstraint != "" {
+		ctx.Logf("Using %s version constraint: %s", toolName, versionConstraint)
+		installCmd = append(installCmd, fmt.Sprintf("%s%s", toolName, versionConstraint))
+	} else {
+		ctx.Logf("No %s version constraint found, installing latest.", toolName)
+		installCmd = append(installCmd, toolName)
+	}
+
+	ctx.Logf("Installing %s into %s", toolName, layer.Path)
+
+	os.Setenv("PYTHONUSERBASE", layer.Path)
+	ctx.Logf("Running: %s", strings.Join(installCmd, " "))
+	_, err = ctx.Exec(installCmd, gcp.WithUserAttribution)
+	os.Unsetenv("PYTHONUSERBASE")
+	if err != nil {
+		if versionConstraint == "" {
+			return buildererror.Errorf(buildererror.StatusInternal, "failed to install %s: %v", toolName, err)
+		}
+		return fmt.Errorf("installing %s with version constraint %s: %w", toolName, versionConstraint, err)
+	}
+
+	ctx.Logf("%s installed successfully.", toolName)
+
+	binDir := filepath.Join(layer.Path, "bin")
+	layer.BuildEnvironment.Prepend("PATH", string(os.PathListSeparator), binDir)
+
+	return nil
+}
+
+// ensureLockfile handles the common logic of checking/generating a lockfile for a given tool.
+func ensureLockfile(ctx *gcp.Context, toolName, lockFile string, lockCmd []string) error {
+	exists, err := ctx.FileExists(lockFile)
+	if err != nil {
+		return fmt.Errorf("checking for %s: %w", lockFile, err)
+	}
+	if exists {
+		ctx.Logf("Using existing %s.", lockFile)
+		return nil
+	}
+
+	ctx.Logf("%s not found, generating it using `%s`...", lockFile, strings.Join(lockCmd, " "))
+	if _, err := ctx.Exec(lockCmd, gcp.WithUserAttribution); err != nil {
+		return fmt.Errorf("failed to generate %s with %s: %w", lockFile, toolName, err)
+	}
+	ctx.Logf("%s generated successfully.", lockFile)
 	return nil
 }
