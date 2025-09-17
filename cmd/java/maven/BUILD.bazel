@@ -11,7 +11,7 @@ buildpack(
         ":main",
     ],
     prefix = "java",
-    version = "0.9.0",
+    version = "0.9.1",
     visibility = [
         "//builders:java_builders",
     ],
@@ -21,7 +21,7 @@ buildpack_using_runner(
     name = "maven_using_runner",
     buildpack_id = "google.java.maven",
     prefix = "java",
-    version = "0.9.0",
+    version = "0.9.1",
     visibility = [
         "//builders:java_builders",
     ],

@@ -32,11 +32,22 @@ import (
 
 const (
 	// TODO(b/151198698): Automate Maven version updates.
-	mavenVersion = "3.9.9"
-	mavenURL     = "https://archive.apache.org/dist/maven/maven-3/%[1]s/binaries/apache-maven-%[1]s-bin.tar.gz"
+	mavenVersion = "3.9.11"
 	mavenLayer   = "maven"
 	m2Layer      = "m2"
 	versionKey   = "version"
+)
+
+var (
+	mavenURLs = []string{
+		// The CDN URL is incredibly fast (> 10x faster) but it only has latest version(s). Fall-back to the archive URL when the current version is no longer in the CDN
+		"https://dlcdn.apache.org/maven/maven-3/%[1]s/binaries/apache-maven-%[1]s-bin.tar.gz",
+		"https://archive.apache.org/dist/maven/maven-3/%[1]s/binaries/apache-maven-%[1]s-bin.tar.gz",
+	}
+	validStatuses = []string{
+		"HTTP/1.1 200 OK",
+		"HTTP/2 200",
+	}
 )
 
 func main() {
@@ -214,19 +225,34 @@ func installMaven(ctx *gcp.Context) (string, error) {
 
 	// Download and install maven in layer.
 	ctx.Logf("Installing Maven v%s", mavenVersion)
-	archiveURL := fmt.Sprintf(mavenURL, mavenVersion)
-	curlHead := fmt.Sprintf("curl --head --fail --silent --location %s", archiveURL)
-	result, err := ctx.Exec([]string{"bash", "-c", curlHead})
-	if err != nil || !strings.Contains(result.Stdout, "200 OK") {
-		return "", gcp.InternalErrorf("Maven version %s does not exist at %s (status not 200).", mavenVersion, archiveURL)
+	archiveURL, err := getMavenURL(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get Maven: %w", err)
 	}
 	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, mvnl.Path)
 	if _, err := ctx.Exec([]string{"bash", "-c", command}); err != nil {
 		return "", err
 	}
+	ctx.Logf("Downloading Maven from %s", archiveURL)
 
 	ctx.SetMetadata(mvnl, versionKey, mavenVersion)
 	return filepath.Join(mvnl.Path, "bin", "mvn"), nil
+}
+
+func getMavenURL(ctx *gcp.Context) (string, error) {
+	for _, url := range mavenURLs {
+		archiveURL := fmt.Sprintf(url, mavenVersion)
+		curlHead := fmt.Sprintf("curl --head --fail --silent --location %s", archiveURL)
+		result, err := ctx.Exec([]string{"bash", "-c", curlHead})
+		if err == nil {
+			for _, status := range validStatuses {
+				if strings.Contains(result.Stdout, status) {
+					return archiveURL, nil
+				}
+			}
+		}
+	}
+	return "", gcp.InternalErrorf("Maven version %s does not exist at any of the URLs %v (status not 200).", mavenVersion, mavenURLs)
 }
 
 func pomFilePath(ctx *gcp.Context) (string, error) {
