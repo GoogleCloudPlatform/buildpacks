@@ -281,7 +281,7 @@ func TestAcceptancePython(t *testing.T) {
 			App:                        "poetry_fastapi",
 			MustUse:                    []string{pythonRuntime, pythonPoetry, pythonMissingEntrypoint},
 			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA", "X_GOOGLE_PYTHON_SMART_DEFAULTS=true"},
-			VersionInclusionConstraint: ">=3.13.0",
+			VersionInclusionConstraint: ">=3.13.0 <3.14.0",
 		},
 		{
 			Name:                       "uv_main",
