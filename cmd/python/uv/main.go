@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
 )
@@ -29,8 +28,8 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !env.IsAlphaSupported() {
-		return gcp.OptOut("Python UV Buildpack is only supported in ALPHA release tracks."), nil
+	if !python.IsPyprojectEnabled() {
+		return gcp.OptOut("Python UV Buildpack is not supported in the current release track."), nil
 	}
 
 	isUV, message, err := python.IsUVProject(ctx)

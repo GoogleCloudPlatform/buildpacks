@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
 )
@@ -31,8 +30,8 @@ func main() {
 
 // DetectFn is the exported detect function.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !env.IsAlphaSupported() {
-		return gcp.OptOut("Python Poetry Buildpack is only supported in ALPHA release tracks."), nil
+	if !python.IsPyprojectEnabled() {
+		return gcp.OptOut("Python Poetry Buildpack is not supported in the current release track."), nil
 	}
 
 	isPoetry, message, err := python.IsPoetryProject(ctx)

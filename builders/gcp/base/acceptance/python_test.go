@@ -299,6 +299,63 @@ func TestAcceptancePython(t *testing.T) {
 			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
 			VersionInclusionConstraint: ">=3.10.0",
 		},
+		{
+			Name:                       "poetry_uvicorn",
+			App:                        "poetry_uvicorn",
+			MustUse:                    []string{pythonRuntime, pythonPoetry, pythonMissingEntrypoint},
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA", "X_GOOGLE_PYTHON_SMART_DEFAULTS=true"},
+			VersionInclusionConstraint: ">=3.13.0",
+		},
+		{
+			Name:                       "pyproject_uvicorn",
+			App:                        "pyproject_uvicorn",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA", "X_GOOGLE_PYTHON_SMART_DEFAULTS=true"},
+			MustUse:                    []string{pythonRuntime, pythonUV},
+			VersionInclusionConstraint: ">= 3.13.0",
+		},
+		{
+			Name:                       "pyproject_fastapi_standard",
+			App:                        "pyproject_fastapi_standard",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA", "X_GOOGLE_PYTHON_SMART_DEFAULTS=true"},
+			MustUse:                    []string{pythonRuntime, pythonUV},
+			VersionInclusionConstraint: ">= 3.13.0",
+		},
+		{
+			Name:                       "poetry_gradio",
+			App:                        "poetry_gradio",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA", "X_GOOGLE_PYTHON_SMART_DEFAULTS=true"},
+			MustUse:                    []string{pythonRuntime, pythonPoetry, pythonMissingEntrypoint},
+			VersionInclusionConstraint: ">=3.13.0",
+		},
+		{
+			Name:                       "pyproject_gradio",
+			App:                        "pyproject_gradio",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA", "X_GOOGLE_PYTHON_SMART_DEFAULTS=true"},
+			MustUse:                    []string{pythonRuntime, pythonUV},
+			VersionInclusionConstraint: ">= 3.13.0",
+		},
+		{
+			Name:                       "pyproject_streamlit",
+			App:                        "pyproject_streamlit",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA", "X_GOOGLE_PYTHON_SMART_DEFAULTS=true"},
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint},
+			VersionInclusionConstraint: ">= 3.13.0",
+			MustMatch:                  "Streamlit",
+		},
+		{
+			Name:                       "pyproject_script",
+			App:                        "pyproject_script",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA", "X_GOOGLE_PYTHON_SMART_DEFAULTS=true"},
+			MustUse:                    []string{pythonRuntime, pythonUV},
+			VersionInclusionConstraint: ">= 3.10.0",
+		},
+		{
+			Name:                       "poetry_script",
+			App:                        "poetry_script",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA", "X_GOOGLE_PYTHON_SMART_DEFAULTS=true"},
+			MustUse:                    []string{pythonRuntime, pythonPoetry},
+			VersionInclusionConstraint: ">= 3.10.0",
+		},
 	}
 
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {

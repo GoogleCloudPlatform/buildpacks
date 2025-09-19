@@ -16,6 +16,7 @@ package python
 
 import (
 	"os"
+	"reflect"
 	"testing"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -261,6 +262,157 @@ func TestRequestedUVVersion(t *testing.T) {
 			}
 			if err == nil && version != tc.want {
 				t.Errorf("RequestedUVVersion() = %q, want %q", version, tc.want)
+			}
+		})
+	}
+}
+
+func TestGetScriptCommand(t *testing.T) {
+	testCases := []struct {
+		name    string
+		files   map[string]string
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "poetry_single_script_found",
+			files: map[string]string{
+				"pyproject.toml": `
+					[tool.poetry.scripts]
+					start_app = "my_app.main:run"
+				`,
+			},
+			want:    []string{"start_app"},
+			wantErr: false,
+		},
+		{
+			name: "poetry_multiple_scripts_returns_start",
+			files: map[string]string{
+				"pyproject.toml": `
+          [tool.poetry.scripts]
+          dev = "my_app.dev:run"
+          start = "my_app.main:run"
+          lint = "my_app.lint:run"
+        `,
+			},
+			want:    []string{"start"},
+			wantErr: false,
+		},
+		{
+			name: "poetry_multiple_scripts_no_start_returns_nil",
+			files: map[string]string{
+				"pyproject.toml": `
+          [tool.poetry.scripts]
+          dev = "my_app.dev:run"
+          lint = "my_app.lint:run"
+        `,
+			},
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name: "project_single_script_found",
+			files: map[string]string{
+				"pyproject.toml": `
+          [project.scripts]
+          start_now = "my_app.main:run"
+        `,
+			},
+			want:    []string{"start_now"},
+			wantErr: false,
+		},
+		{
+			name: "project_multiple_scripts_returns_start",
+			files: map[string]string{
+				"pyproject.toml": `
+          [project.scripts]
+          dev = "my_app.dev:run"
+          start = "my_app.main:run"
+        `,
+			},
+			want:    []string{"start"},
+			wantErr: false,
+		},
+		{
+			name: "project_multiple_scripts_no_start_returns_nil",
+			files: map[string]string{
+				"pyproject.toml": `
+          [project.scripts]
+          dev = "my_app.dev:run"
+          lint = "my_app.main:run"
+        `,
+			},
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name: "poetry_single_script_takes_precedence_over_project_start",
+			files: map[string]string{
+				"pyproject.toml": `
+          [tool.poetry.scripts]
+          start1 = "my_app.poetry:run"
+          [project.scripts]
+          start2 = "my_app.project:run"
+          start = "my_app.project:start"
+        `,
+			},
+			want:    []string{"start1"},
+			wantErr: false,
+		},
+
+		{
+			name: "no_scripts_section",
+			files: map[string]string{
+				"pyproject.toml": `
+					[project]
+					name = "my-app"
+				`,
+			},
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name: "empty_scripts_section",
+			files: map[string]string{
+				"pyproject.toml": `
+					[project.scripts]
+				`,
+			},
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name:    "file_does_not_exist",
+			files:   map[string]string{},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "malformed_pyproject.toml",
+			files: map[string]string{
+				"pyproject.toml": `
+					[tool.poetry.scripts
+					start = "my_app.main:run"
+				`,
+			},
+			want:    nil,
+			wantErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			appDir := setupTest(t, tc.files)
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
+
+			cmd, err := GetScriptCommand(ctx)
+
+			if (err != nil) != tc.wantErr {
+				t.Errorf("GetScriptCommand() error = %v, wantErr %v", err, tc.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(cmd, tc.want) {
+				t.Errorf("GetScriptCommand() = %v, want %v", cmd, tc.want)
 			}
 		})
 	}

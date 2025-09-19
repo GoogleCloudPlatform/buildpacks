@@ -102,7 +102,7 @@ func TestPackagePresent(t *testing.T) {
 			files: map[string]string{
 				"pyproject.toml": `
 					[project]
-					dependencies = ["uvicorn>=0.13.0"]
+					dependencies = ["fastapi>=0.111.0", "uvicorn>=0.30.1"]
 				`,
 			},
 			want: true,

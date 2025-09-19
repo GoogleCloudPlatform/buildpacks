@@ -34,7 +34,6 @@ go_binary(
     ],
     deps = [
         "//pkg/buildermetrics",
-        "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/python",
     ],
@@ -49,7 +48,6 @@ go_library(
     ],
     deps = [
         "//pkg/buildermetrics",
-        "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/python",
     ],

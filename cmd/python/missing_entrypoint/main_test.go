@@ -371,6 +371,200 @@ func TestBuild(t *testing.T) {
 			wantCmd: []string{"streamlit", "run", "app.py", "--server.address", "0.0.0.0", "--server.port", "8080"},
 		},
 		{
+			name: "pyproject_gunicorn",
+			files: map[string]string{
+				"main.py": "",
+				"pyproject.toml": `[project]
+dependencies = ["gunicorn"]`,
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "pyproject_uvicorn",
+			files: map[string]string{
+				"main.py": "",
+				"pyproject.toml": `[project]
+dependencies = ["fastapi", "uvicorn"]`,
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "pyproject_fastapi_standard",
+			files: map[string]string{
+				"main.py": "",
+				"pyproject.toml": `[project]
+dependencies = ["fastapi[standard]"]`,
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "pyproject_gradio",
+			files: map[string]string{
+				"main.py": "",
+				"pyproject.toml": `[project]
+dependencies = ["gradio"]`,
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"python", "main.py"},
+		},
+		{
+			name: "pyproject_streamlit",
+			files: map[string]string{
+				"main.py": "",
+				"pyproject.toml": `[project]
+dependencies = ["streamlit"]`,
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"streamlit", "run", "main.py", "--server.address", "0.0.0.0", "--server.port", "8080"},
+		},
+		{
+			name: "pyproject_poetry_gunicorn",
+			files: map[string]string{
+				"main.py": "",
+				"pyproject.toml": `[tool.poetry.dependencies]
+gunicorn = "*_*"`,
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "pyproject_poetry_uvicorn",
+			files: map[string]string{
+				"main.py": "",
+				"pyproject.toml": `[tool.poetry.dependencies]
+uvicorn = "*_*"`,
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "pyproject_poetry_fastapi_standard",
+			files: map[string]string{
+				"main.py": "",
+				"pyproject.toml": `[tool.poetry.dependencies]
+"fastapi[standard]" = "*"`,
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "pyproject_poetry_gradio",
+			files: map[string]string{
+				"main.py": "",
+				"pyproject.toml": `[tool.poetry.dependencies]
+gradio = "*_*"`,
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"python", "main.py"},
+		},
+		{
+			name: "pyproject_poetry_streamlit",
+			files: map[string]string{
+				"app.py": "",
+				"pyproject.toml": `[tool.poetry.dependencies]
+streamlit = "*_*"`,
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"streamlit", "run", "app.py", "--server.address", "0.0.0.0", "--server.port", "8080"},
+		},
+		{
+			name: "pyproject_no_webserver",
+			files: map[string]string{
+				"main.py": "",
+				"pyproject.toml": `[project]
+dependencies = ["requests"]`,
+			},
+			env: []string{
+				env.PythonSmartDefaults + "=true",
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "pyproject_script_uv",
+			files: map[string]string{
+				"main.py": "",
+				"pyproject.toml": `[project.scripts]
+any_start_cmd = "main:app"`,
+			},
+			env: []string{
+				env.ReleaseTrack + "=ALPHA",
+			},
+			wantCmd: []string{"uv", "run", "any_start_cmd"},
+		},
+		{
+			name: "pyproject_script_poetry",
+			files: map[string]string{
+				"main.py": "",
+				"pyproject.toml": `[tool.poetry]
+name = "test"
+version = "1.2.3"
+description = ""
+authors = ["test"]
+[tool.poetry.scripts]
+any_start_cmd = "main:app"`,
+			},
+			env: []string{
+				env.ReleaseTrack + "=ALPHA",
+			},
+			wantCmd: []string{"poetry", "run", "any_start_cmd"},
+		},
+		{
 			name: "no_main_or_app",
 			files: map[string]string{
 				"other.py": "",

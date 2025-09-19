@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/BurntSushi/toml"
 )
@@ -305,4 +306,57 @@ func ensureLockfile(ctx *gcp.Context, toolName, lockFile string, lockCmd []strin
 	}
 	ctx.Logf("%s generated successfully.", lockFile)
 	return nil
+}
+
+// GetScriptCommand returns the script command from pyproject.toml if it exists.
+func GetScriptCommand(ctx *gcp.Context) ([]string, error) {
+	pyprojectTomlContent, err := ctx.ReadFile(pyprojectToml)
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", pyprojectToml, err)
+	}
+
+	var parsedTOML struct {
+		Project struct {
+			Scripts map[string]string `toml:"scripts"`
+		} `toml:"project"`
+		Tool struct {
+			Poetry struct {
+				Scripts map[string]string `toml:"scripts"`
+			} `toml:"poetry"`
+		} `toml:"tool"`
+	}
+	if _, err := toml.Decode(string(pyprojectTomlContent), &parsedTOML); err != nil {
+		ctx.Warnf("Could not parse %s: %v", pyprojectToml, err)
+		return nil, nil
+	}
+
+	if len(parsedTOML.Tool.Poetry.Scripts) > 0 {
+		if len(parsedTOML.Tool.Poetry.Scripts) == 1 {
+			for scriptName := range parsedTOML.Tool.Poetry.Scripts {
+				return []string{scriptName}, nil
+			}
+		}
+		if parsedTOML.Tool.Poetry.Scripts["start"] != "" {
+			return []string{"start"}, nil
+		}
+	}
+
+	if len(parsedTOML.Project.Scripts) > 0 {
+		if len(parsedTOML.Project.Scripts) == 1 {
+			for scriptName := range parsedTOML.Project.Scripts {
+				return []string{scriptName}, nil
+			}
+		}
+		if parsedTOML.Project.Scripts["start"] != "" {
+			return []string{"start"}, nil
+		}
+	}
+
+	return nil, nil
+}
+
+// IsPyprojectEnabled controls the release stage of the pyproject feature.
+// For any future changes to the release stage, this is the single place to make changes.
+func IsPyprojectEnabled() bool {
+	return env.IsAlphaSupported()
 }

@@ -18,7 +18,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/BurntSushi/toml"
 )
@@ -57,7 +56,7 @@ func PackagePresent(ctx *gcpbuildpack.Context, name string) (bool, error) {
 	if err != nil || !pyprojectTomlExists {
 		return false, err
 	}
-	if pyprojectTomlExists && env.IsAlphaSupported() {
+	if pyprojectTomlExists && IsPyprojectEnabled() {
 		return PyprojectPackagePresent(ctx, name)
 	}
 	return false, nil

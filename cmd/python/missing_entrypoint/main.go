@@ -68,7 +68,13 @@ func BuildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("finding app.py file: %w", err)
 	}
-	if !hasMain && !hasApp {
+
+	pyprojectExists, err := ctx.FileExists(pyprojectToml)
+	if err != nil {
+		return fmt.Errorf("error checking for pyproject.toml: %w", err)
+	}
+
+	if !hasMain && !hasApp && !pyprojectExists {
 		return fmt.Errorf("for Python, provide a main.py or app.py file or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
 	}
 
@@ -91,23 +97,26 @@ func BuildFn(ctx *gcp.Context) error {
 		}
 	}
 
-	if env.IsAlphaSupported() {
+	// Script command from pyproject.toml takes precedence over the smart default entrypoint.
+	if python.IsPyprojectEnabled() && pyprojectExists {
+		scriptCmd, err := python.GetScriptCommand(ctx)
+		if err != nil {
+			return fmt.Errorf("getting script command from pyproject.toml: %w", err)
+		}
+
 		isPoetry, _, err := python.IsPoetryProject(ctx)
 		if err != nil {
 			return fmt.Errorf("error detecting poetry project: %w", err)
 		}
-		reqExists, err := ctx.FileExists(requirements)
-		if err != nil {
-			return fmt.Errorf("error checking for requirements.txt: %w", err)
-		}
-		pyprojectExists, err := ctx.FileExists(pyprojectToml)
-		if err != nil {
-			return fmt.Errorf("error checking for pyproject.toml: %w", err)
-		}
-		// If the app is a pyproject app, but not a poetry app, and requirements.txt does not exist,
-		// then we will use uv to run the app.
-		if pyprojectExists && !isPoetry && !reqExists {
-			cmd = []string{"uv", "run", "gunicorn", "-b", ":8080", pyModule}
+
+		if scriptCmd != nil {
+			if isPoetry {
+				cmd = append([]string{"poetry", "run"}, scriptCmd...)
+			} else {
+				cmd = append([]string{"uv", "run"}, scriptCmd...)
+			}
+		} else if !hasMain && !hasApp {
+			return fmt.Errorf("for Python with pyproject.toml, provide a main.py or app.py file or a script command in pyproject.toml or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
 		}
 	}
 
