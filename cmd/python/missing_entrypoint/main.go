@@ -98,7 +98,7 @@ func BuildFn(ctx *gcp.Context) error {
 	}
 
 	// Script command from pyproject.toml takes precedence over the smart default entrypoint.
-	if python.IsPyprojectEnabled() && pyprojectExists {
+	if python.IsPyprojectEnabled(ctx) {
 		scriptCmd, err := python.GetScriptCommand(ctx)
 		if err != nil {
 			return fmt.Errorf("getting script command from pyproject.toml: %w", err)

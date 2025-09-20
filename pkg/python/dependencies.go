@@ -52,11 +52,7 @@ func PackagePresent(ctx *gcpbuildpack.Context, name string) (bool, error) {
 	if requirementsExists {
 		return RequirementsPackagePresent(ctx, name)
 	}
-	pyprojectTomlExists, err := ctx.FileExists(pyprojectToml)
-	if err != nil || !pyprojectTomlExists {
-		return false, err
-	}
-	if pyprojectTomlExists && IsPyprojectEnabled() {
+	if IsPyprojectEnabled(ctx) {
 		return PyprojectPackagePresent(ctx, name)
 	}
 	return false, nil

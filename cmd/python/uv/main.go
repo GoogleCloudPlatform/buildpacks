@@ -28,7 +28,7 @@ func main() {
 }
 
 func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !python.IsPyprojectEnabled() {
+	if !python.IsPyprojectEnabled(ctx) {
 		return gcp.OptOut("Python UV Buildpack is not supported in the current release track."), nil
 	}
 

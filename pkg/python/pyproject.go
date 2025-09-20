@@ -355,8 +355,26 @@ func GetScriptCommand(ctx *gcp.Context) ([]string, error) {
 	return nil, nil
 }
 
-// IsPyprojectEnabled controls the release stage of the pyproject feature.
+// IsPyprojectEnabled checks if the pyproject feature is enabled.
 // For any future changes to the release stage, this is the single place to make changes.
-func IsPyprojectEnabled() bool {
+func IsPyprojectEnabled(ctx *gcp.Context) bool {
+	pyprojectTomlExists, _ := ctx.FileExists(pyprojectToml)
+	if !pyprojectTomlExists {
+		return false
+	}
+	requirementsTxtExists, _ := ctx.FileExists(requirements)
+	v, err := RuntimeVersion(ctx, ctx.ApplicationRoot())
+	if err != nil {
+		return false
+	}
+	v = strings.ReplaceAll(v, "*", "0")
+	isPythonVersionLessThan314, err := versionMatchesSemver(ctx, "<3.14.0-0", v)
+	if err != nil {
+		return false
+	}
+	// If both requirements.txt and pyproject.toml exist, we will prefer requirements.txt for python <=3.13.
+	if requirementsTxtExists && isPythonVersionLessThan314 {
+		return false
+	}
 	return env.IsAlphaSupported()
 }

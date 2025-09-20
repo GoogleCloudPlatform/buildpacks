@@ -30,7 +30,7 @@ func main() {
 
 // DetectFn is the exported detect function.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !python.IsPyprojectEnabled() {
+	if !python.IsPyprojectEnabled(ctx) {
 		return gcp.OptOut("Python Poetry Buildpack is not supported in the current release track."), nil
 	}
 

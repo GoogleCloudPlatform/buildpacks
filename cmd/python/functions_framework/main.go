@@ -44,8 +44,7 @@ func main() {
 // DetectFn is the exported detect function.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
-		pyprojectTomlExists, _ := ctx.FileExists(pyprojectToml)
-		if pyprojectTomlExists && env.IsAlphaSupported() {
+		if python.IsPyprojectEnabled(ctx) {
 			return gcp.OptInEnvSet(env.FunctionTarget), nil
 		}
 		return gcp.OptInEnvSet(env.FunctionTarget, gcp.WithBuildPlans(python.RequirementsProvidesPlan)), nil
