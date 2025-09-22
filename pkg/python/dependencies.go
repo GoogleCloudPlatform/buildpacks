@@ -45,15 +45,15 @@ var eggRegex = map[string]*regexp.Regexp{
 
 // PackagePresent checks if a given package is present in the requirements file.
 func PackagePresent(ctx *gcpbuildpack.Context, name string) (bool, error) {
+	if IsPyprojectEnabled(ctx) {
+		return PyprojectPackagePresent(ctx, name)
+	}
 	requirementsExists, err := ctx.FileExists(requirements)
 	if err != nil {
 		return false, err
 	}
 	if requirementsExists {
 		return RequirementsPackagePresent(ctx, name)
-	}
-	if IsPyprojectEnabled(ctx) {
-		return PyprojectPackagePresent(ctx, name)
 	}
 	return false, nil
 }

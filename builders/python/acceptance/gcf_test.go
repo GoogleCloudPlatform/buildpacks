@@ -169,7 +169,7 @@ func TestFailures(t *testing.T) {
 			Name:      "fail_pyproject_without_framework",
 			App:       "fail_pyproject_without_framework",
 			Env:       []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
-			MustMatch: "This project is using pyproject.toml but you have not included the Functions Framework in your dependencies. Please add it by running: 'poetry add functions-framework' or 'uv add functions-framework'.",
+			MustMatch: "This project is using pyproject.toml but you have not included the Functions Framework in your dependencies. Please add it to your pyproject.toml.",
 		},
 	}
 

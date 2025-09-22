@@ -64,13 +64,7 @@ func BuildFn(ctx *gcp.Context) error {
 	}
 
 	// Determine if the function has dependency on functions-framework.
-	hasFrameworkDependency := false
-	pyprojectTomlExists, err := ctx.FileExists(pyprojectToml)
-	if err != nil {
-		return err
-	}
-
-	hasFrameworkDependency, err = python.PackagePresent(ctx, functionsFramework)
+	hasFrameworkDependency, err := python.PackagePresent(ctx, functionsFramework)
 	if err != nil {
 		return err
 	}
@@ -86,8 +80,8 @@ func BuildFn(ctx *gcp.Context) error {
 			return fmt.Errorf("clearing layer %q: %w", l.Name, err)
 		}
 	} else {
-		if pyprojectTomlExists && env.IsAlphaSupported() {
-			return gcp.UserErrorf("This project is using pyproject.toml but you have not included the Functions Framework in your dependencies. Please add it by running: 'poetry add functions-framework' or 'uv add functions-framework'.")
+		if python.IsPyprojectEnabled(ctx) {
+			return gcp.UserErrorf("This project is using pyproject.toml but you have not included the Functions Framework in your dependencies. Please add it to your pyproject.toml.")
 		}
 
 		if _, isVendored := os.LookupEnv(python.VendorPipDepsEnv); isVendored {
