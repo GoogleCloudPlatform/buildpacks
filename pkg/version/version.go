@@ -85,10 +85,24 @@ func ResolveVersion(constraint string, versions []string, opts ...ResolveVersion
 func sortVersionsDesc(versions []*semver.Version) {
 	slices.SortStableFunc(versions, func(a, b *semver.Version) int {
 		if a.Equal(b) {
-			return strings.Compare(b.Metadata(), a.Metadata())
+			return compareMetadata(b, a) // Compare metadata also in desc order
 		}
 		return b.Compare(a)
 	})
+}
+
+func compareMetadata(a, b *semver.Version) int {
+	aIsEA := strings.Contains(a.Metadata(), ".ea")
+	bIsEA := strings.Contains(b.Metadata(), ".ea")
+	switch {
+	case aIsEA == bIsEA:
+		return strings.Compare(a.Metadata(), b.Metadata())
+	// The semver which is not EA is always greater
+	case aIsEA:
+		return -1
+	default:
+		return 1
+	}
 }
 
 func shouldSkipVersion(version string, keywords []string) bool {
