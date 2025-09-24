@@ -26,6 +26,21 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	// SourceFirebaseConsole is the source name for environment variables set via the Firebase Console.
+	// Think server-side environment variables set via the Firebase Console UI.
+	SourceFirebaseConsole = "Firebase Console"
+
+	// SourceFirebaseSystem is the source name for default environment variables provided by Firebase.
+	// Think FIREBASE_CONFIG and FIREBASE_WEBAPP_CONFIG.
+	SourceFirebaseSystem = "Firebase System"
+
+	// SourceAppHostingYAML is the source name for environment variables defined in apphosting.yaml.
+	SourceAppHostingYAML = "apphosting.yaml"
+
+	reservedFirebaseKeyPrefix = "X_FIREBASE_"
+)
+
 var (
 	validAvailabilityValues = map[string]bool{"BUILD": true, "RUNTIME": true}
 	reservedKeys            = map[string]bool{
@@ -34,8 +49,6 @@ var (
 		"K_REVISION":      true,
 		"K_CONFIGURATION": true,
 	}
-
-	reservedFirebaseKeyPrefix = "X_FIREBASE_"
 )
 
 // AppHostingSchema is the struct representation of apphosting.yaml.
@@ -78,6 +91,7 @@ type EnvironmentVariable struct {
 	Value        string   `yaml:"value,omitempty"`  // Optional: Can be value xor secret
 	Secret       string   `yaml:"secret,omitempty"` // Optional: Can be value xor secret
 	Availability []string `yaml:"availability,omitempty"`
+	Source       string   `yaml:"source,omitempty"`
 }
 
 // Scripts is the struct representation of the scripts in apphosting.yaml.
@@ -273,10 +287,14 @@ func MergeWithEnvironmentSpecificYAML(appHostingSchema *AppHostingSchema, appHos
 		return nil
 	}
 
-	envSpecificYAMLPath := filepath.Join(filepath.Dir(appHostingYAMLPath), fmt.Sprintf("apphosting.%v.yaml", environmentName))
+	envSpecificYAMLFile := fmt.Sprintf("apphosting.%v.yaml", environmentName)
+	envSpecificYAMLPath := filepath.Join(filepath.Dir(appHostingYAMLPath), envSpecificYAMLFile)
 	envSpecificSchema, err := ReadAndValidateFromFile(envSpecificYAMLPath)
 	if err != nil {
 		return fmt.Errorf("reading environment specific apphosting schema: %w", err)
+	}
+	for i := range envSpecificSchema.Env {
+		envSpecificSchema.Env[i].Source = envSpecificYAMLFile
 	}
 
 	mergeAppHostingSchemas(appHostingSchema, &envSpecificSchema)

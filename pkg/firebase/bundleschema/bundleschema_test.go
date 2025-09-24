@@ -26,8 +26,8 @@ func TestReadAndValidateFromFile(t *testing.T) {
 						Connector: "projects/my-project/locations/us-central1/connectors/my-connector",
 					},
 					EnvironmentVariables: []EnvironmentVariable{
-						EnvironmentVariable{Variable: "SSR_PORT", Value: "8080", Availability: []string{"RUNTIME"}},
-						EnvironmentVariable{Variable: "HOSTNAME", Value: "0.0.0.0", Availability: []string{"RUNTIME"}},
+						EnvironmentVariable{Variable: "SSR_PORT", Value: "8080", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
+						EnvironmentVariable{Variable: "HOSTNAME", Value: "0.0.0.0", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 					},
 				},
 				Metadata: &Metadata{

@@ -167,12 +167,12 @@ func TestParseEnvVarsFromString(t *testing.T) {
 			]
 		`,
 			wantEnvVars: []apphostingschema.EnvironmentVariable{
-				{Variable: "SERVER_SIDE_ENV_VAR_NUMBER", Value: "3457934845", Availability: []string{"BUILD", "RUNTIME"}},
-				{Variable: "SERVER_SIDE_ENV_VAR_MULTILINE_FROM_SERVER_SIDE", Value: "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n", Availability: []string{"BUILD"}},
-				{Variable: "SERVER_SIDE_ENV_VAR_QUOTED_SPECIAL", Value: "api_from_server_side.service.com::", Availability: []string{"RUNTIME"}},
-				{Variable: "SERVER_SIDE_ENV_VAR_SPACED", Value: "api979 - service -  com", Availability: []string{"BUILD"}},
-				{Variable: "SERVER_SIDE_ENV_VAR_SINGLE_QUOTES", Value: "I said, 'I'm learning GOLANG!'", Availability: []string{"BUILD"}},
-				{Variable: "SERVER_SIDE_ENV_VAR_DOUBLE_QUOTES", Value: "\"api41.service.com\"", Availability: []string{"BUILD", "RUNTIME"}},
+				{Variable: "SERVER_SIDE_ENV_VAR_NUMBER", Value: "3457934845", Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseConsole},
+				{Variable: "SERVER_SIDE_ENV_VAR_MULTILINE_FROM_SERVER_SIDE", Value: "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n", Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseConsole},
+				{Variable: "SERVER_SIDE_ENV_VAR_QUOTED_SPECIAL", Value: "api_from_server_side.service.com::", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseConsole},
+				{Variable: "SERVER_SIDE_ENV_VAR_SPACED", Value: "api979 - service -  com", Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseConsole},
+				{Variable: "SERVER_SIDE_ENV_VAR_SINGLE_QUOTES", Value: "I said, 'I'm learning GOLANG!'", Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseConsole},
+				{Variable: "SERVER_SIDE_ENV_VAR_DOUBLE_QUOTES", Value: "\"api41.service.com\"", Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseConsole},
 			},
 		},
 		{

@@ -121,5 +121,12 @@ func ReadAndValidateFromFile(filePath string) (BundleSchema, error) {
 		return b, fmt.Errorf("unmarshalling apphosting config as YAML: %w", err)
 	}
 
+	// For cases where the adapters set an env var
+	for i := range b.RunConfig.EnvironmentVariables {
+		if b.RunConfig.EnvironmentVariables[i].Source == "" {
+			b.RunConfig.EnvironmentVariables[i].Source = apphostingschema.SourceFirebaseSystem
+		}
+	}
+
 	return b, nil
 }

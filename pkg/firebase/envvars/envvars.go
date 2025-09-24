@@ -95,7 +95,11 @@ func ParseEnvVarsFromString(serverSideEnvVars string) ([]apphostingschema.Enviro
 
 	err := json.Unmarshal([]byte(serverSideEnvVars), &parsedServerSideEnvVars)
 	if err != nil {
-		return parsedServerSideEnvVars, fmt.Errorf("unmarshalling server side env var %v: %w", serverSideEnvVars, err)
+		return nil, fmt.Errorf("unmarshalling server side env var %v: %w", serverSideEnvVars, err)
+	}
+
+	for i := range parsedServerSideEnvVars {
+		parsedServerSideEnvVars[i].Source = apphostingschema.SourceFirebaseConsole
 	}
 
 	return parsedServerSideEnvVars, nil
