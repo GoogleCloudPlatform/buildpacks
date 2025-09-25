@@ -388,6 +388,24 @@ func TestInstallSource(t *testing.T) {
 			wantError:    false,
 			wantAR:       false,
 		},
+		{
+			name:               "AR_Prod_for_jdk_version_with_beta_and_stable_present",
+			runtime:            OpenJDK,
+			version:            "25.0.1-beta",
+			runtimeImageRegion: "us-central1",
+			buildEnv:           "prod",
+			wantAR:             true,
+			wantVersion:        "25.0.1-beta",
+		},
+		{
+			name:               "AR_Prod_for_jdk_version_with_beta_exact",
+			runtime:            OpenJDK,
+			version:            "25.0.1_12-beta",
+			runtimeImageRegion: "us-central1",
+			buildEnv:           "prod",
+			wantAR:             true,
+			wantVersion:        "25.0.1_12-beta",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -427,7 +445,7 @@ func TestInstallSource(t *testing.T) {
 			}(fetch.ARVersions)
 
 			fetch.ARVersions = func(url, fallbackURL string, ctx *gcp.Context) ([]string, error) {
-				return []string{"11.0.21_9-post-Ubuntu-0ubuntu122.04", "17.0.9_9-Ubuntu-122.04", "21.0.1_12-Ubuntu-222.04"}, nil
+				return []string{"11.0.21_9-post-Ubuntu-0ubuntu122.04", "17.0.9_9-Ubuntu-122.04", "21.0.1_12-Ubuntu-222.04", "17.0.1_12-beta", "17.0.1_13"}, nil
 			}
 
 			layer := &libcnb.Layer{

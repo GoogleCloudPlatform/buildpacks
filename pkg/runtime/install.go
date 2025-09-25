@@ -366,8 +366,8 @@ func ResolveVersion(ctx *gcp.Context, runtime InstallableRuntime, verConstraint,
 	var versions []string
 	var err error
 	registry := tarballRegistry()
-	region, present := os.LookupEnv(env.RuntimeImageRegion)
-	if registry == tarballRegistryDev || !present {
+	region, isARrequest := os.LookupEnv(env.RuntimeImageRegion)
+	if registry == tarballRegistryDev || !isARrequest {
 		// Use Lorry for dev env or if the region is not set.
 		url := fmt.Sprintf(runtimeVersionsURL, osName, runtime)
 		err = fetch.JSON(url, &versions)
@@ -383,19 +383,24 @@ func ResolveVersion(ctx *gcp.Context, runtime InstallableRuntime, verConstraint,
 	}
 
 	normalizedVersions := make(map[string]string)
-	doNormalize := present && (runtime == OpenJDK || runtime == CanonicalJDK)
+	isJdk := runtime == OpenJDK || runtime == CanonicalJDK
+	normalizeArVersions := isARrequest && isJdk
+	// When resolving version openjdk versions should be decoded to align with semver requirement. (eg. 11.0.21_9 -> 11.0.21+9)
+	// Also replace the -beta suffix with empty string so that we can properly compare EA versions.
+	jdkReplacer := strings.NewReplacer("_", "+", "-beta", "")
 	for _, v := range versions {
-		if doNormalize {
-			// When resolving version openjdk versions should be decoded to align with semver requirement. (eg. 11.0.21_9 -> 11.0.21+9)
-			// Also replace the -beta suffix with empty string so that we can properly compare EA versions.
-			replacer := strings.NewReplacer("_", "+", "-beta", "")
-			normalizedV := replacer.Replace(v)
+		if normalizeArVersions {
+			normalizedV := jdkReplacer.Replace(v)
 			normalizedVersions[normalizedV] = v
 		} else {
 			normalizedVersions[v] = v
 		}
 	}
-	v, err := version.ResolveVersion(verConstraint, slices.Collect(maps.Keys(normalizedVersions)))
+	normalizedConstraint := verConstraint
+	if isJdk {
+		normalizedConstraint = jdkReplacer.Replace(verConstraint)
+	}
+	v, err := version.ResolveVersion(normalizedConstraint, slices.Collect(maps.Keys(normalizedVersions)))
 	if err != nil {
 		return "", gcp.UserErrorf("invalid %s version specified: %v. You may need to use a different builder. Please check if the language version specified is supported by the os: %v. You can refer to https://cloud.google.com/docs/buildpacks/builders for a list of compatible runtime languages per builder", runtimeNames[runtime], err, osName)
 	}
