@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack for the Angular framework.
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -36,44 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/buildermetadata",
-        "//pkg/env",
-        "//pkg/firebase/apphostingschema",
-        "//pkg/firebase/faherror",
-        "//pkg/firebase/util",
+        "//cmd/nodejs/firebaseangular/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/nodejs",
-        "@com_github_masterminds_semver//:go_default_library",
-    ],
-)
-
-go_library(
-    name = "firebaseangularlib",
-    srcs = ["main.go"],  #keep
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//builders:nodejs_builders",
-    ],
-    deps = [
-        "//pkg/buildermetadata",
-        "//pkg/env",
-        "//pkg/firebase/apphostingschema",
-        "//pkg/firebase/faherror",
-        "//pkg/firebase/util",
-        "//pkg/gcpbuildpack",
-        "//pkg/nodejs",
-        "@com_github_masterminds_semver//:go_default_library",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = [
-        "//internal/buildpacktest",
-        "//internal/mockprocess",
-        "//pkg/buildermetadata",
     ],
 )

@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack for the Node.js runtime.
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -26,7 +26,14 @@ buildpack(
 
 buildpack_using_runner(
     name = "functions_framework_using_runner",
-    buildpack_id = "google.nodejs.functions_framework",
+    srcs = [
+        "bytecode_cache/main.js",
+        "converter/without-framework-compat/package.json",
+        "converter/without-framework-compat/package-lock.json",
+        "converter/without-framework/package.json",
+        "converter/without-framework/package-lock.json",
+    ],
+    buildpack_id = "google.nodejs.functions-framework",
     prefix = "nodejs",
     version = "0.9.4",
     visibility = [
@@ -43,41 +50,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/ar",
-        "//pkg/buildermetrics",
-        "//pkg/cache",
-        "//pkg/cloudfunctions",
-        "//pkg/env",
+        "//cmd/nodejs/functions_framework/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/nodejs",
-        "@com_github_buildpacks_libcnb_v2//:go_default_library",
     ],
-)
-
-go_library(
-    name = "functions_frameworklib",
-    srcs = ["main.go"],  #keep
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//builders:nodejs_builders",
-    ],
-    deps = [
-        "//pkg/ar",
-        "//pkg/buildermetrics",
-        "//pkg/cache",
-        "//pkg/cloudfunctions",
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-        "//pkg/nodejs",
-        "@com_github_buildpacks_libcnb_v2//:go_default_library",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = ["//internal/buildpacktest"],
 )

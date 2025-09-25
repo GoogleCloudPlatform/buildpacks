@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,59 +17,10 @@
 package main
 
 import (
-	"path/filepath"
-
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/appengine_validation/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	gemfileExists, err := ctx.FileExists("Gemfile")
-	if err != nil {
-		return nil, err
-	}
-	if gemfileExists {
-		return gcp.OptInFileFound("Gemfile"), nil
-	}
-	gemsRbExists, err := ctx.FileExists("gems.rb")
-	if err != nil {
-		return nil, err
-	}
-	if gemsRbExists {
-		return gcp.OptInFileFound("gems.rb"), nil
-	}
-	return gcp.OptOut("no Gemfile or gems.rb found"), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	gemfile := ""
-	gemfileExists, err := ctx.FileExists("Gemfile")
-	if err != nil {
-		return err
-	}
-	gemsRbExists, err := ctx.FileExists("gems.rb")
-	if err != nil {
-		return err
-	}
-	if gemfileExists {
-		gemfile = "Gemfile"
-		if gemsRbExists {
-			ctx.Warnf("Gemfile and gems.gb both exist. Using Gemfile.")
-		}
-	} else if gemsRbExists {
-		gemfile = "gems.rb"
-	} else {
-		return nil
-	}
-	script := filepath.Join(ctx.BuildpackRoot(), "scripts", "check_gemfile_version.rb")
-	result, err := ctx.Exec([]string{"ruby", script, gemfile})
-	if err != nil && result != nil && result.ExitCode != 0 {
-		return gcp.UserErrorf(result.Stdout)
-	}
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

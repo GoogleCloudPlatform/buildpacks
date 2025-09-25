@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Go gomod Buildpack
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -36,29 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
+        "//cmd/go/gomod/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/golang",
     ],
-)
-
-go_library(
-    name = "gomodlib",
-    srcs = ["main.go"],  #keep
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//builders:go_builders",
-    ],
-    deps = [
-        "//pkg/gcpbuildpack",
-        "//pkg/golang",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = ["//internal/buildpacktest"],
 )

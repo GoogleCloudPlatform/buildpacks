@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,124 +20,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	lib "github.com/GoogleCloudPlatform/buildpacks/cmd/go/appengine_gopath/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !env.IsGAE() && !env.IsFlex() {
-		return gcp.OptOut("not a GAE Standard or Flex app."), nil
-	}
-	goModExists, err := ctx.FileExists("go.mod")
-	if err != nil {
-		return nil, err
-	}
-	if goModExists {
-		return gcp.OptOut("go.mod found"), nil
-	}
-	atLeastOne, err := ctx.HasAtLeastOne("*.go")
-	if err != nil {
-		return nil, fmt.Errorf("finding *.go files: %w", err)
-	}
-	if !atLeastOne {
-		return gcp.OptOut("no .go files found"), nil
-	}
-	return gcp.OptIn("go.mod file not found, assuming GOPATH build"), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	l, err := ctx.Layer("gopath", gcp.BuildLayer)
-	if err != nil {
-		return fmt.Errorf("creating gopath layer: %w", err)
-	}
-
-	goPath := l.Path
-	goPathSrc := filepath.Join(goPath, "src")
-
-	if err := ctx.MkdirAll(goPathSrc, 0755); err != nil {
-		return err
-	}
-
-	l.BuildEnvironment.Override("GOPATH", goPath)
-	l.BuildEnvironment.Override("GO111MODULE", "off")
-
-	stagerGoPath := filepath.Join(ctx.ApplicationRoot(), "_gopath")
-	stagerGoPathSrc := filepath.Join(stagerGoPath, "src")
-	stagerGoPathMain := filepath.Join(stagerGoPath, "main-package-path")
-
-	stagerGoPathSrcExists, err := ctx.FileExists(stagerGoPathSrc)
-	if err != nil {
-		return err
-	}
-	if stagerGoPathSrcExists {
-		files, err := ctx.ReadDir(stagerGoPathSrc)
-		if err != nil {
-			return err
-		}
-		for _, f := range files {
-			// To avoid superfluous files in root of stagerGoPathSrc, copy the subdirectories individually.
-			if !f.IsDir() {
-				continue
-			}
-			copyDir(ctx, filepath.Join(stagerGoPathSrc, f.Name()), filepath.Join(goPathSrc, f.Name()))
-		}
-	}
-
-	var buildMainPath string
-	stagerGoPathMainExists, err := ctx.FileExists(stagerGoPathMain)
-	if err != nil {
-		return err
-	}
-	if stagerGoPathMainExists {
-		goPathMainBytes, err := ctx.ReadFile(stagerGoPathMain)
-		if err != nil {
-			return err
-		}
-		buildMainPath = filepath.Join(goPathSrc, strings.TrimSpace(string(goPathMainBytes)))
-		// Remove stager directory prior to copying to make sure we don't copy the stager directory to $GOPATH.
-		if err := ctx.RemoveAll(stagerGoPath); err != nil {
-			return err
-		}
-		if err := ctx.MkdirAll(buildMainPath, 0755); err != nil {
-			return err
-		}
-		copyDir(ctx, ctx.ApplicationRoot(), buildMainPath)
-	} else {
-		buildMainPath = "./..."
-		// Remove stager directory to make sure there's only one go package in application root.
-		if err := ctx.RemoveAll(stagerGoPath); err != nil {
-			return err
-		}
-	}
-
-	if _, exists := os.LookupEnv(env.Buildable); !exists {
-		l.BuildEnvironment.Override(env.Buildable, buildMainPath)
-	}
-
-	// Unlike in the appengine_gomod buildpack, we do not have to compile gopath apps from a path that ends in /srv/. There are two cases:
-	//  * _gopath/main-package-path exists and app source is put on GOPATH, which is handled by:
-	//			https://github.com/golang/appengine/blob/553959209a20f3be281c16dd5be5c740a893978f/delay/delay.go#L136.
-	//  * _gopath/main-package-path does not exist and the app is built from the current directory, which is handled by:
-	//			https://github.com/golang/appengine/blob/553959209a20f3be281c16dd5be5c740a893978f/delay/delay.go#L125-L127
-
-	// TODO(b/145608768): Investigate creating and caching a GOCACHE layer.
-	return nil
-}
-
-func copyDir(ctx *gcp.Context, src, dst string) error {
-	// Trailing "/." copies the contents of src directory, but not src itself.
-	src = filepath.Clean(src) + string(filepath.Separator) + "."
-	_, err := ctx.Exec([]string{"cp", "--dereference", "-R", src, dst}, gcp.WithUserTimingAttribution)
-	return err
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

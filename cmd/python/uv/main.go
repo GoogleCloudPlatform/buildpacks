@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,46 +16,10 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/python/uv/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !python.IsPyprojectEnabled(ctx) {
-		return gcp.OptOut("Python UV Buildpack is not supported in the current release track."), nil
-	}
-
-	isUV, message, err := python.IsUVProject(ctx)
-	if err != nil {
-		return gcp.OptOut(message), err
-	}
-
-	if isUV {
-		return gcp.OptIn(message), nil
-	}
-	return gcp.OptOut(message), nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.UVUsageCounterID).Increment(1)
-	if err := python.InstallUV(ctx); err != nil {
-		return fmt.Errorf("installing uv: %w", err)
-	}
-
-	if err := python.EnsureUVLockfile(ctx); err != nil {
-		return fmt.Errorf("ensuring uv.lock file: %w", err)
-	}
-
-	if err := python.UVInstallDependenciesAndConfigureEnv(ctx); err != nil {
-		return fmt.Errorf("installing dependencies with uv: %w", err)
-	}
-
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

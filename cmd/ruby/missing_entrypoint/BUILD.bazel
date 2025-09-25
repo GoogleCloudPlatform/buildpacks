@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack for the Ruby missing-entrypoint.
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -19,7 +19,7 @@ buildpack(
 
 buildpack_using_runner(
     name = "missing_entrypoint_using_runner",
-    buildpack_id = "google.ruby.missing_entrypoint",
+    buildpack_id = "google.ruby.missing-entrypoint",
     prefix = "ruby",
     version = "0.0.1",
     visibility = [
@@ -36,22 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/env",
+        "//cmd/ruby/missing_entrypoint/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/runtime",
-    ],
-)
-
-go_library(
-    name = "missing_entrypointlib",
-    srcs = ["main.go"],  #keep
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//builders:ruby_builders",
-    ],
-    deps = [
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-        "//pkg/runtime",
     ],
 )

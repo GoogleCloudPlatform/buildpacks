@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack for the Java functions framework copy.
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -23,7 +23,11 @@ buildpack(
 
 buildpack_using_runner(
     name = "functions_framework_using_runner",
-    buildpack_id = "google.java.functions_framework",
+    srcs = [
+        "extra_tasks.gradle",
+        "launch.sh",
+    ],
+    buildpack_id = "google.java.functions-framework",
     prefix = "java",
     version = "1.1.0",
     visibility = [
@@ -40,35 +44,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/cloudfunctions",
-        "//pkg/env",
+        "//cmd/java/functions_framework/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/java",
-        "@com_github_buildpacks_libcnb_v2//:go_default_library",
     ],
-)
-
-go_library(
-    name = "functions_frameworklib",
-    srcs = ["main.go"],  #keep
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//builders:java_builders",
-    ],
-    deps = [
-        "//pkg/cloudfunctions",
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-        "//pkg/java",
-        "@com_github_buildpacks_libcnb_v2//:go_default_library",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = ["//internal/buildpacktest"],
 )

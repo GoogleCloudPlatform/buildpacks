@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack for the Python runtime.
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -22,7 +22,10 @@ buildpack(
 
 buildpack_using_runner(
     name = "functions_framework_using_runner",
-    buildpack_id = "google.python.functions_framework",
+    srcs = [
+        "converter/requirements.txt",
+    ],
+    buildpack_id = "google.python.functions-framework",
     prefix = "python",
     version = "0.9.6",
     visibility = [
@@ -39,42 +42,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/cloudfunctions",
-        "//pkg/env",
+        "//cmd/python/functions_framework/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/python",
-    ],
-)
-
-go_library(
-    name = "functions_frameworklib",
-    srcs = ["main.go"],  #keep
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//builders:python_builders",
-    ],
-    deps = [
-        "//pkg/cloudfunctions",
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-        "//pkg/python",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    args = [
-        "-test-data=$(location //builders/testdata/python:functions)",
-    ],
-    data = [
-        "//builders/testdata/python:functions",
-    ],
-    embed = [":main"],
-    rundir = ".",
-    deps = [
-        "//internal/buildpacktest",
-        "//internal/mockprocess",
     ],
 )

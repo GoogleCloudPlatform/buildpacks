@@ -1,4 +1,4 @@
-// Copyright 2023 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,35 +19,10 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/flex/lib"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
-const (
-	// UrlsEnvar is the name of the dotnet-specific envar to set application URL(s), including port.
-	UrlsEnvar = "ASPNETCORE_URLS"
-)
-
 func main() {
-	gcpbuildpack.Main(DetectFn, BuildFn)
-}
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcpbuildpack.Context) (gcpbuildpack.DetectResult, error) {
-	if !env.IsFlex() {
-		return gcpbuildpack.OptOut("not a GAE Flex app."), nil
-	}
-	return gcpbuildpack.OptIn("this is a GAE Flex app."), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcpbuildpack.Context) error {
-	l, err := ctx.Layer("main_env", gcpbuildpack.LaunchLayer)
-	if err != nil {
-		return fmt.Errorf("creating main_env layer: %v", err)
-	}
-	l.LaunchEnvironment.Default(UrlsEnvar, "http://0.0.0.0:8080")
-	return nil
+	gcpbuildpack.Main(lib.DetectFn, lib.BuildFn)
 }

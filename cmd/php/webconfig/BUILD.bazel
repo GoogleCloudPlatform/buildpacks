@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack to generate web server configs for PHP runtime.
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -36,47 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/appyaml",
-        "//pkg/env",
+        "//cmd/php/webconfig/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/nginx",
-        "//pkg/php",
-        "//pkg/runtime",
-        "//pkg/webconfig",
-        "@com_github_masterminds_semver//:go_default_library",
-    ],
-)
-
-go_library(
-    name = "webconfiglib",
-    srcs = ["main.go"],  #keep
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//builders:php_builders",
-    ],
-    deps = [
-        "//pkg/appyaml",
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-        "//pkg/nginx",
-        "//pkg/php",
-        "//pkg/runtime",
-        "//pkg/webconfig",
-        "@com_github_masterminds_semver//:go_default_library",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = [
-        "//internal/buildpacktest",
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-        "//pkg/webconfig",
-        "@com_github_google_go-cmp//cmp:go_default_library",
     ],
 )

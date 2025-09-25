@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,51 +17,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/python/functions_framework_compat/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
-)
-
-const (
-	layerName = "functions-framework-compat"
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !env.IsGCF() {
-		return gcp.OptOut("Deployment environment is not GCF."), nil
-	}
-	if runtime := os.Getenv(env.Runtime); runtime != "python37" {
-		return gcp.OptOut(fmt.Sprintf("env var %s is not set to python37", env.Runtime)), nil
-	}
-	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
-		return gcp.OptInEnvSet(env.FunctionTarget, gcp.WithBuildPlans(python.RequirementsProvidesPlan)), nil
-	}
-	return gcp.OptOutEnvNotSet(env.FunctionTarget), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	l, err := ctx.Layer(layerName, gcp.LaunchLayer, gcp.BuildLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", layerName, err)
-	}
-
-	// The pip install is performed by the pip buildpack; see python.InstallRequirements.
-	ctx.Debugf("Adding functions-framework requirements.txt to the list of requirements files to install.")
-	r := filepath.Join(ctx.BuildpackRoot(), "converter", "requirements.txt")
-	l.BuildEnvironment.Append(python.RequirementsFilesEnv, string(os.PathListSeparator), r)
-
-	// Set additional Python 3.7 env var for backwards compatibility.
-	l.LaunchEnvironment.Default("ENTRY_POINT", os.Getenv(env.FunctionTarget))
-
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

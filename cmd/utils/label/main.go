@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,36 +18,10 @@
 package main
 
 import (
-	"os"
-	"strings"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/utils/label/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	return gcp.OptInAlways(), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	for _, e := range os.Environ() {
-		if !strings.HasPrefix(e, env.LabelPrefix) {
-			continue
-		}
-
-		parts := strings.SplitN(e, "=", 2)
-		key := strings.TrimPrefix(parts[0], env.LabelPrefix)
-		value := ""
-		if len(parts) > 1 {
-			value = parts[1]
-		}
-		ctx.AddLabel(key, value)
-	}
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

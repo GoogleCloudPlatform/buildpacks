@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,74 +17,10 @@
 package main
 
 import (
-	"fmt"
-
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/rails/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
-)
-
-const (
-	yarnLayer = "yarn"
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	railsExists, err := ctx.FileExists("bin", "rails")
-	if err != nil {
-		return nil, err
-	}
-	if !railsExists {
-		return gcp.OptOutFileNotFound("bin/rails"), nil
-	}
-	needsPrecompile, err := ruby.NeedsRailsAssetPrecompile(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if !needsPrecompile {
-		return gcp.OptOut("Rails assets do not need precompilation"), nil
-	}
-	return gcp.OptIn("found Rails assets to precompile"), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	ctx.Logf("Running Rails asset precompilation")
-
-	// Install Yarn as it is needed for asset precompilation.
-	if err := installYarn(ctx); err != nil {
-		return fmt.Errorf("installing Yarn: %w", err)
-	}
-
-	// It is common practise in Ruby asset precompilation to ignore non-zero exit codes.
-	result, err := ctx.Exec([]string{"bundle", "exec", "ruby", "bin/rails", "assets:precompile"},
-		gcp.WithEnv("RAILS_ENV=production", "MALLOC_ARENA_MAX=2", "RAILS_LOG_TO_STDOUT=true", "LANG=C.utf8"), gcp.WithUserAttribution)
-	if err != nil && result != nil && result.ExitCode != 0 {
-		ctx.Logf("WARNING: Asset precompilation returned non-zero exit code %d. Ignoring.", result.ExitCode)
-		return nil
-	}
-	if err != nil && result != nil {
-		return gcp.UserErrorf(result.Combined)
-	}
-	if err != nil {
-		return gcp.InternalErrorf("asset precompilation failed: %v", err)
-	}
-
-	return nil
-}
-
-func installYarn(ctx *gcp.Context) error {
-	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
-	if err != nil {
-		return err
-	}
-	yrl, err := ctx.Layer(yarnLayer, gcp.BuildLayer, gcp.CacheLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", yarnLayer, err)
-	}
-	return nodejs.InstallYarnLayer(ctx, yrl, pjs)
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

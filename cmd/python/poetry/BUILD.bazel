@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
@@ -33,33 +33,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/buildermetrics",
+        "//cmd/python/poetry/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/python",
-    ],
-)
-
-go_library(
-    name = "poetrylib",
-    srcs = ["main.go"],  #keep
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//builders:python_builders",
-    ],
-    deps = [
-        "//pkg/buildermetrics",
-        "//pkg/gcpbuildpack",
-        "//pkg/python",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = [
-        "//internal/buildpacktest",
-        "//pkg/env",
     ],
 )

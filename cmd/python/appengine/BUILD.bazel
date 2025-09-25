@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack for the Python runtime.
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -36,34 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/appengine",
-        "//pkg/appstart",
-        "//pkg/env",
+        "//cmd/python/appengine/lib",
         "//pkg/gcpbuildpack",
-        "@com_github_masterminds_semver//:go_default_library",
     ],
-)
-
-go_library(
-    name = "appenginelib",
-    srcs = ["main.go"],  #keep
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//builders:python_builders",
-    ],
-    deps = [
-        "//pkg/appengine",
-        "//pkg/appstart",
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-        "@com_github_masterminds_semver//:go_default_library",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
 )

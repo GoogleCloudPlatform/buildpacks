@@ -1,6 +1,6 @@
 # Buildpack for the Go functions framework
 
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
@@ -24,7 +24,12 @@ buildpack(
 
 buildpack_using_runner(
     name = "functions_framework_using_runner",
-    buildpack_id = "google.go.functions_framework",
+    srcs = [
+        "converter/without-framework/go.mod",
+        "converter/without-framework/main.go",
+        "//cmd/go/functions_framework/converter/get_package:main.go",
+    ],
+    buildpack_id = "google.go.functions-framework",
     prefix = "go",
     version = "0.9.4",
     visibility = [
@@ -34,63 +39,14 @@ buildpack_using_runner(
 
 go_binary(
     name = "main",
-    srcs = [
-        "main.go",
-        "template_declarative.go",
-        "template_v0.go",
-        "template_v1_1.go",
-    ],
+    srcs = ["main.go"],
     # Strip debugging information to reduce binary size.
     gc_linkopts = [
         "-s",
         "-w",
     ],
     deps = [
-        "//pkg/cloudfunctions",
-        "//pkg/env",
-        "//pkg/fileutil",
+        "//cmd/go/functions_framework/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/golang",
-        "@com_github_masterminds_semver//:go_default_library",
-    ],
-)
-
-go_library(
-    name = "functions_frameworklib",
-    srcs = [
-        "main.go",
-        "template_declarative.go",
-        "template_v0.go",
-        "template_v1_1.go",
-    ],  #keep
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//builders:go_builders",
-    ],
-    deps = [
-        "//pkg/cloudfunctions",
-        "//pkg/env",
-        "//pkg/fileutil",
-        "//pkg/gcpbuildpack",
-        "//pkg/golang",
-        "@com_github_masterminds_semver//:go_default_library",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    args = [
-        "-test-data=$(location //builders/testdata/go:functions)",
-    ],
-    data = [
-        "//builders/testdata/go:functions",
-    ],
-    embed = [":main"],
-    rundir = ".",
-    deps = [
-        "//internal/buildpacktest",
-        "//internal/mockprocess",
     ],
 )

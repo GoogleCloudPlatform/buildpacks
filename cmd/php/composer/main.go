@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,38 +17,10 @@
 package main
 
 import (
-	"fmt"
-
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/php/composer/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
-)
-
-const (
-	cacheTag = "prod dependencies"
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	composerJSONExists, err := ctx.FileExists("composer.json")
-	if err != nil {
-		return nil, err
-	}
-	if !composerJSONExists {
-		return gcp.OptOutFileNotFound("composer.json"), nil
-	}
-	return gcp.OptInFileFound("composer.json"), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	_, err := php.ComposerInstall(ctx, cacheTag)
-	if err != nil {
-		return fmt.Errorf("composer install: %w", err)
-	}
-
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

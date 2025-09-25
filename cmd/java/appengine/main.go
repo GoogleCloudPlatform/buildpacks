@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,74 +17,10 @@
 package main
 
 import (
-	"fmt"
-	"path/filepath"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	lib "github.com/GoogleCloudPlatform/buildpacks/cmd/java/appengine/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if env.IsGAE() {
-		return appengine.OptInTargetPlatformGAE(), nil
-	}
-	return appengine.OptOutTargetPlatformNotGAE(), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	return appengine.Build(ctx, "java", entrypoint)
-}
-
-func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
-	webXMLExists, err := ctx.FileExists("WEB-INF", "appengine-web.xml")
-	if err != nil {
-		return nil, err
-	}
-	if webXMLExists {
-		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.JavaGAEWebXMLConfigUsageCounterID).Increment(1)
-		processAppEngineWebXML(ctx)
-		return &appstart.Entrypoint{
-			Type:    appstart.EntrypointGenerated.String(),
-			Command: "serve WEB-INF/appengine-web.xml",
-		}, nil
-	}
-
-	executable, err := java.ExecutableJar(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("finding executable jar: %w", err)
-	}
-
-	return &appstart.Entrypoint{
-		Type:    appstart.EntrypointGenerated.String(),
-		Command: "serve " + executable,
-	}, nil
-}
-
-func processAppEngineWebXML(ctx *gcp.Context) {
-	fullPath := filepath.Join(ctx.ApplicationRoot(), "WEB-INF/appengine-web.xml")
-	appEngineWebXML, err := ctx.ReadFile(fullPath)
-	if err != nil {
-		ctx.Warnf("Error reading appengine-web.xml: %v", err)
-		return
-	}
-
-	appEngineWebXMLApp, err := java.ParseAppEngineWebXML(appEngineWebXML)
-	if err != nil {
-		ctx.Warnf("Error parsing appengine-web.xml: %v", err)
-		return
-	}
-
-	if appEngineWebXMLApp.SessionsEnabled {
-		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.JavaGAESessionsEnabledCounterID).Increment(1)
-	}
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

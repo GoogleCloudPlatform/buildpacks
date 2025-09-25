@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,47 +17,10 @@
 package main
 
 import (
-	"fmt"
-
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/go/runtime/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-)
-
-const (
-	goLayer      = "go"
-	envGoVersion = "GOOGLE_GO_VERSION"
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn detects if .go files are present.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if result := runtime.CheckOverride("go"); result != nil {
-		return result, nil
-	}
-	atLeastOne, err := ctx.HasAtLeastOneOutsideDependencyDirectories("*.go")
-	if err != nil {
-		return nil, fmt.Errorf("finding *.go files: %w", err)
-	}
-	if atLeastOne {
-		return gcp.OptIn("found .go files"), nil
-	}
-	return gcp.OptOut("no .go files found"), nil
-}
-
-// BuildFn installs the Go toolchain.
-func BuildFn(ctx *gcp.Context) error {
-	version, err := golang.RuntimeVersion(ctx)
-	if err != nil {
-		return err
-	}
-	grl, err := ctx.Layer(goLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
-	if err != nil {
-		return fmt.Errorf("creating layer: %w", err)
-	}
-	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.Go, version, grl)
-	return err
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

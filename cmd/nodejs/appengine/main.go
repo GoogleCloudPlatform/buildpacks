@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,24 +17,10 @@
 package main
 
 import (
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/appengine/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn detects if the target platform is GAE.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if env.IsGAE() {
-		return appengine.OptInTargetPlatformGAE(), nil
-	}
-	return appengine.OptOutTargetPlatformNotGAE(), nil
-}
-
-// BuildFn sets the image entrypoint.
-func BuildFn(ctx *gcp.Context) error {
-	return appengine.Build(ctx, "nodejs", nil)
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

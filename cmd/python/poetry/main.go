@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,58 +17,10 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/python/poetry/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !python.IsPyprojectEnabled(ctx) {
-		return gcp.OptOut("Python Poetry Buildpack is not supported in the current release track."), nil
-	}
-
-	isPoetry, message, err := python.IsPoetryProject(ctx)
-	if err != nil {
-		return gcp.OptOut(message), err
-	}
-
-	if isPoetry {
-		return gcp.OptIn(message), nil
-	}
-	return gcp.OptOut(message), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.PoetryUsageCounterID).Increment(1)
-	// Install Poetry.
-	if err := python.InstallPoetry(ctx); err != nil {
-		return fmt.Errorf("installing poetry: %w", err)
-	}
-
-	// Ensure poetry.lock exists or generate it.
-	if err := python.EnsurePoetryLockfile(ctx); err != nil {
-		return fmt.Errorf("ensuring poetry.lock: %w", err)
-	}
-
-	// Install dependencies and configure the environment.
-	if err := python.PoetryInstallDependenciesAndConfigureEnv(ctx); err != nil {
-		return fmt.Errorf("installing dependencies and configuring env: %w", err)
-	}
-
-	// Check for incompatible dependencies.
-	if _, err := ctx.Exec([]string{"poetry", "check"}, gcp.WithUserAttribution); err != nil {
-		ctx.Logf("Warning: 'poetry check' returned an error, which might just be a deprecation warning: %v", err)
-	} else {
-		ctx.Debugf("No incompatible dependencies found.")
-	}
-
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

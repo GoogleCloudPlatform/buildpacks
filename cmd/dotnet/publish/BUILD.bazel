@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack for the .NET runtime.
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -36,40 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/cache",
-        "//pkg/devmode",
-        "//pkg/dotnet",
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-        "@com_github_buildpacks_libcnb_v2//:go_default_library",
-    ],
-)
-
-go_library(
-    name = "publishlib",
-    srcs = ["main.go"],  #keep
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//builders:dotnet_builders",
-    ],
-    deps = [
-        "//pkg/cache",
-        "//pkg/devmode",
-        "//pkg/dotnet",
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-        "@com_github_buildpacks_libcnb_v2//:go_default_library",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = [
-        "//internal/buildpacktest",
+        "//cmd/dotnet/publish/lib",
         "//pkg/gcpbuildpack",
     ],
 )

@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,41 +17,10 @@
 package main
 
 import (
-	"fmt"
-	"strings"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/clearsource"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/java/clear_source/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if result, err := clearsource.DetectFn(ctx); result != nil || err != nil {
-		return result, err
-	}
-
-	files := []string{
-		"pom.xml",
-		"build.gradle",
-		"build.gradle.kts",
-	}
-	for _, f := range files {
-		exists, err := ctx.FileExists(f)
-		if err != nil {
-			return nil, err
-		}
-		if exists {
-			return gcp.OptInFileFound(f), nil
-		}
-	}
-	return gcp.OptOut(fmt.Sprintf("none of %s found. Clearing souce only supported on maven and gradle projects.", strings.Join(files, ", "))), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	return clearsource.BuildFn(ctx, []string{"target", "build"})
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

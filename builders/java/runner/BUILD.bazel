@@ -1,0 +1,30 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+package(default_visibility = ["//:__subpackages__"])
+
+go_binary(
+    name = "runner",
+    srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-I /lib64/ld-linux-x86-64.so.2",
+        "-extldflags=\"-Wl,--dynamic-linker,/lib64/ld-linux-x86-64.so.2\"",
+        "-s",
+        "-w",
+    ],
+    target_compatible_with = [
+        "//third_party/bazel_platforms/cpu:x86_64",  # TODO: b/419621355: Remove when all platforms are supported.
+    ],
+    deps = [
+        "//cmd/java/appengine/lib",
+        "//cmd/java/clear_source/lib",
+        "//cmd/java/entrypoint/lib",
+        "//cmd/java/exploded_jar/lib",
+        "//cmd/java/functions_framework/lib",
+        "//cmd/java/gradle/lib",
+        "//cmd/java/maven/lib",
+        "//cmd/java/runtime/lib",
+        "//pkg/commonbuildpacks",
+        "//pkg/gcpbuildpack",
+    ],
+)

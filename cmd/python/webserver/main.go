@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,59 +17,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/python/webserver/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
-)
-
-const (
-	layerName = "gunicorn"
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-var (
-	gunicorn = "gunicorn"
-)
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if os.Getenv(env.Entrypoint) != "" {
-		return gcp.OptOut("custom entrypoint present"), nil
-	}
-	requirementsExists, err := ctx.FileExists("requirements.txt")
-	if err != nil {
-		return nil, err
-	}
-	if requirementsExists {
-		present, err := python.RequirementsPackagePresent(ctx, gunicorn)
-		if err != nil {
-			return nil, fmt.Errorf("error detecting gunicorn: %w", err)
-		}
-		if present {
-			return gcp.OptOut("gunicorn present in requirements.txt"), nil
-		}
-		return gcp.OptIn("gunicorn missing from requirements.txt", gcp.WithBuildPlans(python.RequirementsProvidesPlan)), nil
-	}
-	return gcp.OptIn("requirements.txt with gunicorn not found", gcp.WithBuildPlans(python.RequirementsProvidesPlan)), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	l, err := ctx.Layer(layerName, gcp.BuildLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", layerName, err)
-	}
-
-	// The pip install is performed by the pip buildpack; see python.InstallRequirements.
-	ctx.Debugf("Adding webserver requirements.txt to the list of requirements files to install.")
-	r := filepath.Join(ctx.BuildpackRoot(), "requirements.txt")
-	l.BuildEnvironment.Append(python.RequirementsFilesEnv, string(os.PathListSeparator), r)
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

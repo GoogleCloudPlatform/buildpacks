@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Go appengine_gomod Buildpack
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -19,7 +19,7 @@ buildpack(
 
 buildpack_using_runner(
     name = "appengine_gomod_using_runner",
-    buildpack_id = "google.go.appengine_gomod",
+    buildpack_id = "google.go.appengine-gomod",
     prefix = "go",
     version = "0.9.0",
     visibility = [
@@ -36,36 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/appengine",
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-        "//pkg/golang",
-    ],
-)
-
-go_library(
-    name = "appengine_gomodlib",
-    srcs = ["main.go"],  #keep
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//builders:go_builders",
-    ],
-    deps = [
-        "//pkg/appengine",
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-        "//pkg/golang",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = [
-        "//internal/buildpacktest",
+        "//cmd/go/appengine_gomod/lib",
         "//pkg/gcpbuildpack",
     ],
 )

@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack for archiving user's source code.
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -19,7 +19,7 @@ buildpack(
 
 buildpack_using_runner(
     name = "archive_source_using_runner",
-    buildpack_id = "google.utils.archive_source",
+    buildpack_id = "google.utils.archive-source",
     prefix = "utils",
     version = "0.0.1",
     visibility = [
@@ -36,32 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-    ],
-)
-
-go_library(
-    name = "archive_sourcelib",
-    srcs = ["main.go"],  #keep
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//builders:__subpackages__",
-    ],
-    deps = [
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = [
-        "//internal/buildpacktest",
+        "//cmd/utils/archive_source/lib",
         "//pkg/gcpbuildpack",
     ],
 )

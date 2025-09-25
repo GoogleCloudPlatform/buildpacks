@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,56 +17,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/dart"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/dart/pub/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
-const (
-	pubLayer    = "pub"
-	pubCacheEnv = "PUB_CACHE"
-)
-
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	pubspecExists, err := ctx.FileExists("pubspec.yaml")
-	if err != nil {
-		return nil, err
-	}
-	if !pubspecExists {
-		return gcp.OptOutFileNotFound("pubspec.yaml"), nil
-	}
-	return gcp.OptInFileFound("pubspec.yaml"), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	ml, err := ctx.Layer(pubLayer, gcp.BuildLayer, gcp.CacheLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", pubLayer, err)
-	}
-	ml.BuildEnvironment.Override(pubCacheEnv, ml.Path)
-	if err := os.Setenv(pubCacheEnv, ml.Path); err != nil {
-		return fmt.Errorf("setting env %s=%s: %w", pubCacheEnv, pubLayer, err)
-	}
-
-	// Must use `flutter` for pub get if the project has a Flutter dependency.
-	flutter, err := dart.IsFlutter(ctx.ApplicationRoot())
-	if err == nil && flutter {
-		if _, err := ctx.Exec([]string{"flutter", "pub", "get"}, gcp.WithUserAttribution); err != nil {
-			return err
-		}
-		return nil
-	}
-
-	if _, err := ctx.Exec([]string{"dart", "pub", "get"}, gcp.WithUserAttribution); err != nil {
-		return err
-	}
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

@@ -17,79 +17,10 @@
 package main
 
 import (
-	"fmt"
-	"strings"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/turborepo/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
-)
-
-var (
-	versionKey = "version"
-	// The Turbo buildpack build function sets the following environment variables to configure the build
-	// behavior of subsequent buildpacks.
-	monorepoProject   = "MONOREPO_PROJECT"    // The name of the target application in a turbo monorepo.
-	monorepoCommand   = "MONOREPO_COMMAND"    // The CLI command utility ("turbo").
-	monorepoBuildArgs = "MONOREPO_BUILD_ARGS" // The build arguments to pass to the turbo command.
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	turboJSONExists, err := ctx.FileExists("turbo.json")
-	if err != nil {
-		return nil, err
-	}
-	if !turboJSONExists {
-		return gcp.OptOutFileNotFound("turbo.json"), nil
-	}
-	return gcp.OptInFileFound("turbo.json"), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	appDir := util.ApplicationDirectory(ctx)
-
-	turboJSON, err := nodejs.ReadTurboJSONIfExists(ctx.ApplicationRoot())
-	if err != nil {
-		return err
-	}
-	if turboJSON == nil {
-		return gcp.UserErrorf("turbo.json file does not exist")
-	}
-
-	appPackageJSON, err := nodejs.ReadPackageJSONIfExists(appDir)
-	if err != nil {
-		return err
-	}
-
-	var appName string
-	if appPackageJSON != nil {
-		appName = appPackageJSON.Name
-	}
-	// Target application is ambiguous, so we fail the build.
-	if appName == "" {
-		return gcp.UserErrorf("target application in Turbo monorepo is ambiguous. Please specify the application directory path during onboarding.")
-	}
-
-	buildArgs := []string{fmt.Sprintf("--filter=%s", appName), "--env-mode=loose"}
-
-	turbol, err := ctx.Layer("turbo", gcp.BuildLayer, gcp.CacheLayer)
-	if err != nil {
-		return fmt.Errorf("creating turbo layer: %w", err)
-	}
-	// Set environment variables that will configure the build to use Turborepo.
-	turbol.BuildEnvironment.Override(monorepoProject, appName)
-	turbol.BuildEnvironment.Override(monorepoCommand, "turbo")
-	turbol.BuildEnvironment.Override(monorepoBuildArgs, strings.Join(buildArgs, ","))
-
-	// add turbo as the monorepo name to the builder metadata
-	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.MonorepoName, "turbo")
-
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

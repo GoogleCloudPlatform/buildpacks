@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -65,6 +66,12 @@ type DetectFn func(*Context) (DetectResult, error)
 
 // BuildFn is the callback signature for Build()
 type BuildFn func(*Context) error
+
+// BuildpackFuncs contains the Detect and Build functions for a buildpack.
+type BuildpackFuncs struct {
+	Detect DetectFn
+	Build  BuildFn
+}
 
 type stats struct {
 	spans []*spanInfo
@@ -318,6 +325,7 @@ func buildFnWrapper(buildFn BuildFn) libcnb.BuildFunc {
 	}
 }
 
+// build implements the /bin/build phase of the buildpack.
 func build(buildFn BuildFn) {
 	options := []libcnb.Option{
 		// Without this flag the build SBOM is NOT written to the image's "io.buildpacks.build.metadata" label.
@@ -466,4 +474,34 @@ func (ctx *Context) AddLabel(key, value string) {
 	key = "google." + strings.ToLower(strings.ReplaceAll(key, "_", "-"))
 	ctx.Logf("Adding image label %s: %s", key, value)
 	ctx.buildResult.Labels = append(ctx.buildResult.Labels, libcnb.Label{Key: key, Value: value})
+}
+
+// MainRunner is the main entrypoint for runners.
+func MainRunner(buildpacks map[string]BuildpackFuncs, buildpackID *string, phase *string) {
+	ctx := NewContext()
+	if *buildpackID == "" {
+		err := buildererror.Errorf(buildererror.StatusInternal, "Usage: runner -buildpack <id> [args...]")
+		ctx.Exit(failStatusCode, err)
+	}
+
+	bp, ok := buildpacks[*buildpackID]
+	if !ok {
+		var ids []string
+		for id := range buildpacks {
+			ids = append(ids, id)
+		}
+		sort.Strings(ids)
+		err := buildererror.Errorf(buildererror.StatusInternal, "Unknown buildpack ID: %s\nRegistered buildpacks are:\n  %s", *buildpackID, strings.Join(ids, "\n  "))
+		ctx.Exit(failStatusCode, err)
+	}
+
+	switch *phase {
+	case "detect":
+		detect(bp.Detect)
+	case "build":
+		build(bp.Build)
+	default:
+		err := buildererror.Errorf(buildererror.StatusInternal, "Invalid phase %q, expected 'detect' or 'build'", *phase)
+		ctx.Exit(failStatusCode, err)
+	}
 }

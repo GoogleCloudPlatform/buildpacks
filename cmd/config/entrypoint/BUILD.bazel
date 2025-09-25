@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
@@ -34,37 +34,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/appengine",
-        "//pkg/appyaml",
-        "//pkg/env",
+        "//cmd/config/entrypoint/lib",
         "//pkg/gcpbuildpack",
-    ],
-)
-
-go_library(
-    name = "entrypointlib",
-    srcs = ["main.go"],  #keep
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//builders:__subpackages__",
-    ],
-    deps = [
-        "//pkg/appengine",
-        "//pkg/appyaml",
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = [
-        "//internal/buildpacktest",
-        "//pkg/gcpbuildpack",
-        "@com_github_buildpacks_libcnb_v2//:go_default_library",
     ],
 )

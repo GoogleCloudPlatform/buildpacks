@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,34 +16,10 @@
 package main
 
 import (
-	"fmt"
-
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/java/exploded_jar/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	manifestExists, err := ctx.FileExists(java.ManifestPath)
-	if err != nil {
-		return nil, err
-	}
-	if manifestExists {
-		return gcp.OptInFileFound(java.ManifestPath), nil
-	}
-	return gcp.OptOutFileNotFound(java.ManifestPath), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	main, err := java.MainFromManifest(ctx, java.ManifestPath)
-	if err != nil {
-		return fmt.Errorf("extracting Main-Class from %s: %w", java.ManifestPath, err)
-	}
-	ctx.AddWebProcess([]string{"java", "-classpath", ".", main})
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

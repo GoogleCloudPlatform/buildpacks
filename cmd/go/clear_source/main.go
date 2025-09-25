@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,24 +17,10 @@
 package main
 
 import (
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/clearsource"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	lib "github.com/GoogleCloudPlatform/buildpacks/cmd/go/clear_source/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if result, err := clearsource.DetectFn(ctx); result != nil || err != nil {
-		return result, err
-	}
-	return gcp.OptInEnvSet(env.ClearSource), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	return clearsource.BuildFn(ctx, nil)
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

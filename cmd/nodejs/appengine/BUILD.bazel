@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack for the Node.js runtime.
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
@@ -36,31 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/appengine",
-        "//pkg/env",
+        "//cmd/nodejs/appengine/lib",
         "//pkg/gcpbuildpack",
     ],
-)
-
-go_library(
-    name = "appenginelib",
-    srcs = ["main.go"],  #keep
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//builders:nodejs_builders",
-    ],
-    deps = [
-        "//pkg/appengine",
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = ["//internal/buildpacktest"],
 )

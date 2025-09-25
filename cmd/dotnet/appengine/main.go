@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,36 +17,10 @@
 package main
 
 import (
-	"os"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/appengine/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if env.IsGAE() {
-		return appengine.OptInTargetPlatformGAE(), nil
-	}
-	return appengine.OptOutTargetPlatformNotGAE(), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	return appengine.Build(ctx, "dotnet", entrypoint)
-}
-
-func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
-	ep := os.Getenv(env.Entrypoint)
-	if ep == "" {
-		return nil, gcp.UserErrorf("expected entrypoint from app.yaml or root project file, found nothing")
-	}
-	ctx.Logf("Using the entrypoint: %q", ep)
-	return &appstart.Entrypoint{Type: appstart.EntrypointGenerated.String(), Command: ep}, nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

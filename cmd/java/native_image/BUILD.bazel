@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
@@ -17,7 +17,7 @@ buildpack(
 
 buildpack_using_runner(
     name = "native_image_using_runner",
-    buildpack_id = "google.java.native_image",
+    buildpack_id = "google.java.native-image",
     prefix = "java",
     version = "0.1.0",
     visibility = [
@@ -34,38 +34,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/env",
+        "//cmd/java/native_image/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/java",
-        "@com_github_buildpacks_libcnb_v2//:go_default_library",
-    ],
-)
-
-go_library(
-    name = "native_imagelib",
-    srcs = ["main.go"],  #keep
-    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = [
-        "//builders:java_builders",
-    ],
-    deps = [
-        "//pkg/env",
-        "//pkg/gcpbuildpack",
-        "//pkg/java",
-        "@com_github_buildpacks_libcnb_v2//:go_default_library",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = [
-        "//internal/buildpacktest",
-        "//pkg/gcpbuildpack",
-        "//pkg/java",
-        "@com_github_buildpacks_libcnb_v2//:go_default_library",
     ],
 )

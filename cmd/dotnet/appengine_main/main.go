@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,39 +17,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/appengine_main/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func main() {
-	gcp.Main(DetectFn, BuildFn)
-}
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !env.IsGAE() {
-		return appengine.OptOutTargetPlatformNotGAE(), nil
-	}
-	if proj := os.Getenv(env.GAEMain); proj == "" {
-		return gcp.OptOut("app.yaml main field is not defined, using default"), nil
-	}
-
-	if _, exists := os.LookupEnv(env.Buildable); exists {
-		return gcp.OptOut(fmt.Sprintf("%s is set, ignoring app.yaml main field", env.Buildable)), nil
-	}
-	return gcp.OptIn("app.yaml found with the main field set"), nil
-}
-
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	l, err := ctx.Layer("main_env", gcp.BuildLayer)
-	if err != nil {
-		return fmt.Errorf("creating layer: %w", err)
-	}
-	l.BuildEnvironment.Override(env.Buildable, os.Getenv(env.GAEMain))
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }
