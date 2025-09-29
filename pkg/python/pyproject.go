@@ -27,11 +27,14 @@ import (
 )
 
 const (
+	pip                = "pip"
+	poetry             = "poetry"
 	poetryLayer        = "poetry"
 	dependenciesLayer  = "poetry-dependencies"
 	pyprojectToml      = "pyproject.toml"
 	poetryLock         = "poetry.lock"
 	poetryVenvsPathEnv = "POETRY_VIRTUALENVS_PATH"
+	uv                 = "uv"
 	uvLock             = "uv.lock"
 	uvLayer            = "uv"
 	uvDepsLayer        = "uv-dependencies"
@@ -82,13 +85,29 @@ func IsPoetryProject(ctx *gcp.Context) (bool, string, error) {
 	return false, "neither poetry.lock nor [tool.poetry] found", nil
 }
 
-// InstallPoetry installs the poetry CLI into a dedicated layer, respecting version constraints.
+// InstallPoetry installs the poetry CLI using uv to speed up the installation.
 func InstallPoetry(ctx *gcp.Context) error {
+	err := installTool(ctx, pip, uv, uvLayer, "")
+	if err != nil {
+		return fmt.Errorf("installing uv: %w", err)
+	}
+
 	poetryVersionConstraint, err := RequestedPoetryVersion(ctx)
 	if err != nil {
 		return fmt.Errorf("getting poetry version constraint: %w", err)
 	}
-	return installPythonTool(ctx, "poetry", poetryLayer, poetryVersionConstraint)
+
+	if err := installTool(ctx, uv, poetry, poetryLayer, poetryVersionConstraint); err != nil {
+		return fmt.Errorf("installing poetry with uv: %w", err)
+	}
+
+	ctx.Logf("Uninstalling uv to remove it from the final image.")
+	uninstallUVCmd := []string{"python3", "-m", "pip", "uninstall", "-y", uv}
+	if _, err := ctx.Exec(uninstallUVCmd); err != nil {
+		ctx.Warnf("Failed to uninstall uv, it may remain in the final image: %v", err)
+	}
+
+	return nil
 }
 
 // RequestedPoetryVersion returns the requested poetry version from pyproject.toml.
@@ -213,7 +232,7 @@ func InstallUV(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("getting uv version constraint: %w", err)
 	}
-	return installPythonTool(ctx, "uv", uvLayer, uvVersionConstraint)
+	return installTool(ctx, pip, uv, uvLayer, uvVersionConstraint)
 }
 
 // EnsureUVLockfile checks for uv.lock and generates it if it doesn't exist.
@@ -252,23 +271,32 @@ func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context) error {
 	return nil
 }
 
-// installPythonTool handles the common logic of installing a python tool with pip.
-func installPythonTool(ctx *gcp.Context, toolName, layerName, versionConstraint string) error {
+// installTool handles the common logic of installing a python tool with either pip or uv.
+func installTool(ctx *gcp.Context, provider, toolName, layerName, versionConstraint string) error {
 	layer, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", layerName, err)
 	}
 
-	installCmd := []string{"python3", "-m", "pip", "install"}
+	dependencyToInstall := toolName
 	if versionConstraint != "" {
 		ctx.Logf("Using %s version constraint: %s", toolName, versionConstraint)
-		installCmd = append(installCmd, fmt.Sprintf("%s%s", toolName, versionConstraint))
+		dependencyToInstall = fmt.Sprintf("%s%s", toolName, versionConstraint)
 	} else {
-		ctx.Logf("No %s version constraint found, installing latest.", toolName)
-		installCmd = append(installCmd, toolName)
+		ctx.Logf("No %s version constraint found, installing latest", toolName)
 	}
 
-	ctx.Logf("Installing %s into %s", toolName, layer.Path)
+	var installCmd []string
+	switch provider {
+	case "pip":
+		installCmd = []string{"python3", "-m", "pip", "install", dependencyToInstall}
+		ctx.Logf("Installing %s into %s using pip", dependencyToInstall, layer.Path)
+	case "uv":
+		installCmd = []string{"uv", "pip", "install", "--system", dependencyToInstall}
+		ctx.Logf("Installing %s into %s using uv", dependencyToInstall, layer.Path)
+	default:
+		return fmt.Errorf("unknown provider: %s", provider)
+	}
 
 	os.Setenv("PYTHONUSERBASE", layer.Path)
 	ctx.Logf("Running: %s", strings.Join(installCmd, " "))
@@ -276,7 +304,7 @@ func installPythonTool(ctx *gcp.Context, toolName, layerName, versionConstraint 
 	os.Unsetenv("PYTHONUSERBASE")
 	if err != nil {
 		if versionConstraint == "" {
-			return buildererror.Errorf(buildererror.StatusInternal, "failed to install %s: %v", toolName, err)
+			return buildererror.Errorf(buildererror.StatusInternal, "failed to install %s with %s: %v", toolName, provider, err)
 		}
 		return fmt.Errorf("installing %s with version constraint %s: %w", toolName, versionConstraint, err)
 	}
