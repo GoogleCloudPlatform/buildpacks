@@ -61,6 +61,7 @@ const (
 	OpenJDK      InstallableRuntime = "openjdk"
 	CanonicalJDK InstallableRuntime = "canonicaljdk"
 	Go           InstallableRuntime = "go"
+	Jetty        InstallableRuntime = "jetty"
 
 	Ubuntu1804 string = "ubuntu1804"
 	Ubuntu2204 string = "ubuntu2204"
@@ -82,6 +83,7 @@ var runtimeNames = map[InstallableRuntime]string{
 	Pid1:      "Pid1",
 	DotnetSDK: ".NET SDK",
 	Go:        "Go",
+	Jetty:     "Jetty",
 }
 
 // stackToOS contains the mapping of Stack to OS.
@@ -249,7 +251,7 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	ctx.Logf("Installing %s v%s.", runtimeName, version)
 
 	stripComponents := 0
-	if runtime == OpenJDK || runtime == Go {
+	if runtime == OpenJDK || runtime == Go || runtime == Jetty {
 		stripComponents = 1
 	}
 
@@ -355,6 +357,9 @@ func ResolveVersion(ctx *gcp.Context, runtime InstallableRuntime, verConstraint,
 	if runtime == Go {
 		// verConstraint will be resolved to the exact version in golang.RuntimeVersion() already.
 		return verConstraint, nil
+	}
+	if runtime == Jetty {
+		return "latest", nil
 	}
 	// Some release candidates do not follow the convention for semver
 	// Specifically php. example - 8.3.0RC4.

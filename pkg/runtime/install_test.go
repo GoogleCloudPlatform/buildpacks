@@ -371,6 +371,15 @@ func TestInstallSource(t *testing.T) {
 			wantAR:             true,
 		},
 		{
+			name:               "install_from_artifact_registry_4",
+			runtime:            Jetty,
+			version:            "latest",
+			responseFile:       "testdata/dummy-ruby-runtime.tar.gz",
+			runtimeImageRegion: "us-central1",
+			wantError:          false,
+			wantAR:             true,
+		},
+		{
 			name:               "install_from_artifact_registry_for_java_21.0",
 			runtime:            CanonicalJDK,
 			version:            "21.0",

@@ -19,6 +19,7 @@ package lib
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
@@ -26,6 +27,13 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+)
+
+var (
+	supportedJettyBuildTimeVersions = []string{
+		"java25",
+	}
 )
 
 // DetectFn is the exported detect function.
@@ -48,7 +56,17 @@ func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
 	}
 	if webXMLExists {
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.JavaGAEWebXMLConfigUsageCounterID).Increment(1)
-		processAppEngineWebXML(ctx)
+		jettyLayer, err := processAppEngineWebXML(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("Error processing appengine-web.xml: %w", err)
+		}
+		if jettyLayer != "" {
+			ctx.Logf("WAR packaging detected and injecting the embedded web-server dependencies at build time")
+			return &appstart.Entrypoint{
+				Type:    appstart.EntrypointGenerated.String(),
+				Command: "serve WEB-INF/appengine-web.xml " + jettyLayer,
+			}, nil
+		}
 		return &appstart.Entrypoint{
 			Type:    appstart.EntrypointGenerated.String(),
 			Command: "serve WEB-INF/appengine-web.xml",
@@ -66,21 +84,38 @@ func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
 	}, nil
 }
 
-func processAppEngineWebXML(ctx *gcp.Context) {
+func processAppEngineWebXML(ctx *gcp.Context) (string, error) {
 	fullPath := filepath.Join(ctx.ApplicationRoot(), "WEB-INF/appengine-web.xml")
 	appEngineWebXML, err := ctx.ReadFile(fullPath)
 	if err != nil {
-		ctx.Warnf("Error reading appengine-web.xml: %v", err)
-		return
+		return "", fmt.Errorf("Error reading appengine-web.xml: %v", err)
 	}
 
 	appEngineWebXMLApp, err := java.ParseAppEngineWebXML(appEngineWebXML)
 	if err != nil {
-		ctx.Warnf("Error parsing appengine-web.xml: %v", err)
-		return
+		return "", fmt.Errorf("Error parsing appengine-web.xml: %w", err)
 	}
 
 	if appEngineWebXMLApp.SessionsEnabled {
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.JavaGAESessionsEnabledCounterID).Increment(1)
 	}
+
+	if slices.Contains(supportedJettyBuildTimeVersions, appEngineWebXMLApp.Runtime) {
+		return addJettyAtBuildTime(ctx, appEngineWebXMLApp.Runtime)
+	}
+
+	return "", nil
+}
+
+func addJettyAtBuildTime(ctx *gcp.Context, repoPath string) (string, error) {
+	jettyLayer, err := ctx.Layer("java_runtime", gcp.LaunchLayer)
+	if err != nil {
+		return "", fmt.Errorf("creating layer: %w", err)
+	}
+	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.Jetty, "", jettyLayer)
+	if err != nil {
+		return "", fmt.Errorf("Error installing jetty artifacts: %w", err)
+	}
+	ctx.Logf("Successfully installed Jetty for %s at build time from AR.", repoPath)
+	return jettyLayer.Path, nil
 }
