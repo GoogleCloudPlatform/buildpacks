@@ -40,7 +40,7 @@ func TestAcceptanceJava(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name: "simple Java 11 application",
+			Name: "simple_Java_11_application",
 			App:  "simple",
 			Env: []string{
 				"GOOGLE_ENTRYPOINT=java Main.java",
@@ -52,7 +52,7 @@ func TestAcceptanceJava(t *testing.T) {
 			EnableCacheTest: true,
 		},
 		{
-			Name: "simple Java 17 application",
+			Name: "simple_Java_17_application",
 			App:  "simple",
 			Env: []string{
 				"GOOGLE_ENTRYPOINT=java Main.java",
@@ -63,7 +63,7 @@ func TestAcceptanceJava(t *testing.T) {
 			EnableCacheTest: true,
 		},
 		{
-			Name: "Java runtime version respected",
+			Name: "Java_runtime_version_respected",
 			App:  "simple",
 			// Checking runtime version 8 to ensure that it is not downloading latest Java 11 version.
 			Path: "/version?want=8",
@@ -76,41 +76,41 @@ func TestAcceptanceJava(t *testing.T) {
 			MustNotUse: []string{javaEntrypoint},
 		},
 		{
-			Name:            "Java maven",
+			Name:            "Java_maven",
 			App:             "hello_quarkus_maven",
 			MustUse:         []string{javaMaven, javaRuntime, javaEntrypoint},
 			MustNotUse:      []string{entrypoint},
 			EnableCacheTest: true,
 		},
 		{
-			Name:                "Java maven (Dev Mode)",
+			Name:                "Java_maven_(Dev_Mode)",
 			App:                 "hello_quarkus_maven",
 			Env:                 []string{"GOOGLE_DEVMODE=1"},
 			FilesMustExist:      []string{"/layers/google.java.maven/m2", "/layers/google.java.maven/m2/bin/.devmode_rebuild.sh"},
 			MustRebuildOnChange: "/workspace/src/main/java/hello/Hello.java",
 		},
 		{
-			Name:       "Java gradle",
+			Name:       "Java_gradle",
 			App:        "gradle_micronaut",
 			Env:        []string{"GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
 			MustUse:    []string{javaGradle, javaRuntime, entrypoint},
 			MustNotUse: []string{javaEntrypoint},
 		},
 		{
-			Name:       "Java mono repo",
+			Name:       "Java_mono_repo",
 			App:        "gradle_mono_repo",
 			MustUse:    []string{javaGradle, javaRuntime, javaEntrypoint},
 			MustNotUse: []string{entrypoint},
 		},
 		{
-			Name:                "Java gradle (Dev Mode)",
+			Name:                "Java_gradle_(Dev_Mode)",
 			App:                 "gradle_micronaut",
 			Env:                 []string{"GOOGLE_DEVMODE=1"},
 			FilesMustExist:      []string{"/layers/google.java.gradle/cache", "/layers/google.java.gradle/cache/bin/.devmode_rebuild.sh"},
 			MustRebuildOnChange: "/workspace/src/main/java/example/HelloController.java",
 		},
 		{
-			Name: "polyglot maven java 11",
+			Name: "polyglot_maven_java_11",
 			App:  "polyglot-maven",
 			Env: []string{
 				"GOOGLE_RUNTIME_VERSION=11",
@@ -120,7 +120,7 @@ func TestAcceptanceJava(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 		{
-			Name: "polyglot maven java 17",
+			Name: "polyglot_maven_java_17",
 			App:  "polyglot-maven",
 			Env: []string{
 				"GOOGLE_RUNTIME_VERSION=17",
@@ -129,21 +129,21 @@ func TestAcceptanceJava(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 		{
-			Name:       "Maven build args",
+			Name:       "Maven_build_args",
 			App:        "maven_testing_profile",
 			Env:        []string{"GOOGLE_BUILD_ARGS=--settings=maven_settings.xml -Dnative=false"},
 			MustUse:    []string{javaMaven, javaRuntime, javaEntrypoint},
 			MustNotUse: []string{entrypoint},
 		},
 		{
-			Name:       "Gradle build args",
+			Name:       "Gradle_build_args",
 			App:        "gradle_test_env",
 			Env:        []string{"GOOGLE_BUILD_ARGS=-Denv=test", "GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
 			MustUse:    []string{javaGradle, javaRuntime, entrypoint},
 			MustNotUse: []string{javaEntrypoint},
 		},
 		{
-			Name:       "Exploded Jar java 11",
+			Name:       "Exploded_Jar_java_11",
 			App:        "exploded_jar",
 			SkipStacks: []string{"google.24.full", "google.24"},
 			Env: []string{
@@ -152,7 +152,7 @@ func TestAcceptanceJava(t *testing.T) {
 			MustUse: []string{javaRuntime, javaExplodedJar},
 		},
 		{
-			Name: "Exploded Jar java 17",
+			Name: "Exploded_Jar_java_17",
 			App:  "exploded_jar",
 			Env: []string{
 				"GOOGLE_RUNTIME_VERSION=17",
@@ -160,7 +160,7 @@ func TestAcceptanceJava(t *testing.T) {
 			MustUse: []string{javaRuntime, javaExplodedJar},
 		},
 		{
-			Name:              "Maven with source clearing",
+			Name:              "Maven_with_source_clearing",
 			App:               "hello_quarkus_maven",
 			Env:               []string{"GOOGLE_CLEAR_SOURCE=true"},
 			MustUse:           []string{javaMaven, javaRuntime, javaEntrypoint, javaClearSource},
@@ -169,7 +169,7 @@ func TestAcceptanceJava(t *testing.T) {
 			FilesMustNotExist: []string{"/workspace/src/main/java/hello/Hello.java", "/workspace/pom.xml"},
 		},
 		{
-			Name:              "Gradle with source clearing",
+			Name:              "Gradle_with_source_clearing",
 			App:               "gradle_micronaut",
 			Env:               []string{"GOOGLE_CLEAR_SOURCE=true", "GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
 			MustUse:           []string{javaGradle, javaRuntime, entrypoint, javaClearSource},
@@ -183,6 +183,14 @@ func TestAcceptanceJava(t *testing.T) {
 			Env:        []string{"GOOGLE_BUILDABLE=hello"},
 			MustUse:    []string{javaMaven, javaRuntime, javaEntrypoint},
 			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:                       "Java_mono_repo_with_GOOGLE_BUILDABLE",
+			App:                        "gradle_mono_repo_springboot",
+			Env:                        []string{"GOOGLE_BUILDABLE=apps/application-one/build/libs", "GOOGLE_GRADLE_BUILD_ARGS=:apps:application-one:clean :apps:application-one:bootJar"},
+			MustUse:                    []string{javaGradle, javaRuntime, javaEntrypoint},
+			MustNotUse:                 []string{entrypoint},
+			VersionInclusionConstraint: ">=17.0.0",
 		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageContext, testCases) {
