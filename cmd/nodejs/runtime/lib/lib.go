@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -58,6 +59,25 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	}
 	if len(jsFiles) > 0 {
 		return gcp.OptIn("found .js files"), nil
+	}
+
+	tsFiles, err := ctx.Glob("*.ts")
+	if err != nil {
+		return nil, fmt.Errorf("finding ts files: %w", err)
+	}
+	version, err := nodejs.RequestedNodejsVersion(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("getting node version: %w", err)
+	}
+	version = strings.TrimPrefix(version, "^")
+	version = strings.TrimPrefix(version, "~")
+	version = strings.NewReplacer("*", "0", "x", "0", "X", "0").Replace(version)
+	isNodeVersionGreaterThanOrEqual24, err := nodejs.VersionMatchesSemver(ctx, ">=24.0.0", version)
+	if err != nil {
+		return nil, fmt.Errorf("checking if node version is greater than 24.0.0: %w", err)
+	}
+	if len(tsFiles) > 0 && isNodeVersionGreaterThanOrEqual24 {
+		return gcp.OptIn("found .ts files"), nil
 	}
 
 	return gcp.OptOut("neither package.json nor any .js files found"), nil

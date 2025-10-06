@@ -272,6 +272,27 @@ var nodeVersion = func(ctx *gcp.Context) (string, error) {
 	return result.Stdout, nil
 }
 
+// VersionMatchesSemver checks if the provided version matches the given version semver range.
+// The range string has the following format: https://github.com/blang/semver#ranges.
+func VersionMatchesSemver(ctx *gcp.Context, versionRange string, version string) (bool, error) {
+	if version == "" {
+		return false, nil
+	}
+	constraint, err := semver.NewConstraint(versionRange)
+	if err != nil {
+		return false, fmt.Errorf("invalid version range %q: %w", versionRange, err)
+	}
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return false, fmt.Errorf("invalid version %q: %w", version, err)
+	}
+	if !constraint.Check(v) {
+		ctx.Debugf("Nodejs version %q does not match the semver constraint %q", version, versionRange)
+		return false, nil
+	}
+	return true, nil
+}
+
 // isPreNode11 returns true if the installed version of Node.js is
 // v10.x.x or older.
 func isPreNode11(ctx *gcp.Context) (bool, error) {

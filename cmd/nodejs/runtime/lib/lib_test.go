@@ -70,6 +70,22 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
+			name: "with_ts_files_and_node_version_>=_24",
+			files: map[string]string{
+				"index.ts": "",
+			},
+			env:  []string{"GOOGLE_RUNTIME_VERSION=24.1.0"},
+			want: 0,
+		},
+		{
+			name: "with_ts_files_and_node_version_<_24",
+			files: map[string]string{
+				"index.ts": "",
+			},
+			env:  []string{"GOOGLE_RUNTIME_VERSION=23.1.0"},
+			want: 100,
+		},
+		{
 			name: "without js files",
 			files: map[string]string{
 				"index.txt": "",

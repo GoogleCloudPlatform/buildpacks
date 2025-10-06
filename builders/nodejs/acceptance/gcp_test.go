@@ -106,6 +106,14 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse: []string{nodeNPM, nodeYarn},
 		},
 		{
+			Name:                       "without_package.json_ts",
+			App:                        "no_package_ts",
+			VersionInclusionConstraint: ">= 24.0.0",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=node server.ts"},
+			MustUse:                    []string{nodeRuntime},
+			MustNotUse:                 []string{nodeNPM, nodeYarn},
+		},
+		{
 			Name: "NPM version specified",
 			// npm@8 requires nodejs@12+
 			VersionInclusionConstraint: ">= 12.0.0",
