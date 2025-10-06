@@ -161,9 +161,6 @@ const (
 	// NodeCompileCache is an env var used to enable bytecode caching for Node.js applications.
 	NodeCompileCache = "NODE_COMPILE_CACHE"
 
-	// FastAPISmartDefaults is an experiment flag to enable fastapi smart defaults with uvicorn.
-	FastAPISmartDefaults = "X_GOOGLE_FASTAPI_SMART_DEFAULTS"
-
 	// PythonSmartDefaults is an experiment flag to enable python smart defaults for
 	// gunicorn, uvicorn, fastapi[standard], gradio, streamlit, and maybe future frameworks.
 	PythonSmartDefaults = "X_GOOGLE_PYTHON_SMART_DEFAULTS"
