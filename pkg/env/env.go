@@ -161,10 +161,6 @@ const (
 	// NodeCompileCache is an env var used to enable bytecode caching for Node.js applications.
 	NodeCompileCache = "NODE_COMPILE_CACHE"
 
-	// PythonSmartDefaults is an experiment flag to enable python smart defaults for
-	// gunicorn, uvicorn, fastapi[standard], gradio, streamlit, and maybe future frameworks.
-	PythonSmartDefaults = "X_GOOGLE_PYTHON_SMART_DEFAULTS"
-
 	// ReleaseTrack is an env var used to specify the release track for the Build.
 	// Example: `ALPHA`, `BETA`, `GA`
 	ReleaseTrack = "X_GOOGLE_RELEASE_TRACK"

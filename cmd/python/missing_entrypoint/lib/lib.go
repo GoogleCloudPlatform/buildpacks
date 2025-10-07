@@ -19,7 +19,6 @@ package lib
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -85,11 +84,9 @@ func BuildFn(ctx *gcp.Context) error {
 
 	// We will use the smart default entrypoint if the runtime version supports it (>=3.13)
 	if supports, err := python.SupportsSmartDefaultEntrypoint(ctx); err == nil && supports {
-		if os.Getenv(env.PythonSmartDefaults) == "true" {
-			cmd, err = smartDefaultEntrypoint(ctx, pyModule, pyFile)
-			if err != nil {
-				return fmt.Errorf("error detecting smart default entrypoint: %w", err)
-			}
+		cmd, err = smartDefaultEntrypoint(ctx, pyModule, pyFile)
+		if err != nil {
+			return fmt.Errorf("error detecting smart default entrypoint: %w", err)
 		}
 	}
 

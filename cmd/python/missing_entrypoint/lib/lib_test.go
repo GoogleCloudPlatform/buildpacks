@@ -87,220 +87,200 @@ func TestBuild(t *testing.T) {
 			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
 		},
 		{
-			name: "python_smart_defaults_fastapi_standard_with_gunicorn",
+			name: "fastapi_standard_with_gunicorn",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "fastapi[standard]\ngunicorn",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.13.0",
 			},
 			runtime: "python3.13",
 			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
 		},
 		{
-			name: "python_smart_defaults_fastapi_standard_with_uvicorn",
+			name: "fastapi_standard_with_uvicorn",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "fastapi[standard]\nuvicorn",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.13.0",
 			},
 			runtime: "python3.13",
 			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
 		},
 		{
-			name: "python_smart_defaults_gunicorn",
+			name: "gunicorn",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "gunicorn",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.13.0",
 			},
 			runtime: "python3.13",
 			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
 		},
 		{
-			name: "python_smart_defaults_uvicorn",
+			name: "uvicorn",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "uvicorn",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.13.0",
 			},
 			runtime: "python3.13",
 			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
 		},
 		{
-			name: "python_smart_defaults_fastapi_standard",
+			name: "fastapi_standard",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "fastapi[standard]",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.13.0",
 			},
 			runtime: "python3.13",
 			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
 		},
 		{
-			name: "python_smart_defaults_fastapi_standard_below_3.13",
+			name: "fastapi_standard_below_3.13",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "fastapi[standard]",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.12.0",
 			},
 			runtime: "python3.12",
 			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
 		},
 		{
-			name: "python_smart_defaults_fastapi_standard_no_version",
+			name: "fastapi_standard_no_version",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "fastapi[standard]",
 			},
-			env: []string{
-				env.PythonSmartDefaults + "=true",
-			},
 			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
 		},
 		{
-			name: "python_smart_defaults_fastapi",
+			name: "fastapi",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "fastapi",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.13.0",
 			},
 			runtime: "python3.13",
 			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
 		},
 		{
-			name: "python_smart_defaults_fastapi_with_gunicorn",
+			name: "fastapi_with_gunicorn",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "fastapi\ngunicorn",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.13.0",
 			},
 			runtime: "python3.13",
 			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
 		},
 		{
-			name: "python_smart_defaults_fastapi_with_uvicorn",
+			name: "fastapi_with_uvicorn",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "fastapi\nuvicorn",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.13.0",
 			},
 			runtime: "python3.13",
 			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
 		},
 		{
-			name: "python_smart_defaults_gradio",
+			name: "gradio",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "gradio",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.13.0",
 			},
 			runtime: "python3.13",
 			wantCmd: []string{"python", "main.py"},
 		},
 		{
-			name: "python_smart_defaults_streamlit",
+			name: "streamlit",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "streamlit",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.13.0",
 			},
 			runtime: "python3.13",
 			wantCmd: []string{"streamlit", "run", "main.py", "--server.address", "0.0.0.0", "--server.port", "8080"},
 		},
 		{
-			name: "python_smart_defaults_none",
+			name: "smart_defaults_gunicorn",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.13.0",
 			},
 			runtime: "python3.13",
 			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
 		},
 		{
-			name: "python_smart_defaults_below_3.13_uvicorn",
+			name: "below_3.13_uvicorn",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.12.0",
 			},
 			runtime: "python3.12",
 			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
 		},
 		{
-			name: "python_smart_defaults_below_3.13_gradio",
+			name: "below_3.13_gradio",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "gradio",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.12.0",
 			},
 			runtime: "python3.12",
 			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
 		},
 		{
-			name: "python_smart_defaults_below_3.13_streamlit",
+			name: "below_3.13_streamlit",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "streamlit",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.12.0",
 			},
 			runtime: "python3.12",
 			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
 		},
 		{
-			name: "python_smart_defaults_uvicorn_with_no_version",
+			name: "uvicorn_with_no_version",
 			files: map[string]string{
 				"main.py":          "",
 				"requirements.txt": "uvicorn",
 			},
-			env: []string{
-				env.PythonSmartDefaults + "=true",
-			},
+			env:     []string{},
 			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
 		},
 		{
@@ -319,52 +299,48 @@ func TestBuild(t *testing.T) {
 			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
 		},
 		{
-			name: "python_smart_defaults_gunicorn_app_py",
+			name: "gunicorn_app_py",
 			files: map[string]string{
 				"app.py":           "",
 				"requirements.txt": "gunicorn",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.13.0",
 			},
 			runtime: "python3.13",
 			wantCmd: []string{"gunicorn", "-b", ":8080", "app:app"},
 		},
 		{
-			name: "python_smart_defaults_uvicorn_app_py",
+			name: "uvicorn_app_py",
 			files: map[string]string{
 				"app.py":           "",
 				"requirements.txt": "uvicorn",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.13.0",
 			},
 			runtime: "python3.13",
 			wantCmd: []string{"uvicorn", "app:app", "--port", "8080", "--host", "0.0.0.0"},
 		},
 		{
-			name: "python_smart_defaults_gradio_app_py",
+			name: "gradio_app_py",
 			files: map[string]string{
 				"app.py":           "",
 				"requirements.txt": "gradio",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.13.0",
 			},
 			runtime: "python3.13",
 			wantCmd: []string{"python", "app.py"},
 		},
 		{
-			name: "python_smart_defaults_streamlit_app_py",
+			name: "streamlit_app_py",
 			files: map[string]string{
 				"app.py":           "",
 				"requirements.txt": "streamlit",
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.RuntimeVersion + "=3.13.0",
 			},
 			runtime: "python3.13",
@@ -378,7 +354,6 @@ func TestBuild(t *testing.T) {
 dependencies = ["gunicorn"]`,
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.ReleaseTrack + "=ALPHA",
 				env.RuntimeVersion + "=3.13.0",
 			},
@@ -393,7 +368,6 @@ dependencies = ["gunicorn"]`,
 dependencies = ["fastapi", "uvicorn"]`,
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.ReleaseTrack + "=ALPHA",
 				env.RuntimeVersion + "=3.13.0",
 			},
@@ -408,7 +382,6 @@ dependencies = ["fastapi", "uvicorn"]`,
 dependencies = ["fastapi[standard]"]`,
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.ReleaseTrack + "=ALPHA",
 				env.RuntimeVersion + "=3.13.0",
 			},
@@ -423,7 +396,6 @@ dependencies = ["fastapi[standard]"]`,
 dependencies = ["gradio"]`,
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.ReleaseTrack + "=ALPHA",
 				env.RuntimeVersion + "=3.13.0",
 			},
@@ -438,7 +410,6 @@ dependencies = ["gradio"]`,
 dependencies = ["streamlit"]`,
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.ReleaseTrack + "=ALPHA",
 				env.RuntimeVersion + "=3.13.0",
 			},
@@ -453,7 +424,6 @@ dependencies = ["streamlit"]`,
 gunicorn = "*_*"`,
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.ReleaseTrack + "=ALPHA",
 				env.RuntimeVersion + "=3.13.0",
 			},
@@ -468,7 +438,6 @@ gunicorn = "*_*"`,
 uvicorn = "*_*"`,
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.ReleaseTrack + "=ALPHA",
 				env.RuntimeVersion + "=3.13.0",
 			},
@@ -483,7 +452,6 @@ uvicorn = "*_*"`,
 "fastapi[standard]" = "*"`,
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.ReleaseTrack + "=ALPHA",
 				env.RuntimeVersion + "=3.13.0",
 			},
@@ -498,7 +466,6 @@ uvicorn = "*_*"`,
 gradio = "*_*"`,
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.ReleaseTrack + "=ALPHA",
 				env.RuntimeVersion + "=3.13.0",
 			},
@@ -513,7 +480,6 @@ gradio = "*_*"`,
 streamlit = "*_*"`,
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.ReleaseTrack + "=ALPHA",
 				env.RuntimeVersion + "=3.13.0",
 			},
@@ -528,7 +494,6 @@ streamlit = "*_*"`,
 dependencies = ["requests"]`,
 			},
 			env: []string{
-				env.PythonSmartDefaults + "=true",
 				env.ReleaseTrack + "=ALPHA",
 				env.RuntimeVersion + "=3.13.0",
 			},
