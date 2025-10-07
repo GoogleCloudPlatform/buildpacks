@@ -38,6 +38,7 @@ go_test(
         "testdata/empty_project.xml",  # keep
         "testdata/extra_config_appengine-web.xml",  # keep
         "testdata/invalid_project.xml",  # keep
+        "testdata/jetty_property_appengine-web.xml",  # keep
         "testdata/minimal_appengine-web.xml",  # keep
         "testdata/simple_project.xml",  # keep
     ],

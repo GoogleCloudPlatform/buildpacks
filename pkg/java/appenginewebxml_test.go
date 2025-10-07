@@ -55,6 +55,20 @@ func TestParseValidAppEngineWebXML(t *testing.T) {
 				XMLName:         xml.Name{Space: "http://appengine.google.com/ns/1.0", Local: "appengine-web-app"},
 				Runtime:         "java11",
 				SessionsEnabled: true,
+				SystemProperties: []Property{
+					{Name: "java.util.logging.config.file", Value: "WEB-INF/logging.properties"},
+				},
+			},
+		},
+		{
+			path: "testdata/jetty_property_appengine-web.xml",
+			want: AppEngineWebXMLApp{
+				XMLName:         xml.Name{Space: "http://appengine.google.com/ns/1.0", Local: "appengine-web-app"},
+				Runtime:         "java25",
+				SessionsEnabled: true,
+				SystemProperties: []Property{
+					{Name: "appengine.use.EE8", Value: "true"},
+				},
 			},
 		},
 	}
