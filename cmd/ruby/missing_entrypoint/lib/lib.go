@@ -43,5 +43,5 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 // BuildFn is the exported build function.
 func BuildFn(ctx *gcp.Context) error {
-	return fmt.Errorf("for Ruby, an entrypoint must be manually set, either with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
+	return gcp.UserErrorf("for Ruby, an entrypoint must be manually set, either with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
 }

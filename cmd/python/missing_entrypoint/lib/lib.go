@@ -70,7 +70,7 @@ func BuildFn(ctx *gcp.Context) error {
 	}
 
 	if !hasMain && !hasApp && !pyprojectExists {
-		return fmt.Errorf("for Python, provide a main.py or app.py file or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
+		return gcp.UserErrorf("for Python, provide a main.py or app.py file or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
 	}
 
 	// If both main.py and app.py are present, we will use main.py as the python module.
@@ -109,7 +109,7 @@ func BuildFn(ctx *gcp.Context) error {
 				cmd = append([]string{"uv", "run"}, scriptCmd...)
 			}
 		} else if !hasMain && !hasApp {
-			return fmt.Errorf("for Python with pyproject.toml, provide a main.py or app.py file or a script command in pyproject.toml or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
+			return gcp.UserErrorf("for Python with pyproject.toml, provide a main.py or app.py file or a script command in pyproject.toml or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
 		}
 	}
 
