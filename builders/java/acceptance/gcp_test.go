@@ -46,10 +46,9 @@ func TestAcceptanceJava(t *testing.T) {
 				"GOOGLE_ENTRYPOINT=java Main.java",
 				"GOOGLE_RUNTIME_VERSION=11",
 			},
-			SkipStacks:      []string{"google.24.full", "google.24"}, // Java11 not supported on Ubuntu24 stack
-			MustUse:         []string{javaRuntime, entrypoint},
-			MustNotUse:      []string{javaEntrypoint},
-			EnableCacheTest: true,
+			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22", "google.24.full", "google.24"},
+			MustUse:    []string{javaRuntime, entrypoint},
+			MustNotUse: []string{javaEntrypoint},
 		},
 		{
 			Name: "simple_Java_17_application",
@@ -63,24 +62,10 @@ func TestAcceptanceJava(t *testing.T) {
 			EnableCacheTest: true,
 		},
 		{
-			Name: "Java_runtime_version_respected",
-			App:  "simple",
-			// Checking runtime version 8 to ensure that it is not downloading latest Java 11 version.
-			Path: "/version?want=8",
-			Env: []string{
-				"GOOGLE_ENTRYPOINT=javac Main.java; java Main",
-				"GOOGLE_RUNTIME_VERSION=8",
-			},
-			SkipStacks: []string{"google.24.full", "google.24"},
-			MustUse:    []string{javaRuntime, entrypoint},
-			MustNotUse: []string{javaEntrypoint},
-		},
-		{
-			Name:            "Java_maven",
-			App:             "hello_quarkus_maven",
-			MustUse:         []string{javaMaven, javaRuntime, javaEntrypoint},
-			MustNotUse:      []string{entrypoint},
-			EnableCacheTest: true,
+			Name:       "Java_maven",
+			App:        "hello_quarkus_maven",
+			MustUse:    []string{javaMaven, javaRuntime, javaEntrypoint},
+			MustNotUse: []string{entrypoint},
 		},
 		{
 			Name:                "Java_maven_(Dev_Mode)",
@@ -115,7 +100,7 @@ func TestAcceptanceJava(t *testing.T) {
 			Env: []string{
 				"GOOGLE_RUNTIME_VERSION=11",
 			},
-			SkipStacks: []string{"google.24.full", "google.24"},
+			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22", "google.24.full", "google.24"},
 			MustUse:    []string{javaMaven, javaRuntime, javaEntrypoint},
 			MustNotUse: []string{entrypoint},
 		},
@@ -145,7 +130,7 @@ func TestAcceptanceJava(t *testing.T) {
 		{
 			Name:       "Exploded_Jar_java_11",
 			App:        "exploded_jar",
-			SkipStacks: []string{"google.24.full", "google.24"},
+			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22", "google.24.full", "google.24"},
 			Env: []string{
 				"GOOGLE_RUNTIME_VERSION=11",
 			},

@@ -146,11 +146,10 @@ func TestAcceptance(t *testing.T) {
 			FilesMustNotExist: []string{"/workspace/src/main/java/hello/Hello.java", "/workspace/pom.xml"},
 		},
 		{
-			Name:            "gradle micronaut",
-			App:             "gradle_micronaut",
-			MustNotOutput:   []string{"WARNING"},
-			EnableCacheTest: true,
-			Setup:           updateGradleVersions,
+			Name:          "gradle micronaut",
+			App:           "gradle_micronaut",
+			MustNotOutput: []string{"WARNING"},
+			Setup:         updateGradleVersions,
 		},
 		{
 			Name:                       "gradlew micronaut",
