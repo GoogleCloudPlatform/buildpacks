@@ -36,20 +36,24 @@ if [[ ! -d "$search_dir" ]]; then
   exit 1
 fi
 
-# This awk script looks for the [buildpack] section,
-# and then extracts id and version from within that section, without
-# depending on their order. It stops processing when it hits the next section.
+# This awk script looks for id and version in lines following [buildpack].
 readonly awk_script='
   BEGIN { in_buildpack = 0; id = ""; version = "" }
   /\[buildpack\]/ { in_buildpack = 1; next }
-  /\[.*\]/ { if (in_buildpack) { exit } }
-  in_buildpack && /^\s*id\s*=\s*".*"/ {
-    match($0, /"(.*)"/);
-    id = substr($0, RSTART + 1, RLENGTH - 2);
+  in_buildpack && /^\[/ { in_buildpack = 0 }
+  in_buildpack && /id *= *".*"/ {
+    val = $0;
+    gsub(/^ *id *= *"/, "", val);
+    gsub(/" *$/, "", val);
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", val);
+    id = val;
   }
-  in_buildpack && /^\s*version\s*=\s*".*"/ {
-    match($0, /"(.*)"/);
-    version = substr($0, RSTART + 1, RLENGTH - 2);
+  in_buildpack && /version *= *".*"/ {
+    val = $0;
+    gsub(/^ *version *= *"/, "", val);
+    gsub(/" *$/, "", val);
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", val);
+    version = val;
   }
   END {
     if (id != "" && version != "") {
@@ -60,43 +64,27 @@ readonly awk_script='
 
 buildpacks=()
 
-# Enable recursive globbing and prevent errors if no files are found.
-shopt -s globstar nullglob
-
-# Find buildpack archives and extract info from their buildpack.toml
-for bp_archive in "${search_dir}"/**/*.{tgz,tar,cnb}; do
-  if [[ ! -f "$bp_archive" ]]; then
-    continue
-  fi
-  # Use `|| true` to prevent exiting if tar fails or grep finds no match.
-  toml_path=$(tar -tf "${bp_archive}" 2>/dev/null | grep 'buildpack.toml$' | head -n 1 || true)
+while IFS= read -r -d $'\0' bp_archive; do
+  toml_path=$(tar -tf "${bp_archive}" 2>/dev/null | grep 'buildpack\.toml$' | head -n 1 || true)
   if [[ -n "$toml_path" ]]; then
-    # Use `|| true` here as well in case awk fails.
-    buildpack_info=$(tar -xOf "${bp_archive}" "${toml_path}" 2>/dev/null | awk "$awk_script" || true)
+    buildpack_info=$(tar -xOf "${bp_archive}" "${toml_path}" 2>/dev/null | awk "${awk_script}" || true)
     if [[ -n "$buildpack_info" ]]; then
       buildpacks+=("$buildpack_info")
     fi
   fi
-done
+done < <(find "$search_dir" -type f \( -name "*.tgz" -o -name "*.tar" -o -name "*.cnb" \) -print0)
 
-# Also find standalone buildpack.toml files, for/if buildpacks that are not archived.
-for toml_file in "${search_dir}"/**/buildpack.toml; do
-  if [[ ! -f "$toml_file" ]]; then
-    continue
-  fi
-  buildpack_info=$(awk "$awk_script" "$toml_file")
+while IFS= read -r -d $'\0' toml_file; do
+  buildpack_info=$(awk "${awk_script}" "$toml_file")
   if [[ -n "$buildpack_info" ]]; then
     buildpacks+=("$buildpack_info")
   fi
-done
+done < <(find "$search_dir" -type f -name "buildpack.toml" -print0)
 
 if [[ "${#buildpacks[@]}" -gt 0 ]]; then
-  # There could be duplicates, so we remove them.
   unique_buildpacks=($(printf "%s\n" "${buildpacks[@]}" | sort -u))
   flatten_list=$(IFS=,; echo "${unique_buildpacks[*]}")
-  # Final output goes to stdout for the calling script.
   echo "--flatten ${flatten_list}"
 else
-  # Final output goes to stdout for the calling script.
   echo ""
 fi
