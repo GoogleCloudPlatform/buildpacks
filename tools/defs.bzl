@@ -258,6 +258,7 @@ def builder(
         srcs.append(descriptor)
 
     srcs += buildpacks if buildpacks else []
+    srcs.append("//tools:generate_flatten_flag.sh")
 
     deps = _package_buildpack_groups(name, groups) if groups else []
 
@@ -279,13 +280,15 @@ def builder(
         tools = [
             "//tools/checktools:main",
             "//tools:create_builder",
+            "//tools:generate_flatten_flag",
         ],
-        cmd = """$(execpath {check_script}) && $(execpath {create_script}) {image} $(execpath {tar}) "{descriptor}" $@""".format(
+        cmd = """$(execpath {check_script}) && $(execpath {create_script}) "{image}" "$(execpath {tar})" "{descriptor}" "$@" "$(execpath {flatten_script})" """.format(
             image = image,
             tar = name + ".tar",
             descriptor = descriptor,
             check_script = "//tools/checktools:main",
             create_script = "//tools:create_builder",
+            flatten_script = "//tools:generate_flatten_flag",
         ),
     )
 
