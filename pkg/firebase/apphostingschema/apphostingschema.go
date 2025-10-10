@@ -243,6 +243,9 @@ func mergeAppHostingSchemas(appHostingSchema *AppHostingSchema, envSpecificSchem
 	if envSpecificSchema.RunConfig.MinInstances != nil {
 		appHostingSchema.RunConfig.MinInstances = envSpecificSchema.RunConfig.MinInstances
 	}
+	if envSpecificSchema.RunConfig.CPUAlwaysAllocated != nil {
+		appHostingSchema.RunConfig.CPUAlwaysAllocated = envSpecificSchema.RunConfig.CPUAlwaysAllocated
+	}
 	if envSpecificSchema.Scripts.BuildCommand != "" {
 		appHostingSchema.Scripts.BuildCommand = envSpecificSchema.Scripts.BuildCommand
 	}
