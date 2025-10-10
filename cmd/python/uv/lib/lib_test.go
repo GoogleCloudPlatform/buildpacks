@@ -28,6 +28,38 @@ func TestDetect(t *testing.T) {
 		want  int
 		files map[string]string
 	}{
+		// Requirements.txt tests
+		{
+			name: "should_opt_in_for_requirements_txt_with_uv_env_var",
+			envs: []string{
+				env.ReleaseTrack + "=ALPHA",
+				env.PythonPackageManager + "=uv",
+			},
+			files: map[string]string{
+				"requirements.txt": "flask",
+			},
+			want: 0,
+		},
+		{
+			name: "should_opt_out_for_requirements_txt_in_beta",
+			envs: []string{
+				env.ReleaseTrack + "=BETA",
+				env.PythonPackageManager + "=uv",
+			},
+			files: map[string]string{
+				"requirements.txt": "flask",
+			},
+			want: 100,
+		},
+		{
+			name: "should_opt_out_for_requirements_txt_without_uv_env_var",
+			envs: []string{env.ReleaseTrack + "=ALPHA"},
+			files: map[string]string{
+				"requirements.txt": "flask",
+			},
+			want: 100,
+		},
+		// Pyproject.toml tests
 		{
 			name: "should_opt_out_for_uv_project_in_beta",
 			envs: []string{env.ReleaseTrack + "=BETA"},

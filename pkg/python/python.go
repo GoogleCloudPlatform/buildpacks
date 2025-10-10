@@ -386,3 +386,9 @@ func copySharedLibs(ctx *gcp.Context, l *libcnb.Layer) error {
 func isSupportedUnstablePythonVersion(constraint string) bool {
 	return strings.Count(constraint, ".") == 2 && strings.Count(constraint, "rc") == 1
 }
+
+// isPackageManagerConfigured checks if the environment is configured to use the specified package manager.
+func isPackageManagerConfigured(pm string) bool {
+	pmPreference := os.Getenv(env.PythonPackageManager)
+	return strings.EqualFold(pmPreference, pm) // Case insensitive comparison.
+}

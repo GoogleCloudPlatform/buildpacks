@@ -168,6 +168,10 @@ const (
 	// BuildEnv is an env var used to specify the environment for the Build.
 	// Example: dev, qual, prod.
 	BuildEnv = "GOOGLE_BUILD_ENV"
+
+	// PythonPackageManager is an env var used to specify the python package manager for the Build.
+	// Example: `pip`, `uv`.
+	PythonPackageManager = "GOOGLE_PYTHON_PACKAGE_MANAGER"
 )
 
 const (

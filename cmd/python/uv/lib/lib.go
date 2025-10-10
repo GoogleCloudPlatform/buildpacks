@@ -25,16 +25,27 @@ import (
 
 // DetectFn is the exported detect function.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	isUVRequirements, message, err := python.IsUVRequirements(ctx)
+	if err != nil {
+		return gcp.OptOut(message), err
+	}
+	if isUVRequirements {
+		if !python.IsUVRequirementsEnabled(ctx) {
+			return gcp.OptOut("Python UV Buildpack for requirements.txt is not supported in the current release track."), nil
+		}
+		return gcp.OptIn(message), nil
+	}
+
 	if !python.IsPyprojectEnabled(ctx) {
 		return gcp.OptOut("Python UV Buildpack is not supported in the current release track."), nil
 	}
 
-	isUV, message, err := python.IsUVProject(ctx)
+	isUVPyproject, message, err := python.IsUVPyproject(ctx)
 	if err != nil {
 		return gcp.OptOut(message), err
 	}
 
-	if isUV {
+	if isUVPyproject {
 		return gcp.OptIn(message), nil
 	}
 	return gcp.OptOut(message), nil
@@ -45,6 +56,19 @@ func BuildFn(ctx *gcp.Context) error {
 	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.UVUsageCounterID).Increment(1)
 	if err := python.InstallUV(ctx); err != nil {
 		return fmt.Errorf("installing uv: %w", err)
+	}
+
+	isUVRequirements, _, err := python.IsUVRequirements(ctx)
+	if err != nil {
+		return fmt.Errorf("checking for uv requirements: %w", err)
+	}
+
+	if isUVRequirements {
+		ctx.Logf("Found requirements.txt, installing with `uv pip install`.")
+		if err := python.UVInstallRequirements(ctx); err != nil {
+			return gcp.UserErrorf("installing requirements.txt with uv: %w", err)
+		}
+		return nil
 	}
 
 	if err := python.EnsureUVLockfile(ctx); err != nil {

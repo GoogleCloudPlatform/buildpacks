@@ -30,21 +30,29 @@ func TestAcceptancePython(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:                       "entrypoint from procfile web",
+			Name:                       "entrypoint_from_procfile_web",
 			App:                        "simple",
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
 			EnableCacheTest:            true,
 			VersionInclusionConstraint: "<3.8.0",
 		},
 		{
-			Name:                       "entrypoint from procfile web upgraded app",
+			Name:                       "entrypoint_from_procfile_web_upgraded_app",
 			App:                        "simple_new",
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
 			EnableCacheTest:            true,
 			VersionInclusionConstraint: ">=3.8.0",
 		},
 		{
-			Name:                       "entrypoint from procfile custom",
+			Name:                       "entrypoint_from_procfile_web_upgraded_app_uv",
+			App:                        "simple_new",
+			Env:                        []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=uv", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
+			EnableCacheTest:            true,
+			VersionInclusionConstraint: ">=3.8.0",
+		},
+		{
+			Name:                       "entrypoint_from_procfile_custom",
 			App:                        "simple",
 			Path:                       "/custom",
 			Entrypoint:                 "custom", // Must match the non-web process in Procfile.
@@ -52,7 +60,7 @@ func TestAcceptancePython(t *testing.T) {
 			VersionInclusionConstraint: "<3.8.0",
 		},
 		{
-			Name:                       "entrypoint from procfile custom upgraded app",
+			Name:                       "entrypoint_from_procfile_custom_upgraded_app",
 			App:                        "simple_new",
 			Path:                       "/custom",
 			Entrypoint:                 "custom", // Must match the non-web process in Procfile.
@@ -60,7 +68,16 @@ func TestAcceptancePython(t *testing.T) {
 			VersionInclusionConstraint: ">=3.8.0",
 		},
 		{
-			Name:                       "entrypoint from env",
+			Name:                       "entrypoint_from_procfile_custom_upgraded_app_uv",
+			App:                        "simple_new",
+			Path:                       "/custom",
+			Entrypoint:                 "custom", // Must match the non-web process in Procfile.
+			Env:                        []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=uv", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
+			VersionInclusionConstraint: ">=3.8.0",
+		},
+		{
+			Name:                       "entrypoint_from_env",
 			App:                        "simple",
 			Path:                       "/custom",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 custom:app"},
@@ -68,7 +85,7 @@ func TestAcceptancePython(t *testing.T) {
 			VersionInclusionConstraint: "<3.8.0",
 		},
 		{
-			Name:                       "entrypoint from env upgraded app",
+			Name:                       "entrypoint_from_env_upgraded_app",
 			App:                        "simple_new",
 			Path:                       "/custom",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 custom:app"},
@@ -76,7 +93,7 @@ func TestAcceptancePython(t *testing.T) {
 			VersionInclusionConstraint: ">=3.8.0",
 		},
 		{
-			Name:                       "entrypoint with env var",
+			Name:                       "entrypoint_with_env_var",
 			App:                        "simple",
 			Path:                       "/env?want=bar",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app"},
@@ -84,11 +101,19 @@ func TestAcceptancePython(t *testing.T) {
 			VersionInclusionConstraint: "<3.8.0",
 		},
 		{
-			Name:                       "entrypoint with env var upgraded app",
+			Name:                       "entrypoint_with_env_var_upgraded_app",
 			App:                        "simple_new",
 			Path:                       "/env?want=bar",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
+			VersionInclusionConstraint: ">=3.8.0",
+		},
+		{
+			Name:                       "entrypoint_with_env_var_upgraded_app_uv",
+			App:                        "simple_new",
+			Path:                       "/env?want=bar",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app", "GOOGLE_PYTHON_PACKAGE_MANAGER=uv", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
 			VersionInclusionConstraint: ">=3.8.0",
 		},
 		{

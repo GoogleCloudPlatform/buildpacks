@@ -150,7 +150,7 @@ func TestRequestedPoetryVersion(t *testing.T) {
 	}
 }
 
-func TestIsUVProject(t *testing.T) {
+func TestIsUVPyproject(t *testing.T) {
 	testCases := []struct {
 		name    string
 		files   map[string]string
@@ -193,16 +193,16 @@ name = "my-poetry-project"`,
 			appDir := setupTest(t, tc.files)
 
 			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
-			isUV, msg, err := IsUVProject(ctx)
+			isUV, msg, err := IsUVPyproject(ctx)
 
 			if err != nil {
-				t.Fatalf("IsUVProject() got an unexpected error: %v", err)
+				t.Fatalf("IsUVPyproject() got an unexpected error: %v", err)
 			}
 			if isUV != tc.want {
-				t.Errorf("IsUVProject() = %v, want %v", isUV, tc.want)
+				t.Errorf("IsUVPyproject() = %v, want %v", isUV, tc.want)
 			}
 			if msg != tc.wantMsg {
-				t.Errorf("IsUVProject() message = %q, want %q", msg, tc.wantMsg)
+				t.Errorf("IsUVPyproject() message = %q, want %q", msg, tc.wantMsg)
 			}
 		})
 	}

@@ -183,8 +183,8 @@ func EnsurePoetryLockfile(ctx *gcp.Context) error {
 	return ensureLockfile(ctx, "poetry", poetryLock, poetryLockCmd)
 }
 
-// IsUVProject checks if the application is a UV project.
-func IsUVProject(ctx *gcp.Context) (bool, string, error) {
+// IsUVPyproject checks if the application is a UV Pyproject application.
+func IsUVPyproject(ctx *gcp.Context) (bool, string, error) {
 	pyprojectTomlExists, err := ctx.FileExists(pyprojectToml)
 	if err != nil {
 		return false, "", fmt.Errorf("checking for %s: %w", pyprojectToml, err)
@@ -207,6 +207,14 @@ func IsUVProject(ctx *gcp.Context) (bool, string, error) {
 
 // RequestedUVVersion returns the requested uv version from pyproject.toml.
 func RequestedUVVersion(ctx *gcp.Context) (string, error) {
+	pyprojectTomlexists, err := ctx.FileExists(pyprojectToml)
+	if err != nil {
+		return "", fmt.Errorf("checking for %s: %w", pyprojectToml, err)
+	}
+	if !pyprojectTomlexists {
+		return "", nil
+	}
+
 	pyprojectTomlContent, err := ctx.ReadFile(pyprojectToml)
 	if err != nil {
 		return "", fmt.Errorf("reading %s: %w", pyprojectToml, err)
