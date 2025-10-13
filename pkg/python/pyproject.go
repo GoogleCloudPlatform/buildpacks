@@ -19,11 +19,16 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/BurntSushi/toml"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 const (
@@ -202,7 +207,14 @@ func IsUVPyproject(ctx *gcp.Context) (bool, string, error) {
 		return true, fmt.Sprintf("found %s and %s", pyprojectToml, uvLock), nil
 	}
 
-	return true, fmt.Sprintf("found %s", pyprojectToml), nil
+	// When no lockfile is present, check the environment variable to decide the package manager.
+	if isPackageManagerConfigured(uv) {
+		return true, fmt.Sprintf("found %s, using uv because %s is set to 'uv'", pyprojectToml, env.PythonPackageManager), nil
+	}
+	if os.Getenv(env.PythonPackageManager) == "" {
+		return true, fmt.Sprintf("found %s, using uv because %s is not set", pyprojectToml, env.PythonPackageManager), nil
+	}
+	return false, fmt.Sprintf("found %s, but %s is not set to 'uv'", pyprojectToml, env.PythonPackageManager), nil
 }
 
 // RequestedUVVersion returns the requested uv version from pyproject.toml.
@@ -413,4 +425,70 @@ func IsPyprojectEnabled(ctx *gcp.Context) bool {
 		return false
 	}
 	return env.IsAlphaSupported()
+}
+
+// IsPipPyproject checks if the application is a pip pyproject.
+func IsPipPyproject(ctx *gcp.Context) bool {
+	return isPackageManagerConfigured(pip) && IsPyprojectEnabled(ctx) && (env.IsGCP() || env.IsGCF())
+}
+
+// PipInstallPyproject installs dependencies from a pyproject.toml file in the current directory.
+func PipInstallPyproject(ctx *gcp.Context, l *libcnb.Layer) error {
+	ctx.Logf("Installing application dependencies from pyproject.toml.")
+	currentPythonVersion, err := Version(ctx)
+	if err != nil {
+		return err
+	}
+	hash, cached, err := cache.HashAndCheck(ctx, l, dependencyHashKey,
+		cache.WithFiles("pyproject.toml"),
+		cache.WithStrings(currentPythonVersion))
+	if err != nil {
+		return err
+	}
+
+	// Check cache expiration to pick up new versions of dependencies that are not pinned.
+	expired := cacheExpired(ctx, l)
+
+	if cached && !expired {
+		ctx.Logf("Dependencies cached and not expired. Skipping installation.")
+		return nil
+	}
+
+	if expired {
+		ctx.Debugf("Dependencies cache expired, clearing layer.")
+	}
+
+	if err := ctx.ClearLayer(l); err != nil {
+		return fmt.Errorf("clearing layer %q: %w", l.Name, err)
+	}
+
+	cache.Add(ctx, l, dependencyHashKey, hash)
+	// Update the layer metadata.
+	ctx.SetMetadata(l, pythonVersionKey, currentPythonVersion)
+	ctx.SetMetadata(l, expiryTimestampKey, time.Now().Add(expirationTime).Format(dateFormat))
+
+	if err := ar.GeneratePythonConfig(ctx); err != nil {
+		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
+	}
+
+	cmd := []string{
+		"python3", "-m", "pip", "install",
+		".",
+		"--upgrade",
+		"--upgrade-strategy", "only-if-needed",
+		"--no-warn-script-location",   // bin is added at run time by lifecycle.
+		"--disable-pip-version-check", // If we were going to upgrade pip, we would have done it already in the runtime buildpack.
+		"--no-cache-dir",              // We don't want http caching of pypi requests.
+	}
+	vendorDir, isVendored := os.LookupEnv(VendorPipDepsEnv)
+	if isVendored {
+		cmd = append(cmd, "--no-index", "--find-links", vendorDir)
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.PipVendorDependenciesCounterID).Increment(1)
+	}
+	if _, err := ctx.Exec(cmd,
+		gcp.WithUserAttribution); err != nil {
+		return err
+	}
+
+	return nil
 }

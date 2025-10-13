@@ -101,12 +101,18 @@ func BuildFn(ctx *gcp.Context) error {
 		if err != nil {
 			return fmt.Errorf("error detecting poetry project: %w", err)
 		}
+		isUV, _, err := python.IsUVPyproject(ctx)
+		if err != nil {
+			return fmt.Errorf("error detecting uv project: %w", err)
+		}
 
 		if scriptCmd != nil {
 			if isPoetry {
 				cmd = append([]string{"poetry", "run"}, scriptCmd...)
-			} else {
+			} else if isUV {
 				cmd = append([]string{"uv", "run"}, scriptCmd...)
+			} else {
+				cmd = scriptCmd
 			}
 		} else if !hasMain && !hasApp {
 			return gcp.UserErrorf("for Python with pyproject.toml, provide a main.py or app.py file or a script command in pyproject.toml or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")

@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
 	"github.com/buildpacks/libcnb/v2"
@@ -52,32 +53,44 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if requirementsExists {
 		plan.Provides = python.RequirementsProvides
 	}
+	if python.IsPipPyproject(ctx) {
+		return gcp.OptIn(fmt.Sprintf("found pyproject.toml, using pip because %s is set to 'pip' ", env.PythonPackageManager)), nil
+	}
 	return gcp.OptInAlways(gcp.WithBuildPlans(plan)), nil
 }
 
 // BuildFn is the exported build function.
 func BuildFn(ctx *gcp.Context) error {
 	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.PIPUsageCounterID).Increment(1)
-	// Remove leading and trailing : because otherwise SplitList will add empty strings.
-	reqs := filepath.SplitList(strings.Trim(os.Getenv(python.RequirementsFilesEnv), string(os.PathListSeparator)))
-	ctx.Debugf("Found requirements.txt files provided by other buildpacks: %s", reqs)
-
-	// The workspace requirements.txt file should be installed last.
-	requirementsExists, err := ctx.FileExists("requirements.txt")
-	if err != nil {
-		return err
-	}
-	if requirementsExists {
-		reqs = append(reqs, "requirements.txt")
-	}
 
 	l, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", layerName, err)
 	}
 
-	if err := python.InstallRequirements(ctx, l, reqs...); err != nil {
-		return fmt.Errorf("installing dependencies: %w", err)
+	// Check if this build is for a pyproject.toml file.
+	if python.IsPipPyproject(ctx) {
+		if err := python.PipInstallPyproject(ctx, l); err != nil {
+			return gcp.UserErrorf("installing dependencies from pyproject.toml: %w", err)
+		}
+	} else {
+		// Fallback to the requirements.txt logic.
+		// Remove leading and trailing : because otherwise SplitList will add empty strings.
+		reqs := filepath.SplitList(strings.Trim(os.Getenv(python.RequirementsFilesEnv), string(os.PathListSeparator)))
+		ctx.Debugf("Found requirements.txt files provided by other buildpacks: %s", reqs)
+
+		// The workspace requirements.txt file should be installed last.
+		requirementsExists, err := ctx.FileExists("requirements.txt")
+		if err != nil {
+			return err
+		}
+		if requirementsExists {
+			reqs = append(reqs, "requirements.txt")
+		}
+
+		if err := python.InstallRequirements(ctx, l, reqs...); err != nil {
+			return fmt.Errorf("installing dependencies from requirements.txt: %w", err)
+		}
 	}
 
 	ctx.Logf("Checking for incompatible dependencies.")

@@ -24,6 +24,7 @@ func TestDetect(t *testing.T) {
 	testCases := []struct {
 		name  string
 		files map[string]string
+		env   []string
 		want  int
 	}{
 		{
@@ -42,10 +43,19 @@ func TestDetect(t *testing.T) {
 			},
 			want: 0,
 		},
+		{
+			name: "pyproject.toml_file_when_env_var is pip",
+			files: map[string]string{
+				"pyproject.toml": `[project]
+name = "my-pip-project"`,
+			},
+			env:  []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=pip"},
+			want: 0,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, DetectFn, tc.name, tc.files, []string{}, tc.want)
+			buildpacktest.TestDetect(t, DetectFn, tc.name, tc.files, tc.env, tc.want)
 		})
 	}
 }

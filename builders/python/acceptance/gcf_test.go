@@ -108,6 +108,20 @@ func TestAcceptance(t *testing.T) {
 			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
 		},
 		{
+			Name:                       "pyproject_pip",
+			App:                        "pyproject",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA", "GOOGLE_PYTHON_PACKAGE_MANAGER=pip"},
+			VersionInclusionConstraint: ">=3.9.0",
+			MustUse:                    []string{pythonRuntime, pythonPIP, pythonFF},
+		},
+		{
+			Name:                       "pyproject_uv",
+			App:                        "pyproject",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA", "GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
+			VersionInclusionConstraint: ">=3.9.0",
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
+		},
+		{
 			Name:                       "uv",
 			App:                        "uv",
 			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},

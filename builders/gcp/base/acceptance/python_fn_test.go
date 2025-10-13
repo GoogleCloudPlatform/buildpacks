@@ -85,6 +85,30 @@ func TestAcceptancePythonFn(t *testing.T) {
 			MustUse:    []string{pythonRuntime, pythonPoetry, pythonFF},
 			MustNotUse: []string{entrypoint},
 		},
+		{
+			Name:       "pyproject",
+			App:        "pyproject",
+			Path:       "/testFunction",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:    []string{pythonRuntime, pythonUV, pythonFF},
+			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:       "pyproject_pip",
+			App:        "pyproject",
+			Path:       "/testFunction",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0", "X_GOOGLE_RELEASE_TRACK=ALPHA", "GOOGLE_PYTHON_PACKAGE_MANAGER=pip"},
+			MustUse:    []string{pythonRuntime, pythonPIP, pythonFF},
+			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:       "pyproject_uv",
+			App:        "pyproject",
+			Path:       "/testFunction",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0", "X_GOOGLE_RELEASE_TRACK=ALPHA", "GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
+			MustUse:    []string{pythonRuntime, pythonUV, pythonFF},
+			MustNotUse: []string{entrypoint},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc

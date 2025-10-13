@@ -154,6 +154,7 @@ func TestIsUVPyproject(t *testing.T) {
 	testCases := []struct {
 		name    string
 		files   map[string]string
+		env     map[string]string
 		want    bool
 		wantMsg string
 	}{
@@ -174,23 +175,54 @@ name = "my-uv-project"`,
 name = "my-uv-project"`,
 			},
 			want:    true,
-			wantMsg: "found pyproject.toml",
+			wantMsg: "found pyproject.toml, using uv because GOOGLE_PYTHON_PACKAGE_MANAGER is not set",
 		},
 		{
-			// That's why Poetry order group should be before UV order group.
-			name: "poetry_project",
+			name: "uv_project_without_uv.lock_with_uv_package_manager_env_var_set",
 			files: map[string]string{
-				"pyproject.toml": `[tool.poetry]
-name = "my-poetry-project"`,
+				"pyproject.toml": `[project]
+name = "my-uv-project"`,
+			},
+			env: map[string]string{
+				"GOOGLE_PYTHON_PACKAGE_MANAGER": "uv",
 			},
 			want:    true,
-			wantMsg: "found pyproject.toml",
+			wantMsg: "found pyproject.toml, using uv because GOOGLE_PYTHON_PACKAGE_MANAGER is set to 'uv'",
+		},
+		{
+			name: "uv_project_without_uv.lock_with_pip_package_manager_env_var_set",
+			files: map[string]string{
+				"pyproject.toml": `[project]
+name = "my-uv-project"`,
+			},
+			env: map[string]string{
+				"GOOGLE_PYTHON_PACKAGE_MANAGER": "pip",
+			},
+			want:    false,
+			wantMsg: "found pyproject.toml, but GOOGLE_PYTHON_PACKAGE_MANAGER is not set to 'uv'",
+		},
+		{
+			name: "uv_project_with_uv.lock_with_pip_package_manager_env_var_set",
+			files: map[string]string{
+				"pyproject.toml": `[project]
+name = "my-uv-project"`,
+				"uv.lock": "",
+			},
+			env: map[string]string{
+				"GOOGLE_PYTHON_PACKAGE_MANAGER": "pip",
+			},
+			want:    true,
+			wantMsg: "found pyproject.toml and uv.lock",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			appDir := setupTest(t, tc.files)
+
+			for key, value := range tc.env {
+				t.Setenv(key, value)
+			}
 
 			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
 			isUV, msg, err := IsUVPyproject(ctx)

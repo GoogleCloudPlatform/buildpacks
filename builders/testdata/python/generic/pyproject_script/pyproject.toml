@@ -1,5 +1,5 @@
 [project]
-name = "uv"
+name = "pyproject_script"
 version = "0.1.0"
 description = ""
 requires-python = ">=3.9"
