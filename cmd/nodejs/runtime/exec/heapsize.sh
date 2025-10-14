@@ -28,7 +28,7 @@ if [ -f /sys/fs/cgroup/memory/memory.limit_in_bytes ]; then
   else
     if [[ $NODE_OPTIONS != *"max-old-space-size"* ]]; then
       # NODE_OPTIONS is already defined so we append the --max-old-space-size
-      echo "NODE_OPTIONS=\"$NODE_OPTIONS --max-old-space-size=$HEAP_LIMIT_MB\"" >&3
+      echo "NODE_OPTIONS=\"${NODE_OPTIONS//\"/\\\"} --max-old-space-size=$HEAP_LIMIT_MB\"" >&3
     fi
   fi
 fi
