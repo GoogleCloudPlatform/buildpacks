@@ -294,11 +294,7 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 			"--disable-pip-version-check", // If we were going to upgrade pip, we would have done it already in the runtime buildpack.
 			"--no-cache-dir",              // We used to save this to a layer, but it made builds slower because it includes http caching of pypi requests.
 		}
-		vendorDir, isVendored := os.LookupEnv(VendorPipDepsEnv)
-		if isVendored {
-			cmd = append(cmd, "--no-index", "--find-links", vendorDir)
-			buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.PipVendorDependenciesCounterID).Increment(1)
-		}
+		cmd = appendVendoringFlags(cmd)
 		if !virtualEnv {
 			cmd = append(cmd, "--user") // Install into user site-packages directory.
 		}
@@ -391,6 +387,15 @@ func isSupportedUnstablePythonVersion(constraint string) bool {
 func isPackageManagerConfigured(pm string) bool {
 	pmPreference := os.Getenv(env.PythonPackageManager)
 	return strings.EqualFold(pmPreference, pm) // Case insensitive comparison.
+}
+
+// appendVendoringFlags checks for and appends vendored dependency flags to the command.
+func appendVendoringFlags(cmd []string) []string {
+	if vendorDir, isVendored := os.LookupEnv(VendorPipDepsEnv); isVendored {
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.PipVendorDependenciesCounterID).Increment(1)
+		return append(cmd, "--no-index", "--find-links", vendorDir)
+	}
+	return cmd
 }
 
 func isPackageManagerEmpty() bool {

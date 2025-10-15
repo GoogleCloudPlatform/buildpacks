@@ -67,8 +67,10 @@ func UVInstallRequirements(ctx *gcp.Context) error {
 		return fmt.Errorf("failed to create virtual environment with uv: %w", err)
 	}
 
-	ctx.Logf("Installing dependencies with `uv pip install -r requirements.txt` into the virtual environment...")
 	installCmd := []string{"uv", "pip", "install", "-r", "requirements.txt"}
+	installCmd = appendVendoringFlags(installCmd)
+
+	ctx.Logf("Installing dependencies with `%s` into the virtual environment...", strings.Join(installCmd, " "))
 	if _, err := ctx.Exec(installCmd, gcp.WithUserAttribution, gcp.WithEnv("VIRTUAL_ENV="+venvDir)); err != nil {
 		return fmt.Errorf("failed to install requirements.txt with uv: %w", err)
 	}

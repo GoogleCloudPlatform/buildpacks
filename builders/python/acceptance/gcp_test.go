@@ -229,10 +229,31 @@ func TestAcceptancePython(t *testing.T) {
 			VersionInclusionConstraint: ">= 3.10.0",
 		},
 		{
-			Name:    "pip_vendored_dependencies",
-			App:     "pip_vendored_dependencies",
+			Name:    "requirements_vendored_dependencies",
+			App:     "requirements_vendored_dependencies",
 			Env:     []string{"GOOGLE_VENDOR_PIP_DEPENDENCIES=package"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+		},
+		{
+			Name:                       "requirements_vendored_dependencies_uv",
+			App:                        "requirements_vendored_dependencies",
+			Env:                        []string{"GOOGLE_VENDOR_PIP_DEPENDENCIES=package", "X_GOOGLE_RELEASE_TRACK=ALPHA", "GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
+			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
+			VersionInclusionConstraint: ">= 3.10.0",
+		},
+		{
+			Name:                       "pyproject_vendored_dependencies_pip",
+			App:                        "pyproject_vendored_dependencies",
+			Env:                        []string{"GOOGLE_VENDOR_PIP_DEPENDENCIES=package", "GOOGLE_PYTHON_PACKAGE_MANAGER=pip", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
+			VersionInclusionConstraint: ">= 3.10.0",
+		},
+		{
+			Name:                       "pyproject_vendored_dependencies_uv",
+			App:                        "pyproject_vendored_dependencies",
+			Env:                        []string{"GOOGLE_VENDOR_PIP_DEPENDENCIES=package", "GOOGLE_PYTHON_PACKAGE_MANAGER=uv", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
+			VersionInclusionConstraint: ">= 3.10.0",
 		},
 		{
 			Name:                       "uvicorn_3.13_and_above",

@@ -49,8 +49,6 @@ var (
 	poetryInstallCmd = []string{"poetry", "install", "--no-interaction", "--sync", "--only", "main", "--no-root"}
 	poetryEnvInfoCmd = []string{"poetry", "env", "info", "--path"}
 	poetryLockCmd    = []string{"poetry", "lock", "--no-interaction"}
-	uvLockCmd        = []string{"uv", "lock"}
-	uvSyncCmd        = []string{"uv", "sync", "--active"}
 )
 
 // IsPoetryProject checks if the application is a Poetry project.
@@ -260,7 +258,9 @@ func InstallUV(ctx *gcp.Context) error {
 
 // EnsureUVLockfile checks for uv.lock and generates it if it doesn't exist.
 func EnsureUVLockfile(ctx *gcp.Context) error {
-	return ensureLockfile(ctx, "uv", uvLock, uvLockCmd)
+	lockCmd := []string{"uv", "lock"}
+	lockCmd = appendVendoringFlags(lockCmd)
+	return ensureLockfile(ctx, "uv", uvLock, lockCmd)
 }
 
 // UVInstallDependenciesAndConfigureEnv installs dependencies and sets up the runtime environment using uv.
@@ -283,8 +283,11 @@ func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context) error {
 		return fmt.Errorf("failed to create virtual environment with uv: %w", err)
 	}
 
+	syncCmd := []string{"uv", "sync", "--active"}
+	syncCmd = appendVendoringFlags(syncCmd)
+
 	ctx.Logf("Installing dependencies with `uv sync` into the virtual environment...")
-	if _, err := ctx.Exec(uvSyncCmd, gcp.WithUserAttribution, gcp.WithEnv("VIRTUAL_ENV="+venvDir)); err != nil {
+	if _, err := ctx.Exec(syncCmd, gcp.WithUserAttribution, gcp.WithEnv("VIRTUAL_ENV="+venvDir)); err != nil {
 		return fmt.Errorf("failed to sync dependencies with uv: %w", err)
 	}
 	ctx.Logf("Dependencies installed to virtual environment at %s", venvDir)
@@ -350,7 +353,6 @@ func ensureLockfile(ctx *gcp.Context, toolName, lockFile string, lockCmd []strin
 		ctx.Logf("Using existing %s.", lockFile)
 		return nil
 	}
-
 	ctx.Logf("%s not found, generating it using `%s`...", lockFile, strings.Join(lockCmd, " "))
 	if _, err := ctx.Exec(lockCmd, gcp.WithUserAttribution); err != nil {
 		return fmt.Errorf("failed to generate %s with %s: %w", lockFile, toolName, err)
