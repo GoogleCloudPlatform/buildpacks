@@ -190,6 +190,10 @@ func EnsurePoetryLockfile(ctx *gcp.Context) error {
 
 // IsUVPyproject checks if the application is a UV Pyproject application.
 func IsUVPyproject(ctx *gcp.Context) (bool, string, error) {
+	if isBothPyprojectAndRequirementsPresent(ctx) {
+		return false, fmt.Sprintf("%s and %s found, prefer requirements.txt", pyprojectToml, requirements), nil
+	}
+
 	pyprojectTomlExists, err := ctx.FileExists(pyprojectToml)
 	if err != nil {
 		return false, "", fmt.Errorf("checking for %s: %w", pyprojectToml, err)
@@ -202,7 +206,6 @@ func IsUVPyproject(ctx *gcp.Context) (bool, string, error) {
 	if err != nil {
 		return false, "", fmt.Errorf("checking for %s: %w", uvLock, err)
 	}
-
 	if uvLockExists {
 		return true, fmt.Sprintf("found %s and %s", pyprojectToml, uvLock), nil
 	}
@@ -211,8 +214,8 @@ func IsUVPyproject(ctx *gcp.Context) (bool, string, error) {
 	if isPackageManagerConfigured(uv) {
 		return true, fmt.Sprintf("found %s, using uv because %s is set to 'uv'", pyprojectToml, env.PythonPackageManager), nil
 	}
-	if os.Getenv(env.PythonPackageManager) == "" {
-		return true, fmt.Sprintf("found %s, using uv because %s is not set", pyprojectToml, env.PythonPackageManager), nil
+	if isPackageManagerEmpty() {
+		return true, fmt.Sprintf("found %s and %s is not set, using uv as default package manager", pyprojectToml, env.PythonPackageManager), nil
 	}
 	return false, fmt.Sprintf("found %s, but %s is not set to 'uv'", pyprojectToml, env.PythonPackageManager), nil
 }
@@ -410,25 +413,17 @@ func IsPyprojectEnabled(ctx *gcp.Context) bool {
 	if !pyprojectTomlExists {
 		return false
 	}
-	requirementsTxtExists, _ := ctx.FileExists(requirements)
-	v, err := RuntimeVersion(ctx, ctx.ApplicationRoot())
-	if err != nil {
-		return false
-	}
-	v = strings.ReplaceAll(v, "*", "0")
-	isPythonVersionLessThan314, err := versionMatchesSemver(ctx, "<3.14.0-0", v)
-	if err != nil {
-		return false
-	}
-	// If both requirements.txt and pyproject.toml exist, we will prefer requirements.txt for python <=3.13.
-	if requirementsTxtExists && isPythonVersionLessThan314 {
-		return false
+	if isBothPyprojectAndRequirementsPresent(ctx) {
+		return false // Prefer requirements.txt over pyproject.toml.
 	}
 	return env.IsAlphaSupported()
 }
 
 // IsPipPyproject checks if the application is a pip pyproject.
 func IsPipPyproject(ctx *gcp.Context) bool {
+	if isBothPyprojectAndRequirementsPresent(ctx) {
+		return false // Prefer requirements.txt over pyproject.toml.
+	}
 	return isPackageManagerConfigured(pip) && IsPyprojectEnabled(ctx) && (env.IsGCP() || env.IsGCF())
 }
 

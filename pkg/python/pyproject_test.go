@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
@@ -175,7 +176,7 @@ name = "my-uv-project"`,
 name = "my-uv-project"`,
 			},
 			want:    true,
-			wantMsg: "found pyproject.toml, using uv because GOOGLE_PYTHON_PACKAGE_MANAGER is not set",
+			wantMsg: "found pyproject.toml and GOOGLE_PYTHON_PACKAGE_MANAGER is not set, using uv as default package manager",
 		},
 		{
 			name: "uv_project_without_uv.lock_with_uv_package_manager_env_var_set",
@@ -445,6 +446,165 @@ func TestGetScriptCommand(t *testing.T) {
 			}
 			if !reflect.DeepEqual(cmd, tc.want) {
 				t.Errorf("GetScriptCommand() = %v, want %v", cmd, tc.want)
+			}
+		})
+	}
+}
+
+func TestIsPipPyproject(t *testing.T) {
+	testCases := []struct {
+		name  string
+		files map[string]string
+		env   map[string]string
+		want  bool
+	}{
+		{
+			name: "pip_pyproject_is_enabled_on_gcp",
+			files: map[string]string{
+				"pyproject.toml": "[project]",
+			},
+			env: map[string]string{
+				env.PythonPackageManager:  "pip",
+				env.ReleaseTrack:          "ALPHA",
+				env.XGoogleTargetPlatform: "gcp",
+			},
+			want: true,
+		},
+		{
+			name: "disabled_when_requirements_txt_exists",
+			files: map[string]string{
+				"pyproject.toml":   "[project]",
+				"requirements.txt": "flask",
+			},
+			env: map[string]string{
+				env.PythonPackageManager:  "pip",
+				env.ReleaseTrack:          "ALPHA",
+				env.XGoogleTargetPlatform: "gcp",
+			},
+			want: false,
+		},
+		{
+			name: "disabled_when_package_manager_is_uv",
+			files: map[string]string{
+				"pyproject.toml": "[project]",
+			},
+			env: map[string]string{
+				env.PythonPackageManager:  "uv",
+				env.ReleaseTrack:          "ALPHA",
+				env.XGoogleTargetPlatform: "gcp",
+			},
+			want: false,
+		},
+		{
+			name: "disabled_when_no_package_manager",
+			files: map[string]string{
+				"pyproject.toml": "[project]",
+			},
+			env: map[string]string{
+				env.ReleaseTrack:          "ALPHA",
+				env.XGoogleTargetPlatform: "gcp",
+			},
+			want: false,
+		},
+		{
+			name: "disabled_when_not_alpha_release",
+			files: map[string]string{
+				"pyproject.toml": "[project]",
+			},
+			env: map[string]string{
+				env.PythonPackageManager:  "pip",
+				env.ReleaseTrack:          "GA",
+				env.XGoogleTargetPlatform: "gcp",
+			},
+			want: false,
+		},
+		{
+			name: "disabled_when_platform_is_not_gcp_or_gcf",
+			files: map[string]string{
+				"pyproject.toml": "[project]",
+			},
+			env: map[string]string{
+				env.PythonPackageManager:  "pip",
+				env.ReleaseTrack:          "ALPHA",
+				env.XGoogleTargetPlatform: "gae",
+			},
+			want: false,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			appDir := setupTest(t, tc.files)
+			for key, value := range tc.env {
+				t.Setenv(key, value)
+			}
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
+			if got := IsPipPyproject(ctx); got != tc.want {
+				t.Errorf("IsPipPyproject() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestIsPyprojectEnabled(t *testing.T) {
+	testCases := []struct {
+		name  string
+		files map[string]string
+		envs  map[string]string
+		want  bool
+	}{
+		{
+			name: "enabled_with_only_pyproject_and_alpha_track",
+			files: map[string]string{
+				"pyproject.toml": "[project]",
+			},
+			envs: map[string]string{
+				"X_GOOGLE_RELEASE_TRACK": "ALPHA",
+			},
+			want: true,
+		},
+		{
+			name: "disabled_when_requirements_txt_exists",
+			files: map[string]string{
+				"requirements.txt": "flask",
+				"pyproject.toml":   "[project]",
+			},
+			envs: map[string]string{
+				"X_GOOGLE_RELEASE_TRACK": "ALPHA",
+			},
+			want: false,
+		},
+		{
+			name: "disabled_when_not_on_alpha_track",
+			files: map[string]string{
+				"pyproject.toml": "[project]",
+			},
+			envs: map[string]string{
+				"X_GOOGLE_RELEASE_TRACK": "GA",
+			},
+			want: false,
+		},
+
+		{
+			name: "disabled_when_pyproject_toml_does_not_exist",
+			files: map[string]string{
+				"requirements.txt": "flask",
+			},
+			envs: map[string]string{
+				"X_GOOGLE_RELEASE_TRACK": "ALPHA",
+			},
+			want: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			appDir := setupTest(t, tc.files)
+			for key, value := range tc.envs {
+				t.Setenv(key, value)
+			}
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
+			if gotEnabled := IsPyprojectEnabled(ctx); gotEnabled != tc.want {
+				t.Errorf("IsPyprojectEnabled() = %v, want %v", gotEnabled, tc.want)
 			}
 		})
 	}

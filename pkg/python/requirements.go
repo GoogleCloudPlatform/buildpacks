@@ -38,17 +38,13 @@ func IsUVRequirements(ctx *gcp.Context) (bool, string, error) {
 	if !requirementsExists {
 		return false, fmt.Sprintf("%s not found", requirements), nil
 	}
-	isUVPyproject, _, err := IsUVPyproject(ctx)
-	if err != nil {
-		return false, "", err
+	if isPackageManagerConfigured(uv) {
+		return true, fmt.Sprintf("%s found and environment variable %s is uv", requirements, env.PythonPackageManager), nil
 	}
-	if isUVPyproject {
-		return false, fmt.Sprintf("%s found but uv is configured in pyproject.toml", requirements), nil
+	if isPackageManagerEmpty() && isUVDefaultPackageManagerForRequirements(ctx) {
+		return true, fmt.Sprintf("%s found and %s is not set, using uv as default package manager", requirements, env.PythonPackageManager), nil
 	}
-	if !isPackageManagerConfigured(uv) {
-		return false, fmt.Sprintf("%s found but environment variable %s is not uv", requirements, env.PythonPackageManager), nil
-	}
-	return true, fmt.Sprintf("%s found and environment variable %s is uv", requirements, env.PythonPackageManager), nil
+	return false, fmt.Sprintf("%s found but environment variable %s is not uv", requirements, env.PythonPackageManager), nil
 }
 
 // UVInstallRequirements installs dependencies from requirements.txt using 'uv pip install'.

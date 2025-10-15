@@ -392,3 +392,27 @@ func isPackageManagerConfigured(pm string) bool {
 	pmPreference := os.Getenv(env.PythonPackageManager)
 	return strings.EqualFold(pmPreference, pm) // Case insensitive comparison.
 }
+
+func isPackageManagerEmpty() bool {
+	return os.Getenv(env.PythonPackageManager) == ""
+}
+
+func isUVDefaultPackageManagerForRequirements(ctx *gcp.Context) bool {
+	v, err := RuntimeVersion(ctx, ctx.ApplicationRoot())
+	if err != nil {
+		return false
+	}
+	v = strings.ReplaceAll(v, "*", "0")
+	isPythonVersionGreaterThanEqualTo314, err := versionMatchesSemver(ctx, ">=3.14.0-0", v)
+	if err != nil {
+		return false
+	}
+	return isPythonVersionGreaterThanEqualTo314
+}
+
+// isBothPyprojectAndRequirementsPresent checks if both pyproject.toml and requirements.txt are present.
+func isBothPyprojectAndRequirementsPresent(ctx *gcp.Context) bool {
+	pyprojectTomlExists, _ := ctx.FileExists(pyprojectToml)
+	requirementsTxtExists, _ := ctx.FileExists(requirements)
+	return pyprojectTomlExists && requirementsTxtExists
+}

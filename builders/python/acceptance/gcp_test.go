@@ -52,7 +52,15 @@ func TestAcceptancePython(t *testing.T) {
 			App:                        "simple_new",
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
 			EnableCacheTest:            true,
-			VersionInclusionConstraint: ">= 3.8.0",
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "entrypoint_from_procfile_web_upgraded_default_uv",
+			App:                        "simple_new",
+			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			EnableCacheTest:            true,
+			VersionInclusionConstraint: ">= 3.14.0",
 		},
 		{
 			Name:                       "entrypoint_from_procfile_web_upgraded_uv",
@@ -69,6 +77,23 @@ func TestAcceptancePython(t *testing.T) {
 			Entrypoint:                 "custom", // Must match the non-web process in Procfile.
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
 			VersionInclusionConstraint: "< 3.8.0",
+		},
+		{
+			Name:                       "entrypoint_from_procfile_custom_upgraded",
+			App:                        "simple_new",
+			Path:                       "/custom",
+			Entrypoint:                 "custom", // Must match the non-web process in Procfile.
+			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "entrypoint_from_procfile_custom_upgraded_default_uv",
+			App:                        "simple_new",
+			Path:                       "/custom",
+			Entrypoint:                 "custom", // Must match the non-web process in Procfile.
+			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			VersionInclusionConstraint: ">= 3.14.0",
 		},
 		{
 			Name:                       "entrypoint_from_procfile_custom_upgraded_uv",
@@ -93,7 +118,15 @@ func TestAcceptancePython(t *testing.T) {
 			Path:                       "/custom",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 custom:app"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
-			VersionInclusionConstraint: ">= 3.8.0",
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "entrypoint_from_env_upgraded_default_uv",
+			App:                        "simple_new",
+			Path:                       "/custom",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 custom:app", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
+			VersionInclusionConstraint: ">= 3.14.0",
 		},
 		{
 			Name:                       "entrypoint_from_env_upgraded_uv",
@@ -117,7 +150,15 @@ func TestAcceptancePython(t *testing.T) {
 			Path:                       "/env?want=bar",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
-			VersionInclusionConstraint: ">= 3.8.0",
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "entrypoint_with_env_var_upgraded_default_uv",
+			App:                        "simple_new",
+			Path:                       "/env?want=bar",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
+			VersionInclusionConstraint: ">= 3.14.0",
 		},
 		{
 			Name:                       "entrypoint_with_env_var_upgraded_uv",
@@ -139,7 +180,14 @@ func TestAcceptancePython(t *testing.T) {
 			App:                        "scripts_new",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
-			VersionInclusionConstraint: ">= 3.8.0",
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "python_with_client-side_scripts_correctly_builds_as_a_python_app_upgraded_default_uv",
+			App:                        "scripts_new",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
+			VersionInclusionConstraint: ">= 3.14.0",
 		},
 		{
 			Name:                       "python_with_client-side_scripts_correctly_builds_as_a_python_app_upgraded_uv",
@@ -162,7 +210,15 @@ func TestAcceptancePython(t *testing.T) {
 			Env:     []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
 			// numpy 2.1 needed to support 3.13 only works on python 3.10 and above.
-			VersionInclusionConstraint: ">= 3.10.0",
+			VersionInclusionConstraint: ">= 3.10.0 < 3.14.0",
+		},
+		{
+			Name:    "python_module_dependency_using_a_native_extension_for_3.10_and_above_default_uv",
+			App:     "native_extensions_above_python310",
+			Env:     []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse: []string{pythonRuntime, pythonUV, entrypoint},
+			// numpy 2.1 needed to support 3.13 only works on python 3.10 and above.
+			VersionInclusionConstraint: ">= 3.14.0",
 		},
 		{
 			Name:    "python_module_dependency_using_a_native_extension_for_3.10_and_above_uv",
@@ -441,14 +497,14 @@ func TestAcceptancePython(t *testing.T) {
 			VersionInclusionConstraint: ">= 3.10.0",
 		},
 		{
-			Name:                       "pyproject_and_requirements_python313_and_below",
+			Name:                       "pyproject_and_requirements_default_pip",
 			App:                        "pyproject_and_requirements",
 			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonMissingEntrypoint},
-			VersionInclusionConstraint: "< 3.14.0",
+			VersionInclusionConstraint: ">= 3.10.0 < 3.14.0",
 		},
 		{
-			Name:                       "pyproject_and_requirements_python314_and_above",
+			Name:                       "pyproject_and_requirements_default_uv",
 			App:                        "pyproject_and_requirements",
 			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
 			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint},

@@ -25,6 +25,17 @@ import (
 
 // DetectFn is the exported detect function.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	isUVPyproject, message, err := python.IsUVPyproject(ctx)
+	if err != nil {
+		return gcp.OptOut(message), err
+	}
+	if isUVPyproject {
+		if !python.IsPyprojectEnabled(ctx) {
+			return gcp.OptOut("Python UV Buildpack for pyproject.toml is not supported in the current release track."), nil
+		}
+		return gcp.OptIn(message), nil
+	}
+
 	isUVRequirements, message, err := python.IsUVRequirements(ctx)
 	if err != nil {
 		return gcp.OptOut(message), err
@@ -36,18 +47,6 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return gcp.OptIn(message), nil
 	}
 
-	if !python.IsPyprojectEnabled(ctx) {
-		return gcp.OptOut("Python UV Buildpack is not supported in the current release track."), nil
-	}
-
-	isUVPyproject, message, err := python.IsUVPyproject(ctx)
-	if err != nil {
-		return gcp.OptOut(message), err
-	}
-
-	if isUVPyproject {
-		return gcp.OptIn(message), nil
-	}
 	return gcp.OptOut(message), nil
 }
 

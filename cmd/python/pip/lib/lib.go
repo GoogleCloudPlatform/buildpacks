@@ -42,6 +42,9 @@ type metadata struct {
 
 // DetectFn is the exported detect function.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
+	if python.IsPipPyproject(ctx) {
+		return gcp.OptIn(fmt.Sprintf("found pyproject.toml, using pip because %s is set to 'pip' ", env.PythonPackageManager)), nil
+	}
 	plan := libcnb.BuildPlan{Requires: python.RequirementsRequires}
 	// If a requirement.txt file exists, the buildpack needs to provide the Requirements dependency.
 	// If the dependency is not provided by any buildpacks, lifecycle will exclude the pip
@@ -52,9 +55,6 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	}
 	if requirementsExists {
 		plan.Provides = python.RequirementsProvides
-	}
-	if python.IsPipPyproject(ctx) {
-		return gcp.OptIn(fmt.Sprintf("found pyproject.toml, using pip because %s is set to 'pip' ", env.PythonPackageManager)), nil
 	}
 	return gcp.OptInAlways(gcp.WithBuildPlans(plan)), nil
 }

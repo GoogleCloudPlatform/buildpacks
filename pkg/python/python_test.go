@@ -284,3 +284,40 @@ func TestSupportSmartDefaultEntrypoint(t *testing.T) {
 		})
 	}
 }
+
+func TestIsUVDefaultPackageManagerForRequirements(t *testing.T) {
+	testCases := []struct {
+		name  string
+		envs  map[string]string
+		files map[string]string
+		want  bool
+	}{
+		{name: "env_py_313", envs: map[string]string{"GOOGLE_PYTHON_VERSION": "3.13.0"}, want: false},
+		{name: "env_py_313_9", envs: map[string]string{"GOOGLE_PYTHON_VERSION": "3.13.9"}, want: false},
+		{name: "env_py_314_0", envs: map[string]string{"GOOGLE_PYTHON_VERSION": "3.14.0"}, want: true},
+		{name: "env_py_314_1", envs: map[string]string{"GOOGLE_PYTHON_VERSION": "3.14.1"}, want: true},
+		{name: "env_py_315", envs: map[string]string{"GOOGLE_PYTHON_VERSION": "3.15.0"}, want: true},
+		{name: "env_runtime_313", envs: map[string]string{"GOOGLE_RUNTIME_VERSION": "3.13.0"}, want: false},
+		{name: "env_runtime_313_9", envs: map[string]string{"GOOGLE_RUNTIME_VERSION": "3.13.9"}, want: false},
+		{name: "env_runtime_314_0", envs: map[string]string{"GOOGLE_RUNTIME_VERSION": "3.14.0"}, want: true},
+		{name: "env_runtime_314_1", envs: map[string]string{"GOOGLE_RUNTIME_VERSION": "3.14.1"}, want: true},
+		{name: "file_py_313", files: map[string]string{".python-version": "3.13.0\n"}, want: false},
+		{name: "file_py_314", files: map[string]string{".python-version": "3.14.0\n"}, want: true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			appDir := setupTest(t, tc.files)
+
+			for key, value := range tc.envs {
+				t.Setenv(key, value)
+			}
+
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
+
+			if got := isUVDefaultPackageManagerForRequirements(ctx); got != tc.want {
+				t.Errorf("isUVDefaultPackageManagerForRequirements() with envs %v, files %v got %v, want %v", tc.envs, tc.files, got, tc.want)
+			}
+		})
+	}
+}
