@@ -441,7 +441,7 @@ def acceptance_test_argo_source_firebase(name, testdata, srcs = [], structure_te
         testonly = 1,
     )
 
-def create_acceptance_versions_dict_file(name, file, flex_runtime_versions, gae_runtime_versions, gcf_runtime_versions, gcp_runtime_versions, **kwargs):
+def create_acceptance_versions_dict_file(name, file, flex_runtime_versions, gae_runtime_versions, gcf_runtime_versions, gcp_runtime_versions, fah_runtime_versions = None, **kwargs):
     """Export a file that contains a dictionary of product to a list of strings, each of which can be parsed as {{runtime id}}:{{runtime semver version}}
 
     Takes input dictionaries for each of the products for a single language
@@ -453,6 +453,7 @@ def create_acceptance_versions_dict_file(name, file, flex_runtime_versions, gae_
         gae: [go111:1.11.13, go112:1.12.17, go113:1.13.15, go114:1.14.15, go115:1.15.15, go116:1.16.15, go118:1.18.10, go119:1.19.13, go120:1.20.10, go121:1.21.3],
         gcf: [go113:1.13.15, go116:1.16.15, go118:1.18.10, go119:1.19.13, go120:1.20.10, go121:1.21.3],
         gcp: [go118:1.18.10, go119:1.19.13, go120:1.20.10, go121:1.21.3, go111:1.11.13, go112:1.12.17, go113:1.13.15, go114:1.14.15, go115:1.15.15, go116:1.16.15],
+        fah: [nodejs20:20.19.5, nodejs22:22.20.0, nodejs24:24.9.0],
     }
     ========
 
@@ -468,6 +469,8 @@ def create_acceptance_versions_dict_file(name, file, flex_runtime_versions, gae_
                                 given runtime
         gcp_runtime_versions: bzl/python map of gcp runtimes to exact runtime semvers for the
                                 given runtime
+        fah_runtime_versions: bzl/python map of fah runtimes to exact runtime semvers for the
+                                given runtime
         **kwargs: passed through to the native.genrule.
     """
     d = dict()
@@ -475,6 +478,8 @@ def create_acceptance_versions_dict_file(name, file, flex_runtime_versions, gae_
     d["gae"] = [k + ":" + v for k, v in gae_runtime_versions.items()]
     d["gcf"] = [k + ":" + v for k, v in gcf_runtime_versions.items()]
     d["gcp"] = [k + ":" + v for k, v in gcp_runtime_versions.items()]
+    if fah_runtime_versions != None:
+        d["fah"] = [k + ":" + v for k, v in fah_runtime_versions.items()]
     native.genrule(
         name = name,
         outs = [file],

@@ -1,6 +1,6 @@
 load("//internal/acceptance:args.bzl", "get_runtime_to_builder_map", "languageargs")
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
-load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions")
+load(":args.bzl", "fah_runtime_versions", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions")
 load(":runtime.bzl", "gae_runtimes", "gcf_runtimes", "version_to_stack")
 
 licenses(["notice"])
@@ -14,6 +14,7 @@ RUNTIME_TO_BUILDER_MAP = get_runtime_to_builder_map(version_to_stack, "nodejs")
 
 create_acceptance_versions_dict_file(
     name = "gen_acceptance_targets_list",
+    fah_runtime_versions = fah_runtime_versions,
     file = "acceptance_targets.dict",
     flex_runtime_versions = flex_runtime_versions,
     gae_runtime_versions = gae_runtime_versions,
@@ -140,7 +141,9 @@ acceptance_test_suite(
     srcs = ["fah_test.go"],
     builder = "//builders/nodejs:builder_22.tar",
     rundir = ".",
-    testdata = "//builders/testdata/nodejs:generic",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/nodejs:apphosting",
+    versions = fah_runtime_versions,
 )
 
 exports_files(["runtime.bzl"])
