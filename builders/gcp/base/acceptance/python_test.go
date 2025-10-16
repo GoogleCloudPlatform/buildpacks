@@ -378,14 +378,14 @@ func TestAcceptancePython(t *testing.T) {
 			App:                        "poetry_gradio",
 			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
 			MustUse:                    []string{pythonRuntime, pythonPoetry, pythonMissingEntrypoint},
-			VersionInclusionConstraint: ">=3.13.0",
+			VersionInclusionConstraint: ">=3.13.0 < 3.14.0",
 		},
 		{
 			Name:                       "pyproject_gradio",
 			App:                        "pyproject_gradio",
 			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
 			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint},
-			VersionInclusionConstraint: ">= 3.13.0",
+			VersionInclusionConstraint: ">= 3.13.0 < 3.14.0",
 		},
 		{
 			Name:                       "pyproject_gradio_pip",
@@ -399,7 +399,7 @@ func TestAcceptancePython(t *testing.T) {
 			App:                        "pyproject_streamlit",
 			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
 			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint},
-			VersionInclusionConstraint: ">= 3.13.0",
+			VersionInclusionConstraint: ">= 3.13.0 < 3.14.0",
 			MustMatch:                  "Streamlit",
 		},
 		{
