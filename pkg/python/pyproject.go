@@ -42,7 +42,6 @@ const (
 	uv                 = "uv"
 	uvLock             = "uv.lock"
 	uvLayer            = "uv"
-	uvDepsLayer        = "uv-dependencies"
 )
 
 var (
@@ -264,19 +263,14 @@ func EnsureUVLockfile(ctx *gcp.Context) error {
 }
 
 // UVInstallDependenciesAndConfigureEnv installs dependencies and sets up the runtime environment using uv.
-func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context) error {
-	layer, err := ctx.Layer(uvDepsLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", uvDepsLayer, err)
-	}
-
+func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) error {
 	pythonVersion, err := Version(ctx)
 	if err != nil {
 		return err
 	}
 	pythonVersion = strings.TrimPrefix(pythonVersion, "Python ")
 
-	venvDir := filepath.Join(layer.Path, ".venv")
+	venvDir := filepath.Join(l.Path, ".venv")
 	ctx.Logf("Creating virtual environment at %s with Python %s", venvDir, pythonVersion)
 	venvCmd := []string{"uv", "venv", venvDir, "--python", pythonVersion}
 	if _, err := ctx.Exec(venvCmd, gcp.WithUserAttribution); err != nil {
@@ -293,7 +287,7 @@ func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context) error {
 	ctx.Logf("Dependencies installed to virtual environment at %s", venvDir)
 
 	venvBinDir := filepath.Join(venvDir, "bin")
-	layer.SharedEnvironment.Prepend("PATH", string(filepath.ListSeparator), venvBinDir)
+	l.SharedEnvironment.Prepend("PATH", string(filepath.ListSeparator), venvBinDir)
 	return nil
 }
 

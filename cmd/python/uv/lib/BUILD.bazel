@@ -13,6 +13,7 @@ go_library(
         "//pkg/buildermetrics",
         "//pkg/gcpbuildpack",
         "//pkg/python",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
     ],
 )
 

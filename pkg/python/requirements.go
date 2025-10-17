@@ -21,6 +21,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 // IsUVRequirementsEnabled checks if the uv requirements.txt feature is enabled.
@@ -31,28 +32,26 @@ func IsUVRequirementsEnabled(ctx *gcp.Context) bool {
 
 // IsUVRequirements checks if the application is a UV requirements.txt application.
 func IsUVRequirements(ctx *gcp.Context) (bool, string, error) {
-	requirementsExists, err := ctx.FileExists(requirements)
-	if err != nil {
-		return false, "", fmt.Errorf("checking for %s: %w", requirements, err)
-	}
-	if !requirementsExists {
-		return false, fmt.Sprintf("%s not found", requirements), nil
-	}
 	if isPackageManagerConfigured(uv) {
-		return true, fmt.Sprintf("%s found and environment variable %s is uv", requirements, env.PythonPackageManager), nil
+		return true, fmt.Sprintf("environment variable %s is uv", env.PythonPackageManager), nil
 	}
 	if isPackageManagerEmpty() && isUVDefaultPackageManagerForRequirements(ctx) {
-		return true, fmt.Sprintf("%s found and %s is not set, using uv as default package manager", requirements, env.PythonPackageManager), nil
+		return true, fmt.Sprintf("environment variable %s is not set, using uv as default package manager", env.PythonPackageManager), nil
 	}
-	return false, fmt.Sprintf("%s found but environment variable %s is not uv", requirements, env.PythonPackageManager), nil
+	return false, fmt.Sprintf("environment variable %s is not uv", env.PythonPackageManager), nil
 }
 
 // UVInstallRequirements installs dependencies from requirements.txt using 'uv pip install'.
-func UVInstallRequirements(ctx *gcp.Context) error {
-	layer, err := ctx.Layer(uvDepsLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+func UVInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
+	shouldInstall, err := prepareDependenciesLayer(ctx, l, "uv", reqs...)
 	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", uvDepsLayer, err)
+		return fmt.Errorf("failed to prepare uv dependencies layer: %w", err)
 	}
+	if !shouldInstall {
+		ctx.Logf("Dependencies are up to date, skipping installation.")
+		return nil
+	}
+	ctx.Logf("Installing application dependencies with uv.")
 
 	pythonVersion, err := Version(ctx)
 	if err != nil {
@@ -60,23 +59,23 @@ func UVInstallRequirements(ctx *gcp.Context) error {
 	}
 	pythonVersion = strings.TrimPrefix(pythonVersion, "Python ")
 
-	venvDir := filepath.Join(layer.Path, ".venv")
+	venvDir := filepath.Join(l.Path, ".venv")
 	ctx.Logf("Creating virtual environment at %s with Python %s", venvDir, pythonVersion)
 	venvCmd := []string{"uv", "venv", venvDir, "--python", pythonVersion}
 	if _, err := ctx.Exec(venvCmd, gcp.WithUserAttribution); err != nil {
 		return fmt.Errorf("failed to create virtual environment with uv: %w", err)
 	}
 
-	installCmd := []string{"uv", "pip", "install", "-r", "requirements.txt"}
-	installCmd = appendVendoringFlags(installCmd)
-
-	ctx.Logf("Installing dependencies with `%s` into the virtual environment...", strings.Join(installCmd, " "))
-	if _, err := ctx.Exec(installCmd, gcp.WithUserAttribution, gcp.WithEnv("VIRTUAL_ENV="+venvDir)); err != nil {
-		return fmt.Errorf("failed to install requirements.txt with uv: %w", err)
+	for _, req := range reqs {
+		ctx.Logf("Installing dependencies from %s...", req)
+		installCmd := []string{"uv", "pip", "install", "--requirement", req, "--reinstall", "--no-cache"}
+		installCmd = appendVendoringFlags(installCmd)
+		if _, err := ctx.Exec(installCmd, gcp.WithUserAttribution, gcp.WithEnv("VIRTUAL_ENV="+venvDir)); err != nil {
+			return fmt.Errorf("failed to install dependencies from %s with uv: %w", req, err)
+		}
 	}
 	ctx.Logf("Dependencies from requirements.txt installed to virtual environment at %s", venvDir)
 
-	venvBinDir := filepath.Join(venvDir, "bin")
-	layer.SharedEnvironment.Prepend("PATH", string(filepath.ListSeparator), venvBinDir)
+	l.SharedEnvironment.Prepend("PATH", string(filepath.ListSeparator), filepath.Join(venvDir, "bin"))
 	return nil
 }

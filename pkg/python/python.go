@@ -182,7 +182,7 @@ func versionFromFile(ctx *gcp.Context, dir string) (string, error) {
 	return "", nil
 }
 
-// InstallRequirements installs dependencies from the given requirements files in a virtual env.
+// PIPInstallRequirements installs dependencies from the given requirements files in a virtual env.
 // It will install the files in order in which they are specified, so that dependencies specified
 // in later requirements files can override later ones.
 //
@@ -191,48 +191,17 @@ func versionFromFile(ctx *gcp.Context, dir string) (string, error) {
 // PYTHONPATH. However, this caused issues with some packages as it would allow users to
 // accidentally override some builtin stdlib modules, e.g. typing, enum, etc., and cause both
 // build-time and run-time failures.
-func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
-	// Defensive check, this should not happen in practice.
-	if len(reqs) == 0 {
-		ctx.Debugf("No requirements.txt to install, clearing layer.")
-		if err := ctx.ClearLayer(l); err != nil {
-			return fmt.Errorf("clearing layer %q: %w", l.Name, err)
-		}
-		return nil
-	}
-
-	currentPythonVersion, err := Version(ctx)
+func PIPInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
+	shouldInstall, err := prepareDependenciesLayer(ctx, l, "pip", reqs...)
 	if err != nil {
 		return err
 	}
-	hash, cached, err := cache.HashAndCheck(ctx, l, dependencyHashKey,
-		cache.WithFiles(reqs...),
-		cache.WithStrings(currentPythonVersion))
-	if err != nil {
-		return err
-	}
-
-	// Check cache expiration to pick up new versions of dependencies that are not pinned.
-	expired := cacheExpired(ctx, l)
-
-	if cached && !expired {
+	if !shouldInstall {
+		ctx.Logf("Application dependencies are up to date, skipping installation.")
 		return nil
-	}
-
-	if expired {
-		ctx.Debugf("Dependencies cache expired, clearing layer.")
-	}
-
-	if err := ctx.ClearLayer(l); err != nil {
-		return fmt.Errorf("clearing layer %q: %w", l.Name, err)
 	}
 
 	ctx.Logf("Installing application dependencies.")
-	cache.Add(ctx, l, dependencyHashKey, hash)
-	// Update the layer metadata.
-	ctx.SetMetadata(l, pythonVersionKey, currentPythonVersion)
-	ctx.SetMetadata(l, expiryTimestampKey, time.Now().Add(expirationTime).Format(dateFormat))
-
 	if err := ar.GeneratePythonConfig(ctx); err != nil {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
@@ -304,16 +273,70 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 		}
 	}
 
+	return compileBytecode(ctx, l.Path)
+}
+
+// prepareDependenciesLayer is a helper function that handles the common logic for preparing a dependency layer.
+// It checks for empty requirements, manages the cache, and clears the layer if necessary.
+// It returns a boolean indicating whether the installation should proceed.
+func prepareDependenciesLayer(ctx *gcp.Context, l *libcnb.Layer, installerName string, reqs ...string) (bool, error) {
+	// Defensive check
+	if len(reqs) == 0 {
+		ctx.Debugf("No requirements files to install, clearing layer.")
+		if err := ctx.ClearLayer(l); err != nil {
+			return false, fmt.Errorf("clearing layer %q: %w", l.Name, err)
+		}
+		return false, nil
+	}
+
+	// Caching logic
+	currentPythonVersion, err := Version(ctx)
+	if err != nil {
+		return false, err
+	}
+	hash, cached, err := cache.HashAndCheck(ctx, l, dependencyHashKey,
+		cache.WithFiles(reqs...),
+		cache.WithStrings(currentPythonVersion, installerName))
+	if err != nil {
+		return false, err
+	}
+
+	// Check cache expiration to pick up new versions of dependencies that are not pinned.
+	expired := cacheExpired(ctx, l)
+
+	if cached && !expired {
+		ctx.CacheHit(l.Name)
+		return false, nil
+	}
+	ctx.CacheMiss(l.Name)
+
+	if expired {
+		ctx.Debugf("Dependencies cache expired, clearing layer.")
+	}
+	if err := ctx.ClearLayer(l); err != nil {
+		return false, fmt.Errorf("clearing layer %q: %w", l.Name, err)
+	}
+
+	// Update layer metadata for caching
+	cache.Add(ctx, l, dependencyHashKey, hash)
+	ctx.SetMetadata(l, pythonVersionKey, currentPythonVersion)
+	ctx.SetMetadata(l, expiryTimestampKey, time.Now().Add(expirationTime).Format(dateFormat))
+
+	return true, nil
+}
+
+// compileBytecode is a helper that generates deterministic hash-based pyc files for faster startup.
+func compileBytecode(ctx *gcp.Context, path string) error {
 	// Generate deterministic hash-based pycs (https://www.python.org/dev/peps/pep-0552/).
 	// Use the unchecked version to skip hash validation at run time (for faster startup).
-	result, cerr := ctx.Exec([]string{
+	result, err := ctx.Exec([]string{
 		"python3", "-m", "compileall",
 		"--invalidation-mode", "unchecked-hash",
 		"-qq", // Do not print any message (matches `pip install` behavior).
-		l.Path,
-	},
-		gcp.WithUserAttribution)
-	if cerr != nil {
+		path,
+	}, gcp.WithUserAttribution)
+
+	if err != nil {
 		if result != nil {
 			if result.ExitCode == 1 {
 				// Ignore file compilation errors (matches `pip install` behavior).
@@ -321,9 +344,8 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 			}
 			return fmt.Errorf("compileall: %s", result.Combined)
 		}
-		return fmt.Errorf("compileall: %v", cerr)
+		return fmt.Errorf("compileall: %v", err)
 	}
-
 	return nil
 }
 

@@ -88,7 +88,7 @@ func BuildFn(ctx *gcp.Context) error {
 			reqs = append(reqs, "requirements.txt")
 		}
 
-		if err := python.InstallRequirements(ctx, l, reqs...); err != nil {
+		if err := python.PIPInstallRequirements(ctx, l, reqs...); err != nil {
 			return fmt.Errorf("installing dependencies from requirements.txt: %w", err)
 		}
 	}

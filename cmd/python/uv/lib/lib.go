@@ -17,10 +17,18 @@ package lib
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
+	"github.com/buildpacks/libcnb/v2"
+)
+
+const (
+	layerName = "uv-dependencies"
 )
 
 // DetectFn is the exported detect function.
@@ -36,6 +44,18 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return gcp.OptIn(message), nil
 	}
 
+	plan := libcnb.BuildPlan{Requires: python.RequirementsRequires}
+	// If a requirement.txt file exists, the buildpack needs to provide the Requirements dependency.
+	// If the dependency is not provided by any buildpacks, lifecycle will exclude the uv
+	// buildpack from the build.
+	requirementsExists, err := ctx.FileExists("requirements.txt")
+	if err != nil {
+		return nil, err
+	}
+	if requirementsExists {
+		plan.Provides = python.RequirementsProvides
+	}
+
 	isUVRequirements, message, err := python.IsUVRequirements(ctx)
 	if err != nil {
 		return gcp.OptOut(message), err
@@ -44,7 +64,7 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		if !python.IsUVRequirementsEnabled(ctx) {
 			return gcp.OptOut("Python UV Buildpack for requirements.txt is not supported in the current release track."), nil
 		}
-		return gcp.OptIn(message), nil
+		return gcp.OptIn(message, gcp.WithBuildPlans(plan)), nil
 	}
 
 	return gcp.OptOut(message), nil
@@ -53,30 +73,46 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 // BuildFn is the exported build function.
 func BuildFn(ctx *gcp.Context) error {
 	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.UVUsageCounterID).Increment(1)
+
 	if err := python.InstallUV(ctx); err != nil {
 		return fmt.Errorf("installing uv: %w", err)
 	}
 
-	isUVRequirements, _, err := python.IsUVRequirements(ctx)
+	l, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 	if err != nil {
-		return fmt.Errorf("checking for uv requirements: %w", err)
+		return fmt.Errorf("creating %v layer: %w", layerName, err)
 	}
 
-	if isUVRequirements {
-		ctx.Logf("Found requirements.txt, installing with `uv pip install`.")
-		if err := python.UVInstallRequirements(ctx); err != nil {
-			return gcp.UserErrorf("installing requirements.txt with uv: %w", err)
+	isUVPyproject, _, err := python.IsUVPyproject(ctx)
+	if err != nil {
+		return err
+	}
+	if isUVPyproject {
+		if err := python.EnsureUVLockfile(ctx); err != nil {
+			return fmt.Errorf("ensuring uv.lock file: %w", err)
+		}
+		if err := python.UVInstallDependenciesAndConfigureEnv(ctx, l); err != nil {
+			return fmt.Errorf("installing dependencies with uv: %w", err)
 		}
 		return nil
 	}
 
-	if err := python.EnsureUVLockfile(ctx); err != nil {
-		return fmt.Errorf("ensuring uv.lock file: %w", err)
+	// Install requirements.txt using uv.
+	reqs := filepath.SplitList(strings.Trim(os.Getenv(python.RequirementsFilesEnv), string(os.PathListSeparator)))
+	ctx.Debugf("Found requirements.txt files provided by other buildpacks: %s", reqs)
+
+	// The workspace requirements.txt file should be installed last.
+	requirementsExists, err := ctx.FileExists("requirements.txt")
+	if err != nil {
+		return err
+	}
+	if requirementsExists {
+		reqs = append(reqs, "requirements.txt")
 	}
 
-	if err := python.UVInstallDependenciesAndConfigureEnv(ctx); err != nil {
-		return fmt.Errorf("installing dependencies with uv: %w", err)
+	ctx.Logf("Found requirements.txt, installing with `uv pip install`.")
+	if err := python.UVInstallRequirements(ctx, l, reqs...); err != nil {
+		return gcp.UserErrorf("installing requirements.txt with uv: %w", err)
 	}
-
 	return nil
 }

@@ -14,11 +14,13 @@
 package python
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 func TestRuntimeVersion(t *testing.T) {
@@ -320,4 +322,162 @@ func TestIsUVDefaultPackageManagerForRequirements(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPrepareDependenciesLayer(t *testing.T) {
+	const defaultPythonVersion = "3.10.5"
+	const defaultInstaller = "pip"
+
+	testCases := []struct {
+		name           string
+		twoRun         bool
+		files1         map[string]string
+		pythonVersion1 string
+		installerName1 string
+		reqs           []string
+		files2         map[string]string
+		pythonVersion2 string
+		installerName2 string
+		wantProceed    bool
+		wantErr        bool
+	}{
+		{
+			name:           "no_requirements",
+			twoRun:         false,
+			pythonVersion1: defaultPythonVersion,
+			reqs:           []string{},
+			wantProceed:    false,
+			wantErr:        false,
+		},
+		{
+			name:           "cache_miss_on_first_run",
+			twoRun:         false,
+			files1:         map[string]string{"reqs.txt": "flask"},
+			pythonVersion1: defaultPythonVersion,
+			reqs:           []string{"reqs.txt"},
+			wantProceed:    true,
+			wantErr:        false,
+		},
+		{
+			name:           "cache_hit_on_second_run",
+			twoRun:         true,
+			files1:         map[string]string{"reqs.txt": "flask"},
+			pythonVersion1: defaultPythonVersion,
+			reqs:           []string{"reqs.txt"},
+			wantProceed:    false,
+			wantErr:        false,
+		},
+		{
+			name:           "cache_invalidation_by_python_version",
+			twoRun:         true,
+			files1:         map[string]string{"reqs.txt": "flask"},
+			reqs:           []string{"reqs.txt"},
+			pythonVersion1: "3.10.5",
+			pythonVersion2: "3.11.1",
+			wantProceed:    true,
+			wantErr:        false,
+		},
+		{
+			name:           "cache_invalidation_by_installer_name",
+			twoRun:         true,
+			files1:         map[string]string{"reqs.txt": "flask"},
+			reqs:           []string{"reqs.txt"},
+			pythonVersion1: defaultPythonVersion,
+			installerName1: "pip",
+			installerName2: "uv",
+			wantProceed:    true,
+			wantErr:        false,
+		},
+		{
+			name:           "cache_invalidation_by_file_content",
+			twoRun:         true,
+			files1:         map[string]string{"reqs.txt": "flask"},
+			pythonVersion1: defaultPythonVersion,
+			reqs:           []string{"reqs.txt"},
+			files2:         map[string]string{"reqs.txt": "django"},
+			wantProceed:    true,
+			wantErr:        false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			binDir := t.TempDir()
+			writeFakePythonScript(t, binDir, tc.pythonVersion1)
+			oldPath := os.Getenv("PATH")
+			t.Setenv("PATH", binDir+string(filepath.ListSeparator)+oldPath)
+
+			appDir := setupTest(t, tc.files1)
+			l := &libcnb.Layer{Name: "test", Path: t.TempDir(), Metadata: map[string]any{}}
+
+			var reqPaths []string
+			for _, r := range tc.reqs {
+				reqPaths = append(reqPaths, filepath.Join(appDir, r))
+			}
+
+			installerName1 := tc.installerName1
+			if installerName1 == "" {
+				installerName1 = defaultInstaller
+			}
+
+			var proceed bool
+			var err error
+			ctx1 := gcp.NewContext(gcp.WithApplicationRoot(appDir))
+
+			if !tc.twoRun {
+				proceed, err = prepareDependenciesLayer(ctx1, l, installerName1, reqPaths...)
+			} else {
+				// Run 1 (Cache Miss)
+				proceed1, err1 := prepareDependenciesLayer(ctx1, l, installerName1, reqPaths...)
+				if err1 != nil {
+					t.Fatalf("Run 1 (cache miss) failed: %v", err1)
+				}
+				if !proceed1 {
+					t.Fatal("Run 1 (cache miss) should have returned proceed=true")
+				}
+
+				// Setup for Run 2
+				if tc.files2 != nil {
+					for name, content := range tc.files2 {
+						if err := os.WriteFile(filepath.Join(appDir, name), []byte(content), 0644); err != nil {
+							t.Fatalf("Failed to rewrite file for run 2: %v", err)
+						}
+					}
+				}
+
+				installerName2 := tc.installerName2
+				if installerName2 == "" {
+					installerName2 = installerName1
+				}
+
+				pythonVersion2 := tc.pythonVersion1
+				if tc.pythonVersion2 != "" {
+					pythonVersion2 = tc.pythonVersion2
+				}
+				writeFakePythonScript(t, binDir, pythonVersion2)
+
+				ctx2 := gcp.NewContext(gcp.WithApplicationRoot(appDir))
+
+				proceed, err = prepareDependenciesLayer(ctx2, l, installerName2, reqPaths...)
+			}
+
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("prepareDependenciesLayer() error = %v, wantErr %v", err, tc.wantErr)
+			}
+			if proceed != tc.wantProceed {
+				t.Errorf("prepareDependenciesLayer() proceed = %v, want %v", proceed, tc.wantProceed)
+			}
+		})
+	}
+}
+
+// writeFakePythonScript is a helper to create fake python3 executable
+func writeFakePythonScript(t *testing.T, binDir, version string) string {
+	t.Helper()
+	fakePython := filepath.Join(binDir, "python3")
+	content := fmt.Sprintf("#!/bin/sh\necho 'Python %s'\n", version)
+	if err := os.WriteFile(fakePython, []byte(content), 0755); err != nil {
+		t.Fatalf("Failed to write fake python script: %v", err)
+	}
+	return fakePython
 }

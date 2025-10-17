@@ -34,28 +34,28 @@ func TestIsUVRequirements(t *testing.T) {
 			files:   map[string]string{"requirements.txt": "flask"},
 			envVars: map[string]string{env.PythonPackageManager: "uv"},
 			want:    true,
-			wantMsg: fmt.Sprintf("%s found and environment variable %s is uv", requirements, env.PythonPackageManager),
+			wantMsg: fmt.Sprintf("environment variable %s is uv", env.PythonPackageManager),
 		},
 		{
 			name:    "should_be_true_with_requirements.txt_and_case-insensitive_UV_env_var",
 			files:   map[string]string{"requirements.txt": "flask"},
 			envVars: map[string]string{env.PythonPackageManager: "Uv"},
 			want:    true,
-			wantMsg: fmt.Sprintf("%s found and environment variable %s is uv", requirements, env.PythonPackageManager),
+			wantMsg: fmt.Sprintf("environment variable %s is uv", env.PythonPackageManager),
 		},
 		{
-			name:    "should_be_false_without_requirements.txt",
+			name:    "should_be_true_when_uv_is_set_without_requirements.txt",
 			files:   map[string]string{},
 			envVars: map[string]string{env.PythonPackageManager: "uv"},
-			want:    false,
-			wantMsg: fmt.Sprintf("%s not found", requirements),
+			want:    true,
+			wantMsg: fmt.Sprintf("environment variable %s is uv", env.PythonPackageManager),
 		},
 		{
 			name:    "should_be_false_when_env_var_is_pip",
 			files:   map[string]string{"requirements.txt": "flask"},
 			envVars: map[string]string{env.PythonPackageManager: "pip"},
 			want:    false,
-			wantMsg: fmt.Sprintf("%s found but environment variable %s is not uv", requirements, env.PythonPackageManager),
+			wantMsg: fmt.Sprintf("environment variable %s is not uv", env.PythonPackageManager),
 		},
 		{
 			name:  "should_be_false_when_env_var_is_not_set_and_py_lt_314",
@@ -64,7 +64,7 @@ func TestIsUVRequirements(t *testing.T) {
 				"GOOGLE_RUNTIME_VERSION": "3.13.9",
 			},
 			want:    false,
-			wantMsg: fmt.Sprintf("%s found but environment variable %s is not uv", requirements, env.PythonPackageManager),
+			wantMsg: fmt.Sprintf("environment variable %s is not uv", env.PythonPackageManager),
 		},
 		{
 			name:  "should_be_true_when_env_var_is_not_set_and_py_eq_314",
@@ -73,7 +73,7 @@ func TestIsUVRequirements(t *testing.T) {
 				"GOOGLE_RUNTIME_VERSION": "3.14.0",
 			},
 			want:    true,
-			wantMsg: fmt.Sprintf("%s found and %s is not set, using uv as default package manager", requirements, env.PythonPackageManager),
+			wantMsg: fmt.Sprintf("environment variable %s is not set, using uv as default package manager", env.PythonPackageManager),
 		},
 		{
 			name:  "should_be_true_when_env_var_is_not_set_and_py_gt_314",
@@ -82,7 +82,7 @@ func TestIsUVRequirements(t *testing.T) {
 				"GOOGLE_RUNTIME_VERSION": "3.15.1",
 			},
 			want:    true,
-			wantMsg: fmt.Sprintf("%s found and %s is not set, using uv as default package manager", requirements, env.PythonPackageManager),
+			wantMsg: fmt.Sprintf("environment variable %s is not set, using uv as default package manager", env.PythonPackageManager),
 		},
 		{
 			name:  "should_be_true_when_env_is_uv_and_py_lt_314",
@@ -92,7 +92,7 @@ func TestIsUVRequirements(t *testing.T) {
 				"GOOGLE_RUNTIME_VERSION": "3.13.9",
 			},
 			want:    true,
-			wantMsg: fmt.Sprintf("%s found and environment variable %s is uv", requirements, env.PythonPackageManager),
+			wantMsg: fmt.Sprintf("environment variable %s is uv", env.PythonPackageManager),
 		},
 		{
 			name:  "should_be_false_when_env_is_pip_and_py_gt_314",
@@ -102,7 +102,7 @@ func TestIsUVRequirements(t *testing.T) {
 				"GOOGLE_RUNTIME_VERSION": "3.14.0",
 			},
 			want:    false,
-			wantMsg: fmt.Sprintf("%s found but environment variable %s is not uv", requirements, env.PythonPackageManager),
+			wantMsg: fmt.Sprintf("environment variable %s is not uv", env.PythonPackageManager),
 		},
 	}
 
@@ -112,7 +112,7 @@ func TestIsUVRequirements(t *testing.T) {
 				t.Setenv(key, value)
 			}
 
-			appDir := setupTest(t, tc.files) // Assumes setupTest is available in this package
+			appDir := setupTest(t, tc.files)
 
 			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
 			isUV, msg, err := IsUVRequirements(ctx)
