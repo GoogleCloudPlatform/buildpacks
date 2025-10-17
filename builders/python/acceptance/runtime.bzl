@@ -12,7 +12,7 @@ gae_runtimes = {
     "python311": "3.11.13",
     "python312": "3.12.11",
     "python313": "3.13.7",
-    "python314": "3.14.0rc1",
+    "python314": "3.14.0",
 }
 
 gcf_runtimes = {
@@ -23,7 +23,7 @@ gcf_runtimes = {
     "python311": "3.11.13",
     "python312": "3.12.11",
     "python313": "3.13.7",
-    "python314": "3.14.0rc1",
+    "python314": "3.14.0",
 }
 
 flex_runtimes = {
@@ -33,7 +33,7 @@ flex_runtimes = {
     "python311": "3.11.13",
     "python312": "3.12.11",
     "python313": "3.13.7",
-    "python314": "3.14.0rc1",
+    "python314": "3.14.0",
 }
 
 version_to_stack = {
