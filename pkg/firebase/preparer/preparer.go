@@ -85,7 +85,7 @@ func Prepare(ctx context.Context, opts Options) error {
 		}
 	}
 
-	// Use server side env vars instead of apphosting.yaml.
+	// Merge server side env vars, overriding any values defined in other env var sources.
 	if opts.ServerSideEnvVars != "" {
 		parsedServerSideEnvVars, err := envvars.ParseEnvVarsFromString(opts.ServerSideEnvVars)
 		if err != nil {
