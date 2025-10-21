@@ -30,8 +30,13 @@ def testFunction(request):
   want = 24
   if sys.version_info.minor == 7:
     want = 53
-  elif sys.version_info.minor >= 12:
-    want = 26  # 3.12 added setuptools==71.1.0, wheel==0.43.0
+  elif sys.version_info.minor >= 12 and sys.version_info.minor < 14:
+    # 3.12 added setuptools==71.1.0, wheel==0.43.0
+    want = 26
+  elif sys.version_info.minor >= 14:
+    # UV is the default package manager for python 3.14+ and it doesn't
+    # add setuptools and wheel.
+    want = 24
   return (
       'PASS'
       if length == want

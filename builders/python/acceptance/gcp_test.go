@@ -137,6 +137,14 @@ func TestAcceptancePython(t *testing.T) {
 			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
+			Name:                       "entrypoint_from_env_upgraded_pip",
+			App:                        "simple_new",
+			Path:                       "/custom",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 custom:app", "GOOGLE_PYTHON_PACKAGE_MANAGER=pip", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
+			VersionInclusionConstraint: ">= 3.8.0",
+		},
+		{
 			Name:                       "entrypoint_with_env_var",
 			App:                        "simple",
 			Path:                       "/env?want=bar",
@@ -166,6 +174,14 @@ func TestAcceptancePython(t *testing.T) {
 			Path:                       "/env?want=bar",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app", "GOOGLE_PYTHON_PACKAGE_MANAGER=uv", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
 			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
+			VersionInclusionConstraint: ">= 3.8.0",
+		},
+		{
+			Name:                       "entrypoint_with_env_var_upgraded_pip",
+			App:                        "simple_new",
+			Path:                       "/env?want=bar",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app", "GOOGLE_PYTHON_PACKAGE_MANAGER=pip", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
 			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
@@ -229,10 +245,18 @@ func TestAcceptancePython(t *testing.T) {
 			VersionInclusionConstraint: ">= 3.10.0",
 		},
 		{
-			Name:    "requirements_vendored_dependencies",
-			App:     "requirements_vendored_dependencies",
-			Env:     []string{"GOOGLE_VENDOR_PIP_DEPENDENCIES=package"},
-			MustUse: []string{pythonRuntime, pythonPIP, entrypoint},
+			Name:                       "requirements_vendored_dependencies",
+			App:                        "requirements_vendored_dependencies",
+			Env:                        []string{"GOOGLE_VENDOR_PIP_DEPENDENCIES=package"},
+			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
+			VersionInclusionConstraint: ">= 3.10.0 < 3.14.0",
+		},
+		{
+			Name:                       "requirements_vendored_dependencies_default_uv",
+			App:                        "requirements_vendored_dependencies",
+			Env:                        []string{"GOOGLE_VENDOR_PIP_DEPENDENCIES=package"},
+			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
+			VersionInclusionConstraint: ">= 3.14.0",
 		},
 		{
 			Name:                       "requirements_vendored_dependencies_uv",
@@ -347,7 +371,13 @@ func TestAcceptancePython(t *testing.T) {
 			Name:                       "missing_entrypoint_main_py_upgraded",
 			App:                        "missing_entrypoint_main_py_new",
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
-			VersionInclusionConstraint: ">= 3.8.0",
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "missing_entrypoint_main_py_upgraded_default_uv",
+			App:                        "missing_entrypoint_main_py_new",
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonWebserver, pythonMissingEntrypoint},
+			VersionInclusionConstraint: ">= 3.14.0",
 		},
 		{
 			Name:                       "missing_entrypoint_app_py",
@@ -359,7 +389,13 @@ func TestAcceptancePython(t *testing.T) {
 			Name:                       "missing_entrypoint_app_py_upgraded",
 			App:                        "missing_entrypoint_app_py_new",
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
-			VersionInclusionConstraint: ">= 3.8.0",
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "missing_entrypoint_app_py_upgraded_default_uv",
+			App:                        "missing_entrypoint_app_py_new",
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonWebserver, pythonMissingEntrypoint},
+			VersionInclusionConstraint: ">= 3.14.0",
 		},
 		{
 			Name:                       "poetry_app",

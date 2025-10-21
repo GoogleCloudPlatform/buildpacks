@@ -42,7 +42,13 @@ func TestAcceptance(t *testing.T) {
 			App:                        "without_framework",
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonFF},
 			MustNotOutput:              []string{`WARNING: You are using pip version`},
-			VersionInclusionConstraint: ">= 3.8.0",
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "function_without_framework_default_uv",
+			App:                        "without_framework",
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
+			VersionInclusionConstraint: ">= 3.14.0",
 		},
 		{
 			Name:                       "function_without_framework_uv",
@@ -72,7 +78,14 @@ func TestAcceptance(t *testing.T) {
 			App:                        "with_dependencies",
 			EnableCacheTest:            true,
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonFF},
-			VersionInclusionConstraint: ">= 3.8.0",
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "function_with_dependencies_default_uv",
+			App:                        "with_dependencies",
+			EnableCacheTest:            true,
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
+			VersionInclusionConstraint: ">= 3.14.0",
 		},
 		{
 			Name:                       "function_with_dependencies_uv",
@@ -86,7 +99,13 @@ func TestAcceptance(t *testing.T) {
 			Name:                       "function_with_framework",
 			App:                        "with_framework",
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonFF},
-			VersionInclusionConstraint: ">= 3.8.0",
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "function_with_framework_default_uv",
+			App:                        "with_framework",
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
+			VersionInclusionConstraint: ">= 3.14.0",
 		},
 		{
 			Name:                       "function_with_framework_uv",
@@ -118,7 +137,14 @@ func TestAcceptance(t *testing.T) {
 			App:                        "with_env_var",
 			RunEnv:                     []string{"FOO=foo"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonFF},
-			VersionInclusionConstraint: ">= 3.8.0",
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "function_with_runtime_env_var_default_uv",
+			App:                        "with_env_var",
+			RunEnv:                     []string{"FOO=foo"},
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
+			VersionInclusionConstraint: ">= 3.14.0",
 		},
 		{
 			Name:                       "function_with_runtime_env_var_uv",
@@ -208,7 +234,12 @@ func TestFailures(t *testing.T) {
 			App:       "fail_broken_dependencies",
 			MustMatch: `functions-framework .* has requirement flask.*,>=.*, but you have flask 0\.12\.5`,
 			// this is only a warning in python37
-			VersionInclusionConstraint: ">= 3.8.0",
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			App:                        "fail_broken_dependencies",
+			MustMatch:                  "\".*The package \\`functions-framework\\` requires \\`flask>=.*,.*\\`.*, but \\`0.12.5\\` is installed.*\"",
+			VersionInclusionConstraint: ">= 3.14.0", // For python 3.14+, the default package manager is uv.
 		},
 		{
 			Name:      "function without dependencies or injection",

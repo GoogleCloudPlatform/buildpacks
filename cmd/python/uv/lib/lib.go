@@ -111,8 +111,18 @@ func BuildFn(ctx *gcp.Context) error {
 	}
 
 	ctx.Logf("Found requirements.txt, installing with `uv pip install`.")
-	if err := python.UVInstallRequirements(ctx, l, reqs...); err != nil {
+	venvDir, err := python.UVInstallRequirements(ctx, l, reqs...)
+	if err != nil {
 		return gcp.UserErrorf("installing requirements.txt with uv: %w", err)
 	}
-	return nil
+
+	ctx.Logf("Checking for incompatible dependencies.")
+	result, err := ctx.Exec([]string{"uv", "pip", "check"}, gcp.WithUserAttribution, gcp.WithEnv("VIRTUAL_ENV="+venvDir))
+	if result == nil {
+		return fmt.Errorf("uv pip check: %w", err)
+	}
+	if result.ExitCode == 0 {
+		return nil
+	}
+	return gcp.UserErrorf("found incompatible dependencies: %q", result.Stderr)
 }
