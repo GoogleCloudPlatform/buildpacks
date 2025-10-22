@@ -26,11 +26,15 @@ var baseEnv = []string{
 
 const (
 	// Buildpack identifiers used to verify that buildpacks were or were not used.
-	nodeNPM            = "google.nodejs.npm"
-	nodePNPM           = "google.nodejs.pnpm"
-	nodeRuntime        = "google.nodejs.runtime"
-	nodeYarn           = "google.nodejs.yarn"
-	nodeFirebaseBundle = "google.nodejs.firebasebundle"
+	nodeNPM             = "google.nodejs.npm"
+	nodePNPM            = "google.nodejs.pnpm"
+	nodeRuntime         = "google.nodejs.runtime"
+	nodeYarn            = "google.nodejs.yarn"
+	nodeFirebaseNextJs  = "google.nodejs.firebasenextjs"
+	nodeFirebaseAngular = "google.nodejs.firebaseangular"
+	nodeFirebaseNx      = "google.nodejs.firebasenx"
+	nodeTurborepo       = "google.nodejs.turborepo"
+	nodeFirebaseBundle  = "google.nodejs.firebasebundle"
 )
 
 func init() {
@@ -91,6 +95,59 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			App:                        "npm_version_specified",
 			MustOutput:                 []string{"npm --version\n\n8.3.1"},
 			Path:                       "/version?want=8.3.1",
+		},
+		{
+			Name: "nextjs with npm",
+			App:  "nextjs_npm",
+			Env:  []string{"GOOGLE_BUILDABLE=./"},
+			MustUse: []string{
+				nodeRuntime,
+				nodeFirebaseNextJs,
+				nodeNPM,
+				nodeFirebaseBundle,
+			},
+			MustNotUse: []string{nodeYarn, nodePNPM, nodeFirebaseAngular, nodeFirebaseNx, nodeTurborepo},
+			MustOutput: []string{
+				// Confirms Next.js build process completed successfully, and the firebasebundle buildpack
+				// sets the run command correctly.
+				"✓ Compiled successfully",
+				"Setting run command from bundle.yaml: node .next/standalone/server.js",
+			},
+			MustMatchStatusCode: 200,
+		},
+		{
+			Name: "nextjs with pnpm",
+			App:  "nextjs_pnpm",
+			Env:  []string{"GOOGLE_BUILDABLE=./"},
+			MustUse: []string{
+				nodeRuntime,
+				nodeFirebaseNextJs,
+				nodePNPM,
+				nodeFirebaseBundle,
+			},
+			MustNotUse: []string{nodeYarn, nodeNPM, nodeFirebaseAngular, nodeFirebaseNx, nodeTurborepo},
+			MustOutput: []string{
+				"✓ Compiled successfully",
+				"Setting run command from bundle.yaml: node .next/standalone/server.js",
+			},
+			MustMatchStatusCode: 200,
+		},
+		{
+			Name: "nextjs with yarn",
+			App:  "nextjs_yarn",
+			Env:  []string{"GOOGLE_BUILDABLE=./"},
+			MustUse: []string{
+				nodeRuntime,
+				nodeFirebaseNextJs,
+				nodeYarn,
+				nodeFirebaseBundle,
+			},
+			MustNotUse: []string{nodeNPM, nodePNPM, nodeFirebaseAngular, nodeFirebaseNx, nodeTurborepo},
+			MustOutput: []string{
+				"✓ Compiled successfully",
+				"Setting run command from bundle.yaml: node .next/standalone/server.js",
+			},
+			MustMatchStatusCode: 200,
 		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
