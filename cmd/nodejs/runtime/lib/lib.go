@@ -114,14 +114,8 @@ func BuildFn(ctx *gcp.Context) error {
 	if _, err = runtime.InstallTarballIfNotCached(ctx, runtime.Nodejs, version, nrl); err != nil {
 		return fmt.Errorf("installing nodejs: %w", err)
 	}
-	setHeapSize, err := env.IsPresentAndTrue("X_GOOGLE_SET_NODE_HEAP_SIZE")
-	if err != nil {
-		return fmt.Errorf("checking X_GOOGLE_SET_NODE_HEAP_SIZE: %w", err)
-	}
-	if setHeapSize {
-		if err = installHeapsizeScript(ctx); err != nil {
-			return fmt.Errorf("installing heapsize script: %w", err)
-		}
+	if err = installHeapsizeScript(ctx); err != nil {
+		return fmt.Errorf("installing heapsize script: %w", err)
 	}
 	return err
 }
