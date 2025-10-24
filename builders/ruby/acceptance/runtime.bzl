@@ -10,7 +10,7 @@ gae_runtimes = {
     "ruby30": "3.0.7",
     "ruby32": "3.2.9",
     "ruby33": "3.3.9",
-    "ruby34": "3.4.6",
+    "ruby34": "3.4.7",
 }
 
 gcf_runtimes = {
@@ -19,13 +19,13 @@ gcf_runtimes = {
     "ruby30": "3.0.7",
     "ruby32": "3.2.9",
     "ruby33": "3.3.9",
-    "ruby34": "3.4.6",
+    "ruby34": "3.4.7",
 }
 
 flex_runtimes = {
     "ruby32": "3.2.9",
     "ruby33": "3.3.9",
-    "ruby34": "3.4.6",
+    "ruby34": "3.4.7",
 }
 
 version_to_stack = {
