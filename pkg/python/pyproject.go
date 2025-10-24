@@ -277,7 +277,7 @@ func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) err
 		return fmt.Errorf("failed to create virtual environment with uv: %w", err)
 	}
 
-	syncCmd := []string{"uv", "sync", "--active"}
+	syncCmd := []string{"uv", "sync", "--active", "--link-mode=copy"}
 	syncCmd = appendVendoringFlags(syncCmd)
 
 	ctx.Logf("Installing dependencies with `uv sync` into the virtual environment...")
@@ -312,7 +312,7 @@ func installTool(ctx *gcp.Context, provider, toolName, layerName, versionConstra
 		installCmd = []string{"python3", "-m", "pip", "install", dependencyToInstall}
 		ctx.Logf("Installing %s into %s using pip", dependencyToInstall, layer.Path)
 	case "uv":
-		installCmd = []string{"uv", "pip", "install", "--system", dependencyToInstall}
+		installCmd = []string{"uv", "pip", "install", "--system", "--link-mode=copy", "-q", dependencyToInstall}
 		ctx.Logf("Installing %s into %s using uv", dependencyToInstall, layer.Path)
 	default:
 		return fmt.Errorf("unknown provider: %s", provider)
