@@ -149,6 +149,28 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			},
 			MustMatchStatusCode: 200,
 		},
+		{
+			Name: "nextjs turborepo with npm",
+			App:  "nextjs_turbo",
+			Env:  []string{"GOOGLE_BUILDABLE=apps/web"},
+			MustUse: []string{
+				nodeRuntime,
+				nodeFirebaseNextJs,
+				nodeTurborepo,
+				nodeNPM,
+				nodeFirebaseBundle,
+			},
+			MustNotUse: []string{nodePNPM, nodeYarn, nodeFirebaseAngular, nodeFirebaseNx},
+			// confirms the test app runs successfully and serves the expected response
+			MustMatch: "Hello from Next.js Turborepo on FAH!",
+			MustOutput: []string{
+				// Confirms Turborepo ran the 'next build' command for the 'web' package, and the
+				// firebasebundle buildpack sets the run command correctly.
+				"web:build: > next build",
+				"Setting run command from bundle.yaml: node apps/web/.next/standalone/apps/web/server.js",
+			},
+			MustMatchStatusCode: 200,
+		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		// Prepend baseEnv to tc.Env, so that the baseEnv values can be overridden by the test case.
