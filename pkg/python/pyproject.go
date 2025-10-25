@@ -263,10 +263,10 @@ func EnsureUVLockfile(ctx *gcp.Context) error {
 }
 
 // UVInstallDependenciesAndConfigureEnv installs dependencies and sets up the runtime environment using uv.
-func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) error {
+func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) (string, error) {
 	pythonVersion, err := Version(ctx)
 	if err != nil {
-		return err
+		return "", err
 	}
 	pythonVersion = strings.TrimPrefix(pythonVersion, "Python ")
 
@@ -274,7 +274,7 @@ func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) err
 	ctx.Logf("Creating virtual environment at %s with Python %s", venvDir, pythonVersion)
 	venvCmd := []string{"uv", "venv", venvDir, "--python", pythonVersion}
 	if _, err := ctx.Exec(venvCmd, gcp.WithUserAttribution); err != nil {
-		return fmt.Errorf("failed to create virtual environment with uv: %w", err)
+		return "", fmt.Errorf("failed to create virtual environment with uv: %w", err)
 	}
 
 	syncCmd := []string{"uv", "sync", "--active", "--link-mode=copy"}
@@ -282,13 +282,13 @@ func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) err
 
 	ctx.Logf("Installing dependencies with `uv sync` into the virtual environment...")
 	if _, err := ctx.Exec(syncCmd, gcp.WithUserAttribution, gcp.WithEnv("VIRTUAL_ENV="+venvDir)); err != nil {
-		return fmt.Errorf("failed to sync dependencies with uv: %w", err)
+		return "", fmt.Errorf("failed to sync dependencies with uv: %w", err)
 	}
 	ctx.Logf("Dependencies installed to virtual environment at %s", venvDir)
 
 	venvBinDir := filepath.Join(venvDir, "bin")
 	l.SharedEnvironment.Prepend("PATH", string(filepath.ListSeparator), venvBinDir)
-	return nil
+	return venvDir, nil
 }
 
 // installTool handles the common logic of installing a python tool with either pip or uv.

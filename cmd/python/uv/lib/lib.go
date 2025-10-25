@@ -87,33 +87,36 @@ func BuildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
+
+	var venvDir string
+
 	if isUVPyproject {
 		if err := python.EnsureUVLockfile(ctx); err != nil {
 			return fmt.Errorf("ensuring uv.lock file: %w", err)
 		}
-		if err := python.UVInstallDependenciesAndConfigureEnv(ctx, l); err != nil {
+		venvDir, err = python.UVInstallDependenciesAndConfigureEnv(ctx, l)
+		if err != nil {
 			return fmt.Errorf("installing dependencies with uv: %w", err)
 		}
-		return nil
-	}
+	} else {
+		// This is the requirements.txt path
+		reqs := filepath.SplitList(strings.Trim(os.Getenv(python.RequirementsFilesEnv), string(os.PathListSeparator)))
+		ctx.Debugf("Found requirements.txt files provided by other buildpacks: %s", reqs)
 
-	// Install requirements.txt using uv.
-	reqs := filepath.SplitList(strings.Trim(os.Getenv(python.RequirementsFilesEnv), string(os.PathListSeparator)))
-	ctx.Debugf("Found requirements.txt files provided by other buildpacks: %s", reqs)
+		// The workspace requirements.txt file should be installed last.
+		requirementsExists, err := ctx.FileExists("requirements.txt")
+		if err != nil {
+			return err
+		}
+		if requirementsExists {
+			reqs = append(reqs, "requirements.txt")
+		}
 
-	// The workspace requirements.txt file should be installed last.
-	requirementsExists, err := ctx.FileExists("requirements.txt")
-	if err != nil {
-		return err
-	}
-	if requirementsExists {
-		reqs = append(reqs, "requirements.txt")
-	}
-
-	ctx.Logf("Found requirements.txt, installing with `uv pip install`.")
-	venvDir, err := python.UVInstallRequirements(ctx, l, reqs...)
-	if err != nil {
-		return gcp.UserErrorf("installing requirements.txt with uv: %w", err)
+		ctx.Logf("Found requirements.txt, installing with `uv pip install`.")
+		venvDir, err = python.UVInstallRequirements(ctx, l, reqs...)
+		if err != nil {
+			return gcp.UserErrorf("installing requirements.txt with uv: %w", err)
+		}
 	}
 
 	ctx.Logf("Checking for incompatible dependencies.")
