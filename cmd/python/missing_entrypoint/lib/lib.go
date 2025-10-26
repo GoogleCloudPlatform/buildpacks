@@ -35,6 +35,7 @@ const (
 	fastapiStandard = "fastapi[standard]"
 	requirements    = "requirements.txt"
 	pyprojectToml   = "pyproject.toml"
+	googleAdk       = "google-adk"
 )
 
 // DetectFn is the exported detect function.
@@ -69,7 +70,21 @@ func BuildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("error checking for pyproject.toml: %w", err)
 	}
 
-	if !hasMain && !hasApp && !pyprojectExists {
+	// We will use the smart default entrypoint if the runtime version supports it (>=3.13)
+	supportsSmartDefault, err := python.SupportsSmartDefaultEntrypoint(ctx)
+	if err != nil {
+		return err
+	}
+
+	adkPresent := false
+	if supportsSmartDefault {
+		adkPresent, err = isAdkPresent(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	if !hasMain && !hasApp && !pyprojectExists && !adkPresent {
 		return gcp.UserErrorf("for Python, provide a main.py or app.py file or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
 	}
 
@@ -83,7 +98,7 @@ func BuildFn(ctx *gcp.Context) error {
 	cmd := []string{"gunicorn", "-b", ":8080", pyModule}
 
 	// We will use the smart default entrypoint if the runtime version supports it (>=3.13)
-	if supports, err := python.SupportsSmartDefaultEntrypoint(ctx); err == nil && supports {
+	if supportsSmartDefault {
 		cmd, err = smartDefaultEntrypoint(ctx, pyModule, pyFile)
 		if err != nil {
 			return fmt.Errorf("error detecting smart default entrypoint: %w", err)
@@ -114,7 +129,7 @@ func BuildFn(ctx *gcp.Context) error {
 			} else {
 				cmd = scriptCmd
 			}
-		} else if !hasMain && !hasApp {
+		} else if !hasMain && !hasApp && !adkPresent {
 			return gcp.UserErrorf("for Python with pyproject.toml, provide a main.py or app.py file or a script command in pyproject.toml or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
 		}
 	}
@@ -172,6 +187,14 @@ func smartDefaultEntrypoint(ctx *gcp.Context, pyModule string, pyFile string) ([
 	if sPresent {
 		return []string{"streamlit", "run", pyFile, "--server.address", "0.0.0.0", "--server.port", "8080"}, nil
 	}
+	// If google-adk is present in requirements.txt or pyproject.toml, we will use it as the entrypoint.
+	adkPresent, err := isAdkPresent(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if adkPresent {
+		return []string{"adk", "api_server", "--port", "8080", "--host", "0.0.0.0"}, nil
+	}
 
 	return []string{"gunicorn", "-b", ":8080", pyModule}, nil
 }
@@ -184,4 +207,16 @@ func addGradioEnvVarLayer(ctx *gcp.Context) error {
 	layer.LaunchEnvironment.Default("GRADIO_SERVER_NAME", "0.0.0.0")
 	layer.LaunchEnvironment.Default("GRADIO_SERVER_PORT", "8080")
 	return nil
+}
+
+func isAdkPresent(ctx *gcp.Context) (bool, error) {
+	if !env.IsAlphaSupported() {
+		return false, nil
+	}
+	// If google-adk is present in requirements.txt, we will use it as the entrypoint.
+	adkPresent, err := python.PackagePresent(ctx, googleAdk)
+	if err != nil {
+		return false, fmt.Errorf("error detecting google-adk: %w", err)
+	}
+	return adkPresent, nil
 }

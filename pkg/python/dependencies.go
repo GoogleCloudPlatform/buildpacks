@@ -33,6 +33,7 @@ var packageRegex = map[string]*regexp.Regexp{
 	"streamlit":           regexp.MustCompile(`(?m)^streamlit\b([^-]|$)`),
 	"fastapi[standard]":   regexp.MustCompile(`(?m)^fastapi\[standard\]([^-]|$)`),
 	"functions-framework": regexp.MustCompile(`(?m)^functions-framework\b([^-]|$)`),
+	"google-adk":          regexp.MustCompile(`(?m)^google-adk\b([^-]|$)`),
 }
 var eggRegex = map[string]*regexp.Regexp{
 	"gunicorn":            regexp.MustCompile(`(?m)#egg=gunicorn$`),
@@ -41,6 +42,7 @@ var eggRegex = map[string]*regexp.Regexp{
 	"streamlit":           regexp.MustCompile(`(?m)#egg=streamlit$`),
 	"fastapi[standard]":   regexp.MustCompile(`(?m)#egg=fastapi\[standard\]$`),
 	"functions-framework": regexp.MustCompile(`(?m)#egg=functions-framework$`),
+	"google-adk":          regexp.MustCompile(`(?m)#egg=google-adk$`),
 }
 
 // PackagePresent checks if a given package is present in the requirements file.

@@ -530,6 +530,123 @@ any_start_cmd = "main:app"`,
 			wantCmd: []string{"poetry", "run", "any_start_cmd"},
 		},
 		{
+			name: "google_adk",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "google-adk",
+			},
+			env: []string{
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"adk", "api_server", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "google_adk_no_main_app",
+			files: map[string]string{
+				"requirements.txt": "google-adk",
+			},
+			env: []string{
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"adk", "api_server", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "google_adk_with_main_below_3.13",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "google-adk",
+			},
+			env: []string{
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.12.0",
+			},
+			runtime: "python3.12",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "google_adk_with_main_no_alpha",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "google-adk",
+			},
+			env: []string{
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "pyproject_google_adk",
+			files: map[string]string{
+				"main.py": "",
+				"pyproject.toml": `[project]
+dependencies = ["google-adk"]`,
+			},
+			env: []string{
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"adk", "api_server", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "pyproject_poetry_google_adk",
+			files: map[string]string{
+				"main.py": "",
+				"pyproject.toml": `[tool.poetry.dependencies]
+google-adk = "*_*"`,
+			},
+			env: []string{
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"adk", "api_server", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "pyproject_google_adk_no_main_app",
+			files: map[string]string{
+				"pyproject.toml": `[project]
+dependencies = ["google-adk"]`,
+			},
+			env: []string{
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"adk", "api_server", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "pyproject_poetry_google_adk_no_main_app",
+			files: map[string]string{
+				"pyproject.toml": `[tool.poetry.dependencies]
+google-adk = "*_*"`,
+			},
+			env: []string{
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"adk", "api_server", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "google_adk_with_gunicorn",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "google-adk\ngunicorn",
+			},
+			env: []string{
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
 			name: "no_main_or_app",
 			files: map[string]string{
 				"other.py": "",
@@ -541,6 +658,29 @@ any_start_cmd = "main:app"`,
 			files: map[string]string{
 				"folder/main.py": "",
 			},
+			wantExitCode: 1,
+		},
+		{
+			name: "google_adk_below_3.13",
+			files: map[string]string{
+				"requirements.txt": "google-adk",
+			},
+			env: []string{
+				env.ReleaseTrack + "=ALPHA",
+				env.RuntimeVersion + "=3.12.0",
+			},
+			runtime:      "python3.12",
+			wantExitCode: 1,
+		},
+		{
+			name: "google_adk_no_alpha",
+			files: map[string]string{
+				"requirements.txt": "google-adk",
+			},
+			env: []string{
+				env.RuntimeVersion + "=3.13.0",
+			},
+			runtime:      "python3.13",
 			wantExitCode: 1,
 		},
 	}

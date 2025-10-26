@@ -145,6 +145,38 @@ func TestPackagePresent(t *testing.T) {
 			want: true,
 		},
 		{
+			name:    "requirements.txt_exists_and_contains_google-adk",
+			pkgName: "google-adk",
+			files: map[string]string{
+				"requirements.txt": "google-adk==0.1.0",
+			},
+			want: true,
+		},
+		{
+			name:         "pyproject.toml_exists_and_contains_google-adk_in_project.dependencies",
+			pkgName:      "google-adk",
+			releaseTrack: "ALPHA",
+			files: map[string]string{
+				"pyproject.toml": `
+					[project]
+					dependencies = ["google-adk>=0.1.0"]
+				`,
+			},
+			want: true,
+		},
+		{
+			name:         "pyproject.toml_exists_and_contains_google-adk_in_tool.poetry.dependencies",
+			pkgName:      "google-adk",
+			releaseTrack: "ALPHA",
+			files: map[string]string{
+				"pyproject.toml": `
+					[tool.poetry.dependencies]
+					google-adk = ">=0.1.0"
+				`,
+			},
+			want: true,
+		},
+		{
 			name:         "Neither_file_exists",
 			pkgName:      "gunicorn",
 			releaseTrack: "ALPHA",
@@ -596,6 +628,53 @@ func TestContainsFastAPIStandard(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := containsPackage(tc.str, "fastapi[standard]"); got != tc.want {
 				t.Errorf("containsPackage(%q, %q) = %v, want %v", tc.str, "fastapi[standard]", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestContainsGoogleAdk(t *testing.T) {
+	testCases := []struct {
+		name string
+		str  string
+		want bool
+	}{
+		{
+			name: "google-adk_present",
+			str:  "google-adk==0.1.0\nflask\n",
+			want: true,
+		},
+		{
+			name: "google-adk_present_with_comment",
+			str:  "google-adk #my-comment\nflask\n",
+			want: true,
+		},
+		{
+			name: "google-adk_present_second_line",
+			str:  "flask\ngoogle-adk==0.1.0",
+			want: true,
+		},
+		{
+			name: "no_google-adk_present",
+			str:  "google-adk-logging==0.1.0\nflask\n",
+			want: false,
+		},
+		{
+			name: "google-adk_egg_present",
+			str:  "git+git://github.com/google/adk@master#egg=google-adk\nflask\n",
+			want: true,
+		},
+		{
+			name: "google-adk_egg_not_present",
+			str:  "git+git://github.com/google/adk-logging@master#egg=google-adk-logging\nflask\n",
+			want: false,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := containsPackage(tc.str, "google-adk")
+			if got != tc.want {
+				t.Errorf("containsPackage(google-adk) got %t, want %t", got, tc.want)
 			}
 		})
 	}

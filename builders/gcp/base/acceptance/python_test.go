@@ -423,6 +423,24 @@ func TestAcceptancePython(t *testing.T) {
 			MustUse:                    []string{pythonRuntime, pythonPoetry, pythonMissingEntrypoint},
 			VersionInclusionConstraint: ">= 3.10.0",
 		},
+		{
+			Name:                       "google_adk_in_requirements_txt",
+			App:                        "google_adk",
+			Path:                       "/list-apps",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA", "GOOGLE_RUNTIME_VERSION=3.13.0"},
+			MustUse:                    []string{pythonRuntime, pythonPIP, pythonMissingEntrypoint},
+			VersionInclusionConstraint: ">= 3.13.0 < 3.14.0",
+			MustMatch:                  "multi_tool_agent",
+		},
+		{
+			Name:                       "google_adk_in_pyproject_toml",
+			App:                        "pyproject_google_adk",
+			Path:                       "/list-apps",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA", "GOOGLE_RUNTIME_VERSION=3.13.0"},
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint},
+			VersionInclusionConstraint: ">= 3.13.0 < 3.14.0",
+			MustMatch:                  "multi_tool_agent",
+		},
 	}
 
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {

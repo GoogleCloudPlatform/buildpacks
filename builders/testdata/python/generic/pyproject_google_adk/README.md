@@ -1,5 +1,5 @@
-You can deploy this project on Cloud Run by navigating to the `google_adk`
-folder, running either of the following commands:
+You can deploy this project on Cloud Run by navigating to the `pyproject_google_adk`
+folder, and running either of the following commands:
 
 1. With UI option
 
