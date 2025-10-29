@@ -18,8 +18,10 @@ package lib
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
@@ -30,11 +32,35 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 )
 
+const (
+	java25Runtime = "java25"
+)
+
 var (
 	supportedJettyBuildTimeVersions = []string{
-		"java25",
+		java25Runtime,
 	}
 )
+
+// EEConfig contains the files to delete from the Jetty distribution for a given runtime.
+type EEConfig struct {
+	EE8Deletions     []string
+	EE10Deletions    []string
+	EE11Deletions    []string
+	defaultEEVersion string
+}
+
+var jettyFilesToDelete = map[string]EEConfig{
+	java25Runtime: {
+		// This is based on the behavior defined in ClassPathUtils.
+		// See for reference:
+		// http://google3/third_party/java_src/appengine_standard/runtime/util/src/main/java/com/google/apphosting/runtime/ClassPathUtils.java;l=111
+		EE8Deletions:     []string{"runtime-shared-jetty121-ee11.jar"},
+		EE10Deletions:    []string{},
+		EE11Deletions:    []string{"runtime-shared-jetty121-ee8.jar"},
+		defaultEEVersion: "EE11",
+	},
+}
 
 // DetectFn is the exported detect function.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
@@ -101,14 +127,15 @@ func processAppEngineWebXML(ctx *gcp.Context) (string, error) {
 	}
 
 	if slices.Contains(supportedJettyBuildTimeVersions, appEngineWebXMLApp.Runtime) {
-		return addJettyAtBuildTime(ctx, appEngineWebXMLApp.Runtime)
+		return addJettyAtBuildTime(ctx, appEngineWebXMLApp)
 	}
 
 	return "", nil
 }
 
-func addJettyAtBuildTime(ctx *gcp.Context, repoPath string) (string, error) {
+func addJettyAtBuildTime(ctx *gcp.Context, appEngineWebXMLApp *java.AppEngineWebXMLApp) (string, error) {
 	jettyLayer, err := ctx.Layer("java_runtime", gcp.LaunchLayer)
+	repoPath := appEngineWebXMLApp.Runtime
 	if err != nil {
 		return "", fmt.Errorf("creating layer: %w", err)
 	}
@@ -117,5 +144,87 @@ func addJettyAtBuildTime(ctx *gcp.Context, repoPath string) (string, error) {
 		return "", fmt.Errorf("Error installing jetty artifacts: %w", err)
 	}
 	ctx.Logf("Successfully installed Jetty for %s at build time from AR.", repoPath)
+
+	err = handleRuntimeJettyFiles(ctx, appEngineWebXMLApp, jettyLayer.Path)
+	if err != nil {
+		return "", err
+	}
 	return jettyLayer.Path, nil
+}
+
+// handleRuntimeJettyFiles tailors the installed Jetty distribution based on runtime configuration.
+func handleRuntimeJettyFiles(ctx *gcp.Context, appEngineWebXMLApp *java.AppEngineWebXMLApp, jettyRoot string) error {
+	config, exists := jettyFilesToDelete[appEngineWebXMLApp.Runtime]
+	if !exists {
+		return nil
+	}
+
+	eeVersion, err := extractEEVersion(appEngineWebXMLApp, config.defaultEEVersion, ctx)
+	if err != nil {
+		return err
+	}
+
+	var fileNamesToDelete []string
+	switch eeVersion {
+	case "EE8":
+		fileNamesToDelete = config.EE8Deletions
+	case "EE11":
+		fileNamesToDelete = config.EE11Deletions
+	}
+
+	if len(fileNamesToDelete) == 0 {
+		return nil
+	}
+
+	err = filepath.Walk(jettyRoot, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		fileName := info.Name()
+		if slices.Contains(fileNamesToDelete, fileName) || !strings.HasSuffix(fileName, ".jar") {
+			if rmErr := os.Remove(path); rmErr != nil {
+				ctx.Logf("Warning: Failed to delete file %s: %v", path, rmErr)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func extractEEVersion(appEngineWebXMLApp *java.AppEngineWebXMLApp, defaultEEVersion string, ctx *gcp.Context) (string, error) {
+	var trueCount int = 0
+	var eeVersion string
+	var err error = nil
+	// First return an error when more than one appengine.use.* properties are true.
+	// If that is not the case, return an error when appengine.use.EE10 is true.
+	// Otherwise, return the value of the last true property.
+	for _, prop := range appEngineWebXMLApp.SystemProperties {
+		// case insensitive comparison for value of the system property
+		// "appengine.use.EE11" can be "true" or "True", for e.g.
+		if prop.Name == "appengine.use.EE11" && strings.ToLower(prop.Value) == "true" {
+			trueCount++
+			eeVersion = "EE11"
+		} else if prop.Name == "appengine.use.EE8" && strings.ToLower(prop.Value) == "true" {
+			trueCount++
+			eeVersion = "EE8"
+		} else if prop.Name == "appengine.use.EE10" && strings.ToLower(prop.Value) == "true" {
+			trueCount++
+			eeVersion = "EE10"
+			err = fmt.Errorf("appengine.use.EE10 is not supported in Jetty121")
+		}
+		if trueCount > 1 {
+			return "", fmt.Errorf("only one of appengine.use.EE8, appengine.use.EE10, or appengine.use.EE11 can be true")
+		}
+	}
+	if trueCount == 0 {
+		eeVersion = defaultEEVersion
+		ctx.Logf("No appengine.use.* property found in appengine-web.xml, using default EE version: %s", eeVersion)
+	}
+	return eeVersion, err
 }
