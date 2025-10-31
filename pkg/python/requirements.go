@@ -79,6 +79,11 @@ func UVInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) (s
 	}
 	ctx.Logf("Dependencies from requirements.txt installed to virtual environment at %s", venvDir)
 
+	if err := compileBytecode(ctx, venvDir); err != nil {
+		return "", fmt.Errorf("failed to compile bytecode: %w", err)
+	}
+	ctx.Logf("Finished compiling bytecode.")
+
 	l.SharedEnvironment.Prepend("PATH", string(filepath.ListSeparator), filepath.Join(venvDir, "bin"))
 	return venvDir, nil
 }
