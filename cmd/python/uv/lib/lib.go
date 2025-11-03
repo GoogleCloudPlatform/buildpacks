@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
@@ -73,6 +74,7 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 // BuildFn is the exported build function.
 func BuildFn(ctx *gcp.Context) error {
 	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.UVUsageCounterID).Increment(1)
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.PackageManager, buildermetadata.MetadataValue("uv"))
 
 	if err := python.InstallUV(ctx); err != nil {
 		return fmt.Errorf("installing uv: %w", err)
@@ -91,6 +93,7 @@ func BuildFn(ctx *gcp.Context) error {
 	var venvDir string
 
 	if isUVPyproject {
+		buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.ConfigFile, buildermetadata.MetadataValue("pyproject.toml"))
 		if err := python.EnsureUVLockfile(ctx); err != nil {
 			return fmt.Errorf("ensuring uv.lock file: %w", err)
 		}
@@ -100,6 +103,7 @@ func BuildFn(ctx *gcp.Context) error {
 		}
 	} else {
 		// This is the requirements.txt path
+		buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.ConfigFile, buildermetadata.MetadataValue("requirements.txt"))
 		reqs := filepath.SplitList(strings.Trim(os.Getenv(python.RequirementsFilesEnv), string(os.PathListSeparator)))
 		ctx.Debugf("Found requirements.txt files provided by other buildpacks: %s", reqs)
 

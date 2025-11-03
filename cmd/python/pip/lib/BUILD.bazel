@@ -10,6 +10,7 @@ go_library(
         "//:__subpackages__",
     ],
     deps = [
+        "//pkg/buildermetadata",
         "//pkg/buildermetrics",
         "//pkg/env",
         "//pkg/gcpbuildpack",

@@ -38,7 +38,7 @@ func TestFromJSON(t *testing.T) {
 		"errorMessage": "error-message",
 		"anotherThing": 123
 	},
-	"metadata": {"m":{"1":"true", "2":"false", "3":"angular", "4":"17.0.0", "5":"@apphosting/adapter-angular", "6":"17.2.3", "7":"nx"}},
+	"metadata": {"m":{"1":"true", "2":"false", "3":"angular", "4":"17.0.0", "5":"@apphosting/adapter-angular", "6":"17.2.3", "7":"nx", "8":"uv", "9":"pyproject.toml"}},
 	"stats": [
 		{
 			"buildpackId": "buildpack-1",
@@ -78,6 +78,8 @@ func TestFromJSON(t *testing.T) {
 	fm.SetValue(buildermetadata.AdapterName, "@apphosting/adapter-angular")
 	fm.SetValue(buildermetadata.AdapterVersion, "17.2.3")
 	fm.SetValue(buildermetadata.MonorepoName, "nx")
+	fm.SetValue(buildermetadata.PackageManager, "uv")
+	fm.SetValue(buildermetadata.ConfigFile, "pyproject.toml")
 	want := BuilderOutput{
 		InstalledRuntimeVersions: []string{"6.0.6"},
 		Metrics:                  bm,
@@ -127,6 +129,8 @@ func TestJSON(t *testing.T) {
 	fm.SetValue(buildermetadata.AdapterName, "@apphosting/adapter-angular")
 	fm.SetValue(buildermetadata.AdapterVersion, "17.2.3")
 	fm.SetValue(buildermetadata.MonorepoName, "nx")
+	fm.SetValue(buildermetadata.PackageManager, "pip")
+	fm.SetValue(buildermetadata.ConfigFile, "requirements.txt")
 	b := BuilderOutput{
 		InstalledRuntimeVersions: []string{"6.0.6"},
 		Metrics:                  bm,
@@ -148,7 +152,7 @@ func TestJSON(t *testing.T) {
 	if want := `{"c":{"1":3}}`; !strings.Contains(string(s), want) {
 		t.Errorf(`Expected string %q not found in %s`, want, s)
 	}
-	if want := `{"m":{"1":"true","2":"false","3":"angular","4":"17.0.0","5":"@apphosting/adapter-angular","6":"17.2.3","7":"nx"}}`; !strings.Contains(string(s), want) {
+	if want := `{"m":{"1":"true","2":"false","3":"angular","4":"17.0.0","5":"@apphosting/adapter-angular","6":"17.2.3","7":"nx","8":"pip","9":"requirements.txt"}}`; !strings.Contains(string(s), want) {
 		t.Errorf(`Expected string %q not found in %s`, want, s)
 	}
 }

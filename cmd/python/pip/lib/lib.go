@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -62,6 +63,7 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 // BuildFn is the exported build function.
 func BuildFn(ctx *gcp.Context) error {
 	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.PIPUsageCounterID).Increment(1)
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.PackageManager, buildermetadata.MetadataValue("pip"))
 
 	l, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 	if err != nil {
@@ -70,11 +72,13 @@ func BuildFn(ctx *gcp.Context) error {
 
 	// Check if this build is for a pyproject.toml file.
 	if python.IsPipPyproject(ctx) {
+		buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.ConfigFile, buildermetadata.MetadataValue("pyproject.toml"))
 		if err := python.PipInstallPyproject(ctx, l); err != nil {
 			return gcp.UserErrorf("installing dependencies from pyproject.toml: %w", err)
 		}
 	} else {
 		// Fallback to the requirements.txt logic.
+		buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.ConfigFile, buildermetadata.MetadataValue("requirements.txt"))
 		// Remove leading and trailing : because otherwise SplitList will add empty strings.
 		reqs := filepath.SplitList(strings.Trim(os.Getenv(python.RequirementsFilesEnv), string(os.PathListSeparator)))
 		ctx.Debugf("Found requirements.txt files provided by other buildpacks: %s", reqs)
