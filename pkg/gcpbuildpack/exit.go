@@ -16,6 +16,8 @@ package gcpbuildpack
 
 import (
 	"os"
+
+	"google3/third_party/golang/cloud_google_com/go/logging/v/v1/logging"
 )
 
 // Exiter is responsible to exit the program appropriately; useful for unit tests.
@@ -31,7 +33,14 @@ func (e defaultExiter) Exit(exitCode int, err error) {
 	if err != nil {
 		e.ctx.saveErrorOutput(err)
 		e.ctx.Logf(divider)
-		e.ctx.Logf(err.Error())
+
+		// Use structured logging if the GOOGLE_ENABLE_STRUCTURED_LOGGING env var is set by RCS.
+		if os.Getenv("GOOGLE_ENABLE_STRUCTURED_LOGGING") == "true" {
+			e.ctx.StructuredLogf(logging.Error, "%s", err.Error())
+		} else {
+			e.ctx.Logf("%s", err.Error())
+		}
+
 	}
 
 	if exitCode != 0 {

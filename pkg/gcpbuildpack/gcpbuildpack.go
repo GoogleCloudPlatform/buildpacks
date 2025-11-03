@@ -16,6 +16,7 @@
 package gcpbuildpack
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -30,7 +31,9 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"google3/third_party/golang/cloud_google_com/go/logging/v/v1/logging"
 	"github.com/buildpacks/libcnb/v2"
+	"google3/third_party/golang/google_api/option/option"
 )
 
 const (
@@ -57,7 +60,6 @@ const (
 )
 
 var (
-	defaultLogger  = log.New(os.Stderr, "", 0)
 	labelKeyRegexp = regexp.MustCompile(labelKeyRegexpStr)
 )
 
@@ -85,6 +87,7 @@ type Context struct {
 	buildpackRoot            string
 	debug                    bool
 	logger                   *log.Logger
+	cloudLogger              *logging.Logger
 	installedRuntimeVersions []string
 	stats                    stats
 	exiter                   Exiter
@@ -158,6 +161,7 @@ func WithStackID(stackID string) ContextOption {
 // NewContext creates a context.
 func NewContext(opts ...ContextOption) *Context {
 	debug, err := env.IsDebugMode()
+	defaultLogger := log.New(os.Stderr, "", 0)
 	if err != nil {
 		defaultLogger.Printf("Failed to parse debug mode: %v", err)
 		os.Exit(1)
@@ -167,6 +171,20 @@ func NewContext(opts ...ContextOption) *Context {
 		execCmd: exec.Command,
 		logger:  defaultLogger,
 	}
+
+	// Set up cloud logging if the GOOGLE_ENABLE_STRUCTURED_LOGGING env var is set by RCS.
+	if os.Getenv("GOOGLE_ENABLE_STRUCTURED_LOGGING") == "true" {
+		client, err := logging.NewClient(context.Background(), "", option.WithoutAuthentication())
+		if err != nil {
+			defaultLogger.Printf("WARNING: Failed to create Cloud Logging client for structured logs: %v", err)
+		} else {
+			// This cloud build logger will write JSON-formatted logs to os.Stderr.
+			// RedirectAsJSON avoids sending the logs to the Cloud Logging API (which would fail with the no-auth client),
+			// and serializes the Entry object into a JSON string and writes it to os.Stderr.
+			ctx.cloudLogger = client.Logger("structured-logs", logging.RedirectAsJSON(os.Stderr))
+		}
+	}
+
 	ctx.exiter = defaultExiter{ctx: ctx}
 	for _, o := range opts {
 		o(ctx)
@@ -240,7 +258,7 @@ func Main(d DetectFn, b BuildFn) {
 	case "build":
 		build(b)
 	default:
-		defaultLogger.Print("Unknown command, expected 'detect' or 'build'.")
+		log.New(os.Stderr, "", 0).Print("Unknown command, expected 'detect' or 'build'.")
 		os.Exit(1)
 	}
 }
@@ -367,6 +385,24 @@ func (ctx *Context) Tipf(format string, args ...interface{}) {
 	if env.IsGCP() {
 		ctx.Logf(format, args...)
 	}
+}
+
+// StructuredLogf logs a structured JSON payload to Cloud Logging.
+func (ctx *Context) StructuredLogf(severity logging.Severity, format string, args ...any) {
+	message := fmt.Sprintf(format, args...)
+	if message == "" {
+		return
+	}
+	// Fallback to the simple logger if the structured logger isn't initialized.
+	if ctx.cloudLogger == nil {
+		ctx.logger.Print(message)
+		return
+	}
+
+	ctx.cloudLogger.Log(logging.Entry{
+		Severity: severity,
+		Payload:  message,
+	})
 }
 
 // CacheHit records a cache hit debug message. This is used in acceptance test validation.
