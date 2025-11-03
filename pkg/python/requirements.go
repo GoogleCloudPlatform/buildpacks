@@ -30,7 +30,7 @@ func IsUVRequirementsEnabled(ctx *gcp.Context) bool {
 	if isUVDefaultPackageManagerForRequirements(ctx) {
 		return true
 	}
-	return env.IsAlphaSupported()
+	return env.IsBetaSupported()
 }
 
 // IsUVRequirements checks if the application is a UV requirements.txt application.

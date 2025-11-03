@@ -41,7 +41,7 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "should_opt_out_for_requirements_txt_in_beta",
+			name: "should_opt_in_for_requirements_txt_in_beta",
 			envs: []string{
 				env.ReleaseTrack + "=BETA",
 				env.PythonPackageManager + "=uv",
@@ -49,7 +49,7 @@ func TestDetect(t *testing.T) {
 			files: map[string]string{
 				"requirements.txt": "flask",
 			},
-			want: 100,
+			want: 0,
 		},
 		{
 			name: "should_opt_out_for_requirements_txt_without_uv_env_var",
