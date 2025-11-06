@@ -36,6 +36,7 @@ def acceptance_test_suite(
         args = None,
         deps = None,
         argsmap = None,
+        use_runtime_name_as_version = False,
         **kwargs):
     """Macro to define an acceptance test.
 
@@ -52,10 +53,10 @@ def acceptance_test_suite(
       **kwargs: this argument captures all additional arguments and forwards them to the generated go_test rule
     """
     deps = _build_deps(deps)
-    _build_tests(name, srcs, args, testdata, builder, structure_test_config, deps, versions, runtime_to_builder_map, argsmap, **kwargs)
+    _build_tests(name, srcs, args, testdata, builder, structure_test_config, deps, versions, runtime_to_builder_map, argsmap, use_runtime_name_as_version, **kwargs)
     _cloudbuild_targets(name, srcs, structure_test_config, builder, args, deps, versions, argsmap, testdata)
 
-def _build_tests(name, srcs, args, testdata, builder, structure_test_config, deps, versions, runtime_to_builder_map, argsmap, **kwargs):
+def _build_tests(name, srcs, args, testdata, builder, structure_test_config, deps, versions, runtime_to_builder_map, argsmap, use_runtime_name_as_version, **kwargs):
     # if there are no versions passed in then create a go_test(...) rule directly without changing
     # the name of the test
     if versions == {}:
@@ -63,11 +64,27 @@ def _build_tests(name, srcs, args, testdata, builder, structure_test_config, dep
         data = _build_data(structure_test_config, builder, testdata)
         _new_go_test_for_single_version(name, srcs, test_args, data, deps, **kwargs)
     else:
-        _new_go_test_for_versions(versions, name, srcs, args, testdata, builder, structure_test_config, runtime_to_builder_map, deps, argsmap, **kwargs)
+        _new_go_test_for_versions(versions, name, srcs, args, testdata, builder, structure_test_config, runtime_to_builder_map, deps, argsmap, use_runtime_name_as_version, **kwargs)
 
-def _new_go_test_for_versions(versions, name, srcs, args, testdata, builder, structure_test_config, runtime_to_builder_map, deps, argsmap, **kwargs):
+def _new_go_test_for_versions(versions, name, srcs, args, testdata, builder, structure_test_config, runtime_to_builder_map, deps, argsmap, use_runtime_name_as_version, **kwargs):
     tests = []
-    if type(versions) == type({}):
+
+    if use_runtime_name_as_version:
+        for _n in versions:
+            selected_builder = _select_builder(builder, runtime_to_builder_map, _n)
+            test_args = _build_args(args, name, testdata, selected_builder, structure_test_config)
+            data = _build_data(structure_test_config, selected_builder, testdata)
+            ver_name = _n + "_" + name
+            tests.append(ver_name)
+            ver_args = list(test_args)
+
+            if argsmap != None and argsmap.get(_n) != None:
+                for ak, av in argsmap[_n].items():
+                    ver_args.append(ak + "=" + av)
+
+            _new_go_test(ver_name, srcs, ver_args, data, deps, **kwargs)
+
+    elif type(versions) == type({}):
         for _n, v in versions.items():
             selected_builder = _select_builder(builder, runtime_to_builder_map, _n)
             test_args = _build_args(args, name, testdata, selected_builder, structure_test_config)

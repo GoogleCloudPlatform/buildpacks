@@ -1,5 +1,28 @@
 """Module for initializing arguments for acceptance tests"""
 
+def get_runtime_to_universal_builder_map(version_to_stack):
+    """Constructs and returns the runtime_to_builder_map based on version_to_stack.
+
+    Args:
+      version_to_stack: A dictionary mapping runtime versions to their builder stacks.
+        e.g., {"osonly24": "google-24-full"}.
+
+    Returns:
+        dict: A dictionary mapping runtime versions (e.g., "osonly24") to their
+              corresponding builder file paths (e.g., "//path/to:builder.tar").
+    """
+    stack_to_builder_path_map = {
+        "google-24-full": "//builders/gcp/base:google_24_builder.tar",
+    }
+    runtime_to_builder_map = {}
+    for version, stack in version_to_stack.items():
+        if stack in stack_to_builder_path_map:
+            runtime_to_builder_map[version] = stack_to_builder_path_map[stack]
+        else:
+            fail("Error: No builder path defined in stack_to_builder_path_map for stack: %s (for version %s)" % (stack, version))
+
+    return runtime_to_builder_map
+
 def get_runtime_to_builder_map(version_to_stack, language):
     """Constructs and returns the RUNTIME_TO_BUILDER_MAP based on version_to_stack.
 
@@ -26,7 +49,7 @@ def get_runtime_to_builder_map(version_to_stack, language):
 
     return runtime_to_builder_map
 
-def languageargs(runtimes, version_to_stack, runImageTag = "", stack = ""):
+def languageargs(runtimes, version_to_stack, runImageTag = "", stack = "", use_runtime_name_as_version = False):
     """Create a new key-value map of arguments for language tests
 
     Args:
@@ -41,6 +64,13 @@ def languageargs(runtimes, version_to_stack, runImageTag = "", stack = ""):
         A key-value map of the arguments
     """
     args = {}
+
+    if use_runtime_name_as_version:
+        for n in runtimes:
+            current_stack = version_to_stack.get(n)
+            args[n] = newArgs(n, runImageTag, current_stack)
+        return args
+
     for n, v in runtimes.items():
         current_stack = ""
         if stack != "":

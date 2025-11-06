@@ -2,7 +2,10 @@ load("//tools:defs.bzl", "builder")
 
 licenses(["notice"])
 
-package(default_visibility = ["//builders/gcp/base/acceptance:__pkg__"])
+package(default_visibility = [
+    "//builders/gcp/base/acceptance:__pkg__",
+    "//builders/osonly/acceptance:__pkg__",
+])
 
 BUILDPACKS = [
     "//cmd/config/entrypoint:entrypoint.tgz",

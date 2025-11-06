@@ -49,6 +49,7 @@ filegroup(
                 "dart/**",
                 "php/**",
                 "cpp/**",
+                "osonly/**",
             ],
         )
     ],

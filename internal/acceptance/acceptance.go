@@ -639,7 +639,23 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 	}
 
 	builderLoc, cleanUpBuilder := extractBuilder(t, builderSource)
-	config := filepath.Join(builderLoc, "builder.toml")
+
+	// For language builders, the toml file is named as builder.toml.
+	// For universal builders, the toml file is named like google.24.builder.toml.
+	files, err := os.ReadDir(builderLoc)
+	if err != nil {
+		t.Fatalf("Error reading builder location: %v", err)
+	}
+	var config string
+	for _, f := range files {
+		if strings.HasSuffix(f.Name(), "builder.toml") {
+			config = filepath.Join(builderLoc, f.Name())
+			break
+		}
+	}
+	if config == "" {
+		t.Fatalf("No builder.toml file found in %s", builderLoc)
+	}
 
 	if lifecycle != "" {
 		t.Logf("Using lifecycle location: %s", lifecycle)
