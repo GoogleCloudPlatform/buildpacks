@@ -50,7 +50,7 @@ func TestPackagePresent(t *testing.T) {
 		{
 			name:         "pyproject.toml_exists_and_contains_gunicorn_in_project.dependencies",
 			pkgName:      "gunicorn",
-			releaseTrack: "ALPHA",
+			releaseTrack: "BETA",
 			files: map[string]string{
 				"pyproject.toml": `
 					[project]
@@ -60,9 +60,9 @@ func TestPackagePresent(t *testing.T) {
 			want: true,
 		},
 		{
-			name:         "pyproject.toml_exists_and_contains_gunicorn_in_project.dependencies_and_release_track_is_beta",
+			name:         "pyproject.toml_exists_and_contains_gunicorn_in_project.dependencies_and_release_track_is_ga",
 			pkgName:      "gunicorn",
-			releaseTrack: "BETA",
+			releaseTrack: "GA",
 			files: map[string]string{
 				"pyproject.toml": `
 					[project]
@@ -74,7 +74,7 @@ func TestPackagePresent(t *testing.T) {
 		{
 			name:         "pyproject.toml_exists_and_contains_gunicorn_in_tool.poetry.dependencies",
 			pkgName:      "gunicorn",
-			releaseTrack: "ALPHA",
+			releaseTrack: "BETA",
 			files: map[string]string{
 				"pyproject.toml": `
 					[tool.poetry]
@@ -86,7 +86,7 @@ func TestPackagePresent(t *testing.T) {
 		{
 			name:         "pyproject.toml_exists_and_does_not_contain_gunicorn",
 			pkgName:      "gunicorn",
-			releaseTrack: "ALPHA",
+			releaseTrack: "BETA",
 			files: map[string]string{
 				"pyproject.toml": `
 					[project]
@@ -98,7 +98,7 @@ func TestPackagePresent(t *testing.T) {
 		{
 			name:         "Check_uvicorn_in_pyproject.toml",
 			pkgName:      "uvicorn",
-			releaseTrack: "ALPHA",
+			releaseTrack: "BETA",
 			files: map[string]string{
 				"pyproject.toml": `
 					[project]
@@ -110,7 +110,7 @@ func TestPackagePresent(t *testing.T) {
 		{
 			name:         "Check_gradio_in_pyproject.toml",
 			pkgName:      "gradio",
-			releaseTrack: "ALPHA",
+			releaseTrack: "BETA",
 			files: map[string]string{
 				"pyproject.toml": `
 					[tool.poetry.dependencies]
@@ -123,7 +123,7 @@ func TestPackagePresent(t *testing.T) {
 		{
 			name:         "Check_gradio_not_present_in_pyproject.toml",
 			pkgName:      "gradio",
-			releaseTrack: "ALPHA",
+			releaseTrack: "BETA",
 			files: map[string]string{
 				"pyproject.toml": `
 					[tool.poetry.dependencies]
@@ -135,7 +135,7 @@ func TestPackagePresent(t *testing.T) {
 		{
 			name:         "check_functions_framework_in_pyproject.toml",
 			pkgName:      "functions-framework",
-			releaseTrack: "ALPHA",
+			releaseTrack: "BETA",
 			files: map[string]string{
 				"pyproject.toml": `
 					[project]
@@ -179,7 +179,7 @@ func TestPackagePresent(t *testing.T) {
 		{
 			name:         "Neither_file_exists",
 			pkgName:      "gunicorn",
-			releaseTrack: "ALPHA",
+			releaseTrack: "BETA",
 			files:        map[string]string{},
 			want:         false,
 		},

@@ -412,7 +412,7 @@ func IsPyprojectEnabled(ctx *gcp.Context) bool {
 	if isBothPyprojectAndRequirementsPresent(ctx) {
 		return false // Prefer requirements.txt over pyproject.toml.
 	}
-	return env.IsAlphaSupported()
+	return env.IsBetaSupported()
 }
 
 // IsPipPyproject checks if the application is a pip pyproject.

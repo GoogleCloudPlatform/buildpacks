@@ -44,12 +44,12 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "pyproject.toml_file_when_env_var is pip",
+			name: "pyproject.toml_file_when_env_var_is_pip",
 			files: map[string]string{
 				"pyproject.toml": `[project]
 name = "my-pip-project"`,
 			},
-			env:  []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=pip"},
+			env:  []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=pip", "X_GOOGLE_RELEASE_TRACK=BETA"},
 			want: 0,
 		},
 	}

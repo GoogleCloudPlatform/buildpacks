@@ -29,12 +29,12 @@ func TestDetect(t *testing.T) {
 		files map[string]string
 	}{
 		{
-			name: "should_opt_out_for_poetry_in_beta",
+			name: "should_opt_in_for_poetry_in_beta",
 			envs: []string{env.ReleaseTrack + "=BETA"},
 			files: map[string]string{
 				"pyproject.toml": `[tool.poetry]`,
 			},
-			want: 100,
+			want: 0,
 		},
 		{
 			name: "should_opt_in_for_poetry_in_alpha",

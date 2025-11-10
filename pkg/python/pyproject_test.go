@@ -465,7 +465,7 @@ func TestIsPipPyproject(t *testing.T) {
 			},
 			env: map[string]string{
 				env.PythonPackageManager:  "pip",
-				env.ReleaseTrack:          "ALPHA",
+				env.ReleaseTrack:          "BETA",
 				env.XGoogleTargetPlatform: "gcp",
 			},
 			want: true,
@@ -478,7 +478,7 @@ func TestIsPipPyproject(t *testing.T) {
 			},
 			env: map[string]string{
 				env.PythonPackageManager:  "pip",
-				env.ReleaseTrack:          "ALPHA",
+				env.ReleaseTrack:          "BETA",
 				env.XGoogleTargetPlatform: "gcp",
 			},
 			want: false,
@@ -490,7 +490,7 @@ func TestIsPipPyproject(t *testing.T) {
 			},
 			env: map[string]string{
 				env.PythonPackageManager:  "uv",
-				env.ReleaseTrack:          "ALPHA",
+				env.ReleaseTrack:          "BETA",
 				env.XGoogleTargetPlatform: "gcp",
 			},
 			want: false,
@@ -501,13 +501,13 @@ func TestIsPipPyproject(t *testing.T) {
 				"pyproject.toml": "[project]",
 			},
 			env: map[string]string{
-				env.ReleaseTrack:          "ALPHA",
+				env.ReleaseTrack:          "BETA",
 				env.XGoogleTargetPlatform: "gcp",
 			},
 			want: false,
 		},
 		{
-			name: "disabled_when_not_alpha_release",
+			name: "disabled_when_not_beta_release",
 			files: map[string]string{
 				"pyproject.toml": "[project]",
 			},
@@ -525,7 +525,7 @@ func TestIsPipPyproject(t *testing.T) {
 			},
 			env: map[string]string{
 				env.PythonPackageManager:  "pip",
-				env.ReleaseTrack:          "ALPHA",
+				env.ReleaseTrack:          "BETA",
 				env.XGoogleTargetPlatform: "gae",
 			},
 			want: false,
@@ -563,6 +563,16 @@ func TestIsPyprojectEnabled(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "enabled_with_only_pyproject_and_beta_track",
+			files: map[string]string{
+				"pyproject.toml": "[project]",
+			},
+			envs: map[string]string{
+				"X_GOOGLE_RELEASE_TRACK": "BETA",
+			},
+			want: true,
+		},
+		{
 			name: "disabled_when_requirements_txt_exists",
 			files: map[string]string{
 				"requirements.txt": "flask",
@@ -574,7 +584,7 @@ func TestIsPyprojectEnabled(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "disabled_when_not_on_alpha_track",
+			name: "disabled_on_GA_track",
 			files: map[string]string{
 				"pyproject.toml": "[project]",
 			},
