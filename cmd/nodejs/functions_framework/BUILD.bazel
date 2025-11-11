@@ -9,6 +9,7 @@ buildpack(
     name = "functions_framework",
     srcs = [
         "bytecode_cache/main.js",
+        "bytecode_cache/runtime-cache-symlink.sh",
         "converter/without-framework-compat/package.json",
         "converter/without-framework-compat/package-lock.json",
         "converter/without-framework/package.json",
@@ -28,6 +29,7 @@ buildpack_using_runner(
     name = "functions_framework_using_runner",
     srcs = [
         "bytecode_cache/main.js",
+        "bytecode_cache/runtime-cache-symlink.sh",
         "converter/without-framework-compat/package.json",
         "converter/without-framework-compat/package-lock.json",
         "converter/without-framework/package.json",

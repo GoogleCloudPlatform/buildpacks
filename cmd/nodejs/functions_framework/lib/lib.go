@@ -395,5 +395,21 @@ func setupCacheLayer(ctx *gcp.Context) error {
 	l.LaunchEnvironment.Default("NODE_DEBUG_NATIVE", "compile_cache")
 	ctx.Logf("NODE_COMPILE_CACHE will be set to %s at runtime.", l.Path)
 
+	// Add exec.d script to symlink cache directory at runtime. This corrects for hash mismatches
+	// caused by differing V8 flags between build and runtime.
+	execdDir := filepath.Join(l.Path, "exec.d")
+	if err := os.MkdirAll(execdDir, 0755); err != nil {
+		return fmt.Errorf("creating exec.d dir %q: %w", execdDir, err)
+	}
+	scriptSrcPath := filepath.Join(ctx.BuildpackRoot(), "bytecode_cache", "runtime-cache-symlink.sh")
+	scriptBytes, err := os.ReadFile(scriptSrcPath)
+	if err != nil {
+		return fmt.Errorf("reading %q: %w", scriptSrcPath, err)
+	}
+	scriptDstPath := filepath.Join(execdDir, "runtime-cache-symlink")
+	if err := os.WriteFile(scriptDstPath, scriptBytes, 0755); err != nil {
+		return fmt.Errorf("writing %q: %w", scriptDstPath, err)
+	}
+
 	return nil
 }
