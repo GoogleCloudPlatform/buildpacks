@@ -55,7 +55,7 @@ RUNTIME_CACHE_DIR="/tmp/runtime-cache-$$"
 mkdir -p "$RUNTIME_CACHE_DIR"
 echo "console.log('dummy');" > "$DUMMY_JS"
 
-env -u NODE_COMPILE_CACHE node -e "require('node:module').enableCompileCache('$RUNTIME_CACHE_DIR'); require('$DUMMY_JS'); require('node:module').flushCompileCache();" >/dev/null 2>&1 || {
+env -u NODE_COMPILE_CACHE node --print_flag_values -e "require('node:module').enableCompileCache('$RUNTIME_CACHE_DIR'); require('$DUMMY_JS'); require('node:module').flushCompileCache();" || {
   echo "WARNING: Could not generate runtime cache directory, skipping symlink."
   rm -rf "$DUMMY_JS" "$RUNTIME_CACHE_DIR"
   exit 0
