@@ -42,6 +42,7 @@ const (
 	javaMaven               = "google.java.maven"
 	javaNativeImage         = "google.java.native-image"
 	javaRuntime             = "google.java.runtime"
+	javaSpringboot          = "google.java.spring-boot"
 	nodeFF                  = "google.nodejs.functions-framework"
 	nodeNPM                 = "google.nodejs.npm"
 	nodePNPM                = "google.nodejs.pnpm"

@@ -43,6 +43,7 @@ GROUPS = {
     ],
     "java": [
         "//cmd/java/clear_source:clear_source.tgz",
+        "//cmd/java/spring_boot:spring_boot.tgz",
         "//cmd/java/entrypoint:entrypoint.tgz",
         "//cmd/java/exploded_jar:exploded_jar.tgz",
         "//cmd/java/functions_framework:functions_framework.tgz",
@@ -126,6 +127,7 @@ GROUPS_USING_RUNNER = {
         "//cmd/java/gradle:gradle_using_runner.tgz",
         "//cmd/java/maven:maven_using_runner.tgz",
         "//cmd/java/runtime:runtime_using_runner.tgz",
+        "//cmd/java/spring_boot:spring_boot_using_runner.tgz",
         "//cmd/java/graalvm:graalvm_using_runner.tgz",
         "//cmd/java/native_image:native_image_using_runner.tgz",
     ],

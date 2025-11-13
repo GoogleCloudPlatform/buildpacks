@@ -49,6 +49,7 @@ const (
 	NPMUsageCounterID                     MetricID = "17"
 	YarnUsageCounterID                    MetricID = "18"
 	PNPMUsageCounterID                    MetricID = "19"
+	JavaSpringBootUsageCounterID          MetricID = "20"
 )
 
 var (
@@ -147,6 +148,11 @@ var (
 			PNPMUsageCounterID,
 			"pnpm_usage",
 			"The number of times pnpm is used by developers",
+		),
+		JavaSpringBootUsageCounterID: newDescriptor(
+			JavaSpringBootUsageCounterID,
+			"java_spring_boot_usage",
+			"The number of times Spring Boot is used by developers",
 		),
 	}
 )

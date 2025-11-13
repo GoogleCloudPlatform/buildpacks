@@ -25,6 +25,7 @@ GROUPS = {
         "//cmd/java/gradle:gradle.tgz",
         "//cmd/java/maven:maven.tgz",
         "//cmd/java/runtime:runtime.tgz",
+        "//cmd/java/spring_boot:spring_boot.tgz",
     ],
 }
 
@@ -43,6 +44,7 @@ GROUPS_USING_RUNNER = {
         "//cmd/java/exploded_jar:exploded_jar_using_runner.tgz",
         "//cmd/java/functions_framework:functions_framework_using_runner.tgz",
         "//cmd/java/gradle:gradle_using_runner.tgz",
+        "//cmd/java/spring_boot:spring_boot_using_runner.tgz",
         "//cmd/java/maven:maven_using_runner.tgz",
         "//cmd/java/runtime:runtime_using_runner.tgz",
     ],

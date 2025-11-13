@@ -1,0 +1,42 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+# Buildpack for the Java runtime.
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
+
+licenses(["notice"])
+
+buildpack(
+    name = "spring_boot",
+    executables = [
+        ":main",
+    ],
+    prefix = "java",
+    version = "0.9.0",
+    visibility = [
+        "//builders:java_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "spring_boot_using_runner",
+    buildpack_id = "google.java.spring-boot",
+    prefix = "java",
+    version = "0.9.0",
+    visibility = [
+        "//builders:java_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//cmd/java/spring_boot/lib",
+        "//pkg/gcpbuildpack",
+    ],
+)
