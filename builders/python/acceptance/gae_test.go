@@ -46,7 +46,7 @@ func TestAcceptance(t *testing.T) {
 		{
 			App: "requirements_bin_conflict",
 			// TODO(harisam): Remove this constraint once spacy support is added for python 3.13.
-			VersionInclusionConstraint: "< 3.13.0",
+			VersionInclusionConstraint: ">= 3.8.0 < 3.13.0",
 		},
 		{
 			App:                        "requirements_builtin_conflict",
