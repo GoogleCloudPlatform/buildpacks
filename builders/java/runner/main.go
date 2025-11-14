@@ -16,6 +16,7 @@ import (
 	javagradle "github.com/GoogleCloudPlatform/buildpacks/cmd/java/gradle/lib"
 	javamaven "github.com/GoogleCloudPlatform/buildpacks/cmd/java/maven/lib"
 	javaruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/java/runtime/lib"
+	javaspringboot "github.com/GoogleCloudPlatform/buildpacks/cmd/java/spring_boot/lib"
 )
 
 var (
@@ -59,6 +60,10 @@ func init() {
 	buildpacks["google.java.runtime"] = gcp.BuildpackFuncs{
 		Detect: javaruntime.DetectFn,
 		Build:  javaruntime.BuildFn,
+	}
+	buildpacks["google.java.spring-boot"] = gcp.BuildpackFuncs{
+		Detect: javaspringboot.DetectFn,
+		Build:  javaspringboot.BuildFn,
 	}
 }
 

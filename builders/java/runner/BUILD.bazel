@@ -24,6 +24,7 @@ go_binary(
         "//cmd/java/gradle/lib",
         "//cmd/java/maven/lib",
         "//cmd/java/runtime/lib",
+        "//cmd/java/spring_boot/lib",
         "//pkg/commonbuildpacks",
         "//pkg/gcpbuildpack",
     ],

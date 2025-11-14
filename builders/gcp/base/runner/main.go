@@ -32,6 +32,7 @@ import (
 	javamaven "github.com/GoogleCloudPlatform/buildpacks/cmd/java/maven/lib"
 	javanativeimage "github.com/GoogleCloudPlatform/buildpacks/cmd/java/native_image/lib"
 	javaruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/java/runtime/lib"
+	javaspringboot "github.com/GoogleCloudPlatform/buildpacks/cmd/java/spring_boot/lib"
 	nodejsfunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/functions_framework/lib"
 	nodejnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/npm/lib"
 	nodejppnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/pnpm/lib"
@@ -164,6 +165,10 @@ func init() {
 	buildpacks["google.java.runtime"] = gcp.BuildpackFuncs{
 		Detect: javaruntime.DetectFn,
 		Build:  javaruntime.BuildFn,
+	}
+	buildpacks["google.java.spring-boot"] = gcp.BuildpackFuncs{
+		Detect: javaspringboot.DetectFn,
+		Build:  javaspringboot.BuildFn,
 	}
 	buildpacks["google.nodejs.functions-framework"] = gcp.BuildpackFuncs{
 		Detect: nodejsfunctionsframework.DetectFn,
