@@ -39,7 +39,7 @@ func TestAcceptancePython(t *testing.T) {
 		{
 			Name:                       "entrypoint_from_procfile_web_upgraded_app",
 			App:                        "simple_new",
-			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
+			MustUse:                    []string{pythonRuntime, entrypoint},
 			EnableCacheTest:            true,
 			VersionInclusionConstraint: ">=3.8.0",
 		},
@@ -64,7 +64,7 @@ func TestAcceptancePython(t *testing.T) {
 			App:                        "simple_new",
 			Path:                       "/custom",
 			Entrypoint:                 "custom", // Must match the non-web process in Procfile.
-			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
+			MustUse:                    []string{pythonRuntime, entrypoint},
 			VersionInclusionConstraint: ">=3.8.0",
 		},
 		{
@@ -89,7 +89,7 @@ func TestAcceptancePython(t *testing.T) {
 			App:                        "simple_new",
 			Path:                       "/custom",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 custom:app"},
-			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
+			MustUse:                    []string{pythonRuntime, entrypoint},
 			VersionInclusionConstraint: ">=3.8.0",
 		},
 		{
@@ -106,7 +106,15 @@ func TestAcceptancePython(t *testing.T) {
 			Path:                       "/env?want=bar",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
-			VersionInclusionConstraint: ">=3.8.0",
+			VersionInclusionConstraint: ">=3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "entrypoint_with_env_var_upgraded_app_uv_default",
+			App:                        "simple_new",
+			Path:                       "/env?want=bar",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app"},
+			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
+			VersionInclusionConstraint: ">=3.14.0",
 		},
 		{
 			Name:                       "entrypoint_with_env_var_upgraded_app_uv",
@@ -126,7 +134,13 @@ func TestAcceptancePython(t *testing.T) {
 			Name:                       "missing_entrypoint_main_py_new",
 			App:                        "missing_entrypoint_main_py_new",
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
-			VersionInclusionConstraint: ">=3.8.0",
+			VersionInclusionConstraint: ">=3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "missing_entrypoint_main_py_new_default_uv",
+			App:                        "missing_entrypoint_main_py_new",
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonWebserver, pythonMissingEntrypoint},
+			VersionInclusionConstraint: ">=3.14.0",
 		},
 		{
 			Name:                       "missing_entrypoint_app_py",
@@ -139,7 +153,7 @@ func TestAcceptancePython(t *testing.T) {
 		{
 			Name:                       "missing_entrypoint_app_py_new",
 			App:                        "missing_entrypoint_app_py_new",
-			MustUse:                    []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
+			MustUse:                    []string{pythonRuntime, pythonWebserver, pythonMissingEntrypoint},
 			VersionInclusionConstraint: ">=3.8.0",
 		},
 		{
@@ -262,17 +276,17 @@ func TestAcceptancePython(t *testing.T) {
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
 		},
 		{
-			Name:                       "python with client-side scripts correctly builds as a python app",
+			Name:                       "python_with_client-side_scripts_correctly_builds_as_a_python_app",
 			App:                        "scripts",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
 			VersionInclusionConstraint: "<3.8.0",
 		},
 		{
-			Name:                       "python with client-side scripts correctly builds as a python app (upgraded)",
+			Name:                       "python_with_client-side_scripts_correctly_builds_as_a_python_app_(upgraded)",
 			App:                        "scripts_new",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
-			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
+			MustUse:                    []string{pythonRuntime, entrypoint},
 			VersionInclusionConstraint: ">=3.8.0",
 		},
 		{
