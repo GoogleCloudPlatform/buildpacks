@@ -246,11 +246,34 @@ func RequestedUVVersion(ctx *gcp.Context) (string, error) {
 	return parsedTOML.Tool.UV.RequiredVersion, nil
 }
 
+// IsUVInstalledInPath checks if the uv executable is installed in the PATH.
+func IsUVInstalledInPath(ctx *gcp.Context) (bool, error) {
+	result, err := ctx.Exec([]string{"uv", "--version"})
+	if err != nil {
+		ctx.Debugf("uv --version failed with error: %v", err)
+		return false, nil
+	}
+	if result.ExitCode != 0 {
+		ctx.Debugf("uv --version exited with code %d", result.ExitCode)
+		return false, nil
+	}
+	return true, nil
+}
+
 // InstallUV installs UV into a dedicated layer, respecting version constraints.
 func InstallUV(ctx *gcp.Context) error {
 	uvVersionConstraint, err := RequestedUVVersion(ctx)
 	if err != nil {
 		return fmt.Errorf("getting uv version constraint: %w", err)
+	}
+	if uvVersionConstraint == "" {
+		isInstalled, err := IsUVInstalledInPath(ctx)
+		if err != nil {
+			return fmt.Errorf("checking for pre-installed uv: %w", err)
+		}
+		if isInstalled {
+			return nil
+		}
 	}
 	return installTool(ctx, pip, uv, uvLayer, uvVersionConstraint)
 }
