@@ -7,6 +7,8 @@ licenses(["notice"])
 exports_files([
     "config.yaml",
     "args.bzl",
+    "gcp_test.go",
+    "common_test.go",
 ])
 
 RUNTIME_TO_UNIVERSAL_BUILDER_MAP = get_runtime_to_universal_builder_map(version_to_builder_stack)

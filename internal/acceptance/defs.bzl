@@ -403,6 +403,7 @@ def generate_universal_acceptance_test_cloudbuild_bin_targets():
         "php": ["generic"],
         "python": ["generic", "functions"],
         "ruby": ["generic", "functions"],
+        "osonly": ["generic"],
     }
 
     _universal_acceptance_test_cloudbuild_bin_targets = []
