@@ -52,7 +52,6 @@ func WriteLifecycle(env map[string]string, dir string) error {
 		return err
 	}
 	for k, v := range env {
-		v = strings.ReplaceAll(v, "\n", "\\n")
 		if err := ioutil.WriteFile(filepath.Join(dir, k), []byte(v), 0644); err != nil {
 			return fmt.Errorf("failed to write env var %s: %w", k, err)
 		}

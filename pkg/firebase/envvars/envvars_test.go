@@ -95,8 +95,7 @@ func TestWriteLifecycle(t *testing.T) {
 				"VAR_DOUBLE_QUOTES":  "\"api4.service.com\"",
 				"VAR_NUMBER":         "12345",
 				"VAR_JSON":           `{"apiKey":"myApiKey","appId":"myAppId"}`,
-				// Key difference is that the newline character is now properly escaped
-				"MULTILINE_VAR": "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n",
+				"MULTILINE_VAR":      "211 Broadway\nApt. 17\nNew York, NY 10019\n",
 			},
 		},
 		{
