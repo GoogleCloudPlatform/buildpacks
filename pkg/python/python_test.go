@@ -40,6 +40,11 @@ func TestRuntimeVersion(t *testing.T) {
 			want: "3.13.*",
 		},
 		{
+			name:    "default_to_latest_for_stack_ubuntu2404",
+			stackID: "google.24.full",
+			want:    "3.14.*",
+		},
+		{
 			name:    "default_to_latest_for_stack_ubuntu1804",
 			stackID: "google.gae.18",
 			want:    "3.9.*",

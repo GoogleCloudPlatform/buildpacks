@@ -386,30 +386,36 @@ func TestRequestedNodejsVersion(t *testing.T) {
 		nodeEnv     string
 		runtimeEnv  string
 		packageJSON string
+		stackID     string
 		want        string
 		wantErr     bool
 	}{
 		{
-			name: "default is empty",
-			want: defaultVersionConstraint,
+			name: "default_is_empty",
+			want: "22.*.*",
 		},
 		{
-			name:        "package.json without engines",
+			name:        "package.json_without_engines",
 			packageJSON: `{}`,
-			want:        defaultVersionConstraint,
+			want:        "22.*.*",
 		},
 		{
-			name:    "GOOGLE_NODEJS_VERSION is set",
+			name:    "default_on_ubuntu_24_stack",
+			stackID: "google.24.full",
+			want:    "24.*.*",
+		},
+		{
+			name:    "GOOGLE_NODEJS_VERSION_is_set",
 			nodeEnv: "1.2.3",
 			want:    "1.2.3",
 		},
 		{
-			name:       "GOOGLE_RUNTIME_VERSION is set",
+			name:       "GOOGLE_RUNTIME_VERSION_is_set",
 			runtimeEnv: "3.3.3",
 			want:       "3.3.3",
 		},
 		{
-			name:       "GOOGLE_NODEJS_VERSION and GOOGLE_RUNTIME_VERSION set",
+			name:       "GOOGLE_NODEJS_VERSION_and_GOOGLE_RUNTIME_VERSION_set",
 			nodeEnv:    "1.2.3",
 			runtimeEnv: "3.3.3",
 			want:       "1.2.3",
@@ -420,7 +426,7 @@ func TestRequestedNodejsVersion(t *testing.T) {
 			want:        "2.2.2",
 		},
 		{
-			name:        "GOOGLE_RUNTIME_VERSION and engines.nodejs set",
+			name:        "GOOGLE_RUNTIME_VERSION_and_engines.nodejs_set",
 			packageJSON: `{"engines": {"node": "2.2.2"}}`,
 			runtimeEnv:  "3.3.3",
 			want:        "3.3.3",
@@ -445,6 +451,9 @@ func TestRequestedNodejsVersion(t *testing.T) {
 			}
 
 			ctx := gcp.NewContext()
+			if tc.stackID != "" {
+				ctx = gcp.NewContext(gcp.WithStackID(tc.stackID))
+			}
 			got, err := RequestedNodejsVersion(ctx, pjs)
 			if tc.wantErr == (err == nil) {
 				t.Errorf("RequestedNodejsVersion(ctx, %q) got error: %v, want err? %t", dir, err, tc.wantErr)

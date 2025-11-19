@@ -28,6 +28,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/buildpacks/libcnb/v2"
 	"github.com/Masterminds/semver"
 	"gopkg.in/yaml.v2"
@@ -48,16 +49,19 @@ const (
 
 	nodeVersionKey    = "node_version"
 	dependencyHashKey = "dependency_hash"
-	// defaultVersionConstraint is used if the project does not provide a Node.js version specifier in
-	// their package.json or via an env var. This pins them to the active LTS version, instead of the
-	// the latest available version.
-	defaultVersionConstraint = "22.*.*"
 )
 
 // semVer11 is the smallest possible semantic version with major version 11.
 var semVer11 = semver.MustParse("11.0.0")
 
 var (
+	// latestNodejsVersionPerStack is the latest Nodejs version per stack to use if not specified by the user.
+	latestNodejsVersionPerStack = map[string]string{
+		runtime.Ubuntu1804: "22.*.*",
+		runtime.Ubuntu2204: "22.*.*",
+		runtime.Ubuntu2404: "24.*.*",
+	}
+
 	cachedPackageJSONs        = map[string]*PackageJSON{}
 	possibleLockfileFilenames = []string{"pnpm-lock.yaml", "yarn.lock", "npm-shrinkwrap.json", "package-lock.json"}
 	dependencyRegex           = regexp.MustCompile(`\r?\n\r?\n`)
@@ -257,7 +261,13 @@ func RequestedNodejsVersion(ctx *gcp.Context, pjs *PackageJSON) (string, error) 
 		return version, nil
 	}
 	if pjs == nil || pjs.Engines.Node == "" {
-		return defaultVersionConstraint, nil
+		os := runtime.OSForStack(ctx)
+		latestNodejsVersionForStack, ok := latestNodejsVersionPerStack[os]
+		if !ok {
+			return "", gcp.UserErrorf("invalid stack for Nodejs runtime: %q", os)
+		}
+		ctx.Logf("Nodejs version not specified, using the latest available Nodejs runtime for the stack %q", os)
+		return latestNodejsVersionForStack, nil
 	}
 	return pjs.Engines.Node, nil
 }
