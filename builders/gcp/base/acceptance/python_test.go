@@ -114,6 +114,7 @@ func TestAcceptancePython(t *testing.T) {
 			Path:                       "/env?want=bar",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app"},
 			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
+			SkipStacks:                 []string{"google.22", "google.gae.22"},
 			VersionInclusionConstraint: ">=3.14.0",
 		},
 		{
@@ -140,6 +141,7 @@ func TestAcceptancePython(t *testing.T) {
 			Name:                       "missing_entrypoint_main_py_new_default_uv",
 			App:                        "missing_entrypoint_main_py_new",
 			MustUse:                    []string{pythonRuntime, pythonUV, pythonWebserver, pythonMissingEntrypoint},
+			SkipStacks:                 []string{"google.22", "google.gae.22"},
 			VersionInclusionConstraint: ">=3.14.0",
 		},
 		{
