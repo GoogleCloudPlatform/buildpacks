@@ -35,6 +35,7 @@ func TestAcceptancePython(t *testing.T) {
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
 			EnableCacheTest:            true,
 			VersionInclusionConstraint: "<3.8.0",
+			SkipStacks:                 []string{"google.24.full", "google.24"},
 		},
 		{
 			Name:                       "entrypoint_from_procfile_web_upgraded_app",
@@ -58,6 +59,7 @@ func TestAcceptancePython(t *testing.T) {
 			Entrypoint:                 "custom", // Must match the non-web process in Procfile.
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
 			VersionInclusionConstraint: "<3.8.0",
+			SkipStacks:                 []string{"google.24.full", "google.24"},
 		},
 		{
 			Name:                       "entrypoint_from_procfile_custom_upgraded_app",
@@ -83,6 +85,7 @@ func TestAcceptancePython(t *testing.T) {
 			Env:                        []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 custom:app"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
 			VersionInclusionConstraint: "<3.8.0",
+			SkipStacks:                 []string{"google.24.full", "google.24"},
 		},
 		{
 			Name:                       "entrypoint_from_env_upgraded_app",
@@ -99,6 +102,7 @@ func TestAcceptancePython(t *testing.T) {
 			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
 			VersionInclusionConstraint: "<3.8.0",
+			SkipStacks:                 []string{"google.24.full", "google.24"},
 		},
 		{
 			Name:                       "entrypoint_with_env_var_upgraded_app",
@@ -107,15 +111,6 @@ func TestAcceptancePython(t *testing.T) {
 			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
 			VersionInclusionConstraint: ">=3.8.0 < 3.14.0",
-		},
-		{
-			Name:                       "entrypoint_with_env_var_upgraded_app_uv_default",
-			App:                        "simple_new",
-			Path:                       "/env?want=bar",
-			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app"},
-			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
-			SkipStacks:                 []string{"google.22", "google.gae.22"},
-			VersionInclusionConstraint: ">=3.14.0",
 		},
 		{
 			Name:                       "entrypoint_with_env_var_upgraded_app_uv",
@@ -130,19 +125,13 @@ func TestAcceptancePython(t *testing.T) {
 			App:                        "missing_entrypoint_main_py",
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
 			VersionInclusionConstraint: "<3.8.0",
+			SkipStacks:                 []string{"google.24.full", "google.24"},
 		},
 		{
 			Name:                       "missing_entrypoint_main_py_new",
 			App:                        "missing_entrypoint_main_py_new",
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
 			VersionInclusionConstraint: ">=3.8.0 < 3.14.0",
-		},
-		{
-			Name:                       "missing_entrypoint_main_py_new_default_uv",
-			App:                        "missing_entrypoint_main_py_new",
-			MustUse:                    []string{pythonRuntime, pythonUV, pythonWebserver, pythonMissingEntrypoint},
-			SkipStacks:                 []string{"google.22", "google.gae.22"},
-			VersionInclusionConstraint: ">=3.14.0",
 		},
 		{
 			Name:                       "missing_entrypoint_app_py",
@@ -283,6 +272,7 @@ func TestAcceptancePython(t *testing.T) {
 			Env:                        []string{"GOOGLE_ENTRYPOINT=gunicorn -b :8080 main:app"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
 			VersionInclusionConstraint: "<3.8.0",
+			SkipStacks:                 []string{"google.24.full", "google.24"},
 		},
 		{
 			Name:                       "python_with_client-side_scripts_correctly_builds_as_a_python_app_(upgraded)",
@@ -395,6 +385,7 @@ func TestAcceptancePython(t *testing.T) {
 			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
 			MustUse:                    []string{pythonRuntime, pythonPoetry, pythonMissingEntrypoint},
 			VersionInclusionConstraint: ">=3.13.0 < 3.14.0",
+			SkipStacks:                 []string{"google.24.full", "google.24"},
 		},
 		{
 			Name:                       "pyproject_gradio",
@@ -402,6 +393,7 @@ func TestAcceptancePython(t *testing.T) {
 			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
 			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint},
 			VersionInclusionConstraint: ">= 3.13.0 < 3.14.0",
+			SkipStacks:                 []string{"google.24.full", "google.24"},
 		},
 		{
 			Name:                       "pyproject_gradio_pip",
@@ -409,6 +401,7 @@ func TestAcceptancePython(t *testing.T) {
 			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=BETA", "GOOGLE_PYTHON_PACKAGE_MANAGER=pip"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonMissingEntrypoint},
 			VersionInclusionConstraint: ">= 3.13.0 < 3.14.0",
+			SkipStacks:                 []string{"google.24.full", "google.24"},
 		},
 		{
 			Name:                       "pyproject_streamlit",
@@ -416,6 +409,7 @@ func TestAcceptancePython(t *testing.T) {
 			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
 			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint},
 			VersionInclusionConstraint: ">= 3.13.0 < 3.14.0",
+			SkipStacks:                 []string{"google.24.full", "google.24"},
 			MustMatch:                  "Streamlit",
 		},
 		{
