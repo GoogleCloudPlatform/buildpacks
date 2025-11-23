@@ -87,6 +87,13 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			SkipStacks: []string{"google.gae.18", "google.18"},
 		},
 		{
+			Name:       "bun",
+			App:        "bun",
+			MustUse:    []string{nodeRuntime, nodeBun},
+			MustNotUse: []string{nodeNPM, nodeYarn, nodePNPM},
+			SkipStacks: []string{"google.gae.18", "google.18"},
+		},
+		{
 			Name:       "runtime version with npm ci",
 			App:        "simple",
 			Path:       "/version?want=16.18.1",

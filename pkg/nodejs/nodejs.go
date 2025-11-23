@@ -63,7 +63,7 @@ var (
 	}
 
 	cachedPackageJSONs        = map[string]*PackageJSON{}
-	possibleLockfileFilenames = []string{"pnpm-lock.yaml", "yarn.lock", "npm-shrinkwrap.json", "package-lock.json"}
+	possibleLockfileFilenames = []string{"bun.lockb", "bun.lock", "pnpm-lock.yaml", "yarn.lock", "npm-shrinkwrap.json", "package-lock.json"}
 	dependencyRegex           = regexp.MustCompile(`\r?\n\r?\n`)
 )
 
@@ -72,6 +72,7 @@ type packageEnginesJSON struct {
 	NPM  string `json:"npm"`
 	Yarn string `json:"yarn"`
 	PNPM string `json:"pnpm"`
+	Bun  string `json:"bun"`
 }
 
 const (

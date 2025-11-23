@@ -26,6 +26,7 @@ const (
 	nodeRuntime = "google.nodejs.runtime"
 	nodeYarn    = "google.nodejs.yarn"
 	nodePNPM    = "google.nodejs.pnpm"
+	nodeBun     = "google.nodejs.bun"
 )
 
 func init() {
@@ -75,6 +76,12 @@ func TestAcceptance(t *testing.T) {
 			App:        "pnpm",
 			MustUse:    []string{nodeRuntime, nodePNPM},
 			MustNotUse: []string{nodeNPM, nodeYarn},
+		},
+		{
+			Name:       "bun",
+			App:        "bun",
+			MustUse:    []string{nodeRuntime, nodeBun},
+			MustNotUse: []string{nodeNPM, nodeYarn, nodePNPM},
 		},
 		// TODO (mattrobertson) update this to key off of the npm version
 		// instead of the Node.js version.
