@@ -16,6 +16,7 @@ package runtime
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -853,5 +854,134 @@ func TestRuntimeMatchesInstallableRuntime(t *testing.T) {
 		if got != tc.want {
 			t.Errorf("runtimeMatchesInstallableRuntime(%v) = %v, want: %v", tc.installableRuntime, got, tc.want)
 		}
+	}
+}
+
+func TestResolveVersionARFallback(t *testing.T) {
+	testCases := []struct {
+		name               string
+		runtime            InstallableRuntime
+		versionConstraint  string
+		runtimeImageRegion string
+		primaryARVersions  []string
+		primaryARError     error
+		fallbackARVersions []string
+		fallbackARError    error
+		wantVersion        string
+		wantErr            bool
+	}{
+		{
+			name:               "Primary OK, Version Found",
+			runtime:            Nodejs,
+			versionConstraint:  "18.x.x",
+			runtimeImageRegion: "europe-west1",
+			primaryARVersions:  []string{"18.15.0", "18.16.0"},
+			fallbackARVersions: []string{"18.14.0"},
+			wantVersion:        "18.16.0",
+		},
+		{
+			name:               "Primary OK, Version NOT Found, Fallback OK, Version Found",
+			runtime:            Nodejs,
+			versionConstraint:  "18.17.x",
+			runtimeImageRegion: "europe-west1",
+			primaryARVersions:  []string{"18.15.0", "18.16.0"},
+			fallbackARVersions: []string{"18.16.0", "18.17.0"},
+			wantVersion:        "18.17.0",
+		},
+		{
+			name:               "Primary OK, Version NOT Found, Fallback OK, Version NOT Found",
+			runtime:            Nodejs,
+			versionConstraint:  "19.x.x",
+			runtimeImageRegion: "europe-west1",
+			primaryARVersions:  []string{"18.15.0", "18.16.0"},
+			fallbackARVersions: []string{"18.16.0", "18.17.0"},
+			wantErr:            true,
+		},
+		{
+			name:               "Primary ERR, Fallback OK, Version Found",
+			runtime:            Nodejs,
+			versionConstraint:  "18.17.x",
+			runtimeImageRegion: "asia-east1",
+			primaryARError:     errors.New("primary region down"),
+			fallbackARVersions: []string{"18.16.0", "18.17.0"},
+			wantVersion:        "18.17.0",
+		},
+		{
+			name:               "Primary ERR, Fallback OK, Version NOT Found",
+			runtime:            Nodejs,
+			versionConstraint:  "19.x.x",
+			runtimeImageRegion: "asia-east1",
+			primaryARError:     errors.New("primary region down"),
+			fallbackARVersions: []string{"18.16.0", "18.17.0"},
+			wantErr:            true,
+		},
+		{
+			name:               "Primary ERR, Fallback ERR",
+			runtime:            Nodejs,
+			versionConstraint:  "18.x.x",
+			runtimeImageRegion: "australia-southeast1",
+			primaryARError:     errors.New("primary region down"),
+			fallbackARError:    errors.New("fallback region down"),
+			wantErr:            true,
+		},
+		{
+			name:               "Primary OK, Version NOT Found, Fallback ERR",
+			runtime:            Nodejs,
+			versionConstraint:  "18.17.x",
+			runtimeImageRegion: "europe-west2",
+			primaryARVersions:  []string{"18.15.0", "18.16.0"},
+			fallbackARError:    errors.New("fallback region down"),
+			wantErr:            true,
+		},
+		{
+			name:               "OpenJDK Primary OK, Fallback has version",
+			runtime:            OpenJDK,
+			versionConstraint:  "11",
+			runtimeImageRegion: "europe-west3",
+			primaryARVersions:  []string{"8.0.302_8"},
+			fallbackARVersions: []string{"11.0.21_9", "11.0.22_10"},
+			wantVersion:        "11.0.22_10",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv(env.RuntimeImageRegion, tc.runtimeImageRegion)
+			t.Setenv(env.BuildEnv, "prod") // Ensure AR is used
+
+			origARVersions := fetch.ARVersions
+			defer func() {
+				fetch.ARVersions = origARVersions
+			}()
+
+			fetch.ARVersions = func(url, fallbackURL string, ctx *gcp.Context) ([]string, error) {
+				if fallbackURL != "" {
+					return nil, errors.New("fallbackURL should be empty in fetch.ARVersions calls")
+				}
+				if strings.Contains(url, tc.runtimeImageRegion) {
+					return tc.primaryARVersions, tc.primaryARError
+				}
+				if strings.Contains(url, fallbackRegion) {
+					return tc.fallbackARVersions, tc.fallbackARError
+				}
+				return nil, fmt.Errorf("unexpected URL in ARVersions mock: %s", url)
+			}
+
+			ctx := gcp.NewContext(gcp.WithStackID("google.22"))
+			gotVersion, err := ResolveVersion(ctx, tc.runtime, tc.versionConstraint, "ubuntu2204")
+
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("ResolveVersion(%q, %q) succeeded, want error", tc.runtime, tc.versionConstraint)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("ResolveVersion(%q, %q) failed: %v", tc.runtime, tc.versionConstraint, err)
+				}
+				if gotVersion != tc.wantVersion {
+					t.Errorf("ResolveVersion(%q, %q) = %q, want %q", tc.runtime, tc.versionConstraint, gotVersion, tc.wantVersion)
+				}
+			}
+		})
 	}
 }

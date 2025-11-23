@@ -351,6 +351,47 @@ func IsReleaseCandidate(verConstraint string) bool {
 	return version.IsReleaseCandidate(verConstraint)
 }
 
+func normalizeJDKVersion(v string) string {
+	return strings.NewReplacer("_", "+", "-beta", "").Replace(v)
+}
+
+func getNormalizedVersionsMap(versions []string, runtime InstallableRuntime) map[string]string {
+	normalizedMap := make(map[string]string)
+	isJdk := runtime == OpenJDK || runtime == CanonicalJDK
+	for _, v := range versions {
+		if isJdk {
+			normalizedV := normalizeJDKVersion(v)
+			normalizedMap[normalizedV] = v
+		} else {
+			normalizedMap[v] = v
+		}
+	}
+	return normalizedMap
+}
+
+// resolveVersionFromList returns the newest available version from a list of versions that
+// satisfies the provided version constraint.
+func resolveVersionFromList(versions []string, runtime InstallableRuntime, normalizedConstraint string) (string, error) {
+	normalizedMap := getNormalizedVersionsMap(versions, runtime)
+	v, err := version.ResolveVersion(normalizedConstraint, slices.Collect(maps.Keys(normalizedMap)))
+	if err != nil {
+		return "", err
+	}
+	return normalizedMap[v], nil
+}
+
+// tryResolveVersionFromRegion attempts to resolve a version from a given Artifact Registry region.
+// It returns the resolved version string on success.
+// It returns an error if fetching versions fails or if no version matches the constraint.
+func tryResolveVersionFromRegion(ctx *gcp.Context, runtime InstallableRuntime, normalizedConstraint, osName, region, registry string) (string, error) {
+	url := fmt.Sprintf(runtimeImageARRepoURL, region, registry, osName, runtime)
+	versions, err := fetch.ARVersions(url, "", ctx)
+	if err != nil {
+		return "", err
+	}
+	return resolveVersionFromList(versions, runtime, normalizedConstraint)
+}
+
 // ResolveVersion returns the newest available version of a runtime that satisfies the provided
 // version constraint.
 func ResolveVersion(ctx *gcp.Context, runtime InstallableRuntime, verConstraint, osName string) (string, error) {
@@ -368,49 +409,45 @@ func ResolveVersion(ctx *gcp.Context, runtime InstallableRuntime, verConstraint,
 		return verConstraint, nil
 	}
 
-	var versions []string
-	var err error
 	registry := tarballRegistry()
 	region, isARrequest := os.LookupEnv(env.RuntimeImageRegion)
+
+	normalizedConstraint := verConstraint
+	if runtime == OpenJDK || runtime == CanonicalJDK {
+		normalizedConstraint = normalizeJDKVersion(verConstraint)
+	}
+
 	if registry == tarballRegistryDev || !isARrequest {
 		// Use Lorry for dev env or if the region is not set.
 		url := fmt.Sprintf(runtimeVersionsURL, osName, runtime)
-		err = fetch.JSON(url, &versions)
-	} else {
-		// Use Artifact Registry.
-		url := fmt.Sprintf(runtimeImageARRepoURL, region, registry, osName, runtime)
-		fallbackURL := fmt.Sprintf(runtimeImageARRepoURL, fallbackRegion, registry, osName, runtime)
-		versions, err = fetch.ARVersions(url, fallbackURL, ctx)
-	}
-
-	if err != nil {
-		return "", gcp.InternalErrorf("fetching %s versions %s osName: %v", runtimeNames[runtime], osName, err)
-	}
-
-	normalizedVersions := make(map[string]string)
-	isJdk := runtime == OpenJDK || runtime == CanonicalJDK
-	normalizeArVersions := isARrequest && isJdk
-	// When resolving version openjdk versions should be decoded to align with semver requirement. (eg. 11.0.21_9 -> 11.0.21+9)
-	// Also replace the -beta suffix with empty string so that we can properly compare EA versions.
-	jdkReplacer := strings.NewReplacer("_", "+", "-beta", "")
-	for _, v := range versions {
-		if normalizeArVersions {
-			normalizedV := jdkReplacer.Replace(v)
-			normalizedVersions[normalizedV] = v
-		} else {
-			normalizedVersions[v] = v
+		var versions []string
+		if err := fetch.JSON(url, &versions); err != nil {
+			return "", gcp.InternalErrorf("fetching %s versions for %s: %v", runtimeNames[runtime], osName, err)
 		}
+
+		v, err := resolveVersionFromList(versions, runtime, normalizedConstraint)
+		if err != nil {
+			return "", gcp.InternalErrorf("invalid %s version specified: %v. You may need to use a different builder. Please check if the language version specified is supported by the os: %v. You can refer to https://cloud.google.com/docs/buildpacks/builders for a list of compatible runtime languages per builder", runtimeNames[runtime], err, osName)
+		}
+		return v, nil
+
 	}
-	normalizedConstraint := verConstraint
-	if isJdk {
-		normalizedConstraint = jdkReplacer.Replace(verConstraint)
+
+	// Use Artifact Registry.
+	regionsToTry := []string{region, fallbackRegion}
+	var lastErr error
+	for _, r := range regionsToTry {
+		v, err := tryResolveVersionFromRegion(ctx, runtime, normalizedConstraint, osName, r, registry)
+		if err == nil {
+			ctx.Logf("Resolved version %s for %s from region %s", v, runtimeNames[runtime], r)
+			return v, nil
+		}
+		lastErr = err
+		ctx.Logf("Failed to resolve version %s for %s from region %s: %v", verConstraint, runtimeNames[runtime], r, err)
 	}
-	v, err := version.ResolveVersion(normalizedConstraint, slices.Collect(maps.Keys(normalizedVersions)))
-	if err != nil {
-		return "", gcp.UserErrorf("invalid %s version specified: %v. You may need to use a different builder. Please check if the language version specified is supported by the os: %v. You can refer to https://cloud.google.com/docs/buildpacks/builders for a list of compatible runtime languages per builder", runtimeNames[runtime], err, osName)
-	}
-	// Denormalize the version to fetch from AR(eg. 11.0.21+9 -> 11.0.21_9)
-	return normalizedVersions[v], nil
+
+	// Failed to resolve in all regions.
+	return "", gcp.InternalErrorf("invalid %s version specified: %v . Version constraint %q not satisfied by any available versions in Artifact Registry. You may need to use a different builder. Please check if the language version specified is supported. You can refer to https://cloud.google.com/docs/buildpacks/builders for a list of compatible runtime languages per builder", runtimeNames[runtime], lastErr, verConstraint)
 }
 
 // ValidateFlexMinVersion validates the minimum flex version for a given runtime.
