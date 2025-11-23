@@ -1,5 +1,5 @@
 load("//internal/acceptance:args.bzl", "get_runtime_to_universal_builder_map", "languageargs")
-load("//internal/acceptance:defs.bzl", "acceptance_test_suite")
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
 load(":args.bzl", "gcp_runtime_versions", "version_to_builder_stack", "version_to_run_stack_min")
 
 licenses(["notice"])
@@ -37,4 +37,10 @@ acceptance_test_suite(
     testdata = "//builders/testdata/osonly:generic",
     use_runtime_name_as_version = True,
     versions = gcp_runtime_versions,
+)
+
+acceptance_test_argo_source(
+    name = "argo_source",
+    gcpOnly = True,
+    testdata = "//builders/testdata/osonly:all_files",
 )

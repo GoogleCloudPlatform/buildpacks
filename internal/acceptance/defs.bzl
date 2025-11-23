@@ -367,7 +367,12 @@ def _build_step(name, bin_name, version, args, testdata_label):
         result += " \\\n    " + a
     return result
 
-_default_cloudbuild_bin_targets = ["flex_test_cloudbuild_bin", "gae_test_cloudbuild_bin", "gcf_test_cloudbuild_bin", "gcp_test_cloudbuild_bin"]
+flex_test_cloudbuild_bin = "flex_test_cloudbuild_bin"
+gae_test_cloudbuild_bin = "gae_test_cloudbuild_bin"
+gcf_test_cloudbuild_bin = "gcf_test_cloudbuild_bin"
+gcp_test_cloudbuild_bin = "gcp_test_cloudbuild_bin"
+
+_default_cloudbuild_bin_targets = [flex_test_cloudbuild_bin, gae_test_cloudbuild_bin, gcf_test_cloudbuild_bin, gcp_test_cloudbuild_bin]
 
 _firebase_acceptance_test_cloudbuild_bin_targets = ["nodejs_acceptance_test_cloudbuild_bin"]
 
@@ -419,7 +424,18 @@ def generate_universal_acceptance_test_cloudbuild_bin_targets():
 
     return _universal_acceptance_test_cloudbuild_bin_targets
 
-def acceptance_test_argo_source(name, testdata, srcs = [], structure_test_config = ":config.yaml", isUniversal = False):
+def acceptance_test_argo_source(name, testdata, srcs = [], structure_test_config = ":config.yaml", isUniversal = False, gcpOnly = False):
+    """Generates a source package for argo acceptance tests.
+
+    Args:
+      name: the name of the test
+      srcs: the test source files
+      testdata: a build target for a directory containing sample test applications
+      structure_test_config: a build target for the structure test config
+      isUniversal: whether the test is for a universal builder
+      gcpOnly: whether the test will use only cloudbuild binary of the gcp test
+    """
+
     # this hack is to conditionally prevent testdata from being zipped in bazel, as
     # _build_testdata_target makes use of Fileset which is not available in bazel.
     if is_bazel_build(testdata):
@@ -427,10 +443,12 @@ def acceptance_test_argo_source(name, testdata, srcs = [], structure_test_config
 
     testdata_fileset_target = _build_argo_source_testdata_fileset_target(name, testdata)
 
-    cloudbuild_bin_targets = _default_cloudbuild_bin_targets
-    if isUniversal:
-        _universal_acceptance_test_cloudbuild_bin_targets = generate_universal_acceptance_test_cloudbuild_bin_targets()
-        cloudbuild_bin_targets = _universal_acceptance_test_cloudbuild_bin_targets
+    if gcpOnly:
+        cloudbuild_bin_targets = [gcp_test_cloudbuild_bin]
+    elif isUniversal:
+        cloudbuild_bin_targets = generate_universal_acceptance_test_cloudbuild_bin_targets()
+    else:
+        cloudbuild_bin_targets = _default_cloudbuild_bin_targets
 
     pkg_zip(
         name = name,
