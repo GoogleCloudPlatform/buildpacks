@@ -36,6 +36,7 @@ Google Cloud's buildpacks can be configured in a few ways:
     * [Go](https://cloud.google.com/docs/buildpacks/go)
     * [Java](https://cloud.google.com/docs/buildpacks/java)
     * [Ruby](https://cloud.google.com/docs/buildpacks/ruby)
+    * [PHP](https://cloud.google.com/docs/buildpacks/php)
 
 ## App Engine and Cloud Function Builders and Buildpacks
 
