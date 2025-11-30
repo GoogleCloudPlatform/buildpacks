@@ -43,7 +43,7 @@ metadataTest:
     - key: 'io.buildpacks.stack.mixins'
       value: '[]'
     - key: 'io.buildpacks.stack.homepage'
-      value: 'https://github.com/GoogleCloudPlatform/buildpacks/stacks/google-22'
+      value: 'https://github.com/GoogleCloudPlatform/buildpacks/tree/main/stacks/google_22'
   exposedPorts: ['8080']
   user: "cnb"
 
