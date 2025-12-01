@@ -169,6 +169,10 @@ const (
 	// Example: dev, qual, prod.
 	BuildEnv = "GOOGLE_BUILD_ENV"
 
+	// BuildUniverse is an env var used to specify the universe for the Build.
+	// Example: gdu, prp, tsq, tsp.
+	BuildUniverse = "GOOGLE_BUILD_UNIVERSE"
+
 	// PythonPackageManager is an env var used to specify the python package manager for the Build.
 	// Example: `pip`, `uv`.
 	PythonPackageManager = "GOOGLE_PYTHON_PACKAGE_MANAGER"

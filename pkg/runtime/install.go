@@ -43,6 +43,15 @@ var (
 	runtimeImageARURL     = "%s-docker.pkg.dev/%s/runtimes-%s/%s:%s"
 	runtimeImageARRepoURL = "%s-docker.pkg.dev/%s/runtimes-%s/%s"
 	fallbackRegion        = "us"
+
+	universeToProject = map[string]string{
+		"prp": "tpczero-system:serverless-runtimes-tpc",
+		"tsp": "eu0-system:serverless-runtimes-tpc",
+		"tsq": "tpcone-system:serverless-runtimes-tpc",
+		// TODO(b/464237789): Add THP and THQ projects once they are created.
+		// "thp": "serverless-runtimes-tpc",
+		// "thq": "serverless-runtimes-tpc",
+	}
 )
 
 // InstallableRuntime is used to hold runtimes information
@@ -120,6 +129,14 @@ func OSForStack(ctx *gcp.Context) string {
 
 func tarballRegistry() string {
 	buildEnv := os.Getenv(env.BuildEnv)
+
+	// If the build universe is set and has a corresponding project, use the corresponding project for Artifact Registry.
+	// Otherwise, use the build environment to determine the project.
+	buildUniverse := os.Getenv(env.BuildUniverse)
+	if project, present := universeToProject[buildUniverse]; present {
+		return project
+	}
+
 	switch buildEnv {
 	case "qual":
 		return tarballRegistryQual

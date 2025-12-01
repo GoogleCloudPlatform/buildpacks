@@ -668,38 +668,60 @@ func TestGetTarballRegistry(t *testing.T) {
 	testCases := []struct {
 		name                       string
 		buildEnv                   string
+		buildUniverse              string
 		serverlessRuntimesTarballs string
 		want                       string
 	}{
 		{
-			name:     "dev_env",
-			buildEnv: "dev",
-			want:     tarballRegistryDev,
+			name:          "dev_env",
+			buildEnv:      "dev",
+			want:          tarballRegistryDev,
+			buildUniverse: "gdu",
 		},
 		{
-			name:     "qual_env",
-			buildEnv: "qual",
-			want:     tarballRegistryQual,
+			name:          "qual_env",
+			buildEnv:      "qual",
+			want:          tarballRegistryQual,
+			buildUniverse: "",
 		},
 		{
-			name:     "prod_env_without_serverless_runtimes_flag",
-			buildEnv: "prod",
-			want:     tarballRegistryProdGae,
+			name:          "prod_env_without_serverless_runtimes_flag",
+			buildEnv:      "prod",
+			want:          tarballRegistryProdGae,
+			buildUniverse: "gdu",
 		},
 		{
 			name:                       "prod_env_with_serverless_runtimes_flag",
 			buildEnv:                   "prod",
 			serverlessRuntimesTarballs: "true",
 			want:                       tarballRegistryProdServerless,
+			buildUniverse:              "gdu",
 		},
 		{
-			name: "unspecified_env_defaults_to_prod",
-			want: tarballRegistryProdGae,
+			name:          "unspecified_env_defaults_to_prod",
+			want:          tarballRegistryProdGae,
+			buildUniverse: "gdu",
 		},
 		{
 			name:                       "unspecified_env_with_serverless_runtimes_flag",
 			serverlessRuntimesTarballs: "true",
 			want:                       tarballRegistryProdServerless,
+			buildUniverse:              "gdu",
+		},
+		{
+			name:          "prp_universe",
+			buildUniverse: "prp",
+			want:          "tpczero-system:serverless-runtimes-tpc",
+		},
+		{
+			name:          "tsp_universe",
+			buildUniverse: "tsp",
+			want:          "eu0-system:serverless-runtimes-tpc",
+		},
+		{
+			name:          "tsq_universe",
+			buildUniverse: "tsq",
+			want:          "tpcone-system:serverless-runtimes-tpc",
 		},
 	}
 
@@ -707,6 +729,9 @@ func TestGetTarballRegistry(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.buildEnv != "" {
 				t.Setenv(env.BuildEnv, tc.buildEnv)
+			}
+			if tc.buildUniverse != "" {
+				t.Setenv(env.BuildUniverse, tc.buildUniverse)
 			}
 			if tc.serverlessRuntimesTarballs != "" {
 				t.Setenv(env.ServerlessRuntimesTarballs, tc.serverlessRuntimesTarballs)
