@@ -15,7 +15,9 @@
 package gcpbuildpack
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -28,6 +30,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/builderoutput"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"cloud.google.com/go/logging"
 	"github.com/buildpacks/libcnb/v2"
 )
 
@@ -662,6 +665,66 @@ func TestHasAtLeastOneOutsideDependencyDirectories(t *testing.T) {
 	}
 }
 
+func TestStructuredLogfCorrectly(t *testing.T) {
+	testCases := []struct {
+		name        string
+		severity    logging.Severity
+		message     string
+		wantOutputs []string
+	}{
+		{
+			name:        "log_with_error_severity",
+			severity:    logging.Error,
+			message:     "this is an error",
+			wantOutputs: []string{`"severity":"ERROR"`, `"message":"this is an error"`},
+		},
+		{
+			name:        "log_with_info_severity",
+			severity:    logging.Info,
+			message:     "this is an info message",
+			wantOutputs: []string{`"severity":"INFO"`, `"message":"this is an info message"`},
+		},
+		{
+			name:        "log_with_warning_severity",
+			severity:    logging.Warning,
+			message:     "this is a warning",
+			wantOutputs: []string{`"severity":"WARNING"`, `"message":"this is a warning"`},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Redirect os.Stderr to capture the log output.
+			oldStderr := os.Stderr
+			r, w, _ := os.Pipe()
+			os.Stderr = w
+			defer func() { os.Stderr = oldStderr }()
+
+			setEnv(t, "GOOGLE_ENABLE_STRUCTURED_LOGGING", "true")
+			ctx := NewContext()
+			if ctx.cloudLogger == nil {
+				t.Fatal("ctx.cloudLogger is nil, it was not initialized in NewContext()")
+			}
+			ctx.StructuredLogf(tc.severity, "%s", tc.message)
+			// Flush the cloud logger to ensure the buffered entry is written to stderr, since the Cloud Logging client does asynchronous writes.
+			if err := ctx.cloudLogger.Flush(); err != nil {
+				t.Fatalf("cloudLogger.Flush() failed: %v", err)
+			}
+
+			w.Close()
+			var buf bytes.Buffer
+			io.Copy(&buf, r)
+			got := buf.String()
+
+			for _, wantSubstr := range tc.wantOutputs {
+				if !strings.Contains(got, wantSubstr) {
+					t.Errorf("output missing expected substring %q, got: %q", wantSubstr, got)
+				}
+			}
+		})
+	}
+}
+
 func proc(command, commandType string) libcnb.Process {
 	return libcnb.Process{Command: []string{command}, Type: commandType, Default: true}
 }
@@ -725,5 +788,14 @@ func setOSArgs(t *testing.T, args []string) {
 	os.Args = args
 	t.Cleanup(func() {
 		os.Args = oldArgs
+	})
+}
+
+func setEnv(t *testing.T, key, value string) {
+	t.Helper()
+	old := os.Getenv(key)
+	os.Setenv(key, value)
+	t.Cleanup(func() {
+		os.Setenv(key, old)
 	})
 }

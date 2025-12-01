@@ -9,6 +9,14 @@
 #   source_path: Absolute path to the source on the image.
 #
 
+- package: cloud.google.com/go/auth
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/cloud.google.com/go/auth/LICENSE
+
+- package: cloud.google.com/go/auth/oauth2adapt
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/cloud.google.com/go/auth/oauth2adapt/LICENSE
+
 - package: cloud.google.com/go/compute/metadata
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/buildpacks/cloud.google.com/go/compute/metadata/LICENSE
@@ -16,6 +24,14 @@
 - package: cloud.google.com/go/iam
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/buildpacks/cloud.google.com/go/iam/LICENSE
+
+- package: cloud.google.com/go/logging
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/cloud.google.com/go/logging/LICENSE
+
+- package: cloud.google.com/go/longrunning
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/cloud.google.com/go/longrunning/LICENSE
 
 - package: cloud.google.com/go/secretmanager
   license_name: Apache-2.0
@@ -49,13 +65,17 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/buildpacks/github.com/docker/docker/pkg/homedir/LICENSE
 
-- package: github.com/golang/groupcache/lru
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/buildpacks/github.com/golang/groupcache/lru/LICENSE
+- package: github.com/felixge/httpsnoop
+  license_name: MIT
+  license_path: /usr/local/share/licenses/buildpacks/github.com/felixge/httpsnoop/LICENSE.txt
 
-- package: github.com/golang/protobuf
-  license_name: BSD-3-Clause
-  license_path: /usr/local/share/licenses/buildpacks/github.com/golang/protobuf/LICENSE
+- package: github.com/go-logr/logr
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/github.com/go-logr/logr/LICENSE
+
+- package: github.com/go-logr/stdr
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/github.com/go-logr/stdr/LICENSE
 
 - package: github.com/googleapis/enterprise-certificate-proxy/client
   license_name: Apache-2.0
@@ -68,10 +88,6 @@
 - package: github.com/GoogleCloudPlatform/buildpacks
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/buildpacks/github.com/GoogleCloudPlatform/buildpacks/LICENSE
-
-- package: github.com/google/go-cmp/cmp
-  license_name: BSD-3-Clause
-  license_path: /usr/local/share/licenses/buildpacks/github.com/google/go-cmp/cmp/LICENSE
 
 - package: github.com/google/go-containerregistry
   license_name: Apache-2.0
@@ -161,6 +177,10 @@
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/buildpacks/golang.org/x/text/LICENSE
 
+- package: golang.org/x/time/rate
+  license_name: BSD-3-Clause
+  license_path: /usr/local/share/licenses/buildpacks/golang.org/x/time/rate/LICENSE
+
 - package: google.golang.org/api
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/buildpacks/google.golang.org/api/LICENSE
@@ -168,10 +188,6 @@
 - package: google.golang.org/api/internal/third_party/uritemplates
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/buildpacks/google.golang.org/api/internal/third_party/uritemplates/LICENSE
-
-- package: google.golang.org/appengine
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/buildpacks/google.golang.org/appengine/LICENSE
 
 - package: google.golang.org/genproto/googleapis/api
   license_name: Apache-2.0
@@ -193,9 +209,29 @@
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/buildpacks/google.golang.org/protobuf/LICENSE
 
-- package: go.opencensus.io
+- package: go.opentelemetry.io/auto/sdk
   license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/buildpacks/go.opencensus.io/LICENSE
+  license_path: /usr/local/share/licenses/buildpacks/go.opentelemetry.io/auto/sdk/LICENSE
+
+- package: go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc/LICENSE
+
+- package: go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp/LICENSE
+
+- package: go.opentelemetry.io/otel
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/go.opentelemetry.io/otel/LICENSE
+
+- package: go.opentelemetry.io/otel/metric
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/go.opentelemetry.io/otel/metric/LICENSE
+
+- package: go.opentelemetry.io/otel/trace
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/buildpacks/go.opentelemetry.io/otel/trace/LICENSE
 
 - package: gopkg.in/yaml.v2
   license_name: Apache-2.0
