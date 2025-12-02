@@ -45,9 +45,9 @@ var (
 	fallbackRegion        = "us"
 
 	universeToProject = map[string]string{
-		"prp": "tpczero-system:serverless-runtimes-tpc",
-		"tsp": "eu0-system:serverless-runtimes-tpc",
-		"tsq": "tpcone-system:serverless-runtimes-tpc",
+		"prp": "tpczero-system/serverless-runtimes-tpc",
+		"tsp": "eu0-system/serverless-runtimes-tpc",
+		"tsq": "tpcone-system/serverless-runtimes-tpc",
 		// TODO(b/464237789): Add THP and THQ projects once they are created.
 		// "thp": "serverless-runtimes-tpc",
 		// "thq": "serverless-runtimes-tpc",

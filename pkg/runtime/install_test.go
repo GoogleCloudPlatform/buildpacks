@@ -711,17 +711,17 @@ func TestGetTarballRegistry(t *testing.T) {
 		{
 			name:          "prp_universe",
 			buildUniverse: "prp",
-			want:          "tpczero-system:serverless-runtimes-tpc",
+			want:          "tpczero-system/serverless-runtimes-tpc",
 		},
 		{
 			name:          "tsp_universe",
 			buildUniverse: "tsp",
-			want:          "eu0-system:serverless-runtimes-tpc",
+			want:          "eu0-system/serverless-runtimes-tpc",
 		},
 		{
 			name:          "tsq_universe",
 			buildUniverse: "tsq",
-			want:          "tpcone-system:serverless-runtimes-tpc",
+			want:          "tpcone-system/serverless-runtimes-tpc",
 		},
 	}
 
