@@ -32,6 +32,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/tpc"
 	"github.com/buildpacks/libcnb/v2"
 )
 
@@ -278,6 +279,7 @@ func TestInstallSource(t *testing.T) {
 		responseFile               string
 		runtimeImageRegion         string
 		buildEnv                   string
+		buildUniverse              string
 		wantFile                   string
 		wantVersion                string
 		wantError                  bool
@@ -416,6 +418,30 @@ func TestInstallSource(t *testing.T) {
 			wantAR:             true,
 			wantVersion:        "25.0.1_12-beta",
 		},
+		{
+			name:               "AR_TPC_prp",
+			runtime:            Nodejs,
+			version:            "16.20.0",
+			runtimeImageRegion: "u-us-prp1",
+			buildUniverse:      "prp",
+			wantAR:             true,
+		},
+		{
+			name:               "AR_TPC_tsp",
+			runtime:            Nodejs,
+			version:            "16.20.0",
+			runtimeImageRegion: "u-germany-northeast1",
+			buildUniverse:      "tsp",
+			wantAR:             true,
+		},
+		{
+			name:               "AR_TPC_tsq",
+			runtime:            Nodejs,
+			version:            "16.20.0",
+			runtimeImageRegion: "u-germany-northeast1q",
+			buildUniverse:      "tsq",
+			wantAR:             true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -447,6 +473,22 @@ func TestInstallSource(t *testing.T) {
 
 			fetch.ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error {
 				fetchedFromAR = true
+				if tc.wantAR && tc.buildUniverse != "" && tc.buildUniverse != "gdu" {
+					hostname, present := tpc.ARRegionToHostname(tc.runtimeImageRegion)
+					if !present {
+						t.Fatalf("For TPC, invalid region %q specified", tc.runtimeImageRegion)
+					}
+					if !strings.Contains(url, hostname) {
+						t.Errorf("For TPC, fetch.ARImage URL %q does not contain expected hostname %q", url, hostname)
+					}
+					project, present := tpc.UniverseToProject(tc.buildUniverse)
+					if !present {
+						t.Fatalf("For TPC, invalid universe %q specified", tc.buildUniverse)
+					}
+					if !strings.Contains(url, project) {
+						t.Errorf("For TPC, fetch.ARImage URL %q does not contain expected project %q", url, project)
+					}
+				}
 				return nil
 			}
 
@@ -476,6 +518,9 @@ func TestInstallSource(t *testing.T) {
 			}
 			if tc.buildEnv != "" {
 				t.Setenv(env.BuildEnv, tc.buildEnv)
+			}
+			if tc.buildUniverse != "" {
+				t.Setenv(env.BuildUniverse, tc.buildUniverse)
 			}
 			_, err := InstallTarballIfNotCached(ctx, tc.runtime, tc.version, layer)
 			if tc.wantError == (err == nil) {
@@ -655,8 +700,12 @@ func TestRuntimeImageURL(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := runtimeImageURL(tc.runtime, tc.osName, tc.version, tc.region, tc.registry)
-
+			ctx := gcp.NewContext()
+			hostname, err := arHostname(ctx, tc.region)
+			if err != nil {
+				t.Fatalf("arHostname(%q) failed: %v", tc.region, err)
+			}
+			got := runtimeImageURL(hostname, tc.registry, tc.osName, tc.runtime, tc.version)
 			if got != tc.want {
 				t.Errorf("runtimeImageURL() got %q, want %q", got, tc.want)
 			}
@@ -1005,6 +1054,127 @@ func TestResolveVersionARFallback(t *testing.T) {
 				}
 				if gotVersion != tc.wantVersion {
 					t.Errorf("ResolveVersion(%q, %q) = %q, want %q", tc.runtime, tc.versionConstraint, gotVersion, tc.wantVersion)
+				}
+			}
+		})
+	}
+}
+
+func TestResolveVersionTPC(t *testing.T) {
+	testCases := []struct {
+		name               string
+		runtime            InstallableRuntime
+		versionConstraint  string
+		runtimeImageRegion string
+		buildUniverse      string
+		arVersions         []string
+		arError            error
+		wantVersion        string
+		wantErr            bool
+	}{
+		{
+			name:               "TPC PRP OK, Version Found",
+			runtime:            Nodejs,
+			versionConstraint:  "18.x.x",
+			runtimeImageRegion: "u-us-prp1",
+			buildUniverse:      "prp",
+			arVersions:         []string{"18.15.0", "18.16.0"},
+			wantVersion:        "18.16.0",
+		},
+		{
+			name:               "TPC TSP OK, Version Found",
+			runtime:            Nodejs,
+			versionConstraint:  "18.x.x",
+			runtimeImageRegion: "u-germany-northeast1",
+			buildUniverse:      "tsp",
+			arVersions:         []string{"18.15.0", "18.16.0"},
+			wantVersion:        "18.16.0",
+		},
+		{
+			name:               "TPC TSQ OK, Version Found",
+			runtime:            Nodejs,
+			versionConstraint:  "18.x.x",
+			runtimeImageRegion: "u-germany-northeast1q",
+			buildUniverse:      "tsq",
+			arVersions:         []string{"18.15.0", "18.16.0"},
+			wantVersion:        "18.16.0",
+		},
+		{
+			name:               "TPC PRP OK, Version NOT Found",
+			runtime:            Nodejs,
+			versionConstraint:  "19.x.x",
+			runtimeImageRegion: "u-us-prp1",
+			buildUniverse:      "prp",
+			arVersions:         []string{"18.15.0", "18.16.0"},
+			wantErr:            true,
+		},
+		{
+			name:               "TPC PRP AR Error",
+			runtime:            Nodejs,
+			versionConstraint:  "18.x.x",
+			runtimeImageRegion: "u-us-prp1",
+			buildUniverse:      "prp",
+			arError:            errors.New("AR error"),
+			wantErr:            true,
+		},
+		{
+			name:               "TPC invalid region",
+			runtime:            Nodejs,
+			versionConstraint:  "18.x.x",
+			runtimeImageRegion: "invalid-region",
+			buildUniverse:      "prp",
+			wantErr:            true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv(env.RuntimeImageRegion, tc.runtimeImageRegion)
+			t.Setenv(env.BuildUniverse, tc.buildUniverse)
+
+			origARVersions := fetch.ARVersions
+			defer func() {
+				fetch.ARVersions = origARVersions
+			}()
+
+			arVersionsCalled := false
+			fetch.ARVersions = func(url, fallbackURL string, ctx *gcp.Context) ([]string, error) {
+				arVersionsCalled = true
+				if fallbackURL != "" {
+					return nil, errors.New("fallbackURL should be empty in fetch.ARVersions calls for TPC")
+				}
+				if hostname, present := tpc.ARRegionToHostname(tc.runtimeImageRegion); present {
+					if !strings.Contains(url, hostname) {
+						t.Errorf("For TPC, fetch.ARVersions URL %q does not contain expected hostname %q", url, hostname)
+					}
+				}
+				if project, present := tpc.UniverseToProject(tc.buildUniverse); present {
+					if !strings.Contains(url, project) {
+						t.Errorf("For TPC, fetch.ARVersions URL %q does not contain expected project %q", url, project)
+					}
+				}
+				return tc.arVersions, tc.arError
+			}
+
+			ctx := gcp.NewContext(gcp.WithStackID("google.22"))
+			gotVersion, err := ResolveVersion(ctx, tc.runtime, tc.versionConstraint, "ubuntu2204")
+
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("ResolveVersion(%q, %q) succeeded, want error", tc.runtime, tc.versionConstraint)
+				}
+				if tc.runtimeImageRegion == "invalid-region" && arVersionsCalled {
+					t.Errorf("fetch.ARVersions should not be called for invalid region")
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("ResolveVersion(%q, %q) failed: %v", tc.runtime, tc.versionConstraint, err)
+				}
+				if gotVersion != tc.wantVersion {
+					t.Errorf("ResolveVersion(%q, %q) = %q, want %q", tc.runtime, tc.versionConstraint, gotVersion, tc.wantVersion)
+				}
+				if !arVersionsCalled {
+					t.Errorf("fetch.ARVersions should have been called")
 				}
 			}
 		})

@@ -27,6 +27,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	tpc "github.com/GoogleCloudPlatform/buildpacks/pkg/tpc"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/version"
 	"github.com/buildpacks/libcnb/v2"
 	"github.com/Masterminds/semver"
@@ -40,18 +41,9 @@ var (
 	// goTarballURL is the location from which we download Go. This is different from other runtimes
 	// because the Go team already provides re-built tarballs on the same CDN.
 	goTarballURL          = "https://dl.google.com/go/go%s.linux-amd64.tar.gz"
-	runtimeImageARURL     = "%s-docker.pkg.dev/%s/runtimes-%s/%s:%s"
-	runtimeImageARRepoURL = "%s-docker.pkg.dev/%s/runtimes-%s/%s"
+	runtimeImageARRepoURL = "%s/%s/runtimes-%s/%s"
+	runtimeImageARURL     = runtimeImageARRepoURL + ":%s"
 	fallbackRegion        = "us"
-
-	universeToProject = map[string]string{
-		"prp": "tpczero-system/serverless-runtimes-tpc",
-		"tsp": "eu0-system/serverless-runtimes-tpc",
-		"tsq": "tpcone-system/serverless-runtimes-tpc",
-		// TODO(b/464237789): Add THP and THQ projects once they are created.
-		// "thp": "serverless-runtimes-tpc",
-		// "thq": "serverless-runtimes-tpc",
-	}
 )
 
 // InstallableRuntime is used to hold runtimes information
@@ -127,13 +119,26 @@ func OSForStack(ctx *gcp.Context) string {
 	return os
 }
 
+// arHostname returns the Artifact Registry hostname for a given region, handling both GDU and TPC.
+func arHostname(ctx *gcp.Context, region string) (string, error) {
+	if tpc.IsTPC() {
+		hostname, present := tpc.ARRegionToHostname(region)
+		if !present {
+			return "", gcp.InternalErrorf("invalid region %s specified for TPC", region)
+		}
+		return hostname, nil
+	}
+	// GDU case
+	return fmt.Sprintf("%s-docker.pkg.dev", region), nil
+}
+
 func tarballRegistry() string {
 	buildEnv := os.Getenv(env.BuildEnv)
 
 	// If the build universe is set and has a corresponding project, use the corresponding project for Artifact Registry.
 	// Otherwise, use the build environment to determine the project.
 	buildUniverse := os.Getenv(env.BuildUniverse)
-	if project, present := universeToProject[buildUniverse]; present {
+	if project, present := tpc.UniverseToProject(buildUniverse); present {
 		return project
 	}
 
@@ -274,7 +279,19 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 
 	registry := tarballRegistry()
 	region, present := os.LookupEnv(env.RuntimeImageRegion)
-	if registry == tarballRegistryDev || runtime == Go || !present {
+
+	// TODO(b/466126787): Add Golang support for TPC. Combine this block with the else condition once Golang support is added.
+	if tpc.IsTPC() {
+		hostname, err := arHostname(ctx, region)
+		if err != nil {
+			return false, err
+		}
+		url := runtimeImageURL(hostname, registry, osName, runtime, version)
+		if err := fetch.ARImage(url, "", layer.Path, stripComponents, ctx); err != nil {
+			ctx.Warnf("Failed to download %s version %s osName %s from artifact registry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
+			return false, err
+		}
+	} else if registry == tarballRegistryDev || runtime == Go || !present {
 		// Use Lorry for dev env, Go runtime, or if the region is not set.
 		runtimeURL := tarballDownloadURL(runtime, osName, version)
 		if err := fetch.Tarball(runtimeURL, layer.Path, stripComponents); err != nil {
@@ -283,8 +300,19 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 		}
 	} else {
 		// Use Artifact Registry for other cases.
-		url := runtimeImageURL(runtime, osName, version, region, registry)
-		fallbackURL := runtimeImageURL(runtime, osName, version, fallbackRegion, registry)
+		hostname, err := arHostname(ctx, region)
+		if err != nil {
+			return false, err
+		}
+		url := runtimeImageURL(hostname, registry, osName, runtime, version)
+
+		fallbackHostname, err := arHostname(ctx, fallbackRegion)
+		if err != nil {
+			// Fallback region should always be valid in GDU.
+			return false, gcp.InternalErrorf("failed to get hostname for fallback region %s: %w", fallbackRegion, err)
+		}
+		fallbackURL := runtimeImageURL(fallbackHostname, registry, osName, runtime, version)
+
 		if err := fetch.ARImage(url, fallbackURL, layer.Path, stripComponents, ctx); err != nil {
 			ctx.Warnf("Failed to download %s version %s osName %s from artifact registry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
 			return false, err
@@ -297,8 +325,8 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	return false, nil
 }
 
-func runtimeImageURL(runtime InstallableRuntime, osName, version, region, registry string) string {
-	return fmt.Sprintf(runtimeImageARURL, region, registry, osName, runtime, version)
+func runtimeImageURL(hostname, registry, osName string, runtime InstallableRuntime, version string) string {
+	return fmt.Sprintf(runtimeImageARURL, hostname, registry, osName, runtime, version)
 }
 
 func tarballDownloadURL(runtime InstallableRuntime, os, version string) string {
@@ -401,12 +429,23 @@ func resolveVersionFromList(versions []string, runtime InstallableRuntime, norma
 // It returns the resolved version string on success.
 // It returns an error if fetching versions fails or if no version matches the constraint.
 func tryResolveVersionFromRegion(ctx *gcp.Context, runtime InstallableRuntime, normalizedConstraint, osName, region, registry string) (string, error) {
-	url := fmt.Sprintf(runtimeImageARRepoURL, region, registry, osName, runtime)
+	hostname, err := arHostname(ctx, region)
+	if err != nil {
+		return "", err
+	}
+	url := fmt.Sprintf(runtimeImageARRepoURL, hostname, registry, osName, runtime)
 	versions, err := fetch.ARVersions(url, "", ctx)
 	if err != nil {
 		return "", err
 	}
 	return resolveVersionFromList(versions, runtime, normalizedConstraint)
+}
+
+func getRegionsToTry(ctx *gcp.Context, region string) ([]string, error) {
+	if tpc.IsTPC() {
+		return []string{region}, nil
+	}
+	return []string{region, fallbackRegion}, nil
 }
 
 // ResolveVersion returns the newest available version of a runtime that satisfies the provided
@@ -451,7 +490,11 @@ func ResolveVersion(ctx *gcp.Context, runtime InstallableRuntime, verConstraint,
 	}
 
 	// Use Artifact Registry.
-	regionsToTry := []string{region, fallbackRegion}
+	regionsToTry, err := getRegionsToTry(ctx, region)
+	if err != nil {
+		return "", err
+	}
+
 	var lastErr error
 	for _, r := range regionsToTry {
 		v, err := tryResolveVersionFromRegion(ctx, runtime, normalizedConstraint, osName, r, registry)

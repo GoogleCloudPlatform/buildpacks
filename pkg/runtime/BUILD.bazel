@@ -16,6 +16,7 @@ go_library(
         "//pkg/env",
         "//pkg/fetch",
         "//pkg/gcpbuildpack",
+        "//pkg/tpc",
         "//pkg/version",
         "@com_github_buildpacks_libcnb_v2//:go_default_library",
         "@com_github_masterminds_semver//:go_default_library",
@@ -38,6 +39,7 @@ go_test(
         "//pkg/fetch",
         "//pkg/gcpbuildpack",
         "//pkg/testdata",
+        "//pkg/tpc",
         "@com_github_buildpacks_libcnb_v2//:go_default_library",
     ],
 )
