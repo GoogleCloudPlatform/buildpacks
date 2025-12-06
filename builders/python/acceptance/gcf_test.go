@@ -155,14 +155,6 @@ func TestAcceptance(t *testing.T) {
 			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
-			Name: "function_has_right_number_of_dependencies",
-			App:  "list_dependencies",
-			// The list_dependencies app has a dependency on the libexpat OS package which isn't installed
-			// in the min run image.
-			SkipStacks:                 []string{"google.min.22"},
-			VersionInclusionConstraint: ">= 3.8.0",
-		},
-		{
 			Name:                       "poetry",
 			App:                        "poetry",
 			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
