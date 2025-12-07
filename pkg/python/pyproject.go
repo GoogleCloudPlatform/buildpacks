@@ -300,7 +300,7 @@ func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) (st
 		return "", fmt.Errorf("failed to create virtual environment with uv: %w", err)
 	}
 
-	syncCmd := []string{"uv", "sync", "--active", "--link-mode=copy"}
+	syncCmd := []string{"uv", "sync", "--active", "--link-mode=copy", "--python", pythonVersion}
 	syncCmd = appendVendoringFlags(syncCmd)
 
 	ctx.Logf("Installing dependencies with `uv sync` into the virtual environment...")

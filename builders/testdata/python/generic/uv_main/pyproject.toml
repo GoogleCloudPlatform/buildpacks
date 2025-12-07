@@ -7,3 +7,5 @@ dependencies = [
     "flask>=3.1.1",
     "gunicorn>=23.0.0",
 ]
+[tool.uv]
+required-version = ">=0.6.0, <0.7.0"
