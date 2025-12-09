@@ -65,6 +65,7 @@ func BuildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
+
 	if err := installYarn(ctx, pjs); err != nil {
 		return fmt.Errorf("installing Yarn: %w", err)
 	}
@@ -87,6 +88,16 @@ func BuildFn(ctx *gcp.Context) error {
 	}
 	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
 	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
+
+	// Check for React2Shell vulnerability in the lockfile.
+	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, ctx.ApplicationRoot())
+	if err != nil {
+		ctx.Warnf("Failed to read node dependencies: %v", err)
+	} else {
+		if err := nodejs.CheckVulnerabilities(ctx, nodeDeps); err != nil {
+			return err
+		}
+	}
 
 	// Configure the entrypoint for production.
 	cmd := []string{"yarn", "run", "start"}

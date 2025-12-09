@@ -11,7 +11,7 @@ buildpack(
         ":main",
     ],
     prefix = "nodejs",
-    version = "2.1.0",
+    version = "2.1.1",
     visibility = [
         "//builders:nodejs_builders",
         # Ruby on Rails apps require Nodejs and Yarn for precompiling assets
@@ -23,7 +23,7 @@ buildpack_using_runner(
     name = "yarn_using_runner",
     buildpack_id = "google.nodejs.yarn",
     prefix = "nodejs",
-    version = "2.1.0",
+    version = "2.1.1",
     visibility = [
         "//builders:nodejs_builders",
         # Ruby on Rails apps require Nodejs and Yarn for precompiling assets

@@ -176,6 +176,9 @@ const (
 	// PythonPackageManager is an env var used to specify the python package manager for the Build.
 	// Example: `pip`, `uv`.
 	PythonPackageManager = "GOOGLE_PYTHON_PACKAGE_MANAGER"
+
+	// AllowVulnerableDependencies is an env var used to disable react2shell vulnerability checks.
+	AllowVulnerableDependencies = "GOOGLE_ALLOW_VULNERABLE_DEPENDENCIES"
 )
 
 const (

@@ -61,6 +61,7 @@ func BuildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
+
 	if err := installPNPM(ctx, pjs); err != nil {
 		return gcp.InternalErrorf("installing pnpm: %w", err)
 	}
@@ -75,6 +76,16 @@ func BuildFn(ctx *gcp.Context) error {
 	}
 	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
 	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
+
+	// Check for React2Shell vulnerability in the lockfile.
+	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, ctx.ApplicationRoot())
+	if err != nil {
+		ctx.Warnf("Failed to read node dependencies: %v", err)
+	} else {
+		if err := nodejs.CheckVulnerabilities(ctx, nodeDeps); err != nil {
+			return err
+		}
+	}
 
 	// Configure the entrypoint for production.
 	ctx.AddWebProcess([]string{"pnpm", "run", "start"})

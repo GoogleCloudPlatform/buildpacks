@@ -585,7 +585,7 @@ func TestVersion(t *testing.T) {
 			nodeDeps: &NodeDependencies{
 				LockfilePath: testdata.MustGetPath("testdata/lock-files/nextjs-package-lock.json"),
 			},
-			wantVersion: "14.1.4",
+			wantVersion: "15.0.0",
 		},
 		{
 			name: "Parses package-lock version angular",

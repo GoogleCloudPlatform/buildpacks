@@ -85,6 +85,7 @@ func BuildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
+
 	pjs, err = nodejs.OverrideAppHostingBuildScript(ctx, nodejs.ApphostingPreprocessedPathForPack)
 	if err != nil {
 		return err
@@ -140,6 +141,16 @@ func BuildFn(ctx *gcp.Context) error {
 			if _, err := ctx.Exec([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution); err != nil {
 				return err
 			}
+		}
+	}
+
+	// Check for React2Shell vulnerability in the lockfile.
+	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, ctx.ApplicationRoot())
+	if err != nil {
+		ctx.Warnf("Failed to read node dependencies: %v", err)
+	} else {
+		if err := nodejs.CheckVulnerabilities(ctx, nodeDeps); err != nil {
+			return err
 		}
 	}
 
