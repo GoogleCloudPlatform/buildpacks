@@ -1,7 +1,7 @@
 // for open-source
 module github.com/GoogleCloudPlatform/buildpacks
 
-go 1.23.0
+go 1.23
 
 require (
 	cloud.google.com/go/secretmanager v1.11.1
@@ -23,7 +23,6 @@ require (
 	cloud.google.com/go/compute v1.23.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.1 // indirect
-  cloud.google.com/go/logging v1.13.0 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.14.3 // indirect
 	github.com/docker/cli v24.0.0+incompatible // indirect
@@ -55,5 +54,4 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230920204549-e6e6cdab5c13 // indirect
 	google.golang.org/grpc v1.57.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
-  google.golang.org/api v0.248.0 // indirect
 )
