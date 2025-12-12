@@ -62,7 +62,7 @@ func UVInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) (s
 
 	for _, req := range reqs {
 		ctx.Logf("Installing dependencies from %s...", req)
-		installCmd := []string{"uv", "pip", "install", "--requirement", req, "--reinstall", "--no-cache"}
+		installCmd := []string{"uv", "pip", "install", "--requirement", req, "--reinstall", "--no-cache", "--link-mode=copy"}
 		installCmd = appendVendoringFlags(installCmd)
 		if _, err := ctx.Exec(installCmd, gcp.WithUserAttribution, gcp.WithEnv("VIRTUAL_ENV="+venvDir)); err != nil {
 			return "", fmt.Errorf("failed to install dependencies from %s with uv: %w", req, err)
