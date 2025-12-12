@@ -47,7 +47,7 @@ func TestAcceptancePython(t *testing.T) {
 		{
 			Name:                       "entrypoint_from_procfile_web_upgraded_app_uv",
 			App:                        "simple_new",
-			Env:                        []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=uv", "X_GOOGLE_RELEASE_TRACK=BETA"},
+			Env:                        []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
 			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
 			EnableCacheTest:            true,
 			VersionInclusionConstraint: ">=3.8.0",
@@ -74,7 +74,7 @@ func TestAcceptancePython(t *testing.T) {
 			App:                        "simple_new",
 			Path:                       "/custom",
 			Entrypoint:                 "custom", // Must match the non-web process in Procfile.
-			Env:                        []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=uv", "X_GOOGLE_RELEASE_TRACK=BETA"},
+			Env:                        []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
 			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
 			VersionInclusionConstraint: ">=3.8.0",
 		},
@@ -116,7 +116,7 @@ func TestAcceptancePython(t *testing.T) {
 			Name:                       "entrypoint_with_env_var_upgraded_app_uv",
 			App:                        "simple_new",
 			Path:                       "/env?want=bar",
-			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app", "GOOGLE_PYTHON_PACKAGE_MANAGER=uv", "X_GOOGLE_RELEASE_TRACK=BETA"},
+			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app", "GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
 			MustUse:                    []string{pythonRuntime, pythonUV, entrypoint},
 			VersionInclusionConstraint: ">=3.8.0",
 		},

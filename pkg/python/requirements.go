@@ -24,15 +24,6 @@ import (
 	"github.com/buildpacks/libcnb/v2"
 )
 
-// IsUVRequirementsEnabled checks if the uv requirements.txt feature is enabled.
-// For any future changes to the release stage, this is the single place to make changes.
-func IsUVRequirementsEnabled(ctx *gcp.Context) bool {
-	if isUVDefaultPackageManagerForRequirements(ctx) {
-		return true
-	}
-	return env.IsBetaSupported()
-}
-
 // IsUVRequirements checks if the application is a UV requirements.txt application.
 func IsUVRequirements(ctx *gcp.Context) (bool, string, error) {
 	if isPackageManagerConfigured(uv) {

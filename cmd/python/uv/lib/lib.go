@@ -62,9 +62,6 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return gcp.OptOut(message), err
 	}
 	if isUVRequirements {
-		if !python.IsUVRequirementsEnabled(ctx) {
-			return gcp.OptOut("Python UV Buildpack for requirements.txt is not supported in the current release track."), nil
-		}
 		return gcp.OptIn(message, gcp.WithBuildPlans(plan)), nil
 	}
 
