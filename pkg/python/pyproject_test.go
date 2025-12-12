@@ -459,7 +459,7 @@ func TestIsPipPyproject(t *testing.T) {
 		want  bool
 	}{
 		{
-			name: "pip_pyproject_is_enabled_on_gcp",
+			name: "pip_pyproject_is_enabled_on_gcp_in_beta",
 			files: map[string]string{
 				"pyproject.toml": "[project]",
 			},
@@ -469,6 +469,30 @@ func TestIsPipPyproject(t *testing.T) {
 				env.XGoogleTargetPlatform: "gcp",
 			},
 			want: true,
+		},
+		{
+			name: "pip_pyproject_is_enabled_on_gcp_in_ga_for_python_313",
+			files: map[string]string{
+				"pyproject.toml": "[project]",
+			},
+			env: map[string]string{
+				env.PythonPackageManager:  "pip",
+				env.RuntimeVersion:        "3.13.0",
+				env.XGoogleTargetPlatform: "gcp",
+			},
+			want: true,
+		},
+		{
+			name: "pip_pyproject_is_disabled_on_gcp_in_ga_for_python_312",
+			files: map[string]string{
+				"pyproject.toml": "[project]",
+			},
+			env: map[string]string{
+				env.PythonPackageManager:  "pip",
+				env.RuntimeVersion:        "3.12.0",
+				env.XGoogleTargetPlatform: "gcp",
+			},
+			want: false,
 		},
 		{
 			name: "disabled_when_requirements_txt_exists",
@@ -502,18 +526,6 @@ func TestIsPipPyproject(t *testing.T) {
 			},
 			env: map[string]string{
 				env.ReleaseTrack:          "BETA",
-				env.XGoogleTargetPlatform: "gcp",
-			},
-			want: false,
-		},
-		{
-			name: "disabled_when_not_beta_release",
-			files: map[string]string{
-				"pyproject.toml": "[project]",
-			},
-			env: map[string]string{
-				env.PythonPackageManager:  "pip",
-				env.ReleaseTrack:          "GA",
 				env.XGoogleTargetPlatform: "gcp",
 			},
 			want: false,
@@ -584,12 +596,40 @@ func TestIsPyprojectEnabled(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "disabled_on_GA_track",
+			name: "enabled_on_GA_track_for_python_313",
 			files: map[string]string{
 				"pyproject.toml": "[project]",
 			},
 			envs: map[string]string{
-				"X_GOOGLE_RELEASE_TRACK": "GA",
+				"GOOGLE_RUNTIME_VERSION": "3.13.0",
+			},
+			want: true,
+		},
+		{
+			name: "enabled_on_GA_track_for_python_314",
+			files: map[string]string{
+				"pyproject.toml": "[project]",
+			},
+			envs: map[string]string{
+				"GOOGLE_RUNTIME_VERSION": "3.14.0",
+			},
+			want: true,
+		},
+		{
+			name: "enabled_on_GA_track_for_universal_22",
+			files: map[string]string{
+				"pyproject.toml": "[project]",
+			},
+			envs: map[string]string{},
+			want: true,
+		},
+		{
+			name: "disabled_on_GA_track_for_python_312",
+			files: map[string]string{
+				"pyproject.toml": "[project]",
+			},
+			envs: map[string]string{
+				"GOOGLE_RUNTIME_VERSION": "3.12.5",
 			},
 			want: false,
 		},

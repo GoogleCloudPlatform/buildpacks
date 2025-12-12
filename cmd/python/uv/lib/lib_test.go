@@ -48,6 +48,22 @@ func TestDetect(t *testing.T) {
 		},
 		// Pyproject.toml tests
 		{
+			name: "should_opt_in_for_uv_project_in_ga_for_python_313",
+			envs: []string{env.RuntimeVersion + "=3.13.0"},
+			files: map[string]string{
+				"pyproject.toml": "",
+			},
+			want: 0,
+		},
+		{
+			name: "should_opt_out_for_uv_project_in_ga_for_python_312",
+			envs: []string{env.RuntimeVersion + "=3.12.0"},
+			files: map[string]string{
+				"pyproject.toml": "",
+			},
+			want: 100,
+		},
+		{
 			name: "should_opt_in_for_uv_project_in_beta",
 			envs: []string{env.ReleaseTrack + "=BETA"},
 			files: map[string]string{
@@ -62,21 +78,6 @@ func TestDetect(t *testing.T) {
 				"pyproject.toml": "",
 			},
 			want: 0,
-		},
-		{
-			name: "should_opt_out_for_uv_project_in_ga",
-			envs: []string{env.ReleaseTrack + "=GA"},
-			files: map[string]string{
-				"pyproject.toml": "",
-			},
-			want: 100,
-		},
-		{
-			name: "should_opt_out_for_uv_project_with_no_release_track",
-			files: map[string]string{
-				"pyproject.toml": "",
-			},
-			want: 100,
 		},
 		{
 			name: "should_opt_out_when_no_pyproject.toml",

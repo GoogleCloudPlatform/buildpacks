@@ -331,6 +331,13 @@ func TestAcceptancePython(t *testing.T) {
 			VersionInclusionConstraint: ">=3.10.0",
 		},
 		{
+			Name:                       "pyproject_without_lock_GA",
+			App:                        "pyproject_without_lock",
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint},
+			Env:                        []string{},
+			VersionInclusionConstraint: ">=3.13.0",
+		},
+		{
 			Name:                       "pyproject_without_lock_pip",
 			App:                        "pyproject_without_lock",
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonMissingEntrypoint},

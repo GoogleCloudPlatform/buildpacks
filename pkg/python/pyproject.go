@@ -435,7 +435,17 @@ func IsPyprojectEnabled(ctx *gcp.Context) bool {
 	if isBothPyprojectAndRequirementsPresent(ctx) {
 		return false // Prefer requirements.txt over pyproject.toml.
 	}
-	return env.IsBetaSupported()
+	// TODO(b/468177624): Remove this check to move pyproject to GA for all Python versions.
+	v, err := RuntimeVersion(ctx, ctx.ApplicationRoot())
+	if err != nil {
+		return false
+	}
+	v = strings.ReplaceAll(v, "*", "0")
+	isPythonVersionGreaterThanEqualTo313, err := versionMatchesSemver(ctx, ">=3.13.0-0", v)
+	if err != nil {
+		return false
+	}
+	return isPythonVersionGreaterThanEqualTo313 || env.IsBetaSupported()
 }
 
 // IsPipPyproject checks if the application is a pip pyproject.

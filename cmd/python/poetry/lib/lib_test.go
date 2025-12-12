@@ -54,15 +54,16 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "should_opt_out_for_poetry_in_ga",
-			envs: []string{env.ReleaseTrack + "=GA"},
+			name: "should_opt_in_for_poetry_in_ga_for_python_313",
+			envs: []string{env.RuntimeVersion + "=3.13.0"},
 			files: map[string]string{
 				"pyproject.toml": `[tool.poetry]`,
 			},
-			want: 100,
+			want: 0,
 		},
 		{
-			name: "should_opt_out_for_poetry_with_no_release_track",
+			name: "should_opt_out_for_poetry_in_ga_for_python_312",
+			envs: []string{env.RuntimeVersion + "=3.12.0"},
 			files: map[string]string{
 				"pyproject.toml": `[tool.poetry]`,
 			},
