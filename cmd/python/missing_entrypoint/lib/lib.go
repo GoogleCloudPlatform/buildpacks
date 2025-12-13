@@ -210,7 +210,7 @@ func addGradioEnvVarLayer(ctx *gcp.Context) error {
 }
 
 func isAdkPresent(ctx *gcp.Context) (bool, error) {
-	if !env.IsAlphaSupported() {
+	if !env.IsBetaSupported() {
 		return false, nil
 	}
 	// If google-adk is present in requirements.txt, we will use it as the entrypoint.
