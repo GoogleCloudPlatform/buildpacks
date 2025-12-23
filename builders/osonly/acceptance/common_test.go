@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package acceptance_test
+package acceptance
 
 const (
-	// Buildpack identifiers used to verify that buildpacks were or were not used.
-	dartCompile = "google.dart.compile"
-	dartSDK     = "google.dart.sdk"
-	dartPub     = "google.dart.pub"
+	// Buildpack identifiers used to verify if certain buildpacks were used or not.
+	goBuild   = "google.go.build"
+	goMod     = "google.go.gomod"
+	goRuntime = "google.go.runtime"
 )

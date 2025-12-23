@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package acceptance_test
+package acceptance
 
 import (
 	"testing"
@@ -29,14 +29,9 @@ func TestAcceptanceOSOnly(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:    "simple_dart_app",
-			App:     "simple_dart",
-			MustUse: []string{dartCompile, dartSDK, dartPub},
-		},
-		{
-			Name:    "simple_flutter_app",
-			App:     "simple_flutter",
-			MustUse: []string{dartCompile, dartSDK, dartPub},
+			Name:    "simple_go_app",
+			App:     "simple_gomod",
+			MustUse: []string{goRuntime, goBuild, goMod},
 		},
 	}
 
@@ -56,16 +51,10 @@ func TestFailuresOSOnly(t *testing.T) {
 
 	testCases := []acceptance.FailureTest{
 		{
-			Name:      "bad_runtime_version_dart",
-			App:       "simple_dart",
+			Name:      "bad_runtime_version_go",
+			App:       "simple_gomod",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
-			MustMatch: "HTTP status: 404",
-		},
-		{
-			Name:      "bad_runtime_version_flutter",
-			App:       "simple_flutter",
-			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
-			MustMatch: "version not found",
+			MustMatch: "invalid Go version specified:",
 		},
 	}
 
