@@ -40,8 +40,8 @@ var defaultFeatureVersion = map[string]string{
 	"google.gae.22":  "21",
 	"google.min.22":  "21",
 	"google.22":      "21",
-	"google.24":      "21",
-	"google.24.full": "21",
+	"google.24":      "25",
+	"google.24.full": "25",
 }
 
 // DetectFn is the exported detect function.

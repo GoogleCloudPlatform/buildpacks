@@ -211,9 +211,29 @@ func TestStackToVersion(t *testing.T) {
 		want  string
 	}{
 		{
-			name:  "Ubuntu 22 stack",
+			name:  "Ubuntu 22 stack gae",
 			stack: "google.gae.22",
 			want:  "21",
+		},
+		{
+			name:  "Ubuntu 22 stack min",
+			stack: "google.min.22",
+			want:  "21",
+		},
+		{
+			name:  "Ubuntu 22 stack",
+			stack: "google.22",
+			want:  "21",
+		},
+		{
+			name:  "Ubuntu 24 stack",
+			stack: "google.24",
+			want:  "25",
+		},
+		{
+			name:  "Ubuntu 24 stack full",
+			stack: "google.24.full",
+			want:  "25",
 		},
 		{
 			name:  "Ubuntu 18 stack",
