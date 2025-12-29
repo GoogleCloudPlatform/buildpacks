@@ -34,6 +34,7 @@ const (
 	layerName                     = "functions-framework"
 	javaFunctionInvokerURLBase    = "https://maven-central.storage-download.googleapis.com/maven2/com/google/cloud/functions/invoker/java-function-invoker/"
 	defaultFrameworkVersion       = "1.4.1"
+	v2FrameworkVersion            = "2.0.0"
 	functionsFrameworkURLTemplate = javaFunctionInvokerURLBase + "%[1]s/java-function-invoker-%[1]s.jar"
 	versionKey                    = "version"
 	invokerMain                   = "com.google.cloud.functions.invoker.runner.Invoker"
@@ -282,9 +283,12 @@ func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) (string, e
 		addFrameworkVersionLabel(ctx, layer, jars[0])
 		return jars[0], nil
 	}
-	ctx.Warnf("Failed to find vendored functions-framework dependency. Installing version %s:\n%v", defaultFrameworkVersion, err)
 
 	frameworkVersion := defaultFrameworkVersion
+	if v, _ := env.IsPresentAndTrue(os.Getenv("USE_JAVA_FF_2")); v {
+		frameworkVersion = v2FrameworkVersion
+	}
+	ctx.Warnf("Failed to find vendored functions-framework dependency. Installing version %s:\n%v", frameworkVersion, err)
 
 	// Install functions-framework.
 	metaVersion := ctx.GetMetadata(layer, versionKey)
