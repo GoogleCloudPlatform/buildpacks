@@ -336,26 +336,33 @@ func tarballDownloadURL(runtime InstallableRuntime, os, version string) string {
 	return fmt.Sprintf(googleTarballURL, os, runtime, strings.ReplaceAll(version, "+", "_"))
 }
 
-// PinGemAndBundlerVersion pins the RubyGems versions for GAE and GCF runtime versions to prevent
-// unexpected behaviors with new versions. This is only expected to be called if the target
-// platform is GAE or GCF.
-func PinGemAndBundlerVersion(ctx *gcp.Context, version string, layer *libcnb.Layer) error {
+// rubyGemsAndBundlerVersion returns the rubygems and bundler2 versions to use based on the Ruby version.
+func rubyGemsAndBundlerVersion(version string) (string, string) {
 	rubygemsVersion := "3.3.15"
-	bundler1Version := "1.17.3"
 	bundler2Version := "2.1.4"
-	installBundler1 := false
 
-	// Bundler 1 is only installed for older versions of Ruby
 	// Older 2.x Ruby versions have been using RubyGems 3.1.2 on GAE/GCF.
 	if strings.HasPrefix(version, "2.") {
 		rubygemsVersion = "3.1.2"
-		installBundler1 = true
 	}
 	// Ruby 3.0 has been using 3.2.26 on GAE/GCF
 	if strings.HasPrefix(version, "3.0") {
 		rubygemsVersion = "3.2.26"
-		installBundler1 = true
 	}
+
+	return rubygemsVersion, bundler2Version
+}
+
+func installBundler1(version string) bool {
+	return strings.HasPrefix(version, "2.") || strings.HasPrefix(version, "3.0")
+}
+
+// PinGemAndBundlerVersion pins the RubyGems versions for GAE and GCF runtime versions to prevent
+// unexpected behaviors with new versions. This is only expected to be called if the target
+// platform is GAE or GCF.
+func PinGemAndBundlerVersion(ctx *gcp.Context, version string, layer *libcnb.Layer) error {
+	bundler1Version := "1.17.3"
+	rubygemsVersion, bundler2Version := rubyGemsAndBundlerVersion(version)
 
 	rubyBinPath := filepath.Join(layer.Path, "bin")
 	gemPath := filepath.Join(rubyBinPath, "gem")
@@ -377,7 +384,7 @@ func PinGemAndBundlerVersion(ctx *gcp.Context, version string, layer *libcnb.Lay
 	}
 
 	command = []string{gemPath, "install", "--no-document", fmt.Sprintf("bundler:%s", bundler2Version)}
-	if installBundler1 {
+	if installBundler1(version) {
 		// Install fixed versions of Bundler1 and Bundler2 for backwards compatibility
 		command = append(command, fmt.Sprintf("bundler:%s", bundler1Version))
 		ctx.Logf("Installing bundler %s and %s", bundler1Version, bundler2Version)
