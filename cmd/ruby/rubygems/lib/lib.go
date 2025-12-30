@@ -203,5 +203,10 @@ func rubyGemsAndBundlerVersion(ctx *gcp.Context) (string, string) {
 		bundler2Version = "2.2.26"
 	}
 
+	if ruby.IsRuby4(ctx) {
+		rubygemsVersion = "4.0.3"
+		bundler2Version = "4.0.3"
+	}
+
 	return rubygemsVersion, bundler2Version
 }

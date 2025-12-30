@@ -115,6 +115,11 @@ func IsRuby25(ctx *gcp.Context) bool {
 	return strings.HasPrefix(os.Getenv(RubyVersionKey), "2.5")
 }
 
+// IsRuby4 returns true if the build environment has Ruby 4.x.y installed.
+func IsRuby4(ctx *gcp.Context) bool {
+	return strings.HasPrefix(os.Getenv(RubyVersionKey), "4.")
+}
+
 // SupportsBundler1 returns true if the installed Ruby version is compatible with Bundler 1.
 // Bundler 1 breaks with Ruby 3.2. This functions returns true for all versions older than 3.2.
 func SupportsBundler1(ctx *gcp.Context) (bool, error) {

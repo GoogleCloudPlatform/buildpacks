@@ -350,6 +350,11 @@ func rubyGemsAndBundlerVersion(version string) (string, string) {
 		rubygemsVersion = "3.2.26"
 	}
 
+	if strings.HasPrefix(version, "4.") {
+		rubygemsVersion = "4.0.3"
+		bundler2Version = "4.0.3"
+	}
+
 	return rubygemsVersion, bundler2Version
 }
 

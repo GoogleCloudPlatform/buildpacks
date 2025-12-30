@@ -578,6 +578,12 @@ func TestPinGemAndBundlerVersion(t *testing.T) {
 			wantBundler2: "2.1.4",
 		},
 		{
+			name:         "Ruby_4.x__rubygems_4.0.3",
+			version:      "4.x.x",
+			wantRubygems: "4.0.3",
+			wantBundler2: "4.0.3",
+		},
+		{
 			name:    "gem update fails",
 			version: "2.7.6",
 			mocks: []*mockprocess.Mock{mockprocess.New(".*gem update.*", mockprocess.WithExitCode(1),
