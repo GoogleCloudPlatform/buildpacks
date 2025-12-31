@@ -93,6 +93,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
   uri = "java/clear_source_using_runner.tgz"
 
 [[buildpacks]]
+  id = "google.java.spring-boot"
+  uri = "java/spring_boot.tgz"
+
+[[buildpacks]]
   id = "google.nodejs.runtime"
   uri = "nodejs/runtime_using_runner.tgz"
 
@@ -337,6 +341,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.java.maven"
 
   [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
+
+  [[order.group]]
     id = "google.java.functions-framework"
     optional = true
 
@@ -362,6 +370,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
 
   [[order.group]]
     id = "google.java.functions-framework"
@@ -411,6 +423,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.java.maven"
 
   [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
+
+  [[order.group]]
     id = "google.config.entrypoint"
 
   [[order.group]]
@@ -426,6 +442,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
 
   [[order.group]]
     id = "google.java.entrypoint"

@@ -116,6 +116,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
   id = "google.utils.label-image"
   uri = "label_image.tgz"
 
+[[buildpacks]]
+  id = "google.java.spring-boot"
+  uri = "java/spring_boot.tgz"
+
 ########
 # .NET #
 ########
@@ -253,6 +257,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.java.maven"
 
   [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
+
+  [[order.group]]
     id = "google.java.functions-framework"
     optional = true
 
@@ -278,6 +286,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
 
   [[order.group]]
     id = "google.java.functions-framework"
@@ -327,6 +339,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
     id = "google.java.maven"
 
   [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
+
+  [[order.group]]
     id = "google.config.entrypoint"
 
   [[order.group]]
@@ -342,6 +358,10 @@ description = "Ubuntu 18 base image with buildpacks for .NET, Go, Java, Node.js,
 
   [[order.group]]
     id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
 
   [[order.group]]
     id = "google.java.entrypoint"

@@ -39,8 +39,8 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		if err != nil {
 			return gcp.OptOut(fmt.Sprintf("Failed to parse runtime version '%s' as semver: %v", runtimeVersion, err)), nil
 		}
-		if v.Major() < 25 {
-			return gcp.OptOut(fmt.Sprintf("Runtime version %s is less than java25.", runtimeVersion)), nil
+		if v.Major() < 17 {
+			return gcp.OptOut(fmt.Sprintf("Runtime version %s is less than java17.", runtimeVersion)), nil
 		}
 	}
 	ctx.Logf("Checking for packaged JAR")
