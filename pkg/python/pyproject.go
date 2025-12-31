@@ -52,12 +52,8 @@ var (
 
 // IsPoetryProject checks if the application is a Poetry project.
 func IsPoetryProject(ctx *gcp.Context) (bool, string, error) {
-	poetryLockExists, err := ctx.FileExists(poetryLock)
-	if err != nil {
-		return false, "", fmt.Errorf("checking for %s: %w", poetryLock, err)
-	}
-	if poetryLockExists {
-		return true, fmt.Sprintf("found %s", poetryLock), nil
+	if isBothPyprojectAndRequirementsPresent(ctx) {
+		return false, fmt.Sprintf("%s and %s found, prefer requirements.txt", pyprojectToml, requirements), nil
 	}
 
 	pyprojectTomlExists, err := ctx.FileExists(pyprojectToml)
@@ -66,6 +62,14 @@ func IsPoetryProject(ctx *gcp.Context) (bool, string, error) {
 	}
 	if !pyprojectTomlExists {
 		return false, fmt.Sprintf("%s not found", pyprojectToml), nil
+	}
+
+	poetryLockExists, err := ctx.FileExists(poetryLock)
+	if err != nil {
+		return false, "", fmt.Errorf("checking for %s: %w", poetryLock, err)
+	}
+	if poetryLockExists {
+		return true, fmt.Sprintf("found %s", poetryLock), nil
 	}
 
 	pyprojectTomlContent, err := ctx.ReadFile(pyprojectToml)
@@ -426,7 +430,6 @@ func GetScriptCommand(ctx *gcp.Context) ([]string, error) {
 }
 
 // IsPyprojectEnabled checks if the pyproject feature is enabled.
-// For any future changes to the release stage, this is the single place to make changes.
 func IsPyprojectEnabled(ctx *gcp.Context) bool {
 	pyprojectTomlExists, _ := ctx.FileExists(pyprojectToml)
 	if !pyprojectTomlExists {
@@ -435,24 +438,11 @@ func IsPyprojectEnabled(ctx *gcp.Context) bool {
 	if isBothPyprojectAndRequirementsPresent(ctx) {
 		return false // Prefer requirements.txt over pyproject.toml.
 	}
-	// TODO(b/468177624): Remove this check to move pyproject to GA for all Python versions.
-	v, err := RuntimeVersion(ctx, ctx.ApplicationRoot())
-	if err != nil {
-		return false
-	}
-	v = strings.ReplaceAll(v, "*", "0")
-	isPythonVersionGreaterThanEqualTo313, err := versionMatchesSemver(ctx, ">=3.13.0-0", v)
-	if err != nil {
-		return false
-	}
-	return isPythonVersionGreaterThanEqualTo313 || env.IsBetaSupported()
+	return true
 }
 
 // IsPipPyproject checks if the application is a pip pyproject.
 func IsPipPyproject(ctx *gcp.Context) bool {
-	if isBothPyprojectAndRequirementsPresent(ctx) {
-		return false // Prefer requirements.txt over pyproject.toml.
-	}
 	return isPackageManagerConfigured(pip) && IsPyprojectEnabled(ctx) && (env.IsGCP() || env.IsGCF())
 }
 

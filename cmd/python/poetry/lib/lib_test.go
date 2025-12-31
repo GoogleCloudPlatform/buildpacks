@@ -18,7 +18,6 @@ import (
 	"testing"
 
 	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 )
 
 func TestDetect(t *testing.T) {
@@ -29,24 +28,14 @@ func TestDetect(t *testing.T) {
 		files map[string]string
 	}{
 		{
-			name: "should_opt_in_for_poetry_in_beta",
-			envs: []string{env.ReleaseTrack + "=BETA"},
+			name: "should_opt_in_for_poetry",
 			files: map[string]string{
 				"pyproject.toml": `[tool.poetry]`,
 			},
 			want: 0,
 		},
 		{
-			name: "should_opt_in_for_poetry_in_alpha",
-			envs: []string{env.ReleaseTrack + "=ALPHA"},
-			files: map[string]string{
-				"pyproject.toml": `[tool.poetry]`,
-			},
-			want: 0,
-		},
-		{
-			name: "should_opt_in_for_poetry_lock_in_alpha",
-			envs: []string{env.ReleaseTrack + "=ALPHA"},
+			name: "should_opt_in_for_poetry_lock",
 			files: map[string]string{
 				"pyproject.toml": ``,
 				"poetry.lock":    ``,
@@ -54,24 +43,7 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "should_opt_in_for_poetry_in_ga_for_python_313",
-			envs: []string{env.RuntimeVersion + "=3.13.0"},
-			files: map[string]string{
-				"pyproject.toml": `[tool.poetry]`,
-			},
-			want: 0,
-		},
-		{
-			name: "should_opt_out_for_poetry_in_ga_for_python_312",
-			envs: []string{env.RuntimeVersion + "=3.12.0"},
-			files: map[string]string{
-				"pyproject.toml": `[tool.poetry]`,
-			},
-			want: 100,
-		},
-		{
 			name: "should_opt_out_when_no_pyproject.toml",
-			envs: []string{env.ReleaseTrack + "=ALPHA"},
 			files: map[string]string{
 				"main.py": "",
 			},
@@ -79,7 +51,6 @@ func TestDetect(t *testing.T) {
 		},
 		{
 			name: "should_opt_out_when_pyproject.toml_has_no_poetry_section",
-			envs: []string{env.ReleaseTrack + "=ALPHA"},
 			files: map[string]string{
 				"pyproject.toml": "[tool.other]",
 			},

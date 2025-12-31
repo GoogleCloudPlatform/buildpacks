@@ -44,21 +44,12 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "pyproject.toml_file_when_env_var_is_pip_in_beta",
+			name: "pyproject.toml_file_when_env_var_is_pip",
 			files: map[string]string{
 				"pyproject.toml": `[project]
 name = "my-pip-project"`,
 			},
-			env:  []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=pip", "X_GOOGLE_RELEASE_TRACK=BETA"},
-			want: 0,
-		},
-		{
-			name: "pyproject.toml_file_when_env_var_is_pip_in_ga_for_python_313",
-			files: map[string]string{
-				"pyproject.toml": `[project]
-name = "my-pip-project"`,
-			},
-			env:  []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=pip", "GOOGLE_RUNTIME_VERSION=3.13.0"},
+			env:  []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=pip"},
 			want: 0,
 		},
 	}

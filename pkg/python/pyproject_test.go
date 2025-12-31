@@ -33,7 +33,8 @@ func TestIsPoetryProject(t *testing.T) {
 		{
 			name: "poetry.lock_exists",
 			files: map[string]string{
-				"poetry.lock": "",
+				"poetry.lock":    "",
+				"pyproject.toml": "",
 			},
 			want:    true,
 			wantMsg: "found poetry.lock",
@@ -459,40 +460,15 @@ func TestIsPipPyproject(t *testing.T) {
 		want  bool
 	}{
 		{
-			name: "pip_pyproject_is_enabled_on_gcp_in_beta",
+			name: "pip_pyproject_is_enabled_on_gcp",
 			files: map[string]string{
 				"pyproject.toml": "[project]",
 			},
 			env: map[string]string{
 				env.PythonPackageManager:  "pip",
-				env.ReleaseTrack:          "BETA",
 				env.XGoogleTargetPlatform: "gcp",
 			},
 			want: true,
-		},
-		{
-			name: "pip_pyproject_is_enabled_on_gcp_in_ga_for_python_313",
-			files: map[string]string{
-				"pyproject.toml": "[project]",
-			},
-			env: map[string]string{
-				env.PythonPackageManager:  "pip",
-				env.RuntimeVersion:        "3.13.0",
-				env.XGoogleTargetPlatform: "gcp",
-			},
-			want: true,
-		},
-		{
-			name: "pip_pyproject_is_disabled_on_gcp_in_ga_for_python_312",
-			files: map[string]string{
-				"pyproject.toml": "[project]",
-			},
-			env: map[string]string{
-				env.PythonPackageManager:  "pip",
-				env.RuntimeVersion:        "3.12.0",
-				env.XGoogleTargetPlatform: "gcp",
-			},
-			want: false,
 		},
 		{
 			name: "disabled_when_requirements_txt_exists",
@@ -624,14 +600,14 @@ func TestIsPyprojectEnabled(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "disabled_on_GA_track_for_python_312",
+			name: "enabled_on_GA_track_for_python_312",
 			files: map[string]string{
 				"pyproject.toml": "[project]",
 			},
 			envs: map[string]string{
 				"GOOGLE_RUNTIME_VERSION": "3.12.5",
 			},
-			want: false,
+			want: true,
 		},
 
 		{

@@ -39,9 +39,6 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return gcp.OptOut(message), err
 	}
 	if isUVPyproject {
-		if !python.IsPyprojectEnabled(ctx) {
-			return gcp.OptOut("Python UV Buildpack for pyproject.toml is not supported in the current release track."), nil
-		}
 		return gcp.OptIn(message), nil
 	}
 

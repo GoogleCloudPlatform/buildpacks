@@ -22,8 +22,5 @@ go_test(
     srcs = ["lib_test.go"],
     embed = [":lib"],
     rundir = ".",
-    deps = [
-        "//internal/buildpacktest",
-        "//pkg/env",
-    ],
+    deps = ["//internal/buildpacktest"],
 )
