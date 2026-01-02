@@ -18,6 +18,7 @@ go_binary(
     deps = [
         "//cmd/dotnet/appengine/lib",
         "//cmd/dotnet/appengine_main/lib",
+        "//cmd/dotnet/flex/lib",
         "//cmd/dotnet/functions_framework/lib",
         "//cmd/dotnet/publish/lib",
         "//cmd/dotnet/runtime/lib",

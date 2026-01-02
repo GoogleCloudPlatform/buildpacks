@@ -10,6 +10,7 @@ import (
 	// Buildpack libraries
 	dotnetappengine "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/appengine/lib"
 	dotnetappenginemain "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/appengine_main/lib"
+	dotnetflex "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/flex/lib"
 	dotnetfunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/functions_framework/lib"
 	dotnetpublish "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/publish/lib"
 	dotnetruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/runtime/lib"
@@ -33,6 +34,10 @@ func init() {
 	buildpacks["google.dotnet.appengine-main"] = gcp.BuildpackFuncs{
 		Detect: dotnetappenginemain.DetectFn,
 		Build:  dotnetappenginemain.BuildFn,
+	}
+	buildpacks["google.dotnet.flex"] = gcp.BuildpackFuncs{
+		Detect: dotnetflex.DetectFn,
+		Build:  dotnetflex.BuildFn,
 	}
 	buildpacks["google.dotnet.runtime"] = gcp.BuildpackFuncs{
 		Detect: dotnetruntime.DetectFn,
