@@ -30,6 +30,7 @@ const (
 	npm  = "google.nodejs.npm"
 	pnpm = "google.nodejs.pnpm"
 	yarn = "google.nodejs.yarn"
+	bun  = "google.nodejs.bun"
 )
 
 // Setup node_modules directory for testing
@@ -116,6 +117,16 @@ func TestAcceptance(t *testing.T) {
 			Labels: map[string]string{
 				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.4.5\",\"injected\":true}",
 			},
+		},
+		{
+			Name:       "function_with_dependencies_bun",
+			App:        "with_dependencies_bun",
+			MustUse:    []string{bun},
+			MustNotUse: []string{npm},
+			Labels: map[string]string{
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.4.5\",\"injected\":true}",
+			},
+			Env: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
 		},
 		{
 			Name:       "function with local dependency",

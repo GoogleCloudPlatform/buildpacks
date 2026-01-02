@@ -1,0 +1,14 @@
+{
+  "name": "node-helloworld",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node ./index.js"
+  },
+  "engines": {
+    "bun": "1.1.0"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

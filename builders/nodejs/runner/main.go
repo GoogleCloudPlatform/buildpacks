@@ -9,17 +9,18 @@ import (
 
 	// Buildpack libraries
 	nodejsappengine "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/appengine/lib"
+	nodejsbun "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/bun/lib"
 	nodejsfirebaseangular "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebaseangular/lib"
 	nodejsfirebasebundle "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebasebundle/lib"
-	nodejfirebasenextjs "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebasenextjs/lib"
-	nodejfirebasenx "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebasenx/lib"
+	nodejsfirebasenextjs "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebasenextjs/lib"
+	nodejsfirebasenx "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebasenx/lib"
 	nodejsfunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/functions_framework/lib"
 	nodejslegacyworker "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/legacy_worker/lib"
-	nodejnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/npm/lib"
-	nodejppnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/pnpm/lib"
-	nodejruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/runtime/lib"
+	nodejsnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/npm/lib"
+	nodejspnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/pnpm/lib"
+	nodejsruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/runtime/lib"
 	nodejsturborepo "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/turborepo/lib"
-	nodejyarn "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/yarn/lib"
+	nodejsyarn "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/yarn/lib"
 )
 
 var (
@@ -45,12 +46,12 @@ func init() {
 		Build:  nodejsfirebasebundle.BuildFn,
 	}
 	buildpacks["google.nodejs.firebasenextjs"] = gcp.BuildpackFuncs{
-		Detect: nodejfirebasenextjs.DetectFn,
-		Build:  nodejfirebasenextjs.BuildFn,
+		Detect: nodejsfirebasenextjs.DetectFn,
+		Build:  nodejsfirebasenextjs.BuildFn,
 	}
 	buildpacks["google.nodejs.firebasenx"] = gcp.BuildpackFuncs{
-		Detect: nodejfirebasenx.DetectFn,
-		Build:  nodejfirebasenx.BuildFn,
+		Detect: nodejsfirebasenx.DetectFn,
+		Build:  nodejsfirebasenx.BuildFn,
 	}
 	buildpacks["google.nodejs.functions-framework"] = gcp.BuildpackFuncs{
 		Detect: nodejsfunctionsframework.DetectFn,
@@ -61,24 +62,28 @@ func init() {
 		Build:  nodejslegacyworker.BuildFn,
 	}
 	buildpacks["google.nodejs.npm"] = gcp.BuildpackFuncs{
-		Detect: nodejnpm.DetectFn,
-		Build:  nodejnpm.BuildFn,
+		Detect: nodejsnpm.DetectFn,
+		Build:  nodejsnpm.BuildFn,
 	}
 	buildpacks["google.nodejs.pnpm"] = gcp.BuildpackFuncs{
-		Detect: nodejppnpm.DetectFn,
-		Build:  nodejppnpm.BuildFn,
+		Detect: nodejspnpm.DetectFn,
+		Build:  nodejspnpm.BuildFn,
 	}
 	buildpacks["google.nodejs.runtime"] = gcp.BuildpackFuncs{
-		Detect: nodejruntime.DetectFn,
-		Build:  nodejruntime.BuildFn,
+		Detect: nodejsruntime.DetectFn,
+		Build:  nodejsruntime.BuildFn,
 	}
 	buildpacks["google.nodejs.turborepo"] = gcp.BuildpackFuncs{
 		Detect: nodejsturborepo.DetectFn,
 		Build:  nodejsturborepo.BuildFn,
 	}
 	buildpacks["google.nodejs.yarn"] = gcp.BuildpackFuncs{
-		Detect: nodejyarn.DetectFn,
-		Build:  nodejyarn.BuildFn,
+		Detect: nodejsyarn.DetectFn,
+		Build:  nodejsyarn.BuildFn,
+	}
+	buildpacks["google.nodejs.bun"] = gcp.BuildpackFuncs{
+		Detect: nodejsbun.DetectFn,
+		Build:  nodejsbun.BuildFn,
 	}
 }
 

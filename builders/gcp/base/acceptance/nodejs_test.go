@@ -130,6 +130,34 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			// nodejs@8 is not available on Ubuntu 22.04
 			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22", "google.24.full", "google.24"},
 		},
+		{
+			Name:                       "bun_lock",
+			App:                        "bun_lock",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "bun_engine",
+			App:                        "bun_engine",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA", "GOOGLE_PACKAGE_MANAGER=bun"},
+			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "bun_lockb",
+			App:                        "bun_lockb",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "bun_no_lock",
+			App:                        "simple_no_lock",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA", "GOOGLE_PACKAGE_MANAGER=bun"},
+			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc

@@ -41,6 +41,7 @@ go_binary(
         "//cmd/java/native_image/lib",
         "//cmd/java/runtime/lib",
         "//cmd/java/spring_boot/lib",
+        "//cmd/nodejs/bun/lib",
         "//cmd/nodejs/functions_framework/lib",
         "//cmd/nodejs/npm/lib",
         "//cmd/nodejs/pnpm/lib",

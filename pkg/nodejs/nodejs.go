@@ -63,7 +63,7 @@ var (
 	}
 
 	cachedPackageJSONs        = map[string]*PackageJSON{}
-	possibleLockfileFilenames = []string{"pnpm-lock.yaml", "yarn.lock", "npm-shrinkwrap.json", "package-lock.json"}
+	possibleLockfileFilenames = []string{"pnpm-lock.yaml", "yarn.lock", "npm-shrinkwrap.json", "package-lock.json", "bun.lock", "bun.lockb"}
 	dependencyRegex           = regexp.MustCompile(`\r?\n\r?\n`)
 )
 
@@ -72,6 +72,7 @@ type packageEnginesJSON struct {
 	NPM  string `json:"npm"`
 	Yarn string `json:"yarn"`
 	PNPM string `json:"pnpm"`
+	Bun  string `json:"bun"`
 }
 
 const (
@@ -455,7 +456,7 @@ func Version(deps *NodeDependencies, pkg string) (string, error) {
 }
 
 // parsePackageManager parses the packageManager field and returns the manager name and version.
-// packageManagerField must have this regex (pnpm|yarn)@\d+\.\d+\.\d+(-.+)?, e.g. pnpm@9.0.0.
+// packageManagerField must have this regex (pnpm|yarn|bun)@\d+\.\d+\.\d+(-.+)?, e.g. pnpm@9.0.0.
 func parsePackageManager(packageManagerField string) (string, string, error) {
 	packageManagerSplit := strings.Split(packageManagerField, "@")
 	if len(packageManagerSplit) != 2 {

@@ -33,11 +33,12 @@ import (
 	javanativeimage "github.com/GoogleCloudPlatform/buildpacks/cmd/java/native_image/lib"
 	javaruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/java/runtime/lib"
 	javaspringboot "github.com/GoogleCloudPlatform/buildpacks/cmd/java/spring_boot/lib"
+	nodejsbun "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/bun/lib"
 	nodejsfunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/functions_framework/lib"
-	nodejnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/npm/lib"
-	nodejppnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/pnpm/lib"
-	nodejruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/runtime/lib"
-	nodejyarn "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/yarn/lib"
+	nodejsnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/npm/lib"
+	nodejspnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/pnpm/lib"
+	nodejsruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/runtime/lib"
+	nodejsyarn "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/yarn/lib"
 	phpcomposer "github.com/GoogleCloudPlatform/buildpacks/cmd/php/composer/lib"
 	phpcomposergcpbuild "github.com/GoogleCloudPlatform/buildpacks/cmd/php/composer_gcp_build/lib"
 	phpcomposerinstall "github.com/GoogleCloudPlatform/buildpacks/cmd/php/composer_install/lib"
@@ -175,20 +176,24 @@ func init() {
 		Build:  nodejsfunctionsframework.BuildFn,
 	}
 	buildpacks["google.nodejs.npm"] = gcp.BuildpackFuncs{
-		Detect: nodejnpm.DetectFn,
-		Build:  nodejnpm.BuildFn,
+		Detect: nodejsnpm.DetectFn,
+		Build:  nodejsnpm.BuildFn,
 	}
 	buildpacks["google.nodejs.pnpm"] = gcp.BuildpackFuncs{
-		Detect: nodejppnpm.DetectFn,
-		Build:  nodejppnpm.BuildFn,
+		Detect: nodejspnpm.DetectFn,
+		Build:  nodejspnpm.BuildFn,
 	}
 	buildpacks["google.nodejs.runtime"] = gcp.BuildpackFuncs{
-		Detect: nodejruntime.DetectFn,
-		Build:  nodejruntime.BuildFn,
+		Detect: nodejsruntime.DetectFn,
+		Build:  nodejsruntime.BuildFn,
 	}
 	buildpacks["google.nodejs.yarn"] = gcp.BuildpackFuncs{
-		Detect: nodejyarn.DetectFn,
-		Build:  nodejyarn.BuildFn,
+		Detect: nodejsyarn.DetectFn,
+		Build:  nodejsyarn.BuildFn,
+	}
+	buildpacks["google.nodejs.bun"] = gcp.BuildpackFuncs{
+		Detect: nodejsbun.DetectFn,
+		Build:  nodejsbun.BuildFn,
 	}
 	buildpacks["google.php.composer"] = gcp.BuildpackFuncs{
 		Detect: phpcomposer.DetectFn,

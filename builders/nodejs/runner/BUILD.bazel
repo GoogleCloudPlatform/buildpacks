@@ -17,6 +17,7 @@ go_binary(
     ],
     deps = [
         "//cmd/nodejs/appengine/lib",
+        "//cmd/nodejs/bun/lib",
         "//cmd/nodejs/firebaseangular/lib",
         "//cmd/nodejs/firebasebundle/lib",
         "//cmd/nodejs/firebasenextjs/lib",

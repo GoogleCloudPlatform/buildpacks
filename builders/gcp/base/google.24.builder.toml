@@ -113,6 +113,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   uri = "nodejs/pnpm.tgz"
 
 [[buildpacks]]
+  id = "google.nodejs.bun"
+  uri = "nodejs/bun.tgz"
+
+[[buildpacks]]
   id = "google.nodejs.functions-framework"
   uri = "nodejs/functions_framework.tgz"
 
@@ -735,6 +739,24 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.nodejs.pnpm"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.bun"
 
   [[order.group]]
     id = "google.nodejs.functions-framework"

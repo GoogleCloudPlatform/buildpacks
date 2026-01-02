@@ -6,6 +6,7 @@ go_library(
     name = "nodejs",
     srcs = [
         "angular.go",
+        "bun.go",
         "nextjs.go",
         "nodejs.go",
         "npm.go",
@@ -44,6 +45,7 @@ go_test(
     name = "nodejs_test",
     srcs = [
         "angular_test.go",
+        "bun_test.go",
         "nextjs_test.go",
         "nodejs_test.go",
         "npm_test.go",
