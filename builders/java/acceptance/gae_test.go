@@ -182,7 +182,7 @@ func TestAcceptance(t *testing.T) {
 		},
 		// Spring boot app, spring-boot-buildpack must opt in for all java versions >=Java17
 		{
-			Name:                       "hello_springboot_maven",
+			Name:                       "hello_springboot_maven_for_java_17_and_above",
 			App:                        "springboot-helloworld",
 			VersionInclusionConstraint: ">=17.0.0",
 			MustUse:                    []string{"google.java.spring-boot"},
