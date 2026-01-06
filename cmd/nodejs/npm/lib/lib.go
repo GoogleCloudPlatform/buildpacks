@@ -158,7 +158,7 @@ func BuildFn(ctx *gcp.Context) error {
 		// If there are multiple build scripts to run, run them one-by-one so the logs are
 		// easier to understand.
 		for _, cmd := range buildCmds {
-			execOpts := []gcp.ExecOption{gcp.WithUserAttribution, gcp.WithStderrHead}
+			execOpts := []gcp.ExecOption{gcp.WithUserAttribution}
 			if nodejs.DetectSvelteKitAutoAdapter(pjs) {
 				execOpts = append(execOpts, gcp.WithEnv(nodejs.SvelteAdapterEnv))
 			}
