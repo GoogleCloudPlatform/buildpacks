@@ -329,22 +329,21 @@ func TestBuildFailure(t *testing.T, imageCtx ImageContext, cfg FailureTest) {
 		src = setupSource(t, cfg.Setup, builderName, src, cfg.App)
 	}
 
-	outb, errb, cleanup := buildFailingApp(t, src, image, builderName, runName, env)
+	// combinedb is the combined output of the build i.e. it includes stdout and stderr.
+	combinedb, cleanup := buildFailingApp(t, src, image, builderName, runName, env)
 	defer cleanup()
 
 	r, err := regexp.Compile(cfg.MustMatch)
 	if err != nil {
 		t.Fatalf("regexp %q failed to compile: %v", r, err)
 	}
-	if r.Match(outb) {
-		t.Logf("Expected regexp %q found in stdout.", r)
-	} else if r.Match(errb) {
-		t.Logf("Expected regexp %q found in stderr.", r)
+	if r.Match(combinedb) {
+		t.Logf("Expected regex %q found in combined (stdout + stderr).", r)
 	} else {
-		t.Errorf("Expected regexp %q not found in stdout or stderr:\n\nstdout:\n\n%s\n\nstderr:\n\n%s", r, outb, errb)
+		t.Errorf("Expected regex %q not found in combined (stdout + stderr).\n\n--- COMBINED OUTPUT ---\n%s\n--- END OUTPUT ---", r, combinedb)
 	}
 	expectedLog := "Expected pattern included in error output: true"
-	builderOutput := string(errb)
+	builderOutput := string(combinedb)
 	if !cfg.SkipBuilderOutputMatch && !strings.Contains(builderOutput, expectedLog) {
 		t.Errorf("Expected regexp %q not found in BUILDER_OUTPUT", r)
 		t.Logf("BUILDER_OUTPUT: %v", builderOutput)
@@ -689,15 +688,20 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 
 	outFile, errFile, cleanup := outFiles(t, builderName, "pack", "create-builder")
 	defer cleanup()
-	var outb, errb bytes.Buffer
-	cmd.Stdout = io.MultiWriter(outFile, &outb) // pack emits some errors to stdout.
-	cmd.Stderr = io.MultiWriter(errFile, &errb) // pack emits buildpack output to stderr.
+	// Newer versions of the CNB lifecycle (v0.20.13+) send the stdout and
+	// stderr of the executing command to the same stream (stdout), while
+	// older versions send them to separate streams.
+	var combinedb bytes.Buffer
+	cmd.Stdout = io.MultiWriter(outFile, &combinedb)
+	cmd.Stderr = io.MultiWriter(errFile, &combinedb)
 
 	start := time.Now()
 	t.Logf("Creating builder (logs %s)", filepath.Dir(outFile.Name()))
+
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("Error creating builder: %v, logs:\nstdout: %s\nstderr:%s", err, outb.String(), errb.String())
+		t.Fatalf("Failed to create builder: %s\nerror: %v\noutput:\n%s", cmd.String(), err, combinedb.String())
 	}
+
 	t.Logf("Successfully created builder: %s (in %s)", builderName, time.Since(start))
 
 	imageCtx := ImageContext{
@@ -992,7 +996,7 @@ func buildApp(t *testing.T, srcDir, image, builderName, runName string, env map[
 	}
 
 	start := time.Now()
-	var outb, errb bytes.Buffer
+	var combinedb bytes.Buffer
 
 	for attempt := 1; attempt <= attempts; attempt++ {
 
@@ -1005,20 +1009,23 @@ func buildApp(t *testing.T, srcDir, image, builderName, runName string, env map[
 
 		bcmd := buildCommand(srcDir, image, builderName, runName, env, cache)
 		cmd := exec.Command(bcmd[0], bcmd[1:]...)
-		cmd.Stdout = io.MultiWriter(outFile, &outb) // pack emits detect output to stdout.
-		cmd.Stderr = io.MultiWriter(errFile, &errb) // pack emits build output to stderr.
+
+		// Newer versions of the CNB lifecycle (v0.20.13+) send the stdout and
+		// stderr of the executing command to the same stream (stdout), while
+		// older versions send them to separate streams.
+		cmd.Stdout = io.MultiWriter(outFile, &combinedb)
+		cmd.Stderr = io.MultiWriter(errFile, &combinedb)
 
 		t.Logf("Building application %s (logs %s)", image, filepath.Dir(outFile.Name()))
 		if err := cmd.Run(); err != nil {
 			if attempt < attempts {
-				t.Logf("Error building application %s, attempt %d of %d: %v, logs:\n%s\n%s", image, attempt, attempts, err, outb.String(), errb.String())
-				outb.Reset()
-				errb.Reset()
+				t.Logf("Error building application %s, attempt %d of %d: %v, logs:\n%s", image, attempt, attempts, err, combinedb.String())
+				combinedb.Reset()
 			} else {
-				t.Fatalf("Error building application %s: %v, logs:\n%s\n%s", image, err, outb.String(), errb.String())
+				t.Fatalf("Error building application %s: %v, logs:\n%s", image, err, combinedb.String())
 			}
 		} else {
-			t.Logf("Successfully built application %s: %v, logs:\n%s\n%s", image, err, outb.String(), errb.String())
+			t.Logf("Successfully built application %s: %v, logs:\n%s", image, err, combinedb.String())
 			break
 		}
 	}
@@ -1032,33 +1039,36 @@ func buildApp(t *testing.T, srcDir, image, builderName, runName string, env map[
 	}
 
 	for _, text := range mustOutput {
-		if !strings.Contains(errb.String(), text) {
-			t.Errorf("Build logs must contain %q:\n%s", text, errb.String())
+		if !strings.Contains(combinedb.String(), text) {
+			t.Errorf("Build logs must contain %q:\n%s", text, combinedb.String())
 		}
 	}
 	for _, text := range mustNotOutput {
-		if strings.Contains(errb.String(), text) {
-			t.Errorf("Build logs must not contain %q:\n%s", text, errb.String())
+		if strings.Contains(combinedb.String(), text) {
+			t.Errorf("Build logs must not contain %q:\n%s", text, combinedb.String())
 		}
 	}
 
 	// Scan for incorrect cache hits/misses.
 	if cache {
-		if strings.Contains(errb.String(), cacheMissMessage) {
-			t.Fatalf("FAIL: Cached build had a cache miss:\n%s", errb.String())
+		if strings.Contains(combinedb.String(), cacheMissMessage) {
+			t.Fatalf("FAIL: Cached build had a cache miss:\n%s", combinedb.String())
 		}
 	} else {
-		if strings.Contains(errb.String(), cacheHitMessage) {
-			t.Fatalf("FAIL: Non-cache build had a cache hit:\n%s", errb.String())
+		if strings.Contains(combinedb.String(), cacheHitMessage) {
+			t.Fatalf("FAIL: Non-cache build had a cache hit:\n%s", combinedb.String())
 		}
 	}
 
 	t.Logf("Successfully built application: %s (in %s)", image, time.Since(start))
 }
 
-// buildFailingApp attempts to build an app and ensures that it failues (non-zero exit code).
-// It returns the build's stdout, stderr and a cleanup function.
-func buildFailingApp(t *testing.T, srcDir, image, builderName, runName string, env map[string]string) ([]byte, []byte, func()) {
+// buildFailingApp attempts to build an app and ensures that it fails (non-zero exit code).
+// It returns the interleaved stdout and stderr (combined chronologically) and a cleanup function.
+// Merging these streams ensures that buildpack error messages are captured regardless of whether
+// they are emitted to stdout or stderr, which is required for compatibility Lifecycle versions
+// v0.20.13+.
+func buildFailingApp(t *testing.T, srcDir, image, builderName, runName string, env map[string]string) ([]byte, func()) {
 	t.Helper()
 
 	bcmd := buildCommand(srcDir, image, builderName, runName, env, false)
@@ -1066,9 +1076,12 @@ func buildFailingApp(t *testing.T, srcDir, image, builderName, runName string, e
 
 	outFile, errFile, cleanup := outFiles(t, builderName, "pack-build-failing", image)
 	defer cleanup()
-	var outb, errb bytes.Buffer
-	cmd.Stdout = io.MultiWriter(outFile, &outb)
-	cmd.Stderr = io.MultiWriter(errFile, &errb)
+	var combinedb bytes.Buffer
+	// Newer versions of the CNB lifecycle (v0.20.13+) send the stdout and
+	// stderr of the executing command to the same stream (stdout), while
+	// older versions send them to separate streams.
+	cmd.Stdout = io.MultiWriter(outFile, &combinedb)
+	cmd.Stderr = io.MultiWriter(errFile, &combinedb)
 
 	t.Logf("Building application expected to fail (logs %s)", filepath.Dir(outFile.Name()))
 	if err := cmd.Run(); err == nil {
@@ -1085,7 +1098,7 @@ func buildFailingApp(t *testing.T, srcDir, image, builderName, runName string, e
 		}
 	}
 
-	return outb.Bytes(), errb.Bytes(), func() {
+	return combinedb.Bytes(), func() {
 		cleanUpImage(t, image)
 	}
 }
