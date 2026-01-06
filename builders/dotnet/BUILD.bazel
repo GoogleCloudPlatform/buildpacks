@@ -81,6 +81,7 @@ builder(
     builder_template = ":builder.toml.template",
     buildpacks = BUILDPACKS,
     descriptor = "builder.toml",
+    groups = GROUPS,
     image = "gcp/dotnet-24",
     stack = "google.24.full",
 )
