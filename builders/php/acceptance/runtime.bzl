@@ -12,6 +12,7 @@ gae_runtimes = {
     "php82": "8.2.29",
     "php83": "8.3.27",
     "php84": "8.4.14",
+    "php85": "8.5.0",
 }
 
 gcf_runtimes = {
@@ -20,6 +21,7 @@ gcf_runtimes = {
     "php82": "8.2.29",
     "php83": "8.3.27",
     "php84": "8.4.14",
+    "php85": "8.5.0",
 }
 
 flex_runtimes = {
@@ -28,6 +30,7 @@ flex_runtimes = {
     "php82": "8.2.29",
     "php83": "8.3.27",
     "php84": "8.4.14",
+    "php85": "8.5.0",
 }
 
 version_to_stack = {
@@ -39,4 +42,5 @@ version_to_stack = {
     "php82": "google-22-full",
     "php83": "google-22-full",
     "php84": "google-22-full",
+    "php85": "google-24-full",
 }
