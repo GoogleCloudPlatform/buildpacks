@@ -56,6 +56,7 @@ var locations = []string{
 	"asia-south2",
 	"asia-southeast1",
 	"asia-southeast2",
+	"asia-southeast3",
 	"australia-southeast1",
 	"australia-southeast2",
 	"europe",
