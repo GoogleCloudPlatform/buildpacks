@@ -2,7 +2,7 @@ schemaVersion: '3.0.0'
 
 # Should still be valid even when missing the env section
 runConfig:
-  cpu: 3
+  cpu: 1
   memoryMiB: 1024
   maxInstances: 4
   concurrency: 100

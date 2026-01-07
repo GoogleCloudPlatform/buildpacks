@@ -47,7 +47,7 @@ func TestPublish(t *testing.T) {
 		appHostingYAMLFilePath: appHostingYAMLPath,
 		wantBuildSchema: buildSchema{
 			RunConfig: &apphostingschema.RunConfig{
-				CPU:                proto.Float32(3),
+				CPU:                proto.Float32(1),
 				MemoryMiB:          proto.Int32(1024),
 				Concurrency:        proto.Int32(100),
 				MaxInstances:       proto.Int32(4),

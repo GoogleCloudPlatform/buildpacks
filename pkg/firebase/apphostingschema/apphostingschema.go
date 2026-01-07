@@ -140,32 +140,109 @@ func (rc *RunConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	if err := unmarshal((*plain)(rc)); err != nil {
 		return err
 	}
-
-	// Validation for 'CPU'
-	if rc.CPU != nil && !(1 <= *rc.CPU && *rc.CPU <= 8) {
-		return fmt.Errorf("runConfig.cpu field is not in valid range of [1, 8]")
+	// LINT.IfChange(runconfig_validation)
+	// --- CPU Validation ---
+	// See https://cloud.google.com/run/docs/configuring/cpu for more details.
+	if rc.CPU != nil {
+		cpu := *rc.CPU
+		if !(cpu == 0 || (cpu >= 0.08 && cpu < 1) || cpu == 1 || cpu == 2 || cpu == 4 || cpu == 6 || cpu == 8) {
+			return fmt.Errorf("runConfig.cpu: invalid value %f. Valid values are 0, 0.08 to <1, 1, 2, 4, 6, or 8", cpu)
+		}
+		// Interdependency: CPU vs Concurrency
+		if cpu > 0 && cpu < 1 {
+			if rc.Concurrency == nil || *rc.Concurrency != 1 {
+				// If CPU is fractional, Concurrency must be 1. If Concurrency is not set, it defaults to 80, which is invalid.
+				return fmt.Errorf("runConfig.cpu: maximum concurrency must be set to 1 if CPU is less than 1")
+			}
+		}
 	}
 
-	// Validation for 'MemoryMiB'
-	if rc.MemoryMiB != nil && !(512 <= *rc.MemoryMiB && *rc.MemoryMiB <= 32768) {
-		return fmt.Errorf("runConfig.memory field is not in valid range of [512, 32768]")
+	// --- MemoryMiB Validation ---
+	if rc.MemoryMiB != nil {
+		memoryMiB := *rc.MemoryMiB
+		if !(memoryMiB == 0 || (memoryMiB >= 128 && memoryMiB <= 32768)) {
+			return fmt.Errorf("runConfig.memoryMiB: invalid value %d. Must be 0 or between 128 and 32768", memoryMiB)
+		}
 	}
 
-	// Validation for 'Concurrency'
-	if rc.Concurrency != nil && !(1 <= *rc.Concurrency && *rc.Concurrency <= 1000) {
-		return fmt.Errorf("runConfig.concurrency field is not in valid range of [1, 1000]")
+	// --- Concurrency Validation ---
+	if rc.Concurrency != nil {
+		concurrency := *rc.Concurrency
+		if !(concurrency >= 0 && concurrency <= 1000) {
+			return fmt.Errorf("runConfig.concurrency: invalid value %d. Must be between 0 and 1000", concurrency)
+		}
 	}
 
-	// Validation for 'MaxInstances'
-	if rc.MaxInstances != nil && !(1 <= *rc.MaxInstances && *rc.MaxInstances <= 100) {
-		return fmt.Errorf("runConfig.maxInstances field is not in valid range of [1, 100]")
+	// --- Interdependent CPU and MemoryMiB Validation ---
+	if rc.CPU != nil && rc.MemoryMiB != nil {
+		cpu := *rc.CPU
+		memoryMiB := *rc.MemoryMiB
+		// Check CPU requirements for Memory
+		if memoryMiB >= 24576 && cpu < 8 {
+			return fmt.Errorf("runConfig: A minimum of 8 CPUs is required for memory >= 24576 MiB (24 GiB), got CPU %f", cpu)
+		}
+		if memoryMiB >= 16384 && cpu < 6 {
+			return fmt.Errorf("runConfig: A minimum of 6 CPUs is required for memory >= 16384 MiB (16 GiB), got CPU %f", cpu)
+		}
+		if memoryMiB >= 8192 && cpu < 4 {
+			return fmt.Errorf("runConfig: A minimum of 4 CPUs is required for memory >= 8192 MiB (8 GiB), got CPU %f", cpu)
+		}
+		if memoryMiB >= 4096 && cpu < 2 {
+			return fmt.Errorf("runConfig: A minimum of 2 CPUs is required for memory >= 4096 MiB (4 GiB), got CPU %f", cpu)
+		}
+		if memoryMiB > 1024 && cpu < 1 {
+			return fmt.Errorf("runConfig: A minimum of 1 CPU is required for memory > 1024 MiB (1 GiB), got CPU %f", cpu)
+		}
+		if memoryMiB > 512 && cpu < 0.5 {
+			return fmt.Errorf("runConfig: A minimum of 0.5 CPU is required for memory > 512 MiB, got CPU %f", cpu)
+		}
+
+		if cpu >= 6 && memoryMiB < 4096 {
+			return fmt.Errorf("runConfig: A minimum of 4096 MiB memory is required for 6 CPUs, got %d MiB", memoryMiB)
+		}
+		if cpu >= 4 && memoryMiB < 2048 {
+			return fmt.Errorf("runConfig: A minimum of 2048 MiB memory is required for 4 CPUs, got %d MiB", memoryMiB)
+		}
+	} else if rc.CPU != nil {
+		cpu := *rc.CPU
+		if cpu >= 6 {
+			return fmt.Errorf("runConfig: A minimum of 4096 MiB memory is required for %f CPUs, but memoryMiB is not set", cpu)
+		}
+		if cpu >= 4 {
+			// Implies default memory (512) is too low
+			return fmt.Errorf("runConfig: A minimum of 2048 MiB memory is required for %f CPUs, but memoryMiB is not set", cpu)
+		}
+	} else if rc.MemoryMiB != nil {
+		memoryMiB := *rc.MemoryMiB
+		// Implies default CPU of 1
+		if memoryMiB >= 4096 {
+			return fmt.Errorf("runConfig: A minimum of 2 CPUs is required for memory %d MiB, but CPU is not set", memoryMiB)
+		}
 	}
 
-	// Validation for 'minInstances'
-	if rc.MinInstances != nil && !(0 <= *rc.MinInstances && *rc.MinInstances <= 100) {
-		return fmt.Errorf("runConfig.minInstances field is not in valid range of [1, 100]")
+	// --- MinInstances Validation ---
+	if rc.MinInstances != nil {
+		minInst := *rc.MinInstances
+		if minInst < 0 {
+			return fmt.Errorf("runConfig.minInstances: invalid value %d. Must be >= 0", minInst)
+		}
 	}
 
+	// --- MaxInstances Validation ---
+	if rc.MaxInstances != nil {
+		maxInst := *rc.MaxInstances
+		if maxInst < 0 {
+			return fmt.Errorf("runConfig.maxInstances: invalid value %d. Must be >= 0", maxInst)
+		}
+		// Interdependency: MaxInstances vs MinInstances
+		if rc.MinInstances != nil && maxInst > 0 && *rc.MinInstances > maxInst {
+			return fmt.Errorf("runConfig.minInstances (%d) cannot be greater than runConfig.maxInstances (%d)", *rc.MinInstances, maxInst)
+		}
+	} else if rc.MinInstances != nil && *rc.MinInstances > 100 {
+		return fmt.Errorf("runConfig.minInstances: invalid value %d. Must be <= 100 if maxInstances is not set", *rc.MinInstances)
+	}
+	// LINT.ThenChange(//depot/google3/google/firebase/apphosting/v1main/v1main.proto:runconfig_validation)
+	// --- VpcAccess Validation ---
 	if err := ValidateVpcAccess(rc.VpcAccess); err != nil {
 		return err
 	}
@@ -179,7 +256,8 @@ func ReadAndValidateFromFile(filePath string) (AppHostingSchema, error) {
 	apphostingBuffer, err := os.ReadFile(filePath)
 	if os.IsNotExist(err) {
 		return a, nil
-	} else if err != nil {
+	}
+	if err != nil {
 		return a, fmt.Errorf("reading apphosting config at %v: %w", filePath, err)
 	}
 

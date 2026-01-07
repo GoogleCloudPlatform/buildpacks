@@ -22,7 +22,7 @@ func TestReadAndValidateFromFile(t *testing.T) {
 			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_valid.yaml"),
 			wantAppHostingSchema: AppHostingSchema{
 				RunConfig: RunConfig{
-					CPU:                proto.Float32(3),
+					CPU:                proto.Float32(1),
 					CPUAlwaysAllocated: proto.Bool(true),
 					MemoryMiB:          proto.Int32(1024),
 					Concurrency:        proto.Int32(100),
@@ -62,7 +62,7 @@ func TestReadAndValidateFromFile(t *testing.T) {
 			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_missingenv.yaml"),
 			wantAppHostingSchema: AppHostingSchema{
 				RunConfig: RunConfig{
-					CPU:          proto.Float32(3),
+					CPU:          proto.Float32(1),
 					MemoryMiB:    proto.Int32(1024),
 					Concurrency:  proto.Int32(100),
 					MaxInstances: proto.Int32(4),
@@ -104,27 +104,66 @@ func TestReadAndValidateFromFile(t *testing.T) {
 			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalidrunconfig.yaml"),
 			wantErr:             true,
 		},
+		{
+			desc:                "Valid CPU and Memory (4 CPU, 2048 MiB)",
+			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_valid_cpu_memory.yaml"),
+			wantAppHostingSchema: AppHostingSchema{
+				RunConfig: RunConfig{
+					CPU:       proto.Float32(4),
+					MemoryMiB: proto.Int32(2048),
+				},
+			},
+		},
+		{
+			desc:                "Valid fractional CPU with concurrency 1",
+			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_valid_fractional_cpu.yaml"),
+			wantAppHostingSchema: AppHostingSchema{
+				RunConfig: RunConfig{
+					CPU:         proto.Float32(0.5),
+					MemoryMiB:   proto.Int32(512),
+					Concurrency: proto.Int32(1),
+				},
+			},
+		},
+		{
+			desc:                "Invalid fractional CPU (concurrency not 1)",
+			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_fractional_cpu_concurrency.yaml"),
+			wantErr:             true,
+		},
+		{
+			desc:                "Invalid CPU vs Memory (4 CPU, 1024 MiB)",
+			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_cpu_vs_memory.yaml"),
+			wantErr:             true,
+		},
+		{
+			desc:                "Invalid Memory vs CPU (1 CPU, 4096 MiB)",
+			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_memory_vs_cpu.yaml"),
+			wantErr:             true,
+		},
+		{
+			desc:                "Invalid CPU value (e.g., 3)",
+			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_cpu_value.yaml"),
+			wantErr:             true,
+		},
 	}
 
 	for _, test := range testCases {
-		s, err := ReadAndValidateFromFile(test.inputAppHostingYAML)
+		t.Run(test.desc, func(t *testing.T) {
+			s, err := ReadAndValidateFromFile(test.inputAppHostingYAML)
 
-		// Happy Path
-		if !test.wantErr {
-			if err != nil {
-				t.Errorf("unexpected error for ReadAndValidateFromFile(%q): %v", test.desc, err)
+			if !test.wantErr {
+				if err != nil {
+					t.Errorf("ReadAndValidateFromFile(): unexpected error: %v", err)
+				}
+				if diff := cmp.Diff(test.wantAppHostingSchema, s); diff != "" {
+					t.Errorf("ReadAndValidateFromFile(): unexpected YAML (-want, +got):\n%v", diff)
+				}
+			} else {
+				if err == nil {
+					t.Errorf("ReadAndValidateFromFile(): got %v, want error", s)
+				}
 			}
-
-			if diff := cmp.Diff(test.wantAppHostingSchema, s); diff != "" {
-				t.Errorf("unexpected YAML for test %q, (-want, +got):\n%v", test.desc, diff)
-			}
-
-			// Error Path
-		} else {
-			if err == nil {
-				t.Errorf("ReadAndValidateFromFile(%q) = %v, want error", test.desc, err)
-			}
-		}
+		})
 	}
 }
 
@@ -418,7 +457,7 @@ func TestWriteToFile(t *testing.T) {
 			desc: "Write properly formatted app hosting YAML schema correctly",
 			inputSchema: AppHostingSchema{
 				RunConfig: RunConfig{
-					CPU:       proto.Float32(3),
+					CPU:       proto.Float32(1),
 					MemoryMiB: proto.Int32(1024),
 				},
 				Env: []EnvironmentVariable{
@@ -440,7 +479,7 @@ func TestWriteToFile(t *testing.T) {
 			desc: "Write schema missing Env correctly",
 			inputSchema: AppHostingSchema{
 				RunConfig: RunConfig{
-					CPU:       proto.Float32(3),
+					CPU:       proto.Float32(1),
 					MemoryMiB: proto.Int32(1024),
 				},
 			},
@@ -452,21 +491,23 @@ func TestWriteToFile(t *testing.T) {
 	}
 
 	for i, test := range testCases {
-		outputFilePath := fmt.Sprintf("%s/output%d", testDir, i)
+		t.Run(test.desc, func(t *testing.T) {
+			outputFilePath := fmt.Sprintf("%s/output%d", testDir, i)
 
-		err := test.inputSchema.WriteToFile(outputFilePath)
-		if err != nil {
-			t.Errorf("error in test '%v'. Error was %v", test.desc, err)
-		}
+			err := test.inputSchema.WriteToFile(outputFilePath)
+			if err != nil {
+				t.Errorf("error in test '%v'. Error was %v", test.desc, err)
+			}
 
-		actualSchema, err := ReadAndValidateFromFile(outputFilePath)
-		if err != nil {
-			t.Errorf("error reading in temp file: %v", err)
-		}
+			actualSchema, err := ReadAndValidateFromFile(outputFilePath)
+			if err != nil {
+				t.Errorf("error reading in temp file: %v", err)
+			}
 
-		if diff := cmp.Diff(test.inputSchema, actualSchema); diff != "" {
-			t.Errorf("unexpected schema for test %q, (-want, +got):\n%v", test.desc, diff)
-		}
+			if diff := cmp.Diff(test.inputSchema, actualSchema); diff != "" {
+				t.Errorf("unexpected schema for test %q, (-want, +got):\n%v", test.desc, diff)
+			}
+		})
 	}
 }
 
