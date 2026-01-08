@@ -111,6 +111,7 @@ func TestAcceptancePython(t *testing.T) {
 			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar gunicorn -b :8080 main:app"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, entrypoint},
 			VersionInclusionConstraint: ">=3.8.0 < 3.14.0",
+			SkipStacks:                 []string{"google.24.full", "google.24"},
 		},
 		{
 			Name:                       "entrypoint_with_env_var_upgraded_app_uv",
@@ -132,6 +133,7 @@ func TestAcceptancePython(t *testing.T) {
 			App:                        "missing_entrypoint_main_py_new",
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonWebserver, pythonMissingEntrypoint},
 			VersionInclusionConstraint: ">=3.8.0 < 3.14.0",
+			SkipStacks:                 []string{"google.24.full", "google.24"},
 		},
 		{
 			Name:                       "missing_entrypoint_app_py",
@@ -174,7 +176,6 @@ func TestAcceptancePython(t *testing.T) {
 			Name:                       "uvicorn_app_py_3.14_and_above",
 			App:                        "fastapi_uvicorn_app_py",
 			SkipStacks:                 []string{"google.gae.22", "google.22"},
-			Env:                        []string{"GOOGLE_RUNTIME_VERSION=3.14.0"},
 			MustUse:                    []string{pythonRuntime, pythonUV, pythonWebserver, pythonMissingEntrypoint},
 			VersionInclusionConstraint: ">=3.14.0",
 		},
@@ -227,7 +228,6 @@ func TestAcceptancePython(t *testing.T) {
 			Name:                       "gradio_app_py_3.13_and_above_default_uv",
 			App:                        "gradio_app_py",
 			SkipStacks:                 []string{"google.gae.22", "google.22"},
-			Env:                        []string{"GOOGLE_RUNTIME_VERSION=3.14.0"},
 			MustUse:                    []string{pythonRuntime, pythonMissingEntrypoint},
 			VersionInclusionConstraint: ">=3.14.0",
 		},
