@@ -295,4 +295,4 @@ description = "Unified builder all Python runtimes"
   run-image = "${STACK_RUN_IMAGE}"
 
 [lifecycle]
-  version = "0.20.5"
+  version = "0.20.20"
