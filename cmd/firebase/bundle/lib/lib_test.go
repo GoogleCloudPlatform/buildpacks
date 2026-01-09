@@ -54,6 +54,12 @@ func TestDetect(t *testing.T) {
 			envs:  []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
 			want:  100,
 		},
+		{
+			name:  "firebase_apphosting_generic",
+			files: map[string]string{},
+			envs:  []string{"X_GOOGLE_TARGET_PLATFORM=fah", "GOOGLE_USE_GENERIC_FIREBASEBUNDLE=true"},
+			want:  0,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

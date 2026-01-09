@@ -180,6 +180,9 @@ const (
 	// AllowVulnerableDependencies is an env var used to disable react2shell vulnerability checks.
 	AllowVulnerableDependencies = "GOOGLE_ALLOW_VULNERABLE_DEPENDENCIES"
 
+	// GoogleUseGenericFirebaseBundle enables the generic firebase bundle buildpack.
+	GoogleUseGenericFirebaseBundle = "GOOGLE_USE_GENERIC_FIREBASEBUNDLE"
+
 	// PackageManager is an env var used to specify the package manager for the Build.
 	// Example: `npm`, `bun`.
 	PackageManager = "GOOGLE_PACKAGE_MANAGER"

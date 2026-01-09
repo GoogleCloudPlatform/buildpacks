@@ -28,6 +28,7 @@ import (
 	"unicode"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -46,9 +47,20 @@ const (
 
 // DetectFn detects if it is a firebase apphosting application.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	// This buildpack is being added but not enabled yet. It will eventually replace the existing
-	// firebasebundle buildpack.
-	return gcp.OptOut("This buildpack is not yet enabled."), nil
+	// This buildpack handles some necessary setup for future app hosting processes,
+	// it should always run for any app hosting initial build.
+	if !env.IsFAH() {
+		return gcp.OptOut("not a firebase apphosting application"), nil
+	}
+	// The environment variable is converted to a string "true" not true.
+	useGeneric, err := env.IsPresentAndTrue(env.GoogleUseGenericFirebaseBundle)
+	if err != nil {
+		ctx.Warnf("failed to parse %s: %v", env.GoogleUseGenericFirebaseBundle, err)
+	}
+	if !useGeneric {
+		return gcp.OptOut("not using google.firebase.firebasebundle because GOOGLE_USE_GENERIC_FIREBASEBUNDLE is not true"), nil
+	}
+	return gcp.OptIn("firebase apphosting application"), nil
 }
 
 // BuildFn sets up the output bundle for future steps.

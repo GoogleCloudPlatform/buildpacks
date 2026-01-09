@@ -52,6 +52,14 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !env.IsFAH() {
 		return gcp.OptOut("not a firebase apphosting application"), nil
 	}
+	// The environment variable is converted to a string "true" not true.
+	useGeneric, err := env.IsPresentAndTrue(env.GoogleUseGenericFirebaseBundle)
+	if err != nil {
+		ctx.Warnf("failed to parse %s: %v", env.GoogleUseGenericFirebaseBundle, err)
+	}
+	if useGeneric {
+		return gcp.OptOut("not using google.nodejs.firebasebundle because GOOGLE_USE_GENERIC_FIREBASEBUNDLE is true"), nil
+	}
 	return gcp.OptIn("firebase apphosting application"), nil
 }
 
