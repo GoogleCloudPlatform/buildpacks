@@ -16,6 +16,7 @@ go_binary(
         "//third_party/bazel_platforms/cpu:x86_64",  # TODO: b/419621355: Remove when all platforms are supported.
     ],
     deps = [
+        "//cmd/firebase/bundle/lib",
         "//cmd/nodejs/appengine/lib",
         "//cmd/nodejs/bun/lib",
         "//cmd/nodejs/firebaseangular/lib",

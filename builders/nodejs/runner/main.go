@@ -8,6 +8,7 @@ import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 
 	// Buildpack libraries
+	firebasebundle "github.com/GoogleCloudPlatform/buildpacks/cmd/firebase/bundle/lib"
 	nodejsappengine "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/appengine/lib"
 	nodejsbun "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/bun/lib"
 	nodejsfirebaseangular "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebaseangular/lib"
@@ -44,6 +45,10 @@ func init() {
 	buildpacks["google.nodejs.firebasebundle"] = gcp.BuildpackFuncs{
 		Detect: nodejsfirebasebundle.DetectFn,
 		Build:  nodejsfirebasebundle.BuildFn,
+	}
+	buildpacks["google.firebase.firebasebundle"] = gcp.BuildpackFuncs{
+		Detect: firebasebundle.DetectFn,
+		Build:  firebasebundle.BuildFn,
 	}
 	buildpacks["google.nodejs.firebasenextjs"] = gcp.BuildpackFuncs{
 		Detect: nodejsfirebasenextjs.DetectFn,
