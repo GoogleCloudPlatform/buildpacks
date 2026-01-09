@@ -24,6 +24,7 @@ BUILDPACKS = [
     "//cmd/nodejs/firebasenextjs:firebasenextjs.tgz",
     "//cmd/nodejs/firebaseangular:firebaseangular.tgz",
     "//cmd/nodejs/firebasebundle:firebasebundle.tgz",
+    "//cmd/firebase/bundle:firebasebundle_v2.tgz",
     "//cmd/nodejs/firebasenx:firebasenx.tgz",
     "//cmd/nodejs/turborepo:turborepo.tgz",
 ]
@@ -44,6 +45,7 @@ BUILDPACKS_USING_RUNNER = [
     "//cmd/nodejs/firebasenextjs:firebasenextjs_using_runner.tgz",
     "//cmd/nodejs/firebaseangular:firebaseangular_using_runner.tgz",
     "//cmd/nodejs/firebasebundle:firebasebundle_using_runner.tgz",
+    "//cmd/firebase/bundle:firebasebundle_v2_using_runner.tgz",
     "//cmd/nodejs/firebasenx:firebasenx_using_runner.tgz",
     "//cmd/nodejs/turborepo:turborepo_using_runner.tgz",
 ]
