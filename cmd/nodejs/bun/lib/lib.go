@@ -63,7 +63,7 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	return gcp.OptOut("bun.lockb or bun.lock not found"), nil
 }
 
-// BuildFn installs dependencies using npm.
+// BuildFn installs dependencies using bun package manager.
 func BuildFn(ctx *gcp.Context) error {
 	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
 	if err != nil {
