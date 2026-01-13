@@ -91,7 +91,8 @@ func TestAcceptance(t *testing.T) {
 		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gae")
 
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			acceptance.TestApp(t, imageCtx, tc)
 		})

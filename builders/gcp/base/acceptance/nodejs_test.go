@@ -162,7 +162,8 @@ func TestAcceptanceNodeJs(t *testing.T) {
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			acceptance.TestApp(t, imageCtx, tc)
 		})
@@ -185,7 +186,8 @@ func TestFailuresNodeJs(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})

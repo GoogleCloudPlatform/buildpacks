@@ -183,7 +183,8 @@ func TestAcceptanceJava(t *testing.T) {
 		tc.FlakyBuildAttempts = 3
 
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			acceptance.TestApp(t, imageContext, tc)
 		})

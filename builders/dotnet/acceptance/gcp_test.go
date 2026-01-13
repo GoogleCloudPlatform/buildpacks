@@ -116,7 +116,8 @@ func TestAcceptanceDotNet(t *testing.T) {
 		tc := tc
 		tc.Setup = setupTargetFramework
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
@@ -141,7 +142,8 @@ func TestFailuresDotNet(t *testing.T) {
 		tc := tc
 		tc.Setup = setupTargetFramework
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}

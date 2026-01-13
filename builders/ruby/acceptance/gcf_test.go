@@ -67,7 +67,8 @@ func TestAcceptance(t *testing.T) {
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			tc.Path = "/testFunction"
 
@@ -134,7 +135,8 @@ func TestFailures(t *testing.T) {
 	for _, tc := range acceptance.FilterFailureTests(t, testCases) {
 		tc := tc
 		t.Run(tc.App, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			tc.Env = append(tc.Env,
 				"GOOGLE_FUNCTION_TARGET=testFunction",
