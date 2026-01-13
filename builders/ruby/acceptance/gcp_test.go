@@ -56,31 +56,35 @@ func TestAcceptance(t *testing.T) {
 			VersionInclusionConstraint: "< 3.2",
 		},
 		{
-			Name:            "entrypoint from procfile web",
-			App:             "simple",
-			MustUse:         []string{rubyRuntime, rubyBundle, entrypoint},
-			EnableCacheTest: true,
+			Name:                       "entrypoint from procfile web",
+			App:                        "simple",
+			MustUse:                    []string{rubyRuntime, rubyBundle, entrypoint},
+			EnableCacheTest:            true,
+			VersionInclusionConstraint: "< 4.0.0",
 		},
 		{
-			Name:       "entrypoint from procfile custom",
-			App:        "simple",
-			Path:       "/custom",
-			Entrypoint: "custom", // Must match the non-web process in Procfile.
-			MustUse:    []string{rubyRuntime, rubyBundle, entrypoint},
+			Name:                       "entrypoint from procfile custom",
+			App:                        "simple",
+			Path:                       "/custom",
+			Entrypoint:                 "custom", // Must match the non-web process in Procfile.
+			MustUse:                    []string{rubyRuntime, rubyBundle, entrypoint},
+			VersionInclusionConstraint: "< 4.0.0",
 		},
 		{
-			Name:    "entrypoint from env",
-			App:     "simple",
-			Path:    "/custom",
-			Env:     []string{"GOOGLE_ENTRYPOINT=ruby custom.rb"},
-			MustUse: []string{rubyRuntime, rubyBundle, entrypoint},
+			Name:                       "entrypoint from env",
+			App:                        "simple",
+			Path:                       "/custom",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=ruby custom.rb"},
+			MustUse:                    []string{rubyRuntime, rubyBundle, entrypoint},
+			VersionInclusionConstraint: "< 4.0.0",
 		},
 		{
-			Name:    "entrypoint with env var",
-			App:     "simple",
-			Path:    "/env?want=bar",
-			Env:     []string{"GOOGLE_ENTRYPOINT=FOO=bar ruby main.rb"},
-			MustUse: []string{rubyRuntime, rubyBundle, entrypoint},
+			Name:                       "entrypoint with env var",
+			App:                        "simple",
+			Path:                       "/env?want=bar",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=FOO=bar ruby main.rb"},
+			MustUse:                    []string{rubyRuntime, rubyBundle, entrypoint},
+			VersionInclusionConstraint: "< 4.0.0",
 		},
 		{
 			Name:    "runtime version from env",
@@ -92,11 +96,12 @@ func TestAcceptance(t *testing.T) {
 			VersionInclusionConstraint: "2.7.6",
 		},
 		{
-			Name:            "rails",
-			App:             "rails",
-			Env:             []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
-			MustUse:         []string{rubyRuntime, rubyRails, rubyBundle, entrypoint},
-			EnableCacheTest: true,
+			Name:                       "rails",
+			App:                        "rails",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
+			MustUse:                    []string{rubyRuntime, rubyRails, rubyBundle, entrypoint},
+			EnableCacheTest:            true,
+			VersionInclusionConstraint: "< 4.0.0",
 		},
 		{
 			Name:    "rails minimal",
@@ -104,7 +109,7 @@ func TestAcceptance(t *testing.T) {
 			Env:     []string{"GOOGLE_ENTRYPOINT=ruby bin/rails server -b 0.0.0.0 -p $PORT"},
 			MustUse: []string{rubyRuntime, rubyRails, rubyBundle, entrypoint},
 			// This test is dependent on 'nokogiri-1.18.7' which requires ruby version >= 3.1.0
-			VersionInclusionConstraint: ">= 3.1.0",
+			VersionInclusionConstraint: ">= 3.1.0 < 4.0.0",
 		},
 		{
 			Name:                       "rails precompiled",
@@ -112,13 +117,14 @@ func TestAcceptance(t *testing.T) {
 			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 			MustUse:                    []string{rubyRuntime, rubyBundle, entrypoint},
 			MustNotUse:                 []string{rubyRails},
-			VersionInclusionConstraint: ">= 2.6.0",
+			VersionInclusionConstraint: ">= 2.6.0 < 4.0.0",
 		},
 		{
-			Name:            "Ruby native extensions",
-			App:             "native_extensions",
-			MustUse:         []string{rubyRuntime, rubyBundle, entrypoint},
-			EnableCacheTest: false,
+			Name:                       "Ruby native extensions",
+			App:                        "native_extensions",
+			MustUse:                    []string{rubyRuntime, rubyBundle, entrypoint},
+			EnableCacheTest:            false,
+			VersionInclusionConstraint: "< 4.0.0",
 		},
 	}
 
@@ -139,15 +145,17 @@ func TestFailures(t *testing.T) {
 
 	testCases := []acceptance.FailureTest{
 		{
-			Name:      "bad runtime version",
-			App:       "simple",
-			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS", "GOOGLE_ENTRYPOINT=ruby main.rb"},
-			MustMatch: "invalid Ruby Runtime version specified",
+			Name:                       "bad runtime version",
+			App:                        "simple",
+			Env:                        []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS", "GOOGLE_ENTRYPOINT=ruby main.rb"},
+			MustMatch:                  "invalid Ruby Runtime version specified",
+			VersionInclusionConstraint: "< 4.0.0",
 		},
 		{
-			Name:      "missing entrypoint",
-			App:       "missing_entrypoint",
-			MustMatch: `for Ruby, an entrypoint must be manually set, either with "GOOGLE_ENTRYPOINT" env var or by creating a "Procfile" file`,
+			Name:                       "missing entrypoint",
+			App:                        "missing_entrypoint",
+			MustMatch:                  `for Ruby, an entrypoint must be manually set, either with "GOOGLE_ENTRYPOINT" env var or by creating a "Procfile" file`,
+			VersionInclusionConstraint: "< 4.0.0",
 		},
 	}
 
