@@ -329,4 +329,4 @@ description = "Builder for the Java runtime"
   run-image = "${STACK_RUN_IMAGE}"
 
 [lifecycle]
-  version = "0.20.20"
+  version = "0.20.5"
