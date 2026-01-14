@@ -6,6 +6,7 @@ GEM
       ruby2_keywords (~> 0.0.1)
     mutex_m (0.3.0)
     nio4r (2.7.4)
+    ostruct (0.6.3)
     puma (5.6.9)
       nio4r (~> 2.0)
     rack (2.2.4)
@@ -25,6 +26,7 @@ PLATFORMS
 DEPENDENCIES
   base64 (~> 0.2)
   mutex_m (~> 0.3.0)
+  ostruct
   puma (~> 5.6)
   sinatra (~> 2.2)
 

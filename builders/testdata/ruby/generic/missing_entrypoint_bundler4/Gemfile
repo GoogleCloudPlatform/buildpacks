@@ -13,8 +13,7 @@
 # limitations under the License.
 
 source "https://rubygems.org"
-gem "sinatra", "~> 2.2"
-gem "puma", "~> 5.6"
-gem "base64", "~> 0.2"
-gem 'mutex_m', "~> 0.3.0"
+
+gem "sinatra", "~> 2.1"
+gem "webrick", "~> 1.7"
 gem "ostruct", "~> 0.6"

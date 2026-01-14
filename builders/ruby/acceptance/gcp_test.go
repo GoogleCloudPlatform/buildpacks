@@ -115,10 +115,18 @@ func TestAcceptance(t *testing.T) {
 			VersionInclusionConstraint: ">= 2.6.0",
 		},
 		{
-			Name:            "Ruby native extensions",
-			App:             "native_extensions",
-			MustUse:         []string{rubyRuntime, rubyBundle, entrypoint},
-			EnableCacheTest: false,
+			Name:                       "Ruby native extensions",
+			App:                        "native_extensions",
+			MustUse:                    []string{rubyRuntime, rubyBundle, entrypoint},
+			EnableCacheTest:            false,
+			VersionInclusionConstraint: "< 4.0.0",
+		},
+		{
+			Name:                       "ruby_native_extensions_bundler4",
+			App:                        "native_extensions_bundler4",
+			MustUse:                    []string{rubyRuntime, rubyBundle, entrypoint},
+			EnableCacheTest:            false,
+			VersionInclusionConstraint: ">= 4.0.0",
 		},
 	}
 
@@ -145,9 +153,16 @@ func TestFailures(t *testing.T) {
 			MustMatch: "invalid Ruby Runtime version specified",
 		},
 		{
-			Name:      "missing entrypoint",
-			App:       "missing_entrypoint",
-			MustMatch: `for Ruby, an entrypoint must be manually set, either with "GOOGLE_ENTRYPOINT" env var or by creating a "Procfile" file`,
+			Name:                       "missing entrypoint",
+			App:                        "missing_entrypoint",
+			MustMatch:                  `for Ruby, an entrypoint must be manually set, either with "GOOGLE_ENTRYPOINT" env var or by creating a "Procfile" file`,
+			VersionInclusionConstraint: "< 4.0.0",
+		},
+		{
+			Name:                       "missing_entrypoint_bundler4",
+			App:                        "missing_entrypoint_bundler4",
+			MustMatch:                  `for Ruby, an entrypoint must be manually set, either with "GOOGLE_ENTRYPOINT" env var or by creating a "Procfile" file`,
+			VersionInclusionConstraint: ">= 4.0.0",
 		},
 	}
 
