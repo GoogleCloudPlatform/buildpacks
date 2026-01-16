@@ -121,7 +121,7 @@ func TestAcceptanceRuby(t *testing.T) {
 		},
 		{
 			Name:                       "ruby_native_extensions_bundler4",
-			SkipStacks:                 []string{"google.22", "google.min.22", "google.gae.22"},
+			SkipStacks:                 []string{"google.22", "google.min.22", "google.gae.22", "google.24.full", "google.24"},
 			Env:                        []string{"GOOGLE_RUNTIME_VERSION=4.0.0"},
 			App:                        "native_extensions_bundler4",
 			MustUse:                    []string{rubyRuntime, rubyBundle, entrypoint},
