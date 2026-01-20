@@ -32,7 +32,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/tpc"
 	"github.com/buildpacks/libcnb/v2"
 )
 
@@ -279,7 +278,8 @@ func TestInstallSource(t *testing.T) {
 		responseFile               string
 		runtimeImageRegion         string
 		buildEnv                   string
-		buildUniverse              string
+		tpcTarballProject          string
+		tpcHostname                string
 		wantFile                   string
 		wantVersion                string
 		wantError                  bool
@@ -423,7 +423,8 @@ func TestInstallSource(t *testing.T) {
 			runtime:            Nodejs,
 			version:            "16.20.0",
 			runtimeImageRegion: "u-us-prp1",
-			buildUniverse:      "prp",
+			tpcTarballProject:  "tpczero-system/serverless-runtimes-tpc",
+			tpcHostname:        "docker.pkg-tpczero.goog",
 			wantAR:             true,
 		},
 		{
@@ -431,7 +432,8 @@ func TestInstallSource(t *testing.T) {
 			runtime:            Nodejs,
 			version:            "16.20.0",
 			runtimeImageRegion: "u-germany-northeast1",
-			buildUniverse:      "tsp",
+			tpcTarballProject:  "eu0-system/serverless-runtimes-tpc",
+			tpcHostname:        "docker.pkg-eu0.goog",
 			wantAR:             true,
 		},
 		{
@@ -439,7 +441,8 @@ func TestInstallSource(t *testing.T) {
 			runtime:            Nodejs,
 			version:            "16.20.0",
 			runtimeImageRegion: "u-germany-northeast1q",
-			buildUniverse:      "tsq",
+			tpcTarballProject:  "tpcone-system/serverless-runtimes-tpc",
+			tpcHostname:        "docker.pkg-tpcone.goog",
 			wantAR:             true,
 		},
 	}
@@ -473,20 +476,12 @@ func TestInstallSource(t *testing.T) {
 
 			fetch.ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error {
 				fetchedFromAR = true
-				if tc.wantAR && tc.buildUniverse != "" && tc.buildUniverse != "gdu" {
-					hostname, present := tpc.ARRegionToHostname(tc.runtimeImageRegion)
-					if !present {
-						t.Fatalf("For TPC, invalid region %q specified", tc.runtimeImageRegion)
+				if tc.wantAR && tc.tpcTarballProject != "" {
+					if !strings.Contains(url, tc.tpcHostname) {
+						t.Errorf("For TPC, fetch.ARImage URL %q does not contain expected hostname %q", url, tc.tpcHostname)
 					}
-					if !strings.Contains(url, hostname) {
-						t.Errorf("For TPC, fetch.ARImage URL %q does not contain expected hostname %q", url, hostname)
-					}
-					project, present := tpc.UniverseToProject(tc.buildUniverse)
-					if !present {
-						t.Fatalf("For TPC, invalid universe %q specified", tc.buildUniverse)
-					}
-					if !strings.Contains(url, project) {
-						t.Errorf("For TPC, fetch.ARImage URL %q does not contain expected project %q", url, project)
+					if !strings.Contains(url, tc.tpcTarballProject) {
+						t.Errorf("For TPC, fetch.ARImage URL %q does not contain expected project %q", url, tc.tpcTarballProject)
 					}
 				}
 				return nil
@@ -519,8 +514,11 @@ func TestInstallSource(t *testing.T) {
 			if tc.buildEnv != "" {
 				t.Setenv(env.BuildEnv, tc.buildEnv)
 			}
-			if tc.buildUniverse != "" {
-				t.Setenv(env.BuildUniverse, tc.buildUniverse)
+			if tc.tpcTarballProject != "" {
+				t.Setenv(env.TPCTarballProject, tc.tpcTarballProject)
+			}
+			if tc.tpcHostname != "" {
+				t.Setenv(env.TPCHostname, tc.tpcHostname)
 			}
 			_, err := InstallTarballIfNotCached(ctx, tc.runtime, tc.version, layer)
 			if tc.wantError == (err == nil) {
@@ -723,60 +721,54 @@ func TestGetTarballRegistry(t *testing.T) {
 	testCases := []struct {
 		name                       string
 		buildEnv                   string
-		buildUniverse              string
+		tpcTarballProject          string
 		serverlessRuntimesTarballs string
 		want                       string
 	}{
 		{
-			name:          "dev_env",
-			buildEnv:      "dev",
-			want:          tarballRegistryDev,
-			buildUniverse: "gdu",
+			name:     "dev_env",
+			buildEnv: "dev",
+			want:     tarballRegistryDev,
 		},
 		{
-			name:          "qual_env",
-			buildEnv:      "qual",
-			want:          tarballRegistryQual,
-			buildUniverse: "",
+			name:     "qual_env",
+			buildEnv: "qual",
+			want:     tarballRegistryQual,
 		},
 		{
-			name:          "prod_env_without_serverless_runtimes_flag",
-			buildEnv:      "prod",
-			want:          tarballRegistryProdGae,
-			buildUniverse: "gdu",
+			name:     "prod_env_without_serverless_runtimes_flag",
+			buildEnv: "prod",
+			want:     tarballRegistryProdGae,
 		},
 		{
 			name:                       "prod_env_with_serverless_runtimes_flag",
 			buildEnv:                   "prod",
 			serverlessRuntimesTarballs: "true",
 			want:                       tarballRegistryProdServerless,
-			buildUniverse:              "gdu",
 		},
 		{
-			name:          "unspecified_env_defaults_to_prod",
-			want:          tarballRegistryProdGae,
-			buildUniverse: "gdu",
+			name: "unspecified_env_defaults_to_prod",
+			want: tarballRegistryProdGae,
 		},
 		{
 			name:                       "unspecified_env_with_serverless_runtimes_flag",
 			serverlessRuntimesTarballs: "true",
 			want:                       tarballRegistryProdServerless,
-			buildUniverse:              "gdu",
 		},
 		{
-			name:          "prp_universe",
-			buildUniverse: "prp",
-			want:          "tpczero-system/serverless-runtimes-tpc",
+			name:              "prp_universe",
+			tpcTarballProject: "tpczero-system/serverless-runtimes-tpc",
+			want:              "tpczero-system/serverless-runtimes-tpc",
 		},
 		{
-			name:          "tsp_universe",
-			buildUniverse: "tsp",
-			want:          "eu0-system/serverless-runtimes-tpc",
+			name:              "tsp_universe",
+			tpcTarballProject: "eu0-system/serverless-runtimes-tpc",
+			want:              "eu0-system/serverless-runtimes-tpc",
 		},
 		{
-			name:          "tsq_universe",
-			buildUniverse: "tsq",
-			want:          "tpcone-system/serverless-runtimes-tpc",
+			name:              "tsq_universe",
+			tpcTarballProject: "tpcone-system/serverless-runtimes-tpc",
+			want:              "tpcone-system/serverless-runtimes-tpc",
 		},
 	}
 
@@ -785,8 +777,8 @@ func TestGetTarballRegistry(t *testing.T) {
 			if tc.buildEnv != "" {
 				t.Setenv(env.BuildEnv, tc.buildEnv)
 			}
-			if tc.buildUniverse != "" {
-				t.Setenv(env.BuildUniverse, tc.buildUniverse)
+			if tc.tpcTarballProject != "" {
+				t.Setenv(env.TPCTarballProject, tc.tpcTarballProject)
 			}
 			if tc.serverlessRuntimesTarballs != "" {
 				t.Setenv(env.ServerlessRuntimesTarballs, tc.serverlessRuntimesTarballs)
@@ -1072,7 +1064,8 @@ func TestResolveVersionTPC(t *testing.T) {
 		runtime            InstallableRuntime
 		versionConstraint  string
 		runtimeImageRegion string
-		buildUniverse      string
+		tpcTarballProject  string
+		tpcHostname        string
 		arVersions         []string
 		arError            error
 		wantVersion        string
@@ -1083,7 +1076,8 @@ func TestResolveVersionTPC(t *testing.T) {
 			runtime:            Nodejs,
 			versionConstraint:  "18.x.x",
 			runtimeImageRegion: "u-us-prp1",
-			buildUniverse:      "prp",
+			tpcTarballProject:  "tpczero-system/serverless-runtimes-tpc",
+			tpcHostname:        "docker.pkg-tpczero.goog",
 			arVersions:         []string{"18.15.0", "18.16.0"},
 			wantVersion:        "18.16.0",
 		},
@@ -1092,7 +1086,8 @@ func TestResolveVersionTPC(t *testing.T) {
 			runtime:            Nodejs,
 			versionConstraint:  "18.x.x",
 			runtimeImageRegion: "u-germany-northeast1",
-			buildUniverse:      "tsp",
+			tpcTarballProject:  "eu0-system/serverless-runtimes-tpc",
+			tpcHostname:        "docker.pkg-eu0.goog",
 			arVersions:         []string{"18.15.0", "18.16.0"},
 			wantVersion:        "18.16.0",
 		},
@@ -1101,7 +1096,8 @@ func TestResolveVersionTPC(t *testing.T) {
 			runtime:            Nodejs,
 			versionConstraint:  "18.x.x",
 			runtimeImageRegion: "u-germany-northeast1q",
-			buildUniverse:      "tsq",
+			tpcTarballProject:  "tpcone-system/serverless-runtimes-tpc",
+			tpcHostname:        "docker.pkg-tpcone.goog",
 			arVersions:         []string{"18.15.0", "18.16.0"},
 			wantVersion:        "18.16.0",
 		},
@@ -1110,7 +1106,8 @@ func TestResolveVersionTPC(t *testing.T) {
 			runtime:            Nodejs,
 			versionConstraint:  "19.x.x",
 			runtimeImageRegion: "u-us-prp1",
-			buildUniverse:      "prp",
+			tpcTarballProject:  "tpczero-system/serverless-runtimes-tpc",
+			tpcHostname:        "docker.pkg-tpczero.goog",
 			arVersions:         []string{"18.15.0", "18.16.0"},
 			wantErr:            true,
 		},
@@ -1119,16 +1116,18 @@ func TestResolveVersionTPC(t *testing.T) {
 			runtime:            Nodejs,
 			versionConstraint:  "18.x.x",
 			runtimeImageRegion: "u-us-prp1",
-			buildUniverse:      "prp",
+			tpcTarballProject:  "tpczero-system/serverless-runtimes-tpc",
+			tpcHostname:        "docker.pkg-tpczero.goog",
 			arError:            errors.New("AR error"),
 			wantErr:            true,
 		},
 		{
-			name:               "TPC invalid region",
+			name:               "TPC invalid hostname",
 			runtime:            Nodejs,
 			versionConstraint:  "18.x.x",
-			runtimeImageRegion: "invalid-region",
-			buildUniverse:      "prp",
+			runtimeImageRegion: "u-us-prp1",
+			tpcTarballProject:  "tpczero-system/serverless-runtimes-tpc",
+			tpcHostname:        "",
 			wantErr:            true,
 		},
 	}
@@ -1136,7 +1135,12 @@ func TestResolveVersionTPC(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv(env.RuntimeImageRegion, tc.runtimeImageRegion)
-			t.Setenv(env.BuildUniverse, tc.buildUniverse)
+			if tc.tpcTarballProject != "" {
+				t.Setenv(env.TPCTarballProject, tc.tpcTarballProject)
+			}
+			if tc.tpcHostname != "" {
+				t.Setenv(env.TPCHostname, tc.tpcHostname)
+			}
 
 			origARVersions := fetch.ARVersions
 			defer func() {
@@ -1149,14 +1153,14 @@ func TestResolveVersionTPC(t *testing.T) {
 				if fallbackURL != "" {
 					return nil, errors.New("fallbackURL should be empty in fetch.ARVersions calls for TPC")
 				}
-				if hostname, present := tpc.ARRegionToHostname(tc.runtimeImageRegion); present {
-					if !strings.Contains(url, hostname) {
-						t.Errorf("For TPC, fetch.ARVersions URL %q does not contain expected hostname %q", url, hostname)
+				if tc.tpcHostname != "" {
+					if !strings.Contains(url, tc.tpcHostname) {
+						t.Errorf("For TPC, fetch.ARVersions URL %q does not contain expected hostname %q", url, tc.tpcHostname)
 					}
 				}
-				if project, present := tpc.UniverseToProject(tc.buildUniverse); present {
-					if !strings.Contains(url, project) {
-						t.Errorf("For TPC, fetch.ARVersions URL %q does not contain expected project %q", url, project)
+				if tc.tpcTarballProject != "" {
+					if !strings.Contains(url, tc.tpcTarballProject) {
+						t.Errorf("For TPC, fetch.ARVersions URL %q does not contain expected project %q", url, tc.tpcTarballProject)
 					}
 				}
 				return tc.arVersions, tc.arError
@@ -1169,8 +1173,8 @@ func TestResolveVersionTPC(t *testing.T) {
 				if err == nil {
 					t.Errorf("ResolveVersion(%q, %q) succeeded, want error", tc.runtime, tc.versionConstraint)
 				}
-				if tc.runtimeImageRegion == "invalid-region" && arVersionsCalled {
-					t.Errorf("fetch.ARVersions should not be called for invalid region")
+				if tc.tpcHostname == "" && arVersionsCalled {
+					t.Errorf("fetch.ARVersions should not be called for invalid hostname")
 				}
 			} else {
 				if err != nil {

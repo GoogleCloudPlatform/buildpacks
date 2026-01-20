@@ -122,9 +122,9 @@ func OSForStack(ctx *gcp.Context) string {
 // arHostname returns the Artifact Registry hostname for a given region, handling both GDU and TPC.
 func arHostname(ctx *gcp.Context, region string) (string, error) {
 	if tpc.IsTPC() {
-		hostname, present := tpc.ARRegionToHostname(region)
+		hostname, present := tpc.GetHostname()
 		if !present {
-			return "", gcp.InternalErrorf("invalid region %s specified for TPC", region)
+			return "", gcp.InternalErrorf("failed to get hostname for TPC build")
 		}
 		return hostname, nil
 	}
@@ -135,11 +135,8 @@ func arHostname(ctx *gcp.Context, region string) (string, error) {
 func tarballRegistry() string {
 	buildEnv := os.Getenv(env.BuildEnv)
 
-	// If the build universe is set and has a corresponding project, use the corresponding project for Artifact Registry.
-	// Otherwise, use the build environment to determine the project.
-	buildUniverse := os.Getenv(env.BuildUniverse)
-	if project, present := tpc.UniverseToProject(buildUniverse); present {
-		return project
+	if tpcProject, present := tpc.GetTarballProject(); present {
+		return tpcProject
 	}
 
 	switch buildEnv {

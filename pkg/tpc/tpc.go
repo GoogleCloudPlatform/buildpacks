@@ -27,11 +27,8 @@ var (
 
 // IsTPC returns true if the build universe is set and is not GDU.
 func IsTPC() bool {
-	universe := os.Getenv(env.BuildUniverse)
-	if universe == "" || universe == "gdu" {
-		return false
-	}
-	return true
+	_, present := GetTarballProject()
+	return present
 }
 
 // ARRegionToHostname returns the Artifact Registry hostname for a given region in TPC.
@@ -44,4 +41,22 @@ func ARRegionToHostname(region string) (string, bool) {
 func UniverseToProject(universe string) (string, bool) {
 	project, present := universeToProject[universe]
 	return project, present
+}
+
+// GetTarballProject returns the Artifact Registry project for the TPC tarball.
+func GetTarballProject() (string, bool) {
+	project := os.Getenv(env.TPCTarballProject)
+	if project != "" {
+		return project, true
+	}
+	return "", false
+}
+
+// GetHostname returns the hostname for the TPC build.
+func GetHostname() (string, bool) {
+	hostname := os.Getenv(env.TPCHostname)
+	if hostname != "" {
+		return hostname, true
+	}
+	return "", false
 }
