@@ -17,6 +17,7 @@ go_library(
         "ioutil.go",
         "layer.go",
         "os.go",
+        "registerbuildpacks.go",
         "span.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),

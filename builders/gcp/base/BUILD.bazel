@@ -5,7 +5,10 @@ licenses(["notice"])
 package(default_visibility = [
     "//builders/gcp/base/acceptance:__pkg__",
     "//builders/osonly/acceptance:__pkg__",
+    "//maker:__pkg__",
 ])
+
+exports_files(["google.22.builder.toml"])
 
 BUILDPACKS = [
     "//cmd/config/entrypoint:entrypoint.tgz",
