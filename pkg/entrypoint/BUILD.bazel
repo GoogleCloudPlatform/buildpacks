@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+go_test(
+    name = "entrypoint_test",
+    srcs = ["procfile_test.go"],
+    embed = [":entrypoint"],
+    rundir = ".",
+    deps = [
+        "//pkg/gcpbuildpack",
+        "@com_github_google_go-cmp//cmp:go_default_library",
+    ],
+)
+
+go_library(
+    name = "entrypoint",
+    srcs = ["procfile.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    deps = ["//pkg/gcpbuildpack"],
+)

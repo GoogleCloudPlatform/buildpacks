@@ -12,6 +12,7 @@ go_library(
     deps = [
         "//pkg/appengine",
         "//pkg/appyaml",
+        "//pkg/entrypoint",
         "//pkg/env",
         "//pkg/gcpbuildpack",
     ],
