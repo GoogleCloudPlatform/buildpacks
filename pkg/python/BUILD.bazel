@@ -5,24 +5,40 @@ licenses(["notice"])
 go_library(
     name = "python",
     srcs = [
+        "dependencies.go",
+        "pyproject.go",
         "python.go",
+        "requirements.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = ["//cmd/python:__subpackages__"],
     deps = [
         "//pkg/ar",
+        "//pkg/buildererror",
         "//pkg/buildermetrics",
         "//pkg/cache",
         "//pkg/env",
         "//pkg/gcpbuildpack",
+        "//pkg/runtime",
         "@com_github_buildpacks_libcnb_v2//:go_default_library",
+        "@com_github_burntsushi_toml//:go_default_library",
+        "@com_github_masterminds_semver//:go_default_library",
     ],
 )
 
 go_test(
     name = "python_test",
-    srcs = ["python_test.go"],
+    srcs = [
+        "dependencies_test.go",
+        "pyproject_test.go",
+        "python_test.go",
+        "requirements_test.go",
+    ],
     embed = [":python"],
     rundir = ".",
-    deps = ["//pkg/gcpbuildpack"],
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
+    ],
 )

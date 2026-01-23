@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,43 +17,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/dart/pub/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
-const (
-	pubLayer    = "pub"
-	pubCacheEnv = "PUB_CACHE"
-)
-
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	pubspecExists, err := ctx.FileExists("pubspec.yaml")
-	if err != nil {
-		return nil, err
-	}
-	if !pubspecExists {
-		return gcp.OptOutFileNotFound("pubspec.yaml"), nil
-	}
-	return gcp.OptInFileFound("pubspec.yaml"), nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	ml, err := ctx.Layer(pubLayer, gcp.BuildLayer, gcp.CacheLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", pubLayer, err)
-	}
-	ml.BuildEnvironment.Override(pubCacheEnv, ml.Path)
-	if err := os.Setenv(pubCacheEnv, ml.Path); err != nil {
-		return fmt.Errorf("setting env %s=%s: %w", pubCacheEnv, pubLayer, err)
-	}
-	if _, err := ctx.Exec([]string{"dart", "pub", "get"}, gcp.WithUserAttribution); err != nil {
-		return err
-	}
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

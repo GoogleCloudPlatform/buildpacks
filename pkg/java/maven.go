@@ -22,16 +22,18 @@ import (
 
 // MavenProject is the root struct that contains the unmarshalled pom.xml.
 type MavenProject struct {
-	Plugins    []MavenPlugin  `xml:"build>plugins>plugin"`
-	Profiles   []MavenProfile `xml:"profiles>profile"`
-	ArtifactID string         `xml:"artifactId"`
-	Version    string         `xml:"version"`
+	Plugins      []MavenPlugin     `xml:"build>plugins>plugin"`
+	Profiles     []MavenProfile    `xml:"profiles>profile"`
+	ArtifactID   string            `xml:"artifactId"`
+	Version      string            `xml:"version"`
+	Dependencies []MavenDependency `xml:"dependencies>dependency"`
 }
 
 // MavenProfile describes a profile defined in the pom.xml.
 type MavenProfile struct {
-	ID      string        `xml:"id"`
-	Plugins []MavenPlugin `xml:"build>plugins>plugin"`
+	ID           string            `xml:"id"`
+	Plugins      []MavenPlugin     `xml:"build>plugins>plugin"`
+	Dependencies []MavenDependency `xml:"dependencies>dependency"`
 }
 
 // MavenPlugin describes plugins defined in the pom.xml.
@@ -39,6 +41,12 @@ type MavenPlugin struct {
 	GroupID       string                   `xml:"groupId"`
 	ArtifactID    string                   `xml:"artifactId"`
 	Configuration MavenPluginConfiguration `xml:"configuration"`
+}
+
+// MavenDependency describes a dependency in the pom.xml.
+type MavenDependency struct {
+	GroupID    string `xml:"groupId"`
+	ArtifactID string `xml:"artifactId"`
 }
 
 // MavenPluginConfiguration describes plugin settings that are parsed from the pom.xml.

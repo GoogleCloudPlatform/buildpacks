@@ -1,7 +1,7 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Go gomod Buildpack
-load("//tools:defs.bzl", "buildpack")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -10,6 +10,16 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "go",
+    version = "0.9.0",
+    visibility = [
+        "//builders:go_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "gomod_using_runner",
+    buildpack_id = "google.go.gomod",
     prefix = "go",
     version = "0.9.0",
     visibility = [
@@ -26,16 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
+        "//cmd/go/gomod/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/golang",
     ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = ["//internal/buildpacktest"],
 )

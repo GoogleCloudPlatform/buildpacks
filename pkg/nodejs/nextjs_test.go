@@ -18,37 +18,37 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/google/go-cmp/cmp"
 	"github.com/buildpacks/libcnb/v2"
+)
+
+const (
+	mockLatestNextjsAdapterVersion = "1.1.1"
 )
 
 func TestInstallNextJsBuildAdaptor(t *testing.T) {
 	testCases := []struct {
-		name          string
-		nextjsVersion string
-		layerMetadata map[string]any
-		mocks         []*mockprocess.Mock
+		name                  string
+		layerMetadata         map[string]any
+		mocks                 []*mockprocess.Mock
+		expectedLayerMetadata map[string]any
 	}{
 		{
-			name:          "download pinned adapter",
-			nextjsVersion: "13.0.0",
+			name:          "adapter download is skipped if version is cached",
+			layerMetadata: map[string]any{"version": mockLatestNextjsAdapterVersion},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@`+PinnedNextjsAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New("npm view @apphosting/adapter-nextjs version", mockprocess.WithStdout(mockLatestNextjsAdapterVersion)),
 			},
-			layerMetadata: map[string]any{},
+			expectedLayerMetadata: map[string]any{"version": mockLatestNextjsAdapterVersion},
 		},
 		{
-			name:          "download invalid adaptor falls back to latest",
-			nextjsVersion: "15.0.0",
+			name: "download latest adapter version",
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@15.0`, mockprocess.WithStderr("installed adapter failed")),
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@latest`, mockprocess.WithStderr("installed adapter")),
+				mockprocess.New("npm view @apphosting/adapter-nextjs version", mockprocess.WithStdout(mockLatestNextjsAdapterVersion)),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@`+mockLatestNextjsAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
-			layerMetadata: map[string]any{},
-		},
-		{
-			name:          "download adaptor not needed since it is cached",
-			nextjsVersion: "13.0.0",
-			layerMetadata: map[string]any{"version": PinnedNextjsAdapterVersion},
+			layerMetadata:         map[string]any{},
+			expectedLayerMetadata: map[string]any{"version": mockLatestNextjsAdapterVersion},
 		},
 	}
 
@@ -60,37 +60,11 @@ func TestInstallNextJsBuildAdaptor(t *testing.T) {
 				Path:     t.TempDir(),
 				Metadata: tc.layerMetadata,
 			}
-			err := InstallNextJsBuildAdaptor(ctx, layer, tc.nextjsVersion)
-			if err != nil {
+			if err := InstallNextJsBuildAdapter(ctx, layer); err != nil {
 				t.Fatalf("InstallNextJsBuildAdaptor() got error: %v", err)
 			}
-		})
-	}
-}
-func TestDetectNextjsAdaptorVersion(t *testing.T) {
-	testCases := []struct {
-		name           string
-		version        string
-		expectedOutput string
-		mocks          []*mockprocess.Mock
-	}{
-		{
-			name:           "concrete version",
-			version:        "13.0.0",
-			expectedOutput: PinnedNextjsAdapterVersion,
-		},
-		{
-			name:           "handles prereleases",
-			version:        "13.0.1-canary",
-			expectedOutput: PinnedNextjsAdapterVersion,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			output, _ := detectNextjsAdaptorVersion(tc.version)
-			if output != tc.expectedOutput {
-				t.Fatalf("detectNextjsAdaptorVersion(%s) output: %s doesn't match expected output %s", tc.version, output, tc.expectedOutput)
+			if diff := cmp.Diff(tc.expectedLayerMetadata, layer.Metadata); diff != "" {
+				t.Errorf("InstallNextJsBuildAdaptor() mismatch in metadata (-want +got):\n%s", diff)
 			}
 		})
 	}

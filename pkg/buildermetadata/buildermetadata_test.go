@@ -37,9 +37,16 @@ func TestBuilderMetadataUnmarshalJSON(t *testing.T) {
 		},
 		{
 			name:  "basic metadata",
-			input: []byte(`{"m":{"1":"true","2":"false"}}`),
+			input: []byte(`{"m":{"1":"true","2":"false","3":"angular","4":"17.0.0","5":"@apphosting/adapter-angular","6":"17.2.3","7":"nx"}}`),
 			want: BuilderMetadata{
-				map[MetadataID]MetadataValue{"1": "true", "2": "false"},
+				map[MetadataID]MetadataValue{"1": "true", "2": "false", "3": "angular", "4": "17.0.0", "5": "@apphosting/adapter-angular", "6": "17.2.3", "7": "nx"},
+			},
+		},
+		{
+			name:  "metadata_with_PackageManager_and_ConfigFile",
+			input: []byte(`{"m":{"8":"pip","9":"requirements.txt"}}`),
+			want: BuilderMetadata{
+				map[MetadataID]MetadataValue{"8": "pip", "9": "requirements.txt"},
 			},
 		},
 	}
@@ -72,8 +79,13 @@ func TestBuilderMetadataMarshalJSON(t *testing.T) {
 		},
 		{
 			name:  "basic metadata",
-			input: BuilderMetadata{map[MetadataID]MetadataValue{"1": "true", "2": "false"}},
-			want:  []byte(`{"m":{"1":"true","2":"false"}}`),
+			input: BuilderMetadata{map[MetadataID]MetadataValue{"1": "true", "2": "false", "3": "angular", "4": "17.0.0", "5": "@apphosting/adapter-angular", "6": "17.2.3", "7": "nx"}},
+			want:  []byte(`{"m":{"1":"true","2":"false","3":"angular","4":"17.0.0","5":"@apphosting/adapter-angular","6":"17.2.3","7":"nx"}}`),
+		},
+		{
+			name:  "metadata_with_PackageManager_and_ConfigFile",
+			input: BuilderMetadata{map[MetadataID]MetadataValue{"8": "pip", "9": "requirements.txt"}},
+			want:  []byte(`{"m":{"8":"pip","9":"requirements.txt"}}`),
 		},
 	}
 

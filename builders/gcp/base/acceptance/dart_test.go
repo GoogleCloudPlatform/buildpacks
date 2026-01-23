@@ -20,6 +20,10 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
+const (
+	indexHTML = "/workspace/app/build/web/index.html"
+)
+
 func init() {
 	acceptance.DefineFlags()
 }
@@ -33,6 +37,13 @@ func TestAcceptanceDart(t *testing.T) {
 			Name:    "simple Dart webserver",
 			App:     "simple",
 			MustUse: []string{dartCompile},
+		},
+		{
+			Name:           "Flutter webserver",
+			App:            "flutter",
+			Path:           "/test",
+			FilesMustExist: []string{indexHTML},
+			MustUse:        []string{dartCompile},
 		},
 	}
 	for _, tc := range testCases {

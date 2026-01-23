@@ -33,6 +33,31 @@ GROUPS = {
     ],
 }
 
+BUILDPACKS_USING_RUNNER = [
+    "//cmd/config/entrypoint:entrypoint_using_runner.tgz",
+    "//cmd/config/flex:flex_using_runner.tgz",
+    "//cmd/php/appengine:appengine_using_runner.tgz",
+    "//cmd/php/composer:composer_using_runner.tgz",
+    "//cmd/php/composer_gcp_build:composer_gcp_build_using_runner.tgz",
+    "//cmd/php/functions_framework:functions_framework_using_runner.tgz",
+    "//cmd/php/cloudfunctions:cloudfunctions_using_runner.tgz",
+    "//cmd/php/composer_install:composer_install_using_runner.tgz",
+    "//cmd/php/runtime:runtime_using_runner.tgz",
+    "//cmd/php/webconfig:webconfig_using_runner.tgz",
+    "//cmd/utils/archive_source:archive_source_using_runner.tgz",
+    "//cmd/utils/label:label_image_using_runner.tgz",
+    "//cmd/utils/nginx:nginx_using_runner.tgz",
+]
+
+GROUPS_USING_RUNNER = {
+    "php": [
+        "//cmd/php/supervisor:supervisor_using_runner.tgz",
+    ],
+    "python": [
+        "//cmd/python/runtime:runtime_using_runner.tgz",
+    ],
+}
+
 builder(
     name = "builder",
     builder_template = ":builder.toml.template",
@@ -44,6 +69,16 @@ builder(
 )
 
 builder(
+    name = "builder_using_runner",
+    builder_template = ":builder_using_runner.toml.template",
+    buildpacks = BUILDPACKS_USING_RUNNER,
+    descriptor = "builder.toml",
+    groups = GROUPS_USING_RUNNER,
+    image = "gcp/php-runner",
+    stack = "google.gae.18",
+)
+
+builder(
     name = "builder_22",
     builder_template = ":builder.toml.template",
     buildpacks = BUILDPACKS,
@@ -51,4 +86,14 @@ builder(
     groups = GROUPS,
     image = "gcp/php-22",
     stack = "google.gae.22",
+)
+
+builder(
+    name = "builder_24",
+    builder_template = ":builder.toml.template",
+    buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
+    groups = GROUPS,
+    image = "gcp/php-24",
+    stack = "google.24.full",
 )

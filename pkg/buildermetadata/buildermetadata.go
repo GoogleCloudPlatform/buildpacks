@@ -50,9 +50,29 @@ type MetadataID string
 //
 //	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.IsUsingGenkit, "true")
 const (
-	IsUsingGenkit MetadataID = "1" // Whether the application is using Genkit
-	IsUsingGenAI  MetadataID = "2" // Whether the application is using GenAI API
+	IsUsingGenkit    MetadataID = "1" // Whether the application is using Genkit
+	IsUsingGenAI     MetadataID = "2" // Whether the application is using GenAI API
+	FrameworkName    MetadataID = "3" // The framework name used in the build.
+	FrameworkVersion MetadataID = "4" // The framework version used in the build.
+	AdapterName      MetadataID = "5" // The adapter name used in the build.
+	AdapterVersion   MetadataID = "6" // The adapter version used in the build.
+	MonorepoName     MetadataID = "7" // The monorepo name used in the build.
+	PackageManager   MetadataID = "8" // The package manager used in the build.
+	ConfigFile       MetadataID = "9" // The config file used in the build (requirements.txt, pyproject.toml).
 )
+
+// MetadataIDNames is a lookup map from MetadataID to its name.
+var MetadataIDNames = map[MetadataID]string{
+	IsUsingGenkit:    "IsUsingGenkit",
+	IsUsingGenAI:     "IsUsingGenAI",
+	FrameworkName:    "FrameworkName",
+	FrameworkVersion: "FrameworkVersion",
+	AdapterName:      "AdapterName",
+	AdapterVersion:   "AdapterVersion",
+	MonorepoName:     "MonorepoName",
+	PackageManager:   "PackageManager",
+	ConfigFile:       "ConfigFile",
+}
 
 // GetValue returns the Metadata value with MetadataID id, or creates it if it doesn't exist.
 func (b *BuilderMetadata) GetValue(id MetadataID) MetadataValue {
@@ -60,6 +80,11 @@ func (b *BuilderMetadata) GetValue(id MetadataID) MetadataValue {
 		b.metadata[id] = MetadataValue("false")
 	}
 	return b.metadata[id]
+}
+
+// IsEmpty checks if the BuilderMetadata is empty.
+func (b *BuilderMetadata) IsEmpty() bool {
+	return b == nil || len(b.metadata) == 0
 }
 
 // SetValue sets the Metadata value with MetadataID id.

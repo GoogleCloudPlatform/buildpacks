@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -65,6 +66,12 @@ type DetectFn func(*Context) (DetectResult, error)
 
 // BuildFn is the callback signature for Build()
 type BuildFn func(*Context) error
+
+// BuildpackFuncs contains the Detect and Build functions for a buildpack.
+type BuildpackFuncs struct {
+	Detect DetectFn
+	Build  BuildFn
+}
 
 type stats struct {
 	spans []*spanInfo
@@ -273,34 +280,6 @@ func detectFnWrapper(detectFn DetectFn) libcnb.DetectFunc {
 	}
 }
 
-// TODO: hemantgoyal - Remove this function once the libcnb is migrated
-func (gcpd gcpdetector) Detect(ldctx libcnb.DetectContext) (libcnb.DetectResult, error) {
-	ctx := newDetectContext(ldctx)
-	status := buildererror.StatusInternal
-	defer func(now time.Time) {
-		ctx.Span(fmt.Sprintf("Buildpack Detect %q", ctx.info.ID), now, status)
-	}(time.Now())
-
-	result, err := gcpd.detectFn(ctx)
-	if err != nil {
-		msg := fmt.Sprintf("failed to run /bin/detect: %v", err)
-		var be *buildererror.Error
-		if errors.As(err, &be) {
-			status = be.Status
-			return libcnb.DetectResult{}, be
-		}
-		return libcnb.DetectResult{}, buildererror.Errorf(status, msg)
-	}
-	// detectFn has an interface return type so result may be nil.
-	if result == nil {
-		return libcnb.DetectResult{}, InternalErrorf("detect did not return a result or an error")
-	}
-
-	status = buildererror.StatusOk
-	ctx.Logf(result.Reason())
-	return result.Result(), nil
-}
-
 // detect implements the /bin/detect phase of the buildpack.
 func detect(detectFn DetectFn, opts ...libcnb.Option) {
 	config := libcnb.NewConfig(opts...)
@@ -310,31 +289,6 @@ func detect(detectFn DetectFn, opts ...libcnb.Option) {
 
 type gcpbuilder struct {
 	buildFn BuildFn
-}
-
-// TODO: hemantgoyal - Remove this function once the libcnb is migrated
-func (gcpb gcpbuilder) Build(lbctx libcnb.BuildContext) (libcnb.BuildResult, error) {
-	start := time.Now()
-	ctx := newBuildContext(lbctx)
-	ctx.Logf("=== %s (%s@%s) ===", ctx.BuildpackName(), ctx.BuildpackID(), ctx.BuildpackVersion())
-
-	status := buildererror.StatusInternal
-	defer func(now time.Time) {
-		ctx.Span(fmt.Sprintf("Buildpack Build %q", ctx.BuildpackID()), now, status)
-	}(time.Now())
-
-	if err := gcpb.buildFn(ctx); err != nil {
-		var be *buildererror.Error
-		if errors.As(err, &be) {
-			status = be.Status
-		}
-		err := fmt.Errorf("failed to build: %w", err)
-		ctx.Exit(1, err)
-	}
-
-	status = buildererror.StatusOk
-	ctx.saveSuccessOutput(time.Since(start))
-	return ctx.buildResult, nil
 }
 
 // buildFnWrapper creates a libcnb.BuildFunc that wraps the given buildFn.
@@ -371,6 +325,7 @@ func buildFnWrapper(buildFn BuildFn) libcnb.BuildFunc {
 	}
 }
 
+// build implements the /bin/build phase of the buildpack.
 func build(buildFn BuildFn) {
 	options := []libcnb.Option{
 		// Without this flag the build SBOM is NOT written to the image's "io.buildpacks.build.metadata" label.
@@ -461,18 +416,7 @@ type processOption func(o *libcnb.Process)
 // AsDirectProcess causes the process to be executed directly, i.e. without a shell.
 func AsDirectProcess() processOption {
 	return func(o *libcnb.Process) {
-		cmd := []string{}
-		if len(o.Command) > 2 {
-			cmd = o.Command[2:]
-		}
-		if len(cmd) > 0 {
-			o.Command = []string{cmd[0]}
-		} else {
-			o.Command = []string{}
-		}
-		if len(cmd) > 1 {
-			o.Arguments = cmd[1:]
-		}
+		o.Command = o.Command[2:]
 	}
 }
 
@@ -501,7 +445,7 @@ func (ctx *Context) AddProcess(name string, cmd []string, opts ...processOption)
 	for _, opt := range opts {
 		opt(&p)
 	}
-	if len(p.Command) > 2 {
+	if len(p.Command) > 0 && p.Command[0] == "bash" {
 		p.Command = []string{"bash", "-c", strings.Join(p.Command[2:], " ")}
 	}
 	ctx.buildResult.Processes = append(ctx.buildResult.Processes, p)
@@ -530,4 +474,34 @@ func (ctx *Context) AddLabel(key, value string) {
 	key = "google." + strings.ToLower(strings.ReplaceAll(key, "_", "-"))
 	ctx.Logf("Adding image label %s: %s", key, value)
 	ctx.buildResult.Labels = append(ctx.buildResult.Labels, libcnb.Label{Key: key, Value: value})
+}
+
+// MainRunner is the main entrypoint for runners.
+func MainRunner(buildpacks map[string]BuildpackFuncs, buildpackID *string, phase *string) {
+	ctx := NewContext()
+	if *buildpackID == "" {
+		err := buildererror.Errorf(buildererror.StatusInternal, "Usage: runner -buildpack <id> [args...]")
+		ctx.Exit(failStatusCode, err)
+	}
+
+	bp, ok := buildpacks[*buildpackID]
+	if !ok {
+		var ids []string
+		for id := range buildpacks {
+			ids = append(ids, id)
+		}
+		sort.Strings(ids)
+		err := buildererror.Errorf(buildererror.StatusInternal, "Unknown buildpack ID: %s\nRegistered buildpacks are:\n  %s", *buildpackID, strings.Join(ids, "\n  "))
+		ctx.Exit(failStatusCode, err)
+	}
+
+	switch *phase {
+	case "detect":
+		detect(bp.Detect)
+	case "build":
+		build(bp.Build)
+	default:
+		err := buildererror.Errorf(buildererror.StatusInternal, "Invalid phase %q, expected 'detect' or 'build'", *phase)
+		ctx.Exit(failStatusCode, err)
+	}
 }

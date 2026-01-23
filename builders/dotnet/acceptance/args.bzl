@@ -10,3 +10,5 @@ gcp_runtime_versions = dict(dict(flex_runtime_versions, **gae_runtime_versions),
 # We wanted to support dotnet 7 if someone in the OSS community wanted to build against it,
 # but we also don't want to target dotnet 7 explicitly -- it is not a LTS release, only STS.
 gcp_runtime_versions["dotnet7"] = "7.0.100"
+
+dotnet_gcp_runtime_versions = [key for key in gcp_runtime_versions.keys()]

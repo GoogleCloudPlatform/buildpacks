@@ -37,7 +37,13 @@ var BuildLayer = func(ctx *Context, l *libcnb.Layer) error {
 
 // CacheLayer specifies a Cache layer.
 var CacheLayer = func(ctx *Context, l *libcnb.Layer) error {
-	l.Cache = true
+	disableCache, err := env.IsPresentAndTrue(env.NoCache)
+	if err != nil {
+		return buildererror.Errorf(buildererror.StatusInternal, "checking NoCache env var: %v", err.Error())
+	}
+	if !disableCache {
+		l.Cache = true
+	}
 	return nil
 }
 
@@ -64,7 +70,7 @@ var LaunchLayerIfDevMode = func(ctx *Context, l *libcnb.Layer) error {
 var LaunchLayerUnlessSkipRuntimeLaunch = func(ctx *Context, l *libcnb.Layer) error {
 	skip, err := env.IsPresentAndTrue(env.XGoogleSkipRuntimeLaunch)
 	if err != nil {
-		return buildererror.Errorf(buildererror.StatusInternal, err.Error())
+		return buildererror.Errorf(buildererror.StatusInternal, "checking XGoogleSkipRuntimeLaunch env var: %v", err.Error())
 	}
 	if !skip {
 		l.Launch = true
@@ -79,7 +85,7 @@ func (ctx *Context) Layer(name string, opts ...layerOption) (*libcnb.Layer, erro
 	}
 	l, err := ctx.buildContext.Layers.Layer(name)
 	if err != nil {
-		return nil, buildererror.Errorf(buildererror.StatusInternal, err.Error())
+		return nil, buildererror.Errorf(buildererror.StatusInternal, "creating layer %q: %v", name, err.Error())
 	}
 	if err := ctx.MkdirAll(l.Path, layerMode); err != nil {
 		return nil, buildererror.Errorf(buildererror.StatusInternal, "creating %s: %v", l.Path, err)

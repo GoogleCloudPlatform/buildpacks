@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/buildpacks/libcnb/v2"
 
@@ -608,6 +609,88 @@ func TestResolveGoVersion(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRuntimeVersion(t *testing.T) {
+	testCases := []struct {
+		name              string
+		envGoVersion      string
+		envRuntimeVersion string
+		stackID           string
+		want              string
+	}{
+		{
+			name:         "env_go_version_set",
+			envGoVersion: "1.22.0",
+			want:         "1.22.0",
+		},
+		{
+			name:              "env_runtime_version_set",
+			envRuntimeVersion: "1.22.0",
+			want:              "1.22.0",
+		},
+		{
+			name:    "no_env_use_latest for the stack id",
+			stackID: "google.22",
+			want:    "1.24.*",
+		},
+		{
+			name:    "invalid stack id, will fallback to ubuntu2204 and pass",
+			stackID: "abc",
+			want:    "1.24.*",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv(envGoVersion, tc.envGoVersion)
+			t.Setenv(env.RuntimeVersion, tc.envRuntimeVersion)
+			mockResolveGoVersion(t, nil)
+
+			ctx := gcp.NewContext(gcp.WithStackID(tc.stackID))
+			got, err := RuntimeVersion(ctx)
+			if err != nil {
+				t.Fatalf("RuntimeVersion() failed unexpectedly; err=%v", err)
+			}
+			if got != tc.want {
+				t.Errorf("RuntimeVersion() got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRuntimeVersionError(t *testing.T) {
+	testCases := []struct {
+		name                  string
+		stackID               string
+		resolveGoVersionError error
+	}{
+		{
+			name:                  "valid stack id but resolveGoVersion errors out",
+			stackID:               "google.22",
+			resolveGoVersionError: fmt.Errorf("resolveGoVersion error"),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockResolveGoVersion(t, tc.resolveGoVersionError)
+
+			ctx := gcp.NewContext(gcp.WithStackID(tc.stackID))
+			_, err := RuntimeVersion(ctx)
+			if err == nil {
+				t.Fatalf("RuntimeVersion() passed, expected error")
+			}
+		})
+	}
+}
+
+func mockResolveGoVersion(t *testing.T, err error) {
+	origResolveGoVersion := ResolveGoVersion
+	ResolveGoVersion = func(verConstraint string) (string, error) {
+		return verConstraint, err
+	}
+	t.Cleanup(func() { ResolveGoVersion = origResolveGoVersion })
 }
 
 // mockReadGoVersion mocks the readGoVersion

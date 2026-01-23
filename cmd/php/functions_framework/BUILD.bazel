@@ -1,7 +1,7 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack for the PHP runtime.
-load("//tools:defs.bzl", "buildpack")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -21,6 +21,20 @@ buildpack(
     ],
 )
 
+buildpack_using_runner(
+    name = "functions_framework_using_runner",
+    srcs = [
+        "converter/composer.json",
+        "converter/composer.lock",
+    ],
+    buildpack_id = "google.php.functions-framework",
+    prefix = "php",
+    version = "0.9.6",
+    visibility = [
+        "//builders:php_builders",
+    ],
+)
+
 go_binary(
     name = "main",
     srcs = ["main.go"],
@@ -30,18 +44,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/cloudfunctions",
-        "//pkg/env",
+        "//cmd/php/functions_framework/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/php",
     ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = ["//internal/buildpacktest"],
 )

@@ -1,0 +1,154 @@
+description = "Unified builder for the .NET runtime"
+
+[[buildpacks]]
+  id = "google.config.entrypoint"
+  uri = "entrypoint_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.config.flex"
+  uri = "flex_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.appengine"
+  uri = "appengine_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.appengine-main"
+  uri = "appengine_main_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.flex"
+  uri = "dotnet/flex_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.functions-framework"
+  uri = "functions_framework_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.publish"
+  uri = "publish_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.runtime"
+  uri = "runtime_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.sdk"
+  uri = "sdk_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.utils.label-image"
+  uri = "label_image_using_runner.tgz"
+
+# GAE Flex order group
+[[order]]
+
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.dotnet.flex"
+
+  [[order.group]]
+    id = "google.dotnet.sdk"
+
+  [[order.group]]
+    id = "google.dotnet.publish"
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# GAE Standard order group
+[[order]]
+
+  [[order.group]]
+    id = "google.dotnet.sdk"
+
+  [[order.group]]
+    id = "google.dotnet.appengine-main"
+    optional = true
+
+  [[order.group]]
+    id = "google.dotnet.publish"
+    optional = true
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
+
+  [[order.group]]
+    id = "google.dotnet.appengine"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# GCF order group
+[[order]]
+
+  [[order.group]]
+    id = "google.dotnet.sdk"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.dotnet.functions-framework"
+
+  [[order.group]]
+    id = "google.dotnet.publish"
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Cloud Run / General purpose order group
+[[order]]
+
+  [[order.group]]
+    id = "google.dotnet.sdk"
+
+  [[order.group]]
+    id = "google.dotnet.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.dotnet.publish"
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Prebuilt .NET applications.
+[[order]]
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[stack]
+  id = "${STACK_ID}"
+  build-image = "${STACK_BUILD_IMAGE}"
+  run-image = "${STACK_RUN_IMAGE}"
+
+[lifecycle]
+  version = "0.20.5"

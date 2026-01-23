@@ -26,6 +26,21 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	// SourceFirebaseConsole is the source name for environment variables set via the Firebase Console.
+	// Think server-side environment variables set via the Firebase Console UI.
+	SourceFirebaseConsole = "Firebase Console"
+
+	// SourceFirebaseSystem is the source name for default environment variables provided by Firebase.
+	// Think FIREBASE_CONFIG and FIREBASE_WEBAPP_CONFIG.
+	SourceFirebaseSystem = "Firebase System"
+
+	// SourceAppHostingYAML is the source name for environment variables defined in apphosting.yaml.
+	SourceAppHostingYAML = "apphosting.yaml"
+
+	reservedFirebaseKeyPrefix = "X_FIREBASE_"
+)
+
 var (
 	validAvailabilityValues = map[string]bool{"BUILD": true, "RUNTIME": true}
 	reservedKeys            = map[string]bool{
@@ -34,14 +49,14 @@ var (
 		"K_REVISION":      true,
 		"K_CONFIGURATION": true,
 	}
-
-	reservedFirebaseKeyPrefix = "X_FIREBASE_"
 )
 
 // AppHostingSchema is the struct representation of apphosting.yaml.
 type AppHostingSchema struct {
-	RunConfig RunConfig             `yaml:"runConfig,omitempty"`
-	Env       []EnvironmentVariable `yaml:"env,omitempty"`
+	RunConfig   RunConfig             `yaml:"runConfig,omitempty"`
+	Env         []EnvironmentVariable `yaml:"env,omitempty"`
+	Scripts     Scripts               `yaml:"scripts,omitempty"`
+	OutputFiles OutputFiles           `yaml:"outputFiles,omitempty"`
 }
 
 // NetworkInterface is the struct representation of the passed network interface in VPC direct connect.
@@ -61,12 +76,13 @@ type VpcAccess struct {
 // RunConfig is the struct representation of the passed run config.
 type RunConfig struct {
 	// value types used must match server field types. pointers are used to capture unset vs zero-like values.
-	CPU          *float32   `yaml:"cpu"`
-	MemoryMiB    *int32     `yaml:"memoryMiB"`
-	Concurrency  *int32     `yaml:"concurrency"`
-	MaxInstances *int32     `yaml:"maxInstances"`
-	MinInstances *int32     `yaml:"minInstances"`
-	VpcAccess    *VpcAccess `yaml:"vpcAccess"`
+	CPU                *float32   `yaml:"cpu"`
+	MemoryMiB          *int32     `yaml:"memoryMiB"`
+	Concurrency        *int32     `yaml:"concurrency"`
+	MaxInstances       *int32     `yaml:"maxInstances"`
+	MinInstances       *int32     `yaml:"minInstances"`
+	VpcAccess          *VpcAccess `yaml:"vpcAccess"`
+	CPUAlwaysAllocated *bool      `yaml:"cpuAlwaysAllocated"`
 }
 
 // EnvironmentVariable is the struct representation of the passed environment variables.
@@ -75,6 +91,23 @@ type EnvironmentVariable struct {
 	Value        string   `yaml:"value,omitempty"`  // Optional: Can be value xor secret
 	Secret       string   `yaml:"secret,omitempty"` // Optional: Can be value xor secret
 	Availability []string `yaml:"availability,omitempty"`
+	Source       string   `yaml:"source,omitempty"`
+}
+
+// Scripts is the struct representation of the scripts in apphosting.yaml.
+type Scripts struct {
+	RunCommand   string `yaml:"runCommand,omitempty"`
+	BuildCommand string `yaml:"buildCommand,omitempty"`
+}
+
+// OutputFiles is the struct representation of the passed output files.
+type OutputFiles struct {
+	ServerApp serverApp `yaml:"serverApp"`
+}
+
+// serverApp is the struct representation of the passed server app files.
+type serverApp struct {
+	Include []string `yaml:"include"`
 }
 
 // UnmarshalYAML provides custom validation logic to validate EnvironmentVariable
@@ -145,7 +178,6 @@ func ReadAndValidateFromFile(filePath string) (AppHostingSchema, error) {
 	var a AppHostingSchema
 	apphostingBuffer, err := os.ReadFile(filePath)
 	if os.IsNotExist(err) {
-		log.Printf("Missing apphosting config at %v, using reasonable defaults\n", filePath)
 		return a, nil
 	} else if err != nil {
 		return a, fmt.Errorf("reading apphosting config at %v: %w", filePath, err)
@@ -211,10 +243,25 @@ func mergeAppHostingSchemas(appHostingSchema *AppHostingSchema, envSpecificSchem
 	if envSpecificSchema.RunConfig.MinInstances != nil {
 		appHostingSchema.RunConfig.MinInstances = envSpecificSchema.RunConfig.MinInstances
 	}
+	if envSpecificSchema.RunConfig.CPUAlwaysAllocated != nil {
+		appHostingSchema.RunConfig.CPUAlwaysAllocated = envSpecificSchema.RunConfig.CPUAlwaysAllocated
+	}
+	if envSpecificSchema.Scripts.BuildCommand != "" {
+		appHostingSchema.Scripts.BuildCommand = envSpecificSchema.Scripts.BuildCommand
+	}
+	if envSpecificSchema.Scripts.RunCommand != "" {
+		appHostingSchema.Scripts.RunCommand = envSpecificSchema.Scripts.RunCommand
+	}
 	appHostingSchema.RunConfig.VpcAccess = MergeVpcAccess(appHostingSchema.RunConfig.VpcAccess, envSpecificSchema.RunConfig.VpcAccess)
 
 	// Merge Environment Variables
 	appHostingSchema.Env = MergeEnvVars(appHostingSchema.Env, envSpecificSchema.Env)
+
+	// Merge OutputFiles
+	// If the override schema includes any files, it replaces the entire list from the base schema.
+	if len(envSpecificSchema.OutputFiles.ServerApp.Include) > 0 {
+		appHostingSchema.OutputFiles.ServerApp.Include = envSpecificSchema.OutputFiles.ServerApp.Include
+	}
 }
 
 // MergeEnvVars merges the environment variables from the original list with the override list.
@@ -243,10 +290,14 @@ func MergeWithEnvironmentSpecificYAML(appHostingSchema *AppHostingSchema, appHos
 		return nil
 	}
 
-	envSpecificYAMLPath := filepath.Join(filepath.Dir(appHostingYAMLPath), fmt.Sprintf("apphosting.%v.yaml", environmentName))
+	envSpecificYAMLFile := fmt.Sprintf("apphosting.%v.yaml", environmentName)
+	envSpecificYAMLPath := filepath.Join(filepath.Dir(appHostingYAMLPath), envSpecificYAMLFile)
 	envSpecificSchema, err := ReadAndValidateFromFile(envSpecificYAMLPath)
 	if err != nil {
 		return fmt.Errorf("reading environment specific apphosting schema: %w", err)
+	}
+	for i := range envSpecificSchema.Env {
+		envSpecificSchema.Env[i].Source = envSpecificYAMLFile
 	}
 
 	mergeAppHostingSchemas(appHostingSchema, &envSpecificSchema)

@@ -25,6 +25,28 @@ GROUPS = {
         "//cmd/java/gradle:gradle.tgz",
         "//cmd/java/maven:maven.tgz",
         "//cmd/java/runtime:runtime.tgz",
+        "//cmd/java/spring_boot:spring_boot.tgz",
+    ],
+}
+
+BUILDPACKS_USING_RUNNER = [
+    "//cmd/config/entrypoint:entrypoint_using_runner.tgz",
+    "//cmd/utils/label:label_image_using_runner.tgz",
+    "//cmd/config/flex:flex_using_runner.tgz",
+    "//cmd/java/appengine:appengine_using_runner.tgz",
+    "//cmd/utils/archive_source:archive_source_using_runner.tgz",
+]
+
+GROUPS_USING_RUNNER = {
+    "java": [
+        "//cmd/java/clear_source:clear_source_using_runner.tgz",
+        "//cmd/java/entrypoint:entrypoint_using_runner.tgz",
+        "//cmd/java/exploded_jar:exploded_jar_using_runner.tgz",
+        "//cmd/java/functions_framework:functions_framework_using_runner.tgz",
+        "//cmd/java/gradle:gradle_using_runner.tgz",
+        "//cmd/java/spring_boot:spring_boot_using_runner.tgz",
+        "//cmd/java/maven:maven_using_runner.tgz",
+        "//cmd/java/runtime:runtime_using_runner.tgz",
     ],
 }
 
@@ -39,6 +61,16 @@ builder(
 )
 
 builder(
+    name = "builder_using_runner",
+    builder_template = ":builder_using_runner.toml.template",
+    buildpacks = BUILDPACKS_USING_RUNNER,
+    descriptor = "builder.toml",
+    groups = GROUPS_USING_RUNNER,
+    image = "gcp/java-runner",
+    stack = "google.gae.18",
+)
+
+builder(
     name = "builder_22",
     builder_template = ":builder.toml.template",
     buildpacks = BUILDPACKS,
@@ -46,4 +78,14 @@ builder(
     groups = GROUPS,
     image = "gcp/java-22",
     stack = "google.gae.22",
+)
+
+builder(
+    name = "builder_24",
+    builder_template = ":builder.toml.template",
+    buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
+    groups = GROUPS,
+    image = "gcp/java-24",
+    stack = "google.24.full",
 )

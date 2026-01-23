@@ -1,0 +1,33 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+package(default_visibility = ["//:__subpackages__"])
+
+go_binary(
+    name = "runner",
+    srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-I /lib64/ld-linux-x86-64.so.2",
+        "-extldflags=\"-Wl,--dynamic-linker,/lib64/ld-linux-x86-64.so.2\"",
+        "-s",
+        "-w",
+    ],
+    target_compatible_with = [
+        "//third_party/bazel_platforms/cpu:x86_64",  # TODO: b/419621355: Remove when all platforms are supported.
+    ],
+    deps = [
+        "//cmd/php/appengine/lib",
+        "//cmd/php/cloudfunctions/lib",
+        "//cmd/php/composer/lib",
+        "//cmd/php/composer_gcp_build/lib",
+        "//cmd/php/composer_install/lib",
+        "//cmd/php/functions_framework/lib",
+        "//cmd/php/runtime/lib",
+        "//cmd/php/supervisor/lib",
+        "//cmd/php/webconfig/lib",
+        "//cmd/python/runtime/lib",
+        "//cmd/utils/nginx/lib",
+        "//pkg/commonbuildpacks",
+        "//pkg/gcpbuildpack",
+    ],
+)

@@ -1,7 +1,7 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack for the Node.js runtime.
-load("//tools:defs.bzl", "buildpack")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -10,6 +10,16 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "nodejs",
+    version = "1.1.0",
+    visibility = [
+        "//builders:nodejs_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "npm_using_runner",
+    buildpack_id = "google.nodejs.npm",
     prefix = "nodejs",
     version = "1.1.0",
     visibility = [
@@ -26,31 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/ar",
-        "//pkg/buildermetrics",
-        "//pkg/cache",
-        "//pkg/devmode",
-        "//pkg/firebase/faherror",
+        "//cmd/nodejs/npm/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/nodejs",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    args = [
-        "-test-data=$(location //builders/testdata/nodejs:appengine)",
-    ],
-    data = [
-        "//builders/testdata/nodejs:appengine",
-    ],
-    embed = [":main"],
-    rundir = ".",
-    deps = [
-        "//internal/buildpacktest",
-        "//internal/mockprocess",
-        "//pkg/nodejs",
     ],
 )

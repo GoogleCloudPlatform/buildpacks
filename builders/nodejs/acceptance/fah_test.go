@@ -19,14 +19,22 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
-var baseEnv = "FIREBASE_OUTPUT_BUNDLE_DIR=.apphosting/"
+var baseEnv = []string{
+	"FIREBASE_OUTPUT_BUNDLE_DIR=.apphosting/",
+	"X_GOOGLE_TARGET_PLATFORM=fah",
+}
 
 const (
 	// Buildpack identifiers used to verify that buildpacks were or were not used.
-	nodeNPM     = "google.nodejs.npm"
-	nodePNPM    = "google.nodejs.pnpm"
-	nodeRuntime = "google.nodejs.runtime"
-	nodeYarn    = "google.nodejs.yarn"
+	nodeNPM             = "google.nodejs.npm"
+	nodePNPM            = "google.nodejs.pnpm"
+	nodeRuntime         = "google.nodejs.runtime"
+	nodeYarn            = "google.nodejs.yarn"
+	nodeFirebaseNextJs  = "google.nodejs.firebasenextjs"
+	nodeFirebaseAngular = "google.nodejs.firebaseangular"
+	nodeFirebaseNx      = "google.nodejs.firebasenx"
+	nodeTurborepo       = "google.nodejs.turborepo"
+	nodeFirebaseBundle  = "google.nodejs.firebasebundle"
 )
 
 func init() {
@@ -40,49 +48,45 @@ func TestAcceptanceNodeJs(t *testing.T) {
 	testCases := []acceptance.Test{
 		{
 			Name:            "simple application",
-			App:             "simple",
-			MustUse:         []string{nodeRuntime, nodeNPM},
+			App:             "npm",
+			MustUse:         []string{nodeRuntime, nodeNPM, nodeFirebaseBundle},
 			EnableCacheTest: true,
 		},
 		{
 			// Tests a specific versions of Node.js available on dl.google.com.
-			Name:    "runtime version 16.17.1",
-			App:     "simple",
-			Path:    "/version?want=16.17.1",
-			Env:     []string{"GOOGLE_NODEJS_VERSION=16.17.1"},
-			MustUse: []string{nodeRuntime},
+			Name:    "runtime version 20.19.5",
+			App:     "npm",
+			Path:    "/version?want=20.19.5",
+			Env:     []string{"GOOGLE_RUNTIME_VERSION=20.19.5"},
+			MustUse: []string{nodeRuntime, nodeFirebaseBundle},
+			// Make sure the test run only against the google-22-full builder stack.
+			SkipStacks: []string{"google.24.full", "google.24"},
+			// Restrict the test to run only against the nodejs20 runtime version.
+			VersionInclusionConstraint: "20",
 		},
 		{
-			// Tests addition of RUNTIME_VERSION label to the final image.
-			Name:    "environment variable FIREBASE_OUTPUT_BUNDLE_DIR",
-			App:     "simple",
-			Path:    "/version?want=16.17.1",
-			Env:     []string{"GOOGLE_NODEJS_VERSION=16.17.1", "FIREBASE_OUTPUT_BUNDLE_DIR=/output/dir"},
-			MustUse: []string{nodeRuntime},
+			Name:       "yarn",
+			App:        "yarn",
+			MustUse:    []string{nodeRuntime, nodeYarn, nodeFirebaseBundle},
+			MustNotUse: []string{nodeNPM, nodePNPM},
 		},
-
-		// TODO(b/315008858) This should be reenabled once yarn support is re added
-		/*
-			{
-				Name:       "yarn",
-				App:        "yarn",
-				MustUse:    []string{nodeRuntime, nodeYarn},
-				MustNotUse: []string{nodeNPM, nodePNPM},
-			},
-		*/
 		{
 			Name:       "pnpm",
 			App:        "pnpm",
-			MustUse:    []string{nodeRuntime, nodePNPM},
+			MustUse:    []string{nodeRuntime, nodePNPM, nodeFirebaseBundle},
 			MustNotUse: []string{nodeNPM, nodeYarn},
 		},
 		{
 			Name:       "runtime version with npm ci",
-			App:        "simple",
-			Path:       "/version?want=16.18.1",
-			Env:        []string{"GOOGLE_RUNTIME_VERSION=16.18.1"},
-			MustUse:    []string{nodeRuntime, nodeNPM},
+			App:        "npm",
+			Path:       "/version?want=20.19.5",
+			Env:        []string{"GOOGLE_RUNTIME_VERSION=20.19.5"},
+			MustUse:    []string{nodeRuntime, nodeNPM, nodeFirebaseBundle},
 			MustNotUse: []string{nodePNPM, nodeYarn},
+			// Make sure the test run only against the google-22-full builder stack.
+			SkipStacks: []string{"google.24.full", "google.24"},
+			// Restrict the test to run only against the nodejs20 runtime version.
+			VersionInclusionConstraint: "20",
 		},
 		{
 			Name: "NPM version specified",
@@ -92,9 +96,85 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			MustOutput:                 []string{"npm --version\n\n8.3.1"},
 			Path:                       "/version?want=8.3.1",
 		},
+		{
+			Name: "nextjs with npm",
+			App:  "nextjs_npm",
+			Env:  []string{"GOOGLE_BUILDABLE=./"},
+			MustUse: []string{
+				nodeRuntime,
+				nodeFirebaseNextJs,
+				nodeNPM,
+				nodeFirebaseBundle,
+			},
+			MustNotUse: []string{nodeYarn, nodePNPM, nodeFirebaseAngular, nodeFirebaseNx, nodeTurborepo},
+			MustOutput: []string{
+				// Confirms Next.js build process completed successfully, and the firebasebundle buildpack
+				// sets the run command correctly.
+				"✓ Compiled successfully",
+				"Setting run command from bundle.yaml: node .next/standalone/server.js",
+			},
+			MustMatchStatusCode: 200,
+		},
+		{
+			Name: "nextjs with pnpm",
+			App:  "nextjs_pnpm",
+			Env:  []string{"GOOGLE_BUILDABLE=./"},
+			MustUse: []string{
+				nodeRuntime,
+				nodeFirebaseNextJs,
+				nodePNPM,
+				nodeFirebaseBundle,
+			},
+			MustNotUse: []string{nodeYarn, nodeNPM, nodeFirebaseAngular, nodeFirebaseNx, nodeTurborepo},
+			MustOutput: []string{
+				"✓ Compiled successfully",
+				"Setting run command from bundle.yaml: node .next/standalone/server.js",
+			},
+			MustMatchStatusCode: 200,
+		},
+		{
+			Name: "nextjs with yarn",
+			App:  "nextjs_yarn",
+			Env:  []string{"GOOGLE_BUILDABLE=./"},
+			MustUse: []string{
+				nodeRuntime,
+				nodeFirebaseNextJs,
+				nodeYarn,
+				nodeFirebaseBundle,
+			},
+			MustNotUse: []string{nodeNPM, nodePNPM, nodeFirebaseAngular, nodeFirebaseNx, nodeTurborepo},
+			MustOutput: []string{
+				"✓ Compiled successfully",
+				"Setting run command from bundle.yaml: node .next/standalone/server.js",
+			},
+			MustMatchStatusCode: 200,
+		},
+		{
+			Name: "nextjs turborepo with npm",
+			App:  "nextjs_turbo",
+			Env:  []string{"GOOGLE_BUILDABLE=apps/web"},
+			MustUse: []string{
+				nodeRuntime,
+				nodeFirebaseNextJs,
+				nodeTurborepo,
+				nodeNPM,
+				nodeFirebaseBundle,
+			},
+			MustNotUse: []string{nodePNPM, nodeYarn, nodeFirebaseAngular, nodeFirebaseNx},
+			// confirms the test app runs successfully and serves the expected response
+			MustMatch: "Hello from Next.js Turborepo on FAH!",
+			MustOutput: []string{
+				// Confirms Turborepo ran the 'next build' command for the 'web' package, and the
+				// firebasebundle buildpack sets the run command correctly.
+				"web:build: > next build",
+				"Setting run command from bundle.yaml: node apps/web/.next/standalone/apps/web/server.js",
+			},
+			MustMatchStatusCode: 200,
+		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
-		tc.Env = append(tc.Env, baseEnv)
+		// Prepend baseEnv to tc.Env, so that the baseEnv values can be overridden by the test case.
+		tc.Env = append(baseEnv, tc.Env...)
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
@@ -111,13 +191,14 @@ func TestFailuresNodeJs(t *testing.T) {
 	testCases := []acceptance.FailureTest{
 		{
 			Name:      "bad runtime version",
-			App:       "simple",
+			App:       "npm",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
 			MustMatch: "invalid Node.js version specified",
 		},
 	}
 
 	for _, tc := range testCases {
+		tc.Env = append(baseEnv, tc.Env...)
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()

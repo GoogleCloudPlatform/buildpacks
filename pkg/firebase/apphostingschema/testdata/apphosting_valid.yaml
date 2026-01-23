@@ -2,6 +2,7 @@ schemaVersion: '3.0.0'
 
 runConfig:
   cpu: 3
+  cpuAlwaysAllocated: true
   memoryMiB: 1024
   maxInstances: 4
   concurrency: 100

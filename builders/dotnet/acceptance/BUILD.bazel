@@ -1,9 +1,16 @@
+load("//internal/acceptance:args.bzl", "get_runtime_to_builder_map", "languageargs")
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
 load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions")
+load(":runtime.bzl", "gcf_runtimes", "version_to_stack")
 
 licenses(["notice"])
 
-exports_files(["config.yaml"])
+exports_files([
+    "config.yaml",
+    "args.bzl",
+])
+
+RUNTIME_TO_BUILDER_MAP = get_runtime_to_builder_map(version_to_stack, "dotnet")
 
 create_acceptance_versions_dict_file(
     name = "gen_acceptance_targets_list",
@@ -32,10 +39,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/dotnet:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "dotnet6": "//builders/dotnet:builder_22.tar",
-        "dotnet8": "//builders/dotnet:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/dotnet:flex",
     versions = flex_runtime_versions,
     deps = [
@@ -49,12 +53,10 @@ acceptance_test_suite(
         "common_test.go",
         "gcf_test.go",
     ],
+    argsmap = languageargs(gcf_runtimes, version_to_stack),
     builder = "//builders/dotnet:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "dotnet6": "//builders/dotnet:builder_22.tar",
-        "dotnet8": "//builders/dotnet:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/dotnet:functions",
     versions = gcf_runtime_versions,
     deps = [
@@ -70,10 +72,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/dotnet:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "dotnet6": "//builders/dotnet:builder_22.tar",
-        "dotnet8": "//builders/dotnet:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/dotnet:generic",
     versions = gcp_runtime_versions,
     deps = [
@@ -91,10 +90,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/dotnet:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "dotnet6": "//builders/dotnet:builder_22.tar",
-        "dotnet8": "//builders/dotnet:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/dotnet:generic",
     # There are no GAE tests for dotnet as there is no dotnet runtime on GAE. However, the language
     # test framework expects a `gae_candidate_test` target. For that reason this target exists.
@@ -112,10 +108,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/dotnet:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "dotnet6": "//builders/dotnet:builder_22.tar",
-        "dotnet8": "//builders/dotnet:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/dotnet:generic",
     # There are no GAE tests for dotnet as there is no dotnet runtime on GAE. However, the language
     # test framework expects a `gae_candidate_test` target. For that reason this target exists.

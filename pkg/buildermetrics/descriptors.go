@@ -42,6 +42,14 @@ const (
 	PipInstallLatencyID                   MetricID = "10"
 	JavaGAEWebXMLConfigUsageCounterID     MetricID = "11"
 	JavaGAESessionsEnabledCounterID       MetricID = "12"
+	NodejsBytecodeCacheGeneratedCounterID MetricID = "13"
+	PIPUsageCounterID                     MetricID = "14"
+	PoetryUsageCounterID                  MetricID = "15"
+	UVUsageCounterID                      MetricID = "16"
+	NPMUsageCounterID                     MetricID = "17"
+	YarnUsageCounterID                    MetricID = "18"
+	PNPMUsageCounterID                    MetricID = "19"
+	JavaSpringBootUsageCounterID          MetricID = "20"
 )
 
 var (
@@ -105,6 +113,46 @@ var (
 			JavaGAESessionsEnabledCounterID,
 			"java_gae_session_handler_uses",
 			"The number of times the session handler is used by developers",
+		),
+		NodejsBytecodeCacheGeneratedCounterID: newDescriptor(
+			NodejsBytecodeCacheGeneratedCounterID,
+			"nodejs_bytecode_cache_generated",
+			"The number of times the bytecode cache is generated for Node.js applications",
+		),
+		PIPUsageCounterID: newDescriptor(
+			PIPUsageCounterID,
+			"pip_usage",
+			"The number of times pip is used by developers",
+		),
+		PoetryUsageCounterID: newDescriptor(
+			PoetryUsageCounterID,
+			"poetry_usage",
+			"The number of times poetry is used by developers",
+		),
+		UVUsageCounterID: newDescriptor(
+			UVUsageCounterID,
+			"uv_usage",
+			"The number of times uv is used by developers",
+		),
+		NPMUsageCounterID: newDescriptor(
+			NPMUsageCounterID,
+			"npm_usage",
+			"The number of times npm is used by developers",
+		),
+		YarnUsageCounterID: newDescriptor(
+			YarnUsageCounterID,
+			"yarn_usage",
+			"The number of times yarn is used by developers",
+		),
+		PNPMUsageCounterID: newDescriptor(
+			PNPMUsageCounterID,
+			"pnpm_usage",
+			"The number of times pnpm is used by developers",
+		),
+		JavaSpringBootUsageCounterID: newDescriptor(
+			JavaSpringBootUsageCounterID,
+			"java_spring_boot_usage",
+			"The number of times Spring Boot is used by developers",
 		),
 	}
 )

@@ -69,6 +69,7 @@ var (
 	runtimeVersion      string // A runtime version which will be applied to tests that do not explicilty set a version.
 	runtimeName         string // The name of the runtime (aka the language name such as 'go' or 'dotnet'). Used to properly set GOOGLE_RUNTIME.
 	specialChars        = regexp.MustCompile("[^a-zA-Z0-9]+")
+	buildEnv            string // The build environment (dev, qual, or prod).
 )
 
 type requestType string
@@ -105,7 +106,7 @@ func DefineFlags() {
 	flag.BoolVar(&cloudbuild, "cloudbuild", false, "Use cloudbuild network; required for Cloud Build.")
 	flag.StringVar(&runtimeVersion, "runtime-version", "", "A default runtime version which will be applied to the tests that do not explicitly set a version.")
 	flag.StringVar(&runtimeName, "runtime-name", "", "The name of the runtime (aka the language name such as 'go' or 'dotnet'). Used to properly set GOOGLE_RUNTIME.")
-
+	flag.StringVar(&buildEnv, "build-env", "", "The build environment to use (dev, qual, or prod). Sets GOOGLE_BUILD_ENV.")
 }
 
 // UnarchiveTestData extracts the test-data tgz into a temp dir and returns a cleanup function to be deferred.
@@ -384,7 +385,9 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 		cfg.MustMatch = "PASS"
 	}
 	if !strings.HasSuffix(body, cfg.MustMatch) {
-		t.Errorf("Response body does not contain suffix: got %q, want %q", body, cfg.MustMatch)
+		if !strings.Contains(body, cfg.MustMatch) {
+			t.Errorf("Response body does not contain: got %q, want %q", body, cfg.MustMatch)
+		}
 	}
 
 	if cfg.MustRebuildOnChange != "" {
@@ -636,7 +639,23 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 	}
 
 	builderLoc, cleanUpBuilder := extractBuilder(t, builderSource)
-	config := filepath.Join(builderLoc, "builder.toml")
+
+	// For language builders, the toml file is named as builder.toml.
+	// For universal builders, the toml file is named like google.24.builder.toml.
+	files, err := os.ReadDir(builderLoc)
+	if err != nil {
+		t.Fatalf("Error reading builder location: %v", err)
+	}
+	var config string
+	for _, f := range files {
+		if strings.HasSuffix(f.Name(), "builder.toml") {
+			config = filepath.Join(builderLoc, f.Name())
+			break
+		}
+	}
+	if config == "" {
+		t.Fatalf("No builder.toml file found in %s", builderLoc)
+	}
 
 	if lifecycle != "" {
 		t.Logf("Using lifecycle location: %s", lifecycle)
@@ -932,6 +951,10 @@ func buildCommand(srcDir, image, builderName, runName string, env map[string]str
 	// not affect other builds running concurrently.
 	args = append(args, "--env", "GOOGLE_RANDOM="+randString(8), "--env", "GOOGLE_DEBUG=true")
 	args = append(args, "--network", "host")
+	args = append(args, "--env", "GOOGLE_RUNTIME_IMAGE_REGION=us")
+	if buildEnv != "" {
+		args = append(args, "--env", fmt.Sprintf("GOOGLE_BUILD_ENV=%s", buildEnv))
+	}
 	log.Printf("Running %v\n", args)
 	return args
 }
@@ -995,7 +1018,7 @@ func buildApp(t *testing.T, srcDir, image, builderName, runName string, env map[
 				t.Fatalf("Error building application %s: %v, logs:\n%s\n%s", image, err, outb.String(), errb.String())
 			}
 		} else {
-			// The application built successfully.
+			t.Logf("Successfully built application %s: %v, logs:\n%s\n%s", image, err, outb.String(), errb.String())
 			break
 		}
 	}
@@ -1426,6 +1449,13 @@ func ShouldTestVersion(t *testing.T, inclusionConstraint string) bool {
 	if strings.Contains(v, "RC") && !strings.Contains(v, "-RC") {
 		v = strings.Replace(v, "RC", "-RC", 1)
 	}
+	// The format of Java candidates such as 23.0.1_11 needs to be converted to valid semver 23.0.1+11
+	if strings.HasPrefix(runtimeName, "java") && strings.Contains(v, "_") {
+		v = strings.Replace(v, "_", "+", 1)
+	}
+
+	re := regexp.MustCompile(`(?i)[-.]?rc.*`)
+	v = re.ReplaceAllString(v, "")
 	rtVer, err := semver.NewVersion(v)
 	if err != nil {
 		t.Fatalf("Unable to use %q as a semver.Version: %v", v, err)

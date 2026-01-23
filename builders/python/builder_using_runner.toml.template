@@ -1,0 +1,299 @@
+description = "Unified builder all Python runtimes"
+
+[[buildpacks]]
+  id = "google.config.entrypoint"
+  uri = "entrypoint_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.config.flex"
+  uri = "flex_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.python.appengine"
+  uri = "appengine_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.python.functions-framework-compat"
+  uri = "functions_framework_compat_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.python.functions-framework"
+  uri = "functions_framework_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.python.missing-entrypoint"
+  uri = "missing_entrypoint_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.python.pip"
+  uri = "pip_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.python.runtime"
+  uri = "runtime_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.python.webserver"
+  uri = "webserver_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.utils.label-image"
+  uri = "label_image_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.python.link-runtime"
+  uri = "link_runtime_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.python.poetry"
+  uri = "poetry_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.python.uv"
+  uri = "uv_using_runner.tgz"
+
+# GAE Flex
+[[order]]
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Python functions (gcf and gcp).
+
+# Poetry order group.
+[[order]]
+
+  # gcf only
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  [[order.group]]
+    id = "google.python.poetry"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
+
+# UV order group.
+[[order]]
+
+  # gcf only
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  [[order.group]]
+    id = "google.python.uv"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
+
+# Pip order group.
+[[order]]
+
+  # gcf only
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  # gcf and python37 only
+  [[order.group]]
+    id = "google.python.functions-framework-compat"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
+
+# Python applications (gae)
+[[order]]
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+   [[order.group]]
+    id = "google.python.runtime"
+
+   [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.appengine"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
+
+# Python applications (gcp)
+
+# Poetry order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.poetry"
+
+  # Entrypoint buildpack is required because it cannot be easily inferred.
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# UV order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.uv"
+
+  # Entrypoint buildpack is required because it cannot be easily inferred.
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Pip order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  # Entrypoint buildpack is required because it cannot be easily inferred.
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# gcp only
+# This buildpack group will attempt to install a webserver if the entrypoint 
+# is not provided. And set a default entrypoint if it is not provided given a 
+# main.py file exists else it will fail with a message to the user.
+
+# Poetry order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.poetry"
+
+  [[order.group]]
+    id = "google.python.missing-entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# UV order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.uv"
+
+  [[order.group]]
+    id = "google.python.missing-entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Pip order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.missing-entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[stack]
+  id = "${STACK_ID}"
+  build-image = "${STACK_BUILD_IMAGE}"
+  run-image = "${STACK_RUN_IMAGE}"
+
+[lifecycle]
+  version = "0.20.5"

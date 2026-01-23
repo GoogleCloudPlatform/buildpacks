@@ -24,7 +24,7 @@ import (
 
 const (
 	ffJarPath        = "/layers/google.java.functions-framework/functions-framework/functions-framework.jar"
-	defaultFfversion = "1.4.0"
+	defaultFfversion = "1.4.1"
 )
 
 func init() {

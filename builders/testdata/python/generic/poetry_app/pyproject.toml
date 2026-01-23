@@ -1,0 +1,13 @@
+[tool.poetry]
+name = "default_app"
+version = "0.1.0"
+description = ""
+authors = []
+package-mode = false
+requires-poetry = "<=2.0.0"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+Flask = "^2.0.3"
+gunicorn = "^20.1.0"
+setuptools = "^69"

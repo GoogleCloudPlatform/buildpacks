@@ -23,34 +23,34 @@ import (
 	"github.com/buildpacks/libcnb/v2"
 )
 
+const (
+	mockLatestAngularAdapterVersion = "17.2.14"
+)
+
 func TestInstallAngularBuildAdaptor(t *testing.T) {
 	testCases := []struct {
-		name           string
-		layerMetadata  map[string]any
-		angularVersion string
-		mocks          []*mockprocess.Mock
+		name                  string
+		layerMetadata         map[string]any
+		angularVersion        string
+		mocks                 []*mockprocess.Mock
+		expectedLayerMetadata map[string]any
 	}{
 		{
-			name:           "download pinned adapter",
-			angularVersion: "17.2.0",
+			name:          "download adaptor not needed since it is cached",
+			layerMetadata: map[string]any{"version": mockLatestAngularAdapterVersion},
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+PinnedAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
+				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
 			},
-			layerMetadata: map[string]any{},
+			expectedLayerMetadata: map[string]any{"version": mockLatestAngularAdapterVersion},
 		},
 		{
-			name:           "download adaptor not needed since it is cached",
-			angularVersion: "17.2.0",
-			layerMetadata:  map[string]any{"version": PinnedAngularAdapterVersion},
-		},
-		{
-			name:           "download invalid adaptor falls back to latest",
-			angularVersion: "20.0.0",
+			name: "download pinned adapter",
 			mocks: []*mockprocess.Mock{
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@20.0`, mockprocess.WithStderr("installed adapter failed")),
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@latest`, mockprocess.WithStderr("installed adapter")),
+				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
 			},
-			layerMetadata: map[string]any{},
+			layerMetadata:         map[string]any{},
+			expectedLayerMetadata: map[string]any{"version": mockLatestAngularAdapterVersion},
 		},
 	}
 
@@ -62,9 +62,12 @@ func TestInstallAngularBuildAdaptor(t *testing.T) {
 				Path:     t.TempDir(),
 				Metadata: tc.layerMetadata,
 			}
-			err := InstallAngularBuildAdaptor(ctx, layer, tc.angularVersion)
-			if err != nil {
-				t.Fatalf("InstallAngularBuildAdaptor() got error: %v", err)
+			if err := InstallAngularBuildAdapter(ctx, layer); err != nil {
+				t.Fatalf("InstallAngularBuildAdaptor() got unexpected error: %v", err)
+			}
+
+			if diff := cmp.Diff(tc.expectedLayerMetadata, layer.Metadata); diff != "" {
+				t.Errorf("InstallAngularBuildAdaptor() mismatch in metadata (-want +got):\n%s", diff)
 			}
 		})
 	}

@@ -118,12 +118,14 @@ dev_dependencies:
 			want: true,
 		},
 		{
-			name: "with dev_dependency",
+			name: "with dependency",
 			pubspec: `
 name: example_json_function
 
 dependencies:
   build_runner: ^2.0.0
+  test_non_string:
+    map_value: 1.2.3
 
 dev_dependencies:
   functions_framework: ^0.4.0

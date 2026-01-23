@@ -1,5 +1,7 @@
+load("//internal/acceptance:args.bzl", "get_runtime_to_builder_map", "languageargs")
 load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
-load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions", "pythonargs")
+load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions")
+load(":runtime.bzl", "gae_runtimes", "gcf_runtimes", "version_to_stack")
 
 licenses(["notice"])
 
@@ -7,6 +9,8 @@ exports_files([
     "config.yaml",
     "args.bzl",
 ])
+
+RUNTIME_TO_BUILDER_MAP = get_runtime_to_builder_map(version_to_stack, "python")
 
 create_acceptance_versions_dict_file(
     name = "gen_acceptance_targets_list",
@@ -34,12 +38,7 @@ acceptance_test_suite(
     ],
     builder = "//builders/python:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "python310": "//builders/python:builder_22.tar",
-        "python311": "//builders/python:builder_22.tar",
-        "python312": "//builders/python:builder_22.tar",
-        "python313": "//builders/python:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/python:generic",
     versions = gcp_runtime_versions,
 )
@@ -49,15 +48,10 @@ acceptance_test_suite(
     srcs = [
         "gae_test.go",
     ],
-    argsmap = pythonargs(),
+    argsmap = languageargs(gae_runtimes, version_to_stack),
     builder = "//builders/python:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "python310": "//builders/python:builder_22.tar",
-        "python311": "//builders/python:builder_22.tar",
-        "python312": "//builders/python:builder_22.tar",
-        "python313": "//builders/python:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/python:appengine",
     versions = gae_runtime_versions,
 )
@@ -67,14 +61,10 @@ acceptance_test_suite(
     srcs = [
         "gcf_test.go",
     ],
+    argsmap = languageargs(gcf_runtimes, version_to_stack),
     builder = "//builders/python:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "python310": "//builders/python:builder_22.tar",
-        "python311": "//builders/python:builder_22.tar",
-        "python312": "//builders/python:builder_22.tar",
-        "python313": "//builders/python:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/python:functions",
     versions = gcf_runtime_versions,
 )
@@ -84,12 +74,7 @@ acceptance_test_suite(
     srcs = ["flex_test.go"],
     builder = "//builders/python:builder.tar",
     rundir = ".",
-    runtime_to_builder_map = {
-        "python310": "//builders/python:builder_22.tar",
-        "python311": "//builders/python:builder_22.tar",
-        "python312": "//builders/python:builder_22.tar",
-        "python313": "//builders/python:builder_22.tar",
-    },
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
     testdata = "//builders/testdata/python:flex",
     versions = flex_runtime_versions,
 )
@@ -105,7 +90,7 @@ acceptance_test_suite(
     srcs = [
         "gae_test.go",
     ],
-    argsmap = pythonargs("$${_CANDIDATE_NAME}"),
+    argsmap = languageargs(gae_runtimes, version_to_stack, "$${_CANDIDATE_NAME}"),
     builder = "//builders/python:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/python:appengine",
@@ -118,7 +103,7 @@ acceptance_test_suite(
     srcs = [
         "gae_test.go",
     ],
-    argsmap = pythonargs("$${_CANDIDATE_NAME}", "$${_STACK}"),
+    argsmap = languageargs(gae_runtimes, version_to_stack, "$${_CANDIDATE_NAME}", "$${_STACK}"),
     builder = "//builders/python:builder.tar",
     rundir = ".",
     testdata = "//builders/testdata/python:appengine",

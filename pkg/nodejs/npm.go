@@ -148,7 +148,7 @@ func SupportsNPMPrune(ctx *gcp.Context) (bool, error) {
 // 4. "gcp-build" script in package.json
 // 5. "build" script in package.json
 func DetermineBuildCommands(pjs *PackageJSON, pkgTool string) (cmds []string, isCustomBuild bool) {
-	if HasApphostingBuild(pjs) {
+	if HasApphostingPackageBuild(pjs) {
 		return []string{runCommand(pkgTool, "apphosting:build")}, true
 	}
 	appHostingBuildScript, appHostingBuildScriptPresent := os.LookupEnv(AppHostingBuildEnv)

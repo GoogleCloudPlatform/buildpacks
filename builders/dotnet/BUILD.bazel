@@ -27,6 +27,25 @@ GROUPS = {
     ],
 }
 
+BUILDPACKS_USING_RUNNER = [
+    "//cmd/config/entrypoint:entrypoint_using_runner.tgz",
+    "//cmd/config/flex:flex_using_runner.tgz",
+    "//cmd/dotnet/appengine:appengine_using_runner.tgz",
+    "//cmd/dotnet/appengine_main:appengine_main_using_runner.tgz",
+    "//cmd/dotnet/functions_framework:functions_framework_using_runner.tgz",
+    "//cmd/dotnet/publish:publish_using_runner.tgz",
+    "//cmd/dotnet/runtime:runtime_using_runner.tgz",
+    "//cmd/dotnet/sdk:sdk_using_runner.tgz",
+    "//cmd/utils/archive_source:archive_source_using_runner.tgz",
+    "//cmd/utils/label:label_image_using_runner.tgz",
+]
+
+GROUPS_USING_RUNNER = {
+    "dotnet": [
+        "//cmd/dotnet/flex:flex_using_runner.tgz",
+    ],
+}
+
 builder(
     name = "builder",
     builder_template = ":builder.toml.template",
@@ -38,6 +57,16 @@ builder(
 )
 
 builder(
+    name = "builder_using_runner",
+    builder_template = ":builder_using_runner.toml.template",
+    buildpacks = BUILDPACKS_USING_RUNNER,
+    descriptor = "builder.toml",
+    groups = GROUPS_USING_RUNNER,
+    image = "gcp/dotnet-runner",
+    stack = "google.gae.18",
+)
+
+builder(
     name = "builder_22",
     builder_template = ":builder.toml.template",
     buildpacks = BUILDPACKS,
@@ -45,4 +74,13 @@ builder(
     groups = GROUPS,
     image = "gcp/dotnet-22",
     stack = "google.gae.22",
+)
+
+builder(
+    name = "builder_24",
+    builder_template = ":builder.toml.template",
+    buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
+    image = "gcp/dotnet-24",
+    stack = "google.24.full",
 )

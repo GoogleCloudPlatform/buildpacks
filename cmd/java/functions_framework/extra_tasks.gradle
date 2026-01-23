@@ -22,5 +22,5 @@ task _javaFunctionCopyAllDependencies(type: Copy) {
 
 // Print the path of the jar target.
 task _javaFunctionPrintJarTarget {
-  println jar.archivePath
+  println jar.archiveFile.get().asFile.absolutePath
 }

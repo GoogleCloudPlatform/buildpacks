@@ -1,5 +1,6 @@
 version: v1
 runConfig:
+  cpuAlwaysAllocated: true
   runCommand: node dist/angular-ssr/server/server.mjs
   vpcAccess:
     connector: projects/my-project/locations/us-central1/connectors/my-connector

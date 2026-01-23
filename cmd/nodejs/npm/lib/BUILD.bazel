@@ -1,0 +1,42 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+go_library(
+    name = "lib",
+    srcs = [
+        "lib.go",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//:__subpackages__",
+    ],
+    deps = [
+        "//pkg/ar",
+        "//pkg/buildermetrics",
+        "//pkg/cache",
+        "//pkg/devmode",
+        "//pkg/firebase/faherror",
+        "//pkg/gcpbuildpack",
+        "//pkg/nodejs",
+    ],
+)
+
+go_test(
+    name = "lib_test",
+    size = "small",
+    srcs = ["lib_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata/nodejs:appengine)",
+    ],
+    data = [
+        "//builders/testdata/nodejs:appengine",
+    ],
+    embed = [":lib"],
+    rundir = ".",
+    deps = [
+        "//internal/buildpacktest",
+        "//internal/mockprocess",
+        "//pkg/nodejs",
+    ],
+)

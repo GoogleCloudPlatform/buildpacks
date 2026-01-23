@@ -403,7 +403,7 @@ func TestSupportsBundler1Failures(t *testing.T) {
 		{
 			name:         "ruby version not set",
 			rubyVersion:  "",
-			errorContent: "Invalid Semantic Version",
+			errorContent: "invalid semantic version",
 		},
 	}
 

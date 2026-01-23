@@ -21,6 +21,25 @@ BUILDPACKS = [
     "//cmd/python/webserver:webserver.tgz",
     "//cmd/utils/archive_source:archive_source.tgz",
     "//cmd/utils/label:label_image.tgz",
+    "//cmd/python/poetry:poetry.tgz",
+    "//cmd/python/uv:uv.tgz",
+]
+
+BUILDPACKS_USING_RUNNER = [
+    "//cmd/config/entrypoint:entrypoint_using_runner.tgz",
+    "//cmd/python/appengine:appengine_using_runner.tgz",
+    "//cmd/config/flex:flex_using_runner.tgz",
+    "//cmd/python/functions_framework:functions_framework_using_runner.tgz",
+    "//cmd/python/functions_framework_compat:functions_framework_compat_using_runner.tgz",
+    "//cmd/python/link_runtime:link_runtime_using_runner.tgz",
+    "//cmd/python/missing_entrypoint:missing_entrypoint_using_runner.tgz",
+    "//cmd/python/pip:pip_using_runner.tgz",
+    "//cmd/python/runtime:runtime_using_runner.tgz",
+    "//cmd/python/webserver:webserver_using_runner.tgz",
+    "//cmd/utils/archive_source:archive_source_using_runner.tgz",
+    "//cmd/utils/label:label_image_using_runner.tgz",
+    "//cmd/python/poetry:poetry_using_runner.tgz",
+    "//cmd/python/uv:uv_using_runner.tgz",
 ]
 
 builder(
@@ -33,10 +52,28 @@ builder(
 )
 
 builder(
+    name = "builder_using_runner",
+    builder_template = ":builder_using_runner.toml.template",
+    buildpacks = BUILDPACKS_USING_RUNNER,
+    descriptor = "builder.toml",
+    image = "gcp/python-runner",
+    stack = "google.gae.18",
+)
+
+builder(
     name = "builder_22",
     builder_template = ":builder.toml.template",
     buildpacks = BUILDPACKS,
     descriptor = "builder.toml",
-    image = "gcp/python",
+    image = "gcp/python-22",
     stack = "google.gae.22",
+)
+
+builder(
+    name = "builder_24",
+    builder_template = ":builder.toml.template",
+    buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
+    image = "gcp/python-24",
+    stack = "google.24.full",
 )

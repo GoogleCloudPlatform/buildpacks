@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/envvars"
@@ -29,18 +30,19 @@ import (
 
 // Options contains data for the preparer to perform pre-build logic.
 type Options struct {
-	SecretClient                  secrets.SecretManager
-	AppHostingYAMLPath            string
-	ProjectID                     string
-	Region                        string
-	EnvironmentName               string
-	AppHostingYAMLOutputFilePath  string
-	EnvDereferencedOutputFilePath string
-	BackendRootDirectory          string
-	BuildpackConfigOutputFilePath string
-	FirebaseConfig                string
-	FirebaseWebappConfig          string
-	ServerSideEnvVars             string
+	SecretClient                      secrets.SecretManager
+	AppHostingYAMLPath                string
+	ProjectID                         string
+	Region                            string
+	EnvironmentName                   string
+	AppHostingYAMLOutputFilePath      string
+	EnvDereferencedOutputFilePath     string
+	BackendRootDirectory              string
+	BuildpackConfigOutputFilePath     string
+	FirebaseConfig                    string
+	FirebaseWebappConfig              string
+	ServerSideEnvVars                 string
+	ApphostingPreprocessedPathForPack string
 }
 
 // Prepare performs pre-build logic for App Hosting backends including:
@@ -60,6 +62,9 @@ func Prepare(ctx context.Context, opts Options) error {
 		if err != nil {
 			return fmt.Errorf("reading in and validating apphosting.yaml at path %v: %w", opts.AppHostingYAMLPath, err)
 		}
+		for i := range appHostingYAML.Env {
+			appHostingYAML.Env[i].Source = apphostingschema.SourceAppHostingYAML
+		}
 
 		if err = apphostingschema.MergeWithEnvironmentSpecificYAML(&appHostingYAML, opts.AppHostingYAMLPath, opts.EnvironmentName); err != nil {
 			return fmt.Errorf("merging with environment specific apphosting.%v.yaml: %w", opts.EnvironmentName, err)
@@ -69,18 +74,18 @@ func Prepare(ctx context.Context, opts Options) error {
 	// Add FIREBASE_CONFIG env var for Admin SDK AutoInit, only if it is not already user-defined.
 	if !apphostingschema.IsKeyUserDefined(&appHostingYAML, "FIREBASE_CONFIG") {
 		if opts.FirebaseConfig != "" {
-			appHostingYAML.Env = append(appHostingYAML.Env, apphostingschema.EnvironmentVariable{Variable: "FIREBASE_CONFIG", Value: opts.FirebaseConfig})
+			appHostingYAML.Env = append(appHostingYAML.Env, apphostingschema.EnvironmentVariable{Variable: "FIREBASE_CONFIG", Value: opts.FirebaseConfig, Source: apphostingschema.SourceFirebaseSystem})
 		}
 	}
 
 	// Add FIREBASE_WEBAPP_CONFIG env var for Client SDK AutoInit, only if it is not already user-defined.
 	if !apphostingschema.IsKeyUserDefined(&appHostingYAML, "FIREBASE_WEBAPP_CONFIG") {
 		if opts.FirebaseWebappConfig != "" {
-			appHostingYAML.Env = append(appHostingYAML.Env, apphostingschema.EnvironmentVariable{Variable: "FIREBASE_WEBAPP_CONFIG", Value: opts.FirebaseWebappConfig, Availability: []string{"BUILD"}})
+			appHostingYAML.Env = append(appHostingYAML.Env, apphostingschema.EnvironmentVariable{Variable: "FIREBASE_WEBAPP_CONFIG", Value: opts.FirebaseWebappConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseSystem})
 		}
 	}
 
-	// Use server side env vars instead of apphosting.yaml.
+	// Merge server side env vars, overriding any values defined in other env var sources.
 	if opts.ServerSideEnvVars != "" {
 		parsedServerSideEnvVars, err := envvars.ParseEnvVarsFromString(opts.ServerSideEnvVars)
 		if err != nil {
@@ -110,8 +115,22 @@ func Prepare(ctx context.Context, opts Options) error {
 		return fmt.Errorf("writing final apphosting.yaml to %v: %w", opts.AppHostingYAMLOutputFilePath, err)
 	}
 
-	if err := envvars.Write(dereferencedEnvMap, opts.EnvDereferencedOutputFilePath); err != nil {
-		return fmt.Errorf("writing final dereferenced environment variables to %v: %w", opts.EnvDereferencedOutputFilePath, err)
+	// The processed apphosting.yaml needs to be written to ApphostingPreprocessedPathForPack since the pack command cannot read from volumes (/yaml in this case)
+	if err := appHostingYAML.WriteToFile(opts.ApphostingPreprocessedPathForPack); err != nil {
+		return fmt.Errorf("writing final apphosting.yaml to %v: %w", opts.ApphostingPreprocessedPathForPack, err)
+	}
+
+	// "/platform/" is the CNB_PLATFORM_DIR we use for lifecycle builds which need envvars written
+	// to the CNB_PLATFORM_DIR/env/ in a different format from pack builds.
+	// TODO(b/432041883): Remove this once we are fully on lifecycle builds.
+	if strings.Contains(opts.EnvDereferencedOutputFilePath, "/platform/env") {
+		if err := envvars.WriteLifecycle(dereferencedEnvMap, opts.EnvDereferencedOutputFilePath); err != nil {
+			return fmt.Errorf("writing final dereferenced environment variables to %v: %w", opts.EnvDereferencedOutputFilePath, err)
+		}
+	} else {
+		if err := envvars.Write(dereferencedEnvMap, opts.EnvDereferencedOutputFilePath); err != nil {
+			return fmt.Errorf("writing final dereferenced environment variables to %v: %w", opts.EnvDereferencedOutputFilePath, err)
+		}
 	}
 
 	cwd, err := os.Getwd()

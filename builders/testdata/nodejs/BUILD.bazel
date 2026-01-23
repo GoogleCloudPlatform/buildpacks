@@ -10,6 +10,7 @@ exports_files(
         "functions",
         "generic",
         "flex",
+        "apphosting",
     ],
 )
 
@@ -38,4 +39,9 @@ filegroup(
 filegroup(
     name = "generic_files",
     srcs = glob(["generic/**"]),
+)
+
+filegroup(
+    name = "apphosting_files",
+    srcs = glob(["apphosting/**"]),
 )

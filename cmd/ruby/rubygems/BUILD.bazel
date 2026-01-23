@@ -1,5 +1,5 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
-load("//tools:defs.bzl", "buildpack")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -15,19 +15,13 @@ buildpack(
     ],
 )
 
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    data = glob(["testdata/**"]),
-    embed = [":main"],
-    rundir = ".",
-    deps = [
-        "//internal/buildpacktest",
-        "//internal/mockprocess",
-        "//internal/testserver",
-        "//pkg/ruby",
-        "//pkg/testdata",
+buildpack_using_runner(
+    name = "rubygems_using_runner",
+    buildpack_id = "google.ruby.rubygems",
+    prefix = "ruby",
+    version = "0.9.0",
+    visibility = [
+        "//builders:ruby_builders",
     ],
 )
 
@@ -40,10 +34,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/fetch",
-        "//pkg/fileutil",
+        "//cmd/ruby/rubygems/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/ruby",
-        "@com_github_buildpacks_libcnb_v2//:go_default_library",
     ],
 )

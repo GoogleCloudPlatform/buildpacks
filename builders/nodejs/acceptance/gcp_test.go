@@ -94,8 +94,8 @@ func TestAcceptance(t *testing.T) {
 			// Test installs a specific version of node and only needs to be run with a single version
 			VersionInclusionConstraint: "12",
 			App:                        "simple",
-			Path:                       "/version?want=16.9.1",
-			Env:                        []string{"GOOGLE_RUNTIME_VERSION=16.9.1"},
+			Path:                       "/version?want=16.16.0",
+			Env:                        []string{"GOOGLE_RUNTIME_VERSION=16.16.0"},
 			MustUse:                    []string{nodeRuntime, nodeNPM},
 		},
 		{
@@ -104,6 +104,14 @@ func TestAcceptance(t *testing.T) {
 			Env:        []string{"GOOGLE_ENTRYPOINT=node server.js"},
 			MustUse:    []string{nodeRuntime},
 			MustNotUse: []string{nodeNPM, nodeYarn},
+		},
+		{
+			Name:                       "without_package.json_ts",
+			App:                        "no_package_ts",
+			VersionInclusionConstraint: ">= 24.0.0",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=node server.ts"},
+			MustUse:                    []string{nodeRuntime},
+			MustNotUse:                 []string{nodeNPM, nodeYarn},
 		},
 		{
 			Name: "NPM version specified",
@@ -129,6 +137,12 @@ func TestAcceptance(t *testing.T) {
 			Env:                    []string{"GOOGLE_ENTRYPOINT=node hello.js"},
 			MustUse:                []string{nodeRuntime, nodeNPM, entrypoint},
 			SkipStacks:             []string{"google.min.22"},
+		},
+		{
+			Name:                       "nextjs",
+			App:                        "nextjs",
+			MustUse:                    []string{nodeRuntime, nodeNPM},
+			VersionInclusionConstraint: ">= 20.0.0",
 		},
 	}
 

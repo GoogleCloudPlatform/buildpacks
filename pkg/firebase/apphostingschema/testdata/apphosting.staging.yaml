@@ -15,3 +15,13 @@ env:
 
   - variable: DATABASE_URL
     secret: secretStagingDatabaseURL
+
+scripts:
+  buildCommand: "npm run build"
+
+outputFiles:
+  serverApp:
+    include:
+      - "dist"
+      - "node_modules"
+      - "package.json"

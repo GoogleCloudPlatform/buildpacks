@@ -33,7 +33,7 @@ func TestAcceptanceGo(t *testing.T) {
 			App:        "simple_gomod",
 			MustUse:    []string{goRuntime, goBuild, goMod},
 			MustNotUse: []string{goPath},
-			MustOutput: []string{"Using latest stable Go version"},
+			MustOutput: []string{"using latest available Go runtime for the stack"},
 		},
 		{
 			Name:       "Go.mod package",

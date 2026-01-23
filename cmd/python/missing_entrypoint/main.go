@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,45 +18,10 @@
 package main
 
 import (
-	"fmt"
-	"strings"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/python/missing_entrypoint/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if result := runtime.CheckOverride("python"); result != nil {
-		return result, nil
-	}
-
-	atLeastOne, err := ctx.HasAtLeastOne("*.py")
-	if err != nil {
-		return nil, fmt.Errorf("finding *.py files: %w", err)
-	}
-	if !atLeastOne {
-		return gcp.OptOut("no .py files found"), nil
-	}
-	return gcp.OptIn("found .py files"), nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	hasMain, err := ctx.HasAtLeastOne("main.py")
-	if err != nil {
-		return fmt.Errorf("finding main.py files: %w", err)
-	}
-	if !hasMain {
-		return fmt.Errorf("for Python, provide a main.py file or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
-	}
-
-	cmd := []string{"gunicorn", "-b", ":8080", "main:app"}
-	ctx.Logf("Setting default entrypoint: %q", strings.Join(cmd, " "))
-	ctx.AddProcess(gcp.WebProcess, cmd, gcp.AsDefaultProcess())
-
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

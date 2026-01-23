@@ -1,7 +1,7 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack for Maven.
-load("//tools:defs.bzl", "buildpack")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -11,7 +11,17 @@ buildpack(
         ":main",
     ],
     prefix = "java",
-    version = "0.9.0",
+    version = "0.9.1",
+    visibility = [
+        "//builders:java_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "maven_using_runner",
+    buildpack_id = "google.java.maven",
+    prefix = "java",
+    version = "0.9.1",
     visibility = [
         "//builders:java_builders",
     ],
@@ -26,29 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/devmode",
-        "//pkg/env",
-        "//pkg/fileutil",
+        "//cmd/java/maven/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/java",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    args = [
-        "-test-data=$(location //builders/testdata/java:generic)",
-    ],
-    data = [
-        "//builders/testdata/java:generic",
-    ],
-    embed = [":main"],
-    rundir = ".",
-    deps = [
-        "//internal/buildpacktest",
-        "//internal/mockprocess",
-        "//pkg/java",
     ],
 )

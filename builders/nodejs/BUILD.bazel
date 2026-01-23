@@ -24,6 +24,26 @@ BUILDPACKS = [
     "//cmd/nodejs/firebaseangular:firebaseangular.tgz",
     "//cmd/nodejs/firebasebundle:firebasebundle.tgz",
     "//cmd/nodejs/firebasenx:firebasenx.tgz",
+    "//cmd/nodejs/turborepo:turborepo.tgz",
+]
+
+BUILDPACKS_USING_RUNNER = [
+    "//cmd/config/entrypoint:entrypoint_using_runner.tgz",
+    "//cmd/config/flex:flex_using_runner.tgz",
+    "//cmd/nodejs/appengine:appengine_using_runner.tgz",
+    "//cmd/nodejs/functions_framework:functions_framework_using_runner.tgz",
+    "//cmd/nodejs/legacy_worker:legacy_worker_using_runner.tgz",
+    "//cmd/nodejs/npm:npm_using_runner.tgz",
+    "//cmd/nodejs/pnpm:pnpm_using_runner.tgz",
+    "//cmd/nodejs/runtime:runtime_using_runner.tgz",
+    "//cmd/nodejs/yarn:yarn_using_runner.tgz",
+    "//cmd/utils/archive_source:archive_source_using_runner.tgz",
+    "//cmd/utils/label:label_image_using_runner.tgz",
+    "//cmd/nodejs/firebasenextjs:firebasenextjs_using_runner.tgz",
+    "//cmd/nodejs/firebaseangular:firebaseangular_using_runner.tgz",
+    "//cmd/nodejs/firebasebundle:firebasebundle_using_runner.tgz",
+    "//cmd/nodejs/firebasenx:firebasenx_using_runner.tgz",
+    "//cmd/nodejs/turborepo:turborepo_using_runner.tgz",
 ]
 
 builder(
@@ -36,10 +56,28 @@ builder(
 )
 
 builder(
+    name = "builder_using_runner",
+    builder_template = ":builder_using_runner.toml.template",
+    buildpacks = BUILDPACKS_USING_RUNNER,
+    descriptor = "builder.toml",
+    image = "gcp/nodejs-runner",
+    stack = "google.gae.18",
+)
+
+builder(
     name = "builder_22",
     builder_template = ":builder.toml.template",
     buildpacks = BUILDPACKS,
     descriptor = "builder.toml",
-    image = "gcp/nodejs",
+    image = "gcp/nodejs-22",
     stack = "google.gae.22",
+)
+
+builder(
+    name = "builder_24",
+    builder_template = ":builder.toml.template",
+    buildpacks = BUILDPACKS,
+    descriptor = "builder.toml",
+    image = "gcp/nodejs-24",
+    stack = "google.24.full",
 )

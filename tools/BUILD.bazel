@@ -5,6 +5,7 @@ package(default_visibility = ["//:__subpackages__"])
 exports_files([
     "defs.bzl",
     "buildpack.toml.template",
+    "generate_flatten_flag.sh",
 ])
 
 # Used in builder macro in defs.bzl.
@@ -16,6 +17,11 @@ sh_binary(
 sh_binary(
     name = "create_buildpackage",
     srcs = ["create-buildpackage.sh"],
+)
+
+sh_binary(
+    name = "generate_flatten_flag",
+    srcs = ["generate_flatten_flag.sh"],
 )
 
 sh_binary(

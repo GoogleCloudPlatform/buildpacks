@@ -1,0 +1,872 @@
+description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java, Node.js, PHP, Python, and Ruby"
+
+[[buildpacks]]
+  id = "google.config.entrypoint"
+  uri = "entrypoint.tgz"
+
+[[buildpacks]]
+  id = "google.dart.compile"
+  uri = "dart/compile.tgz"
+
+[[buildpacks]]
+  id = "google.dart.pub"
+  uri = "dart/pub.tgz"
+
+[[buildpacks]]
+  id = "google.dart.sdk"
+  uri = "dart/sdk.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.runtime"
+  uri = "dotnet/runtime.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.sdk"
+  uri = "dotnet/sdk.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.publish"
+  uri = "dotnet/publish.tgz"
+
+[[buildpacks]]
+  id = "google.dotnet.functions-framework"
+  uri = "dotnet/functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.go.clear-source"
+  uri = "go/clear_source.tgz"
+
+[[buildpacks]]
+  id = "google.go.runtime"
+  uri = "go/runtime.tgz"
+
+[[buildpacks]]
+  id = "google.go.gomod"
+  uri = "go/gomod.tgz"
+
+[[buildpacks]]
+  id = "google.go.build"
+  uri = "go/build.tgz"
+
+[[buildpacks]]
+  id = "google.go.gopath"
+  uri = "go/gopath.tgz"
+
+[[buildpacks]]
+  id = "google.go.functions-framework"
+  uri = "go/functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.java.entrypoint"
+  uri = "java/entrypoint.tgz"
+
+[[buildpacks]]
+  id = "google.java.exploded-jar"
+  uri = "java/exploded_jar.tgz"
+
+[[buildpacks]]
+  id = "google.java.functions-framework"
+  uri = "java/functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.java.gradle"
+  uri = "java/gradle.tgz"
+
+[[buildpacks]]
+  id = "google.java.maven"
+  uri = "java/maven.tgz"
+
+[[buildpacks]]
+  id = "google.java.graalvm"
+  uri = "java/graalvm.tgz"
+
+[[buildpacks]]
+  id = "google.java.native-image"
+  uri = "java/native_image.tgz"
+
+[[buildpacks]]
+  id = "google.java.runtime"
+  uri = "java/runtime.tgz"
+
+[[buildpacks]]
+  id = "google.java.spring-boot"
+  uri = "java/spring_boot.tgz"
+
+[[buildpacks]]
+  id = "google.java.clear-source"
+  uri = "java/clear_source.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.runtime"
+  uri = "nodejs/runtime.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.npm"
+  uri = "nodejs/npm.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.yarn"
+  uri = "nodejs/yarn.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.pnpm"
+  uri = "nodejs/pnpm.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.functions-framework"
+  uri = "nodejs/functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.python.runtime"
+  uri = "python/runtime.tgz"
+
+[[buildpacks]]
+  id = "google.python.pip"
+  uri = "python/pip.tgz"
+
+[[buildpacks]]
+  id = "google.python.poetry"
+  uri = "python/poetry.tgz"
+
+[[buildpacks]]
+  id = "google.python.uv"
+  uri = "python/uv.tgz"
+
+[[buildpacks]]
+  id = "google.python.functions-framework"
+  uri = "python/functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.python.missing-entrypoint"
+  uri = "python/missing_entrypoint.tgz"
+
+[[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source.tgz"
+
+[[buildpacks]]
+  id = "google.utils.label-image"
+  uri = "label_image.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.runtime"
+  uri = "ruby/runtime.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.functions-framework"
+  uri = "ruby/functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.rubygems"
+  uri = "ruby/rubygems.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.bundle"
+  uri = "ruby/bundle.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.rails"
+  uri = "ruby/rails.tgz"
+
+[[buildpacks]]
+  id = "google.ruby.missing-entrypoint"
+  uri = "ruby/missing_entrypoint.tgz"
+
+[[buildpacks]]
+  id = "google.config.flex"
+  uri = "flex.tgz"
+
+[[buildpacks]]
+  id = "google.python.webserver"
+  uri = "webserver.tgz"
+
+[[buildpacks]]
+  id = "google.php.composer"
+  uri = "php/composer.tgz"
+
+[[buildpacks]]
+  id = "google.php.composer-install"
+  uri = "php/composer_install.tgz"
+
+[[buildpacks]]
+   id = "google.php.composer-gcp-build"
+   uri = "php/composer_gcp_build.tgz"
+
+[[buildpacks]]
+  id = "google.php.runtime"
+  uri = "php/runtime.tgz"
+
+[[buildpacks]]
+  id = "google.php.webconfig"
+  uri = "php/webconfig.tgz"
+
+[[buildpacks]]
+  id = "google.utils.nginx"
+  uri = "nginx.tgz"
+
+########
+# .NET #
+########
+
+[[order]]
+
+  [[order.group]]
+    id = "google.dotnet.sdk"
+
+  [[order.group]]
+    id = "google.dotnet.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.dotnet.publish"
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Prebuilt .NET applications.
+[[order]]
+
+  [[order.group]]
+    id = "google.dotnet.runtime"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+########
+# Dart #
+########
+
+[[order]]
+
+  [[order.group]]
+    id = "google.dart.sdk"
+
+  [[order.group]]
+    id = "google.dart.pub"
+    optional = true
+
+  [[order.group]]
+    id = "google.dart.compile"
+
+######
+# Go #
+######
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.functions-framework"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.clear-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.gomod"
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.clear-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+
+  [[order.group]]
+    id = "google.go.runtime"
+
+  [[order.group]]
+    id = "google.go.gopath"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.build"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.go.clear-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+########
+# Java #
+########
+
+[[order]]
+  [[order.group]]
+    id = "google.java.graalvm"
+
+  [[order.group]]
+    id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.native-image"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+
+# Functions have separate groups because entrypoint not supported.
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.functions-framework"
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.gradle"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.functions-framework"
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Exploded Jars
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.exploded-jar"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Maven applications.
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.entrypoint"
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Gradle & Jar-based applications.
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.gradle"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+  [[order.group]]
+    id = "google.java.runtime"
+
+  [[order.group]]
+    id = "google.java.gradle"
+    optional = true
+
+  [[order.group]]
+    id = "google.java.entrypoint"
+
+  [[order.group]]
+    id = "google.java.clear-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+##############
+# Python 1/2 #
+##############
+# GAE Flex Python.
+[[order]]
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Python functions.
+# Poetry order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  [[order.group]]
+    id = "google.python.poetry"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# UV order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  [[order.group]]
+    id = "google.python.uv"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Pip order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Python applications with default entrypoint or fail with a message.
+# Poetry order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.poetry"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# UV order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.uv"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Pip order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+###########
+# Ruby applications #
+###########
+# Ruby applications.
+# Entrypoint buildpack is required because it cannot be easily inferred.
+# The Node.js buildpack is required for Rails asset precompilation.
+[[order]]
+  [[order.group]]
+    id = "google.ruby.runtime"
+
+  [[order.group]]
+    id = "google.ruby.rubygems"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.bundle"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.rails"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# The Ruby functions order group. Similar to the generic Ruby
+# applications order group above but uses the GOOGLE_FUNCTION_TARGET
+# env var to set the container entrypoint.
+[[order]]
+  [[order.group]]
+    id = "google.ruby.runtime"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.ruby.bundle"
+
+  [[order.group]]
+    id = "google.ruby.functions-framework"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+#######
+# PHP #
+#######
+[[order]]
+  [[order.group]]
+    id = "google.php.runtime"
+
+  [[order.group]]
+    id = "google.utils.nginx"
+
+  [[order.group]]
+    id = "google.php.composer-install"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer-gcp-build"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.composer"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.php.webconfig"
+
+###########
+# Node.js #
+###########
+# Note: We detect Node.js last because client-side .js files exist in many
+# web projects and detecting Node.js last will decrease the chance of
+# detection confusion.
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.yarn"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.npm"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Separate groups for Node.js projects without dependencies.
+# Making both yarn and npm optional in the previous groups leads
+# the yarn group to opt in every time.
+
+# Node.js functions without a package.json.
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Node.js applications without a package.json.
+# Entrypoint is required because it cannot be read from package.json.
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+##############
+# Python 2/2 #
+##############
+# Python applications with default entrypoint or fail with a message.
+# Poetry order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.poetry"
+
+  [[order.group]]
+    id = "google.python.missing-entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# UV order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.uv"
+
+  [[order.group]]
+    id = "google.python.missing-entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Pip order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.pip"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.missing-entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# This buildpack group will always fail but with a clear message that the
+# entrypoint is missing. It must be the last group otherwise projects with
+# a single .rb file and no entrypoint will fail
+[[order]]
+  [[order.group]]
+    id = "google.ruby.missing-entrypoint"
+
+# Currently built with //builders/gcp/base/stack/stack:build.
+[stack]
+  id = "google.24"
+  build-image = "gcr.io/buildpacks/google-24/build"
+  run-image = "gcr.io/buildpacks/google-24/run"
+
+[lifecycle]
+  version = "0.20.5"

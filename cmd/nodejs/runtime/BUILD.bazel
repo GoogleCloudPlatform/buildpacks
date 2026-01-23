@@ -1,15 +1,33 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack for the Node.js runtime.
-load("//tools:defs.bzl", "buildpack")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
 buildpack(
     name = "runtime",
+    srcs = [
+        "exec/heapsize.sh",
+    ],
     executables = [
         ":main",
     ],
+    prefix = "nodejs",
+    version = "1.0.0",
+    visibility = [
+        "//builders:nodejs_builders",
+        # Ruby on Rails apps require Nodejs and Yarn for precompiling assets
+        "//builders:ruby_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "runtime_using_runner",
+    srcs = [
+        "exec/heapsize.sh",
+    ],
+    buildpack_id = "google.nodejs.runtime",
     prefix = "nodejs",
     version = "1.0.0",
     visibility = [
@@ -28,19 +46,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/env",
+        "//cmd/nodejs/runtime/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/nodejs",
-        "//pkg/ruby",
-        "//pkg/runtime",
     ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = ["//internal/buildpacktest"],
 )

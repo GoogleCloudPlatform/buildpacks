@@ -1,4 +1,4 @@
-// Copyright 2023 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,77 +19,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/flex_entrypoint/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
-)
-
-const (
-	flexEntrypoint = "flex_entrypoint"
-	production     = "production"
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !env.IsFlex() {
-		return gcp.OptOut("Not a GAE Flex app."), nil
-	}
-	// Detection for GCP builds follows
-	if os.Getenv(env.Entrypoint) != "" {
-		return gcp.OptInEnvSet(env.Entrypoint), nil
-	}
-	entrypoint, err := appyaml.EntrypointIfExists(ctx.ApplicationRoot())
-	if err != nil {
-		return nil, fmt.Errorf("Error finding entrypoint in app.yaml if set. %w", err)
-	}
-	if entrypoint != "" {
-		ctx.Logf("Using entrypoint from app.yaml.")
-		return gcp.OptIn("Found the app.yaml file specified by GAE_APPLICATION_YAML_PATH."), nil
-	}
-	return gcp.OptOut(env.Entrypoint + " not set, no valid entrypoint in app.yaml"), nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	entrypoint := getEntrypoint(ctx)
-	l, err := ctx.Layer(flexEntrypoint, gcp.LaunchLayer)
-	if err != nil {
-		return fmt.Errorf("creating layer: %w", err)
-	}
-	// Set the launch environment to production so it uses 0.0.0.0 host when it starts the entrypoint.
-	l.LaunchEnvironment.Default("RACK_ENV", production)
-	l.LaunchEnvironment.Default("RAILS_ENV", production)
-	l.LaunchEnvironment.Default("APP_ENV", production)
-
-	ctx.Logf("Using entrypoint %s", entrypoint)
-	ctx.AddProcess(gcp.WebProcess, []string{entrypoint}, gcp.AsDefaultProcess())
-	return nil
-}
-
-func getEntrypoint(ctx *gcp.Context) string {
-	if entrypoint := os.Getenv(env.Entrypoint); entrypoint != "" {
-		return entrypoint
-	}
-
-	entrypoint, err := appyaml.EntrypointIfExists(ctx.ApplicationRoot())
-	if err != nil {
-		ctx.Logf("app.yaml env var set but the specified app.yaml file doesn't exist.")
-		return ""
-	}
-
-	if entrypoint != "" {
-		return entrypoint
-	}
-	ep, err := ruby.InferEntrypoint(ctx, ctx.ApplicationRoot())
-	if err != nil {
-		ctx.Logf(err.Error())
-		return ""
-	}
-	return ep
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

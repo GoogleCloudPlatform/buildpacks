@@ -27,6 +27,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/version"
 	"github.com/buildpacks/libcnb/v2"
 	"github.com/Masterminds/semver"
@@ -53,6 +54,12 @@ var (
 
 	// goVersionsURL can be use to download a list of available, stable versions of Go.
 	goVersionsURL = "https://go.dev/dl/?mode=json"
+
+	// latestGoVersionPerStack is the latest Go version per stack to use if not specified by the user.
+	latestGoVersionPerStack = map[string]string{
+		runtime.Ubuntu2204: "1.24.*",
+		runtime.Ubuntu2404: "1.24.*",
+	}
 )
 
 // goRelease represents an entry on the go.dev downloads page.
@@ -108,27 +115,9 @@ func SupportsGoGet(ctx *gcp.Context) (bool, error) {
 func SupportsVendorModificaton(ctx *gcp.Context) (bool, error) {
 	v, _ := RuntimeVersion(ctx)
 
-	// if runtimeVersion is not set, it uses latest version (which is going to be >=1.23.0) which does not support vendor modification without modifying vendor/modules.txt.
-	if v == "" {
-		return false, nil
-	}
-
-	// if runtimeVersion is set, check if it is <1.23.0.
-	version, err := semver.NewVersion(v)
-	if err != nil {
-		return false, gcp.InternalErrorf("unable to parse version string %q: %w", v, err)
-	}
-
-	goVersionMatches, err := semver.NewConstraint("<1.23.0")
-	if err != nil {
-		return false, gcp.InternalErrorf("unable to parse version range %q: %w", v, err)
-	}
-
-	if goVersionMatches.Check(version) {
-		return true, nil
-	}
-
-	return false, nil
+	// If runtimeVersion is not set, it uses latest version (which is going to be >=1.23.0) which does
+	// not support vendor modification without modifying vendor/modules.txt.
+	return VersionMatches(ctx, "<1.23.0", v)
 }
 
 // VersionMatches checks if the installed version of Go and the version specified in go.mod match the given version range.
@@ -149,6 +138,14 @@ func VersionMatches(ctx *gcp.Context, versionRange string, goVersions ...string)
 
 	if v == "" {
 		return false, nil
+	}
+
+	if isSupportedUnstableGoVersion(v) {
+		// The format of Go pre-release version e.g. 1.20rc1 doesn't follow the semver rule
+		// that requires a hyphen before the identifier "rc".
+		if strings.Contains(v, "rc") && !strings.Contains(v, "-rc") {
+			v = strings.Replace(v, "rc", "-rc", 1)
+		}
 	}
 
 	version, err := semver.NewVersion(v)
@@ -300,6 +297,10 @@ func goModPath(ctx *gcp.Context) string {
 // versions, we explictly disable GOPROXY and try again on any error.
 // For newer versions of Go, we take advantage of the "pipe" character which has the same effect.
 func ExecWithGoproxyFallback(ctx *gcp.Context, cmd []string, opts ...gcp.ExecOption) (*gcp.ExecResult, error) {
+	if _, present := os.LookupEnv("GOPROXY"); present {
+		// If the user has explicitly set GOPROXY, we shouldn't clobber it.
+		return ctx.Exec(cmd, opts...)
+	}
 	supportsGoProxy, err := SupportsGoProxyFallback(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("checking for go proxy support: %w", err)
@@ -327,22 +328,38 @@ func IsGo111Runtime() bool {
 
 // RuntimeVersion returns the runtime version for the go app.
 func RuntimeVersion(ctx *gcp.Context) (string, error) {
-	if version := os.Getenv(envGoVersion); version != "" {
+	var version string
+
+	switch {
+	case os.Getenv(envGoVersion) != "":
+		version = os.Getenv(envGoVersion)
 		ctx.Logf("Using runtime version from %s: %s", envGoVersion, version)
-		return version, nil
-	}
 
-	if version := os.Getenv(env.RuntimeVersion); version != "" {
+	case os.Getenv(env.RuntimeVersion) != "":
+		version = os.Getenv(env.RuntimeVersion)
 		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, version)
-		return version, nil
+
+	default:
+		os := runtime.OSForStack(ctx)
+		var ok bool
+		version, ok = latestGoVersionPerStack[os]
+		if !ok {
+			return "", gcp.UserErrorf("invalid stack for Go runtime: %q", os)
+		}
+		ctx.Logf("Go version not specified, using latest available Go runtime for the stack %q", os)
 	}
 
-	ctx.Logf("Using latest stable Go version")
-	return "", nil
+	resolvedVersion, err := ResolveGoVersion(version)
+	if err != nil {
+		return "", err
+	}
+
+	return resolvedVersion, nil
+
 }
 
 // ResolveGoVersion finds the latest version of Go that matches the provided semver constraint.
-func ResolveGoVersion(verConstraint string) (string, error) {
+var ResolveGoVersion = func(verConstraint string) (string, error) {
 	if isSupportedUnstableGoVersion(verConstraint) || isExactGoSemver(verConstraint) {
 		return verConstraint, nil
 	}

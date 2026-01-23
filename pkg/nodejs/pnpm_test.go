@@ -134,9 +134,10 @@ func TestDetectPNPMVersion(t *testing.T) {
 		packageJSON PackageJSON
 		wantVersion string
 		wantError   bool
+		stackID     string
 	}{
 		{
-			name:        "no package.json returns latest",
+			name:        "no package.json returns pinned for ubuntu1804",
 			packageJSON: PackageJSON{},
 			npmResponse: `{
 				"name": "pnpm",
@@ -151,6 +152,26 @@ func TestDetectPNPMVersion(t *testing.T) {
 				},
 				"modified": "2022-01-27T21:10:55.626Z"
 			}`,
+			stackID:     "ubuntu1804",
+			wantVersion: "10.12.4",
+		},
+		{
+			name:        "no package.json returns latest for ubuntu2204",
+			packageJSON: PackageJSON{},
+			npmResponse: `{
+				"name": "pnpm",
+				"dist-tags": {
+					"latest": "9.2.0"
+				},
+				"versions": {
+					"9.2.0": {
+						"name": "npm",
+						"version": "9.2.0"
+					}
+				},
+				"modified": "2022-01-27T21:10:55.626Z"
+			}`,
+			stackID:     "ubuntu2204",
 			wantVersion: "9.2.0",
 		},
 		{
@@ -160,6 +181,7 @@ func TestDetectPNPMVersion(t *testing.T) {
 					PNPM: "8.2.0",
 				},
 			},
+			stackID:     "ubuntu2204",
 			wantVersion: "8.2.0",
 		},
 		{
@@ -167,6 +189,7 @@ func TestDetectPNPMVersion(t *testing.T) {
 			packageJSON: PackageJSON{
 				PackageManager: "pnpm@8.2.0",
 			},
+			stackID:     "ubuntu2204",
 			wantVersion: "8.2.0",
 		},
 		{
@@ -177,6 +200,7 @@ func TestDetectPNPMVersion(t *testing.T) {
 				},
 				PackageManager: "pnpm@8.1.0",
 			},
+			stackID:     "ubuntu2204",
 			wantVersion: "8.2.0",
 		},
 		{
@@ -184,6 +208,7 @@ func TestDetectPNPMVersion(t *testing.T) {
 			packageJSON: PackageJSON{
 				PackageManager: "yarn@8.2.0",
 			},
+			stackID:   "ubuntu2204",
 			wantError: true,
 		},
 	}
@@ -196,7 +221,7 @@ func TestDetectPNPMVersion(t *testing.T) {
 				testserver.WithMockURL(&npmRegistryURL),
 			)
 
-			version, err := detectPNPMVersion(&tc.packageJSON)
+			version, err := detectPNPMVersion(&tc.packageJSON, tc.stackID)
 			if version != tc.wantVersion {
 				t.Errorf("detectPNPMVersion() got version: %v, want version: %v", version, tc.wantVersion)
 			}

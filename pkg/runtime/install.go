@@ -17,6 +17,7 @@ package runtime
 import (
 	"fmt"
 	"io/ioutil"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -26,7 +27,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/version"
 	"github.com/buildpacks/libcnb/v2"
 	"github.com/Masterminds/semver"
@@ -34,13 +34,14 @@ import (
 
 var (
 	dartSdkURL         = "https://storage.googleapis.com/dart-archive/channels/stable/release/%s/sdk/dartsdk-linux-x64-release.zip"
+	flutterSdkURL      = "https://storage.googleapis.com/flutter_infra_release/releases/%s"
 	googleTarballURL   = "https://dl.google.com/runtimes/%s/%[2]s/%[2]s-%s.tar.gz"
 	runtimeVersionsURL = "https://dl.google.com/runtimes/%s/%s/version.json"
 	// goTarballURL is the location from which we download Go. This is different from other runtimes
 	// because the Go team already provides re-built tarballs on the same CDN.
 	goTarballURL          = "https://dl.google.com/go/go%s.linux-amd64.tar.gz"
-	runtimeImageARURL     = "%s-docker.pkg.dev/gae-runtimes/runtimes-%s/%s:%s"
-	runtimeImageARRepoURL = "%s-docker.pkg.dev/gae-runtimes/runtimes-%s/%s"
+	runtimeImageARURL     = "%s-docker.pkg.dev/%s/runtimes-%s/%s:%s"
+	runtimeImageARRepoURL = "%s-docker.pkg.dev/%s/runtimes-%s/%s"
 	fallbackRegion        = "us"
 )
 
@@ -60,9 +61,16 @@ const (
 	OpenJDK      InstallableRuntime = "openjdk"
 	CanonicalJDK InstallableRuntime = "canonicaljdk"
 	Go           InstallableRuntime = "go"
+	Jetty        InstallableRuntime = "jetty"
 
-	ubuntu1804 string = "ubuntu1804"
-	ubuntu2204 string = "ubuntu2204"
+	Ubuntu1804 string = "ubuntu1804"
+	Ubuntu2204 string = "ubuntu2204"
+	Ubuntu2404 string = "ubuntu2404"
+
+	tarballRegistryProdGae        = "gae-runtimes"
+	tarballRegistryProdServerless = "serverless-runtimes"
+	tarballRegistryQual           = "serverless-runtimes-qa"
+	tarballRegistryDev            = "lorry"
 )
 
 // User friendly display name of all runtime (e.g. for use in error message).
@@ -75,16 +83,20 @@ var runtimeNames = map[InstallableRuntime]string{
 	Pid1:      "Pid1",
 	DotnetSDK: ".NET SDK",
 	Go:        "Go",
+	Jetty:     "Jetty",
 }
 
 // stackToOS contains the mapping of Stack to OS.
 var stackToOS = map[string]string{
-	"google":                 ubuntu1804,
-	"google.gae.18":          ubuntu1804,
-	"google.22":              ubuntu2204,
-	"google.gae.22":          ubuntu2204,
-	"google.min.22":          ubuntu2204,
-	"firebase.apphosting.22": ubuntu2204,
+	"google":                 Ubuntu1804,
+	"google.gae.18":          Ubuntu1804,
+	"google.18":              Ubuntu1804,
+	"google.22":              Ubuntu2204,
+	"google.gae.22":          Ubuntu2204,
+	"google.min.22":          Ubuntu2204,
+	"firebase.apphosting.22": Ubuntu2204,
+	"google.24":              Ubuntu2404,
+	"google.24.full":         Ubuntu2404,
 }
 
 var languageRuntimes = []InstallableRuntime{Nodejs, PHP, Python, Ruby, OpenJDK, CanonicalJDK, Go, DotnetSDK, AspNetCore}
@@ -100,10 +112,26 @@ const (
 func OSForStack(ctx *gcp.Context) string {
 	os, ok := stackToOS[ctx.StackID()]
 	if !ok {
-		ctx.Warnf("unknown stack ID %q, falling back to Ubuntu 18.04", ctx.StackID())
-		os = ubuntu1804
+		ctx.Warnf("unknown stack ID %q, falling back to Ubuntu 22.04", ctx.StackID())
+		os = Ubuntu2204
 	}
 	return os
+}
+
+func tarballRegistry() string {
+	buildEnv := os.Getenv(env.BuildEnv)
+	switch buildEnv {
+	case "qual":
+		return tarballRegistryQual
+	case "dev":
+		return tarballRegistryDev
+	default: // prod and any other case
+		flag, present := os.LookupEnv(env.ServerlessRuntimesTarballs)
+		if present && flag == "true" {
+			return tarballRegistryProdServerless
+		}
+		return tarballRegistryProdGae
+	}
 }
 
 // IsCached returns true if the requested version of a runtime is installed in the given layer.
@@ -155,6 +183,42 @@ func InstallDartSDK(ctx *gcp.Context, layer *libcnb.Layer, version string) error
 	return nil
 }
 
+// InstallFlutterSDK downloads a given version of the Flutter SDK to the specified layer.
+func InstallFlutterSDK(ctx *gcp.Context, layer *libcnb.Layer, version string, archive string) error {
+	if err := ctx.ClearLayer(layer); err != nil {
+		return fmt.Errorf("clearing layer %q: %w", layer.Name, err)
+	}
+	sdkURL := fmt.Sprintf(flutterSdkURL, archive)
+
+	tar, err := ioutil.TempFile(layer.Path, "flutter_linux*.tar.xz")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tar.Name())
+
+	if err := fetch.GetURL(sdkURL, tar); err != nil {
+		ctx.Warnf("Failed to download Flutter SDK from %s. You can specify the verison by setting the GOOGLE_RUNTIME_VERSION environment variable", sdkURL)
+		return err
+	}
+
+	if _, err := ctx.Exec([]string{"tar", "xJf", tar.Name(), "--strip-components=1", "-C", layer.Path}); err != nil {
+		return fmt.Errorf("extracting Flutter SDK: %v", err)
+	}
+
+	if _, err := ctx.Exec([]string{"bin/flutter", "doctor"}, gcp.WithWorkDir(layer.Path)); err != nil {
+		return fmt.Errorf("extracting Flutter SDK: %v", err)
+	}
+
+	if _, err := ctx.Exec([]string{"bin/flutter", "precache", "--web"}, gcp.WithWorkDir(layer.Path)); err != nil {
+		return fmt.Errorf("extracting Flutter SDK: %v", err)
+	}
+
+	ctx.SetMetadata(layer, stackKey, ctx.StackID())
+	ctx.SetMetadata(layer, versionKey, version)
+
+	return nil
+}
+
 // InstallTarballIfNotCached installs a runtime tarball hosted on dl.google.com into the provided layer
 // with caching.
 // Returns true if a cached layer is used.
@@ -186,22 +250,26 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	}
 	ctx.Logf("Installing %s v%s.", runtimeName, version)
 
-	runtimeURL := tarballDownloadURL(runtime, osName, version)
 	stripComponents := 0
-	if runtime == OpenJDK || runtime == Go {
+	if runtime == OpenJDK || runtime == Go || runtime == Jetty {
 		stripComponents = 1
 	}
+
+	registry := tarballRegistry()
 	region, present := os.LookupEnv(env.RuntimeImageRegion)
-	if present && runtime != Go {
-		url := runtimeImageURL(runtime, osName, version, region)
-		fallbackURL := runtimeImageURL(runtime, osName, version, fallbackRegion)
-		if err := fetch.ARImage(url, fallbackURL, layer.Path, stripComponents, ctx); err != nil {
-			ctx.Warnf("Failed to download %s version %s osName %s from artifact registry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
+	if registry == tarballRegistryDev || runtime == Go || !present {
+		// Use Lorry for dev env, Go runtime, or if the region is not set.
+		runtimeURL := tarballDownloadURL(runtime, osName, version)
+		if err := fetch.Tarball(runtimeURL, layer.Path, stripComponents); err != nil {
+			ctx.Warnf("Failed to download %s version %s osName %s from lorry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable. To use Artifact Registry instead, set the GOOGLE_RUNTIME_IMAGE_REGION environment variable (e.g., 'us').", runtimeName, version, osName)
 			return false, err
 		}
 	} else {
-		if err := fetch.Tarball(runtimeURL, layer.Path, stripComponents); err != nil {
-			ctx.Warnf("Failed to download %s version %s osName %s from lorry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
+		// Use Artifact Registry for other cases.
+		url := runtimeImageURL(runtime, osName, version, region, registry)
+		fallbackURL := runtimeImageURL(runtime, osName, version, fallbackRegion, registry)
+		if err := fetch.ARImage(url, fallbackURL, layer.Path, stripComponents, ctx); err != nil {
+			ctx.Warnf("Failed to download %s version %s osName %s from artifact registry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
 			return false, err
 		}
 	}
@@ -212,13 +280,8 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	return false, nil
 }
 
-func runtimeImageURL(runtime InstallableRuntime, osName, version, region string) string {
-	flag, present := os.LookupEnv(env.ServerlessRuntimesTarballs)
-	if present && flag == "true" {
-		newRuntimeImageARURL := "%s-docker.pkg.dev/serverless-runtimes/runtimes-%s/%s:%s"
-		return fmt.Sprintf(newRuntimeImageARURL, region, osName, runtime, version)
-	}
-	return fmt.Sprintf(runtimeImageARURL, region, osName, runtime, version)
+func runtimeImageURL(runtime InstallableRuntime, osName, version, region, registry string) string {
+	return fmt.Sprintf(runtimeImageARURL, region, registry, osName, runtime, version)
 }
 
 func tarballDownloadURL(runtime InstallableRuntime, os, version string) string {
@@ -288,51 +351,103 @@ func IsReleaseCandidate(verConstraint string) bool {
 	return version.IsReleaseCandidate(verConstraint)
 }
 
+func normalizeJDKVersion(v string) string {
+	return strings.NewReplacer("_", "+", "-beta", "").Replace(v)
+}
+
+func getNormalizedVersionsMap(versions []string, runtime InstallableRuntime) map[string]string {
+	normalizedMap := make(map[string]string)
+	isJdk := runtime == OpenJDK || runtime == CanonicalJDK
+	for _, v := range versions {
+		if isJdk {
+			normalizedV := normalizeJDKVersion(v)
+			normalizedMap[normalizedV] = v
+		} else {
+			normalizedMap[v] = v
+		}
+	}
+	return normalizedMap
+}
+
+// resolveVersionFromList returns the newest available version from a list of versions that
+// satisfies the provided version constraint.
+func resolveVersionFromList(versions []string, runtime InstallableRuntime, normalizedConstraint string) (string, error) {
+	normalizedMap := getNormalizedVersionsMap(versions, runtime)
+	v, err := version.ResolveVersion(normalizedConstraint, slices.Collect(maps.Keys(normalizedMap)))
+	if err != nil {
+		return "", err
+	}
+	return normalizedMap[v], nil
+}
+
+// tryResolveVersionFromRegion attempts to resolve a version from a given Artifact Registry region.
+// It returns the resolved version string on success.
+// It returns an error if fetching versions fails or if no version matches the constraint.
+func tryResolveVersionFromRegion(ctx *gcp.Context, runtime InstallableRuntime, normalizedConstraint, osName, region, registry string) (string, error) {
+	url := fmt.Sprintf(runtimeImageARRepoURL, region, registry, osName, runtime)
+	versions, err := fetch.ARVersions(url, "", ctx)
+	if err != nil {
+		return "", err
+	}
+	return resolveVersionFromList(versions, runtime, normalizedConstraint)
+}
+
 // ResolveVersion returns the newest available version of a runtime that satisfies the provided
 // version constraint.
 func ResolveVersion(ctx *gcp.Context, runtime InstallableRuntime, verConstraint, osName string) (string, error) {
 	if runtime == Go {
-		// Go provides its own version manifest so it has its own version resolution logic.
-		return golang.ResolveGoVersion(verConstraint)
+		// verConstraint will be resolved to the exact version in golang.RuntimeVersion() already.
+		return verConstraint, nil
+	}
+	if runtime == Jetty {
+		return "latest", nil
 	}
 	// Some release candidates do not follow the convention for semver
 	// Specifically php. example - 8.3.0RC4.
 	if IsReleaseCandidate(verConstraint) || version.IsExactSemver(verConstraint) {
+		ctx.Logf("Using exact version %s for %s", verConstraint, runtimeNames[runtime])
 		return verConstraint, nil
 	}
 
-	var versions []string
-	var err error
-	region, present := os.LookupEnv(env.RuntimeImageRegion)
-	if present {
-		url := fmt.Sprintf(runtimeImageARRepoURL, region, osName, runtime)
-		fallbackURL := fmt.Sprintf(runtimeImageARRepoURL, fallbackRegion, osName, runtime)
-		versions, err = fetch.ARVersions(url, fallbackURL, ctx)
-	} else {
-		url := fmt.Sprintf(runtimeVersionsURL, osName, runtime)
-		err = fetch.JSON(url, &versions)
-	}
-	if err != nil {
-		return "", gcp.InternalErrorf("fetching %s versions %s osName: %v", runtimeNames[runtime], osName, err)
+	registry := tarballRegistry()
+	region, isARrequest := os.LookupEnv(env.RuntimeImageRegion)
+
+	normalizedConstraint := verConstraint
+	if runtime == OpenJDK || runtime == CanonicalJDK {
+		normalizedConstraint = normalizeJDKVersion(verConstraint)
 	}
 
-	if present && (runtime == OpenJDK || runtime == CanonicalJDK) {
-		for i, v := range versions {
-			// When resolving version openjdk versions should be decoded to align with semver requirement. (eg. 11.0.21_9 -> 11.0.21+9)
-			versions[i] = strings.ReplaceAll(v, "_", "+")
+	if registry == tarballRegistryDev || !isARrequest {
+		// Use Lorry for dev env or if the region is not set.
+		url := fmt.Sprintf(runtimeVersionsURL, osName, runtime)
+		var versions []string
+		if err := fetch.JSON(url, &versions); err != nil {
+			return "", gcp.InternalErrorf("fetching %s versions for %s: %v", runtimeNames[runtime], osName, err)
 		}
-	}
-	v, err := version.ResolveVersion(verConstraint, versions)
-	if err != nil {
-		return "", gcp.UserErrorf("invalid %s version specified: %v. You may need to use a different builder. Please check if the language version specified is supported by the os: %v. You can refer to https://cloud.google.com/docs/buildpacks/builders for a list of compatible runtime languages per builder", runtimeNames[runtime], err, osName)
-	}
-	// When downloading from AR the openjdk version should be encoded to align with tag format requirement. (eg. 11.0.21+9 -> 11.0.21_9)
-	if present {
-		if runtime == OpenJDK || runtime == CanonicalJDK {
-			v = strings.ReplaceAll(v, "+", "_")
+
+		v, err := resolveVersionFromList(versions, runtime, normalizedConstraint)
+		if err != nil {
+			return "", gcp.InternalErrorf("invalid %s version specified: %v. You may need to use a different builder. Please check if the language version specified is supported by the os: %v. You can refer to https://cloud.google.com/docs/buildpacks/builders for a list of compatible runtime languages per builder", runtimeNames[runtime], err, osName)
 		}
+		return v, nil
+
 	}
-	return v, nil
+
+	// Use Artifact Registry.
+	regionsToTry := []string{region, fallbackRegion}
+	var lastErr error
+	for _, r := range regionsToTry {
+		v, err := tryResolveVersionFromRegion(ctx, runtime, normalizedConstraint, osName, r, registry)
+		if err == nil {
+			ctx.Logf("Resolved version %s for %s from region %s", v, runtimeNames[runtime], r)
+			return v, nil
+		}
+		lastErr = err
+		ctx.Logf("Failed to resolve version %s for %s from region %s: %v", verConstraint, runtimeNames[runtime], r, err)
+	}
+
+	// Failed to resolve in all regions.
+	return "", gcp.InternalErrorf("invalid %s version specified: %v . Version constraint %q not satisfied by any available versions in Artifact Registry. You may need to use a different builder. Please check if the language version specified is supported. You can refer to https://cloud.google.com/docs/buildpacks/builders for a list of compatible runtime languages per builder", runtimeNames[runtime], lastErr, verConstraint)
 }
 
 // ValidateFlexMinVersion validates the minimum flex version for a given runtime.

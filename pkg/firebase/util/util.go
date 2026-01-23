@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	supportedMonorepoConfigFiles = []string{"nx.json"}
+	supportedMonorepoConfigFiles = []string{"nx.json", "turbo.json"}
 )
 
 // ApplicationDirectory looks up the path to the application directory from the environment. Returns

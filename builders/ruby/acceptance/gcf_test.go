@@ -92,8 +92,14 @@ func TestFailures(t *testing.T) {
 
 	testCases := []acceptance.FailureTest{
 		{
-			App:       "fail_ruby_version",
-			MustMatch: "Could not find gem",
+			App:                        "fail_ruby_version",
+			MustMatch:                  "Could not find gem",
+			VersionInclusionConstraint: "<3.4.0",
+		},
+		{
+			App:                        "fail_ruby_version_bundler_26",
+			MustMatch:                  "Your Ruby version is \\d+\\.\\d+\\.\\d+, but your Gemfile specified 2.6.0",
+			VersionInclusionConstraint: ">=3.4.0",
 		},
 		{
 			App:       "fail_framework_missing",

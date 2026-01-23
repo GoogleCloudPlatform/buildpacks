@@ -32,6 +32,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktestenv"
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
+	bmd "github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -101,6 +102,20 @@ type Result struct {
 func (r *Result) CommandExecuted(command string) bool {
 	re := regexp.MustCompile(fmt.Sprintf(`(?s)Running.*%s.*Done`, command))
 	return re.FindString(r.Output) != ""
+}
+
+// MetadataAdded returns the builder metadata after the buildpack phase was executed.
+func (r *Result) MetadataAdded() map[bmd.MetadataID]bmd.MetadataValue {
+	re := regexp.MustCompile(`(?m)BUILDPACK_TEST_METADATA:([^=]+)=(.+)$`)
+	matches := re.FindAllStringSubmatch(r.Output, -1)
+
+	metadata := make(map[bmd.MetadataID]bmd.MetadataValue)
+	for _, match := range matches {
+		if len(match) == 3 {
+			metadata[bmd.MetadataID(match[1])] = bmd.MetadataValue(match[2])
+		}
+	}
+	return metadata
 }
 
 // Option is a type for buildpack test options.
@@ -330,6 +345,9 @@ func runBuildpackPhase(t *testing.T, cfg *config) (bool, error) {
 		if err := cfg.buildFn(ctx); err != nil {
 			return false, fmt.Errorf("build error: %v", err)
 		}
+		bmd.GlobalBuilderMetadata().ForEachValue(func(id bmd.MetadataID, m bmd.MetadataValue) {
+			fmt.Printf("BUILDPACK_TEST_METADATA:%s=%s\n", id, m)
+		})
 	} else {
 		detect, err := cfg.detectFn(ctx)
 		if err != nil {

@@ -37,8 +37,9 @@ func TestAcceptanceJava(t *testing.T) {
 			EnableCacheTest: true,
 		},
 		{
-			Name: "Java runtime version respected",
-			App:  "simple",
+			Name:       "Java runtime version respected",
+			SkipStacks: []string{"google.24.full", "google.24"},
+			App:        "simple",
 			// Checking runtime version 8 to ensure that it is not downloading latest Java 11 version.
 			Path: "/version?want=8",
 			Env: []string{
@@ -50,6 +51,7 @@ func TestAcceptanceJava(t *testing.T) {
 		},
 		{
 			Name:       "Java 8 maven",
+			SkipStacks: []string{"google.24.full", "google.24"},
 			App:        "hello_quarkus_maven",
 			Env:        []string{"GOOGLE_RUNTIME_VERSION=8"},
 			MustUse:    []string{javaMaven, javaRuntime, javaEntrypoint},
@@ -57,6 +59,7 @@ func TestAcceptanceJava(t *testing.T) {
 		},
 		{
 			Name:            "Java 11 maven",
+			SkipStacks:      []string{"google.24.full", "google.24"},
 			App:             "hello_quarkus_maven",
 			Env:             []string{"GOOGLE_RUNTIME_VERSION=11"},
 			MustUse:         []string{javaMaven, javaRuntime, javaEntrypoint},
@@ -65,6 +68,7 @@ func TestAcceptanceJava(t *testing.T) {
 		},
 		{
 			Name:            "Java 17 maven",
+			SkipStacks:      []string{"google.24.full", "google.24"},
 			App:             "hello_quarkus_maven",
 			Env:             []string{"GOOGLE_RUNTIME_VERSION=17"},
 			MustUse:         []string{javaMaven, javaRuntime, javaEntrypoint},
@@ -80,6 +84,7 @@ func TestAcceptanceJava(t *testing.T) {
 		},
 		{
 			Name:       "Java 8 gradle",
+			SkipStacks: []string{"google.24.full", "google.24", "google.22", "google.gae.22"},
 			App:        "gradle_micronaut",
 			Env:        []string{"GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar", "GOOGLE_RUNTIME_VERSION=8"},
 			MustUse:    []string{javaGradle, javaRuntime, entrypoint},
@@ -151,6 +156,7 @@ func TestAcceptanceJava(t *testing.T) {
 		},
 		{
 			Name:            "Java 8 native extensions",
+			SkipStacks:      []string{"google.24.full", "google.24"},
 			App:             "native_extensions",
 			Env:             []string{"GOOGLE_RUNTIME_VERSION=8"},
 			MustUse:         []string{javaMaven, javaRuntime, javaEntrypoint},
@@ -159,6 +165,7 @@ func TestAcceptanceJava(t *testing.T) {
 		},
 		{
 			Name:            "Java 11 native extensions",
+			SkipStacks:      []string{"google.24.full", "google.24"},
 			App:             "native_extensions",
 			Env:             []string{"GOOGLE_RUNTIME_VERSION=11"},
 			MustUse:         []string{javaMaven, javaRuntime, javaEntrypoint},
@@ -167,6 +174,7 @@ func TestAcceptanceJava(t *testing.T) {
 		},
 		{
 			Name:            "Java 17 native extensions",
+			SkipStacks:      []string{"google.24.full", "google.24"},
 			App:             "native_extensions",
 			Env:             []string{"GOOGLE_RUNTIME_VERSION=17"},
 			MustUse:         []string{javaMaven, javaRuntime, javaEntrypoint},
@@ -181,7 +189,7 @@ func TestAcceptanceJava(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 	}
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		tc.FlakyBuildAttempts = 3
 

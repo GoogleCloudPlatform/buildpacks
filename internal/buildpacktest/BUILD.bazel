@@ -12,6 +12,7 @@ go_library(
     deps = [
         "//internal/buildpacktestenv",
         "//internal/mockprocess",
+        "//pkg/buildermetadata",
         "//pkg/env",
         "//pkg/fileutil",
         "//pkg/gcpbuildpack",

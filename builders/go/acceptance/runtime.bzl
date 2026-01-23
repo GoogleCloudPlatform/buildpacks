@@ -1,5 +1,6 @@
 """
 Generated bzl file. Do not update manually.
+We run acceptance tests only on full stacks.
 """
 
 gae_runtimes = {
@@ -14,7 +15,9 @@ gae_runtimes = {
     "go120": "1.20.14",
     "go121": "1.21.13",
     "go122": "1.22.12",
-    "go123": "1.23.6",
+    "go123": "1.23.12",
+    "go124": "1.24.10",
+    "go125": "1.25.4",
 }
 
 gcf_runtimes = {
@@ -26,7 +29,9 @@ gcf_runtimes = {
     "go120": "1.20.14",
     "go121": "1.21.13",
     "go122": "1.22.12",
-    "go123": "1.23.6",
+    "go123": "1.23.12",
+    "go124": "1.24.10",
+    "go125": "1.25.4",
 }
 
 flex_runtimes = {
@@ -35,5 +40,24 @@ flex_runtimes = {
     "go120": "1.20.14",
     "go121": "1.21.13",
     "go122": "1.22.12",
-    "go123": "1.23.6",
+    "go123": "1.23.12",
+    "go124": "1.24.10",
+    "go125": "1.25.4",
+}
+
+version_to_stack = {
+    "go111": "google-18-full",
+    "go112": "google-18-full",
+    "go113": "google-18-full",
+    "go114": "google-18-full",
+    "go115": "google-18-full",
+    "go116": "google-18-full",
+    "go118": "google-22-full",
+    "go119": "google-22-full",
+    "go120": "google-22-full",
+    "go121": "google-22-full",
+    "go122": "google-22-full",
+    "go123": "google-22-full",
+    "go124": "google-22-full",
+    "go125": "google-22-full",
 }

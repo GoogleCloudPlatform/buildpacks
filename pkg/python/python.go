@@ -27,7 +27,9 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/buildpacks/libcnb/v2"
+	"github.com/Masterminds/semver"
 )
 
 const (
@@ -67,6 +69,13 @@ var (
 	RequirementsProvidesPlan = libcnb.BuildPlan{Provides: RequirementsProvides}
 	// RequirementsProvidesRequiresPlan is a build plan returned by buildpacks that consume requirements.txt.
 	RequirementsProvidesRequiresPlan = libcnb.BuildPlan{Provides: RequirementsProvides, Requires: RequirementsRequires}
+
+	// latestPythonVersionPerStack is the latest Python version per stack to use if not specified by the user.
+	latestPythonVersionPerStack = map[string]string{
+		runtime.Ubuntu1804: "3.9.*",
+		runtime.Ubuntu2204: "3.13.*",
+		runtime.Ubuntu2404: "3.14.*",
+	}
 )
 
 // Version returns the installed version of Python.
@@ -101,9 +110,55 @@ func RuntimeVersion(ctx *gcp.Context, dir string) (string, error) {
 		return v, nil
 	}
 
-	// This will use the highest listed at https://dl.google.com/runtimes/python/version.json.
-	ctx.Logf("Python version not specified, using the latest available version.")
-	return "*", nil
+	os := runtime.OSForStack(ctx)
+
+	latestPythonVersionForStack, ok := latestPythonVersionPerStack[os]
+	if !ok {
+		return "", gcp.UserErrorf("invalid stack for Python runtime: %q", os)
+	}
+
+	ctx.Logf("Python version not specified, using the latest available Python runtime for the stack %q", os)
+	return latestPythonVersionForStack, nil
+}
+
+// SupportsSmartDefaultEntrypoint returns true if the runtime version supports smart default entrypoint.
+func SupportsSmartDefaultEntrypoint(ctx *gcp.Context) (bool, error) {
+	v, err := RuntimeVersion(ctx, ctx.ApplicationRoot())
+	if err != nil {
+		return false, err
+	}
+	// If the version contains a wildcard, we will replace with 0 for the semver comparison.
+	v = strings.ReplaceAll(v, "*", "0")
+
+	return versionMatchesSemver(ctx, ">=3.13.0-0", v)
+}
+
+// versionMatchesSemver checks if the provided version matches the given version semver range.
+// The range string has the following format: https://github.com/blang/semver#ranges.
+func versionMatchesSemver(ctx *gcp.Context, versionRange string, version string) (bool, error) {
+	if version == "" {
+		return false, nil
+	}
+	if isSupportedUnstablePythonVersion(version) {
+		// The format of Python pre-release version e.g. 3.14.0rc1 doesn't follow the semver rule
+		// that requires a hyphen before the identifier "rc".
+		if strings.Contains(version, "rc") && !strings.Contains(version, "-rc") {
+			version = strings.Replace(version, "rc", "-rc", 1)
+		}
+	}
+	constraint, err := semver.NewConstraint(versionRange)
+	if err != nil {
+		return false, fmt.Errorf("invalid version range %q: %w", versionRange, err)
+	}
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return false, fmt.Errorf("invalid version %q: %w", version, err)
+	}
+	if !constraint.Check(v) {
+		ctx.Debugf("Python version %q does not match the semver constraint %q", version, versionRange)
+		return false, nil
+	}
+	return true, nil
 }
 
 func versionFromFile(ctx *gcp.Context, dir string) (string, error) {
@@ -127,7 +182,7 @@ func versionFromFile(ctx *gcp.Context, dir string) (string, error) {
 	return "", nil
 }
 
-// InstallRequirements installs dependencies from the given requirements files in a virtual env.
+// PIPInstallRequirements installs dependencies from the given requirements files in a virtual env.
 // It will install the files in order in which they are specified, so that dependencies specified
 // in later requirements files can override later ones.
 //
@@ -136,48 +191,17 @@ func versionFromFile(ctx *gcp.Context, dir string) (string, error) {
 // PYTHONPATH. However, this caused issues with some packages as it would allow users to
 // accidentally override some builtin stdlib modules, e.g. typing, enum, etc., and cause both
 // build-time and run-time failures.
-func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
-	// Defensive check, this should not happen in practice.
-	if len(reqs) == 0 {
-		ctx.Debugf("No requirements.txt to install, clearing layer.")
-		if err := ctx.ClearLayer(l); err != nil {
-			return fmt.Errorf("clearing layer %q: %w", l.Name, err)
-		}
-		return nil
-	}
-
-	currentPythonVersion, err := Version(ctx)
+func PIPInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
+	shouldInstall, err := prepareDependenciesLayer(ctx, l, "pip", reqs...)
 	if err != nil {
 		return err
 	}
-	hash, cached, err := cache.HashAndCheck(ctx, l, dependencyHashKey,
-		cache.WithFiles(reqs...),
-		cache.WithStrings(currentPythonVersion))
-	if err != nil {
-		return err
-	}
-
-	// Check cache expiration to pick up new versions of dependencies that are not pinned.
-	expired := cacheExpired(ctx, l)
-
-	if cached && !expired {
+	if !shouldInstall {
+		ctx.Logf("Application dependencies are up to date, skipping installation.")
 		return nil
-	}
-
-	if expired {
-		ctx.Debugf("Dependencies cache expired, clearing layer.")
-	}
-
-	if err := ctx.ClearLayer(l); err != nil {
-		return fmt.Errorf("clearing layer %q: %w", l.Name, err)
 	}
 
 	ctx.Logf("Installing application dependencies.")
-	cache.Add(ctx, l, dependencyHashKey, hash)
-	// Update the layer metadata.
-	ctx.SetMetadata(l, pythonVersionKey, currentPythonVersion)
-	ctx.SetMetadata(l, expiryTimestampKey, time.Now().Add(expirationTime).Format(dateFormat))
-
 	if err := ar.GeneratePythonConfig(ctx); err != nil {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
@@ -239,11 +263,7 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 			"--disable-pip-version-check", // If we were going to upgrade pip, we would have done it already in the runtime buildpack.
 			"--no-cache-dir",              // We used to save this to a layer, but it made builds slower because it includes http caching of pypi requests.
 		}
-		vendorDir, isVendored := os.LookupEnv(VendorPipDepsEnv)
-		if isVendored {
-			cmd = append(cmd, "--no-index", "--find-links", vendorDir)
-			buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.PipVendorDependenciesCounterID).Increment(1)
-		}
+		cmd = appendVendoringFlags(cmd)
 		if !virtualEnv {
 			cmd = append(cmd, "--user") // Install into user site-packages directory.
 		}
@@ -253,16 +273,70 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 		}
 	}
 
+	return compileBytecode(ctx, l.Path)
+}
+
+// prepareDependenciesLayer is a helper function that handles the common logic for preparing a dependency layer.
+// It checks for empty requirements, manages the cache, and clears the layer if necessary.
+// It returns a boolean indicating whether the installation should proceed.
+func prepareDependenciesLayer(ctx *gcp.Context, l *libcnb.Layer, installerName string, reqs ...string) (bool, error) {
+	// Defensive check
+	if len(reqs) == 0 {
+		ctx.Debugf("No requirements files to install, clearing layer.")
+		if err := ctx.ClearLayer(l); err != nil {
+			return false, fmt.Errorf("clearing layer %q: %w", l.Name, err)
+		}
+		return false, nil
+	}
+
+	// Caching logic
+	currentPythonVersion, err := Version(ctx)
+	if err != nil {
+		return false, err
+	}
+	hash, cached, err := cache.HashAndCheck(ctx, l, dependencyHashKey,
+		cache.WithFiles(reqs...),
+		cache.WithStrings(currentPythonVersion, installerName))
+	if err != nil {
+		return false, err
+	}
+
+	// Check cache expiration to pick up new versions of dependencies that are not pinned.
+	expired := cacheExpired(ctx, l)
+
+	if cached && !expired {
+		ctx.CacheHit(l.Name)
+		return false, nil
+	}
+	ctx.CacheMiss(l.Name)
+
+	if expired {
+		ctx.Debugf("Dependencies cache expired, clearing layer.")
+	}
+	if err := ctx.ClearLayer(l); err != nil {
+		return false, fmt.Errorf("clearing layer %q: %w", l.Name, err)
+	}
+
+	// Update layer metadata for caching
+	cache.Add(ctx, l, dependencyHashKey, hash)
+	ctx.SetMetadata(l, pythonVersionKey, currentPythonVersion)
+	ctx.SetMetadata(l, expiryTimestampKey, time.Now().Add(expirationTime).Format(dateFormat))
+
+	return true, nil
+}
+
+// compileBytecode is a helper that generates deterministic hash-based pyc files for faster startup.
+func compileBytecode(ctx *gcp.Context, path string) error {
 	// Generate deterministic hash-based pycs (https://www.python.org/dev/peps/pep-0552/).
 	// Use the unchecked version to skip hash validation at run time (for faster startup).
-	result, cerr := ctx.Exec([]string{
+	result, err := ctx.Exec([]string{
 		"python3", "-m", "compileall",
 		"--invalidation-mode", "unchecked-hash",
 		"-qq", // Do not print any message (matches `pip install` behavior).
-		l.Path,
-	},
-		gcp.WithUserAttribution)
-	if cerr != nil {
+		path,
+	}, gcp.WithUserAttribution)
+
+	if err != nil {
 		if result != nil {
 			if result.ExitCode == 1 {
 				// Ignore file compilation errors (matches `pip install` behavior).
@@ -270,9 +344,8 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 			}
 			return fmt.Errorf("compileall: %s", result.Combined)
 		}
-		return fmt.Errorf("compileall: %v", cerr)
+		return fmt.Errorf("compileall: %v", err)
 	}
-
 	return nil
 }
 
@@ -325,4 +398,48 @@ func copySharedLibs(ctx *gcp.Context, l *libcnb.Layer) error {
 		}
 	}
 	return nil
+}
+
+// Checks if the Python version is an unstable supported release candidate.
+func isSupportedUnstablePythonVersion(constraint string) bool {
+	return strings.Count(constraint, ".") == 2 && strings.Count(constraint, "rc") == 1
+}
+
+// isPackageManagerConfigured checks if the environment is configured to use the specified package manager.
+func isPackageManagerConfigured(pm string) bool {
+	pmPreference := os.Getenv(env.PythonPackageManager)
+	return strings.EqualFold(pmPreference, pm) // Case insensitive comparison.
+}
+
+// appendVendoringFlags checks for and appends vendored dependency flags to the command.
+func appendVendoringFlags(cmd []string) []string {
+	if vendorDir, isVendored := os.LookupEnv(VendorPipDepsEnv); isVendored {
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.PipVendorDependenciesCounterID).Increment(1)
+		return append(cmd, "--no-index", "--find-links", vendorDir)
+	}
+	return cmd
+}
+
+func isPackageManagerEmpty() bool {
+	return os.Getenv(env.PythonPackageManager) == ""
+}
+
+func isUVDefaultPackageManagerForRequirements(ctx *gcp.Context) bool {
+	v, err := RuntimeVersion(ctx, ctx.ApplicationRoot())
+	if err != nil {
+		return false
+	}
+	v = strings.ReplaceAll(v, "*", "0")
+	isPythonVersionGreaterThanEqualTo314, err := versionMatchesSemver(ctx, ">=3.14.0-0", v)
+	if err != nil {
+		return false
+	}
+	return isPythonVersionGreaterThanEqualTo314
+}
+
+// isBothPyprojectAndRequirementsPresent checks if both pyproject.toml and requirements.txt are present.
+func isBothPyprojectAndRequirementsPresent(ctx *gcp.Context) bool {
+	pyprojectTomlExists, _ := ctx.FileExists(pyprojectToml)
+	requirementsTxtExists, _ := ctx.FileExists(requirements)
+	return pyprojectTomlExists && requirementsTxtExists
 }

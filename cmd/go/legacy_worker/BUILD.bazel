@@ -1,7 +1,7 @@
 # Buildpack for the Go functions framework
 
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
-load("//tools:defs.bzl", "buildpack")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -20,14 +20,23 @@ buildpack(
     ],
 )
 
+buildpack_using_runner(
+    name = "legacy_worker_using_runner",
+    srcs = [
+        "converter/get_package/main.go",
+    ],
+    buildpack_id = "google.go.legacy-worker",
+    prefix = "go",
+    version = "0.1.0",
+    visibility = [
+        "//builders:go_builders",
+    ],
+)
+
 go_binary(
     name = "main",
     srcs = [
         "main.go",
-    ],
-    embedsrcs = [
-        "converter/worker/gomod.tmpl",  #keep
-        "converter/worker/main.tmpl",  #keep
     ],
     # Strip debugging information to reduce binary size.
     gc_linkopts = [
@@ -35,21 +44,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/env",
+        "//cmd/go/legacy_worker/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/golang",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = [
-        "//internal/buildpacktest",
-        "//pkg/gcpbuildpack",
-        "@com_github_google_go-cmp//cmp:go_default_library",
     ],
 )

@@ -17,3 +17,5 @@ gem "rack", "~> 3.0"
 gem "webrick", "~> 1.8"
 
 gem "functions_framework", "~> 1.4"
+
+gem "base64", "~> 0.2"

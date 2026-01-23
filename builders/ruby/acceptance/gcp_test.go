@@ -103,15 +103,16 @@ func TestAcceptance(t *testing.T) {
 			App:     "rails_minimal",
 			Env:     []string{"GOOGLE_ENTRYPOINT=ruby bin/rails server -b 0.0.0.0 -p $PORT"},
 			MustUse: []string{rubyRuntime, rubyRails, rubyBundle, entrypoint},
-			// This test is dependent on 'activesupport-7.0.2.2' which requires ruby version >= 2.7.0
-			VersionInclusionConstraint: ">2.7.0",
+			// This test is dependent on 'nokogiri-1.18.7' which requires ruby version >= 3.1.0
+			VersionInclusionConstraint: ">= 3.1.0",
 		},
 		{
-			Name:       "rails precompiled",
-			App:        "rails_precompiled",
-			Env:        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
-			MustUse:    []string{rubyRuntime, rubyBundle, entrypoint},
-			MustNotUse: []string{rubyRails},
+			Name:                       "rails precompiled",
+			App:                        "rails_precompiled",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			MustUse:                    []string{rubyRuntime, rubyBundle, entrypoint},
+			MustNotUse:                 []string{rubyRails},
+			VersionInclusionConstraint: ">= 2.6.0",
 		},
 		{
 			Name:            "Ruby native extensions",

@@ -36,11 +36,21 @@ func TestAcceptanceNodeJs(t *testing.T) {
 		},
 		{
 			// Tests a specific versions of Node.js available on dl.google.com.
-			Name:    "runtime version 16.17.1",
-			App:     "simple",
-			Path:    "/version?want=16.17.1",
-			Env:     []string{"GOOGLE_NODEJS_VERSION=16.17.1"},
-			MustUse: []string{nodeRuntime},
+			Name:       "runtime_version_16.17.1",
+			App:        "simple",
+			Path:       "/version?want=16.17.1",
+			Env:        []string{"GOOGLE_NODEJS_VERSION=16.17.1"},
+			MustUse:    []string{nodeRuntime},
+			SkipStacks: []string{"google.24.full", "google.24"},
+		},
+		{
+			// Tests a specific versions of Node.js available on dl.google.com.
+			Name:       "runtime version 22.10.0",
+			App:        "simple",
+			Path:       "/version?want=22.10.0",
+			Env:        []string{"GOOGLE_NODEJS_VERSION=22.10.0"},
+			MustUse:    []string{nodeRuntime},
+			SkipStacks: []string{"google.gae.18", "google.18", "google"},
 		},
 		{
 			Name:                "Dev mode",
@@ -74,6 +84,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			App:        "pnpm",
 			MustUse:    []string{nodeRuntime, nodePNPM},
 			MustNotUse: []string{nodeNPM, nodeYarn},
+			SkipStacks: []string{"google.gae.18", "google.18"},
 		},
 		{
 			Name:       "runtime version with npm ci",
@@ -82,6 +93,16 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			Env:        []string{"GOOGLE_RUNTIME_VERSION=16.18.1"},
 			MustUse:    []string{nodeRuntime, nodeNPM},
 			MustNotUse: []string{nodePNPM, nodeYarn},
+			SkipStacks: []string{"google.24.full", "google.24"},
+		},
+		{
+			Name:       "runtime version with npm ci 22.10.0",
+			App:        "simple",
+			Path:       "/version?want=22.10.0",
+			Env:        []string{"GOOGLE_RUNTIME_VERSION=22.10.0"},
+			MustUse:    []string{nodeRuntime, nodeNPM},
+			MustNotUse: []string{nodePNPM, nodeYarn},
+			SkipStacks: []string{"google.gae.18", "google.18", "google"},
 		},
 		{
 			Name:       "without package.json",
@@ -107,7 +128,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			MustUse:                    []string{nodeRuntime, nodeNPM},
 			MustOutput:                 []string{"npm --version\n\n5.5.1"},
 			// nodejs@8 is not available on Ubuntu 22.04
-			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22"},
+			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22", "google.24.full", "google.24"},
 		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {

@@ -26,6 +26,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 )
 
 const (
@@ -38,6 +39,14 @@ const (
 	PublishLayerName = "publish"
 	// PublishOutputDirName is passed as the output directory for `dotnet publish`.
 	PublishOutputDirName = "bin"
+)
+
+var (
+	// latestDotnetSDKVersionPerStack is the latest .NET version per stack to use if not specified by the user.
+	latestDotnetSDKVersionPerStack = map[string]string{
+		runtime.Ubuntu2204: "8.*.*",
+		runtime.Ubuntu2404: "8.*.*",
+	}
 )
 
 // ProjectFiles finds all project files supported by dotnet.
@@ -165,8 +174,7 @@ type globalJSON struct {
 //  1. Return value of env variable GOOGLE_DOTNET_SDK_VERSION if present.
 //  2. Return value of env variable GOOGLE_RUNTIME_VERSION if present.
 //  3. Return SDK.Version from the .NET global.json file if present.
-//  4. Return an empty string by default, which will cause us to use the latest version available
-//     on dl.google.com (see runtime.InstallTarballIfNotCached for details).
+//  4. If none of above are present, return the the latest SDK version available for the stack being used.
 func GetSDKVersion(ctx *gcp.Context) (string, error) {
 	if version := os.Getenv(envSdkVersion); version != "" {
 		ctx.Logf("Using .NET Core SDK version from %s: %s", envSdkVersion, version)
@@ -185,8 +193,16 @@ func GetSDKVersion(ctx *gcp.Context) (string, error) {
 		ctx.Logf("Using .NET Core SDK version from global.json: %s", gjs.Sdk.Version)
 		return gjs.Sdk.Version, nil
 	}
-	ctx.Logf("Using latest stable .NET Core SDK version")
-	return "", nil
+
+	os := runtime.OSForStack(ctx)
+
+	version, ok := latestDotnetSDKVersionPerStack[os]
+	if !ok {
+		return "", gcp.UserErrorf("invalid stack for .NET runtime: %q. Please use a supported stack", os)
+	}
+
+	ctx.Logf(".NET SDK version not specified, using the latest available .NET SDK for the stack %q", os)
+	return version, nil
 }
 
 func getGlobalJSONOrNil(applicationRoot string) (*globalJSON, error) {
@@ -250,7 +266,6 @@ func getRuntimeVersionFromRtCfgDir(ctx *gcp.Context, dir string) (string, string
 	if err != nil {
 		return "", "", gcp.InternalErrorf("finding runtimeconfig.json: %v", err)
 	}
-
 	if len(rtCfgFiles) > 1 {
 		return "", "", fmt.Errorf("more than one runtimeconfig.json file found: %v", rtCfgFiles)
 	}

@@ -26,7 +26,9 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/buildpacks/libcnb/v2"
 	"github.com/Masterminds/semver"
 	"gopkg.in/yaml.v2"
@@ -42,18 +44,24 @@ const (
 	// EnvNodeVersion can be used to specify the version of Node.js is used for an app.
 	EnvNodeVersion = "GOOGLE_NODEJS_VERSION"
 
+	// ApphostingPreprocessedPathForPack is the path to the preprocessed apphosting.yaml file in the workspace.
+	ApphostingPreprocessedPathForPack = "/workspace/apphosting_preprocessed"
+
 	nodeVersionKey    = "node_version"
 	dependencyHashKey = "dependency_hash"
-	// defaultVersionConstraint is used if the project does not provide a Node.js version specifier in
-	// their package.json or via an env var. This pins them to the active LTS version, instead of the
-	// the latest available version.
-	defaultVersionConstraint = "20.*.*"
 )
 
 // semVer11 is the smallest possible semantic version with major version 11.
 var semVer11 = semver.MustParse("11.0.0")
 
 var (
+	// latestNodejsVersionPerStack is the latest Nodejs version per stack to use if not specified by the user.
+	latestNodejsVersionPerStack = map[string]string{
+		runtime.Ubuntu1804: "22.*.*",
+		runtime.Ubuntu2204: "22.*.*",
+		runtime.Ubuntu2404: "24.*.*",
+	}
+
 	cachedPackageJSONs        = map[string]*PackageJSON{}
 	possibleLockfileFilenames = []string{"pnpm-lock.yaml", "yarn.lock", "npm-shrinkwrap.json", "package-lock.json"}
 	dependencyRegex           = regexp.MustCompile(`\r?\n\r?\n`)
@@ -78,14 +86,14 @@ const (
 // PackageJSON represents the contents of a package.json file.
 type PackageJSON struct {
 	Name            string             `json:"name"`
-	Main            string             `json:"main"`
-	Type            string             `json:"type"`
-	Version         string             `json:"version"`
-	Engines         packageEnginesJSON `json:"engines"`
+	Main            string             `json:"main,omitempty"`
+	Type            string             `json:"type,omitempty"`
+	Version         string             `json:"version,omitempty"`
+	Engines         packageEnginesJSON `json:"engines,omitempty"`
 	Scripts         map[string]string  `json:"scripts"`
 	Dependencies    map[string]string  `json:"dependencies"`
 	DevDependencies map[string]string  `json:"devDependencies"`
-	PackageManager  string             `json:"packageManager"`
+	PackageManager  string             `json:"packageManager,omitempty"`
 }
 
 // NpmLockfile represents the contents of a lock file generated with npm.
@@ -207,8 +215,13 @@ func HasGCPBuild(p *PackageJSON) bool {
 	return HasScript(p, ScriptGCPBuild)
 }
 
-// HasApphostingBuild returns true if the given package.json file includes a "apphosting-build" script.
-func HasApphostingBuild(p *PackageJSON) bool {
+// HasApphostingPackageOrYamlBuild returns true if the given package.json file includes a "apphosting:build" script or if apphosting.yaml contains a build command..
+func HasApphostingPackageOrYamlBuild(p *PackageJSON, apphostingSchema apphostingschema.AppHostingSchema) bool {
+	return HasApphostingPackageBuild(p) || apphostingSchema.Scripts.BuildCommand != ""
+}
+
+// HasApphostingPackageBuild returns true if the given package.json file includes a "apphosting:build" script.
+func HasApphostingPackageBuild(p *PackageJSON) bool {
 	return HasScript(p, ScriptApphostingBuild)
 }
 
@@ -248,7 +261,13 @@ func RequestedNodejsVersion(ctx *gcp.Context, pjs *PackageJSON) (string, error) 
 		return version, nil
 	}
 	if pjs == nil || pjs.Engines.Node == "" {
-		return defaultVersionConstraint, nil
+		os := runtime.OSForStack(ctx)
+		latestNodejsVersionForStack, ok := latestNodejsVersionPerStack[os]
+		if !ok {
+			return "", gcp.UserErrorf("invalid stack for Nodejs runtime: %q", os)
+		}
+		ctx.Logf("Nodejs version not specified, using the latest available Nodejs runtime for the stack %q", os)
+		return latestNodejsVersionForStack, nil
 	}
 	return pjs.Engines.Node, nil
 }
@@ -261,6 +280,27 @@ var nodeVersion = func(ctx *gcp.Context) (string, error) {
 		return "", err
 	}
 	return result.Stdout, nil
+}
+
+// VersionMatchesSemver checks if the provided version matches the given version semver range.
+// The range string has the following format: https://github.com/blang/semver#ranges.
+func VersionMatchesSemver(ctx *gcp.Context, versionRange string, version string) (bool, error) {
+	if version == "" {
+		return false, nil
+	}
+	constraint, err := semver.NewConstraint(versionRange)
+	if err != nil {
+		return false, fmt.Errorf("invalid version range %q: %w", versionRange, err)
+	}
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return false, fmt.Errorf("invalid version %q: %w", version, err)
+	}
+	if !constraint.Check(v) {
+		ctx.Debugf("Nodejs version %q does not match the semver constraint %q", version, versionRange)
+		return false, nil
+	}
+	return true, nil
 }
 
 // isPreNode11 returns true if the installed version of Node.js is
@@ -373,7 +413,11 @@ func versionFromYarnLock(rawPackageLock []byte, pjs *PackageJSON, pkg string) (s
 	dependencies := dependencyRegex.Split(string(rawPackageLock), -1)
 
 	for _, dependency := range dependencies {
-		if strings.Contains(dependency, pkg+"@") && strings.Contains(dependency, pjs.Dependencies[pkg]) {
+		if (strings.HasPrefix(dependency, pkg+"@") ||
+			// For scoped package names, which begin with '@', the yarn lockfile wraps the name in quotes.
+			// e.g. "@yarnpkg/lockfile@1.1.0".
+			strings.HasPrefix(dependency, fmt.Sprintf("\"%s@", pkg))) &&
+			strings.Contains(dependency, pjs.Dependencies[pkg]) {
 			for _, line := range strings.Split(dependency, "\n") {
 				if strings.Contains(line, "version") {
 					return strings.Trim(strings.Fields(line)[1], `"`), nil
@@ -428,4 +472,40 @@ func MajorVersion(versionString string) (string, error) {
 	}
 
 	return parts[0], nil
+}
+
+// OverrideAppHostingBuildScript overrides the "apphosting:build" script in package.json
+// with the build command from the preprocessed apphosting.yaml.
+func OverrideAppHostingBuildScript(ctx *gcp.Context, preprocessedApphostingPath string) (*PackageJSON, error) {
+	pjs, err := ReadPackageJSONIfExists(ctx.ApplicationRoot())
+	if err != nil {
+		return nil, err
+	}
+	apphostingSchema, err := apphostingschema.ReadAndValidateFromFile(preprocessedApphostingPath)
+	if err != nil {
+		return nil, err
+	}
+	if apphostingSchema.Scripts.BuildCommand == "" {
+		return pjs, nil
+	}
+	if pjs == nil {
+		pjs = &PackageJSON{}
+	}
+
+	if pjs.Scripts == nil {
+		pjs.Scripts = make(map[string]string)
+	}
+
+	pjs.Scripts[ScriptApphostingBuild] = apphostingSchema.Scripts.BuildCommand
+	marshalledJSON, err := json.Marshal(pjs)
+	if err != nil {
+		return nil, gcp.InternalErrorf("marshaling package.json: %w", err)
+	}
+
+	err = os.WriteFile(filepath.Join(ctx.ApplicationRoot(), "package.json"), marshalledJSON, 0644)
+	if err != nil {
+		return nil, gcp.InternalErrorf("writing package.json: %w", err)
+	}
+
+	return pjs, nil
 }

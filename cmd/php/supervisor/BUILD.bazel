@@ -1,5 +1,5 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
-load("//tools:defs.bzl", "buildpack")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -8,6 +8,16 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "php",
+    version = "0.0.1",
+    visibility = [
+        "//builders:php_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "supervisor_using_runner",
+    buildpack_id = "google.php.supervisor",
     prefix = "php",
     version = "0.0.1",
     visibility = [
@@ -24,23 +34,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/appyaml",
-        "//pkg/flex",
+        "//cmd/php/supervisor/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/nginx",
-        "//pkg/webconfig",
-    ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = [
-        "//pkg/nginx",
-        "//pkg/webconfig",
-        "@com_github_google_go-cmp//cmp:go_default_library",
     ],
 )

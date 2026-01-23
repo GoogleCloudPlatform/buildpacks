@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,72 +17,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/dart"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/dart/compile/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	atLeastOne, err := ctx.HasAtLeastOne("*.dart")
-	if err != nil {
-		return nil, fmt.Errorf("finding *.dart files: %w", err)
-	}
-	if !atLeastOne {
-		return gcp.OptOut("no .dart files found"), nil
-	}
-	return gcp.OptIn("found .dart files"), nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	br, err := dart.HasBuildRunner(ctx.ApplicationRoot())
-	if err != nil {
-		return err
-	}
-	if br {
-		// Run build runner.
-		if _, err := ctx.Exec([]string{"dart", "run", "build_runner", "build", "--delete-conflicting-outputs"}, gcp.WithUserAttribution); err != nil {
-			return err
-		}
-	}
-	// Create a layer for the compiled binary.  Add it to PATH in case
-	// users wish to invoke the binary manually.
-	bl, err := ctx.Layer("bin", gcp.LaunchLayer)
-	if err != nil {
-		return fmt.Errorf("creating layer: %w", err)
-	}
-	bl.LaunchEnvironment.Prepend("PATH", string(os.PathListSeparator), bl.Path)
-	outBin := filepath.Join(bl.Path, "server")
-
-	buildable, err := dartBuildable(ctx)
-	if err != nil {
-		return fmt.Errorf("unable to find a valid buildable: %w", err)
-	}
-
-	// Build the application.
-	bld := []string{"dart", "compile", "exe", buildable, "-o", outBin}
-	if _, err := ctx.Exec(bld, gcp.WithUserAttribution); err != nil {
-		return err
-	}
-
-	ctx.AddWebProcess([]string{"/bin/bash", "-c", outBin})
-	return nil
-}
-
-func dartBuildable(ctx *gcp.Context) (string, error) {
-
-	// The user tells us what to build.
-	if buildable, ok := os.LookupEnv(env.Buildable); ok {
-		return buildable, nil
-	}
-
-	// Default to bin/server.dart in the application root.
-	return "bin/server.dart", nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

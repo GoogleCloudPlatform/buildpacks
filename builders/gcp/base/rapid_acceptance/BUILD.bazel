@@ -1,0 +1,174 @@
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
+
+licenses(["notice"])
+
+acceptance_test_argo_source(
+    name = "argo_source",
+    isUniversal = True,
+    testdata = "//builders/testdata:all_generic_and_function_files",
+)
+
+acceptance_test_suite(
+    name = "nodejs_acceptance_test",
+    srcs = [
+        "//builders/gcp/base/acceptance:acceptance.go",
+        "//builders/gcp/base/acceptance:nodejs_test.go",
+    ],
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/nodejs:generic",
+)
+
+acceptance_test_suite(
+    name = "nodejs_fn_acceptance_test",
+    srcs = [
+        "//builders/gcp/base/acceptance:acceptance.go",
+        "//builders/gcp/base/acceptance:nodejs_fn_test.go",
+    ],
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/nodejs:functions",
+)
+
+acceptance_test_suite(
+    name = "dart_acceptance_test",
+    srcs = [
+        "//builders/gcp/base/acceptance:acceptance.go",
+        "//builders/gcp/base/acceptance:dart_test.go",
+    ],
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/dart:generic",
+)
+
+acceptance_test_suite(
+    name = "dotnet_acceptance_test",
+    srcs = [
+        "//builders/gcp/base/acceptance:acceptance.go",
+        "//builders/gcp/base/acceptance:dotnet_test.go",
+    ],
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/dotnet:generic",
+)
+
+acceptance_test_suite(
+    name = "dotnet_fn_acceptance_test",
+    srcs = [
+        "//builders/gcp/base/acceptance:acceptance.go",
+        "//builders/gcp/base/acceptance:dotnet_fn_test.go",
+    ],
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/dotnet:functions",
+)
+
+acceptance_test_suite(
+    name = "go_acceptance_test",
+    srcs = [
+        "//builders/gcp/base/acceptance:acceptance.go",
+        "//builders/gcp/base/acceptance:go_test.go",
+    ],
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/go:generic",
+)
+
+acceptance_test_suite(
+    name = "go_fn_acceptance_test",
+    srcs = [
+        "//builders/gcp/base/acceptance:acceptance.go",
+        "//builders/gcp/base/acceptance:go_fn_test.go",
+    ],
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/go:functions",
+)
+
+acceptance_test_suite(
+    name = "java_acceptance_test",
+    srcs = [
+        "//builders/gcp/base/acceptance:acceptance.go",
+        "//builders/gcp/base/acceptance:java_test.go",
+    ],
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/java:generic",
+)
+
+acceptance_test_suite(
+    name = "java_fn_acceptance_test",
+    srcs = [
+        "//builders/gcp/base/acceptance:acceptance.go",
+        "//builders/gcp/base/acceptance:java_fn_test.go",
+    ],
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/java:functions",
+)
+
+acceptance_test_suite(
+    name = "php_acceptance_test",
+    srcs = [
+        "//builders/gcp/base/acceptance:acceptance.go",
+        "//builders/gcp/base/acceptance:php_test.go",
+    ],
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/php:generic",
+)
+
+acceptance_test_suite(
+    name = "python_acceptance_test",
+    srcs = [
+        "//builders/gcp/base/acceptance:acceptance.go",
+        "//builders/gcp/base/acceptance:python_test.go",
+    ],
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/python:generic",
+)
+
+acceptance_test_suite(
+    name = "python_fn_acceptance_test",
+    srcs = [
+        "//builders/gcp/base/acceptance:acceptance.go",
+        "//builders/gcp/base/acceptance:python_fn_test.go",
+    ],
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/python:functions",
+)
+
+acceptance_test_suite(
+    name = "ruby_acceptance_test",
+    srcs = [
+        "//builders/gcp/base/acceptance:acceptance.go",
+        "//builders/gcp/base/acceptance:ruby_test.go",
+    ],
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/ruby:generic",
+)
+
+acceptance_test_suite(
+    name = "ruby_fn_acceptance_test",
+    srcs = [
+        "//builders/gcp/base/acceptance:acceptance.go",
+        "//builders/gcp/base/acceptance:ruby_fn_test.go",
+    ],
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/ruby:functions",
+)
+
+acceptance_test_suite(
+    name = "osonly_acceptance_test",
+    srcs = [
+        "//builders/osonly/acceptance:common_test.go",
+        "//builders/osonly/acceptance:gcp_test.go",
+    ],
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/osonly:generic",
+)

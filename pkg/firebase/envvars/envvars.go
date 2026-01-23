@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -42,6 +43,41 @@ func Write(env map[string]string, fileName string) error {
 		return err
 	}
 	return nil
+}
+
+// WriteLifecycle writes the env vars to the given directory in a way that is compatible
+// with the lifecycle build process.
+func WriteLifecycle(env map[string]string, dir string) error {
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	for k, v := range env {
+		if err := ioutil.WriteFile(filepath.Join(dir, k), []byte(v), 0644); err != nil {
+			return fmt.Errorf("failed to write env var %s: %w", k, err)
+		}
+	}
+	return nil
+}
+
+// ReadLifecycle reads the env vars from the given directory in a way that is compatible
+// with the lifecycle build process.
+func ReadLifecycle(dir string) (map[string]string, error) {
+	envMap := make(map[string]string)
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		content, err := os.ReadFile(filepath.Join(dir, file.Name()))
+		if err != nil {
+			return nil, err
+		}
+		envMap[file.Name()] = string(content)
+	}
+	return envMap, nil
 }
 
 // Read reads in the custom env file to a map. This is a very dumb function that
@@ -95,7 +131,11 @@ func ParseEnvVarsFromString(serverSideEnvVars string) ([]apphostingschema.Enviro
 
 	err := json.Unmarshal([]byte(serverSideEnvVars), &parsedServerSideEnvVars)
 	if err != nil {
-		return parsedServerSideEnvVars, fmt.Errorf("unmarshalling server side env var %v: %w", serverSideEnvVars, err)
+		return nil, fmt.Errorf("unmarshalling server side env var %v: %w", serverSideEnvVars, err)
+	}
+
+	for i := range parsedServerSideEnvVars {
+		parsedServerSideEnvVars[i].Source = apphostingschema.SourceFirebaseConsole
 	}
 
 	return parsedServerSideEnvVars, nil

@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,51 +17,10 @@
 package main
 
 import (
-	"fmt"
-
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/php/composer_gcp_build/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
-)
-
-const (
-	cacheTag = "gcp-build dependencies"
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	composerJSONExists, err := ctx.FileExists("composer.json")
-	if err != nil {
-		return nil, err
-	}
-	if !composerJSONExists {
-		return gcp.OptOutFileNotFound("composer.json"), nil
-	}
-
-	p, err := php.ReadComposerJSON(ctx.ApplicationRoot())
-	if err != nil {
-		return nil, fmt.Errorf("reading composer.json: %w", err)
-	}
-	if p.Scripts.GCPBuild == "" {
-		return gcp.OptOut("gcp-build script not found in composer.json"), nil
-	}
-
-	return gcp.OptIn("found composer.json with a gcp-build script"), nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	_, err := php.ComposerInstall(ctx, cacheTag)
-	if err != nil {
-		return fmt.Errorf("composer install: %w", err)
-	}
-
-	if _, err := ctx.Exec([]string{"composer", "run-script", "--timeout=600", "--no-dev", "gcp-build"}, gcp.WithUserAttribution); err != nil {
-		return err
-	}
-	if err := ctx.RemoveAll(php.Vendor); err != nil {
-		return err
-	}
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

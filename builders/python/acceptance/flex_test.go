@@ -31,10 +31,15 @@ func TestAcceptance(t *testing.T) {
 	// https://cloud.google.com/appengine/docs/flexible/python/runtime#application_startup
 	testCases := []acceptance.Test{
 		{
-			Name: "gunicorn with flask entrypoint",
-			App:  "gunicorn_flask_entrypoint",
+			Name:                       "gunicorn with flask entrypoint",
+			App:                        "gunicorn_flask_entrypoint",
+			VersionInclusionConstraint: "< 3.8.0",
 		},
-
+		{
+			Name:                       "gunicorn with flask entrypoint new app with upgraded dependencies",
+			App:                        "gunicorn_flask_entrypoint_new",
+			VersionInclusionConstraint: ">= 3.8.0",
+		},
 		{
 			Name: "python script entrypoint",
 			App:  "python_script",

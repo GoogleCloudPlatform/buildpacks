@@ -60,6 +60,9 @@ const (
 	// Example: `-Pprod` for Maven apps run "mvn clear package ... -Pprod" command.
 	BuildArgs = "GOOGLE_BUILD_ARGS"
 
+	// NoCache is an env var used to disable creation of cache layers.
+	NoCache = "GOOGLE_NO_CACHE"
+
 	// GAEMain is an env var used to specify path or fully qualified package name of the main package in App Engine buildpacks.
 	// Behavior: In Go, the value is cleaned up and passed on to subsequent buildpacks as GOOGLE_BUILDABLE.
 	GAEMain = "GAE_YAML_MAIN"
@@ -151,7 +154,44 @@ const (
 
 	// ServerlessRuntimesTarballs is an experiment flag to fetch tarballs from serverless-runtimes AR
 	ServerlessRuntimesTarballs = "GOOGLE_USE_SERVERLESS_RUNTIMES_TARBALLS"
+
+	// ColdStartImprovementsBuildStudy is an experiment flag to enable cold start improvements build study.
+	ColdStartImprovementsBuildStudy = "EXPERIMENTAL_RUNTIMES_COLD_START_BUILD"
+
+	// NodeCompileCache is an env var used to enable bytecode caching for Node.js applications.
+	NodeCompileCache = "NODE_COMPILE_CACHE"
+
+	// ReleaseTrack is an env var used to specify the release track for the Build.
+	// Example: `ALPHA`, `BETA`, `GA`
+	ReleaseTrack = "X_GOOGLE_RELEASE_TRACK"
+
+	// BuildEnv is an env var used to specify the environment for the Build.
+	// Example: dev, qual, prod.
+	BuildEnv = "GOOGLE_BUILD_ENV"
+
+	// PythonPackageManager is an env var used to specify the python package manager for the Build.
+	// Example: `pip`, `uv`.
+	PythonPackageManager = "GOOGLE_PYTHON_PACKAGE_MANAGER"
 )
+
+const (
+	// ALPHA is the release track for alpha.
+	ALPHA = "ALPHA"
+	// BETA is the release track for beta.
+	BETA = "BETA"
+	// GA is the release track for GA.
+	GA = "GA"
+)
+
+// IsAlphaSupported returns true if the release track is alpha.
+func IsAlphaSupported() bool {
+	return ALPHA == os.Getenv(ReleaseTrack)
+}
+
+// IsBetaSupported returns true if the release track is alpha or beta.
+func IsBetaSupported() bool {
+	return BETA == os.Getenv(ReleaseTrack) || IsAlphaSupported()
+}
 
 // IsGAE returns true if the buildpack target platform is gae.
 func IsGAE() bool {

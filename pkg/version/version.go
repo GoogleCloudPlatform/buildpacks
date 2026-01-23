@@ -18,11 +18,14 @@ package version
 import (
 	"fmt"
 	"regexp"
-	"sort"
+	"slices"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/Masterminds/semver"
 )
+
+var skipKeywords = []string{"deprecated", "public-image", "latest"}
 
 type resolveParams struct {
 	noSanitize bool
@@ -52,18 +55,21 @@ func ResolveVersion(constraint string, versions []string, opts ...ResolveVersion
 		return "", err
 	}
 
-	semvers := make([]*semver.Version, len(versions))
-	for i, version := range versions {
+	semvers := []*semver.Version(nil)
+	for _, version := range versions {
+		if shouldSkipVersion(version, skipKeywords) {
+			continue
+		}
 		s, err := semver.NewVersion(version)
 		if err != nil {
-			return "", err
+			return "", buildererror.Errorf(buildererror.StatusInternal, "failed to parse version %q: %v", version, err)
 		}
-		semvers[i] = s
+		semvers = append(semvers, s)
 	}
 
 	// Sort in descending order so that the first version in the list to satisfy a constraint will be
 	// the highest possible version.
-	sort.Sort(sort.Reverse(semver.Collection(semvers)))
+	sortVersionsDesc(semvers)
 	for _, s := range semvers {
 		if c.Check(s) {
 			if params.noSanitize {
@@ -73,7 +79,42 @@ func ResolveVersion(constraint string, versions []string, opts ...ResolveVersion
 		}
 	}
 
-	return "", fmt.Errorf("failed to resolve version matching: %v", c)
+	return "", fmt.Errorf("failed to resolve version matching: %s against %v", c.String(), semvers)
+}
+
+func sortVersionsDesc(versions []*semver.Version) {
+	slices.SortStableFunc(versions, func(a, b *semver.Version) int {
+		if a.Equal(b) {
+			return compareMetadata(b, a) // Compare metadata also in desc order
+		}
+		return b.Compare(a)
+	})
+}
+
+func compareMetadata(a, b *semver.Version) int {
+	aIsEA := strings.Contains(a.Metadata(), ".ea")
+	bIsEA := strings.Contains(b.Metadata(), ".ea")
+	switch {
+	case aIsEA == bIsEA:
+		return strings.Compare(a.Metadata(), b.Metadata())
+	// The semver which is not EA is always greater
+	case aIsEA:
+		return -1
+	default:
+		return 1
+	}
+}
+
+func shouldSkipVersion(version string, keywords []string) bool {
+	if IsReleaseCandidate(version) {
+		return true
+	}
+	for _, keyword := range keywords {
+		if strings.HasPrefix(strings.ToLower(version), strings.ToLower(keyword)) {
+			return true
+		}
+	}
+	return false
 }
 
 // IsExactSemver returns true if a given string is valid semantic version.
@@ -94,7 +135,8 @@ func IsExactSemver(constraint string) bool {
 // Example dotnet rc version - 8.0.100-rc.1
 // Example php rc version - 8.3.0RC4
 // Example ruby rc version - 3.2.0-rc1
+// Example java rc version - 25.0.0-beta+36.0.ea
 func IsReleaseCandidate(constraint string) bool {
-	m := regexp.MustCompile(`(\d+)\.(\d+)\.(.*)(rc|RC)(.*)`)
+	m := regexp.MustCompile(`(\d+)\.(\d+)\.(.*)(rc|RC|beta)(.*)`)
 	return m.MatchString(constraint)
 }
