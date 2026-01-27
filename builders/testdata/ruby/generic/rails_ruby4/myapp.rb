@@ -12,8 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-source "https://rubygems.org"
+require "sinatra"
 
-gem "sinatra", "~> 2.1"
-gem "webrick", "~> 1.7"
-gem "ostruct", "~> 0.6"
+configure do
+  set :port, ENV['PORT']
+  set :bind, '0.0.0.0'
+end
+
+get "/" do
+  halt 500, "FAIL"
+end
