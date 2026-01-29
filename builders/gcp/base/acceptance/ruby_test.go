@@ -128,7 +128,7 @@ func TestAcceptanceRuby(t *testing.T) {
 			VersionInclusionConstraint: "< 4.0.0",
 		},
 		// Ruby 4+ acceptance tests
-		/*{
+		{
 			Name:                       "entrypoint_from_procfile_web_ruby4",
 			App:                        "simple_ruby4",
 			SkipStacks:                 []string{"google.22", "google.min.22", "google.gae.22"},
@@ -200,7 +200,7 @@ func TestAcceptanceRuby(t *testing.T) {
 			EnableCacheTest:            false,
 			Env:                        []string{"GOOGLE_RUNTIME_VERSION=4.0.0"},
 			VersionInclusionConstraint: ">= 4.0.0",
-		},*/
+		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
