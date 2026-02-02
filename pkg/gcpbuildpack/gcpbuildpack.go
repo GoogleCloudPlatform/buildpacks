@@ -235,6 +235,11 @@ func (ctx *Context) Processes() []libcnb.Process {
 	return ctx.buildResult.Processes
 }
 
+// Labels returns the list of labels added by buildpacks.
+func (ctx *Context) Labels() []libcnb.Label {
+	return ctx.buildResult.Labels
+}
+
 // Main is the main entrypoint to a buildpack's detect and build functions.
 func Main(d DetectFn, b BuildFn) {
 	switch filepath.Base(os.Args[0]) {
@@ -477,6 +482,63 @@ func (ctx *Context) AddLabel(key, value string) {
 	key = "google." + strings.ToLower(strings.ReplaceAll(key, "_", "-"))
 	ctx.Logf("Adding image label %s: %s", key, value)
 	ctx.buildResult.Labels = append(ctx.buildResult.Labels, libcnb.Label{Key: key, Value: value})
+}
+
+// SaveLayerMetadataAndEnv iterates over the layer contributors and writes their metadata and environment files to disk.
+//
+// This function is required for the "maker" tool, which runs buildpacks as in-process functions
+// rather than separate binaries. Unlike the standard lifecycle where `libcnb` automatically
+// persists layer data upon process exit, the in-process model requires this manual step to:
+// 1. Finalize layer state (by calling `Contribute`).
+// 2. Persist environment variables to `env`, `env.build`, and `env.launch` directories.
+//
+// This enables the maker tool to read these environment files and propagate changes to
+// subsequent buildpacks, mimicking the standard Cloud Native Buildpacks lifecycle behavior.
+func (ctx *Context) SaveLayerMetadataAndEnv() error {
+	for i, creator := range ctx.layerContributors {
+		l, err := ctx.buildContext.Layers.Layer(creator.Name())
+		if err != nil {
+			return err
+		}
+		l, err = creator.Contribute(l)
+		if err != nil {
+			return err
+		}
+		ctx.buildResult.Layers[i] = l
+
+		for dir, env := range map[string]map[string]string{
+			"env.build":  l.BuildEnvironment,
+			"env":        l.SharedEnvironment,
+			"env.launch": l.LaunchEnvironment,
+		} {
+			if len(env) > 0 {
+				if err := writeEnvDir(filepath.Join(l.Path, dir), env); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// writeEnvDir writes the environment variables to the specified directory.
+// This mimics the behavior of libcnb's internal EnvironmentWriter (which cannot be imported directly).
+func writeEnvDir(dir string, env map[string]string) error {
+	const envFilePerm = 0644
+
+	if err := os.MkdirAll(dir, layerMode); err != nil {
+		return fmt.Errorf("mkdir %s: %w", dir, err)
+	}
+	for k, v := range env {
+		f := filepath.Join(dir, k)
+		if err := os.MkdirAll(filepath.Dir(f), layerMode); err != nil {
+			return fmt.Errorf("mkdir %s: %w", filepath.Dir(f), err)
+		}
+		if err := os.WriteFile(f, []byte(v), envFilePerm); err != nil {
+			return fmt.Errorf("writing %s: %w", f, err)
+		}
+	}
+	return nil
 }
 
 // MainRunner is the main entrypoint for runners.
