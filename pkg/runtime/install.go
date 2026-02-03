@@ -33,6 +33,17 @@ import (
 	"github.com/Masterminds/semver"
 )
 
+// InstallerCapability is the key used to inject the RuntimeInstaller capability.
+const InstallerCapability = "runtime.Installer"
+
+// Installer defines the interface for installing language runtimes.
+// This interface allows abstracting the installation logic so that it can be swapped out
+// for the "maker" use case. In the standard build process, the implementation downloads
+// and installs the runtime. In the maker process, it simply resolves the version and records it.
+type Installer interface {
+	InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, versionConstraint string, layer *libcnb.Layer) (bool, error)
+}
+
 var (
 	dartSdkURL         = "https://storage.googleapis.com/dart-archive/channels/stable/release/%s/sdk/dartsdk-linux-x64-release.zip"
 	flutterSdkURL      = "https://storage.googleapis.com/flutter_infra_release/releases/%s"
@@ -242,6 +253,11 @@ func InstallFlutterSDK(ctx *gcp.Context, layer *libcnb.Layer, version string, ar
 // with caching.
 // Returns true if a cached layer is used.
 func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, versionConstraint string, layer *libcnb.Layer) (bool, error) {
+	if cap := ctx.Capability(InstallerCapability); cap != nil {
+		if ri, ok := cap.(Installer); ok {
+			return ri.InstallTarballIfNotCached(ctx, runtime, versionConstraint, layer)
+		}
+	}
 	runtimeName := runtimeNames[runtime]
 	runtimeID := string(runtime)
 	osName := OSForStack(ctx)
@@ -562,4 +578,26 @@ func runtimeMatchesInstallableRuntime(installableRuntime InstallableRuntime) boo
 	default:
 		return strings.HasPrefix(r, string(installableRuntime))
 	}
+}
+
+// MakerInstaller implements the Installer interface for the maker tool.
+// Instead of downloading and installing the runtime (which is heavy and unnecessary for
+// generating the maker output), it simply resolves the version and records it as a label.
+// This allows the maker tool to capture the resolved runtime version quickly.
+type MakerInstaller struct{}
+
+// InstallTarballIfNotCached for the maker tool only resolves the version and adds a label.
+// It bypasses the actual download and installation of the runtime tarball.
+func (mi MakerInstaller) InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, versionConstraint string, layer *libcnb.Layer) (bool, error) {
+	osName := OSForStack(ctx)
+
+	version, err := ResolveVersion(ctx, runtime, versionConstraint, osName)
+	if err != nil {
+		return false, err
+	}
+
+	// For the maker use case, we only need to resolve the version and add it as a label.
+	// We do not need to download or install the runtime tarball.
+	ctx.AddLabel("runtime_version", version)
+	return false, nil
 }

@@ -98,6 +98,12 @@ type Context struct {
 	buildResult       libcnb.BuildResult
 	layerContributors []layerContributor
 
+	// capabilities holds dependency injection overrides (e.g., for Maker).
+	// Keys are scoped strings (e.g., "runtime.Installer"), and values are interface implementations.
+	// This allows the Maker tool to inject lightweight mock implementations for heavy operations
+	// like runtime installation, avoiding the need to download large artifacts during local simulation.
+	capabilities map[string]any
+
 	execCmd func(name string, arg ...string) *exec.Cmd
 }
 
@@ -155,6 +161,19 @@ func WithStackID(stackID string) ContextOption {
 	}
 }
 
+// WithCapability allows the entrypoint (Maker or Runner) to inject a strategy/capability.
+// This is used to override default behaviors with specialized implementations, specifically
+// for the "maker" use case where we simulate build steps without performing full operations
+// (like downloading runtimes).
+func WithCapability(key string, impl any) ContextOption {
+	return func(ctx *Context) {
+		if ctx.capabilities == nil {
+			ctx.capabilities = make(map[string]any)
+		}
+		ctx.capabilities[key] = impl
+	}
+}
+
 // NewContext creates a context.
 func NewContext(opts ...ContextOption) *Context {
 	debug, err := env.IsDebugMode()
@@ -205,6 +224,13 @@ func (ctx *Context) BuildpackVersion() string {
 // BuildpackName returns the buildpack name.
 func (ctx *Context) BuildpackName() string {
 	return ctx.info.Name
+}
+
+// Capability returns a capability from Context.
+// This is used to retrieve injected dependencies/strategies, allowing buildpacks to
+// behave differently depending on the context (e.g., real build vs maker simulation).
+func (ctx *Context) Capability(key string) any {
+	return ctx.capabilities[key]
 }
 
 // ApplicationRoot returns the root folder of the application code.

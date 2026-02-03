@@ -11,6 +11,7 @@ go_library(
     ],
     deps = [
         "//pkg/env",
+        "//pkg/execd",
         "//pkg/gcpbuildpack",
         "//pkg/nodejs",
         "//pkg/ruby",
