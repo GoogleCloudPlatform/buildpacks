@@ -23,6 +23,7 @@ go_library(
     visibility = [
         "//cmd/firebase/bundle:__subpackages__",
         "//cmd/nodejs:__subpackages__",
+        "//maker:__subpackages__",
         # Ruby on Rails apps require Nodejs and Yarn for precompiling assets
         "//cmd/ruby:__subpackages__",
     ],

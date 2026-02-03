@@ -11,6 +11,14 @@ import (
 	"github.com/buildpacks/libcnb/v2"
 )
 
+// PNPMInstallerCapability is the capability key for the PNPMInstaller.
+const PNPMInstallerCapability = "nodejs.PnpmInstaller"
+
+// PNPMInstaller is an interface for installing pnpm.
+type PNPMInstaller interface {
+	InstallPNPM(ctx *gcp.Context, pnpmLayer *libcnb.Layer, pjs *PackageJSON) error
+}
+
 var (
 	// PNPMLock is the name of the pnpm lock file.
 	PNPMLock = "pnpm-lock.yaml"
@@ -22,6 +30,14 @@ var (
 
 // InstallPNPM installs pnpm in the given layer if it is not already cached.
 func InstallPNPM(ctx *gcp.Context, pnpmLayer *libcnb.Layer, pjs *PackageJSON) error {
+	if cap := ctx.Capability(PNPMInstallerCapability); cap != nil {
+		i, ok := cap.(PNPMInstaller)
+		if !ok {
+			return gcp.InternalErrorf("capability %q must implement PNPMInstaller", PNPMInstallerCapability)
+		}
+		return i.InstallPNPM(ctx, pnpmLayer, pjs)
+	}
+
 	layerName := pnpmLayer.Name
 	installDir := filepath.Join(pnpmLayer.Path, "bin")
 	stackID := runtime.OSForStack(ctx)
@@ -107,4 +123,13 @@ func detectPNPMVersion(pjs *PackageJSON, stackID string) (string, error) {
 		return "", gcp.UserErrorf("finding pnpm version that matched %q: %w", requestedVersion, err)
 	}
 	return version, nil
+}
+
+// MakerPNPMInstaller implements the PNPMInstaller interface for the maker tool.
+type MakerPNPMInstaller struct{}
+
+// InstallPNPM does nothing, assuming pnpm is already present in the environment.
+func (i MakerPNPMInstaller) InstallPNPM(ctx *gcp.Context, pnpmLayer *libcnb.Layer, pjs *PackageJSON) error {
+	// No-op for maker as of now. Can be extended in future to run something like `npm install -g pnpm`
+	return nil
 }
