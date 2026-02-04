@@ -11,7 +11,10 @@ go_library(
         "requirements.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = ["//cmd/python:__subpackages__"],
+    visibility = [
+        "//cmd/apprunner:__subpackages__",
+        "//cmd/python:__subpackages__",
+    ],
     deps = [
         "//pkg/ar",
         "//pkg/buildererror",

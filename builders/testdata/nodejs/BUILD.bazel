@@ -2,7 +2,10 @@
 
 licenses(["notice"])
 
-package(default_visibility = ["//builders:__subpackages__"])
+package(default_visibility = [
+    "//builders:__subpackages__",
+    "//cmd:__subpackages__",
+])
 
 exports_files(
     [
