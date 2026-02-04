@@ -33,8 +33,6 @@ const (
 	// GoogleNodeRunScriptsEnv is the env var that can be used to configure a list of package.json
 	// scripts that should be run during the build process.
 	GoogleNodeRunScriptsEnv = "GOOGLE_NODE_RUN_SCRIPTS"
-	// nodejsNPMBuildEnv is an env var that enables running `npm run build` by default.
-	nodejsNPMBuildEnv = "GOOGLE_EXPERIMENTAL_NODEJS_NPM_BUILD_ENABLED"
 	// VendorNpmDeps for vendoring npm dependencies
 	VendorNpmDeps = "GOOGLE_VENDOR_NPM_DEPENDENCIES"
 	// AppHostingBuildEnv is the env var that contains the build command to run for Firebase backends.
