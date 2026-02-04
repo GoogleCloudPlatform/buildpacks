@@ -47,6 +47,17 @@ go_library(
 )
 
 go_test(
+    name = "nodejs_example_test",
+    srcs = ["example_test.go"],
+    rundir = ".",
+    deps = [
+        ":nodejs",
+        "//pkg/gcpbuildpack",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
+    ],
+)
+
+go_test(
     name = "nodejs_test",
     srcs = [
         "angular_test.go",

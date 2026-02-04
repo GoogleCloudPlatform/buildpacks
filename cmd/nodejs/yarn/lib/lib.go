@@ -37,6 +37,10 @@ const (
 	yarnLayer = "yarn_engine"
 )
 
+type yarnModuleInstaller interface {
+	InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error
+}
+
 // DetectFn is the exported detect function.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	pkgJSONExists, err := ctx.FileExists("package.json")
@@ -119,6 +123,10 @@ func BuildFn(ctx *gcp.Context) error {
 }
 
 func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
+	if cap := ctx.Capability(nodejs.Yarn1ModuleInstallerCapability); cap != nil {
+		return cap.(yarnModuleInstaller).InstallModules(ctx, pjs)
+	}
+
 	freezeLockfile, err := nodejs.UseFrozenLockfile(ctx)
 	if err != nil {
 		return err

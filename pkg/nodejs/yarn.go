@@ -38,7 +38,60 @@ var (
 const (
 	// YarnLock is the name of the yarn lock file.
 	YarnLock = "yarn.lock"
+
+	// YarnInstallerCapability is the capability key for the YarnInstaller.
+	YarnInstallerCapability = "nodejs.YarnInstaller"
+
+	// Yarn1ModuleInstallerCapability is the capability key for the Yarn1ModuleInstaller.
+	Yarn1ModuleInstallerCapability = "nodejs.Yarn1ModuleInstaller"
 )
+
+// yarnInstaller is an interface for installing Yarn.
+type yarnInstaller interface {
+	InstallYarn(ctx *gcp.Context, yarnLayer *libcnb.Layer, pjs *PackageJSON) error
+}
+
+// MakerYarnInstaller implements the YarnInstaller interface for the maker tool.
+//
+// Example:
+//
+//	if cap := ctx.Capability(YarnInstallerCapability); cap != nil {
+//		// yarnInstaller is an internal interface in this package
+//		return cap.(yarnInstaller).InstallYarn(ctx, yarnLayer, pjs)
+//	}
+type MakerYarnInstaller struct{}
+
+// InstallYarn does nothing, assuming Yarn is already present in the environment.
+func (i MakerYarnInstaller) InstallYarn(ctx *gcp.Context, yarnLayer *libcnb.Layer, pjs *PackageJSON) error {
+	return nil
+}
+
+// MakerYarn1ModuleInstaller implements the Yarn1ModuleInstaller interface for the maker tool.
+//
+// Example:
+//
+//	type moduleInstaller interface {
+//		InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error
+//	}
+//
+//	if cap := ctx.Capability(Yarn1ModuleInstallerCapability); cap != nil {
+//		return cap.(moduleInstaller).InstallModules(ctx, pjs)
+//	}
+type MakerYarn1ModuleInstaller struct{}
+
+// InstallModules installs modules using yarn install in the application root.
+func (i MakerYarn1ModuleInstaller) InstallModules(ctx *gcp.Context, pjs *PackageJSON) error {
+	cmd := []string{"yarn", "install", "--non-interactive"}
+	freezeLockfile, err := UseFrozenLockfile(ctx)
+	if err != nil {
+		return err
+	}
+	if freezeLockfile {
+		cmd = append(cmd, "--frozen-lockfile")
+	}
+	_, err = ctx.Exec(cmd, gcp.WithUserAttribution)
+	return err
+}
 
 type yarn2Lock struct {
 	Metadata struct {
@@ -116,6 +169,10 @@ func detectYarnVersion(pjs *PackageJSON) (string, error) {
 
 // InstallYarnLayer installs Yarn in the given layer if it is not already cached.
 func InstallYarnLayer(ctx *gcp.Context, yarnLayer *libcnb.Layer, pjs *PackageJSON) error {
+	if cap := ctx.Capability(YarnInstallerCapability); cap != nil {
+		return cap.(yarnInstaller).InstallYarn(ctx, yarnLayer, pjs)
+	}
+
 	layerName := yarnLayer.Name
 	version, err := detectYarnVersion(pjs)
 	if err != nil {
