@@ -63,12 +63,14 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			App:             "rack",
-			Env:             []string{"GOOGLE_ENTRYPOINT=bundle exec rackup -p $PORT config-custom.ru"},
-			EnableCacheTest: true,
+			App:                        "rack",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec rackup -p $PORT config-custom.ru"},
+			EnableCacheTest:            true,
+			VersionInclusionConstraint: "<4.0.0",
 		},
 		{
-			App: "rack_inferred",
+			App:                        "rack_inferred",
+			VersionInclusionConstraint: "<4.0.0",
 		},
 		{
 			Name:                       "rails",
@@ -76,40 +78,96 @@ func TestAcceptance(t *testing.T) {
 			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
 			EnableCacheTest:            true,
 			MustUse:                    []string{rubyRuntime, rubyRails, rubyBundle, nodeRuntime},
-			VersionInclusionConstraint: ">=2.7.8",
+			VersionInclusionConstraint: ">=2.7.8 <4.0.0",
 		},
 		{
-			App: "rails_inferred",
+			App:                        "rails_inferred",
+			VersionInclusionConstraint: "<4.0.0",
 		},
 		{
-			App:        "rails_precompiled",
-			Env:        []string{"GOOGLE_ENTRYPOINT=bundle exec bin/rails server"},
-			MustNotUse: []string{nodeRuntime, nodeYarn},
+			App:                        "rails_precompiled",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec bin/rails server"},
+			MustNotUse:                 []string{nodeRuntime, nodeYarn},
+			VersionInclusionConstraint: "<4.0.0",
 		},
 		{
 			App:                        "simple_gemfile",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 			EnableCacheTest:            true,
 			MustNotUse:                 []string{nodeRuntime, nodeYarn},
-			VersionInclusionConstraint: ">=2.7.8",
+			VersionInclusionConstraint: ">=2.7.8 <4.0.0",
 		},
 		{
 			App:                        "simple_gems",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 			MustNotUse:                 []string{nodeRuntime, nodeYarn},
-			VersionInclusionConstraint: ">=2.7.8",
+			VersionInclusionConstraint: ">=2.7.8 <4.0.0",
 		},
 		{
 			App:                        "version_specified_gemfile",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 			Setup:                      insertGemfileVersion,
-			VersionInclusionConstraint: ">=2.7.8",
+			VersionInclusionConstraint: ">=2.7.8 <4.0.0",
 		},
 		{
 			App:                        "version_specified_gems",
 			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
 			Setup:                      insertGemsRbVersion,
-			VersionInclusionConstraint: ">=2.7.8",
+			VersionInclusionConstraint: ">=2.7.8 <4.0.0",
+		},
+		// Ruby 4+ acceptance tests.
+		{
+			App:                        "rack_ruby4",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec rackup -p $PORT config-custom.ru"},
+			EnableCacheTest:            true,
+			VersionInclusionConstraint: ">=4.0.0",
+		},
+		{
+			App:                        "rack_inferred_ruby4",
+			VersionInclusionConstraint: ">=4.0.0",
+		},
+		{
+			Name:                       "rails_ruby4",
+			App:                        "rails_ruby4",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp-custom.rb"},
+			EnableCacheTest:            true,
+			MustUse:                    []string{rubyRuntime, rubyRails, rubyBundle, nodeRuntime},
+			VersionInclusionConstraint: ">=4.0.0",
+		},
+		{
+			App:                        "rails_inferred_ruby4",
+			VersionInclusionConstraint: ">=4.0.0",
+		},
+		{
+			App:                        "rails_precompiled_ruby4",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec bin/rails server"},
+			MustNotUse:                 []string{nodeRuntime, nodeYarn},
+			VersionInclusionConstraint: ">=4.0.0",
+		},
+		{
+			App:                        "simple_gemfile_ruby4",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			EnableCacheTest:            true,
+			MustNotUse:                 []string{nodeRuntime, nodeYarn},
+			VersionInclusionConstraint: ">=4.0.0",
+		},
+		{
+			App:                        "simple_gems_ruby4",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			MustNotUse:                 []string{nodeRuntime, nodeYarn},
+			VersionInclusionConstraint: ">=4.0.0",
+		},
+		{
+			App:                        "version_specified_gemfile_ruby4",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			Setup:                      insertGemfileVersion,
+			VersionInclusionConstraint: ">=4.0.0",
+		},
+		{
+			App:                        "version_specified_gems_ruby4",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=bundle exec ruby myapp.rb"},
+			Setup:                      insertGemsRbVersion,
+			VersionInclusionConstraint: ">=4.0.0",
 		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
