@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-source "https://rubygems.org"
-gem "webrick", "~> 1.7"
+require "functions_framework"
 
-gem "functions_framework", "~> 1.1"
-
-gem "base64", "~> 0.2"
-gem "ostruct", "~> 0.6"
-gem "logger"
+FunctionsFramework.http "testFunction" do |request|
+  require "rack"
+  "PASS"
+end

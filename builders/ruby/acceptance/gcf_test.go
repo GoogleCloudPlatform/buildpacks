@@ -35,6 +35,7 @@ func TestAcceptance(t *testing.T) {
 			Labels: map[string]string{
 				"google.functions-framework-version": `{"runtime":"ruby","version":"1.4.1","injected":false}`,
 			},
+			VersionInclusionConstraint: "< 4.0.0",
 		},
 		{
 			Name: "function with platform-specific dependencies",
@@ -42,6 +43,7 @@ func TestAcceptance(t *testing.T) {
 			Labels: map[string]string{
 				"google.functions-framework-version": `{"runtime":"ruby","version":"1.1.0","injected":false}`,
 			},
+			VersionInclusionConstraint: "< 4.0.0",
 		},
 		{
 			Name:   "function with runtime env var",
@@ -50,11 +52,13 @@ func TestAcceptance(t *testing.T) {
 			Labels: map[string]string{
 				"google.functions-framework-version": `{"runtime":"ruby","version":"1.1.0","injected":false}`,
 			},
+			VersionInclusionConstraint: "< 4.0.0",
 		},
 		{
-			Name: "function in fn_source file",
-			App:  "with_fn_source",
-			Env:  []string{"GOOGLE_FUNCTION_SOURCE=sub_dir/custom_file.rb"},
+			Name:                       "function in fn_source file",
+			App:                        "with_fn_source",
+			Env:                        []string{"GOOGLE_FUNCTION_SOURCE=sub_dir/custom_file.rb"},
+			VersionInclusionConstraint: "< 4.0.0",
 		},
 		{
 			Name: "function using framework older than 0.7",
@@ -62,6 +66,49 @@ func TestAcceptance(t *testing.T) {
 			Labels: map[string]string{
 				"google.functions-framework-version": `{"runtime":"ruby","version":"0.2.0","injected":false}`,
 			},
+			VersionInclusionConstraint: "< 4.0.0",
+		},
+		// Ruby 4+ tests
+		{
+			Name:            "function_with_dependencies_ruby4",
+			App:             "with_dependencies_ruby4",
+			EnableCacheTest: true,
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"ruby","version":"1.6.2","injected":false}`,
+			},
+			VersionInclusionConstraint: ">= 4.0.0",
+		},
+		{
+			Name: "function_with_platform-specific_dependencies_ruby4",
+			App:  "with_platform_dependencies_ruby4",
+			Env:  []string{"GOOGLE_RUNTIME_VERSION=4.0.*"},
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"ruby","version":"1.6.2","injected":false}`,
+			},
+			VersionInclusionConstraint: ">= 4.0.0",
+		},
+		{
+			Name:   "function_with_runtime_env_var_ruby4",
+			App:    "with_env_var_ruby4",
+			RunEnv: []string{"FOO=foo"},
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"ruby","version":"1.6.2","injected":false}`,
+			},
+			VersionInclusionConstraint: ">= 4.0.0",
+		},
+		{
+			Name:                       "function_in_fn_source_ruby4",
+			App:                        "with_fn_source_ruby4",
+			Env:                        []string{"GOOGLE_FUNCTION_SOURCE=sub_dir/custom_file.rb"},
+			VersionInclusionConstraint: ">= 4.0.0",
+		},
+		{
+			Name: "function_using_framework_older_than_0.7_ruby4",
+			App:  "with_legacy_framework_ruby4",
+			Labels: map[string]string{
+				"google.functions-framework-version": `{"runtime":"ruby","version":"0.2.0","injected":false}`,
+			},
+			VersionInclusionConstraint: ">= 4.0.0",
 		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {

@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-source "https://rubygems.org"
-gem "webrick", "~> 1.7"
+require "functions_framework"
 
-gem "functions_framework", "~> 1.1"
-
-gem "base64", "~> 0.2"
-gem "ostruct", "~> 0.6"
-gem "logger"
+FunctionsFramework.http "testFunction" do |request|
+  require "grpc"
+  "PASS"
+end

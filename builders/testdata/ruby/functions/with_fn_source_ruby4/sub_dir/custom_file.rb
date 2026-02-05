@@ -11,12 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+require "functions_framework"
 
-source "https://rubygems.org"
-gem "webrick", "~> 1.7"
-
-gem "functions_framework", "~> 1.1"
-
-gem "base64", "~> 0.2"
-gem "ostruct", "~> 0.6"
-gem "logger"
+FunctionsFramework.http "testFunction" do |request|
+  "PASS"
+end
