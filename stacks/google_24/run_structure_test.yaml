@@ -52,6 +52,11 @@ fileExistenceTests:
   path: '/www-data-home'
   shouldExist: true
   permissions: 'drwxr-xr-x'
+- name: 'app-runner'
+  path: '/usr/bin/app-runner'
+  shouldExist: true
+  permissions: '-r-xr-xr-x'
+  isExecutableBy: 'any'
 
 commandTests:
 - name: 'installed packages'
