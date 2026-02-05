@@ -9,6 +9,14 @@ import (
 	"github.com/buildpacks/libcnb/v2"
 )
 
+// BunInstallerCapability is the capability key for the BunInstaller.
+const BunInstallerCapability = "nodejs.BunInstaller"
+
+// bunInstaller is an interface for installing bun.
+type bunInstaller interface {
+	InstallBun(ctx *gcp.Context, bunLayer *libcnb.Layer, pjs *PackageJSON) error
+}
+
 var (
 	// BunLock is the name of the Bun lock file.
 	BunLock = "bun.lockb"
@@ -18,6 +26,14 @@ var (
 
 // InstallBun installs Bun in the given layer using the curl installer.
 func InstallBun(ctx *gcp.Context, bunLayer *libcnb.Layer, pjs *PackageJSON) error {
+	if cap := ctx.Capability(BunInstallerCapability); cap != nil {
+		i, ok := cap.(bunInstaller)
+		if !ok {
+			return gcp.InternalErrorf("capability %q must implement BunInstaller", BunInstallerCapability)
+		}
+		return i.InstallBun(ctx, bunLayer, pjs)
+	}
+
 	layerName := bunLayer.Name
 	installDir := filepath.Join(bunLayer.Path, "bin")
 	version, err := detectBunVersion(pjs)
@@ -88,4 +104,13 @@ func detectBunVersion(pjs *PackageJSON) (string, error) {
 		return "", gcp.UserErrorf("finding bun version that matched %q: %w", requestedVersion, err)
 	}
 	return version, nil
+}
+
+// MakerBunInstaller implements the BunInstaller interface for the maker tool.
+type MakerBunInstaller struct{}
+
+// InstallBun does nothing, assuming bun is already present in the environment.
+func (i MakerBunInstaller) InstallBun(ctx *gcp.Context, bunLayer *libcnb.Layer, pjs *PackageJSON) error {
+	// No-op for maker as of now. Can be extended in future to run something like `npm install -g bun`
+	return nil
 }
