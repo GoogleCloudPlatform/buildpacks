@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -76,7 +77,17 @@ var (
 		runtime.Ubuntu2204: "3.13.*",
 		runtime.Ubuntu2404: "3.14.*",
 	}
+
+	execPrefixRegex = regexp.MustCompile(`exec_prefix\s*=\s*"([^"]+)`)
 )
+
+// SysconfigPatcherCapability is the capability key for the SysconfigPatcher.
+const SysconfigPatcherCapability = "python.SysconfigPatcher"
+
+// sysconfigPatcher is an interface for patching python sysconfig.
+type sysconfigPatcher interface {
+	PatchSysconfig(ctx *gcp.Context, layer *libcnb.Layer) error
+}
 
 // Version returns the installed version of Python.
 func Version(ctx *gcp.Context) (string, error) {
@@ -442,4 +453,63 @@ func isBothPyprojectAndRequirementsPresent(ctx *gcp.Context) bool {
 	pyprojectTomlExists, _ := ctx.FileExists(pyprojectToml)
 	requirementsTxtExists, _ := ctx.FileExists(requirements)
 	return pyprojectTomlExists && requirementsTxtExists
+}
+
+// PatchSysconfig patches the python sysconfig variable prefix.
+func PatchSysconfig(ctx *gcp.Context, layer *libcnb.Layer) error {
+	if cap := ctx.Capability(SysconfigPatcherCapability); cap != nil {
+		p, ok := cap.(sysconfigPatcher)
+		if !ok {
+			return gcp.InternalErrorf("capability %q must implement sysconfigPatcher", SysconfigPatcherCapability)
+		}
+		return p.PatchSysconfig(ctx, layer)
+	}
+	// replace python sysconfig variable prefix from "/opt/python" to "/layers/google.python.runtime/python/" which is the layer.Path
+	// python is installed in /layers/google.python.runtime/python/ for unified builder,
+	// while the python downloaded from debs is installed in "/opt/python".
+	sysconfig, err := ctx.Exec([]string{filepath.Join(layer.Path, "bin/python3"), "-m", "sysconfig"})
+	if err != nil {
+		ctx.Warnf("Getting python sysconfig: %v", err)
+	}
+	execPrefix, err := parseExecPrefix(sysconfig.Stdout)
+	if err != nil {
+		return err
+	}
+	result, err := ctx.Exec([]string{
+		"grep",
+		"-rlI",
+		execPrefix,
+		layer.Path,
+	})
+	if err != nil {
+		ctx.Warnf("Grep failed: %v", err)
+	}
+	paths := strings.Split(result.Stdout, "\n")
+	for _, path := range paths {
+		if _, err := ctx.Exec([]string{
+			"sed",
+			"-i",
+			"s|" + execPrefix + "|" + layer.Path + "|g",
+			path,
+		}); err != nil {
+			ctx.Warnf("Patching file %q: %v", path, err)
+		}
+	}
+	return nil
+}
+
+func parseExecPrefix(sysconfig string) (string, error) {
+	match := execPrefixRegex.FindStringSubmatch(sysconfig)
+	if len(match) < 2 {
+		return "", fmt.Errorf("determining Python exec prefix: %v", match)
+	}
+	return match[1], nil
+}
+
+// MakerSysconfigPatcher implements the sysconfigPatcher interface for the maker tool.
+type MakerSysconfigPatcher struct{}
+
+// PatchSysconfig does nothing, as no patching is required for maker.
+func (p MakerSysconfigPatcher) PatchSysconfig(ctx *gcp.Context, layer *libcnb.Layer) error {
+	return nil
 }
