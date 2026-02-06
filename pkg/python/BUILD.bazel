@@ -15,6 +15,7 @@ go_library(
         "//cmd/apprunner:__subpackages__",
         "//cmd/python:__subpackages__",
         "//maker:__subpackages__",
+        "//pkg/apprunner:__subpackages__",
     ],
     deps = [
         "//pkg/ar",
