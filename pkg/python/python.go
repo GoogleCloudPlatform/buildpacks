@@ -51,6 +51,9 @@ const (
 	// VendorPipDepsEnv is the envar used to opt using vendored pip dependencies
 	VendorPipDepsEnv = "GOOGLE_VENDOR_PIP_DEPENDENCIES"
 
+	// DefaultPipTargetDir is the default directory to install python dependencies.
+	DefaultPipTargetDir = "lib"
+
 	versionFile = ".python-version"
 	versionKey  = "version"
 	versionEnv  = "GOOGLE_PYTHON_VERSION"
@@ -87,6 +90,14 @@ const SysconfigPatcherCapability = "python.SysconfigPatcher"
 // sysconfigPatcher is an interface for patching python sysconfig.
 type sysconfigPatcher interface {
 	PatchSysconfig(ctx *gcp.Context, layer *libcnb.Layer) error
+}
+
+// PipInstallerCapability is the capability key for the PipInstaller.
+const PipInstallerCapability = "python.PipInstaller"
+
+// pipInstaller is an interface for installing python dependencies.
+type pipInstaller interface {
+	Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error
 }
 
 // Version returns the installed version of Python.
@@ -203,6 +214,14 @@ func versionFromFile(ctx *gcp.Context, dir string) (string, error) {
 // accidentally override some builtin stdlib modules, e.g. typing, enum, etc., and cause both
 // build-time and run-time failures.
 func PIPInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
+	if cap := ctx.Capability(PipInstallerCapability); cap != nil {
+		i, ok := cap.(pipInstaller)
+		if !ok {
+			return gcp.InternalErrorf("capability %q does not implement pipInstaller interface", PipInstallerCapability)
+		}
+		return i.Install(ctx, l, reqs...)
+	}
+
 	shouldInstall, err := prepareDependenciesLayer(ctx, l, "pip", reqs...)
 	if err != nil {
 		return err
@@ -262,18 +281,10 @@ func PIPInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) e
 	}
 
 	for _, req := range reqs {
-		cmd := []string{
-			"python3", "-m", "pip", "install",
-			"--requirement", req,
-			"--upgrade",
-			"--upgrade-strategy", "only-if-needed",
-			"--no-warn-script-location",   // bin is added at run time by lifecycle.
-			"--no-warn-conflicts",         // Needed for python37 which allowed users to override dependencies. For newer versions, we do a separate `pip check`.
-			"--force-reinstall",           // Some dependencies may be in the build image but not run image. Later requirements.txt should override earlier.
-			"--no-compile",                // Prevent default timestamp-based bytecode compilation. Deterministic pycs are generated in a second step below.
-			"--disable-pip-version-check", // If we were going to upgrade pip, we would have done it already in the runtime buildpack.
-			"--no-cache-dir",              // We used to save this to a layer, but it made builds slower because it includes http caching of pypi requests.
-		}
+		cmd := basePipInstallArgs(req)
+		cmd = append(cmd,
+			"--no-cache-dir", // We used to save this to a layer, but it made builds slower because it includes http caching of pypi requests.
+		)
 		cmd = appendVendoringFlags(cmd)
 		if !virtualEnv {
 			cmd = append(cmd, "--user") // Install into user site-packages directory.
@@ -284,7 +295,73 @@ func PIPInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) e
 		}
 	}
 
-	return compileBytecode(ctx, l.Path)
+	if err := compileBytecode(ctx, l.Path); err != nil {
+		return err
+	}
+
+	return CheckIncompatibleDependencies(ctx)
+}
+
+// CheckIncompatibleDependencies checks for incompatible dependencies using pip check.
+func CheckIncompatibleDependencies(ctx *gcp.Context) error {
+	ctx.Logf("Checking for incompatible dependencies.")
+	result, err := ctx.Exec([]string{"python3", "-m", "pip", "check"}, gcp.WithUserAttribution)
+	if result == nil {
+		return fmt.Errorf("pip check: %w", err)
+	}
+	if result.ExitCode == 0 {
+		return nil
+	}
+	pyVer, err := Version(ctx)
+	if err != nil {
+		return err
+	}
+	// HACK: For backwards compatibility on App Engine and Cloud Functions Python 3.7 only report a
+	//   warning.
+	if strings.HasPrefix(pyVer, "Python 3.7") {
+		ctx.Warnf("Found incompatible dependencies: %q", result.Stdout)
+		return nil
+	}
+	return gcp.UserErrorf("found incompatible dependencies: %q", result.Stdout)
+}
+
+// MakerPipInstaller implements the PipInstaller interface for the maker tool.
+type MakerPipInstaller struct{}
+
+// Install installs python dependencies to the target directory specified by GOOGLE_PIP_TARGET_DIR.
+// If GOOGLE_PIP_TARGET_DIR is not set, it defaults to "lib".
+func (i MakerPipInstaller) Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
+	targetDir := os.Getenv(env.PipTargetDir)
+	if targetDir == "" {
+		targetDir = DefaultPipTargetDir
+	}
+
+	ctx.Logf("Installing dependencies to target directory: %s", targetDir)
+	var targetPath string
+	if filepath.IsAbs(targetDir) {
+		targetPath = targetDir
+	} else {
+		targetPath = filepath.Join(ctx.ApplicationRoot(), targetDir)
+	}
+
+	// We set PYTHONPATH so that the python interpreter can find the dependencies in the target
+	// directory. We use Override so that it takes precedence over any existing PYTHONPATH.
+	l.LaunchEnvironment.Override("PYTHONPATH", targetDir)
+	l.SharedEnvironment.Override("PYTHONPATH", targetPath)
+
+	ctx.AddLabel("ENV_PYTHONPATH", targetDir)
+
+	for _, req := range reqs {
+		cmd := basePipInstallArgs(req)
+		cmd = appendVendoringFlags(cmd)
+		cmd = append(cmd, "--target", targetPath)
+
+		if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // prepareDependenciesLayer is a helper function that handles the common logic for preparing a dependency layer.
@@ -512,4 +589,18 @@ type MakerSysconfigPatcher struct{}
 // PatchSysconfig does nothing, as no patching is required for maker.
 func (p MakerSysconfigPatcher) PatchSysconfig(ctx *gcp.Context, layer *libcnb.Layer) error {
 	return nil
+}
+
+func basePipInstallArgs(req string) []string {
+	return []string{
+		"python3", "-m", "pip", "install",
+		"--requirement", req,
+		"--upgrade",
+		"--upgrade-strategy", "only-if-needed",
+		"--no-warn-script-location",   // bin is added at run time by lifecycle.
+		"--no-warn-conflicts",         // Needed for python37 and maker mode which allowed users to override dependencies. For newer versions, we do a separate `pip check`.
+		"--force-reinstall",           // Some dependencies may be in the build image but not run image. Later requirements.txt should override earlier.
+		"--no-compile",                // Prevent default timestamp-based bytecode compilation. Deterministic pycs are generated in a second step below.
+		"--disable-pip-version-check", // If we were going to upgrade pip, we would have done it already in the runtime buildpack.
+	}
 }

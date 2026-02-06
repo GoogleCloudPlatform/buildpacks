@@ -93,27 +93,9 @@ func BuildFn(ctx *gcp.Context) error {
 		}
 
 		if err := python.PIPInstallRequirements(ctx, l, reqs...); err != nil {
-			return fmt.Errorf("installing dependencies from requirements.txt: %w", err)
+			return fmt.Errorf("installing dependencies from requirements.txt and validating them: %w", err)
 		}
 	}
 
-	ctx.Logf("Checking for incompatible dependencies.")
-	result, err := ctx.Exec([]string{"python3", "-m", "pip", "check"}, gcp.WithUserAttribution)
-	if result == nil {
-		return fmt.Errorf("pip check: %w", err)
-	}
-	if result.ExitCode == 0 {
-		return nil
-	}
-	pyVer, err := python.Version(ctx)
-	if err != nil {
-		return err
-	}
-	// HACK: For backwards compatibility on App Engine and Cloud Functions Python 3.7 only report a warning.
-	if strings.HasPrefix(pyVer, "Python 3.7") {
-		ctx.Warnf("Found incompatible dependencies: %q", result.Stdout)
-		return nil
-	}
-	return gcp.UserErrorf("found incompatible dependencies: %q", result.Stdout)
-
+	return nil
 }

@@ -194,6 +194,10 @@ const (
 	// PackageManager is an env var used to specify the package manager for the Build.
 	// Example: `npm`, `bun`.
 	PackageManager = "GOOGLE_PACKAGE_MANAGER"
+
+	// PipTargetDir is the environment variable used to specify the target directory for pip
+	// installation for the maker use case.
+	PipTargetDir = "GOOGLE_PIP_TARGET_DIR"
 )
 
 const (
