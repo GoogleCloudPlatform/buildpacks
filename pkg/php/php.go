@@ -156,7 +156,7 @@ func composerDumpAutoload(ctx *gcp.Context, flags []string) error {
 	return nil
 }
 
-// ComposerInstall runs `composer install`, using the cache iff a lock file is present.
+// ComposerInstall runs `composer install`, using the cache if a lock file is present.
 // It creates a layer, so it returns the layer so that the caller may further modify it
 // if they desire.
 func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
