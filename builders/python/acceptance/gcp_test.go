@@ -473,6 +473,7 @@ func TestAcceptancePython(t *testing.T) {
 			Name:                       "pyproject_without_lock_uv",
 			App:                        "pyproject_without_lock",
 			Env:                        []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
+			EnableCacheTest:            true,
 			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint},
 			VersionInclusionConstraint: ">= 3.10.0",
 		},

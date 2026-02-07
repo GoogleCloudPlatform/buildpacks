@@ -55,7 +55,7 @@ func UVInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) (s
 	pythonVersion = strings.TrimPrefix(pythonVersion, "Python ")
 
 	ctx.Logf("Creating virtual environment at %s with Python %s", venvDir, pythonVersion)
-	venvCmd := []string{"uv", "venv", venvDir, "--python", pythonVersion}
+	venvCmd := []string{"uv", "venv", venvDir, "--python", pythonVersion, "--clear"}
 	if _, err := ctx.Exec(venvCmd, gcp.WithUserAttribution); err != nil {
 		return "", fmt.Errorf("failed to create virtual environment with uv: %w", err)
 	}

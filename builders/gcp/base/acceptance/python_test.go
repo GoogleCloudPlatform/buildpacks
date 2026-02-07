@@ -339,6 +339,7 @@ func TestAcceptancePython(t *testing.T) {
 			App:                        "pyproject_without_lock",
 			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint},
 			Env:                        []string{},
+			EnableCacheTest:            true,
 			VersionInclusionConstraint: ">=3.10.0",
 		},
 		{
