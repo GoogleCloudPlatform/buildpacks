@@ -19,7 +19,9 @@ type bunInstaller interface {
 
 var (
 	// BunLock is the name of the Bun lock file.
-	BunLock = "bun.lockb"
+	BunLock = "bun.lock"
+	// BunLockb is the name of the Bun lock file in binary format.
+	BunLockb = "bun.lockb"
 	// bunVersionKey is the metadata key used to store the Bun version in the bun layer.
 	bunVersionKey = "version"
 )

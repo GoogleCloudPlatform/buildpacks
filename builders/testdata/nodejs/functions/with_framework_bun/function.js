@@ -15,19 +15,11 @@
  */
 
 /**
- * Responds 'PASS' if the user's express version in package.json is loaded.
- * Else, responds 'FAIL'.
+ * Responds 'PASS' to any HTTP requests, used in GCF builder acceptance tests.
  *
  * @param {!Object} req request context.
  * @param {!Object} res response context.
  */
 exports.testFunction = (req, res) => {
-  var express = require('express');
-  let want = '3.2.5';
-  let got = express.version;
-  if (got == want) {
-    res.send('PASS');
-  } else {
-    res.send(`Unexpected express version: got ${got}, want ${want}`);
-  }
+  res.send('PASS');
 };

@@ -100,6 +100,13 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse:             []string{npm},
 		},
 		{
+			Name:       "function_with_framework_bun",
+			App:        "with_framework_bun",
+			MustUse:    []string{bun},
+			MustNotUse: []string{npm},
+			Env:        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+		},
+		{
 			Name:            "function with dependencies",
 			App:             "with_dependencies",
 			MustUse:         []string{npm},
@@ -117,16 +124,6 @@ func TestAcceptance(t *testing.T) {
 			Labels: map[string]string{
 				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.4.5\",\"injected\":true}",
 			},
-		},
-		{
-			Name:       "function_with_dependencies_bun",
-			App:        "with_dependencies_bun",
-			MustUse:    []string{bun},
-			MustNotUse: []string{npm},
-			Labels: map[string]string{
-				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.4.5\",\"injected\":true}",
-			},
-			Env: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
 		},
 		{
 			Name:       "function with local dependency",
@@ -263,6 +260,12 @@ func TestFailures(t *testing.T) {
 			MustMatch: "This project is using pnpm",
 		},
 		{
+			Name:      "bun_without_framework",
+			App:       "no_framework",
+			Setup:     addBunLock,
+			MustMatch: "This project is using bun",
+		},
+		{
 			Name:      "function without framework or injection",
 			App:       "no_framework",
 			Env:       []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=True"},
@@ -291,6 +294,12 @@ func applyStaticFailureTestOptions(tc acceptance.FailureTest) acceptance.Failure
 // addPNPMLock adds an empty pnpm lock file to the test project
 func addPNPMLock(setupCtx acceptance.SetupContext) error {
 	fp := filepath.Join(setupCtx.SrcDir, "pnpm-lock.yaml")
+	_, err := os.Create(fp)
+	return err
+}
+
+func addBunLock(setupCtx acceptance.SetupContext) error {
+	fp := filepath.Join(setupCtx.SrcDir, "bun.lock")
 	_, err := os.Create(fp)
 	return err
 }

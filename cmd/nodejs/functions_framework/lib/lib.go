@@ -116,6 +116,18 @@ func BuildFn(ctx *gcp.Context) error {
 		return gcp.UserErrorf("This project is using pnpm but you have not included the Functions Framework in your dependencies. Please add it by running: 'pnpm add @google-cloud/functions-framework'.")
 	}
 
+	bunLockbExists, err := ctx.FileExists(nodejs.BunLockb)
+	if err != nil {
+		return err
+	}
+	bunLockExists, err := ctx.FileExists(nodejs.BunLock)
+	if err != nil {
+		return err
+	}
+	if (bunLockbExists || bunLockExists) && !hasFrameworkDependency {
+		return gcp.UserErrorf("This project is using bun but you have not included the Functions Framework in your dependencies. Please add it by running: 'bun add @google-cloud/functions-framework'.")
+	}
+
 	// TODO(mattrobertson) remove this check once Nodejs has backported the fix to v16. More info here:
 	// https://github.com/GoogleCloudPlatform/functions-framework-nodejs/issues/407
 	if skip, err := nodejs.SkipSyntaxCheck(ctx, fnFile, pjs); err != nil {

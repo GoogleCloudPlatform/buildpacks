@@ -44,19 +44,19 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !pkgJSONExists {
 		return gcp.OptOutFileNotFound("package.json"), nil
 	}
-	bunLockbExists, err := ctx.FileExists("bun.lockb")
+	bunLockbExists, err := ctx.FileExists(nodejs.BunLockb)
 	if err != nil {
 		return nil, err
 	}
 	if bunLockbExists {
-		return gcp.OptInFileFound("bun.lockb"), nil
+		return gcp.OptInFileFound(nodejs.BunLockb), nil
 	}
-	bunLockExists, err := ctx.FileExists("bun.lock")
+	bunLockExists, err := ctx.FileExists(nodejs.BunLock)
 	if err != nil {
 		return nil, err
 	}
 	if bunLockExists {
-		return gcp.OptInFileFound("bun.lock"), nil
+		return gcp.OptInFileFound(nodejs.BunLock), nil
 	}
 	if os.Getenv(env.PackageManager) == "bun" {
 		return gcp.OptIn("package.json found and GOOGLE_PACKAGE_MANAGER=bun"), nil
