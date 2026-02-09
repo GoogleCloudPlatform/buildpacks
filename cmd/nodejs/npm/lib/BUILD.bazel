@@ -13,6 +13,7 @@ go_library(
     ],
     deps = [
         "//pkg/ar",
+        "//pkg/buildermetadata",
         "//pkg/buildermetrics",
         "//pkg/cache",
         "//pkg/devmode",

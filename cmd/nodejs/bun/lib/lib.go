@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -65,6 +66,7 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 // BuildFn installs dependencies using bun package manager.
 func BuildFn(ctx *gcp.Context) error {
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.PackageManager, buildermetadata.MetadataValue("bun"))
 	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
 	if err != nil {
 		return err

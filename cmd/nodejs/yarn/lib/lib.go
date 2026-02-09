@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -64,7 +64,7 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 // BuildFn is the exported build function.
 func BuildFn(ctx *gcp.Context) error {
-	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.YarnUsageCounterID).Increment(1)
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.PackageManager, buildermetadata.MetadataValue("yarn"))
 	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
 	if err != nil {
 		return err

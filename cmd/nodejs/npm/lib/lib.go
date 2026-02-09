@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
@@ -49,7 +50,7 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 // BuildFn installs dependencies using npm.
 func BuildFn(ctx *gcp.Context) error {
-	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NPMUsageCounterID).Increment(1)
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.PackageManager, buildermetadata.MetadataValue("npm"))
 	ml, err := ctx.Layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
