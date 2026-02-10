@@ -199,6 +199,10 @@ description = "Unified builder all Python runtimes"
   [[order.group]]
     id = "google.utils.label-image"
 
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
+
 # UV order group.
 [[order]]
   [[order.group]]
@@ -213,6 +217,10 @@ description = "Unified builder all Python runtimes"
 
   [[order.group]]
     id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
 
 # Pip order group.
 [[order]]
@@ -229,6 +237,10 @@ description = "Unified builder all Python runtimes"
 
   [[order.group]]
     id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
 
 # gcp only
 # This buildpack group will attempt to install a webserver if the entrypoint 
@@ -253,6 +265,10 @@ description = "Unified builder all Python runtimes"
   [[order.group]]
     id = "google.utils.label-image"
 
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
+
 # UV order group.
 [[order]]
   [[order.group]]
@@ -270,6 +286,10 @@ description = "Unified builder all Python runtimes"
 
   [[order.group]]
     id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
 
 # Pip order group.
 [[order]]
@@ -289,6 +309,10 @@ description = "Unified builder all Python runtimes"
 
   [[order.group]]
     id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
 
 [stack]
   id = "${STACK_ID}"
