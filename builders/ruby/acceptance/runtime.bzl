@@ -11,6 +11,7 @@ gae_runtimes = {
     "ruby32": "3.2.10",
     "ruby33": "3.3.10",
     "ruby34": "3.4.8",
+    "ruby40": "4.0.1",
 }
 
 gcf_runtimes = {
@@ -20,12 +21,14 @@ gcf_runtimes = {
     "ruby32": "3.2.10",
     "ruby33": "3.3.10",
     "ruby34": "3.4.8",
+    "ruby40": "4.0.1",
 }
 
 flex_runtimes = {
     "ruby32": "3.2.10",
     "ruby33": "3.3.10",
     "ruby34": "3.4.8",
+    "ruby40": "4.0.1",
 }
 
 version_to_stack = {
@@ -36,4 +39,5 @@ version_to_stack = {
     "ruby32": "google-22-full",
     "ruby33": "google-22-full",
     "ruby34": "google-22-full",
+    "ruby40": "google-24-full",
 }
