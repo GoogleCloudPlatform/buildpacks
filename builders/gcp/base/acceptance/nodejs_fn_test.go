@@ -77,6 +77,14 @@ func TestAcceptanceNodeJsFn(t *testing.T) {
 			MustNotUse: []string{nodeNPM, entrypoint},
 		},
 		{
+			Name:       "function_with_framework_bun",
+			App:        "with_framework_bun",
+			Path:       "/testFunction",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustUse:    []string{nodeRuntime, nodeBun, nodeFF},
+			MustNotUse: []string{nodeNPM, nodeYarn, entrypoint},
+		},
+		{
 			Name:       "function with dependencies",
 			App:        "with_dependencies",
 			Path:       "/testFunction",
@@ -91,14 +99,6 @@ func TestAcceptanceNodeJsFn(t *testing.T) {
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction"},
 			MustUse:    []string{nodeRuntime, nodeYarn, nodeFF},
 			MustNotUse: []string{nodeNPM, entrypoint},
-		},
-		{
-			Name:       "function_with_dependencies_bun",
-			App:        "with_dependencies_bun",
-			Path:       "/testFunction",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
-			MustUse:    []string{nodeRuntime, nodeBun, nodeFF},
-			MustNotUse: []string{nodeNPM, nodeYarn, entrypoint},
 		},
 		{
 			Name:       "function with runtime env var",
