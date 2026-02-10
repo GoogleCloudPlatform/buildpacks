@@ -144,6 +144,8 @@ func untar(dir string, r io.Reader, stripComponents int) error {
 	madeDir := map[string]bool{}
 	tr := tar.NewReader(gzr)
 
+	buffer := make([]byte, 32*1024)
+
 	for {
 		header, err := tr.Next()
 
@@ -186,7 +188,7 @@ func untar(dir string, r io.Reader, stripComponents int) error {
 			if err != nil {
 				return gcp.InternalErrorf("opening file %q: %v", target, err)
 			}
-			if _, err := io.Copy(f, tr); err != nil {
+			if _, err := io.CopyBuffer(f, tr, buffer); err != nil {
 				return gcp.InternalErrorf("copying file %q: %v", target, err)
 			}
 			if err := f.Close(); err != nil {
