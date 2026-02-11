@@ -28,28 +28,56 @@ func TestAcceptance(t *testing.T) {
 	testCases := []acceptance.Test{
 		// Test that we can build a ruby project.
 		{
-			Name:          "hello world project",
-			App:           "helloworld",
-			Env:           []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
-			MustNotOutput: []string{"WARNING"},
-			MustUse:       []string{"google.config.flex", "google.ruby.flex-entrypoint"},
+			Name:                       "hello world project",
+			App:                        "helloworld",
+			Env:                        []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
+			MustNotOutput:              []string{"WARNING"},
+			MustUse:                    []string{"google.config.flex", "google.ruby.flex-entrypoint"},
+			VersionInclusionConstraint: "<4.0.0",
 		},
 		{
-			Name:          "rails project",
-			App:           "rails",
-			Env:           []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
-			MustNotOutput: []string{"WARNING"},
-			MustUse:       []string{"google.config.flex", "google.ruby.flex-entrypoint"},
+			Name:                       "rails project",
+			App:                        "rails",
+			Env:                        []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
+			MustNotOutput:              []string{"WARNING"},
+			MustUse:                    []string{"google.config.flex", "google.ruby.flex-entrypoint"},
+			VersionInclusionConstraint: "<4.0.0",
 		},
 		{
-			Name:          "rack project",
-			App:           "rack",
-			Env:           []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
-			MustNotOutput: []string{"WARNING"},
-			MustUse:       []string{"google.config.flex", "google.ruby.flex-entrypoint"},
+			Name:                       "rack project",
+			App:                        "rack",
+			Env:                        []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
+			MustNotOutput:              []string{"WARNING"},
+			MustUse:                    []string{"google.config.flex", "google.ruby.flex-entrypoint"},
+			VersionInclusionConstraint: "<4.0.0",
+		},
+		// Ruby 4.0.0+ tests.
+		{
+			Name:                       "hello_world_project_ruby4",
+			App:                        "helloworld_ruby4",
+			Env:                        []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
+			MustNotOutput:              []string{"WARNING"},
+			MustUse:                    []string{"google.config.flex", "google.ruby.flex-entrypoint"},
+			VersionInclusionConstraint: ">=4.0.0",
+		},
+		{
+			Name:                       "rails_project_ruby4",
+			App:                        "rails_ruby4",
+			Env:                        []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
+			MustNotOutput:              []string{"WARNING"},
+			MustUse:                    []string{"google.config.flex", "google.ruby.flex-entrypoint"},
+			VersionInclusionConstraint: ">=4.0.0",
+		},
+		{
+			Name:                       "rack_project_ruby4",
+			App:                        "rack_ruby4",
+			Env:                        []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
+			MustNotOutput:              []string{"WARNING"},
+			MustUse:                    []string{"google.config.flex", "google.ruby.flex-entrypoint"},
+			VersionInclusionConstraint: ">=4.0.0",
 		},
 	}
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			// Running these tests in parallel causes the server to run out of disk space.
