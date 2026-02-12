@@ -116,7 +116,7 @@ func BuildFn(ctx *gcp.Context) error {
 	if err == nil {
 		setMetadata(nodeDeps.PackageJSON)
 	}
-	err = deleteFilesNotIncluded(apphostingYaml, bundleYaml, ctx.ApplicationRoot())
+	err = deleteFilesNotIncluded(ctx, apphostingYaml, bundleYaml, ctx.ApplicationRoot())
 	if err != nil {
 		return err
 	}
@@ -226,6 +226,23 @@ func copyPublicDirToOutputBundleDir(outputPublicDir string, workspacePublicDir s
 	if err := fileutil.MaybeCopyPathContents(outputPublicDir, workspacePublicDir, fileutil.AllPaths); err != nil {
 		return err
 	}
+	return nil
+}
+
+// CleanerCapability is the capability key for the Cleaner.
+const CleanerCapability = "firebasebundle.Cleaner"
+
+// cleaner is an interface for file deletion logic, allowing for different implementations
+// (e.g., a no-op for maker mode).
+type cleaner interface {
+	Clean(rootDir string, filesToInclude []string, dirsToIncludeAll []string) error
+}
+
+// MakerCleaner implements the Cleaner interface for the maker tool.
+type MakerCleaner struct{}
+
+// Clean is a no-op for the maker tool to prevent destructive file deletion.
+func (c *MakerCleaner) Clean(rootDir string, filesToInclude []string, dirsToIncludeAll []string) error {
 	return nil
 }
 
@@ -388,7 +405,7 @@ func anyParentDirMatches(path string, targets map[string]bool) bool {
 // This is done by walking the directory structure and deleting all files that are not included.
 // if a directory is labeled as included, all files in that directory will be kept.
 // "." in either apphosting.yaml or bundle.yaml will include all files.
-func deleteFilesNotIncluded(apphostingSchema *apphostingYaml, bundleSchema *bundleYaml, appPath string) error {
+func deleteFilesNotIncluded(ctx *gcp.Context, apphostingSchema *apphostingYaml, bundleSchema *bundleYaml, appPath string) error {
 	// always include apphosting.yaml
 	includedFiles := originalApphostingYamlPaths()
 	// always include all of .apphosting
@@ -411,6 +428,10 @@ func deleteFilesNotIncluded(apphostingSchema *apphostingYaml, bundleSchema *bund
 			// If "." is present, don't delete anything
 			return nil
 		}
+	}
+
+	if cap := ctx.Capability(CleanerCapability); cap != nil {
+		return cap.(cleaner).Clean(appPath, includedFiles, fullyIncludedDirs)
 	}
 
 	return walkDirStructureAndDeleteAllFilesNotIncluded(appPath, includedFiles, fullyIncludedDirs)

@@ -162,7 +162,7 @@ outputFiles:
 	}
 }
 
-func TestWalkDirStructureAndDeleteAllFilesNotIncluded(t *testing.T) {
+func TestDeleteFilesNotIncluded(t *testing.T) {
 	testCases := []struct {
 		desc              string
 		filesToInclude    []string
@@ -171,7 +171,16 @@ func TestWalkDirStructureAndDeleteAllFilesNotIncluded(t *testing.T) {
 		expectedError     bool
 		apphostingInclude []string
 		bundleInclude     []string
+		isMaker           bool
 	}{
+		{
+			desc:              "Maker_no_deletion",
+			apphostingInclude: []string{},
+			bundleInclude:     []string{},
+			existingFiles:     []string{"dir1/file1.txt", "dir2/file2.txt"},
+			expectedFiles:     []string{"dir1", "dir1/file1.txt", "dir2", "dir2/file2.txt"},
+			isMaker:           true,
+		},
 		{
 			desc:              "Simple case - delete one file with bundle.yaml include",
 			apphostingInclude: []string{},
@@ -265,7 +274,12 @@ func TestWalkDirStructureAndDeleteAllFilesNotIncluded(t *testing.T) {
 
 			bundleSchema := &bundleYaml{OutputFiles: outputFiles{ServerApp: serverApp{Include: tc.bundleInclude}}}
 			apphostingSchema := &apphostingYaml{OutputFiles: outputFiles{ServerApp: serverApp{Include: tc.apphostingInclude}}}
-			err = deleteFilesNotIncluded(apphostingSchema, bundleSchema, tempDir)
+			var ctxOpts []gcp.ContextOption
+			if tc.isMaker {
+				ctxOpts = append(ctxOpts, gcp.WithCapability(CleanerCapability, &MakerCleaner{}))
+			}
+			ctx := gcp.NewContext(ctxOpts...)
+			err = deleteFilesNotIncluded(ctx, apphostingSchema, bundleSchema, tempDir)
 			if tc.expectedError {
 				if err == nil {
 					t.Error("Expected an error, but got nil")
