@@ -36,8 +36,8 @@ func TestRuntimeVersion(t *testing.T) {
 		stackID        string
 	}{
 		{
-			name: "default_to_latest_for_default_stack_ubuntu2204_is_default_for_unit_tests",
-			want: "3.13.*",
+			name: "default_to_latest_for_default_stack_ubuntu2404_is_default_for_unit_tests",
+			want: "3.14.*",
 		},
 		{
 			name:    "default_to_latest_for_stack_ubuntu2404",

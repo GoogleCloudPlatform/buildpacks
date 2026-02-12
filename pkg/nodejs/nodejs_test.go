@@ -392,12 +392,12 @@ func TestRequestedNodejsVersion(t *testing.T) {
 	}{
 		{
 			name: "default_is_empty",
-			want: "22.*.*",
+			want: "24.*.*",
 		},
 		{
 			name:        "package.json_without_engines",
 			packageJSON: `{}`,
-			want:        "22.*.*",
+			want:        "24.*.*",
 		},
 		{
 			name:    "default_on_ubuntu_24_stack",

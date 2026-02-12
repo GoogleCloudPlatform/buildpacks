@@ -40,7 +40,15 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "should_opt_out_for_requirements_txt_without_uv_env_var",
+			name: "should_opt_in_for_requirements_txt_without_uv_env_var_default_runtime",
+			files: map[string]string{
+				"requirements.txt": "flask",
+			},
+			want: 0,
+		},
+		{
+			name: "should_opt_out_for_requirements_txt_with_python_313",
+			envs: []string{env.RuntimeVersion + "=3.13.0"},
 			files: map[string]string{
 				"requirements.txt": "flask",
 			},
@@ -57,6 +65,7 @@ func TestDetect(t *testing.T) {
 		},
 		{
 			name: "should_opt_out_when_no_pyproject.toml",
+			envs: []string{env.RuntimeVersion + "=3.13.0"},
 			files: map[string]string{
 				"main.py": "print('hello')",
 			},

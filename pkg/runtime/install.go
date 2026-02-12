@@ -124,8 +124,8 @@ const (
 func OSForStack(ctx *gcp.Context) string {
 	os, ok := stackToOS[ctx.StackID()]
 	if !ok {
-		ctx.Warnf("unknown stack ID %q, falling back to Ubuntu 22.04", ctx.StackID())
-		os = Ubuntu2204
+		ctx.Warnf("unknown stack ID %q, falling back to Ubuntu 24.04", ctx.StackID())
+		os = Ubuntu2404
 	}
 	return os
 }
