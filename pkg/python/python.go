@@ -328,13 +328,19 @@ func CheckIncompatibleDependencies(ctx *gcp.Context) error {
 // MakerPipInstaller implements the PipInstaller interface for the maker tool.
 type MakerPipInstaller struct{}
 
-// Install installs python dependencies to the target directory specified by GOOGLE_PIP_TARGET_DIR.
-// If GOOGLE_PIP_TARGET_DIR is not set, it defaults to "lib".
-func (i MakerPipInstaller) Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
+// PipTargetDir returns the target directory for installing python dependencies.
+func PipTargetDir() string {
 	targetDir := os.Getenv(env.PipTargetDir)
 	if targetDir == "" {
 		targetDir = DefaultPipTargetDir
 	}
+	return targetDir
+}
+
+// Install installs python dependencies to the target directory specified by GOOGLE_PIP_TARGET_DIR.
+// If GOOGLE_PIP_TARGET_DIR is not set, it defaults to "lib".
+func (i MakerPipInstaller) Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
+	targetDir := PipTargetDir()
 
 	ctx.Logf("Installing dependencies to target directory: %s", targetDir)
 	var targetPath string
@@ -603,4 +609,48 @@ func basePipInstallArgs(req string) []string {
 		"--no-compile",                // Prevent default timestamp-based bytecode compilation. Deterministic pycs are generated in a second step below.
 		"--disable-pip-version-check", // If we were going to upgrade pip, we would have done it already in the runtime buildpack.
 	}
+}
+
+// EntrypointAdapterCapability is the capability key for the EntrypointAdapter.
+const EntrypointAdapterCapability = "python.EntrypointAdapter"
+
+// entrypointAdapter is an interface for rewriting the entrypoint command.
+type entrypointAdapter interface {
+	adapt(cmd []string, scriptCmd []string) ([]string, error)
+}
+
+// AdaptEntrypoint rewrites the entrypoint command if the capability is present.
+func AdaptEntrypoint(ctx *gcp.Context, cmd []string, scriptCmd []string) ([]string, error) {
+	if cap := ctx.Capability(EntrypointAdapterCapability); cap != nil {
+		a, ok := cap.(entrypointAdapter)
+		if !ok {
+			return nil, gcp.InternalErrorf("capability %q does not implement entrypointAdapter interface", EntrypointAdapterCapability)
+		}
+		return a.adapt(cmd, scriptCmd)
+	}
+	return cmd, nil
+}
+
+// MakerEntrypointAdapter implements the entrypointAdapter interface for the maker tool.
+type MakerEntrypointAdapter struct{}
+
+// adapt modifies the entrypoint command for the maker tool.
+func (a MakerEntrypointAdapter) adapt(cmd []string, scriptCmd []string) ([]string, error) {
+	commandToAdapt := cmd
+	if len(scriptCmd) > 0 {
+		// If scriptCmd is present, it takes precedence over cmd.
+		commandToAdapt = scriptCmd
+	}
+
+	if len(commandToAdapt) == 0 {
+		return commandToAdapt, nil
+	}
+	if commandToAdapt[0] == "python" || commandToAdapt[0] == "python3" {
+		return commandToAdapt, nil
+	}
+
+	targetDir := PipTargetDir()
+
+	binPath := filepath.Join(targetDir, "bin", commandToAdapt[0])
+	return append([]string{"python3", binPath}, commandToAdapt[1:]...), nil
 }

@@ -19,8 +19,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/google/go-cmp/cmp"
 	"github.com/buildpacks/libcnb/v2"
+
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func TestRuntimeVersion(t *testing.T) {
@@ -526,6 +528,70 @@ installed_base = "/layers/google.python.runtime/python"
 			}
 			if got != tc.want {
 				t.Errorf("parseExecPrefix(%q) = %q, want %q", tc.sysConfig, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestAdaptEntrypoint(t *testing.T) {
+	testCases := []struct {
+		name      string
+		cmd       []string
+		scriptCmd []string
+		want      []string
+	}{
+		{
+			name: "python",
+			cmd:  []string{"python", "main.py"},
+			want: []string{"python", "main.py"},
+		},
+		{
+			name: "python3",
+			cmd:  []string{"python3", "main.py"},
+			want: []string{"python3", "main.py"},
+		},
+		{
+			name: "gunicorn",
+			cmd:  []string{"gunicorn", "-b", ":8080", "main:app"},
+			want: []string{"python3", "lib/bin/gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "uvicorn",
+			cmd:  []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+			want: []string{"python3", "lib/bin/uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "streamlit",
+			cmd:  []string{"streamlit", "run", "main.py", "--server.address", "0.0.0.0", "--server.port", "8080"},
+			want: []string{"python3", "lib/bin/streamlit", "run", "main.py", "--server.address", "0.0.0.0", "--server.port", "8080"},
+		},
+		{
+			name: "adk",
+			cmd:  []string{"adk", "api_server", "--port", "8080", "--host", "0.0.0.0"},
+			want: []string{"python3", "lib/bin/adk", "api_server", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "uv",
+			cmd:  []string{"uv", "run", "main.py"},
+			want: []string{"python3", "lib/bin/uv", "run", "main.py"},
+		},
+		{
+			name:      "script_cmd_priority",
+			cmd:       []string{"uv", "run", "foo"},
+			scriptCmd: []string{"foo"},
+			want:      []string{"python3", "lib/bin/foo"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext(gcp.WithCapability(EntrypointAdapterCapability, &MakerEntrypointAdapter{}))
+			got, err := AdaptEntrypoint(ctx, tc.cmd, tc.scriptCmd)
+			if err != nil {
+				t.Fatalf("AdaptEntrypoint(%v) failed: %v", tc.cmd, err)
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("AdaptEntrypoint(%v) returned diff (-want +got):\n%s", tc.cmd, diff)
 			}
 		})
 	}

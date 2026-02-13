@@ -106,8 +106,9 @@ func BuildFn(ctx *gcp.Context) error {
 	}
 
 	// Script command from pyproject.toml takes precedence over the smart default entrypoint.
+	var scriptCmd []string
 	if python.IsPyprojectEnabled(ctx) {
-		scriptCmd, err := python.GetScriptCommand(ctx)
+		scriptCmd, err = python.GetScriptCommand(ctx)
 		if err != nil {
 			return fmt.Errorf("getting script command from pyproject.toml: %w", err)
 		}
@@ -132,6 +133,12 @@ func BuildFn(ctx *gcp.Context) error {
 		} else if !hasMain && !hasApp && !adkPresent {
 			return gcp.UserErrorf("for Python with pyproject.toml, provide a main.py or app.py file or a script command in pyproject.toml or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
 		}
+	}
+
+	// Rewrite entrypoint for specific environments (e.g. Maker)
+	cmd, err = python.AdaptEntrypoint(ctx, cmd, scriptCmd)
+	if err != nil {
+		return fmt.Errorf("adapting entrypoint: %w", err)
 	}
 
 	ctx.Warnf("Setting default entrypoint: %q", strings.Join(cmd, " "))
