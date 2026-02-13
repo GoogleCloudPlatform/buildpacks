@@ -19,8 +19,20 @@
 # variable. The script is designed to be used as a buildpack exec.d script so
 # we set the env var by writing to the third file descriptor. For more details
 # see https://buildpacks.io/docs/for-buildpack-authors/how-to/write-buildpacks/use-exec.d/
+
+LIMIT_BYTES=""
+
+# Check for Cgroup v1
 if [ -f /sys/fs/cgroup/memory/memory.limit_in_bytes ]; then
-  TOTAL_MEM_MB=$(cat /sys/fs/cgroup/memory/memory.limit_in_bytes | awk '{printf "%d", $1 / 1024 / 1024}')
+  LIMIT_BYTES=$(cat /sys/fs/cgroup/memory/memory.limit_in_bytes)
+# Check for Cgroup v2
+elif [ -f /sys/fs/cgroup/memory.max ]; then
+  LIMIT_BYTES=$(cat /sys/fs/cgroup/memory.max)
+fi
+
+# If a limit was found, and it's not the v2 "max" string, calculate and set NODE_OPTIONS
+if [[ -n "$LIMIT_BYTES" && "$LIMIT_BYTES" != "max" ]]; then
+  TOTAL_MEM_MB=$(echo "$LIMIT_BYTES" | awk '{printf "%d", $1 / 1024 / 1024}')
   HEAP_LIMIT_MB=$(($TOTAL_MEM_MB * 80 / 100)) # use 80% of available memory
   if [[ -z "${NODE_OPTIONS}" ]]; then
     # NODE_OPTIONS is not defined so we just set it
