@@ -88,6 +88,11 @@ func init() {
 		// The Test Encyclopedia says HOME shouldbe $TEST_TMPDIR
 		os.Setenv("HOME", os.Getenv("TEST_TMPDIR"))
 	}
+	// TODO(harshaliraka): Remove this once the bug is fixed.
+	// Force Docker API version to 1.41 for compatibility with CloudBuild workers.
+	if _, found := os.LookupEnv("DOCKER_API_VERSION"); !found {
+		os.Setenv("DOCKER_API_VERSION", "1.41")
+	}
 }
 
 // DefineFlags sets up flags that control the behavior of the test runner.
