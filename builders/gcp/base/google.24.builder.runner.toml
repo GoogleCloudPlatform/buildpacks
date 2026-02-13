@@ -891,4 +891,4 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   run-image = "gcr.io/buildpacks/google-24/run"
 
 [lifecycle]
-  version = "0.20.20"
+  version = "0.21.3"

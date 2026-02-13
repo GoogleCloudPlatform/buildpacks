@@ -69,6 +69,10 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/aws/aws-sdk-go-v2/service/internal/presigned-url/LICENSE.txt
 
+- package: github.com/aws/aws-sdk-go-v2/service/signin
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/aws/aws-sdk-go-v2/service/signin/LICENSE.txt
+
 - package: github.com/aws/aws-sdk-go-v2/service/sso
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/aws/aws-sdk-go-v2/service/sso/LICENSE.txt
@@ -145,29 +149,13 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/cespare/xxhash/v2/LICENSE.txt
 
-- package: github.com/chainguard-dev/kaniko/pkg
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/chainguard-dev/kaniko/pkg/LICENSE
-
 - package: github.com/chrismellard/docker-credential-acr-env/pkg
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/chrismellard/docker-credential-acr-env/pkg/LICENSE
 
-- package: github.com/containerd/containerd/api/types
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/containerd/api/types/LICENSE
-
 - package: github.com/containerd/containerd/platforms
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/containerd/platforms/LICENSE
-
-- package: github.com/containerd/containerd/v2
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/containerd/v2/LICENSE
-
-- package: github.com/containerd/continuity
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/continuity/LICENSE
 
 - package: github.com/containerd/errdefs
   license_name: Apache-2.0
@@ -188,10 +176,6 @@
 - package: github.com/containerd/stargz-snapshotter/estargz
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/stargz-snapshotter/estargz/LICENSE
-
-- package: github.com/containerd/ttrpc
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/ttrpc/LICENSE
 
 - package: github.com/containerd/typeurl/v2
   license_name: Apache-2.0
@@ -281,10 +265,6 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/heroku/color/LICENSE
 
-- package: github.com/karrick/godirwalk
-  license_name: BSD-2-Clause
-  license_path: /usr/local/share/licenses/lifecycle/github.com/karrick/godirwalk/LICENSE
-
 - package: github.com/klauspost/compress
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/klauspost/compress/LICENSE
@@ -325,25 +305,17 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/moby/go-archive/LICENSE
 
-- package: github.com/moby/locker
+- package: github.com/moby/moby/api/types
   license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/moby/locker/LICENSE
+  license_path: /usr/local/share/licenses/lifecycle/github.com/moby/moby/api/types/LICENSE
+
+- package: github.com/moby/moby/client
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/moby/moby/client/LICENSE
 
 - package: github.com/moby/patternmatcher
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/moby/patternmatcher/LICENSE
-
-- package: github.com/moby/sys/atomicwriter
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/moby/sys/atomicwriter/LICENSE
-
-- package: github.com/moby/sys/mount
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/moby/sys/mount/LICENSE
-
-- package: github.com/moby/sys/mountinfo
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/moby/sys/mountinfo/LICENSE
 
 - package: github.com/moby/sys/sequential
   license_name: Apache-2.0
@@ -352,10 +324,6 @@
 - package: github.com/moby/sys/signal
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/moby/sys/signal/LICENSE
-
-- package: github.com/moby/sys/symlink
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/moby/sys/symlink/LICENSE
 
 - package: github.com/moby/sys/user
   license_name: Apache-2.0
@@ -385,9 +353,9 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/opencontainers/image-spec/specs-go/LICENSE
 
-- package: github.com/opencontainers/runtime-spec/specs-go
+- package: github.com/osscontainertools/kaniko/pkg
   license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/opencontainers/runtime-spec/specs-go/LICENSE
+  license_path: /usr/local/share/licenses/lifecycle/github.com/osscontainertools/kaniko/pkg/LICENSE
 
 - package: github.com/otiai10/copy
   license_name: MIT
@@ -433,9 +401,9 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/tonistiigi/go-csvvalue/LICENSE
 
-- package: github.com/vbatts/tar-split
+- package: github.com/vbatts/tar-split/archive/tar
   license_name: BSD-3-Clause
-  license_path: /usr/local/share/licenses/lifecycle/github.com/vbatts/tar-split/LICENSE
+  license_path: /usr/local/share/licenses/lifecycle/github.com/vbatts/tar-split/archive/tar/LICENSE
 
 - package: golang.org/x/crypto/pkcs12
   license_name: BSD-3-Clause
@@ -456,18 +424,6 @@
 - package: golang.org/x/text
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/golang.org/x/text/LICENSE
-
-- package: golang.org/x/time/rate
-  license_name: BSD-3-Clause
-  license_path: /usr/local/share/licenses/lifecycle/golang.org/x/time/rate/LICENSE
-
-- package: google.golang.org/genproto/googleapis/rpc/status
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/google.golang.org/genproto/googleapis/rpc/status/LICENSE
-
-- package: google.golang.org/grpc
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/google.golang.org/grpc/LICENSE
 
 - package: google.golang.org/protobuf
   license_name: BSD-3-Clause

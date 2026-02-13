@@ -6,7 +6,7 @@ package(default_visibility = ["//:__subpackages__"])
 
 exports_files([
     "buildpacks/licenses.yaml",
-    "lifecycle-v0.20.20/licenses.yaml",
+    "lifecycle-v0.21.3/licenses.yaml",
 ])
 
 pkg_tar(
