@@ -88,7 +88,7 @@ func BuildFn(ctx *gcp.Context) error {
 	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
 
 	// Configure the entrypoint for production.
-	ctx.AddWebProcess([]string{"bun", "run", "start"})
+	ctx.AddWebProcess([]string{"npm", "run", "start"})
 	return nil
 }
 
@@ -157,7 +157,7 @@ func bunInstallModules(ctx *gcp.Context) error {
 }
 
 var installBun = func(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
-	layer, err := ctx.Layer(bunLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	layer, err := ctx.Layer(bunLayer, gcp.BuildLayer, gcp.CacheLayer)
 	if err != nil {
 		return gcp.InternalErrorf("creating %v layer: %w", bunLayer, err)
 	}
