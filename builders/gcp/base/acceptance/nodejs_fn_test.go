@@ -80,7 +80,7 @@ func TestAcceptanceNodeJsFn(t *testing.T) {
 			Name:       "function_with_framework_bun",
 			App:        "with_framework_bun",
 			Path:       "/testFunction",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "X_GOOGLE_RELEASE_TRACK=BETA"},
 			MustUse:    []string{nodeRuntime, nodeBun, nodeFF},
 			MustNotUse: []string{nodeNPM, nodeYarn, entrypoint},
 		},

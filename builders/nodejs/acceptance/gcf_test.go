@@ -104,7 +104,7 @@ func TestAcceptance(t *testing.T) {
 			App:        "with_framework_bun",
 			MustUse:    []string{bun},
 			MustNotUse: []string{npm},
-			Env:        []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			Env:        []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
 		},
 		{
 			Name:            "function with dependencies",

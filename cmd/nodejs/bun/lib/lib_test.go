@@ -53,7 +53,7 @@ func TestDetect(t *testing.T) {
 			envs: []string{
 				env.ReleaseTrack + "=BETA",
 			},
-			want: 100,
+			want: 0,
 		},
 		{
 			name: "with_lock",
@@ -87,7 +87,7 @@ func TestDetect(t *testing.T) {
 			envs: []string{
 				env.ReleaseTrack + "=BETA",
 			},
-			want: 100,
+			want: 0,
 		},
 		{
 			name: "with_lockb",
@@ -121,7 +121,7 @@ func TestDetect(t *testing.T) {
 				env.PackageManager + "=bun",
 				env.ReleaseTrack + "=BETA",
 			},
-			want: 100,
+			want: 0,
 		},
 		{
 			name: "package_no_lock",

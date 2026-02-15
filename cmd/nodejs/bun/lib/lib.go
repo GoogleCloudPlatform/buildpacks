@@ -34,7 +34,7 @@ const (
 
 // DetectFn detects if package.json is present.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !env.IsAlphaSupported() {
+	if !env.IsBetaSupported() {
 		return gcp.OptOut("Bun package manager is not supported in the current release track."), nil
 	}
 	pkgJSONExists, err := ctx.FileExists("package.json")
