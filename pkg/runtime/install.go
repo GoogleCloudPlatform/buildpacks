@@ -15,6 +15,7 @@
 package runtime
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"maps"
@@ -119,6 +120,13 @@ const (
 	// gcpUserAgent is required for the Ruby runtime, but used for others for simplicity.
 	gcpUserAgent = "GCPBuildpacks"
 )
+
+var localRuntimeVersionCmds = map[InstallableRuntime][]string{
+	Python: {"python3", "-c", "import platform; print(platform.python_version())"},
+	Nodejs: {"node", "-p", "process.versions.node"},
+}
+
+var errUnsupportedRuntime = errors.New("unsupported runtime for local check")
 
 // OSForStack returns the Operating System being used by input stackID.
 func OSForStack(ctx *gcp.Context) string {
@@ -580,24 +588,44 @@ func runtimeMatchesInstallableRuntime(installableRuntime InstallableRuntime) boo
 	}
 }
 
+func checkLocalRuntimeVersion(ctx *gcp.Context, runtime InstallableRuntime) (string, error) {
+	// TODO(b/481611857): Support other runtimes for local version check.
+	cmd, ok := localRuntimeVersionCmds[runtime]
+	if !ok {
+		return "", fmt.Errorf("%s: %w", runtime, errUnsupportedRuntime)
+	}
+
+	result, err := ctx.Exec(cmd, gcp.WithUserAttribution)
+	if err != nil {
+		return "", fmt.Errorf("checking local %s version: %w", runtime, err)
+	}
+	version := strings.TrimSpace(result.Stdout)
+	if version == "" {
+		return "", fmt.Errorf("local %s version check returned empty string", runtime)
+	}
+	return version, nil
+}
+
 // MakerInstaller implements the Installer interface for the maker tool.
 // Instead of downloading and installing the runtime (which is heavy and unnecessary for
 // generating the maker output), it simply resolves the version and records it as a label.
 // This allows the maker tool to capture the resolved runtime version quickly.
 type MakerInstaller struct{}
 
-// InstallTarballIfNotCached for the maker tool only resolves the version and adds a label.
-// It bypasses the actual download and installation of the runtime tarball.
+// InstallTarballIfNotCached for the maker tool only resolves the runtime version (locally if supported)
+// and adds a label. It bypasses the actual download and installation of the runtime tarball.
 func (mi MakerInstaller) InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, versionConstraint string, layer *libcnb.Layer) (bool, error) {
-	osName := OSForStack(ctx)
-
-	version, err := ResolveVersion(ctx, runtime, versionConstraint, osName)
+	version, err := checkLocalRuntimeVersion(ctx, runtime)
 	if err != nil {
-		return false, err
+		if errors.Is(err, errUnsupportedRuntime) {
+			return false, gcp.UserErrorf("runtime %s is not supported by the maker tool", runtime)
+		}
+		return false, gcp.UserErrorf("failed to detect local %s runtime version: %v. Please ensure it is installed and in your PATH", runtime, err)
 	}
 
 	// For the maker use case, we only need to resolve the version and add it as a label.
 	// We do not need to download or install the runtime tarball.
 	ctx.AddLabel("runtime_version", version)
+	ctx.AddLabel("language_name", string(runtime))
 	return false, nil
 }
