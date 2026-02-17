@@ -104,7 +104,10 @@ func BuildFn(ctx *gcp.Context) error {
 	}
 
 	// Configure the entrypoint for production.
-	cmd := []string{"yarn", "run", "start"}
+	cmd, err := nodejs.Entrypoint(ctx, "yarn")
+	if err != nil {
+		return err
+	}
 
 	if !devmode.Enabled(ctx) {
 		ctx.AddWebProcess(cmd)

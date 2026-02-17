@@ -47,6 +47,9 @@ const (
 	// ApphostingPreprocessedPathForPack is the path to the preprocessed apphosting.yaml file in the workspace.
 	ApphostingPreprocessedPathForPack = "/workspace/apphosting_preprocessed"
 
+	// NPMStartEntrypointCapability is the capability key for the NPMStartEntrypoint.
+	NPMStartEntrypointCapability = "nodejs.NPMStartEntrypoint"
+
 	nodeVersionKey    = "node_version"
 	dependencyHashKey = "dependency_hash"
 )
@@ -473,6 +476,26 @@ func MajorVersion(versionString string) (string, error) {
 	}
 
 	return parts[0], nil
+}
+
+// MakerNPMStartEntrypoint implements the entrypoint capability for the maker tool.
+type MakerNPMStartEntrypoint struct{}
+
+// command returns the entrypoint command for the maker tool.
+func (e *MakerNPMStartEntrypoint) command() []string {
+	return []string{"npm", "run", "start"}
+}
+
+// Entrypoint returns the entrypoint command based on the package manager and capabilities.
+func Entrypoint(ctx *gcp.Context, packageManager string) ([]string, error) {
+	if cap := ctx.Capability(NPMStartEntrypointCapability); cap != nil {
+		c, ok := cap.(*MakerNPMStartEntrypoint)
+		if !ok {
+			return nil, gcp.InternalErrorf("capability %q must be of type *MakerNPMStartEntrypoint", NPMStartEntrypointCapability)
+		}
+		return c.command(), nil
+	}
+	return []string{packageManager, "run", "start"}, nil
 }
 
 // OverrideAppHostingBuildScript overrides the "apphosting:build" script in package.json

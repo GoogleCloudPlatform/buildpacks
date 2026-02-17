@@ -88,7 +88,12 @@ func BuildFn(ctx *gcp.Context) error {
 	}
 
 	// Configure the entrypoint for production.
-	ctx.AddWebProcess([]string{"pnpm", "run", "start"})
+	entrypoint, err := nodejs.Entrypoint(ctx, "pnpm")
+	if err != nil {
+		return err
+	}
+
+	ctx.AddWebProcess(entrypoint)
 	return nil
 }
 
