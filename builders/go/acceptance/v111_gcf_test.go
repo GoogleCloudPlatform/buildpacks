@@ -26,8 +26,8 @@ import (
 func vendorSetup(setupCtx acceptance.SetupContext) error {
 	// The setup function runs `go mod vendor` to vendor dependencies
 	// specified in go.mod.
-	args := strings.Fields(fmt.Sprintf("docker run --rm -v %s:/workspace -w /workspace -u root %s go mod vendor",
-		setupCtx.SrcDir, setupCtx.Builder))
+	args := strings.Fields(fmt.Sprintf("%s run --rm -v %s:/workspace -w /workspace -u root %s go mod vendor",
+		acceptance.ContainerEngine, setupCtx.SrcDir, setupCtx.Builder))
 	cmd := exec.Command(args[0], args[1:]...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("vendoring dependencies: %v, output:\n%s", err, out)

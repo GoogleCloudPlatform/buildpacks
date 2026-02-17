@@ -69,7 +69,8 @@ var (
 	runtimeVersion      string // A runtime version which will be applied to tests that do not explicilty set a version.
 	runtimeName         string // The name of the runtime (aka the language name such as 'go' or 'dotnet'). Used to properly set GOOGLE_RUNTIME.
 	specialChars        = regexp.MustCompile("[^a-zA-Z0-9]+")
-	buildEnv            string // The build environment (dev, qual, or prod).
+	buildEnv            string     // The build environment (dev, qual, or prod).
+	containerEngine     = "docker" // containerEngine to use (docker or podman).
 )
 
 type requestType string
@@ -88,9 +89,6 @@ func init() {
 		// The Test Encyclopedia says HOME shouldbe $TEST_TMPDIR
 		os.Setenv("HOME", os.Getenv("TEST_TMPDIR"))
 	}
-	// TODO(harshaliraka): Remove this once the bug is fixed.
-	// Force Docker API version to 1.41 for compatibility with CloudBuild workers.
-	os.Setenv("DOCKER_API_VERSION", "1.41")
 }
 
 // DefineFlags sets up flags that control the behavior of the test runner.
@@ -110,6 +108,7 @@ func DefineFlags() {
 	flag.StringVar(&runtimeVersion, "runtime-version", "", "A default runtime version which will be applied to the tests that do not explicitly set a version.")
 	flag.StringVar(&runtimeName, "runtime-name", "", "The name of the runtime (aka the language name such as 'go' or 'dotnet'). Used to properly set GOOGLE_RUNTIME.")
 	flag.StringVar(&buildEnv, "build-env", "", "The build environment to use (dev, qual, or prod). Sets GOOGLE_BUILD_ENV.")
+	flag.StringVar(&containerEngine, "container-engine", "docker", "The container engine to use for running tests (docker or podman).")
 }
 
 // UnarchiveTestData extracts the test-data tgz into a temp dir and returns a cleanup function to be deferred.
@@ -570,10 +569,10 @@ func runCombinedOutput(args ...string) (string, error) {
 	return string(out), nil
 }
 
-// runDockerLogs returns the logs for a container, the lineLimit parameter
-// controls the maximum number of lines read from the log
-func runDockerLogs(containerID string, lineLimit int) (string, error) {
-	return runCombinedOutput("docker", "logs", "--tail", string(lineLimit), containerID)
+// runContainerLogs returns the logs for a container, the lineLimit parameter
+// controls the maximum number of lines read from the log.
+func runContainerLogs(containerID string, lineLimit int) (string, error) {
+	return runCombinedOutput(containerEngine, "logs", "--tail", fmt.Sprint(lineLimit), containerID)
 }
 
 // cleanUpImage attempts to delete an image from the Docker daemon.
@@ -583,7 +582,7 @@ func cleanUpImage(t *testing.T, name string) {
 	if keepArtifacts {
 		return
 	}
-	if _, err := runOutput("docker", "rmi", "-f", name); err != nil {
+	if _, err := runOutput(containerEngine, "rmi", "-f", name); err != nil {
 		t.Logf("Failed to clean up image: %v", err)
 	}
 }
@@ -613,12 +612,12 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 	if builderImage != "" {
 		t.Logf("Testing existing builder image: %s", builderImage)
 		if pullImages {
-			if _, err := runOutput("docker", "pull", builderImage); err != nil {
+			if _, err := runOutput(containerEngine, "pull", builderImage); err != nil {
 				t.Fatalf("Error pulling %s: %v", builderImage, err)
 			}
 		}
 		// Pack cache is based on builder name; retag with a unique name.
-		if _, err := runOutput("docker", "tag", builderImage, builderName); err != nil {
+		if _, err := runOutput(containerEngine, "tag", builderImage, builderName); err != nil {
 			t.Fatalf("Error tagging %s as %s: %v", builderImage, builderName, err)
 		}
 		runName, cleanUpRun, err := provisionRunImageFromBuilder(builderName)
@@ -676,7 +675,7 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 	// The images are intentionally not cleaned up to prevent conflicts across different test targets.
 	if pullImages {
 		buildName := builderConfig.Stack.BuildImage
-		if _, err := runOutput("docker", "pull", buildName); err != nil {
+		if _, err := runOutput(containerEngine, "pull", buildName); err != nil {
 			t.Fatalf("Error pulling %s: %v", buildName, err)
 		}
 	}
@@ -726,7 +725,7 @@ func provisionRunImageFromTOML(builderConfig *builderTOML) (string, func(t *test
 		runName = runImageOverride
 	}
 	if pullImages {
-		if _, err := runOutput("docker", "pull", runName); err != nil {
+		if _, err := runOutput(containerEngine, "pull", runName); err != nil {
 			return "", nil, fmt.Errorf("pulling %q: %w", runName, err)
 		}
 	}
@@ -748,7 +747,7 @@ func provisionRunImageFromBuilder(builderName string) (string, func(t *testing.T
 		runName = runImageOverride
 	}
 	if pullImages {
-		if _, err := runOutput("docker", "pull", runName); err != nil {
+		if _, err := runOutput(containerEngine, "pull", runName); err != nil {
 			return "", nil, fmt.Errorf("pulling %q: %w", runName, err)
 		}
 	}
@@ -790,16 +789,16 @@ func provisionImageWithMatchingStackID(fromImage, stackID string) (string, func(
 }
 
 func getImageStackID(image string) (string, error) {
-	out, err := runOutput("docker", "inspect", `--format={{index .Config.Labels "io.buildpacks.stack.id"}}`, image)
+	out, err := runOutput(containerEngine, "inspect", `--format={{index .Config.Labels "io.buildpacks.stack.id"}}`, image)
 	if err != nil {
-		return "", fmt.Errorf("getting stack id from docker inspect: %w", err)
+		return "", fmt.Errorf("getting stack id from %s inspect: %w", containerEngine, err)
 	}
 	return out, nil
 }
 
 func newImageWithStackID(fromImage, stackID string) (string, error) {
 	newImage := generateRandomImageName(fromImage)
-	_, err := runCombinedOutput("bash", "-c", fmt.Sprintf(`echo "FROM %s" | docker build --label io.buildpacks.stack.id="%s" -t "%s" -`, fromImage, stackID, newImage))
+	_, err := runCombinedOutput("bash", "-c", fmt.Sprintf(`echo "FROM %s" | %s build --label io.buildpacks.stack.id="%s" -t "%s" -`, fromImage, containerEngine, stackID, newImage))
 	if err != nil {
 		return "", fmt.Errorf("changing stack id label on %q: %v", fromImage, err)
 	}
@@ -874,7 +873,7 @@ func updateLifecycle(config, uri string) (string, error) {
 // runImageFromMetadata returns the run image name from the metadata of the given image.
 func runImageFromMetadata(image string) (string, error) {
 	format := "--format={{(index (index .Config.Labels) \"io.buildpacks.builder.metadata\")}}"
-	out, err := runOutput("docker", "inspect", image, format)
+	out, err := runOutput(containerEngine, "inspect", image, format)
 	if err != nil {
 		return "", fmt.Errorf("reading builder metadata: %v", err)
 	}
@@ -1225,7 +1224,7 @@ func startContainer(t *testing.T, image, entrypoint string, env []string, cache 
 	t.Helper()
 
 	containerName := xid.New().String()
-	command := []string{"docker", "run", "--detach", fmt.Sprintf("--name=%s", containerName)}
+	command := []string{containerEngine, "run", "--detach", fmt.Sprintf("--name=%s", containerName)}
 	for _, e := range env {
 		command = append(command, "--env", e)
 	}
@@ -1247,28 +1246,28 @@ func startContainer(t *testing.T, image, entrypoint string, env []string, cache 
 
 	host, port := getHostAndPortForApp(t, id, containerName)
 	return id, host, port, func() {
-		if _, err := runOutput("docker", "stop", id); err != nil {
+		if _, err := runOutput(containerEngine, "stop", id); err != nil {
 			t.Logf("Failed to stop container: %v", err)
 		}
 		if t.Failed() {
 			// output the container logs when a test failed, this can be useful for debugging failures in the test application
-			outputDockerLogs(t, id)
+			outputContainerLogs(t, id)
 		}
 		if keepArtifacts {
 			return
 		}
-		if _, err := runOutput("docker", "rm", "-f", id); err != nil {
+		if _, err := runOutput(containerEngine, "rm", "-f", id); err != nil {
 			t.Logf("Failed to clean up container: %v", err)
 		}
 	}
 }
 
-func outputDockerLogs(t *testing.T, containerID string) {
-	out, err := runDockerLogs(containerID, 1000)
+func outputContainerLogs(t *testing.T, containerID string) {
+	out, err := runContainerLogs(containerID, 1000)
 	if err == nil {
-		t.Logf("docker logs %v:\n%v", containerID, out)
+		t.Logf("%s logs %v:\n%v", containerEngine, containerID, out)
 	} else {
-		t.Errorf("error fetching docker logs for container %v: %v", containerID, err)
+		t.Errorf("error fetching %s logs for container %v: %v", containerEngine, containerID, err)
 	}
 }
 
@@ -1309,7 +1308,7 @@ func hostPort(t *testing.T, id string) int {
 	t.Helper()
 
 	format := "--format={{(index (index .NetworkSettings.Ports \"8080/tcp\") 0).HostPort}}"
-	portstr, err := runOutput("docker", "inspect", id, format)
+	portstr, err := runOutput(containerEngine, "inspect", id, format)
 	if err != nil {
 		t.Fatalf("Error getting port: %v", err)
 	}
@@ -1367,7 +1366,7 @@ func cleanUpVolumes(t *testing.T, image string) {
 	}
 
 	buildVolume, launchVolume := volumeNames(image)
-	if _, err := runOutput("docker", "volume", "rm", "-f", launchVolume, buildVolume); err != nil {
+	if _, err := runOutput(containerEngine, "volume", "rm", "-f", launchVolume, buildVolume); err != nil {
 		t.Logf("Failed to clean up cache volumes: %v", err)
 	}
 }

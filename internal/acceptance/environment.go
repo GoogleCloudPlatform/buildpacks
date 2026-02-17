@@ -26,7 +26,9 @@ import (
 func prepareEnvTest(t *testing.T, test Test) map[string]string {
 	env := envToMap(t, test.Env)
 	env["GOOGLE_DEBUG"] = "true"
-	env["DOCKER_API_VERSION"] = "1.41"
+	if containerEngine == "docker" {
+		env["DOCKER_API_VERSION"] = "1.41"
+	}
 	if shouldApplyRuntimeVersion(env) {
 		applyRuntimeVersion(t, env, runtimeVersion)
 	}
@@ -36,7 +38,9 @@ func prepareEnvTest(t *testing.T, test Test) map[string]string {
 func prepareEnvFailureTest(t *testing.T, fTest FailureTest) map[string]string {
 	env := envToMap(t, fTest.Env)
 	env["GOOGLE_DEBUG"] = "true"
-	env["DOCKER_API_VERSION"] = "1.41"
+	if containerEngine == "docker" {
+		env["DOCKER_API_VERSION"] = "1.41"
+	}
 	if !fTest.SkipBuilderOutputMatch {
 		env["BUILDER_OUTPUT"] = "/tmp/builderoutput"
 		env["EXPECTED_BUILDER_OUTPUT"] = fTest.MustMatch
