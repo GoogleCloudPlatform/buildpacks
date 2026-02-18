@@ -16,6 +16,7 @@ package nodejs
 
 import (
 	"fmt"
+	"os"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb/v2"
@@ -28,9 +29,17 @@ const (
 
 // InstallNextJsBuildAdapter installs the nextjs build adaptor in the given layer if it is not already cached.
 func InstallNextJsBuildAdapter(ctx *gcp.Context, njsl *libcnb.Layer) error {
-	version, err := nextjsAdapterVersion(ctx)
-	if err != nil {
-		return gcp.InternalErrorf("failed to resolve latest nextjs adapter version: %w", err)
+	var version string
+	var err error
+	if adapterVersion, adapterVersionPresent := os.LookupEnv("NEXTJS_ADAPTER_VERSION"); adapterVersionPresent {
+		ctx.Logf("Using NEXTJS_ADAPTER_VERSION: %q", adapterVersion)
+		version = adapterVersion
+	} else {
+		ctx.Logf("Using latest nextjs adapter version")
+		version, err = nextjsAdapterVersion(ctx)
+		if err != nil {
+			return gcp.InternalErrorf("failed to resolve latest nextjs adapter version: %w", err)
+		}
 	}
 
 	// Check the metadata in the cache layer to determine if version is already installed.
