@@ -16,6 +16,7 @@ package nodejs
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -29,9 +30,17 @@ const (
 
 // InstallAngularBuildAdapter installs the angular build adaptor in the given layer if it is not already cached.
 func InstallAngularBuildAdapter(ctx *gcp.Context, al *libcnb.Layer) error {
-	version, err := angularAdapterVersion(ctx)
-	if err != nil {
-		return gcp.InternalErrorf("failed to resolve latest angular adapter version: %w", err)
+	var version string
+	var err error
+	if adapterVersion, adapterVersionPresent := os.LookupEnv("ANGULAR_ADAPTER_VERSION"); adapterVersionPresent {
+		ctx.Logf("Using ANGULAR_ADAPTER_VERSION: %q", adapterVersion)
+		version = adapterVersion
+	} else {
+		ctx.Logf("Using latest angular adapter version")
+		version, err = angularAdapterVersion(ctx)
+		if err != nil {
+			return gcp.InternalErrorf("failed to resolve latest angular adapter version: %w", err)
+		}
 	}
 
 	// Check the metadata in the cache layer to determine if version is already installed.
