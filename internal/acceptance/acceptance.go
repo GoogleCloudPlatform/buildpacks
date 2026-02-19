@@ -237,9 +237,6 @@ func constructImageName(t *testing.T, name, builderName string) string {
 	t.Helper()
 	image := fmt.Sprintf("%s-%s", strings.ToLower(specialChars.ReplaceAllString(name, "-")), builderName)
 	if remoteRepo != "" {
-		if err := ensureARRepo(remoteRepo); err != nil {
-			t.Fatalf("Ensuring AR repo in %q: %v", remoteRepo, err)
-		}
 		return fmt.Sprintf("us-docker.pkg.dev/%s/acceptance-tests/%s", remoteRepo, image)
 	}
 	return image
@@ -1400,19 +1397,6 @@ func cleanUpVolumes(t *testing.T, image string) {
 	if _, err := runOutput(containerEngine, "volume", "rm", "-f", launchVolume, buildVolume); err != nil {
 		t.Logf("Failed to clean up cache volumes: %v", err)
 	}
-}
-
-func ensureARRepo(projectID string) error {
-	repoName := "acceptance-tests"
-	// Check if repo exists
-	_, err := runOutput("gcloud", "artifacts", "repositories", "describe", repoName, "--project", projectID, "--location", "us")
-	if err == nil {
-		return nil
-	}
-	log.Printf("`gcloud artifacts repositories describe %s` failed: %v", repoName, err)
-	// Create repo
-	_, err = runOutput("gcloud", "artifacts", "repositories", "create", repoName, "--repository-format=docker", "--location=us", "--project", projectID)
-	return err
 }
 
 func volumeNames(image string) (string, string) {
