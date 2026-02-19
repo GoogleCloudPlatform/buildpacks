@@ -26,9 +26,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/klauspost/pgzip"
 )
 
 // gcpUserAgent is required for the Ruby runtime, but used for others for simplicity.
@@ -135,11 +137,21 @@ func GetURL(url string, f io.Writer) error {
 
 // untar extracts a tarball from a reader and writes it to the given directory.
 func untar(dir string, r io.Reader, stripComponents int) error {
-	gzr, err := gzip.NewReader(r)
+	var gzr io.ReadCloser
+	var err error
+	if v, _ := env.IsPresentAndTrue(env.FasterLanguageTarballInstallation); v {
+		gzr, err = pgzip.NewReader(r)
+	} else {
+		gzr, err = gzip.NewReader(r)
+	}
 	if err != nil {
-		return gcp.InternalErrorf("creating gzip reader: %v", err)
+		return err
 	}
 	defer gzr.Close()
+	return untarWithReader(dir, gzr, stripComponents)
+}
+
+func untarWithReader(dir string, gzr io.Reader, stripComponents int) error {
 
 	madeDir := map[string]bool{}
 	tr := tar.NewReader(gzr)

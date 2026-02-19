@@ -101,6 +101,10 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/buildpacks/github.com/klauspost/compress/zstd/internal/xxhash/LICENSE.txt
 
+- package: github.com/klauspost/pgzip
+  license_name: MIT
+  license_path: /usr/local/share/licenses/buildpacks/github.com/klauspost/pgzip/LICENSE
+
 - package: github.com/Masterminds/semver
   license_name: MIT
   license_path: /usr/local/share/licenses/buildpacks/github.com/Masterminds/semver/LICENSE.txt

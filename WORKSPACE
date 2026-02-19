@@ -357,6 +357,13 @@ go_repository(
 )
 
 go_repository(
+    name = "com_github_klauspost_pgzip",
+    importpath = "github.com/klauspost/pgzip",
+    sum = "h1:8RXeL5crjEUFnR2/Sn6GJNWtSQ3Dk8pq4CL3jvdDyjU=",
+    version = "v1.2.6",
+)
+
+go_repository(
     name = "com_github_microsoft_go_winio",
     importpath = "github.com/Microsoft/go-winio",
     sum = "h1:9/kr64B9VUZrLm5YYwbGtUJnMgqWVOdUAXu6Migciow=",

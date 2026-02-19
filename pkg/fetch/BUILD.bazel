@@ -8,9 +8,11 @@ go_library(
         "//:__subpackages__",
     ],
     deps = [
+        "//pkg/env",
         "//pkg/gcpbuildpack",
         "@com_github_google_go_containerregistry//pkg/crane:go_default_library",
         "@com_github_hashicorp_go_retryablehttp//:go_default_library",
+        "@com_github_klauspost_pgzip//:go_default_library",
     ],
 )
 
