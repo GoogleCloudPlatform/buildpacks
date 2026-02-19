@@ -282,6 +282,7 @@ substitutions:
   _PULL_IMAGES: \"true\"
   _BUILDER_IMAGE: \"\"
   _RUNTIME_LANGUAGE: ${runtime_language}
+  _REMOTE_REPO: \"\"
 timeout: 3600s
 steps:
 - id: fix-permissions
@@ -350,7 +351,8 @@ args:
     -builder-source=builder.tar \\
     -builder-image=$${_BUILDER_IMAGE} \\
     -runtime-name=$${_RUNTIME_LANGUAGE} \\
-    -structure-test-config=config.yaml"""
+    -structure-test-config=config.yaml \\
+    -remote-repo=$${_REMOTE_REPO}"""
 
 def _build_step(name, bin_name, version, args, testdata_label):
     result = _step_template

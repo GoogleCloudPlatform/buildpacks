@@ -71,6 +71,7 @@ var (
 	specialChars        = regexp.MustCompile("[^a-zA-Z0-9]+")
 	buildEnv            string     // The build environment (dev, qual, or prod).
 	containerEngine     = "docker" // containerEngine to use (docker or podman).
+	remoteRepo          string     // Project ID to use for remote AR repository.
 )
 
 type requestType string
@@ -109,6 +110,7 @@ func DefineFlags() {
 	flag.StringVar(&runtimeName, "runtime-name", "", "The name of the runtime (aka the language name such as 'go' or 'dotnet'). Used to properly set GOOGLE_RUNTIME.")
 	flag.StringVar(&buildEnv, "build-env", "", "The build environment to use (dev, qual, or prod). Sets GOOGLE_BUILD_ENV.")
 	flag.StringVar(&containerEngine, "container-engine", "docker", "The container engine to use for running tests (docker or podman).")
+	flag.StringVar(&remoteRepo, "remote-repo", "", "Project ID to use for remote AR repository.")
 }
 
 // UnarchiveTestData extracts the test-data tgz into a temp dir and returns a cleanup function to be deferred.
@@ -231,6 +233,18 @@ type builderTOML struct {
 	} `toml:"stack"`
 }
 
+func constructImageName(t *testing.T, name, builderName string) string {
+	t.Helper()
+	image := fmt.Sprintf("%s-%s", strings.ToLower(specialChars.ReplaceAllString(name, "-")), builderName)
+	if remoteRepo != "" {
+		if err := ensureARRepo(remoteRepo); err != nil {
+			t.Fatalf("Ensuring AR repo in %q: %v", remoteRepo, err)
+		}
+		return fmt.Sprintf("us-docker.pkg.dev/%s/acceptance-tests/%s", remoteRepo, image)
+	}
+	return image
+}
+
 // TestApp builds and a single application and verifies that it runs and handles requests.
 func TestApp(t *testing.T, imageCtx ImageContext, cfg Test) {
 	t.Helper()
@@ -242,12 +256,15 @@ func TestApp(t *testing.T, imageCtx ImageContext, cfg Test) {
 	}
 
 	// Docker image names may not contain underscores or start with a capital letter.
-	builderName, runName := imageCtx.BuilderImage, imageCtx.RunImage
-	image := fmt.Sprintf("%s-%s", strings.ToLower(specialChars.ReplaceAllString(cfg.Name, "-")), builderName)
+	builderName := imageCtx.BuilderImage
+	runName := imageCtx.RunImage
+	image := constructImageName(t, cfg.Name, builderName)
 
 	// Delete the docker image and volumes created by pack during the build.
 	defer func() {
-		cleanUpVolumes(t, image)
+		if remoteRepo == "" {
+			cleanUpVolumes(t, image)
+		}
 		cleanUpImage(t, image)
 	}()
 
@@ -318,11 +335,12 @@ func TestBuildFailure(t *testing.T, imageCtx ImageContext, cfg FailureTest) {
 	if cfg.Name == "" {
 		cfg.Name = cfg.App
 	}
-	builderName, runName := imageCtx.BuilderImage, imageCtx.RunImage
-	image := fmt.Sprintf("%s-%s", strings.ToLower(specialChars.ReplaceAllString(cfg.Name, "-")), builderName)
+	builderName := imageCtx.BuilderImage
+	runName := imageCtx.RunImage
+	image := constructImageName(t, cfg.Name, builderName)
 
 	// Delete the docker volumes created by pack during the build.
-	if !keepArtifacts {
+	if !keepArtifacts && remoteRepo == "" {
 		defer cleanUpVolumes(t, image)
 	}
 
@@ -935,7 +953,11 @@ func readBuilderTOML(path string) (*builderTOML, error) {
 
 func buildCommand(srcDir, image, builderName, runName string, env map[string]string, cache bool) []string {
 	// Pack command to build app.
-	args := strings.Fields(fmt.Sprintf("%s build %s --builder %s --path %s --pull-policy never --verbose --no-color --trust-builder %s", packBin, image, builderName, srcDir, cacheOptions(image)))
+	cmd := fmt.Sprintf("%s build %s --builder %s --path %s --pull-policy never --verbose --no-color --trust-builder %s", packBin, image, builderName, srcDir, cacheOptions(image))
+	if remoteRepo != "" {
+		cmd += " --publish"
+	}
+	args := strings.Fields(cmd)
 	if runName != "" {
 		args = append(args, "--run-image", runName)
 		if hasRuntimePreinstalled(runName) {
@@ -966,6 +988,9 @@ func buildCommand(srcDir, image, builderName, runName string, env map[string]str
 }
 
 func cacheOptions(image string) string {
+	if remoteRepo != "" {
+		return fmt.Sprintf("--cache type=registry;name=%s.build --cache type=registry;name=%s.launch", image, image)
+	}
 	buildVolume, launchVolume := volumeNames(image)
 	return fmt.Sprintf("--cache type=build;format=volume;name=%s --cache type=launch;format=volume;name=%s", buildVolume, launchVolume)
 }
@@ -1223,6 +1248,12 @@ func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []strin
 func startContainer(t *testing.T, image, entrypoint string, env []string, cache bool) (string, string, int, func()) {
 	t.Helper()
 
+	if remoteRepo != "" {
+		if _, err := runOutput(containerEngine, "pull", image); err != nil {
+			t.Fatalf("Pulling image %q: %v", image, err)
+		}
+	}
+
 	containerName := xid.New().String()
 	command := []string{containerEngine, "run", "--detach", fmt.Sprintf("--name=%s", containerName)}
 	for _, e := range env {
@@ -1369,6 +1400,19 @@ func cleanUpVolumes(t *testing.T, image string) {
 	if _, err := runOutput(containerEngine, "volume", "rm", "-f", launchVolume, buildVolume); err != nil {
 		t.Logf("Failed to clean up cache volumes: %v", err)
 	}
+}
+
+func ensureARRepo(projectID string) error {
+	repoName := "acceptance-tests"
+	// Check if repo exists
+	_, err := runOutput("gcloud", "artifacts", "repositories", "describe", repoName, "--project", projectID, "--location", "us")
+	if err == nil {
+		return nil
+	}
+	log.Printf("`gcloud artifacts repositories describe %s` failed: %v", repoName, err)
+	// Create repo
+	_, err = runOutput("gcloud", "artifacts", "repositories", "create", repoName, "--repository-format=docker", "--location=us", "--project", projectID)
+	return err
 }
 
 func volumeNames(image string) (string, string) {
