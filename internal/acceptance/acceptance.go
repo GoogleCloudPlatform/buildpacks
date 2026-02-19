@@ -986,7 +986,7 @@ func buildCommand(srcDir, image, builderName, runName string, env map[string]str
 
 func cacheOptions(image string) string {
 	if remoteRepo != "" {
-		return fmt.Sprintf("--cache type=registry;name=%s.build --cache type=registry;name=%s.launch", image, image)
+		return fmt.Sprintf("--cache type=build;format=image;name=%s.build --cache type=launch;format=image;name=%s.launch", image, image)
 	}
 	buildVolume, launchVolume := volumeNames(image)
 	return fmt.Sprintf("--cache type=build;format=volume;name=%s --cache type=launch;format=volume;name=%s", buildVolume, launchVolume)
