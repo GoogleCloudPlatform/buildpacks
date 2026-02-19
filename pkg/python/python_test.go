@@ -596,3 +596,31 @@ func TestAdaptEntrypoint(t *testing.T) {
 		})
 	}
 }
+
+func TestBaseuvPipInstallArgs(t *testing.T) {
+	testCases := []struct {
+		name string
+		req  string
+		want []string
+	}{
+		{
+			name: "install_from_current_directory",
+			req:  ".",
+			want: []string{"uv", "pip", "install", ".", "--reinstall", "--link-mode=copy"},
+		},
+		{
+			name: "install_from_requirements_txt",
+			req:  "requirements.txt",
+			want: []string{"uv", "pip", "install", "-r", "requirements.txt", "--reinstall", "--link-mode=copy"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := baseuvPipInstallArgs(tc.req)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("baseuvPipInstallArgs(%q) returned diff (-want +got):\n%s", tc.req, diff)
+			}
+		})
+	}
+}

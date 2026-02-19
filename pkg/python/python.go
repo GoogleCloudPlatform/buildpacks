@@ -340,34 +340,10 @@ func PipTargetDir() string {
 // Install installs python dependencies to the target directory specified by GOOGLE_PIP_TARGET_DIR.
 // If GOOGLE_PIP_TARGET_DIR is not set, it defaults to "lib".
 func (i MakerPipInstaller) Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
-	targetDir := PipTargetDir()
-
-	ctx.Logf("Installing dependencies to target directory: %s", targetDir)
-	var targetPath string
-	if filepath.IsAbs(targetDir) {
-		targetPath = targetDir
-	} else {
-		targetPath = filepath.Join(ctx.ApplicationRoot(), targetDir)
-	}
-
-	// We set PYTHONPATH so that the python interpreter can find the dependencies in the target
-	// directory. We use Override so that it takes precedence over any existing PYTHONPATH.
-	l.LaunchEnvironment.Override("PYTHONPATH", targetDir)
-	l.SharedEnvironment.Override("PYTHONPATH", targetPath)
-
-	ctx.AddLabel("ENV_PYTHONPATH", targetDir)
-
-	for _, req := range reqs {
+	return installDependenciesToTarget(ctx, l, reqs, "pip", func(req string) []string {
 		cmd := basePipInstallArgs(req)
-		cmd = appendVendoringFlags(cmd)
-		cmd = append(cmd, "--target", targetPath)
-
-		if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
-			return err
-		}
-	}
-
-	return nil
+		return appendVendoringFlags(cmd)
+	})
 }
 
 // prepareDependenciesLayer is a helper function that handles the common logic for preparing a dependency layer.
@@ -631,7 +607,8 @@ func AdaptEntrypoint(ctx *gcp.Context, cmd []string, scriptCmd []string) ([]stri
 	return cmd, nil
 }
 
-// MakerEntrypointAdapter implements the entrypointAdapter interface for the maker tool.
+// MakerEntrypointAdapter implements the entrypointAdapter interface for
+// the maker tool.
 type MakerEntrypointAdapter struct{}
 
 // adapt modifies the entrypoint command for the maker tool.
@@ -653,4 +630,92 @@ func (a MakerEntrypointAdapter) adapt(cmd []string, scriptCmd []string) ([]strin
 
 	binPath := filepath.Join(targetDir, "bin", commandToAdapt[0])
 	return append([]string{"python3", binPath}, commandToAdapt[1:]...), nil
+}
+
+// UVDependencyInstallerCapability is the capability key for the
+// UVDependenciesInstaller.
+const UVDependencyInstallerCapability = "python.UVDependencyInstaller"
+
+// UVDependenciesInstaller is an interface for installing python dependencies
+// using uv.
+type UVDependenciesInstaller interface {
+	Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error
+}
+
+// CheckUVIncompatibleDependencies checks for incompatible dependencies using
+// uv pip check.
+func CheckUVIncompatibleDependencies(ctx *gcp.Context, venvDir string) error {
+	ctx.Logf("Checking for incompatible dependencies.")
+	result, err := ctx.Exec([]string{"uv", "pip", "check"}, gcp.WithUserAttribution, gcp.WithEnv("VIRTUAL_ENV="+venvDir))
+	if result == nil {
+		return fmt.Errorf("uv pip check: %w", err)
+	}
+	if result.ExitCode == 0 {
+		return nil
+	}
+	return gcp.UserErrorf("found incompatible dependencies: %q", result.Stderr)
+}
+
+// MakerUVDependencyInstaller implements the UVDependenciesInstaller interface
+// for the maker tool.
+type MakerUVDependencyInstaller struct{}
+
+// Install installs python dependencies locally to the target directory
+// specified by GOOGLE_PIP_TARGET_DIR using uv. This supports the Maker's
+// artifact generation by installing packages into a specific directory
+// unlike the standard buildpack which installs into a virtual environment.
+func (i MakerUVDependencyInstaller) Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
+	return installDependenciesToTarget(ctx, l, reqs, "uv", func(req string) []string {
+		return baseuvPipInstallArgs(req)
+	})
+}
+
+func baseuvPipInstallArgs(req string) []string {
+	cmd := []string{"uv", "pip", "install"}
+	if req == "." {
+		cmd = append(cmd, ".")
+	} else {
+		cmd = append(cmd, "-r", req)
+	}
+	// --reinstall: Reinstall all packages to ensure fresh installation.
+	// --link-mode=copy: Copy files instead of hardlinking to ensure the target
+	// directory is self-contained and portable.
+	cmd = append(cmd, "--reinstall", "--link-mode=copy")
+	return appendVendoringFlags(cmd)
+}
+
+func installDependenciesToTarget(ctx *gcp.Context, l *libcnb.Layer, reqs []string, installerName string, cmdBuilder func(string) []string) error {
+	targetDir, targetPath := resolvePipTargetPaths(ctx)
+	ctx.Logf("Installing dependencies to target directory: %s using %s", targetDir, installerName)
+
+	// We set PYTHONPATH so that the python interpreter can find the dependencies
+	// in the target directory. We also add the application root to PYTHONPATH so
+	// that the application can import modules from the root.
+	l.LaunchEnvironment.Override("PYTHONPATH", targetDir+string(os.PathListSeparator)+".")
+	l.SharedEnvironment.Override("PYTHONPATH", targetPath+string(os.PathListSeparator)+ctx.ApplicationRoot())
+
+	return installRequirementsToTarget(ctx, targetPath, reqs, cmdBuilder)
+}
+
+func resolvePipTargetPaths(ctx *gcp.Context) (string, string) {
+	targetDir := PipTargetDir()
+	var targetPath string
+	if filepath.IsAbs(targetDir) {
+		targetPath = targetDir
+	} else {
+		targetPath = filepath.Join(ctx.ApplicationRoot(), targetDir)
+	}
+	return targetDir, targetPath
+}
+
+func installRequirementsToTarget(ctx *gcp.Context, targetPath string, reqs []string, cmdBuilder func(string) []string) error {
+	for _, req := range reqs {
+		cmd := cmdBuilder(req)
+		cmd = append(cmd, "--target", targetPath)
+
+		if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
+			return fmt.Errorf("installing dependencies from %s: %w", req, err)
+		}
+	}
+	return nil
 }

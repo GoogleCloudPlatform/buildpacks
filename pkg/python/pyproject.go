@@ -264,8 +264,35 @@ func IsUVInstalledInPath(ctx *gcp.Context) (bool, error) {
 	return true, nil
 }
 
+// UVToolInstallerCapability is the capability key for the UVInstaller.
+const UVToolInstallerCapability = "python.UVInstaller"
+
+// UVToolInstaller is an interface for installing the uv tool.
+type UVToolInstaller interface {
+	Install(ctx *gcp.Context) error
+}
+
+// MakerUVInstaller implements the UVToolInstaller interface for the maker tool.
+type MakerUVInstaller struct{}
+
+// Install does nothing, as uv is expected to be present in the
+// maker environment. In Maker mode, we rely on the pre-installed `uv`
+// binary on the user's system to avoid the overhead of downloading
+// and installing it during the local build simulation.
+func (i MakerUVInstaller) Install(ctx *gcp.Context) error {
+	return nil
+}
+
 // InstallUV installs UV into a dedicated layer, respecting version constraints.
 func InstallUV(ctx *gcp.Context) error {
+	if cap := ctx.Capability(UVToolInstallerCapability); cap != nil {
+		i, ok := cap.(UVToolInstaller)
+		if !ok {
+			return gcp.InternalErrorf("capability %q does not implement UVToolInstaller interface", UVToolInstallerCapability)
+		}
+		return i.Install(ctx)
+	}
+
 	uvVersionConstraint, err := RequestedUVVersion(ctx)
 	if err != nil {
 		return fmt.Errorf("getting uv version constraint: %w", err)
@@ -291,6 +318,18 @@ func EnsureUVLockfile(ctx *gcp.Context) error {
 
 // UVInstallDependenciesAndConfigureEnv installs dependencies and sets up the runtime environment using uv.
 func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) (string, error) {
+	if cap := ctx.Capability(UVDependencyInstallerCapability); cap != nil {
+		i, ok := cap.(UVDependenciesInstaller)
+		if !ok {
+			return "", gcp.InternalErrorf("capability %q does not implement UVDependenciesInstaller interface", UVDependencyInstallerCapability)
+		}
+		return "", i.Install(ctx, l, ".")
+	}
+
+	if err := EnsureUVLockfile(ctx); err != nil {
+		return "", fmt.Errorf("ensuring uv.lock file: %w", err)
+	}
+
 	pythonVersion, err := Version(ctx)
 	if err != nil {
 		return "", err
@@ -315,6 +354,9 @@ func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) (st
 
 	venvBinDir := filepath.Join(venvDir, "bin")
 	l.SharedEnvironment.Prepend("PATH", string(filepath.ListSeparator), venvBinDir)
+	if err := CheckUVIncompatibleDependencies(ctx, venvDir); err != nil {
+		return "", err
+	}
 	return venvDir, nil
 }
 
