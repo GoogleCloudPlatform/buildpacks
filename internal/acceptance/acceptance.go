@@ -1131,6 +1131,11 @@ func buildFailingApp(t *testing.T, srcDir, image, builderName, runName string, e
 func verifyStructure(t *testing.T, image, builder string, cache bool, checks *StructureTest) {
 	t.Helper()
 
+	if remoteRepo != "" {
+		if _, err := runOutput(containerEngine, "pull", image); err != nil {
+			t.Fatalf("Pulling image %q: %v", image, err)
+		}
+	}
 	start := time.Now()
 	configurations := []string{structureTestConfig}
 
@@ -1186,6 +1191,12 @@ func verifyStructure(t *testing.T, image, builder string, cache bool, checks *St
 func verifyLabelValues(t *testing.T, image string, labels map[string]string) {
 	t.Helper()
 
+	if remoteRepo != "" {
+		if _, err := runOutput(containerEngine, "pull", image); err != nil {
+			t.Fatalf("Pulling image %q: %v", image, err)
+		}
+	}
+
 	start := time.Now()
 
 	for label, value := range labels {
@@ -1203,6 +1214,12 @@ func verifyLabelValues(t *testing.T, image string, labels map[string]string) {
 // verifyBuildMetadata verifies the image was built with correct buildpacks.
 func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []string) {
 	t.Helper()
+
+	if remoteRepo != "" {
+		if _, err := runOutput(containerEngine, "pull", image); err != nil {
+			t.Fatalf("Pulling image %q: %v", image, err)
+		}
+	}
 
 	start := time.Now()
 	out, err := runOutput("docker", "inspect", "--format={{index .Config.Labels \"io.buildpacks.build.metadata\"}}", image)
