@@ -16,6 +16,8 @@ package nodejs
 
 import (
 	"encoding/json"
+	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"google3/security/safeopen/safeopen"
@@ -438,6 +440,63 @@ func TestDefaultStartCommand(t *testing.T) {
 			}
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("DefaultStartCommand() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestRestoreAndSaveModules(t *testing.T) {
+	testCases := []struct {
+		name       string
+		capability any
+		wantExec   bool
+	}{
+		{
+			name:     "default_copier_executes_cp",
+			wantExec: true,
+		},
+		{
+			name:       "maker_copier_does_not_execute_cp",
+			capability: &MakerNPMCacheCopier{},
+			wantExec:   false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			executed := false
+			mockExec := func(cmd string, args ...string) *exec.Cmd {
+				if cmd == "cp" {
+					executed = true
+				}
+				return exec.Command("true")
+			}
+
+			opts := []gcpbuildpack.ContextOption{
+				gcpbuildpack.WithExecCmd(mockExec),
+			}
+			if tc.capability != nil {
+				opts = append(opts, gcpbuildpack.WithCapability(NPMCacheCopierCapability, tc.capability))
+			}
+
+			ctx := gcpbuildpack.NewContext(opts...)
+			tmpDir := t.TempDir()
+			src := filepath.Join(tmpDir, "src")
+			dst := filepath.Join(tmpDir, "dst")
+
+			if err := RestoreModules(ctx, src, dst); err != nil {
+				t.Errorf("RestoreModules(%q, %q) returned unexpected error: %v", src, dst, err)
+			}
+			if executed != tc.wantExec {
+				t.Errorf("RestoreModules(%q, %q) executed cp = %v, want %v", src, dst, executed, tc.wantExec)
+			}
+
+			executed = false
+			if err := SaveModules(ctx, src, dst); err != nil {
+				t.Errorf("SaveModules(%q, %q) returned unexpected error: %v", src, dst, err)
+			}
+			if executed != tc.wantExec {
+				t.Errorf("SaveModules(%q, %q) executed cp = %v, want %v", src, dst, executed, tc.wantExec)
 			}
 		})
 	}

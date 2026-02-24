@@ -37,6 +37,8 @@ const (
 	VendorNpmDeps = "GOOGLE_VENDOR_NPM_DEPENDENCIES"
 	// AppHostingBuildEnv is the env var that contains the build command to run for Firebase backends.
 	AppHostingBuildEnv = "APPHOSTING_BUILD"
+	// NPMCacheCopierCapability is the capability key for the NPMCacheCopier.
+	NPMCacheCopierCapability = "npm.CacheCopier"
 )
 
 var (
@@ -234,4 +236,63 @@ func DefaultStartCommand(ctx *gcp.Context, pjs *PackageJSON) ([]string, error) {
 		return []string{"node", pjs.Main}, nil
 	}
 	return []string{"node", "index.js"}, nil
+}
+
+// npmCacheCopier defines the interface for copying node_modules to and from the cache layer.
+type npmCacheCopier interface {
+	Restore(ctx *gcp.Context, src, dst string) error
+	Save(ctx *gcp.Context, src, dst string) error
+}
+
+// RestoreModules restores node_modules from the cache layer.
+func RestoreModules(ctx *gcp.Context, src, dst string) error {
+	c := resolveCacheCopier(ctx)
+	return c.Restore(ctx, src, dst)
+}
+
+// SaveModules saves node_modules to the cache layer.
+func SaveModules(ctx *gcp.Context, src, dst string) error {
+	c := resolveCacheCopier(ctx)
+	return c.Save(ctx, src, dst)
+}
+
+func resolveCacheCopier(ctx *gcp.Context) npmCacheCopier {
+	if capability := ctx.Capability(NPMCacheCopierCapability); capability != nil {
+		if c, ok := capability.(npmCacheCopier); ok {
+			return c
+		}
+	}
+	return defaultNPMCacheCopier{}
+}
+
+// defaultNPMCacheCopier is the default implementation that copies files.
+type defaultNPMCacheCopier struct{}
+
+// Restore copies files from the src path to the dst path.
+func (d defaultNPMCacheCopier) Restore(ctx *gcp.Context, src, dst string) error {
+	_, err := ctx.Exec([]string{"cp", "--archive", src, dst}, gcp.WithUserTimingAttribution)
+	return err
+}
+
+// Save copies files from the src path to the dst path.
+func (d defaultNPMCacheCopier) Save(ctx *gcp.Context, src, dst string) error {
+	// Ensure node_modules exists even if no dependencies were installed.
+	if err := ctx.MkdirAll(src, 0755); err != nil {
+		return err
+	}
+	_, err := ctx.Exec([]string{"cp", "--archive", src, dst}, gcp.WithUserTimingAttribution)
+	return err
+}
+
+// MakerNPMCacheCopier is the implementation for the maker tool that does nothing.
+type MakerNPMCacheCopier struct{}
+
+// Restore is a no-op.
+func (m MakerNPMCacheCopier) Restore(ctx *gcp.Context, src, dst string) error {
+	return nil
+}
+
+// Save is a no-op.
+func (m MakerNPMCacheCopier) Save(ctx *gcp.Context, src, dst string) error {
+	return nil
 }

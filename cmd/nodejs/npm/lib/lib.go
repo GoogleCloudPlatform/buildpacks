@@ -116,7 +116,7 @@ func BuildFn(ctx *gcp.Context) error {
 		}
 		if cached {
 			// Restore cached node_modules.
-			if _, err := ctx.Exec([]string{"cp", "--archive", nm, "node_modules"}, gcp.WithUserTimingAttribution); err != nil {
+			if err := nodejs.RestoreModules(ctx, nm, "node_modules"); err != nil {
 				return err
 			}
 
@@ -135,11 +135,7 @@ func BuildFn(ctx *gcp.Context) error {
 			if _, err := ctx.Exec([]string{"npm", installCmd, "--quiet", "--no-fund", "--no-audit"}, gcp.WithEnv("NODE_ENV="+buildNodeEnv), gcp.WithUserAttribution); err != nil {
 				return err
 			}
-			// Ensure node_modules exists even if no dependencies were installed.
-			if err := ctx.MkdirAll("node_modules", 0755); err != nil {
-				return err
-			}
-			if _, err := ctx.Exec([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution); err != nil {
+			if err := nodejs.SaveModules(ctx, "node_modules", nm); err != nil {
 				return err
 			}
 		}
