@@ -117,6 +117,12 @@ var languageRuntimes = []InstallableRuntime{Nodejs, PHP, Python, Ruby, OpenJDK, 
 const (
 	versionKey = "version"
 	stackKey   = "stack"
+	// localRuntimeVersionLabel is the label key for the local runtime version.
+	// This avoids conflict with the label 'runtime_version' added by the
+	// runtime buildpack.
+	localRuntimeVersionLabel = "local_runtime_version"
+	// languageNameLabel is the label key for the language name.
+	languageNameLabel = "language_name"
 	// gcpUserAgent is required for the Ruby runtime, but used for others for simplicity.
 	gcpUserAgent = "GCPBuildpacks"
 )
@@ -625,7 +631,7 @@ func (mi MakerInstaller) InstallTarballIfNotCached(ctx *gcp.Context, runtime Ins
 
 	// For the maker use case, we only need to resolve the version and add it as a label.
 	// We do not need to download or install the runtime tarball.
-	ctx.AddLabel("runtime_version", version)
-	ctx.AddLabel("language_name", string(runtime))
+	ctx.AddLabel(localRuntimeVersionLabel, version)
+	ctx.AddLabel(languageNameLabel, string(runtime))
 	return false, nil
 }
