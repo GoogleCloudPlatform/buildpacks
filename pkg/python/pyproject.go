@@ -527,9 +527,20 @@ func PipInstallPyproject(ctx *gcp.Context, l *libcnb.Layer) error {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
 
+	l.SharedEnvironment.Default("PYTHONUSERBASE", l.Path)
+	if err := ctx.Setenv("PYTHONUSERBASE", l.Path); err != nil {
+		return err
+	}
+	binDir := filepath.Join(l.Path, "bin")
+	l.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), binDir)
+	if err := ctx.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH")); err != nil {
+		return err
+	}
+
 	cmd := []string{
 		"python3", "-m", "pip", "install",
 		".",
+		"--user",
 		"--upgrade",
 		"--upgrade-strategy", "only-if-needed",
 		"--no-warn-script-location",   // bin is added at run time by lifecycle.
