@@ -288,7 +288,7 @@ func installFunctionsFramework(ctx *gcp.Context, layer *libcnb.Layer) (string, e
 	if v, _ := env.IsPresentAndTrue("USE_JAVA_FF_2"); v {
 		frameworkVersion = v2FrameworkVersion
 	}
-	ctx.Warnf("Failed to find vendored functions-framework dependency. Installing version %s:\n%v", frameworkVersion, err)
+	ctx.Warnf("Failed to find vendored functions-framework dependency. Installing version %s.", frameworkVersion)
 
 	// Install functions-framework.
 	metaVersion := ctx.GetMetadata(layer, versionKey)
