@@ -37,4 +37,6 @@ polka()
       res.end('PASS');
     }
   })
-  .listen(process.env.PORT);
+  .listen(process.env.PORT, () => {
+    console.log('Server started');
+  });
