@@ -94,17 +94,17 @@ func TestRuntimeConfigJSONFiles(t *testing.T) {
 		ExpectedResult       []string
 	}{
 		{
-			Name:                 "finds single file in root dir",
+			Name:                 "finds_single_file_in_root_dir",
 			TestDataRelativePath: "singleRtCfg",
 			ExpectedResult:       []string{"singleRtCfg/my.runtimeconfig.json"},
 		},
 		{
-			Name:                 "doesn't find recursively",
+			Name:                 "doesn't_find_recursively",
 			TestDataRelativePath: "nestedRtCfg",
 			ExpectedResult:       []string{},
 		},
 		{
-			Name:                 "finds multiples in root dir",
+			Name:                 "finds_multiples_in_root_dir",
 			TestDataRelativePath: "multipleRtCfg",
 			ExpectedResult:       []string{"multipleRtCfg/my.runtimeconfig.json", "multipleRtCfg/my.second.runtimeconfig.json"},
 		},
@@ -154,51 +154,51 @@ func TestGetSDKVersion(t *testing.T) {
 		WantError            bool
 	}{
 		{
-			Name:                 "Should read from GOOGLE_RUNTIME_VERSION",
+			Name:                 "Should_read_from_GOOGLE_RUNTIME_VERSION",
 			RuntimeVersionEnvVar: "2.1.100",
 			ApplicationRoot:      "",
 			ExpectedResult:       "2.1.100",
 		},
 		{
-			Name:             "Should read from GOOGLE_DOTNET_SDK_VERSION",
+			Name:             "Should_read_from_GOOGLE_DOTNET_SDK_VERSION",
 			SDKVersionEnvVar: "2.1.100",
 			ApplicationRoot:  "",
 			ExpectedResult:   "2.1.100",
 		},
 		{
-			Name:                 "GOOGLE_DOTNET_SDK_VERSION takes precedence over GOOGLE_RUNTIME_VERSION",
+			Name:                 "GOOGLE_DOTNET_SDK_VERSION_takes_precedence_over_GOOGLE_RUNTIME_VERSION",
 			SDKVersionEnvVar:     "2.1.100",
 			RuntimeVersionEnvVar: "3.1.100",
 			ApplicationRoot:      "",
 			ExpectedResult:       "2.1.100",
 		},
 		{
-			Name:                 "Env var should take precedence over global.json",
+			Name:                 "Env_var_should_take_precedence_over_global.json",
 			RuntimeVersionEnvVar: "2.1.100",
 			ApplicationRoot:      testdata.MustGetPath("testdata/"),
 			ExpectedResult:       "2.1.100",
 		},
 		{
-			Name:                 "Should read from global.json",
+			Name:                 "Should_read_from_global.json",
 			RuntimeVersionEnvVar: "",
 			ApplicationRoot:      testdata.MustGetPath("testdata/"),
 			ExpectedResult:       "3.1.100",
 		},
 		{
-			Name:                 "Should read from global.json",
+			Name:                 "Should_read_from_global.json",
 			RuntimeVersionEnvVar: "",
 			ApplicationRoot:      testdata.MustGetPath("testdata/"),
 			ExpectedResult:       "3.1.100",
 		},
 		{
-			Name:                 "Should return latest version available for ubuntu2204",
+			Name:                 "Should_return_latest_version_available_for_ubuntu2204",
 			RuntimeVersionEnvVar: "",
 			ApplicationRoot:      "",
 			ExpectedResult:       "8.*.*",
 			StackID:              "google.22",
 		},
 		{
-			Name:                 "Should error out for ubuntu1804, since no supported version on that",
+			Name:                 "Should_error_out_for_ubuntu1804,_since_no_supported_version_on_that",
 			RuntimeVersionEnvVar: "",
 			ApplicationRoot:      "",
 			ExpectedResult:       "",
@@ -206,10 +206,10 @@ func TestGetSDKVersion(t *testing.T) {
 			WantError:            true,
 		},
 		{
-			Name:                 "Will pickup ubuntu2204 by default, pick up latest version",
+			Name:                 "Will_pickup_ubuntu2404_by_default,_pick_up_latest_version",
 			RuntimeVersionEnvVar: "",
 			ApplicationRoot:      "",
-			ExpectedResult:       "8.*.*",
+			ExpectedResult:       "10.*.*",
 		},
 	}
 
@@ -258,39 +258,39 @@ func TestGetRuntimeVersion(t *testing.T) {
 		ExpectErrSubStr string
 	}{
 		{
-			Name:            "No env var, should read from runtimeconfig.json",
+			Name:            "NoEnvVar_ReadFromRuntimeConfigJson",
 			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/singleRtCfg/"),
 			ExpectedVersion: "3.1.0",
 		},
 		{
-			Name:            "Env var should take presidence over runtimeconfig.json",
+			Name:            "EnvVarPrecedenceOverRuntimeConfigJson",
 			RtVersionEnvVar: "6.0.5",
 			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/singleRtCfg/"),
 			ExpectedVersion: "6.0.5",
 		},
 		{
-			Name:            "No runtimeconfig.json found in root fails",
+			Name:            "NoRuntimeConfigJson_Fails",
 			RtCfgSearchRoot: testdata.MustGetPath("testdata/"),
 			ExpectError:     true,
 		},
 		{
-			Name:            "Env var set, but no runtimeconfig.json found in root succeeds",
+			Name:            "EnvVarSet_NoRuntimeConfigJson_Succeeds",
 			RtVersionEnvVar: "6.0.5",
 			RtCfgSearchRoot: testdata.MustGetPath("testdata/"),
 			ExpectedVersion: "6.0.5",
 		},
 		{
-			Name:            "More than one runtimeconfig.json fails",
+			Name:            "MultipleRuntimeConfigJson_Fails",
 			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/multipleRtCfg"),
 			ExpectError:     true,
 		},
 		{
-			Name:            "Env var set, but more than one runtimeconfig.json succeeds",
+			Name:            "EnvVarSet_MultipleRuntimeConfigJson_Succeeds",
 			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/multipleRtCfg"),
 			ExpectError:     true,
 		},
 		{
-			Name:            "Env var not set and non-Asp runtimeconfig.json fails",
+			Name:            "NoEnvVar_NonAspRuntimeConfigJson_Fails",
 			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/nonAspRtCfg"),
 			ExpectError:     true,
 			ExpectErrSubStr: "when GOOGLE_ASP_NET_CORE_VERSION absent, getting version from runtimeconfig.json failed: couldn't find runtime version for framework Microsoft.AspNetCore.App",

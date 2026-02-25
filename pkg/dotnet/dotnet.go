@@ -45,7 +45,7 @@ var (
 	// latestDotnetSDKVersionPerStack is the latest .NET version per stack to use if not specified by the user.
 	latestDotnetSDKVersionPerStack = map[string]string{
 		runtime.Ubuntu2204: "8.*.*",
-		runtime.Ubuntu2404: "8.*.*",
+		runtime.Ubuntu2404: "10.*.*",
 	}
 )
 
