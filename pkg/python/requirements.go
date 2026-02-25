@@ -17,7 +17,6 @@ package python
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -56,16 +55,8 @@ func UVInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) (s
 	}
 	ctx.Logf("Installing application dependencies with uv.")
 
-	pythonVersion, err := Version(ctx)
-	if err != nil {
+	if err := ensureUVVenv(ctx, venvDir, ""); err != nil {
 		return "", err
-	}
-	pythonVersion = strings.TrimPrefix(pythonVersion, "Python ")
-
-	ctx.Logf("Creating virtual environment at %s with Python %s", venvDir, pythonVersion)
-	venvCmd := []string{"uv", "venv", venvDir, "--python", pythonVersion, "--clear"}
-	if _, err := ctx.Exec(venvCmd, gcp.WithUserAttribution); err != nil {
-		return "", fmt.Errorf("failed to create virtual environment with uv: %w", err)
 	}
 
 	for _, req := range reqs {
