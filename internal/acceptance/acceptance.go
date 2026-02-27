@@ -1004,6 +1004,10 @@ func hasRuntimePreinstalled(runName string) bool {
 	// gcr.io/buildpacks/google-18/run
 	//
 	// Non-generic run image example (should match):
+	// us-docker.pkg.dev/gae-runtimes-private/${stackNamespace}/runtimes/${runtime}:${_CANDIDATE_NAME}
+	if strings.Contains(runName, "/runtimes/") {
+		return true
+	}
 	// gcr.io/gae-runtimes/buildpacks/nodejs14/run
 	// gcr.io/${PROJECT}/buildpacks/${RUNTIME}/run
 	re := regexp.MustCompile(`/buildpacks/(?:go|nodejs|dotnet|java|php|ruby|python)\d+/run`)

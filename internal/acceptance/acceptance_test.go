@@ -94,6 +94,11 @@ func TestHasRuntimePreinstalled(t *testing.T) {
 			image:                  "us.gcr.io/some-random/custom/image:latest",
 			hasRuntimePreinstalled: false,
 		},
+		{
+			name:                   "imageWithRuntimeInName",
+			image:                  "us-docker.pkg.dev/gae-runtimes-private/google-22-full/runtimes/python313:latest",
+			hasRuntimePreinstalled: true,
+		},
 	}
 
 	for _, tc := range testCases {

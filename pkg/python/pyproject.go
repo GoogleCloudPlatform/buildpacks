@@ -592,6 +592,8 @@ func PipInstallPyproject(ctx *gcp.Context, l *libcnb.Layer) error {
 		"--upgrade-strategy", "only-if-needed",
 		"--no-warn-script-location",   // bin is added at run time by lifecycle.
 		"--disable-pip-version-check", // If we were going to upgrade pip, we would have done it already in the runtime buildpack.
+		"--force-reinstall",           // Some dependencies may be in the build image but not run image. Later requirements.txt should override earlier.
+		"--no-compile",                // Prevent default timestamp-based bytecode compilation. Deterministic pycs are generated in a second step below.
 		"--no-cache-dir",              // We don't want http caching of pypi requests.
 	}
 	vendorDir, isVendored := os.LookupEnv(VendorPipDepsEnv)
