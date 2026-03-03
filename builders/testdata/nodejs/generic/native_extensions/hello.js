@@ -32,4 +32,6 @@ const server = http.createServer((request, response) => {
   }
 });
 
-server.listen(process.env.PORT);
+server.listen(process.env.PORT, () => {
+  console.log('Server started');
+});

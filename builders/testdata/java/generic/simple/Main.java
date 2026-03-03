@@ -57,6 +57,7 @@ public class Main {
         });
     server.setExecutor(null);
     server.start();
+    System.out.println("Server started");
   }
 
   private Main() {}

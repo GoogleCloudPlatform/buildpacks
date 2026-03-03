@@ -43,5 +43,6 @@ func version(w http.ResponseWriter, r *http.Request) {
 func main() {
 	http.HandleFunc("/", handler)
 	http.HandleFunc("/version", version)
+	fmt.Println("Server started")
 	http.ListenAndServe(":8080", nil)
 }
