@@ -891,4 +891,4 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
   run-image = "gcr.io/buildpacks/google-22/run"
 
 [lifecycle]
-  version = "0.21.3"
+  version = "0.21.5"
