@@ -161,6 +161,9 @@ const (
 	// FasterLanguageTarballInstallation is an experiment flag to enable faster language tarball installation.
 	FasterLanguageTarballInstallation = "X_GOOGLE_FASTER_LANGUAGE_TARBALL_INSTALLATION"
 
+	// FasterTarballExtraction is an experiment flag to enable faster tarball extraction.
+	FasterTarballExtraction = "X_GOOGLE_USE_ZSTD_FOR_EXTRACTION"
+
 	// NodeCompileCache is an env var used to enable bytecode caching for Node.js applications.
 	NodeCompileCache = "NODE_COMPILE_CACHE"
 
