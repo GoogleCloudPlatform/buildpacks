@@ -14,15 +14,16 @@
 // limitations under the License.
 
 $gotIniPath = php_ini_loaded_file();
-$wantIniPath = '/layers/google.php.runtime/php/etc/php.ini';
+$wantIniPathFromBpLayers = '/layers/google.php.runtime/php/etc/php.ini';
+$wantIniPathFromBaseImage = '/etc/php.ini';
 
 if (!$gotIniPath) {
   echo 'FAIL. php.ini file is not loaded';
   return;
 }
 
-if ($gotIniPath != $wantIniPath) {
-  echo 'FAIL. Unexpected php.ini path: got ' . $gotIniPath . ', want ' . $wantIniPath;
+if ($gotIniPath != $wantIniPathFromBpLayers && $gotIniPath != $wantIniPathFromBaseImage) {
+  echo 'FAIL. Unexpected php.ini path: got ' . $gotIniPath . ', want ' . $wantIniPathFromBpLayers . ' or ' . $wantIniPathFromBaseImage;
   return;
 }
 
