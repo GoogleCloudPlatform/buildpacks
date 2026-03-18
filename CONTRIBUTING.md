@@ -210,6 +210,24 @@ docker image prune --all --filter until=720h
 
 ## Common Problems
 
+### Local Testing with Compressed Image Tarballs `crane.Pull` fails
+
+If you are testing locally with `pkg/fetch` and trying to download `.zstd`
+compressed tarballs from Artifact Registry, `crane.Pull(url)` might fail with an
+`UNAUTHORIZED` error. The standard Docker credential helper may not be
+configured properly.
+
+As a temporary workaround for local testing only, you can inject Google
+Application Default Credentials directly into `crane` by manually modifying
+`pkg/fetch/fetch.go` where `crane.Pull(url)` occurs:
+
+```go
+keychain := authn.NewMultiKeychain(google.Keychain, authn.DefaultKeychain)
+image, err := crane.Pull(url, crane.WithAuthFromKeychain(keychain))
+```
+
+Note: Ensure you run `gcloud auth application-default login` first.
+
 ### Testing builder with `pack build` fails
 
 Run `pack build ... -v` to produce more verbose debug output.

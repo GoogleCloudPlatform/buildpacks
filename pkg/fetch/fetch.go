@@ -30,6 +30,7 @@ import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/klauspost/compress/zstd"
 	"github.com/klauspost/pgzip"
 )
 
@@ -43,7 +44,7 @@ func Tarball(url, dir string, stripComponents int) error {
 		return err
 	}
 	defer response.Body.Close()
-	return untar(dir, response.Body, stripComponents)
+	return untar(dir, response.Body, stripComponents, url)
 }
 
 // ARVersions downloads list of versions from artifact registry.
@@ -84,7 +85,8 @@ var ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.C
 		return err
 	}
 	defer rc.Close()
-	return untar(dir, rc, stripComponents)
+	result := untar(dir, rc, stripComponents, url)
+	return result
 }
 
 // File downloads a file from a URL and writes it to the provided path.
@@ -136,19 +138,31 @@ func GetURL(url string, f io.Writer) error {
 }
 
 // untar extracts a tarball from a reader and writes it to the given directory.
-func untar(dir string, r io.Reader, stripComponents int) error {
-	var gzr io.ReadCloser
+func untar(dir string, r io.Reader, stripComponents int, url string) error {
+	var dr io.Reader
 	var err error
-	if v, _ := env.IsPresentAndTrue(env.FasterLanguageTarballInstallation); v {
-		gzr, err = pgzip.NewReader(r)
+	if strings.Contains(url, "/zstd/") {
+		zr, err := zstd.NewReader(r)
+		if err != nil {
+			return err
+		}
+		defer zr.Close()
+		dr = zr
 	} else {
-		gzr, err = gzip.NewReader(r)
+		var gzr io.ReadCloser
+		if v, _ := env.IsPresentAndTrue(env.FasterLanguageTarballInstallation); v {
+			gzr, err = pgzip.NewReader(r)
+		} else {
+			gzr, err = gzip.NewReader(r)
+		}
+		if err != nil {
+			return err
+		}
+		defer gzr.Close()
+		dr = gzr
 	}
-	if err != nil {
-		return err
-	}
-	defer gzr.Close()
-	return untarWithReader(dir, gzr, stripComponents)
+
+	return untarWithReader(dir, dr, stripComponents)
 }
 
 func untarWithReader(dir string, gzr io.Reader, stripComponents int) error {
@@ -201,6 +215,7 @@ func untarWithReader(dir string, gzr io.Reader, stripComponents int) error {
 				return gcp.InternalErrorf("opening file %q: %v", target, err)
 			}
 			if _, err := io.CopyBuffer(f, tr, buffer); err != nil {
+				f.Close() // Close the file on error
 				return gcp.InternalErrorf("copying file %q: %v", target, err)
 			}
 			if err := f.Close(); err != nil {

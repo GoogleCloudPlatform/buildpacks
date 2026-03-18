@@ -25,6 +25,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -52,10 +53,12 @@ var (
 	runtimeVersionsURL = "https://dl.google.com/runtimes/%s/%s/version.json"
 	// goTarballURL is the location from which we download Go. This is different from other runtimes
 	// because the Go team already provides re-built tarballs on the same CDN.
-	goTarballURL          = "https://dl.google.com/go/go%s.linux-amd64.tar.gz"
-	runtimeImageARRepoURL = "%s/%s/runtimes-%s/%s"
-	runtimeImageARURL     = runtimeImageARRepoURL + ":%s"
-	fallbackRegion        = "us"
+	goTarballURL              = "https://dl.google.com/go/go%s.linux-amd64.tar.gz"
+	runtimeImageARRepoURL     = "%s/%s/runtimes-%s/%s"
+	runtimeImageARRepoURLZstd = "%s/%s/runtimes-%s/zstd/%s"
+	runtimeImageARURL         = runtimeImageARRepoURL + ":%s"
+	runtimeImageARURLZstd     = runtimeImageARRepoURLZstd + ":%s"
+	fallbackRegion            = "us"
 )
 
 // InstallableRuntime is used to hold runtimes information
@@ -340,6 +343,25 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 		}
 		fallbackURL := runtimeImageURL(fallbackHostname, registry, osName, runtime, version)
 
+		// TODO(b/493740533): Add support for other runtimes.
+		if v, _ := env.IsPresentAndTrue(env.FasterTarballExtraction); v && os.Getenv(env.Runtime) == "nodejs24" {
+			urlZstd := runtimeImageURLZstd(hostname, registry, osName, runtime, version)
+			fallbackURLZstd := runtimeImageURLZstd(fallbackHostname, registry, osName, runtime, version)
+
+			err := fetch.ARImage(urlZstd, fallbackURLZstd, layer.Path, stripComponents, ctx)
+			if err == nil {
+				buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.ZstdTarballExtractionCounterID).Increment(1)
+				ctx.SetMetadata(layer, stackKey, ctx.StackID())
+				ctx.SetMetadata(layer, versionKey, version)
+				return false, nil
+			}
+
+			ctx.Warnf("Zstd extraction failed: %v. Falling back to default gzip extraction.", err)
+			if err := ctx.ClearLayer(layer); err != nil {
+				return false, gcp.InternalErrorf("clearing layer %q for fallback: %w", layer.Name, err)
+			}
+		}
+
 		if err := fetch.ARImage(url, fallbackURL, layer.Path, stripComponents, ctx); err != nil {
 			ctx.Warnf("Failed to download %s version %s osName %s from artifact registry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
 			return false, err
@@ -354,6 +376,10 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 
 func runtimeImageURL(hostname, registry, osName string, runtime InstallableRuntime, version string) string {
 	return fmt.Sprintf(runtimeImageARURL, hostname, registry, osName, runtime, version)
+}
+
+func runtimeImageURLZstd(hostname, registry, osName string, runtime InstallableRuntime, version string) string {
+	return fmt.Sprintf(runtimeImageARURLZstd, hostname, registry, osName, runtime, version)
 }
 
 func tarballDownloadURL(runtime InstallableRuntime, os, version string) string {

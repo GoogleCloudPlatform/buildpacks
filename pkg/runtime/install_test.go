@@ -285,6 +285,8 @@ func TestInstallSource(t *testing.T) {
 		wantError                  bool
 		wantAR                     bool
 		serverlessRuntimesTarballs string
+		fasterTarballExtraction    bool
+		failZstdFetch              bool
 	}{
 		{
 			name:         "Lorry_when_region_is_not_set",
@@ -445,6 +447,27 @@ func TestInstallSource(t *testing.T) {
 			tpcHostname:        "docker.pkg-tpcone.goog",
 			wantAR:             true,
 		},
+		{
+			name:                    "install_from_artifact_registry_zstd",
+			runtime:                 Nodejs,
+			version:                 "24.0.0",
+			responseFile:            "testdata/dummy-ruby-runtime.tar.zstd",
+			runtimeImageRegion:      "us-west1",
+			wantError:               false,
+			wantAR:                  true,
+			fasterTarballExtraction: true,
+		},
+		{
+			name:                    "install_from_artifact_registry_zstd_fallback",
+			runtime:                 Nodejs,
+			version:                 "24.0.0",
+			responseFile:            "testdata/dummy-ruby-runtime.tar.zstd",
+			runtimeImageRegion:      "us-west1",
+			wantError:               false,
+			wantAR:                  true,
+			fasterTarballExtraction: true,
+			failZstdFetch:           true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -466,7 +489,7 @@ func TestInstallSource(t *testing.T) {
 			testserver.New(
 				t,
 				testserver.WithStatus(http.StatusOK),
-				testserver.WithJSON(`["1.1.1","3.3.3","2.2.2","16.20.0"]`),
+				testserver.WithJSON(`["1.1.1","3.3.3","2.2.2","16.20.0","24.0.0"]`),
 				testserver.WithMockURL(&runtimeVersionsURL),
 			)
 			fetchedFromAR := false
@@ -476,6 +499,19 @@ func TestInstallSource(t *testing.T) {
 
 			fetch.ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error {
 				fetchedFromAR = true
+				if tc.fasterTarballExtraction && !tc.failZstdFetch {
+					if !strings.Contains(url, "zstd") {
+						t.Errorf("For zstd, fetch.ARImage URL %q does not contain expected string \"zstd\"", url)
+					}
+					if !strings.Contains(fallbackURL, "zstd") {
+						t.Errorf("For zstd, fetch.ARImage fallbackURL %q does not contain expected string \"zstd\"", fallbackURL)
+					}
+				}
+				if tc.fasterTarballExtraction && tc.failZstdFetch {
+					if strings.Contains(url, "zstd") {
+						return fmt.Errorf("simulated zstd fetch failure")
+					}
+				}
 				if tc.wantAR && tc.tpcTarballProject != "" {
 					if !strings.Contains(url, tc.tpcHostname) {
 						t.Errorf("For TPC, fetch.ARImage URL %q does not contain expected hostname %q", url, tc.tpcHostname)
@@ -519,6 +555,10 @@ func TestInstallSource(t *testing.T) {
 			}
 			if tc.tpcHostname != "" {
 				t.Setenv(env.TPCHostname, tc.tpcHostname)
+			}
+			if tc.fasterTarballExtraction {
+				t.Setenv(env.FasterTarballExtraction, "true")
+				t.Setenv(env.Runtime, "nodejs24")
 			}
 			_, err := InstallTarballIfNotCached(ctx, tc.runtime, tc.version, layer)
 			if tc.wantError == (err == nil) {
@@ -712,6 +752,42 @@ func TestRuntimeImageURL(t *testing.T) {
 			got := runtimeImageURL(hostname, tc.registry, tc.osName, tc.runtime, tc.version)
 			if got != tc.want {
 				t.Errorf("runtimeImageURL() got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRuntimeImageURLZstd(t *testing.T) {
+	testCases := []struct {
+		name     string
+		runtime  InstallableRuntime
+		osName   string
+		version  string
+		region   string
+		registry string
+		want     string
+	}{
+		{
+			name:     "nodejs24_zstd",
+			runtime:  "nodejs",
+			osName:   "ubuntu2204",
+			version:  "24.0.0",
+			region:   "us",
+			registry: "serverless-runtimes-qa",
+			want:     "us-docker.pkg.dev/serverless-runtimes-qa/runtimes-ubuntu2204/zstd/nodejs:24.0.0",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext()
+			hostname, err := arHostname(ctx, tc.region)
+			if err != nil {
+				t.Fatalf("arHostname(%q) failed: %v", tc.region, err)
+			}
+			got := runtimeImageURLZstd(hostname, tc.registry, tc.osName, tc.runtime, tc.version)
+			if got != tc.want {
+				t.Errorf("runtimeImageURLZstd() got %q, want %q", got, tc.want)
 			}
 		})
 	}
