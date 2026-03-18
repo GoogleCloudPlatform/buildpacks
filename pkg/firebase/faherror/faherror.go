@@ -3,6 +3,7 @@
 package faherror
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
@@ -17,9 +18,12 @@ type FahError struct {
 }
 
 func (e *FahError) Error() string {
-	// We avoid using json.Marshal because it may return an error, which we can't handle in the
-	// Error() method. Instead, we simply construct the JSON string directly.
-	return fmt.Sprintf(`{"reason":"%v","code":"%v","userFacingMessage":"%v","rawLog":"%v","isUserAttributed":%t}`, e.Reason, e.Code, e.UserFacingMessage, e.RawLog, e.IsUserAttributed)
+	b, err := json.Marshal(e)
+	if err != nil {
+		// Fallback if marshaling fails (extremely unlikely for this struct)
+		return fmt.Sprintf(`{"reason":"%v","code":"%v","userFacingMessage":"%v","rawLog":"%v","isUserAttributed":%t}`, e.Reason, e.Code, e.UserFacingMessage, e.RawLog, e.IsUserAttributed)
+	}
+	return string(b)
 }
 
 // ExitCode returns the exit code that the preparer/publisher should exit with.
