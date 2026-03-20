@@ -957,7 +957,8 @@ func buildCommand(srcDir, image, builderName, runName string, env map[string]str
 	args := strings.Fields(cmd)
 	if runName != "" {
 		args = append(args, "--run-image", runName)
-		if hasRuntimePreinstalled(runName) {
+		// TODO(b/493840996): Remove the Ruby34 check once we root cause and fix Ruby 3.4 issues.
+		if hasRuntimePreinstalled(runName) && !isRuby34(runName) {
 			// This skips adding the language runtime downloaded during the build to the final
 			// image as a launch layer. For non-generic run images, the language runtime is already
 			// included in the base image.
@@ -1012,6 +1013,11 @@ func hasRuntimePreinstalled(runName string) bool {
 	// gcr.io/${PROJECT}/buildpacks/${RUNTIME}/run
 	re := regexp.MustCompile(`/buildpacks/(?:go|nodejs|dotnet|java|php|ruby|python)\d+/run`)
 	return re.MatchString(runName)
+}
+
+// isRuby34 returns whether or not the run image is of Ruby 3.4.
+func isRuby34(runName string) bool {
+	return strings.Contains(runName, "ruby34")
 }
 
 // buildApp builds an application image from source.
