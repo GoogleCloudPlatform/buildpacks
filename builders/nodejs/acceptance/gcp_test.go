@@ -167,10 +167,30 @@ func TestAcceptance(t *testing.T) {
 			VersionInclusionConstraint: ">= 20.0.0",
 		},
 		{
-			Name:                       "bun_no_lock",
+			Name:                       "simple_no_lock_bun",
 			App:                        "simple_no_lock",
 			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=BETA", "GOOGLE_PACKAGE_MANAGER=bun"},
 			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "simple_no_lock_pnpm",
+			App:                        "simple_no_lock",
+			Env:                        []string{"GOOGLE_PACKAGE_MANAGER=pnpm"},
+			MustUse:                    []string{nodePNPM},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "simple_no_lock_yarn",
+			App:                        "simple_no_lock",
+			Env:                        []string{"GOOGLE_PACKAGE_MANAGER=yarn"},
+			MustUse:                    []string{nodeYarn},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "simple_no_lock_default_npm",
+			App:                        "simple_no_lock",
+			MustUse:                    []string{nodeNPM},
 			VersionInclusionConstraint: ">= 20.0.0",
 		},
 	}

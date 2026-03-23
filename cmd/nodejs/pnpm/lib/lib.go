@@ -47,11 +47,15 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !pnpmLockExists {
-		return gcp.OptOutFileNotFound(nodejs.PNPMLock), nil
+	if pnpmLockExists {
+		return gcp.OptIn("found pnpm-lock.yaml and package.json"), nil
 	}
 
-	return gcp.OptIn("found pnpm-lock.yaml and package.json"), nil
+	if nodejs.IsPackageManagerConfigured("pnpm") {
+		return gcp.OptIn("package.json found and GOOGLE_PACKAGE_MANAGER=pnpm"), nil
+	}
+
+	return gcp.OptOut("pnpm-lock.yaml not found and GOOGLE_PACKAGE_MANAGER is not set to pnpm"), nil
 }
 
 // BuildFn is the exported build function.

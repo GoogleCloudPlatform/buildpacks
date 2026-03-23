@@ -58,7 +58,7 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if bunLockExists {
 		return gcp.OptInFileFound(nodejs.BunLock), nil
 	}
-	if os.Getenv(env.PackageManager) == "bun" {
+	if nodejs.IsPackageManagerConfigured("bun") {
 		return gcp.OptIn("package.json found and GOOGLE_PACKAGE_MANAGER=bun"), nil
 	}
 	return gcp.OptOut("bun.lockb or bun.lock not found"), nil

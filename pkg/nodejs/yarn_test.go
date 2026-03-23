@@ -126,8 +126,8 @@ __metadata:
 			want: false,
 		},
 		{
-			name:      "no yarn.lock",
-			wantError: true,
+			name: "no yarn.lock",
+			want: false,
 		},
 	}
 

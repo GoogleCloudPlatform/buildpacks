@@ -533,3 +533,9 @@ func OverrideAppHostingBuildScript(ctx *gcp.Context, preprocessedApphostingPath 
 
 	return pjs, nil
 }
+
+// IsPackageManagerConfigured checks if the environment is configured to use the specified package manager.
+func IsPackageManagerConfigured(pm string) bool {
+	pmPreference := os.Getenv(env.PackageManager)
+	return strings.EqualFold(pmPreference, pm) // Case insensitive comparison.
+}

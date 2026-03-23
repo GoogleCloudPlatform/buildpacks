@@ -55,11 +55,14 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !yarnLockExists {
-		return gcp.OptOutFileNotFound("yarn.lock"), nil
+	if yarnLockExists {
+		return gcp.OptIn("found yarn.lock and package.json"), nil
+	}
+	if nodejs.IsPackageManagerConfigured("yarn") {
+		return gcp.OptIn("package.json found and GOOGLE_PACKAGE_MANAGER=yarn"), nil
 	}
 
-	return gcp.OptIn("found yarn.lock and package.json"), nil
+	return gcp.OptOut("yarn.lock not found and GOOGLE_PACKAGE_MANAGER is not set to yarn"), nil
 }
 
 // BuildFn is the exported build function.
@@ -130,6 +133,11 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		return cap.(yarnModuleInstaller).InstallModules(ctx, pjs)
 	}
 
+	yarnLockExists, err := ctx.FileExists(nodejs.YarnLock)
+	if err != nil {
+		return err
+	}
+
 	freezeLockfile, err := nodejs.UseFrozenLockfile(ctx)
 	if err != nil {
 		return err
@@ -144,9 +152,11 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
 
-	_, err = nodejs.CheckOrClearCache(ctx, ml, cache.WithFiles("package.json", nodejs.YarnLock))
-	if err != nil {
-		return fmt.Errorf("checking cache: %w", err)
+	if yarnLockExists {
+		_, err = nodejs.CheckOrClearCache(ctx, ml, cache.WithFiles("package.json", nodejs.YarnLock))
+		if err != nil {
+			return fmt.Errorf("checking cache: %w", err)
+		}
 	}
 
 	// Use Yarn's --modules-folder flag to install directly into the layer and then symlink them into
@@ -184,7 +194,7 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 	cmd := []string{"yarn", "install", "--non-interactive", "--prefer-offline", locationFlag}
 
 	// HACK: For backwards compatibility on App Engine Node.js 10 and older, skip using `--frozen-lockfile`.
-	if freezeLockfile {
+	if freezeLockfile && yarnLockExists {
 		cmd = append(cmd, "--frozen-lockfile")
 	}
 	gcpBuild := nodejs.HasGCPBuild(pjs)
