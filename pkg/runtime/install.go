@@ -323,7 +323,7 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 		}
 	} else if registry == tarballRegistryDev || runtime == Go || !present {
 		// Use Lorry for dev env, Go runtime, or if the region is not set.
-		runtimeURL := tarballDownloadURL(runtime, osName, version)
+		runtimeURL := TarballDownloadURL(runtime, osName, version)
 		if err := fetch.Tarball(runtimeURL, layer.Path, stripComponents); err != nil {
 			ctx.Warnf("Failed to download %s version %s osName %s from lorry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable. To use Artifact Registry instead, set the GOOGLE_RUNTIME_IMAGE_REGION environment variable (e.g., 'us').", runtimeName, version, osName)
 			return false, err
@@ -382,7 +382,8 @@ func runtimeImageURLZstd(hostname, registry, osName string, runtime InstallableR
 	return fmt.Sprintf(runtimeImageARURLZstd, hostname, registry, osName, runtime, version)
 }
 
-func tarballDownloadURL(runtime InstallableRuntime, os, version string) string {
+// TarballDownloadURL returns URL to download tarball from lorry.
+func TarballDownloadURL(runtime InstallableRuntime, os, version string) string {
 	if runtime == Go {
 		return fmt.Sprintf(goTarballURL, version)
 	}
