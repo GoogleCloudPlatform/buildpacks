@@ -148,7 +148,6 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:                       "bun_lock",
 			App:                        "bun_lock",
-			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
 			MustUse:                    []string{nodeBun},
 			VersionInclusionConstraint: ">= 20.0.0",
 		},
@@ -162,14 +161,13 @@ func TestAcceptance(t *testing.T) {
 		{
 			Name:                       "bun_lockb",
 			App:                        "bun_lockb",
-			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
 			MustUse:                    []string{nodeBun},
 			VersionInclusionConstraint: ">= 20.0.0",
 		},
 		{
 			Name:                       "simple_no_lock_bun",
 			App:                        "simple_no_lock",
-			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=BETA", "GOOGLE_PACKAGE_MANAGER=bun"},
+			Env:                        []string{"GOOGLE_PACKAGE_MANAGER=bun"},
 			MustUse:                    []string{nodeBun},
 			VersionInclusionConstraint: ">= 20.0.0",
 		},

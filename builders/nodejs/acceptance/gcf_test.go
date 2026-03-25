@@ -104,7 +104,6 @@ func TestAcceptance(t *testing.T) {
 			App:        "with_framework_bun",
 			MustUse:    []string{bun},
 			MustNotUse: []string{npm},
-			Env:        []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
 		},
 		{
 			Name:            "function with dependencies",
@@ -262,7 +261,7 @@ func TestFailures(t *testing.T) {
 		{
 			Name:      "bun_without_framework",
 			App:       "no_framework",
-			Setup:     addBunLock,
+			Env:       []string{"GOOGLE_PACKAGE_MANAGER=bun"},
 			MustMatch: "This project is using bun",
 		},
 		{
@@ -294,12 +293,6 @@ func applyStaticFailureTestOptions(tc acceptance.FailureTest) acceptance.Failure
 // addPNPMLock adds an empty pnpm lock file to the test project
 func addPNPMLock(setupCtx acceptance.SetupContext) error {
 	fp := filepath.Join(setupCtx.SrcDir, "pnpm-lock.yaml")
-	_, err := os.Create(fp)
-	return err
-}
-
-func addBunLock(setupCtx acceptance.SetupContext) error {
-	fp := filepath.Join(setupCtx.SrcDir, "bun.lock")
 	_, err := os.Create(fp)
 	return err
 }
