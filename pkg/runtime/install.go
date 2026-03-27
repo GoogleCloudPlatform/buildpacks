@@ -344,7 +344,7 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 		fallbackURL := runtimeImageURL(fallbackHostname, registry, osName, runtime, version)
 
 		// TODO(b/493740533): Add support for other runtimes.
-		if v, _ := env.IsPresentAndTrue(env.FasterTarballExtraction); v && os.Getenv(env.Runtime) == "nodejs24" {
+		if v, _ := env.IsPresentAndTrue(env.FasterTarballExtraction); v && isZstdSupportedRuntime(os.Getenv(env.Runtime)) {
 			urlZstd := runtimeImageURLZstd(hostname, registry, osName, runtime, version)
 			fallbackURLZstd := runtimeImageURLZstd(fallbackHostname, registry, osName, runtime, version)
 
@@ -661,4 +661,10 @@ func (mi MakerInstaller) InstallTarballIfNotCached(ctx *gcp.Context, runtime Ins
 	ctx.AddLabel(localRuntimeVersionLabel, version)
 	ctx.AddLabel(languageNameLabel, string(runtime))
 	return false, nil
+}
+
+// isZstdSupportedRuntime checks if the given runtime environment string supports Zstd extraction.
+func isZstdSupportedRuntime(runtimeEnv string) bool {
+	supported := []string{"nodejs20", "nodejs22", "nodejs24"}
+	return slices.Contains(supported, runtimeEnv)
 }

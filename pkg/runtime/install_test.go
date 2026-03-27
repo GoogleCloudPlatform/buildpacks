@@ -1266,3 +1266,56 @@ func TestResolveVersionTPC(t *testing.T) {
 		})
 	}
 }
+
+func TestIsZstdSupportedRuntime(t *testing.T) {
+	testCases := []struct {
+		name       string
+		runtimeEnv string
+		want       bool
+	}{
+		{
+			name:       "nodejs20 is supported",
+			runtimeEnv: "nodejs20",
+			want:       true,
+		},
+		{
+			name:       "nodejs22 is supported",
+			runtimeEnv: "nodejs22",
+			want:       true,
+		},
+		{
+			name:       "nodejs24 is supported",
+			runtimeEnv: "nodejs24",
+			want:       true,
+		},
+		{
+			name:       "nodejs18 is not supported",
+			runtimeEnv: "nodejs18",
+			want:       false,
+		},
+		{
+			name:       "nodejs generic is not supported",
+			runtimeEnv: "nodejs",
+			want:       false,
+		},
+		{
+			name:       "python is not supported",
+			runtimeEnv: "python310",
+			want:       false,
+		},
+		{
+			name:       "empty string is not supported",
+			runtimeEnv: "",
+			want:       false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := isZstdSupportedRuntime(tc.runtimeEnv)
+			if got != tc.want {
+				t.Errorf("isZstdSupportedRuntime(%q) = %v, want %v", tc.runtimeEnv, got, tc.want)
+			}
+		})
+	}
+}
