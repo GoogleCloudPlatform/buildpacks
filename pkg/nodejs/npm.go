@@ -48,6 +48,43 @@ var (
 	minNpmCIVersion = semver.MustParse("6.14.0")
 )
 
+// watchEntrypointFile returns the entrypoint file to be used with node --watch.
+// The entrypoint file is determined in the following order of preference:
+// 1. The value of the `main` field in package.json, if present.
+// 2. `server.js`, if it exists.
+// 3. `index.js`, as the final default if none of the above are found.
+func watchEntrypointFile(ctx *gcp.Context, pjs *PackageJSON) (string, error) {
+	if pjs != nil && pjs.Main != "" {
+		return pjs.Main, nil
+	}
+	serverExists, err := ctx.FileExists(ctx.ApplicationRoot(), "server.js")
+	if err != nil {
+		return "", err
+	}
+	if serverExists {
+		return "server.js", nil
+	}
+	return "index.js", nil
+}
+
+// DevSyncEntrypoint returns the entrypoint command for dev sync mode.
+func DevSyncEntrypoint(ctx *gcp.Context, pjs *PackageJSON, packageManager string) ([]string, error) {
+	if pjs != nil {
+		if devScript, ok := pjs.Scripts["dev"]; ok && devScript != "" {
+			ctx.Logf("Dev script found in package.json, using %q for dev sync.", packageManager+" run dev")
+			return []string{packageManager, "run", "dev"}, nil
+		}
+	}
+
+	// If no dev script, use node --watch.
+	entryFile, err := watchEntrypointFile(ctx, pjs)
+	if err != nil {
+		return nil, err
+	}
+	ctx.Logf("No dev script found in package.json, using %q for dev sync.", "node --watch "+entryFile)
+	return []string{"node", "--watch", entryFile}, nil
+}
+
 // RequestedNPMVersion returns any customer provided NPM version constraint configured in the
 // "engines" section of the package.json file in the given application dir.
 func RequestedNPMVersion(pjs *PackageJSON) (string, error) {

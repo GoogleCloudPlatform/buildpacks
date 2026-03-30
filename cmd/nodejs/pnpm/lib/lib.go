@@ -97,6 +97,18 @@ func BuildFn(ctx *gcp.Context) error {
 		return err
 	}
 
+	devSync, err := env.IsDevSync()
+	if err != nil {
+		ctx.Warnf("Unable to determine dev sync status: %v", err)
+	} else if devSync {
+		entrypoint, err = nodejs.DevSyncEntrypoint(ctx, pjs, "pnpm")
+		if err != nil {
+			return gcp.InternalErrorf("getting dev sync entrypoint: %w", err)
+		}
+		ctx.AddWebProcess(entrypoint)
+		return nil
+	}
+
 	ctx.AddWebProcess(entrypoint)
 	return nil
 }

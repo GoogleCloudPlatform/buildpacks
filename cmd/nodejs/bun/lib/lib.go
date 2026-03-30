@@ -84,6 +84,18 @@ func BuildFn(ctx *gcp.Context) error {
 	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
 	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
 
+	devSync, err := env.IsDevSync()
+	if err != nil {
+		ctx.Warnf("Unable to determine dev sync status: %v", err)
+	} else if devSync {
+		cmd, err := nodejs.DevSyncEntrypoint(ctx, pjs, "bun")
+		if err != nil {
+			return gcp.InternalErrorf("getting dev sync entrypoint: %w", err)
+		}
+		ctx.AddWebProcess(cmd)
+		return nil
+	}
+
 	// Configure the entrypoint for production.
 	ctx.AddWebProcess([]string{"npm", "run", "start"})
 	return nil

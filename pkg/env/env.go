@@ -40,7 +40,12 @@ const (
 	// DevMode is an env var used to enable development mode in buildpacks.
 	// DevMode should be respected by all buildpacks that are not product-specific.
 	// Example: `true`, `True`, `1` will enable development mode.
+	//
+	// Deprecated: Use GOOGLE_DEVSYNC instead.
 	DevMode = "GOOGLE_DEVMODE"
+
+	// DevSync is an env var used to enable development sync mode in buildpacks.
+	DevSync = "GOOGLE_DEVSYNC"
 
 	// Entrypoint is an env var used to override the default entrypoint.
 	// Entrypoint should be respected by at least one buildpack in builders that are not product-specific.
@@ -259,6 +264,11 @@ func IsDebugMode() (bool, error) {
 // IsDevMode indicates that the builder is running in Development mode.
 func IsDevMode() (bool, error) {
 	return IsPresentAndTrue(DevMode)
+}
+
+// IsDevSync indicates that the builder is running in Dev Sync mode.
+func IsDevSync() (bool, error) {
+	return IsPresentAndTrue(DevSync)
 }
 
 // IsUsingNativeImage returns true if the Java application should be built as a native image.

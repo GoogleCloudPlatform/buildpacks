@@ -90,3 +90,75 @@ func TestIsDebugMode(t *testing.T) {
 		})
 	}
 }
+
+func TestIsDevSync(t *testing.T) {
+	testCases := []struct {
+		name    string
+		notSet  bool
+		value   string
+		wantErr bool
+		want    bool
+	}{
+		{
+			name:   "not set",
+			notSet: true,
+		},
+		{
+			name:    "set to empty",
+			wantErr: true,
+		},
+		{
+			name:    "set to bad value",
+			value:   "not a bool",
+			wantErr: true,
+		},
+		{
+			name:  "set to true",
+			value: "true",
+			want:  true,
+		},
+		{
+			name:  "set to false",
+			value: "false",
+			want:  false,
+		},
+		{
+			name:  "set to truthy",
+			value: "1",
+			want:  true,
+		},
+		{
+			name:  "set to falsey",
+			value: "0",
+			want:  false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.notSet {
+				if err := os.Unsetenv(DevSync); err != nil {
+					t.Fatalf("Failed to unset env: %v", err)
+				}
+			} else {
+				if err := os.Setenv(DevSync, tc.value); err != nil {
+					t.Fatalf("Failed to set env: %v", err)
+				}
+				defer func() {
+					if err := os.Unsetenv(DevSync); err != nil {
+						t.Fatalf("Failed to unset env: %v", err)
+					}
+				}()
+			}
+
+			got, err := IsDevSync()
+
+			if err != nil != tc.wantErr {
+				t.Fatalf("IsDevSync() got error %v, want error %t", err, tc.wantErr)
+			}
+			if got != tc.want {
+				t.Errorf("IsDevSync() = %t, want %t", got, tc.want)
+			}
+		})
+	}
+}

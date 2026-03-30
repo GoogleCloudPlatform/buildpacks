@@ -27,6 +27,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
@@ -198,6 +199,18 @@ NOTE: Running the default build script can be skipped by passing the empty envir
 	cmd, err := nodejs.DefaultStartCommand(ctx, pjs)
 	if err != nil {
 		return fmt.Errorf("detecting start command: %w", err)
+	}
+
+	devSync, err := env.IsDevSync()
+	if err != nil {
+		ctx.Warnf("Unable to determine dev sync status: %v", err)
+	} else if devSync {
+		cmd, err = nodejs.DevSyncEntrypoint(ctx, pjs, "npm")
+		if err != nil {
+			return gcp.InternalErrorf("getting dev sync entrypoint: %w", err)
+		}
+		ctx.AddWebProcess(cmd)
+		return nil
 	}
 
 	if !devmode.Enabled(ctx) {

@@ -16,6 +16,7 @@ package nodejs
 
 import (
 	"encoding/json"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -497,6 +498,127 @@ func TestRestoreAndSaveModules(t *testing.T) {
 			}
 			if executed != tc.wantExec {
 				t.Errorf("SaveModules(%q, %q) executed cp = %v, want %v", src, dst, executed, tc.wantExec)
+			}
+		})
+	}
+}
+
+func TestWatchEntrypointFile(t *testing.T) {
+	testCases := []struct {
+		name        string
+		packageJSON *PackageJSON
+		files       []string
+		want        string
+	}{
+		{
+			name: "main",
+			packageJSON: &PackageJSON{
+				Main: "main.js",
+			},
+			want: "main.js",
+		},
+		{
+			name:        "server_js",
+			packageJSON: &PackageJSON{},
+			files:       []string{"server.js", "index.js"},
+			want:        "server.js",
+		},
+		{
+			name:        "index_js",
+			packageJSON: &PackageJSON{},
+			files:       []string{"index.js"},
+			want:        "index.js",
+		},
+		{
+			name:        "default",
+			packageJSON: &PackageJSON{},
+			want:        "index.js",
+		},
+		{
+			name:        "nil_package_json_with_server_js",
+			packageJSON: nil,
+			files:       []string{"server.js"},
+			want:        "server.js",
+		},
+		{
+			name:        "nil_package_json_without_server_js",
+			packageJSON: nil,
+			files:       []string{},
+			want:        "index.js",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testDir := t.TempDir()
+			for _, f := range tc.files {
+				if err := os.WriteFile(filepath.Join(testDir, f), []byte(""), 0644); err != nil {
+					t.Fatalf("Failed to write file %s: %v", f, err)
+				}
+			}
+			ctx := gcpbuildpack.NewContext(gcpbuildpack.WithApplicationRoot(testDir))
+			got, err := watchEntrypointFile(ctx, tc.packageJSON)
+			if err != nil {
+				t.Fatalf("watchEntrypointFile got error: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("watchEntrypointFile() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestDevSyncEntrypoint(t *testing.T) {
+	testCases := []struct {
+		name        string
+		packageJSON *PackageJSON
+		files       []string
+		pkgManager  string
+		want        []string
+	}{
+		{
+			name: "dev script",
+			packageJSON: &PackageJSON{
+				Scripts: map[string]string{"dev": "node server.js"},
+			},
+			pkgManager: "npm",
+			want:       []string{"npm", "run", "dev"},
+		},
+		{
+			name: "watch server.js",
+			packageJSON: &PackageJSON{
+				Scripts: map[string]string{},
+			},
+			files:      []string{"server.js", "index.js"},
+			pkgManager: "npm",
+			want:       []string{"node", "--watch", "server.js"},
+		},
+		{
+			name: "watch index.js",
+			packageJSON: &PackageJSON{
+				Scripts: map[string]string{},
+			},
+			files:      []string{"index.js"},
+			pkgManager: "npm",
+			want:       []string{"node", "--watch", "index.js"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testDir := t.TempDir()
+			for _, f := range tc.files {
+				if err := os.WriteFile(filepath.Join(testDir, f), []byte(""), 0644); err != nil {
+					t.Fatalf("Failed to write file %s: %v", f, err)
+				}
+			}
+			ctx := gcpbuildpack.NewContext(gcpbuildpack.WithApplicationRoot(testDir))
+			got, err := DevSyncEntrypoint(ctx, tc.packageJSON, tc.pkgManager)
+			if err != nil {
+				t.Fatalf("DevSyncEntrypoint got error: %v", err)
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("DevSyncEntrypoint() returned unexpected difference (-want +got):\n%s", diff)
 			}
 		})
 	}
