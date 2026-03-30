@@ -95,11 +95,12 @@ func BuildFn(ctx *gcp.Context) error {
 		pyModule = "main:app"
 		pyFile = "main.py"
 	}
+	webserverOrFramework := gunicorn
 	cmd := []string{"gunicorn", "-b", ":8080", pyModule}
 
 	// We will use the smart default entrypoint if the runtime version supports it (>=3.13)
 	if supportsSmartDefault {
-		cmd, err = smartDefaultEntrypoint(ctx, pyModule, pyFile)
+		cmd, webserverOrFramework, err = smartDefaultEntrypoint(ctx, pyModule, pyFile)
 		if err != nil {
 			return fmt.Errorf("error detecting smart default entrypoint: %w", err)
 		}
@@ -130,6 +131,8 @@ func BuildFn(ctx *gcp.Context) error {
 			} else {
 				cmd = scriptCmd
 			}
+			// If a script command is used, we don't know the server.
+			webserverOrFramework = ""
 		} else if !hasMain && !hasApp && !adkPresent {
 			return gcp.UserErrorf("for Python with pyproject.toml, provide a main.py or app.py file or a script command in pyproject.toml or set an entrypoint with %q env var or by creating a %q file", env.Entrypoint, "Procfile")
 		}
@@ -141,69 +144,71 @@ func BuildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("adapting entrypoint: %w", err)
 	}
 
+	cmd = applyDevSync(ctx, cmd, webserverOrFramework)
+
 	ctx.Warnf("Setting default entrypoint: %q", strings.Join(cmd, " "))
 	ctx.AddProcess(gcp.WebProcess, cmd, gcp.AsDefaultProcess())
 
 	return nil
 }
 
-func smartDefaultEntrypoint(ctx *gcp.Context, pyModule string, pyFile string) ([]string, error) {
+func smartDefaultEntrypoint(ctx *gcp.Context, pyModule string, pyFile string) ([]string, string, error) {
 	// To be compatible with the old builder, we will use below priority order:
 	// 1. gunicorn 2. uvicorn 3. gradio 4. streamlit
 
 	// If gunicorn is present in requirements.txt or pyproject.toml, we will use gunicorn as the entrypoint.
 	gPresent, err := python.PackagePresent(ctx, gunicorn)
 	if err != nil {
-		return nil, fmt.Errorf("error detecting gunicorn: %w", err)
+		return nil, "", fmt.Errorf("error detecting gunicorn: %w", err)
 	}
 	if gPresent {
-		return []string{"gunicorn", "-b", ":8080", pyModule}, nil
+		return []string{"gunicorn", "-b", ":8080", pyModule}, gunicorn, nil
 	}
 	// If uvicorn is present in requirements.txt or pyproject.toml, we will use uvicorn as the entrypoint.
 	uPresent, err := python.PackagePresent(ctx, uvicorn)
 	if err != nil {
-		return nil, fmt.Errorf("error detecting uvicorn: %w", err)
+		return nil, "", fmt.Errorf("error detecting uvicorn: %w", err)
 	}
 	if uPresent {
-		return []string{"uvicorn", pyModule, "--port", "8080", "--host", "0.0.0.0"}, nil
+		return []string{"uvicorn", pyModule, "--port", "8080", "--host", "0.0.0.0"}, uvicorn, nil
 	}
 	// If fastapi[standard] is present in requirements.txt or pyproject.toml, we will use uvicorn as the entrypoint.
 	fastapiStandardPresent, err := python.PackagePresent(ctx, fastapiStandard)
 	if err != nil {
-		return nil, fmt.Errorf("error detecting fastapi: %w", err)
+		return nil, "", fmt.Errorf("error detecting fastapi: %w", err)
 	}
 	if fastapiStandardPresent {
-		return []string{"uvicorn", pyModule, "--port", "8080", "--host", "0.0.0.0"}, nil
+		return []string{"uvicorn", pyModule, "--port", "8080", "--host", "0.0.0.0"}, uvicorn, nil
 	}
 	// If gradio is present in requirements.txt or pyproject.toml, we will use gradio as the entrypoint.
 	gradioPresent, err := python.PackagePresent(ctx, gradio)
 	if err != nil {
-		return nil, fmt.Errorf("error detecting gradio: %w", err)
+		return nil, "", fmt.Errorf("error detecting gradio: %w", err)
 	}
 	if gradioPresent {
 		if err := addGradioEnvVarLayer(ctx); err != nil {
-			return nil, fmt.Errorf("error adding gradio env var layer: %w", err)
+			return nil, "", fmt.Errorf("error adding gradio env var layer: %w", err)
 		}
-		return []string{"python", pyFile}, nil
+		return []string{"python", pyFile}, gradio, nil
 	}
 	// If streamlit is present in requirements.txt or pyproject.toml, we will use streamlit as the entrypoint.
 	sPresent, err := python.PackagePresent(ctx, streamlit)
 	if err != nil {
-		return nil, fmt.Errorf("error detecting streamlit: %w", err)
+		return nil, "", fmt.Errorf("error detecting streamlit: %w", err)
 	}
 	if sPresent {
-		return []string{"streamlit", "run", pyFile, "--server.address", "0.0.0.0", "--server.port", "8080"}, nil
+		return []string{"streamlit", "run", pyFile, "--server.address", "0.0.0.0", "--server.port", "8080"}, streamlit, nil
 	}
 	// If google-adk is present in requirements.txt or pyproject.toml, we will use it as the entrypoint.
 	adkPresent, err := isAdkPresent(ctx)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if adkPresent {
-		return []string{"adk", "api_server", "--port", "8080", "--host", "0.0.0.0"}, nil
+		return []string{"adk", "api_server", "--port", "8080", "--host", "0.0.0.0"}, googleAdk, nil
 	}
 
-	return []string{"gunicorn", "-b", ":8080", pyModule}, nil
+	return []string{"gunicorn", "-b", ":8080", pyModule}, gunicorn, nil
 }
 
 func addGradioEnvVarLayer(ctx *gcp.Context) error {
@@ -223,4 +228,21 @@ func isAdkPresent(ctx *gcp.Context) (bool, error) {
 		return false, fmt.Errorf("error detecting google-adk: %w", err)
 	}
 	return adkPresent, nil
+}
+
+// applyDevSync modifies the entrypoint cmd for dev sync mode.
+func applyDevSync(ctx *gcp.Context, cmd []string, webserverOrFramework string) []string {
+	devSync, err := env.IsDevSync()
+	if err != nil {
+		ctx.Warnf("Unable to determine dev sync status: %v", err)
+	}
+	if !devSync {
+		return cmd
+	}
+	// For gunicorn, we add the --reload flag for dev sync mode.
+	// More webservers and frameworks can be added here in the future.
+	if webserverOrFramework == gunicorn {
+		return append([]string{gunicorn, "--reload"}, cmd[1:]...)
+	}
+	return cmd
 }
