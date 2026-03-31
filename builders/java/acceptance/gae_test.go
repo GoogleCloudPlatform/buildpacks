@@ -86,6 +86,13 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput: []string{"WARNING"},
 		},
 		{
+			Name:                       "custom_entrypoint_with_appengine_web_xml",
+			VersionInclusionConstraint: ">=25.0.0",
+			App:                        "custom_entrypoint_appengine_web_xml",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=java Main.java"},
+			MustNotOutput:              []string{"WARNING"},
+		},
+		{
 			Name:          "single_jar",
 			App:           "single_jar",
 			MustNotOutput: []string{"WARNING"},
