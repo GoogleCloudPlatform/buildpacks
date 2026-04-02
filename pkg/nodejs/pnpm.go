@@ -5,9 +5,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 	"github.com/buildpacks/libcnb/v2"
 )
 
@@ -41,7 +43,7 @@ func InstallPNPM(ctx *gcp.Context, pnpmLayer *libcnb.Layer, pjs *PackageJSON) er
 	layerName := pnpmLayer.Name
 	installDir := filepath.Join(pnpmLayer.Path, "bin")
 	stackID := runtime.OSForStack(ctx)
-	version, err := detectPNPMVersion(pjs, stackID)
+	version, err := detectPNPMVersion(ctx, pjs, stackID)
 	if err != nil {
 		return err
 	}
@@ -93,13 +95,15 @@ func downloadPNPM(ctx *gcp.Context, dir, version string) error {
 // returns the latest stable version available.
 // TODO(b/338411091) create a shared packagejson util library and refactor out a generic detect
 // package manager version function.
-func detectPNPMVersion(pjs *PackageJSON, stackID string) (string, error) {
+func detectPNPMVersion(ctx *gcp.Context, pjs *PackageJSON, stackID string) (string, error) {
 	if pjs == nil || (pjs.Engines.PNPM == "" && pjs.PackageManager == "") {
-		if stackID == runtime.Ubuntu1804 {
-			// Ubuntu 18.04 uses a fixed older version of pnpm due to compatibility constraints with GLIBC.
-			return "10.12.4", nil
+		version, err := tooling.ResolveToolVersion("nodejs", "pnpm", os.Getenv(env.RuntimeVersion), stackID)
+		if err == nil && version != "" {
+			return version, nil
 		}
-		version, err := latestPackageVersion("pnpm")
+		ctx.Warnf("Could not resolve pinned pnpm version, falling back to latest: %v", err)
+
+		version, err = latestPackageVersion("pnpm")
 		if err != nil {
 			return "", gcp.InternalErrorf("fetching available pnpm versions: %w", err)
 		}

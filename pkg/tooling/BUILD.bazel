@@ -1,0 +1,41 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load(":bzl_to_json.bzl", "mock_tooling_versions_to_json", "tooling_versions_to_json")
+
+tooling_versions_to_json(
+    name = "tooling_versions_json",
+    out = "tooling_versions.json",
+)
+
+mock_tooling_versions_to_json(
+    name = "tooling_versions_mock_json_gen",
+    out = "tooling_versions_mock.json",
+)
+
+filegroup(
+    name = "tooling_versions_mock_json",
+    srcs = ["tooling_versions_mock.json"],
+    visibility = ["//:__subpackages__"],
+)
+
+go_library(
+    name = "tooling",
+    srcs = [
+        "mock.go",
+        "resolver.go",
+    ],
+    embedsrcs = [
+        "tooling_versions.json",
+        "tooling_versions_mock.json",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = ["//:__subpackages__"],
+    deps = [],
+)
+
+go_test(
+    name = "tooling_test",
+    srcs = ["resolver_test.go"],
+    data = ["tooling_versions_mock.json"],
+    embed = [":tooling"],
+    rundir = ".",
+)

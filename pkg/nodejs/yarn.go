@@ -21,8 +21,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 	"github.com/buildpacks/libcnb/v2"
 	"github.com/Masterminds/semver"
 	"gopkg.in/yaml.v2"
@@ -143,9 +145,15 @@ func HasYarnWorkspacePlugin(ctx *gcp.Context) (bool, error) {
 // returns the latest stable version available.
 // TODO(b/338411091) create a shared packagejson util library and refactor out a generic detect
 // package manager version function.
-func detectYarnVersion(pjs *PackageJSON) (string, error) {
+func detectYarnVersion(ctx *gcp.Context, pjs *PackageJSON) (string, error) {
 	if pjs == nil || (pjs.Engines.Yarn == "" && pjs.PackageManager == "") {
-		version, err := latestPackageVersion("yarn")
+		version, err := tooling.ResolveToolVersion("nodejs", "yarn", os.Getenv(env.RuntimeVersion), "")
+		if err == nil && version != "" {
+			return version, nil
+		}
+		ctx.Warnf("Could not resolve pinned yarn version, falling back to latest: %v", err)
+
+		version, err = latestPackageVersion("yarn")
 		if err != nil {
 			return "", gcp.InternalErrorf("fetching available Yarn versions: %w", err)
 		}
@@ -178,7 +186,7 @@ func InstallYarnLayer(ctx *gcp.Context, yarnLayer *libcnb.Layer, pjs *PackageJSO
 	}
 
 	layerName := yarnLayer.Name
-	version, err := detectYarnVersion(pjs)
+	version, err := detectYarnVersion(ctx, pjs)
 	if err != nil {
 		return err
 	}

@@ -27,6 +27,8 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/libcnb/v2"
 )
@@ -368,6 +370,16 @@ func installTool(ctx *gcp.Context, provider, toolName, layerName, versionConstra
 	layer, err := ctx.Layer(layerName, opts...)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", layerName, err)
+	}
+
+	if versionConstraint == "" {
+		toolVersion, err := tooling.ResolveToolVersion("python", toolName, os.Getenv(env.RuntimeVersion), runtime.OSForStack(ctx))
+		if err != nil || toolVersion == "" {
+			ctx.Warnf("Could not resolve pinned %s version, falling back: %v", toolName, err)
+		} else {
+			versionConstraint = "==" + toolVersion
+			ctx.Logf("Resolved pinned %s version: %s", toolName, versionConstraint)
+		}
 	}
 
 	dependencyToInstall := toolName

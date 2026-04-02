@@ -20,6 +20,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 	"github.com/buildpacks/libcnb/v2"
 )
 
@@ -132,12 +133,12 @@ func TestDetectPNPMVersion(t *testing.T) {
 		name        string
 		npmResponse string
 		packageJSON PackageJSON
+		stackID     string
 		wantVersion string
 		wantError   bool
-		stackID     string
 	}{
 		{
-			name:        "no package.json returns pinned for ubuntu1804",
+			name:        "no_package.json_returns_pinned_version_from_tooling_bzl",
 			packageJSON: PackageJSON{},
 			npmResponse: `{
 				"name": "pnpm",
@@ -153,10 +154,10 @@ func TestDetectPNPMVersion(t *testing.T) {
 				"modified": "2022-01-27T21:10:55.626Z"
 			}`,
 			stackID:     "ubuntu1804",
-			wantVersion: "10.12.4",
+			wantVersion: "10.12.4", // pinned version for ubuntu1804
 		},
 		{
-			name:        "no package.json returns latest for ubuntu2204",
+			name:        "no_package.json_returns_latest_version_from_tooling_bzl",
 			packageJSON: PackageJSON{},
 			npmResponse: `{
 				"name": "pnpm",
@@ -172,10 +173,10 @@ func TestDetectPNPMVersion(t *testing.T) {
 				"modified": "2022-01-27T21:10:55.626Z"
 			}`,
 			stackID:     "ubuntu2204",
-			wantVersion: "9.2.0",
+			wantVersion: "10.32.1",
 		},
 		{
-			name: "only engines version",
+			name: "only_engines_version",
 			packageJSON: PackageJSON{
 				Engines: packageEnginesJSON{
 					PNPM: "8.2.0",
@@ -185,7 +186,7 @@ func TestDetectPNPMVersion(t *testing.T) {
 			wantVersion: "8.2.0",
 		},
 		{
-			name: "only packageManager version",
+			name: "only_packageManager_version",
 			packageJSON: PackageJSON{
 				PackageManager: "pnpm@8.2.0",
 			},
@@ -193,7 +194,7 @@ func TestDetectPNPMVersion(t *testing.T) {
 			wantVersion: "8.2.0",
 		},
 		{
-			name: "both engine and packageManager version",
+			name: "both_engine_and_packageManager_version",
 			packageJSON: PackageJSON{
 				Engines: packageEnginesJSON{
 					PNPM: "8.2.0",
@@ -204,7 +205,7 @@ func TestDetectPNPMVersion(t *testing.T) {
 			wantVersion: "8.2.0",
 		},
 		{
-			name: "invalid packageManager version",
+			name: "invalid_packageManager_version",
 			packageJSON: PackageJSON{
 				PackageManager: "yarn@8.2.0",
 			},
@@ -221,7 +222,10 @@ func TestDetectPNPMVersion(t *testing.T) {
 				testserver.WithMockURL(&npmRegistryURL),
 			)
 
-			version, err := detectPNPMVersion(&tc.packageJSON, tc.stackID)
+			ctx := gcpbuildpack.NewContext()
+			defer tooling.MockData()()
+
+			version, err := detectPNPMVersion(ctx, &tc.packageJSON, tc.stackID)
 			if version != tc.wantVersion {
 				t.Errorf("detectPNPMVersion() got version: %v, want version: %v", version, tc.wantVersion)
 			}

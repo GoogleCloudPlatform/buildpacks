@@ -26,6 +26,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -223,7 +224,7 @@ func TestDetectYarnVersion(t *testing.T) {
 		wantError   bool
 	}{
 		{
-			name:        "no package.json returns latest",
+			name:        "json_returns_latest_version_from_tooling_bzl",
 			packageJSON: PackageJSON{},
 			npmResponse: `{
 				"name": "yarn",
@@ -238,7 +239,7 @@ func TestDetectYarnVersion(t *testing.T) {
 				},
 				"modified": "2022-01-27T21:10:55.626Z"
 			}`,
-			wantVersion: "2.2.2",
+			wantVersion: "1.22.22",
 		},
 		{
 			name: "only engines version",
@@ -283,7 +284,10 @@ func TestDetectYarnVersion(t *testing.T) {
 				testserver.WithMockURL(&npmRegistryURL),
 			)
 
-			version, err := detectYarnVersion(&tc.packageJSON)
+			ctx := gcpbuildpack.NewContext()
+			defer tooling.MockData()()
+
+			version, err := detectYarnVersion(ctx, &tc.packageJSON)
 			if version != tc.wantVersion {
 				t.Errorf("detectYarnVersion() got version: %v, want version: %v", version, tc.wantVersion)
 			}

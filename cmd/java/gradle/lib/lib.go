@@ -28,6 +28,8 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 )
 
 const (
@@ -155,14 +157,15 @@ func installGradle(ctx *gcp.Context) (string, error) {
 
 	metaVersion := ctx.GetMetadata(gradlel, versionKey)
 	// Check the metadata in the cache layer to determine if we need to proceed.
-	gradleVersion, err := java.GetLatestGradleVersion()
-	if err != nil {
-		return "", fmt.Errorf("getting latest gradle version: %w", err)
+	gradleVersion, err := tooling.ResolveToolVersion("java", "gradle", os.Getenv(env.RuntimeVersion), runtime.OSForStack(ctx))
+	if err != nil || gradleVersion == "" {
+		ctx.Warnf("Could not resolve pinned gradle version, falling back to latest: %v", err)
+		gradleVersion, err = java.GetLatestGradleVersion()
+		if err != nil {
+			return "", fmt.Errorf("getting latest gradle version: %w", err)
+		}
 	}
-	// Java 11 is not supported from Gradle 9.0.0
-	if os.Getenv(env.RuntimeVersion) == "11" || ctx.StackID() == "google" || ctx.StackID() == "google.gae.18" || ctx.StackID() == "google.18" {
-		gradleVersion = "8.14.3"
-	}
+
 	if gradleVersion == metaVersion {
 		ctx.CacheHit(gradleLayer)
 		ctx.Logf("Gradle cache hit, skipping installation.")
