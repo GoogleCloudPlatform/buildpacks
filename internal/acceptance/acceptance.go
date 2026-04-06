@@ -235,11 +235,17 @@ type builderTOML struct {
 
 func constructImageName(t *testing.T, name, builderName string) string {
 	t.Helper()
-	image := fmt.Sprintf("%s-%s", strings.ToLower(specialChars.ReplaceAllString(name, "-")), builderName)
+	modifiedName := strings.ToLower(specialChars.ReplaceAllString(name, "-"))
+	// Fix: Trim leading/trailing hyphens to ensure a valid Docker repository name.
+	modifiedName = strings.Trim(modifiedName, "-")
+
+	// Docker tags cannot contain colons. Sanitize builderName which may contain
+	// colons if derived from a versioned builder path (e.g. go:builder_22.tar).
+	tag := strings.ReplaceAll(builderName, ":", "-")
 	if remoteRepo != "" {
-		return fmt.Sprintf("us-docker.pkg.dev/%s/acceptance-tests/%s", remoteRepo, image)
+		return fmt.Sprintf("us-docker.pkg.dev/%s/acceptance-tests/%s:%s", remoteRepo, modifiedName, tag)
 	}
-	return image
+	return fmt.Sprintf("%s:%s", modifiedName, tag)
 }
 
 // TestApp builds and a single application and verifies that it runs and handles requests.
