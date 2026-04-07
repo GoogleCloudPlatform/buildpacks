@@ -539,3 +539,41 @@ func IsPackageManagerConfigured(pm string) bool {
 	pmPreference := os.Getenv(env.PackageManager)
 	return strings.EqualFold(pmPreference, pm) // Case insensitive comparison.
 }
+
+// SkipPruningDevSync returns true if dev sync is enabled, or if dev sync status cannot be determined.
+func SkipPruningDevSync(ctx *gcp.Context) bool {
+	devSync, err := env.IsDevSync()
+	if err != nil {
+		ctx.Warnf("Unable to determine dev sync status: %v", err)
+		return true // If we can't determine, we skip pruning to be safe.
+	}
+	if devSync {
+		ctx.Logf("Skipping pruning devDependencies because dev sync is enabled.")
+	}
+	return devSync
+}
+
+// ShouldPrunePnpmBun returns true if dev dependencies should be pruned for pnpm/bun.
+func ShouldPrunePnpmBun(ctx *gcp.Context, pjs *PackageJSON, buildNodeEnv string, nodeEnvPresent bool) bool {
+	if !HasDevDependencies(pjs) {
+		return false
+	}
+	if nodeEnvPresent {
+		if buildNodeEnv != EnvProduction {
+			ctx.Logf("Retaining devDependencies because NODE_ENV=%q.", buildNodeEnv)
+		}
+		return false
+	}
+	if buildNodeEnv != EnvDevelopment {
+		return false
+	}
+	if SkipPruningDevSync(ctx) {
+		return false
+	}
+	// We don't prune if the user is using App Hosting since App Hosting builds don't
+	// rely on the node_modules folder at this point.
+	if env.IsFAH() {
+		return false
+	}
+	return true
+}

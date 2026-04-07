@@ -150,13 +150,7 @@ func pnpmInstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 			}
 		}
 	}
-	shouldPruneDevDependencies := buildNodeEnv == nodejs.EnvDevelopment && !nodeEnvPresent && nodejs.HasDevDependencies(pjs)
-	if shouldPruneDevDependencies {
-		if env.IsFAH() {
-			// We don't prune if the user is using App Hosting since App Hosting builds don't
-			// rely on the node_modules folder at this point.
-			return nil
-		}
+	if nodejs.ShouldPrunePnpmBun(ctx, pjs, buildNodeEnv, nodeEnvPresent) {
 		// If we installed dependencies with NODE_ENV=development and the user didn't explicitly set
 		// NODE_ENV we should prune the devDependencies from the final app image.
 		cmd := []string{"pnpm", "prune", "--prod"}

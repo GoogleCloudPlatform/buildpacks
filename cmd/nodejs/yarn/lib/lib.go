@@ -245,15 +245,7 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 
 		// If there was a gcp-build script we installed all the devDependencies above. We should try to
 		// prune them from the final app image.
-		nodeEnv := nodejs.NodeEnv()
-		if nodejs.NodeEnv() != nodejs.EnvProduction {
-			ctx.Logf("Retaining devDependencies because NODE_ENV=%q", nodeEnv)
-		} else {
-			if env.IsFAH() {
-				// We don't prune if the user is using App Hosting since App Hosting builds don't
-				// rely on the node_modules folder at this point.
-				return nil
-			}
+		if shouldPruneYarn1(ctx) {
 			// For Yarn1, setting `--production=true` causes all `devDependencies` to be deleted.
 			ctx.Logf("Pruning devDependencies")
 			cmd := []string{"yarn", "install", "--ignore-scripts", "--prefer-offline", "--production=true", locationFlag}
@@ -267,6 +259,23 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 	}
 
 	return nil
+}
+
+func shouldPruneYarn1(ctx *gcp.Context) bool {
+	nodeEnv := nodejs.NodeEnv()
+	if nodeEnv != nodejs.EnvProduction {
+		ctx.Logf("Retaining devDependencies because NODE_ENV=%q.", nodeEnv)
+		return false
+	}
+	if nodejs.SkipPruningDevSync(ctx) {
+		return false
+	}
+	if env.IsFAH() {
+		// We don't prune if the user is using App Hosting since App Hosting builds don't
+		// rely on the node_modules folder at this point.
+		return false
+	}
+	return true
 }
 
 func yarn2InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
@@ -300,30 +309,38 @@ func yarn2InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		}
 	}
 
-	// If there are no devDependencies, there is nothing to prune. We are done.
-	if !nodejs.HasDevDependencies(pjs) {
-		return nil
+	if shouldPruneYarn2(ctx, pjs) {
+		// For Yarn2, dependency pruning is via the workspaces plugin.
+		ctx.Logf("Pruning devDependencies")
+		if _, err := ctx.Exec([]string{"yarn", "workspaces", "focus", "--all", "--production"}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
 	}
+	return nil
+}
 
+func shouldPruneYarn2(ctx *gcp.Context, pjs *nodejs.PackageJSON) bool {
+	if !nodejs.HasDevDependencies(pjs) {
+		return false
+	}
 	nodeEnv := nodejs.NodeEnv()
 	if nodeEnv != nodejs.EnvProduction {
-		ctx.Logf("Retaining devDependencies because NODE_ENV=%q", nodeEnv)
-		return nil
+		ctx.Logf("Retaining devDependencies because NODE_ENV=%q.", nodeEnv)
+		return false
+	}
+	if nodejs.SkipPruningDevSync(ctx) {
+		return false
 	}
 	hasWorkPlugin, err := nodejs.HasYarnWorkspacePlugin(ctx)
 	if err != nil {
-		return err
+		ctx.Warnf("Unable to determine if Yarn workspace-tools plugin is installed, skipping devDependencies pruning: %v", err)
+		return false
 	}
 	if !hasWorkPlugin {
 		ctx.Warnf("Keeping devDependencies because the Yarn workspace-tools plugin is not installed. You can add it to your project by running 'yarn plugin import workspace-tools'")
-		return nil
+		return false
 	}
-	// For Yarn2, dependency pruning is via the workspaces plugin.
-	ctx.Logf("Pruning devDependencies")
-	if _, err := ctx.Exec([]string{"yarn", "workspaces", "focus", "--all", "--production"}, gcp.WithUserAttribution); err != nil {
-		return err
-	}
-	return nil
+	return true
 }
 
 func installYarn(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {

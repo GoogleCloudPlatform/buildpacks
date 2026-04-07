@@ -176,11 +176,7 @@ NOTE: Running the default build script can be skipped by passing the empty envir
 			}
 		}
 
-		shouldPrune, err := shouldPrune(ctx, pjs)
-		if err != nil {
-			return err
-		}
-		if shouldPrune {
+		if shouldPrune(ctx, pjs) {
 			// npm prune deletes devDependencies from node_modules
 			if _, err := ctx.Exec([]string{"npm", "prune", "--production"}, gcp.WithUserAttribution); err != nil {
 				return err
@@ -229,25 +225,33 @@ NOTE: Running the default build script can be skipped by passing the empty envir
 	return nil
 }
 
-func shouldPrune(ctx *gcp.Context, pjs *nodejs.PackageJSON) (bool, error) {
+func shouldPrune(ctx *gcp.Context, pjs *nodejs.PackageJSON) bool {
 	// if we are vendoring dependencies, we do not need to prune
 	if nodejs.IsUsingVendoredDependencies() {
-		return false, nil
+		return false
 	}
 
 	// if there are no devDependencies, there is no need to prune.
 	if !nodejs.HasDevDependencies(pjs) {
-		return false, nil
+		return false
 	}
 	if nodeEnv := nodejs.NodeEnv(); nodeEnv != nodejs.EnvProduction {
-		ctx.Logf("Retaining devDependencies because $NODE_ENV=%q.", nodeEnv)
-		return false, nil
+		ctx.Logf("Retaining devDependencies because NODE_ENV=%q.", nodeEnv)
+		return false
+	}
+	if nodejs.SkipPruningDevSync(ctx) {
+		return false
 	}
 	canPrune, err := nodejs.SupportsNPMPrune(ctx)
-	if err == nil && !canPrune {
-		ctx.Warnf("Retaining devDependencies because the version of NPM you are using does not support 'npm prune'.")
+	if err != nil {
+		ctx.Warnf("Unable to determine if npm prune is supported, retaining devDependencies: %v", err)
+		return false
 	}
-	return canPrune, err
+	if !canPrune {
+		ctx.Warnf("Retaining devDependencies because the version of NPM you are using does not support 'npm prune'.")
+		return false
+	}
+	return true
 }
 
 func upgradeNPM(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {

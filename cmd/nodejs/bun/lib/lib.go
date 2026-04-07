@@ -149,11 +149,7 @@ func bunInstallModules(ctx *gcp.Context) error {
 			}
 		}
 	}
-	shouldPruneDevDependencies := buildNodeEnv == nodejs.EnvDevelopment && !nodeEnvPresent && nodejs.HasDevDependencies(pjs)
-	if shouldPruneDevDependencies {
-		if env.IsFAH() {
-			return nil
-		}
+	if nodejs.ShouldPrunePnpmBun(ctx, pjs, buildNodeEnv, nodeEnvPresent) {
 		// If we installed dependencies with NODE_ENV=development and the user didn't explicitly set
 		// NODE_ENV we should prune the DevDependencies from the final app image.
 		ctx.Logf("Pruning DevDependencies.")
