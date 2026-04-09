@@ -648,17 +648,23 @@ type MakerInstaller struct{}
 // InstallTarballIfNotCached for the maker tool only resolves the runtime version (locally if supported)
 // and adds a label. It bypasses the actual download and installation of the runtime tarball.
 func (mi MakerInstaller) InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, versionConstraint string, layer *libcnb.Layer) (bool, error) {
-	version, err := checkLocalRuntimeVersion(ctx, runtime)
-	if err != nil {
-		if errors.Is(err, errUnsupportedRuntime) {
-			return false, gcp.UserErrorf("runtime %s is not supported by the maker tool", runtime)
+	var resolvedVersion string
+	if version.IsExactSemver(versionConstraint) {
+		resolvedVersion = versionConstraint
+	} else {
+		v, err := checkLocalRuntimeVersion(ctx, runtime)
+		if err != nil {
+			if errors.Is(err, errUnsupportedRuntime) {
+				return false, gcp.UserErrorf("runtime %s is not supported by the maker tool", runtime)
+			}
+			return false, gcp.UserErrorf("failed to detect local %s runtime version: %v. Please ensure it is installed and in your PATH", runtime, err)
 		}
-		return false, gcp.UserErrorf("failed to detect local %s runtime version: %v. Please ensure it is installed and in your PATH", runtime, err)
+		resolvedVersion = v
 	}
 
 	// For the maker use case, we only need to resolve the version and add it as a label.
 	// We do not need to download or install the runtime tarball.
-	ctx.AddLabel(localRuntimeVersionLabel, version)
+	ctx.AddLabel(localRuntimeVersionLabel, resolvedVersion)
 	ctx.AddLabel(languageNameLabel, string(runtime))
 	return false, nil
 }
