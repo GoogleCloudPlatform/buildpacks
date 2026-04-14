@@ -87,6 +87,49 @@ func TestReadProjectFile(t *testing.T) {
 	}
 }
 
+func TestProjectFiles(t *testing.T) {
+	d, err := ioutil.TempDir("", "test-project-files")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(d)
+
+	testFiles := []string{
+		"test.csproj",
+		"test.fsproj",
+		"test.vbproj",
+		"other.txt",
+		"sub/another.csproj",
+		"sub/more.txt",
+	}
+	want := []string{
+		filepath.Join(d, "test.csproj"),
+		filepath.Join(d, "test.fsproj"),
+		filepath.Join(d, "test.vbproj"),
+		filepath.Join(d, "sub/another.csproj"),
+	}
+
+	for _, f := range testFiles {
+		dir := filepath.Dir(filepath.Join(d, f))
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("Failed to create dir %s: %v", dir, err)
+		}
+		if err := ioutil.WriteFile(filepath.Join(d, f), []byte("test"), 0644); err != nil {
+			t.Fatalf("Failed to write file %s: %v", f, err)
+		}
+	}
+
+	ctx := gcp.NewContext()
+	got, err := ProjectFiles(ctx, d)
+	if err != nil {
+		t.Fatalf("ProjectFiles got error: %v", err)
+	}
+
+	if diff := cmp.Diff(want, got, cmpopts.SortSlices(func(a, b string) bool { return a < b })); diff != "" {
+		t.Errorf("ProjectFiles returned unexpected diff (-want +got):\n%s", diff)
+	}
+}
+
 func TestRuntimeConfigJSONFiles(t *testing.T) {
 	testCases := []struct {
 		Name                 string

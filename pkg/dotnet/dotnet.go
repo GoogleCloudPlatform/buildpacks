@@ -20,8 +20,10 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
@@ -47,19 +49,25 @@ var (
 		runtime.Ubuntu2204: "8.*.*",
 		runtime.Ubuntu2404: "10.*.*",
 	}
+	projRe = regexp.MustCompile(`(?i)\.(cs|fs|vb)proj$`)
 )
 
 // ProjectFiles finds all project files supported by dotnet.
 func ProjectFiles(ctx *gcp.Context, dir string) ([]string, error) {
-	result, err := ctx.Exec([]string{"find", dir, "-regex", `.*\.\(cs\|fs\|vb\)proj`}, gcp.WithUserTimingAttribution)
+	var files []string
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && projRe.MatchString(d.Name()) {
+			files = append(files, path)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	stdout := strings.TrimSpace(result.Stdout)
-	if stdout == "" {
-		return nil, nil
-	}
-	return strings.Split(stdout, "\n"), nil
+	return files, nil
 }
 
 // Project represents a .NET project file.
