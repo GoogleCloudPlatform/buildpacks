@@ -24,8 +24,9 @@ import (
 	"sync"
 	"time"
 
+	"errors"
+
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
-	"golang.org/x/sys/unix"
 )
 
 var (
@@ -222,7 +223,7 @@ func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
 		if ee, ok := err.(*exec.ExitError); ok {
 			// The command returned a non-zero result.
 			exitCode = ee.ExitCode()
-		} else if pe, ok := err.(*os.PathError); ok && pe.Err == unix.ENOENT {
+		} else if pe, ok := err.(*os.PathError); ok && errors.Is(pe.Err, os.ErrNotExist) {
 			// ENOENT normally occurs if the command cannot
 			// be found, but also occurs with scripts using
 			// CR-LF line endings.  Unix uses LF as its line
