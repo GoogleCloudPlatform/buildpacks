@@ -255,3 +255,27 @@ func TestEnsureUnixLineEndings(t *testing.T) {
 		})
 	}
 }
+
+func TestCopyFile(t *testing.T) {
+	t.Run("copy to self does not truncate", func(t *testing.T) {
+		dir := t.TempDir()
+		fp := filepath.Join(dir, "file.txt")
+		content := "hello world"
+		if err := os.WriteFile(fp, []byte(content), 0644); err != nil {
+			t.Fatalf("error writing file %q: %v", fp, err)
+		}
+
+		err := CopyFile(fp, fp)
+		if err != nil {
+			t.Fatalf("CopyFile to self failed: %v", err)
+		}
+
+		got, err := os.ReadFile(fp)
+		if err != nil {
+			t.Fatalf("error reading file %q: %v", fp, err)
+		}
+		if string(got) != content {
+			t.Errorf("CopyFile to self truncated file, got %q, want %q", string(got), content)
+		}
+	})
+}

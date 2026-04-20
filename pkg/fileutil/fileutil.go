@@ -100,6 +100,18 @@ func moveOrCopyPath(moveOrCopy action, destPath, srcPath string, condition func(
 
 // CopyFile copies a file from src to dest
 func CopyFile(dest, src string) error {
+	absSrc, err := filepath.Abs(src)
+	if err != nil {
+		return err
+	}
+	absDest, err := filepath.Abs(dest)
+	if err != nil {
+		return err
+	}
+	if absSrc == absDest {
+		return nil // early exit to prevent destructive self-truncation
+	}
+
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return err
