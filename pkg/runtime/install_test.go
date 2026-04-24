@@ -1319,3 +1319,107 @@ func TestIsZstdSupportedRuntime(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckLocalRuntimeVersion(t *testing.T) {
+	testCases := []struct {
+		name       string
+		runtime    InstallableRuntime
+		mocks      []*mockprocess.Mock
+		want       string
+		wantErr    bool
+		wantErrStr string
+	}{
+		{
+			name:    "success python3",
+			runtime: Python,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`python3 -c.*`, mockprocess.WithStdout("3.10.1\n")),
+			},
+			want: "3.10.1",
+		},
+		{
+			name:    "fallback to python",
+			runtime: Python,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`python3 -c.*`, mockprocess.WithExitCode(1)),
+				mockprocess.New(`python -c.*`, mockprocess.WithStdout("3.10.1\n")),
+			},
+			want: "3.10.1",
+		},
+		{
+			name:    "empty output handled",
+			runtime: Python,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`python3 -c.*`, mockprocess.WithStdout("")),
+				mockprocess.New(`python -c.*`, mockprocess.WithStdout("")),
+			},
+			wantErr:    true,
+			wantErrStr: "returned empty output",
+		},
+		{
+			name:    "all commands fail",
+			runtime: Python,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`python3 -c.*`, mockprocess.WithExitCode(1), mockprocess.WithStderr("python3 not found")),
+				mockprocess.New(`python -c.*`, mockprocess.WithExitCode(1), mockprocess.WithStderr("python not found")),
+			},
+			wantErr:    true,
+			wantErrStr: "failed to check local python version using any candidate command",
+		},
+		{
+			name:    "unsupported runtime",
+			runtime: "unsupported",
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var opts []gcp.ContextOption
+			if len(tc.mocks) > 0 {
+				eCmd, err := mockprocess.NewExecCmd(tc.mocks...)
+				if err != nil {
+					t.Fatalf("creating mock exec command: %v", err)
+				}
+				opts = append(opts, gcp.WithExecCmd(eCmd))
+			}
+			ctx := gcpbuildpack.NewContext(opts...)
+
+			got, err := checkLocalRuntimeVersion(ctx, tc.runtime)
+
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("checkLocalRuntimeVersion() got nil error, want error")
+				}
+				if tc.wantErrStr != "" && !strings.Contains(err.Error(), tc.wantErrStr) {
+					t.Errorf("checkLocalRuntimeVersion() error = %v, want to contain %q", err, tc.wantErrStr)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("checkLocalRuntimeVersion() unexpected error: %v", err)
+				}
+				if got != tc.want {
+					t.Errorf("checkLocalRuntimeVersion() = %q, want %q", got, tc.want)
+				}
+			}
+		})
+	}
+}
+
+func TestCleanVersion(t *testing.T) {
+	testCases := []struct {
+		input string
+		want  string
+	}{
+		{"Python 3.10.12", "3.10.12"},
+		{"v16.20.0", "16.20.0"},
+		{" 3.10.12 \n", "3.10.12"},
+		{"3.10.12", "3.10.12"},
+	}
+	for _, tc := range testCases {
+		got := cleanVersion(tc.input)
+		if got != tc.want {
+			t.Errorf("cleanVersion(%q) = %q, want %q", tc.input, got, tc.want)
+		}
+	}
+}

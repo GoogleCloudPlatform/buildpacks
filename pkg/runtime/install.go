@@ -130,9 +130,19 @@ const (
 	gcpUserAgent = "GCPBuildpacks"
 )
 
-var localRuntimeVersionCmds = map[InstallableRuntime][]string{
-	Python: {"python3", "-c", "import platform; print(platform.python_version())"},
-	Nodejs: {"node", "-p", "process.versions.node"},
+var localRuntimeVersionCmds = map[InstallableRuntime][][]string{
+	Python: {
+		{"python3", "-c", "import platform; print(platform.python_version())"},
+		{"python", "-c", "import platform; print(platform.python_version())"},
+		{"python3", "--version"},
+		{"python", "--version"},
+	},
+	Nodejs: {
+		{"node", "-p", "process.versions.node"},
+		{"nodejs", "-p", "process.versions.node"},
+		{"node", "--version"},
+		{"nodejs", "--version"},
+	},
 }
 
 var errUnsupportedRuntime = errors.New("unsupported runtime for local check")
@@ -621,22 +631,34 @@ func runtimeMatchesInstallableRuntime(installableRuntime InstallableRuntime) boo
 	}
 }
 
+func cleanVersion(v string) string {
+	v = strings.TrimSpace(v)
+	v = strings.TrimPrefix(v, "Python ")
+	v = strings.TrimPrefix(v, "v")
+	return v
+}
+
 func checkLocalRuntimeVersion(ctx *gcp.Context, runtime InstallableRuntime) (string, error) {
 	// TODO(b/481611857): Support other runtimes for local version check.
-	cmd, ok := localRuntimeVersionCmds[runtime]
+	cmds, ok := localRuntimeVersionCmds[runtime]
 	if !ok {
 		return "", fmt.Errorf("%s: %w", runtime, errUnsupportedRuntime)
 	}
 
-	result, err := ctx.Exec(cmd, gcp.WithUserAttribution)
-	if err != nil {
-		return "", fmt.Errorf("checking local %s version: %w", runtime, err)
+	var lastErr error
+	for _, cmd := range cmds {
+		result, err := ctx.Exec(cmd, gcp.WithUserAttribution)
+		if err == nil {
+			version := cleanVersion(result.Stdout)
+			if version != "" {
+				return version, nil
+			}
+			err = fmt.Errorf("command %v returned empty output", cmd)
+		}
+		lastErr = err
 	}
-	version := strings.TrimSpace(result.Stdout)
-	if version == "" {
-		return "", fmt.Errorf("local %s version check returned empty string", runtime)
-	}
-	return version, nil
+
+	return "", fmt.Errorf("failed to check local %s version using any candidate command: %w", runtime, lastErr)
 }
 
 // MakerInstaller implements the Installer interface for the maker tool.
