@@ -8,7 +8,7 @@ package(default_visibility = [
     "//maker:__pkg__",
 ])
 
-exports_files(["google.22.builder.toml"])
+exports_files(["google.24.builder.toml"])
 
 BUILDPACKS = [
     "//cmd/config/entrypoint:entrypoint.tgz",
@@ -63,6 +63,14 @@ GROUPS = {
         "//cmd/nodejs/yarn:yarn.tgz",
         "//cmd/nodejs/pnpm:pnpm.tgz",
         "//cmd/nodejs/bun:bun.tgz",
+        "//cmd/nodejs/firebasenextjs:firebasenextjs.tgz",
+        "//cmd/nodejs/firebaseangular:firebaseangular.tgz",
+        "//cmd/nodejs/firebasebundle:firebasebundle.tgz",
+        "//cmd/nodejs/firebasenx:firebasenx.tgz",
+        "//cmd/nodejs/turborepo:turborepo.tgz",
+    ],
+    "firebase": [
+        "//cmd/firebase/bundle:firebasebundle_v2.tgz",
     ],
     "python": [
         "//cmd/python/functions_framework:functions_framework.tgz",
@@ -142,6 +150,14 @@ GROUPS_USING_RUNNER = {
         "//cmd/nodejs/yarn:yarn_using_runner.tgz",
         "//cmd/nodejs/pnpm:pnpm_using_runner.tgz",
         "//cmd/nodejs/bun:bun_using_runner.tgz",
+        "//cmd/nodejs/firebasenextjs:firebasenextjs_using_runner.tgz",
+        "//cmd/nodejs/firebaseangular:firebaseangular_using_runner.tgz",
+        "//cmd/nodejs/firebasebundle:firebasebundle_using_runner.tgz",
+        "//cmd/nodejs/firebasenx:firebasenx_using_runner.tgz",
+        "//cmd/nodejs/turborepo:turborepo_using_runner.tgz",
+    ],
+    "firebase": [
+        "//cmd/firebase/bundle:firebasebundle_v2_using_runner.tgz",
     ],
     "python": [
         "//cmd/python/functions_framework:functions_framework_using_runner.tgz",
