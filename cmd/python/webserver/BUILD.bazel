@@ -7,9 +7,6 @@ licenses(["notice"])
 
 buildpack(
     name = "webserver",
-    srcs = [
-        "requirements.txt",
-    ],
     executables = [
         ":main",
     ],
@@ -22,9 +19,6 @@ buildpack(
 
 buildpack_using_runner(
     name = "webserver_using_runner",
-    srcs = [
-        "requirements.txt",
-    ],
     buildpack_id = "google.python.webserver",
     prefix = "python",
     version = "0.9.1",

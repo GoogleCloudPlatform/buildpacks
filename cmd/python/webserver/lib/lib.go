@@ -17,6 +17,7 @@
 package lib
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,6 +26,9 @@ import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
 )
+
+//go:embed requirements.txt
+var requirementsContent string
 
 const (
 	layerName = "gunicorn"
@@ -65,7 +69,12 @@ func BuildFn(ctx *gcp.Context) error {
 
 	// The pip install is performed by the pip buildpack; see python.InstallRequirements.
 	ctx.Debugf("Adding webserver requirements.txt to the list of requirements files to install.")
-	r := filepath.Join(ctx.BuildpackRoot(), "requirements.txt")
+
+	r := filepath.Join(l.Path, "requirements.txt")
+	if err := os.WriteFile(r, []byte(requirementsContent), 0644); err != nil {
+		return fmt.Errorf("writing requirements.txt to layer: %w", err)
+	}
+
 	l.BuildEnvironment.Append(python.RequirementsFilesEnv, string(os.PathListSeparator), r)
 	return nil
 }
