@@ -1,3 +1,4 @@
+# Test fixture only — do not install directly with pip
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
