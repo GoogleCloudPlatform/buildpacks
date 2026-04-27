@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	stdruntime "runtime"
 	"strings"
 	"time"
 
@@ -342,6 +343,9 @@ func PipTargetDir() string {
 func (i MakerPipInstaller) Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
 	return installDependenciesToTarget(ctx, l, reqs, "pip", func(req string) []string {
 		cmd := basePipInstallArgs(req)
+		if stdruntime.GOOS == "windows" && len(cmd) > 0 && cmd[0] == "python3" {
+			cmd[0] = "python"
+		}
 		return appendVendoringFlags(cmd)
 	})
 }
