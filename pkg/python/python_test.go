@@ -624,3 +624,34 @@ func TestBaseuvPipInstallArgs(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeRequirementsFiles(t *testing.T) {
+	dir := t.TempDir()
+
+	file1 := filepath.Join(dir, "req1.txt")
+	file2 := filepath.Join(dir, "req2.txt")
+	dest := filepath.Join(dir, "merged.txt")
+
+	if err := os.WriteFile(file1, []byte("flask==2.0.0"), 0644); err != nil {
+		t.Fatalf("writing file1: %v", err)
+	}
+	if err := os.WriteFile(file2, []byte("gunicorn==20.1.0"), 0644); err != nil {
+		t.Fatalf("writing file2: %v", err)
+	}
+
+	reqs := []string{file1, file2}
+	err := mergeRequirementsFiles(reqs, dest)
+	if err != nil {
+		t.Fatalf("mergeRequirementsFiles failed: %v", err)
+	}
+
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("reading merged file: %v", err)
+	}
+
+	want := "flask==2.0.0\ngunicorn==20.1.0\n"
+	if diff := cmp.Diff(want, string(got)); diff != "" {
+		t.Errorf("mergeRequirementsFiles(%v) returned diff (-want +got):\n%s", reqs, diff)
+	}
+}

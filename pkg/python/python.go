@@ -712,14 +712,58 @@ func resolvePipTargetPaths(ctx *gcp.Context) (string, string) {
 	return targetDir, targetPath
 }
 
-func installRequirementsToTarget(ctx *gcp.Context, targetPath string, reqs []string, cmdBuilder func(string) []string) error {
-	for _, req := range reqs {
-		cmd := cmdBuilder(req)
-		cmd = append(cmd, "--target", targetPath)
+// mergeRequirementsFiles reads all files in reqs and appends their contents to dest file.
+func mergeRequirementsFiles(reqs []string, dest string) error {
+	destFile, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open destination file: %w", err)
+	}
+	defer destFile.Close()
 
-		if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
-			return fmt.Errorf("installing dependencies from %s: %w", req, err)
+	for _, req := range reqs {
+		content, err := os.ReadFile(req)
+		if err != nil {
+			return fmt.Errorf("failed to read requirements file %q: %w", req, err)
+		}
+		if _, err := destFile.Write(content); err != nil {
+			return fmt.Errorf("failed to write to destination file: %w", err)
+		}
+		// Add a newline to ensure files are separated correctly
+		if _, err := destFile.Write([]byte("\n")); err != nil {
+			return err
 		}
 	}
+	return nil
+}
+
+func installRequirementsToTarget(ctx *gcp.Context, targetPath string, reqs []string, cmdBuilder func(string) []string) error {
+	if len(reqs) == 0 {
+		return nil
+	}
+
+	reqFile := reqs[0]
+
+	if len(reqs) > 1 {
+		// Create a temporary file to merge all requirements
+		tmpFile, err := os.CreateTemp("", "merged_requirements_*.txt")
+		if err != nil {
+			return fmt.Errorf("failed to create temp file for requirements: %w", err)
+		}
+		tmpFile.Close()
+		defer os.Remove(tmpFile.Name())
+
+		if err := mergeRequirementsFiles(reqs, tmpFile.Name()); err != nil {
+			return err
+		}
+		reqFile = tmpFile.Name()
+	}
+
+	cmd := cmdBuilder(reqFile)
+	cmd = append(cmd, "--target", targetPath)
+
+	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
+		return fmt.Errorf("installing dependencies: %w", err)
+	}
+
 	return nil
 }
