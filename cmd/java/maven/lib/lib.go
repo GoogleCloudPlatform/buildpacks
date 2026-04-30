@@ -28,14 +28,16 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 )
 
 const (
-	// TODO(b/151198698): Automate Maven version updates.
-	mavenVersion = "3.9.11"
-	mavenLayer   = "maven"
-	m2Layer      = "m2"
-	versionKey   = "version"
+	// TODO(b/151198698): Remove this once we confirm pinning works as expected in all environments.
+	defaultMavenVersion = "3.9.11"
+	mavenLayer          = "maven"
+	m2Layer             = "m2"
+	versionKey          = "version"
 )
 
 var (
@@ -209,6 +211,7 @@ func installMaven(ctx *gcp.Context) (string, error) {
 
 	// Check the metadata in the cache layer to determine if we need to proceed.
 	metaVersion := ctx.GetMetadata(mvnl, versionKey)
+	mavenVersion := resolveMavenVersion(ctx)
 	if mavenVersion == metaVersion {
 		ctx.CacheHit(mavenLayer)
 		ctx.Logf("Maven cache hit, skipping installation.")
@@ -221,7 +224,7 @@ func installMaven(ctx *gcp.Context) (string, error) {
 
 	// Download and install maven in layer.
 	ctx.Logf("Installing Maven v%s", mavenVersion)
-	archiveURL, err := getMavenURL(ctx)
+	archiveURL, err := resolveMavenURL(ctx, mavenVersion)
 	if err != nil {
 		return "", fmt.Errorf("failed to get Maven: %w", err)
 	}
@@ -235,7 +238,18 @@ func installMaven(ctx *gcp.Context) (string, error) {
 	return filepath.Join(mvnl.Path, "bin", "mvn"), nil
 }
 
-func getMavenURL(ctx *gcp.Context) (string, error) {
+func resolveMavenVersion(ctx *gcp.Context) string {
+	latestVersion, err := tooling.ResolveToolVersion("java", "maven", os.Getenv(env.RuntimeVersion), runtime.OSForStack(ctx))
+	if err != nil || latestVersion == "" {
+		ctx.Warnf("Could not resolve pinned maven version, falling back to latest: %v, %v", defaultMavenVersion, err)
+		latestVersion = defaultMavenVersion
+	} else {
+		ctx.Logf("Using Maven version %s from tooling.ResolveToolVersion", latestVersion)
+	}
+	return latestVersion
+}
+
+func resolveMavenURL(ctx *gcp.Context, mavenVersion string) (string, error) {
 	for _, url := range mavenURLs {
 		archiveURL := fmt.Sprintf(url, mavenVersion)
 		curlHead := fmt.Sprintf("curl --head --fail --silent --location %s", archiveURL)
