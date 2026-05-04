@@ -655,3 +655,36 @@ func TestMergeRequirementsFiles(t *testing.T) {
 		t.Errorf("mergeRequirementsFiles(%v) returned diff (-want +got):\n%s", reqs, diff)
 	}
 }
+
+func TestAdaptEntrypoint_Windows(t *testing.T) {
+	testCases := []struct {
+		name      string
+		cmd       []string
+		scriptCmd []string
+		want      []string
+	}{
+		{
+			name: "gunicorn_windows",
+			cmd:  []string{"gunicorn", "-b", ":8080", "main:app"},
+			want: []string{"python", "lib\\bin\\gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "uvicorn_windows",
+			cmd:  []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+			want: []string{"python", "lib\\bin\\uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext(gcp.WithCapability(EntrypointAdapterCapability, &MakerEntrypointAdapter{TargetPlatform: "windows/amd64"}))
+			got, err := AdaptEntrypoint(ctx, tc.cmd, tc.scriptCmd)
+			if err != nil {
+				t.Fatalf("AdaptEntrypoint(%v) failed: %v", tc.cmd, err)
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("AdaptEntrypoint(%v) returned diff (-want +got):\n%s", tc.cmd, diff)
+			}
+		})
+	}
+}
