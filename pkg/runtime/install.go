@@ -61,6 +61,32 @@ var (
 	fallbackRegion            = "us"
 )
 
+// TODO(hemantgoyal): Extract this to a seperate file and use in TPC shuttle as well.
+var packagesWithMajorVersionGrouping = map[string]bool{
+	"aspnetcore":   true,
+	"dotnetsdk":    true,
+	"canonicaljdk": true,
+	"nginx":        true,
+	"nodejs":       true,
+	"openjdk":      true,
+	"pid1":         true,
+}
+
+func extractMajorVersion(fullVersion string, language string) string {
+	if language == "jetty" {
+		return ""
+	}
+	if packagesWithMajorVersionGrouping[language] {
+		parts := strings.SplitN(fullVersion, ".", 2)
+		return parts[0]
+	}
+	parts := strings.SplitN(fullVersion, ".", 3)
+	if len(parts) >= 2 {
+		return strings.Join(parts[:2], ".")
+	}
+	return ""
+}
+
 // InstallableRuntime is used to hold runtimes information
 type InstallableRuntime string
 
@@ -322,12 +348,22 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 
 	// TODO(b/466126787): Add Golang support for TPC. Combine this block with the else condition once Golang support is added.
 	if tpc.IsTPC() {
+		majorVersion := extractMajorVersion(version, string(runtime))
 		hostname, err := arHostname(ctx, region)
 		if err != nil {
 			return false, err
 		}
 		url := runtimeImageURL(hostname, registry, osName, runtime, version)
 		if err := fetch.ARImage(url, "", layer.Path, stripComponents, ctx); err != nil {
+			if majorVersion != "" {
+				versionFallback := "latest_" + majorVersion
+				ctx.Logf("Failed to download %s v%s, trying fallback %s.", runtimeName, version, versionFallback)
+				urlFallback := runtimeImageURL(hostname, registry, osName, runtime, versionFallback)
+				if err := fetch.ARImage(urlFallback, "", layer.Path, stripComponents, ctx); err == nil {
+					version = versionFallback
+					goto success
+				}
+			}
 			ctx.Warnf("Failed to download %s version %s osName %s from artifact registry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
 			return false, err
 		}
@@ -378,6 +414,7 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 		}
 	}
 
+success:
 	ctx.SetMetadata(layer, stackKey, ctx.StackID())
 	ctx.SetMetadata(layer, versionKey, version)
 

@@ -1319,6 +1319,96 @@ func TestIsZstdSupportedRuntime(t *testing.T) {
 		})
 	}
 }
+func TestInstallTarballFallback(t *testing.T) {
+	testCases := []struct {
+		name               string
+		runtime            InstallableRuntime
+		versionConstraint  string
+		resolvedVersion    string
+		runtimeImageRegion string
+		tpcTarballProject  string
+		tpcHostname        string
+		wantVersion        string
+		wantErr            bool
+	}{
+		{
+			name:               "fallback_on_TPC_AR_failure",
+			runtime:            Nodejs,
+			versionConstraint:  "16.20.0",
+			resolvedVersion:    "16.20.0",
+			runtimeImageRegion: "u-us-prp1",
+			tpcTarballProject:  "tpczero-system/serverless-runtimes-tpc",
+			tpcHostname:        "docker.pkg-tpczero.goog",
+			wantVersion:        "latest_16",
+		},
+		{
+			name:               "no_fallback_on_non_TPC_AR_failure",
+			runtime:            Nodejs,
+			versionConstraint:  "16.20.0",
+			resolvedVersion:    "16.20.0",
+			runtimeImageRegion: "us-central1",
+			wantVersion:        "latest_16", // Mock will fail for 16.20.0 and only succeed for latest_16
+			wantErr:            true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext(gcp.WithStackID("google.22"))
+			t.Setenv(env.RuntimeImageRegion, tc.runtimeImageRegion)
+			if tc.tpcTarballProject != "" {
+				t.Setenv(env.TPCTarballProject, tc.tpcTarballProject)
+			} else if old, ok := os.LookupEnv(env.TPCTarballProject); ok {
+				os.Unsetenv(env.TPCTarballProject)
+				t.Cleanup(func() { os.Setenv(env.TPCTarballProject, old) })
+			}
+			if tc.tpcHostname != "" {
+				t.Setenv(env.TPCHostname, tc.tpcHostname)
+			} else if old, ok := os.LookupEnv(env.TPCHostname); ok {
+				os.Unsetenv(env.TPCHostname)
+				t.Cleanup(func() { os.Setenv(env.TPCHostname, old) })
+			}
+
+			origARImage := fetch.ARImage
+			origARVersions := fetch.ARVersions
+			defer func() {
+				fetch.ARImage = origARImage
+				fetch.ARVersions = origARVersions
+			}()
+
+			fetch.ARVersions = func(url, fallbackURL string, ctx *gcp.Context) ([]string, error) {
+				return []string{tc.resolvedVersion}, nil
+			}
+
+			fetch.ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error {
+				if strings.Contains(url, tc.wantVersion) {
+					return nil
+				}
+				return fmt.Errorf("simulated failure for %s", url)
+			}
+
+			layer := &libcnb.Layer{
+				Path:     t.TempDir(),
+				Metadata: map[string]any{},
+			}
+
+			_, err := InstallTarballIfNotCached(ctx, tc.runtime, tc.versionConstraint, layer)
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("InstallTarballIfNotCached succeeded, want error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("InstallTarballIfNotCached failed: %v", err)
+			}
+
+			if layer.Metadata[versionKey] != tc.wantVersion {
+				t.Errorf("Metadata.version = %q, want %q", layer.Metadata[versionKey], tc.wantVersion)
+			}
+		})
+	}
+}
 
 func TestCheckLocalRuntimeVersion(t *testing.T) {
 	testCases := []struct {
