@@ -407,15 +407,16 @@ func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
 	}
 }
 
-func TestIsKeyUserDefined(t *testing.T) {
+func TestGetEnvVar(t *testing.T) {
 	testCases := []struct {
 		desc             string
 		key              string
 		appHostingSchema AppHostingSchema
-		wantBool         bool
+		wantEnvVar       EnvironmentVariable
+		wantFound        bool
 	}{
 		{
-			desc: "Return true when FIREBASE_CONFIG is user defined",
+			desc: "Return env var when it is user defined",
 			key:  "FIREBASE_CONFIG",
 			appHostingSchema: AppHostingSchema{
 				Env: []EnvironmentVariable{
@@ -423,25 +424,30 @@ func TestIsKeyUserDefined(t *testing.T) {
 					EnvironmentVariable{Variable: "FIREBASE_CONFIG", Value: fmt.Sprintf(`{"apiKey":%q,"appId":%q}`, "myApiKey", "myAppId")},
 				},
 			},
-			wantBool: true,
+			wantEnvVar: EnvironmentVariable{Variable: "FIREBASE_CONFIG", Value: fmt.Sprintf(`{"apiKey":%q,"appId":%q}`, "myApiKey", "myAppId")},
+			wantFound:  true,
 		},
 		{
-			desc: "Return false when FIREBASE_CONFIG is not user defined",
+			desc: "Return nothing when it is not user defined",
 			key:  "FIREBASE_CONFIG",
 			appHostingSchema: AppHostingSchema{
 				Env: []EnvironmentVariable{
 					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
 				},
 			},
-			wantBool: false,
+			wantEnvVar: EnvironmentVariable{},
+			wantFound:  false,
 		},
 	}
 
 	for _, test := range testCases {
-		gotBool := IsKeyUserDefined(&test.appHostingSchema, test.key)
+		gotEnvVar, gotFound := GetEnvVar(&test.appHostingSchema, test.key)
 
-		if gotBool != test.wantBool {
-			t.Errorf("IsKeyUserDefined(%q) = %v, want %v", test.desc, gotBool, test.wantBool)
+		if gotFound != test.wantFound {
+			t.Errorf("GetEnvVar(%q) found = %v, want %v", test.desc, gotFound, test.wantFound)
+		}
+		if diff := cmp.Diff(test.wantEnvVar, gotEnvVar); diff != "" {
+			t.Errorf("GetEnvVar(%q) env var diff (-want +got):\n%s", test.desc, diff)
 		}
 	}
 }

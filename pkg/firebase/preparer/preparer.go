@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
@@ -44,6 +45,9 @@ type Options struct {
 	ServerSideEnvVars                 string
 	ApphostingPreprocessedPathForPack string
 }
+
+const ngTrustProxyHeaders = "NG_TRUST_PROXY_HEADERS"
+const expectedProxyHeaderValue = "X-Forwarded-Host"
 
 // Prepare performs pre-build logic for App Hosting backends including:
 // * Reading, sanitizing, and writing user-defined environment variables in apphosting.yaml to a new file.
@@ -72,14 +76,14 @@ func Prepare(ctx context.Context, opts Options) error {
 	}
 
 	// Add FIREBASE_CONFIG env var for Admin SDK AutoInit, only if it is not already user-defined.
-	if !apphostingschema.IsKeyUserDefined(&appHostingYAML, "FIREBASE_CONFIG") {
+	if _, found := apphostingschema.GetEnvVar(&appHostingYAML, "FIREBASE_CONFIG"); !found {
 		if opts.FirebaseConfig != "" {
 			appHostingYAML.Env = append(appHostingYAML.Env, apphostingschema.EnvironmentVariable{Variable: "FIREBASE_CONFIG", Value: opts.FirebaseConfig, Source: apphostingschema.SourceFirebaseSystem})
 		}
 	}
 
 	// Add FIREBASE_WEBAPP_CONFIG env var for Client SDK AutoInit, only if it is not already user-defined.
-	if !apphostingschema.IsKeyUserDefined(&appHostingYAML, "FIREBASE_WEBAPP_CONFIG") {
+	if _, found := apphostingschema.GetEnvVar(&appHostingYAML, "FIREBASE_WEBAPP_CONFIG"); !found {
 		if opts.FirebaseWebappConfig != "" {
 			appHostingYAML.Env = append(appHostingYAML.Env, apphostingschema.EnvironmentVariable{Variable: "FIREBASE_WEBAPP_CONFIG", Value: opts.FirebaseWebappConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseSystem})
 		}
@@ -93,6 +97,26 @@ func Prepare(ctx context.Context, opts Options) error {
 		}
 
 		appHostingYAML.Env = apphostingschema.MergeEnvVars(appHostingYAML.Env, parsedServerSideEnvVars)
+	}
+
+	// NG_TRUST_PROXY_HEADERS is used by Angular Universal applications to determine which proxy headers to trust.
+	// We inject it here so that it is available to users by default. If the user provides this env var,
+	// we validate its value and use it if correct.
+	if ev, found := apphostingschema.GetEnvVar(&appHostingYAML, ngTrustProxyHeaders); found {
+		if ev.Value != expectedProxyHeaderValue {
+			return fmt.Errorf("invalid value for %s (Angular trust proxy headers): got %q, want %q", ngTrustProxyHeaders, ev.Value, expectedProxyHeaderValue)
+		}
+
+		if len(ev.Availability) > 0 && !slices.Contains(ev.Availability, "RUNTIME") {
+			return fmt.Errorf("user-defined environment variable %s must include RUNTIME in its availability", ngTrustProxyHeaders)
+		}
+	} else {
+		appHostingYAML.Env = append(appHostingYAML.Env, apphostingschema.EnvironmentVariable{
+			Variable:     ngTrustProxyHeaders,
+			Value:        expectedProxyHeaderValue,
+			Source:       apphostingschema.SourceFirebaseSystem,
+			Availability: []string{"RUNTIME"},
+		})
 	}
 
 	apphostingschema.Sanitize(&appHostingYAML)

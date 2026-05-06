@@ -47,6 +47,8 @@ func TestPrepare(t *testing.T) {
 		serverSideEnvVars  []apphostingschema.EnvironmentVariable
 		wantEnvMap         map[string]string
 		wantSchema         apphostingschema.AppHostingSchema
+		wantErr            bool
+		wantErrMsg         string
 	}{
 		{
 			desc:               "properly prepare apphosting.yaml",
@@ -94,6 +96,7 @@ func TestPrepare(t *testing.T) {
 					{Variable: "VERBOSE_API_KEY", Secret: latestSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
 					{Variable: "PINNED_VERBOSE_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
 					{Variable: "STAGING_SECRET_VARIABLE", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: "apphosting.staging.yaml"},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 				},
 			},
 		},
@@ -143,6 +146,7 @@ func TestPrepare(t *testing.T) {
 					{Variable: "VERBOSE_API_KEY", Secret: latestSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
 					{Variable: "PINNED_VERBOSE_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
 					{Variable: "STAGING_SECRET_VARIABLE", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: "apphosting.staging.yaml"},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 				},
 			},
 		},
@@ -169,6 +173,7 @@ func TestPrepare(t *testing.T) {
 					{Variable: "STAGING_SECRET_VARIABLE", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: "apphosting.staging.yaml"},
 					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseSystem},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 				},
 			},
 		},
@@ -195,6 +200,7 @@ func TestPrepare(t *testing.T) {
 					{Variable: "STAGING_SECRET_VARIABLE", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: "apphosting.staging.yaml"},
 					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseSystem},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 				},
 			},
 		},
@@ -211,6 +217,7 @@ func TestPrepare(t *testing.T) {
 				Env: []apphostingschema.EnvironmentVariable{
 					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseSystem},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 				},
 			},
 		},
@@ -262,6 +269,7 @@ func TestPrepare(t *testing.T) {
 					{Variable: "PINNED_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
 					{Variable: "VERBOSE_API_KEY", Secret: latestSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
 					{Variable: "PINNED_VERBOSE_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 				},
 			},
 		},
@@ -313,6 +321,7 @@ func TestPrepare(t *testing.T) {
 					{Variable: "PINNED_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
 					{Variable: "VERBOSE_API_KEY", Secret: latestSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
 					{Variable: "PINNED_VERBOSE_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 				},
 			},
 		},
@@ -333,6 +342,7 @@ func TestPrepare(t *testing.T) {
 					{Variable: "SERVER_SIDE_VAR", Value: "I'm a server side var!", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseConsole}, // This var is only defined server-side.
 					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseSystem},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 				},
 			},
 		},
@@ -350,6 +360,7 @@ func TestPrepare(t *testing.T) {
 				Env: []apphostingschema.EnvironmentVariable{
 					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseSystem},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 				},
 			},
 		},
@@ -397,6 +408,7 @@ func TestPrepare(t *testing.T) {
 					{Variable: "PINNED_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
 					{Variable: "VERBOSE_API_KEY", Secret: latestSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
 					{Variable: "PINNED_VERBOSE_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 				},
 			},
 		},
@@ -415,6 +427,7 @@ func TestPrepare(t *testing.T) {
 				Env: []apphostingschema.EnvironmentVariable{
 					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseSystem},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 				},
 			},
 			wantEnvMap: map[string]string{
@@ -437,6 +450,7 @@ func TestPrepare(t *testing.T) {
 				Env: []apphostingschema.EnvironmentVariable{
 					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseSystem},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 				},
 			},
 			wantEnvMap: map[string]string{
@@ -464,6 +478,7 @@ func TestPrepare(t *testing.T) {
 				Env: []apphostingschema.EnvironmentVariable{
 					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseSystem},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 				},
 			},
 			wantEnvMap: map[string]string{
@@ -491,12 +506,89 @@ func TestPrepare(t *testing.T) {
 				Env: []apphostingschema.EnvironmentVariable{
 					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseSystem},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 				},
 			},
 			wantEnvMap: map[string]string{
 				"FIREBASE_CONFIG":        serverProvidedFirebaseConfig,
 				"FIREBASE_WEBAPP_CONFIG": serverProvidedFirebaseWebAppConfig,
 			},
+		},
+
+		{
+			desc:              "accepts correct user provided NG_TRUST_PROXY_HEADERS",
+			projectID:         "test-project",
+			outputFilePathEnv: "outputEnv",
+			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
+				{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}},
+			},
+			wantEnvMap: map[string]string{
+				"FIREBASE_CONFIG":        serverProvidedFirebaseConfig,
+				"FIREBASE_WEBAPP_CONFIG": serverProvidedFirebaseWebAppConfig,
+			},
+			wantSchema: apphostingschema.AppHostingSchema{
+				Env: []apphostingschema.EnvironmentVariable{
+					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
+					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseSystem},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseConsole},
+				},
+			},
+		},
+		{
+			desc:              "errors if user provided NG_TRUST_PROXY_HEADERS lacks RUNTIME availability",
+			projectID:         "test-project",
+			outputFilePathEnv: "outputEnv",
+			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
+				{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"BUILD"}},
+			},
+			wantErr:    true,
+			wantErrMsg: "user-defined environment variable NG_TRUST_PROXY_HEADERS must include RUNTIME in its availability",
+		},
+		{
+			desc:              "adds default NG_TRUST_PROXY_HEADERS when not provided",
+			projectID:         "test-project",
+			outputFilePathEnv: "outputEnv",
+			wantEnvMap: map[string]string{
+				"FIREBASE_CONFIG":        serverProvidedFirebaseConfig,
+				"FIREBASE_WEBAPP_CONFIG": serverProvidedFirebaseWebAppConfig,
+			},
+			wantSchema: apphostingschema.AppHostingSchema{
+				Env: []apphostingschema.EnvironmentVariable{
+					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
+					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseSystem},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
+				},
+			},
+		},
+		{
+			desc:              "user provided NG_TRUST_PROXY_HEADERS without availability defaults to runtime and build",
+			projectID:         "test-project",
+			outputFilePathEnv: "outputEnv",
+			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
+				{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host"},
+			},
+			wantEnvMap: map[string]string{
+				"FIREBASE_CONFIG":        serverProvidedFirebaseConfig,
+				"FIREBASE_WEBAPP_CONFIG": serverProvidedFirebaseWebAppConfig,
+				"NG_TRUST_PROXY_HEADERS": "X-Forwarded-Host",
+			},
+			wantSchema: apphostingschema.AppHostingSchema{
+				Env: []apphostingschema.EnvironmentVariable{
+					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
+					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseSystem},
+					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseConsole},
+				},
+			},
+		},
+		{
+			desc:              "errors on incorrect user provided NG_TRUST_PROXY_HEADERS",
+			projectID:         "test-project",
+			outputFilePathEnv: "outputEnv",
+			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
+				{Variable: "NG_TRUST_PROXY_HEADERS", Value: "Invalid-Header"},
+			},
+			wantErr:    true,
+			wantErrMsg: `invalid value for NG_TRUST_PROXY_HEADERS (Angular trust proxy headers): got "Invalid-Header", want "X-Forwarded-Host"`,
 		},
 	}
 
@@ -566,12 +658,20 @@ func TestPrepare(t *testing.T) {
 				ApphostingPreprocessedPathForPack: appHostingYAMLForPackPath,
 			}
 
-			if err := Prepare(context.Background(), opts); err != nil {
-				t.Fatalf("Error in test '%v'. Error was %v", test.desc, err)
+			err := Prepare(context.Background(), opts)
+			if (err != nil) != test.wantErr {
+				t.Fatalf("Prepare() error = %v, wantErr %v", err, test.wantErr)
+			}
+
+			if test.wantErr {
+				if err != nil && !strings.Contains(err.Error(), test.wantErrMsg) {
+					t.Errorf("Prepare() error = %v, want error containing %q", err, test.wantErrMsg)
+				}
+				// Return early on expected errors because output files won't be written or valid.
+				return
 			}
 
 			var actualEnvMapDereferenced map[string]string
-			var err error
 			if strings.Contains(test.outputFilePathEnv, "platform/env") {
 				actualEnvMapDereferenced, err = envvars.ReadLifecycle(envOutputPath)
 			} else {
