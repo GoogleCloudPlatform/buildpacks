@@ -416,7 +416,7 @@ func TestGetEnvVar(t *testing.T) {
 		wantFound        bool
 	}{
 		{
-			desc: "Return env var when it is user defined",
+			desc: "Return env var when it is present",
 			key:  "FIREBASE_CONFIG",
 			appHostingSchema: AppHostingSchema{
 				Env: []EnvironmentVariable{
@@ -428,7 +428,7 @@ func TestGetEnvVar(t *testing.T) {
 			wantFound:  true,
 		},
 		{
-			desc: "Return nothing when it is not user defined",
+			desc: "Return nothing when it is not present",
 			key:  "FIREBASE_CONFIG",
 			appHostingSchema: AppHostingSchema{
 				Env: []EnvironmentVariable{

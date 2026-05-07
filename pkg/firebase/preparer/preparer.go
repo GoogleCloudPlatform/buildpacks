@@ -103,6 +103,7 @@ func Prepare(ctx context.Context, opts Options) error {
 	// We inject it here so that it is available to users by default. If the user provides this env var,
 	// we validate its value and use it if correct.
 	if ev, found := apphostingschema.GetEnvVar(&appHostingYAML, ngTrustProxyHeaders); found {
+		// Validate the value of the user provided NG_TRUST_PROXY_HEADERS
 		if ev.Value != expectedProxyHeaderValue {
 			return fmt.Errorf("invalid value for %s (Angular trust proxy headers): got %q, want %q", ngTrustProxyHeaders, ev.Value, expectedProxyHeaderValue)
 		}
@@ -119,7 +120,31 @@ func Prepare(ctx context.Context, opts Options) error {
 		})
 	}
 
+	// NG_ALLOWED_HOSTS secures Angular SSR against Host Poisoning. We try to derive it
+	// from X_FIREBASE_SUPPORTED_HOSTS (reserved default domains provided by Firebase) if not user-set.
+	// Skip silently if X_FIREBASE_SUPPORTED_HOSTS is empty or missing.
+	if _, found := apphostingschema.GetEnvVar(&appHostingYAML, "NG_ALLOWED_HOSTS"); !found {
+		ev, _ := apphostingschema.GetEnvVar(&appHostingYAML, "X_FIREBASE_SUPPORTED_HOSTS")
+		supportedHosts := ev.Value
+
+		if supportedHosts != "" {
+			// Derived NG_ALLOWED_HOSTS defaults to RUNTIME availability as it is required at runtime.
+			appHostingYAML.Env = append(appHostingYAML.Env, apphostingschema.EnvironmentVariable{
+				Variable:     "NG_ALLOWED_HOSTS",
+				Value:        supportedHosts,
+				Availability: []string{"RUNTIME"},
+				Source:       apphostingschema.SourceFirebaseSystem,
+			})
+		}
+	}
 	apphostingschema.Sanitize(&appHostingYAML)
+
+	// If NG_ALLOWED_HOSTS exists at this point, ensure it has RUNTIME availability.
+	if ev, found := apphostingschema.GetEnvVar(&appHostingYAML, "NG_ALLOWED_HOSTS"); found {
+		if !slices.Contains(ev.Availability, "RUNTIME") {
+			return fmt.Errorf("NG_ALLOWED_HOSTS environment variable must be set with RUNTIME availability")
+		}
+	}
 
 	if err := secrets.Normalize(appHostingYAML.Env, opts.ProjectID); err != nil {
 		return fmt.Errorf("normalizing apphosting.yaml fields: %w", err)

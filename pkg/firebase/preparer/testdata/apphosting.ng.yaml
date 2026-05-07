@@ -1,0 +1,6 @@
+schemaVersion: '3.0.0'
+env:
+  - variable: NG_ALLOWED_HOSTS
+    value: yaml-defined.com
+    availability:
+      - RUNTIME
