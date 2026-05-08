@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"slices"
-	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/envvars"
@@ -169,17 +168,8 @@ func Prepare(ctx context.Context, opts Options) error {
 		return fmt.Errorf("writing final apphosting.yaml to %v: %w", opts.ApphostingPreprocessedPathForPack, err)
 	}
 
-	// "/platform/" is the CNB_PLATFORM_DIR we use for lifecycle builds which need envvars written
-	// to the CNB_PLATFORM_DIR/env/ in a different format from pack builds.
-	// TODO(b/432041883): Remove this once we are fully on lifecycle builds.
-	if strings.Contains(opts.EnvDereferencedOutputFilePath, "/platform/env") {
-		if err := envvars.WriteLifecycle(dereferencedEnvMap, opts.EnvDereferencedOutputFilePath); err != nil {
-			return fmt.Errorf("writing final dereferenced environment variables to %v: %w", opts.EnvDereferencedOutputFilePath, err)
-		}
-	} else {
-		if err := envvars.Write(dereferencedEnvMap, opts.EnvDereferencedOutputFilePath); err != nil {
-			return fmt.Errorf("writing final dereferenced environment variables to %v: %w", opts.EnvDereferencedOutputFilePath, err)
-		}
+	if err := envvars.WriteLifecycle(dereferencedEnvMap, opts.EnvDereferencedOutputFilePath); err != nil {
+		return fmt.Errorf("writing final dereferenced environment variables to %v: %w", opts.EnvDereferencedOutputFilePath, err)
 	}
 
 	cwd, err := os.Getwd()

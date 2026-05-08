@@ -42,7 +42,6 @@ func TestPrepare(t *testing.T) {
 		desc               string
 		appHostingYAMLPath string
 		projectID          string
-		outputFilePathEnv  string
 		regionID           string
 		environmentName    string
 		serverSideEnvVars  []apphostingschema.EnvironmentVariable
@@ -51,64 +50,9 @@ func TestPrepare(t *testing.T) {
 		wantErr            string
 	}{
 		{
-			desc:               "properly prepare apphosting.yaml",
-			appHostingYAMLPath: appHostingYAMLPath,
-			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
-			environmentName:    "staging",
-			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
-				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
-			},
-			wantEnvMap: map[string]string{
-				"API_URL":                 "api.staging.service.com",
-				"VAR_QUOTED_SPECIAL":      "api2.service.com::",
-				"VAR_SPACED":              "api3 - service -  com",
-				"VAR_SINGLE_QUOTES":       "I said, 'I'm learning YAML!'",
-				"VAR_DOUBLE_QUOTES":       "\"api4.service.com\"",
-				"MULTILINE_VAR":           "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n",
-				"VAR_NUMBER":              "12345",
-				"FIREBASE_CONFIG":         userProvidedFirebaseConfig,
-				"FIREBASE_WEBAPP_CONFIG":  userProvidedFirebaseWebAppConfig,
-				"API_KEY":                 secretString,
-				"PINNED_API_KEY":          secretString,
-				"VERBOSE_API_KEY":         secretString,
-				"PINNED_VERBOSE_API_KEY":  secretString,
-				"STAGING_SECRET_VARIABLE": secretString,
-			},
-			wantSchema: apphostingschema.AppHostingSchema{
-				RunConfig: apphostingschema.RunConfig{
-					CPU:          proto.Float32(1),
-					MemoryMiB:    proto.Int32(512),
-					Concurrency:  proto.Int32(100),
-					MaxInstances: proto.Int32(2),
-					MinInstances: proto.Int32(0),
-				},
-				Env: []apphostingschema.EnvironmentVariable{
-					{Variable: "API_URL", Value: "api.staging.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: "apphosting.staging.yaml"},
-					{Variable: "VAR_QUOTED_SPECIAL", Value: "api2.service.com::", Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
-					{Variable: "VAR_SPACED", Value: "api3 - service -  com", Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
-					{Variable: "VAR_SINGLE_QUOTES", Value: "I said, 'I'm learning YAML!'", Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
-					{Variable: "VAR_DOUBLE_QUOTES", Value: "\"api4.service.com\"", Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
-					{Variable: "MULTILINE_VAR", Value: "211 Broadway\nApt. 17\nNew York, NY 10019\n", Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
-					{Variable: "VAR_NUMBER", Value: "12345", Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
-					{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
-					{Variable: "FIREBASE_CONFIG", Value: userProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
-					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: userProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceAppHostingYAML},
-					{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}, Source: apphostingschema.SourceAppHostingYAML},
-					{Variable: "PINNED_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
-					{Variable: "VERBOSE_API_KEY", Secret: latestSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
-					{Variable: "PINNED_VERBOSE_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
-					{Variable: "STAGING_SECRET_VARIABLE", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: "apphosting.staging.yaml"},
-					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
-					{Variable: "NG_ALLOWED_HOSTS", Value: "default.com", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
-				},
-			},
-		},
-		{
 			desc:               "properly prepare apphosting.yaml for lifecycle builds",
 			appHostingYAMLPath: appHostingYAMLPath,
 			projectID:          "test-project",
-			outputFilePathEnv:  "platform/env",
 			environmentName:    "staging",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
@@ -162,7 +106,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "merges apphosting.<ENV>.yaml when apphosting.yaml not present",
 			appHostingYAMLPath: appHostingYAMLPathNonexistent,
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			environmentName:    "staging",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
@@ -193,7 +136,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "merges and returns proper config even if apphostingYamlPath points to the env specific yaml file",
 			appHostingYAMLPath: apphostingStagingYAMLPath,
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			environmentName:    "staging",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
@@ -224,7 +166,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "non-existent apphosting.yaml nor apphosting.<ENV>.yaml",
 			appHostingYAMLPath: appHostingYAMLPathNonexistent,
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
 			},
@@ -245,7 +186,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "merges server side env vars with apphosting.yaml",
 			appHostingYAMLPath: appHostingYAMLPath,
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "API_URL", Value: "override.service.com", Availability: []string{"BUILD"}},
 				{Variable: "SERVER_SIDE_VAR", Value: "I'm a server side var!", Availability: []string{"RUNTIME"}},
@@ -257,7 +197,7 @@ func TestPrepare(t *testing.T) {
 				"VAR_SPACED":             "api3 - service -  com",
 				"VAR_SINGLE_QUOTES":      "I said, 'I'm learning YAML!'",
 				"VAR_DOUBLE_QUOTES":      "\"api4.service.com\"",
-				"MULTILINE_VAR":          "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n",
+				"MULTILINE_VAR":          "211 Broadway\nApt. 17\nNew York, NY 10019\n",
 				"VAR_NUMBER":             "12345",
 				"FIREBASE_CONFIG":        userProvidedFirebaseConfig,
 				"FIREBASE_WEBAPP_CONFIG": userProvidedFirebaseWebAppConfig,
@@ -299,7 +239,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "writes env vars for lifecycle builds if outputFilePathEnv starts with /platform/env",
 			appHostingYAMLPath: appHostingYAMLPath,
 			projectID:          "test-project",
-			outputFilePathEnv:  "platform/env",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "API_URL", Value: "override.service.com", Availability: []string{"BUILD"}},
 				{Variable: "SERVER_SIDE_VAR", Value: "I'm a server side var!", Availability: []string{"RUNTIME"}},
@@ -353,7 +292,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "server side env vars without apphosting.yaml",
 			appHostingYAMLPath: "",
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "SERVER_SIDE_VAR", Value: "I'm a server side var!", Availability: []string{"RUNTIME"}},
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
@@ -376,7 +314,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "server side env vars enabled and contains only system variables without apphosting.yaml",
 			appHostingYAMLPath: "",
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
 			},
@@ -397,7 +334,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "server side env vars enabled and contains only system variables with apphosting.yaml",
 			appHostingYAMLPath: appHostingYAMLPath,
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
 			},
@@ -407,7 +343,7 @@ func TestPrepare(t *testing.T) {
 				"VAR_SPACED":             "api3 - service -  com",
 				"VAR_SINGLE_QUOTES":      "I said, 'I'm learning YAML!'",
 				"VAR_DOUBLE_QUOTES":      "\"api4.service.com\"",
-				"MULTILINE_VAR":          "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n",
+				"MULTILINE_VAR":          "211 Broadway\nApt. 17\nNew York, NY 10019\n",
 				"VAR_NUMBER":             "12345",
 				"FIREBASE_CONFIG":        userProvidedFirebaseConfig,
 				"FIREBASE_WEBAPP_CONFIG": userProvidedFirebaseWebAppConfig,
@@ -448,7 +384,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "noops vpc connector names",
 			appHostingYAMLPath: appHostingYAMLConnectorNamePath,
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			regionID:           "us-central1",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
@@ -475,7 +410,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "expands vpc connector ids",
 			appHostingYAMLPath: appHostingYAMLConnectorIDPath,
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			regionID:           "us-central1",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
@@ -502,7 +436,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "noops vpc network names",
 			appHostingYAMLPath: appHostingYAMLNetworkNamePath,
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			regionID:           "us-central1",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
@@ -534,7 +467,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "expands vpc network ids",
 			appHostingYAMLPath: appHostingYAMLNetworkIDPath,
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			regionID:           "us-central1",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
@@ -563,9 +495,8 @@ func TestPrepare(t *testing.T) {
 			},
 		},
 		{
-			desc:              "accepts correct user provided NG_TRUST_PROXY_HEADERS",
-			projectID:         "test-project",
-			outputFilePathEnv: "outputEnv",
+			desc:      "accepts correct user provided NG_TRUST_PROXY_HEADERS",
+			projectID: "test-project",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}},
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
@@ -584,18 +515,16 @@ func TestPrepare(t *testing.T) {
 			},
 		},
 		{
-			desc:              "errors if user provided NG_TRUST_PROXY_HEADERS lacks RUNTIME availability",
-			projectID:         "test-project",
-			outputFilePathEnv: "outputEnv",
+			desc:      "errors if user provided NG_TRUST_PROXY_HEADERS lacks RUNTIME availability",
+			projectID: "test-project",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"BUILD"}},
 			},
 			wantErr: "user-defined environment variable NG_TRUST_PROXY_HEADERS must include RUNTIME in its availability",
 		},
 		{
-			desc:              "adds default NG_TRUST_PROXY_HEADERS when not provided",
-			projectID:         "test-project",
-			outputFilePathEnv: "outputEnv",
+			desc:      "adds default NG_TRUST_PROXY_HEADERS when not provided",
+			projectID: "test-project",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
 			},
@@ -613,9 +542,8 @@ func TestPrepare(t *testing.T) {
 			},
 		},
 		{
-			desc:              "user provided NG_TRUST_PROXY_HEADERS without availability defaults to runtime and build",
-			projectID:         "test-project",
-			outputFilePathEnv: "outputEnv",
+			desc:      "user provided NG_TRUST_PROXY_HEADERS without availability defaults to runtime and build",
+			projectID: "test-project",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host"},
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
@@ -635,9 +563,8 @@ func TestPrepare(t *testing.T) {
 			},
 		},
 		{
-			desc:              "errors on incorrect user provided NG_TRUST_PROXY_HEADERS",
-			projectID:         "test-project",
-			outputFilePathEnv: "outputEnv",
+			desc:      "errors on incorrect user provided NG_TRUST_PROXY_HEADERS",
+			projectID: "test-project",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "NG_TRUST_PROXY_HEADERS", Value: "Invalid-Header"},
 			},
@@ -647,7 +574,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "derives NG_ALLOWED_HOSTS from X_FIREBASE_SUPPORTED_HOSTS",
 			appHostingYAMLPath: appHostingYAMLPathNonexistent,
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "example.com"},
 			},
@@ -668,7 +594,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "does not override server-side user-defined NG_ALLOWED_HOSTS with X_FIREBASE_SUPPORTED_HOSTS",
 			appHostingYAMLPath: appHostingYAMLPathNonexistent,
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "NG_ALLOWED_HOSTS", Value: "user-defined.com", Availability: []string{"RUNTIME"}},
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "system-defined.com"},
@@ -690,7 +615,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "does not override user-defined NG_ALLOWED_HOSTS in apphosting.yaml with X_FIREBASE_SUPPORTED_HOSTS",
 			appHostingYAMLPath: appHostingYAMLNgPath,
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "system-defined.com"},
 			},
@@ -711,7 +635,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "succeeds if NG_ALLOWED_HOSTS is missing and X_FIREBASE_SUPPORTED_HOSTS is empty",
 			appHostingYAMLPath: appHostingYAMLPathNonexistent,
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: ""},
 			},
@@ -731,7 +654,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "succeeds if NG_ALLOWED_HOSTS is missing and X_FIREBASE_SUPPORTED_HOSTS is missing",
 			appHostingYAMLPath: appHostingYAMLPathNonexistent,
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			serverSideEnvVars:  []apphostingschema.EnvironmentVariable{},
 			wantEnvMap: map[string]string{
 				"FIREBASE_CONFIG":        serverProvidedFirebaseConfig,
@@ -757,7 +679,6 @@ func TestPrepare(t *testing.T) {
 			desc:               "user-defined NG_ALLOWED_HOSTS with both BUILD and RUNTIME availability",
 			appHostingYAMLPath: appHostingYAMLPathNonexistent,
 			projectID:          "test-project",
-			outputFilePathEnv:  "outputEnv",
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "NG_ALLOWED_HOSTS", Value: "both.com", Availability: []string{"BUILD", "RUNTIME"}},
 			},
@@ -815,7 +736,7 @@ func TestPrepare(t *testing.T) {
 			outputFilePathYAML := filepath.Join(testDir, "outputYAML")
 			outputFilePathBuildpackConfig := filepath.Join(testDir, "outputBuildpackConfig")
 			appHostingYAMLForPackPath := filepath.Join(testDir, "outputYAMLForPack")
-			envOutputPath := filepath.Join(testDir, test.outputFilePathEnv)
+			envOutputPath := filepath.Join(testDir, "outputEnv")
 
 			// Convert server side env vars to string
 			serverSideEnvVars := ""
@@ -858,11 +779,7 @@ func TestPrepare(t *testing.T) {
 			}
 
 			var actualEnvMapDereferenced map[string]string
-			if strings.Contains(test.outputFilePathEnv, "platform/env") {
-				actualEnvMapDereferenced, err = envvars.ReadLifecycle(envOutputPath)
-			} else {
-				actualEnvMapDereferenced, err = envvars.Read(envOutputPath)
-			}
+			actualEnvMapDereferenced, err = envvars.ReadLifecycle(envOutputPath)
 			if err != nil {
 				t.Errorf("Error reading in temp file: %v", err)
 			}
