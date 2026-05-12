@@ -1300,7 +1300,7 @@ func TestIsZstdSupportedRuntime(t *testing.T) {
 		},
 		{
 			name:       "python is not supported",
-			runtimeEnv: "python310",
+			runtimeEnv: "python38",
 			want:       false,
 		},
 		{

@@ -730,6 +730,19 @@ func (mi MakerInstaller) InstallTarballIfNotCached(ctx *gcp.Context, runtime Ins
 
 // isZstdSupportedRuntime checks if the given runtime environment string supports Zstd extraction.
 func isZstdSupportedRuntime(runtimeEnv string) bool {
-	supported := []string{"nodejs20", "nodejs22", "nodejs24"}
+	supported := []string{
+		// Node.js
+		"nodejs20", "nodejs22", "nodejs24",
+		// Python
+		"python310", "python311", "python312", "python313", "python314",
+		// Ruby
+		"ruby32", "ruby33", "ruby34", "ruby40",
+		// PHP
+		"php82", "php83", "php84", "php85",
+		// Java
+		"java17", "java21", "java25",
+		// Dotnet
+		"dotnet8", "dotnet10",
+	}
 	return slices.Contains(supported, runtimeEnv)
 }
