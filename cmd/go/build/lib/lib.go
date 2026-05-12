@@ -28,11 +28,6 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 )
 
-const (
-	noGoFileError         = "no Go files in"
-	cannotFindModuleError = "cannot find module"
-)
-
 // DetectFn is the exported detect function.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	atLeastOne, err := ctx.HasAtLeastOne("*.go")
@@ -62,25 +57,20 @@ func BuildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
 	}
-	bl.LaunchEnvironment.Prepend("PATH", string(os.PathListSeparator), bl.Path)
-	outBin := filepath.Join(bl.Path, golang.OutBin)
 
 	buildable, err := goBuildable(ctx)
 	if err != nil {
 		return fmt.Errorf("unable to find a valid buildable: %w", err)
 	}
 
-	// Build the application.
-	bld := []string{"go", "build"}
-	bld = append(bld, goBuildFlags()...)
-	bld = append(bld, "-o", outBin)
-	bld = append(bld, buildable)
-	// BuildDirEnv should only be set by App Engine buildpacks.
+	bldFlags := goBuildFlags()
 	workdir := os.Getenv(golang.BuildDirEnv)
 	if workdir == "" {
 		workdir = ctx.ApplicationRoot()
 	}
-	if _, err := ctx.Exec(bld, gcp.WithEnv("GOCACHE="+cl.Path), gcp.WithWorkDir(workdir), gcp.WithMessageProducer(printTipsAndKeepStderrTail(ctx)), gcp.WithUserAttribution); err != nil {
+
+	outBin, bld, err := golang.PerformBuild(ctx, bl, buildable, workdir, cl.Path, bldFlags)
+	if err != nil {
 		return err
 	}
 
@@ -156,18 +146,4 @@ func goBuildFlags() []string {
 		flags = append(flags, "-ldflags", v)
 	}
 	return flags
-}
-
-func printTipsAndKeepStderrTail(ctx *gcp.Context) gcp.MessageProducer {
-	return func(result *gcp.ExecResult) string {
-		if result.ExitCode != 0 {
-			// If `go build` fails with any of those two errors, there's a great chance
-			// that we are not building the right package.
-			if strings.Contains(result.Stderr, noGoFileError) || strings.Contains(result.Stderr, cannotFindModuleError) {
-				ctx.Tipf("Tip: %q env var configures which Go package is built. Default is '.'", env.Buildable)
-			}
-		}
-
-		return gcp.KeepStderrTail(result)
-	}
 }

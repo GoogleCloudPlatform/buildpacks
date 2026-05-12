@@ -169,6 +169,9 @@ var localRuntimeVersionCmds = map[InstallableRuntime][][]string{
 		{"node", "--version"},
 		{"nodejs", "--version"},
 	},
+	Go: {
+		{"go", "version"},
+	},
 }
 
 var errUnsupportedRuntime = errors.New("unsupported runtime for local check")
@@ -307,8 +310,8 @@ func InstallFlutterSDK(ctx *gcp.Context, layer *libcnb.Layer, version string, ar
 // Returns true if a cached layer is used.
 func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, versionConstraint string, layer *libcnb.Layer) (bool, error) {
 	if cap := ctx.Capability(InstallerCapability); cap != nil {
-		if ri, ok := cap.(Installer); ok {
-			return ri.InstallTarballIfNotCached(ctx, runtime, versionConstraint, layer)
+		if mi, ok := cap.(Installer); ok {
+			return mi.InstallTarballIfNotCached(ctx, runtime, versionConstraint, layer)
 		}
 	}
 	runtimeName := runtimeNames[runtime]
@@ -671,6 +674,10 @@ func runtimeMatchesInstallableRuntime(installableRuntime InstallableRuntime) boo
 func cleanVersion(v string) string {
 	v = strings.TrimSpace(v)
 	v = strings.TrimPrefix(v, "Python ")
+	if strings.HasPrefix(v, "go version go") {
+		v = strings.TrimPrefix(v, "go version go")
+		v = strings.Fields(v)[0]
+	}
 	v = strings.TrimPrefix(v, "v")
 	return v
 }

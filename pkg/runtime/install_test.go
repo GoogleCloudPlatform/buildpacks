@@ -1505,6 +1505,8 @@ func TestCleanVersion(t *testing.T) {
 		{"v16.20.0", "16.20.0"},
 		{" 3.10.12 \n", "3.10.12"},
 		{"3.10.12", "3.10.12"},
+		{"go version go1.24.5 linux/amd64", "1.24.5"},
+		{"go version go1.25 linux/amd64", "1.25"},
 	}
 	for _, tc := range testCases {
 		got := cleanVersion(tc.input)
