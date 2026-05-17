@@ -11,6 +11,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 	"github.com/buildpacks/libcnb/v2"
+	"github.com/Masterminds/semver"
 )
 
 // PNPMInstallerCapability is the capability key for the PNPMInstaller.
@@ -24,8 +25,13 @@ type PNPMInstaller interface {
 var (
 	// PNPMLock is the name of the pnpm lock file.
 	PNPMLock = "pnpm-lock.yaml"
-	// pnpmDownloadURL is the template used to generate a pnpm download URL.
-	pnpmDownloadURL = "https://github.com/pnpm/pnpm/releases/download/v%s/pnpm-linux-x64"
+	// pnpmBinaryURL is the template used to generate a pnpm download URL for versions <11.
+	pnpmBinaryURL = "https://github.com/pnpm/pnpm/releases/download/v%s/pnpm-linux-x64"
+	// pnpmTarballURL is the template used to generate a pnpm download URL for versions >=11,
+	// which ship as a gzip tarball containing the pnpm binary and an adjacent dist/ directory.
+	pnpmTarballURL = "https://github.com/pnpm/pnpm/releases/download/v%s/pnpm-linux-x64.tar.gz"
+	// pnpmTarballMinVersion is the first pnpm release that ships as a tarball.
+	pnpmTarballMinVersion = semver.MustParse("11.0.0")
 	// pnpmVersionKey is the metadata key used to store the pnpm version in the pnpn layer.
 	pnpmVersionKey = "version"
 )
@@ -62,10 +68,6 @@ func InstallPNPM(ctx *gcp.Context, pnpmLayer *libcnb.Layer, pjs *PackageJSON) er
 		if err := downloadPNPM(ctx, installDir, version); err != nil {
 			return gcp.InternalErrorf("downloading pnpm: %w", err)
 		}
-		fp := filepath.Join(installDir, "pnpm")
-		if err := os.Chmod(fp, 0777); err != nil {
-			return gcp.InternalErrorf("chmoding %s: %w", fp, err)
-		}
 	}
 
 	// Store layer flags and metadata.
@@ -79,13 +81,26 @@ func InstallPNPM(ctx *gcp.Context, pnpmLayer *libcnb.Layer, pjs *PackageJSON) er
 }
 
 // downloadPNPM downloads a given version of pnpm into the provided directory.
+// pnpm <11 ships as a single statically-linked binary; pnpm >=11 ships as a
+// gzip tarball containing the pnpm binary and an adjacent dist/ directory.
 func downloadPNPM(ctx *gcp.Context, dir, version string) error {
 	if err := ctx.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-	fp := filepath.Join(dir, "pnpm")
-	url := fmt.Sprintf(pnpmDownloadURL, version)
-	return fetch.File(url, fp)
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return gcp.UserErrorf("parsing pnpm version %q: %v", version, err)
+	}
+	if v.LessThan(pnpmTarballMinVersion) {
+		fp := filepath.Join(dir, "pnpm")
+		url := fmt.Sprintf(pnpmBinaryURL, version)
+		if err := fetch.File(url, fp); err != nil {
+			return err
+		}
+		return os.Chmod(fp, 0777)
+	}
+	url := fmt.Sprintf(pnpmTarballURL, version)
+	return fetch.Tarball(url, dir, 0)
 }
 
 // detectPnpmVersion determines the version of pnpm that should be installed in a Node.js project
