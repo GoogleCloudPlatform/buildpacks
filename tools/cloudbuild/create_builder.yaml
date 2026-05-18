@@ -203,7 +203,7 @@ steps:
       - push_google22_builder
 
   - id: sign_google22_builder
-    name: gcr.io/projectsigstore/cosign:v2.2.0
+    name: gcr.io/projectsigstore/cosign:v2.4.2
     env:
       - REGISTRY=gcr.io
       - TUF_ROOT=/tmp
@@ -217,7 +217,7 @@ steps:
     waitFor:
       - push_google22_builder
 
-  - name: gcr.io/projectsigstore/cosign:v2.2.0
+  - name: gcr.io/projectsigstore/cosign:v2.4.2
     entrypoint: sh
     args:
       - '-c'
@@ -226,7 +226,7 @@ steps:
     waitFor:
       - google22_builder_sbom
 
-  - name: gcr.io/projectsigstore/cosign:v2.2.0
+  - name: gcr.io/projectsigstore/cosign:v2.4.2
     env:
       - REGISTRY=gcr.io
       - TUF_ROOT=/tmp
