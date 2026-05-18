@@ -1,0 +1,17 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "static",
+    srcs = ["static.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//cmd/static:__subpackages__",
+    ],
+)
+
+go_test(
+    name = "static_test",
+    srcs = ["static_test.go"],
+    embed = [":static"],
+    rundir = ".",
+)

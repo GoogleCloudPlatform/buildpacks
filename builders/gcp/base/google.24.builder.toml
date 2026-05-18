@@ -232,8 +232,13 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   id = "google.utils.nginx"
   uri = "nginx.tgz"
 
+[[buildpacks]]
+  id = "google.static.serve"
+  uri = "serve.tgz"
+
 ########
 # .NET #
+
 ########
 
 [[order]]
@@ -1143,6 +1148,15 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   [[order.group]]
     id = "google.python.missing-entrypoint"
 
+  [[order.group]]
+    id = "google.utils.label-image"
+
+##########
+# Static Web Applications
+##########
+[[order]]
+  [[order.group]]
+    id = "google.static.serve"
   [[order.group]]
     id = "google.utils.label-image"
 

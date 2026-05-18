@@ -18,6 +18,7 @@ BUILDPACKS = [
     "//cmd/config/flex:flex.tgz",
     "//cmd/python/webserver:webserver.tgz",
     "//cmd/python/appengine:appengine.tgz",
+    "//cmd/static/serve:serve.tgz",
 ]
 
 GROUPS = {
@@ -105,6 +106,7 @@ BUILDPACKS_USING_RUNNER = [
     "//cmd/config/flex:flex_using_runner.tgz",
     "//cmd/python/webserver:webserver_using_runner.tgz",
     "//cmd/python/appengine:appengine_using_runner.tgz",
+    "//cmd/static/serve:serve_using_runner.tgz",
 ]
 
 GROUPS_USING_RUNNER = {
