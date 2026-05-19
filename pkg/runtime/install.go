@@ -172,6 +172,10 @@ var localRuntimeVersionCmds = map[InstallableRuntime][][]string{
 	Go: {
 		{"go", "version"},
 	},
+	PHP: {
+		{"php", "-r", "echo PHP_VERSION;"},
+		{"php", "--version"},
+	},
 }
 
 var errUnsupportedRuntime = errors.New("unsupported runtime for local check")
@@ -678,6 +682,10 @@ func cleanVersion(v string) string {
 		v = strings.TrimPrefix(v, "go version go")
 		v = strings.Fields(v)[0]
 	}
+	if strings.HasPrefix(v, "PHP ") {
+		v = strings.TrimPrefix(v, "PHP ")
+		v = strings.Fields(v)[0]
+	}
 	v = strings.TrimPrefix(v, "v")
 	return v
 }
@@ -717,6 +725,15 @@ func (mi MakerInstaller) InstallTarballIfNotCached(ctx *gcp.Context, runtime Ins
 	var resolvedVersion string
 	if version.IsExactSemver(versionConstraint) {
 		resolvedVersion = versionConstraint
+	} else if !slices.Contains(languageRuntimes, runtime) {
+		// Bypassing Nginx and Pid1 local resolution. Those helper runtimes are not language
+		// runtimes, so they do not dictate standard base-image requirements and are fully bypassed
+		// via custom capabilities in Maker mode (like MakerWebConfigurator).
+		if runtime == Nginx {
+			resolvedVersion = "1.25.0"
+		} else {
+			resolvedVersion = "1.0.0"
+		}
 	} else {
 		v, err := checkLocalRuntimeVersion(ctx, runtime)
 		if err != nil {
@@ -730,8 +747,10 @@ func (mi MakerInstaller) InstallTarballIfNotCached(ctx *gcp.Context, runtime Ins
 
 	// For the maker use case, we only need to resolve the version and add it as a label.
 	// We do not need to download or install the runtime tarball.
-	ctx.AddLabel(localRuntimeVersionLabel, resolvedVersion)
-	ctx.AddLabel(languageNameLabel, string(runtime))
+	if slices.Contains(languageRuntimes, runtime) {
+		ctx.AddLabel(localRuntimeVersionLabel, resolvedVersion)
+		ctx.AddLabel(languageNameLabel, string(runtime))
+	}
 	return false, nil
 }
 

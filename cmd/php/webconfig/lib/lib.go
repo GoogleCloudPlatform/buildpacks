@@ -110,6 +110,13 @@ func BuildFn(ctx *gcp.Context) error {
 	_, entrypointExists := os.LookupEnv(env.Entrypoint)
 
 	if !procExists && !entrypointExists {
+		if cap := ctx.Capability(php.WebConfigCapability); cap != nil {
+			c, ok := cap.(php.WebConfigurator)
+			if !ok {
+				return gcp.InternalErrorf("capability %q must implement WebConfigurator", php.WebConfigCapability)
+			}
+			return c.Configure(ctx)
+		}
 		cmd := []string{
 			filepath.Join(os.Getenv("PID1_DIR"), "pid1"),
 			"--nginxBinaryPath", defaultNginxBinary,

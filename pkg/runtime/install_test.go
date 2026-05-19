@@ -1457,6 +1457,23 @@ func TestCheckLocalRuntimeVersion(t *testing.T) {
 			wantErrStr: "failed to check local python version using any candidate command",
 		},
 		{
+			name:    "success php",
+			runtime: PHP,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`php -r.*`, mockprocess.WithStdout("8.3.12\n")),
+			},
+			want: "8.3.12",
+		},
+		{
+			name:    "fallback to php `--version`",
+			runtime: PHP,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`php -r.*`, mockprocess.WithExitCode(1)),
+				mockprocess.New(`php --version`, mockprocess.WithStdout("PHP 8.3.12 (cli) ...\n")),
+			},
+			want: "8.3.12",
+		},
+		{
 			name:    "unsupported runtime",
 			runtime: "unsupported",
 			wantErr: true,
@@ -1507,6 +1524,7 @@ func TestCleanVersion(t *testing.T) {
 		{"3.10.12", "3.10.12"},
 		{"go version go1.24.5 linux/amd64", "1.24.5"},
 		{"go version go1.25 linux/amd64", "1.25"},
+		{"PHP 8.3.12 (cli) ...", "8.3.12"},
 	}
 	for _, tc := range testCases {
 		got := cleanVersion(tc.input)
