@@ -20,6 +20,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 	"github.com/buildpacks/libcnb/v2"
 )
@@ -29,12 +30,12 @@ func TestInstallPNPM(t *testing.T) {
 		name        string
 		npmResponse string
 		packageJSON PackageJSON
-		wantFile    string
+		wantFiles   []string
 		wantError   bool
 	}{
 		{
-			name:     "no version constraint",
-			wantFile: "bin/pnpm",
+			name:      "no version constraint",
+			wantFiles: []string{"bin/pnpm"},
 			npmResponse: `{
 				"name": "pnpm",
 				"dist-tags": {
@@ -51,8 +52,8 @@ func TestInstallPNPM(t *testing.T) {
 			packageJSON: PackageJSON{},
 		},
 		{
-			name:     "valid version constraint",
-			wantFile: "bin/pnpm",
+			name:      "valid version constraint",
+			wantFiles: []string{"bin/pnpm"},
 			npmResponse: `{
 				"name": "pnpm",
 				"dist-tags": {
@@ -73,6 +74,28 @@ func TestInstallPNPM(t *testing.T) {
 			},
 		},
 		{
+			name:      "v11 tarball install",
+			wantFiles: []string{"bin/pnpm", "bin/dist/marker"},
+			npmResponse: `{
+				"name": "pnpm",
+				"dist-tags": {
+					"latest": "11.1.1"
+				},
+				"versions": {
+					"11.1.1": {
+						"name": "pnpm",
+						"version": "11.1.1"
+					}
+				},
+				"modified": "2026-01-01T00:00:00.000Z"
+			}`,
+			packageJSON: PackageJSON{
+				Engines: packageEnginesJSON{
+					PNPM: "11.x.x",
+				},
+			},
+		},
+		{
 			name: "invalid version",
 			npmResponse: `{
 				"name": "pnpm",
@@ -89,7 +112,7 @@ func TestInstallPNPM(t *testing.T) {
 			}`,
 			packageJSON: PackageJSON{
 				Engines: packageEnginesJSON{
-					PNPM: ">9.0.0",
+					PNPM: ">11.99.0",
 				},
 			},
 			wantError: true,
@@ -101,7 +124,12 @@ func TestInstallPNPM(t *testing.T) {
 			testserver.New(
 				t,
 				testserver.WithJSON(`pnpm!`),
-				testserver.WithMockURL(&pnpmDownloadURL),
+				testserver.WithMockURL(&pnpmBinaryURL),
+			)
+			testserver.New(
+				t,
+				testserver.WithFile(testdata.MustGetPath("testdata/dummy-pnpm.tar.gz")),
+				testserver.WithMockURL(&pnpmTarballURL),
 			)
 			testserver.New(
 				t,
@@ -119,8 +147,8 @@ func TestInstallPNPM(t *testing.T) {
 				t.Fatalf("InstallPNPM() got error: %v, want error? %v", err, tc.wantError)
 			}
 
-			if tc.wantFile != "" {
-				fp := filepath.Join(layer.Path, tc.wantFile)
+			for _, wantFile := range tc.wantFiles {
+				fp := filepath.Join(layer.Path, wantFile)
 				if _, err := os.Stat(fp); err != nil {
 					t.Errorf("Missing file: %s (%v)", fp, err)
 				}
