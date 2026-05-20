@@ -10,6 +10,7 @@ import (
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
+	"github.com/Masterminds/semver"
 	"github.com/buildpacks/libcnb/v2"
 )
 
@@ -26,8 +27,12 @@ var (
 	PNPMLock = "pnpm-lock.yaml"
 	// pnpmDownloadURL is the template used to generate a pnpm download URL.
 	pnpmDownloadURL = "https://github.com/pnpm/pnpm/releases/download/v%s/pnpm-linux-x64"
+	// pnpmTarballDownloadURL is the template used to generate a pnpm tarball download URL.
+	pnpmTarballDownloadURL = "https://github.com/pnpm/pnpm/releases/download/v%s/pnpm-linux-x64.tar.gz"
 	// pnpmVersionKey is the metadata key used to store the pnpm version in the pnpn layer.
 	pnpmVersionKey = "version"
+	// pnpmTarballVersion is the first version where pnpm publishes the Linux x64 asset as a tarball.
+	pnpmTarballVersion = semver.MustParse("11.0.0")
 )
 
 // InstallPNPM installs pnpm in the given layer if it is not already cached.
@@ -82,6 +87,14 @@ func InstallPNPM(ctx *gcp.Context, pnpmLayer *libcnb.Layer, pjs *PackageJSON) er
 func downloadPNPM(ctx *gcp.Context, dir, version string) error {
 	if err := ctx.MkdirAll(dir, 0755); err != nil {
 		return err
+	}
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return gcp.InternalErrorf("parsing pnpm version %q: %w", version, err)
+	}
+	if !v.LessThan(pnpmTarballVersion) {
+		url := fmt.Sprintf(pnpmTarballDownloadURL, version)
+		return fetch.Tarball(url, dir, 0)
 	}
 	fp := filepath.Join(dir, "pnpm")
 	url := fmt.Sprintf(pnpmDownloadURL, version)

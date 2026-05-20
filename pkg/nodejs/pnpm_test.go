@@ -14,6 +14,9 @@
 package nodejs
 
 import (
+	"archive/tar"
+	"compress/gzip"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,11 +29,12 @@ import (
 
 func TestInstallPNPM(t *testing.T) {
 	testCases := []struct {
-		name        string
-		npmResponse string
-		packageJSON PackageJSON
-		wantFile    string
-		wantError   bool
+		name             string
+		npmResponse      string
+		pnpmResponseFile string
+		packageJSON      PackageJSON
+		wantFile         string
+		wantError        bool
 	}{
 		{
 			name:     "no version constraint",
@@ -73,6 +77,27 @@ func TestInstallPNPM(t *testing.T) {
 			},
 		},
 		{
+			name:             "pnpm 11 tarball",
+			pnpmResponseFile: createPnpmTarball(t),
+			wantFile:         "bin/dist/pnpm.mjs",
+			npmResponse: `{
+				"name": "pnpm",
+				"dist-tags": {
+					"latest": "11.1.1"
+				},
+				"versions": {
+					"11.1.1": {
+						"name": "npm",
+						"version": "11.1.1"
+					}
+				},
+				"modified": "2022-01-27T21:10:55.626Z"
+			}`,
+			packageJSON: PackageJSON{
+				PackageManager: "pnpm@11.1.1",
+			},
+		},
+		{
 			name: "invalid version",
 			npmResponse: `{
 				"name": "pnpm",
@@ -98,11 +123,19 @@ func TestInstallPNPM(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			testserver.New(
-				t,
-				testserver.WithJSON(`pnpm!`),
-				testserver.WithMockURL(&pnpmDownloadURL),
-			)
+			if tc.pnpmResponseFile != "" {
+				testserver.New(
+					t,
+					testserver.WithFile(tc.pnpmResponseFile),
+					testserver.WithMockURL(&pnpmTarballDownloadURL),
+				)
+			} else {
+				testserver.New(
+					t,
+					testserver.WithJSON(`pnpm!`),
+					testserver.WithMockURL(&pnpmDownloadURL),
+				)
+			}
 			testserver.New(
 				t,
 				testserver.WithJSON(tc.npmResponse),
@@ -128,6 +161,49 @@ func TestInstallPNPM(t *testing.T) {
 		})
 	}
 }
+
+func createPnpmTarball(t *testing.T) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), "pnpm-linux-x64.tar.gz")
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("os.Create(%q): %v", path, err)
+	}
+	gzw := gzip.NewWriter(file)
+	tw := tar.NewWriter(gzw)
+
+	for _, entry := range []struct {
+		name string
+		mode int64
+		body string
+	}{
+		{name: "pnpm", mode: 0777, body: "pnpm!"},
+		{name: "dist/pnpm.mjs", mode: 0644, body: "console.log('pnpm')"},
+	} {
+		if err := tw.WriteHeader(&tar.Header{
+			Name: entry.name,
+			Mode: entry.mode,
+			Size: int64(len(entry.body)),
+		}); err != nil {
+			t.Fatalf("writing tar header for %q: %v", entry.name, err)
+		}
+		if _, err := io.WriteString(tw, entry.body); err != nil {
+			t.Fatalf("writing tar body for %q: %v", entry.name, err)
+		}
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatalf("closing tar writer: %v", err)
+	}
+	if err := gzw.Close(); err != nil {
+		t.Fatalf("closing gzip writer: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("closing %q: %v", path, err)
+	}
+	return path
+}
+
 func TestDetectPNPMVersion(t *testing.T) {
 	testCases := []struct {
 		name        string
