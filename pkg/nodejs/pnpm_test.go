@@ -14,8 +14,13 @@
 package nodejs
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
@@ -233,5 +238,80 @@ func TestDetectPNPMVersion(t *testing.T) {
 				t.Fatalf("detectPNPMVersion() got error: %v, want error? %v", err, tc.wantError)
 			}
 		})
+	}
+}
+
+func TestInstallPNPMV11(t *testing.T) {
+	npmResponse := `{
+		"name": "pnpm",
+		"dist-tags": {
+			"latest": "11.0.0"
+		},
+		"versions": {
+			"11.0.0": {
+				"name": "pnpm",
+				"version": "11.0.0"
+			}
+		}
+	}`
+
+	// Create a valid minimal tar.gz in memory containing a file named "pnpm"
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+	hdr := &tar.Header{
+		Name: "pnpm",
+		Mode: 0755,
+		Size: int64(len("pnpm!")),
+	}
+	if err := tw.WriteHeader(hdr); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tw.Write([]byte("pnpm!")); err != nil {
+		t.Fatal(err)
+	}
+	tw.Close()
+	gw.Close()
+	tarBytes := buf.Bytes()
+
+	testserver.New(
+		t,
+		testserver.WithHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.String(), ".tar.gz") {
+				w.WriteHeader(http.StatusOK)
+				w.Write(tarBytes)
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+			}
+		})),
+		testserver.WithMockURL(&pnpmDownloadURL),
+	)
+
+	testserver.New(
+		t,
+		testserver.WithJSON(npmResponse),
+		testserver.WithMockURL(&npmRegistryURL),
+	)
+
+	layer := &libcnb.Layer{
+		Name:     "pnpm_test",
+		Path:     t.TempDir(),
+		Metadata: map[string]any{},
+	}
+
+	pkgJSON := &PackageJSON{
+		Engines: packageEnginesJSON{
+			PNPM: "11.0.0",
+		},
+	}
+
+	err := InstallPNPM(gcpbuildpack.NewContext(), layer, pkgJSON)
+	if err != nil {
+		t.Fatalf("InstallPNPM(ctx, %v, %+v) got error: %v, want nil", layer, pkgJSON, err)
+	}
+
+	fp := filepath.Join(layer.Path, "bin/pnpm")
+	if _, err := os.Stat(fp); err != nil {
+		t.Errorf("os.Stat(%q) got error: %v, want nil", fp, err)
 	}
 }

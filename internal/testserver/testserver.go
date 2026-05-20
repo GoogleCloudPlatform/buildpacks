@@ -26,6 +26,7 @@ type config struct {
 	responseFile string
 	responseJSON string
 	mockURL      *string
+	handler      http.Handler
 }
 
 // Option configures test servers.
@@ -59,6 +60,13 @@ func WithMockURL(url *string) Option {
 	}
 }
 
+// WithHandler sets a custom http.Handler for the test server.
+func WithHandler(h http.Handler) Option {
+	return func(c *config) {
+		c.handler = h
+	}
+}
+
 // New creates and starts a test server with the provided configurations and returns its URL.
 func New(t *testing.T, opts ...Option) *httptest.Server {
 	t.Helper()
@@ -68,6 +76,10 @@ func New(t *testing.T, opts ...Option) *httptest.Server {
 	}
 
 	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if options.handler != nil {
+			options.handler.ServeHTTP(w, r)
+			return
+		}
 		if options.httpStatus != 0 {
 			w.WriteHeader(options.httpStatus)
 		}

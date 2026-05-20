@@ -11,6 +11,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 	"github.com/buildpacks/libcnb/v2"
+	"github.com/Masterminds/semver"
 )
 
 // PNPMInstallerCapability is the capability key for the PNPMInstaller.
@@ -28,7 +29,17 @@ var (
 	pnpmDownloadURL = "https://github.com/pnpm/pnpm/releases/download/v%s/pnpm-linux-x64"
 	// pnpmVersionKey is the metadata key used to store the pnpm version in the pnpn layer.
 	pnpmVersionKey = "version"
+	// pnpmV11Constraint is the semver constraint for pnpm versions >= 11.0.0.
+	pnpmV11Constraint *semver.Constraints
 )
+
+func init() {
+	var err error
+	pnpmV11Constraint, err = semver.NewConstraint(">= 11.0.0")
+	if err != nil {
+		panic(fmt.Sprintf("parsing hardcoded pnpm v11 constraint: %v", err))
+	}
+}
 
 // InstallPNPM installs pnpm in the given layer if it is not already cached.
 func InstallPNPM(ctx *gcp.Context, pnpmLayer *libcnb.Layer, pjs *PackageJSON) error {
@@ -69,7 +80,7 @@ func InstallPNPM(ctx *gcp.Context, pnpmLayer *libcnb.Layer, pjs *PackageJSON) er
 	}
 
 	// Store layer flags and metadata.
-	ctx.SetMetadata(pnpmLayer, versionKey, version)
+	ctx.SetMetadata(pnpmLayer, pnpmVersionKey, version)
 	// We need to update the path here to ensure the version we just installed take precedence over
 	// anything pre-installed in the base image.
 	if err := ctx.Setenv("PATH", installDir+":"+os.Getenv("PATH")); err != nil {
@@ -85,6 +96,33 @@ func downloadPNPM(ctx *gcp.Context, dir, version string) error {
 	}
 	fp := filepath.Join(dir, "pnpm")
 	url := fmt.Sprintf(pnpmDownloadURL, version)
+
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return gcp.InternalErrorf("parsing pnpm version %q: %w", version, err)
+	}
+
+	// Starting from v11, pnpm is distributed as a .tar.gz archive containing the executable,
+	// rather than a naked binary. We check the version to determine the appropriate download format.
+	if pnpmV11Constraint.Check(v) {
+		ctx.Logf("pnpm v%s detected (>= 11.0.0), downloading tarball.", version)
+		tarURL := url + ".tar.gz"
+		// pnpm v11+ tarballs are flat and contain the "pnpm" executable at the root.
+		// Thus, we set stripComponents to 0.
+		if err := fetch.Tarball(tarURL, dir, 0); err != nil {
+			return gcp.InternalErrorf("downloading pnpm tarball: %w", err)
+		}
+
+		// The extracted file is expected to be named "pnpm" directly in the tarball,
+		// so it will be extracted to `dir/pnpm` (which is `fp`).
+		if _, statErr := os.Stat(fp); os.IsNotExist(statErr) {
+			return gcp.InternalErrorf("expected extracted file %s not found after tarball extraction", fp)
+		}
+		return nil
+	}
+
+	// Legacy behavior for v10 and older (naked binary).
+	ctx.Logf("pnpm v%s detected (< 11.0.0), downloading naked binary.", version)
 	return fetch.File(url, fp)
 }
 
