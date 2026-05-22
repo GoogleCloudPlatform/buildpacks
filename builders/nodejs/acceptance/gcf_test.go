@@ -47,7 +47,7 @@ func TestAcceptance(t *testing.T) {
 			Name: "function without package",
 			App:  "no_package",
 			Labels: map[string]string{
-				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.4.5\",\"injected\":true}",
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.5.1\",\"injected\":true}",
 			},
 		},
 		{
@@ -74,7 +74,7 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse:      []string{yarn},
 			EnableCacheTest: true,
 			Labels: map[string]string{
-				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.4.5\",\"injected\":true}",
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.5.1\",\"injected\":true}",
 			},
 		},
 		{
@@ -112,7 +112,7 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse:      []string{yarn},
 			EnableCacheTest: true,
 			Labels: map[string]string{
-				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.4.5\",\"injected\":true}",
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.5.1\",\"injected\":true}",
 			},
 		},
 		{
@@ -121,7 +121,7 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{yarn},
 			MustNotUse: []string{npm},
 			Labels: map[string]string{
-				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.4.5\",\"injected\":true}",
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.5.1\",\"injected\":true}",
 			},
 		},
 		{
@@ -130,7 +130,7 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{npm},
 			MustNotUse: []string{yarn},
 			Labels: map[string]string{
-				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.4.5\",\"injected\":true}",
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.5.1\",\"injected\":true}",
 			},
 		},
 		{
@@ -140,7 +140,7 @@ func TestAcceptance(t *testing.T) {
 			MustUse:                []string{yarn},
 			MustNotUse:             []string{npm},
 			Labels: map[string]string{
-				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.4.5\",\"injected\":true}",
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.5.1\",\"injected\":true}",
 			},
 		},
 		{
