@@ -12,16 +12,16 @@ var (
 		"prp": "tpczero-system/serverless-runtimes-tpc",
 		"tsp": "eu0-system/serverless-runtimes-tpc",
 		"tsq": "tpcone-system/serverless-runtimes-tpc",
-		// TODO(b/464237789): Add THP and THQ projects once they are created.
-		// "thp": "serverless-runtimes-tpc",
-		// "thq": "serverless-runtimes-tpc",
+		"thp": "s3ns-system/serverless-runtimes-tpc",
+		"thq": "q-s3ns-system/serverless-runtimes-tpc",
 	}
 
-	// TODO(b/464237789): Add THP and THQ hostnames once they are created.
 	arRegionToHostname = map[string]string{
 		"u-us-prp1":             "docker.pkg-tpczero.goog",
 		"u-germany-northeast1q": "docker.pkg-tpcone.goog",
 		"u-germany-northeast1":  "docker.pkg-berlin-build0.goog",
+		"u-france-east1":        "docker.s3nsregistry.fr",
+		"u-france-east1q":       "docker.qs3nsregistry.fr",
 	}
 )
 
