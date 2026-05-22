@@ -102,7 +102,7 @@ const (
 	AspNetCore   InstallableRuntime = "aspnetcore"
 	OpenJDK      InstallableRuntime = "openjdk"
 	CanonicalJDK InstallableRuntime = "canonicaljdk"
-	Go           InstallableRuntime = "go"
+	Go           InstallableRuntime = "golang"
 	Jetty        InstallableRuntime = "jetty"
 
 	Ubuntu1804 string = "ubuntu1804"
@@ -353,28 +353,8 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	registry := tarballRegistry()
 	region, present := os.LookupEnv(env.RuntimeImageRegion)
 
-	// TODO(b/466126787): Add Golang support for TPC. Combine this block with the else condition once Golang support is added.
-	if tpc.IsTPC() {
-		majorVersion := extractMajorVersion(version, string(runtime))
-		hostname, err := arHostname(ctx, region)
-		if err != nil {
-			return false, err
-		}
-		url := runtimeImageURL(hostname, registry, osName, runtime, version)
-		if err := fetch.ARImage(url, "", layer.Path, stripComponents, ctx); err != nil {
-			if majorVersion != "" {
-				versionFallback := "latest_" + majorVersion
-				ctx.Logf("Failed to download %s v%s, trying fallback %s.", runtimeName, version, versionFallback)
-				urlFallback := runtimeImageURL(hostname, registry, osName, runtime, versionFallback)
-				if err := fetch.ARImage(urlFallback, "", layer.Path, stripComponents, ctx); err == nil {
-					version = versionFallback
-					goto success
-				}
-			}
-			ctx.Warnf("Failed to download %s version %s osName %s from artifact registry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
-			return false, err
-		}
-	} else if registry == tarballRegistryDev || runtime == Go || !present {
+	useLorry := !tpc.IsTPC() && (registry == tarballRegistryDev || runtime == Go || !present)
+	if useLorry {
 		// Use Lorry for dev env, Go runtime, or if the region is not set.
 		runtimeURL := TarballDownloadURL(runtime, osName, version)
 		if err := fetch.Tarball(runtimeURL, layer.Path, stripComponents); err != nil {
@@ -382,46 +362,24 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 			return false, err
 		}
 	} else {
-		// Use Artifact Registry for other cases.
 		hostname, err := arHostname(ctx, region)
 		if err != nil {
 			return false, err
 		}
 		url := runtimeImageURL(hostname, registry, osName, runtime, version)
 
-		fallbackHostname, err := arHostname(ctx, fallbackRegion)
-		if err != nil {
-			// Fallback region should always be valid in GDU.
-			return false, gcp.InternalErrorf("failed to get hostname for fallback region %s: %w", fallbackRegion, err)
-		}
-		fallbackURL := runtimeImageURL(fallbackHostname, registry, osName, runtime, version)
-
-		// TODO(b/493740533): Add support for other runtimes.
-		if v, _ := env.IsPresentAndTrue(env.FasterTarballExtraction); v && isZstdSupportedRuntime(os.Getenv(env.Runtime)) {
-			urlZstd := runtimeImageURLZstd(hostname, registry, osName, runtime, version)
-			fallbackURLZstd := runtimeImageURLZstd(fallbackHostname, registry, osName, runtime, version)
-
-			err := fetch.ARImage(urlZstd, fallbackURLZstd, layer.Path, stripComponents, ctx)
-			if err == nil {
-				buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.ZstdTarballExtractionCounterID).Increment(1)
-				ctx.SetMetadata(layer, stackKey, ctx.StackID())
-				ctx.SetMetadata(layer, versionKey, version)
-				return false, nil
+		if fetched, err := fetchZstd(ctx, hostname, registry, osName, runtime, version, layer, stripComponents); !fetched || err != nil {
+			fallbackURL, err := fallbackRuntimeImageURL(ctx, hostname, registry, osName, runtime, version, false)
+			if err != nil {
+				return false, err
 			}
-
-			ctx.Warnf("Zstd extraction failed: %v. Falling back to default gzip extraction.", err)
-			if err := ctx.ClearLayer(layer); err != nil {
-				return false, gcp.InternalErrorf("clearing layer %q for fallback: %w", layer.Name, err)
+			if err := fetch.ARImage(url, fallbackURL, layer.Path, stripComponents, ctx); err != nil {
+				ctx.Warnf("Failed to download %s version %s osName %s from artifact registry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
+				return false, err
 			}
-		}
-
-		if err := fetch.ARImage(url, fallbackURL, layer.Path, stripComponents, ctx); err != nil {
-			ctx.Warnf("Failed to download %s version %s osName %s from artifact registry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
-			return false, err
 		}
 	}
 
-success:
 	ctx.SetMetadata(layer, stackKey, ctx.StackID())
 	ctx.SetMetadata(layer, versionKey, version)
 
@@ -434,6 +392,49 @@ func runtimeImageURL(hostname, registry, osName string, runtime InstallableRunti
 
 func runtimeImageURLZstd(hostname, registry, osName string, runtime InstallableRuntime, version string) string {
 	return fmt.Sprintf(runtimeImageARURLZstd, hostname, registry, osName, runtime, version)
+}
+
+func fetchZstd(ctx *gcp.Context, hostname, registry, osName string, runtime InstallableRuntime, version string, layer *libcnb.Layer, stripComponents int) (bool, error) {
+	// TODO(b/493740533): Add support for other runtimes.
+	if v, _ := env.IsPresentAndTrue(env.FasterTarballExtraction); v && isZstdSupportedRuntime(os.Getenv(env.Runtime)) {
+		urlZstd := runtimeImageURLZstd(hostname, registry, osName, runtime, version)
+		fallbackURLZstd, err := fallbackRuntimeImageURL(ctx, hostname, registry, osName, runtime, version, true)
+		if err != nil {
+			return false, err
+		}
+
+		if err := fetch.ARImage(urlZstd, fallbackURLZstd, layer.Path, stripComponents, ctx); err != nil {
+			ctx.Warnf("Zstd extraction failed: %v. Falling back to default gzip extraction.", err)
+			if err := ctx.ClearLayer(layer); err != nil {
+				return false, gcp.InternalErrorf("clearing layer %q for fallback: %w", layer.Name, err)
+			}
+		}
+
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.ZstdTarballExtractionCounterID).Increment(1)
+		return true, nil
+	}
+	return false, nil
+}
+
+func fallbackRuntimeImageURL(ctx *gcp.Context, hostname, registry, osName string, runtime InstallableRuntime, version string, isZstd bool) (string, error) {
+	fallbackURL := ""
+	extractor := runtimeImageURL
+	if isZstd {
+		extractor = runtimeImageURLZstd
+	}
+	if tpc.IsTPC() {
+		if majorVersion := extractMajorVersion(version, string(runtime)); majorVersion != "" {
+			fallbackURL = extractor(hostname, registry, osName, runtime, "latest_"+majorVersion)
+		}
+	} else {
+		fallbackHostname, err := arHostname(ctx, fallbackRegion)
+		if err != nil {
+			// Fallback region should always be valid in GDU.
+			return "", gcp.InternalErrorf("failed to get hostname for fallback region %s: %w", fallbackRegion, err)
+		}
+		fallbackURL = extractor(fallbackHostname, registry, osName, runtime, version)
+	}
+	return fallbackURL, nil
 }
 
 // TarballDownloadURL returns URL to download tarball from lorry.

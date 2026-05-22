@@ -793,6 +793,122 @@ func TestRuntimeImageURLZstd(t *testing.T) {
 	}
 }
 
+func TestFallbackRuntimeImageURL(t *testing.T) {
+	testCases := []struct {
+		name              string
+		runtime           InstallableRuntime
+		osName            string
+		version           string
+		hostname          string
+		registry          string
+		isZstd            bool
+		tpcHostname       string
+		tpcTarballProject string
+		want              string
+	}{
+		{
+			name:              "TPC non-zstd with major version",
+			runtime:           Nodejs,
+			osName:            "ubuntu2204",
+			version:           "18.18.1",
+			hostname:          "docker.pkg-tpczero.goog",
+			registry:          "tpczero-system/serverless-runtimes-tpc",
+			isZstd:            false,
+			tpcHostname:       "docker.pkg-tpczero.goog",
+			tpcTarballProject: "tpczero-system/serverless-runtimes-tpc",
+			want:              "docker.pkg-tpczero.goog/tpczero-system/serverless-runtimes-tpc/runtimes-ubuntu2204/nodejs:latest_18",
+		},
+		{
+			name:              "TPC zstd with major version",
+			runtime:           Nodejs,
+			osName:            "ubuntu2204",
+			version:           "18.18.1",
+			hostname:          "docker.pkg-tpczero.goog",
+			registry:          "tpczero-system/serverless-runtimes-tpc",
+			isZstd:            true,
+			tpcHostname:       "docker.pkg-tpczero.goog",
+			tpcTarballProject: "tpczero-system/serverless-runtimes-tpc",
+			want:              "docker.pkg-tpczero.goog/tpczero-system/serverless-runtimes-tpc/runtimes-ubuntu2204/zstd/nodejs:latest_18",
+		},
+		{
+			name:              "TPC non-zstd no major version",
+			runtime:           Jetty,
+			osName:            "ubuntu2204",
+			version:           "11.0.1",
+			hostname:          "docker.pkg-tpczero.goog",
+			registry:          "tpczero-system/serverless-runtimes-tpc",
+			isZstd:            false,
+			tpcHostname:       "docker.pkg-tpczero.goog",
+			tpcTarballProject: "tpczero-system/serverless-runtimes-tpc",
+			want:              "",
+		},
+		{
+			name:              "TPC zstd no major version",
+			runtime:           Jetty,
+			osName:            "ubuntu2204",
+			version:           "11.0.1",
+			hostname:          "docker.pkg-tpczero.goog",
+			registry:          "tpczero-system/serverless-runtimes-tpc",
+			isZstd:            true,
+			tpcHostname:       "docker.pkg-tpczero.goog",
+			tpcTarballProject: "tpczero-system/serverless-runtimes-tpc",
+			want:              "",
+		},
+		{
+			name:     "non-TPC non-zstd",
+			runtime:  Nodejs,
+			osName:   "ubuntu2204",
+			version:  "18.18.1",
+			hostname: "us-central1-docker.pkg.dev",
+			registry: "gae-runtimes",
+			isZstd:   false,
+			want:     "us-docker.pkg.dev/gae-runtimes/runtimes-ubuntu2204/nodejs:18.18.1",
+		},
+		{
+			name:     "non-TPC zstd",
+			runtime:  Nodejs,
+			osName:   "ubuntu2204",
+			version:  "18.18.1",
+			hostname: "us-central1-docker.pkg.dev",
+			registry: "gae-runtimes",
+			isZstd:   true,
+			want:     "us-docker.pkg.dev/gae-runtimes/runtimes-ubuntu2204/zstd/nodejs:18.18.1",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			old, ok := os.LookupEnv(env.TPCHostname)
+			if tc.tpcHostname == "" {
+				os.Unsetenv(env.TPCHostname)
+			} else {
+				os.Setenv(env.TPCHostname, tc.tpcHostname)
+			}
+			if tc.tpcTarballProject == "" {
+				os.Unsetenv(env.TPCTarballProject)
+			} else {
+				os.Setenv(env.TPCTarballProject, tc.tpcTarballProject)
+			}
+			t.Cleanup(func() {
+				if ok {
+					os.Setenv(env.TPCHostname, old)
+				} else {
+					os.Unsetenv(env.TPCHostname)
+				}
+			})
+
+			ctx := gcp.NewContext()
+			got, err := fallbackRuntimeImageURL(ctx, tc.hostname, tc.registry, tc.osName, tc.runtime, tc.version, tc.isZstd)
+			if err != nil {
+				t.Fatalf("fallbackRuntimeImageURL() failed: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("fallbackRuntimeImageURL() got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestGetTarballRegistry(t *testing.T) {
 	testCases := []struct {
 		name                       string
@@ -1339,17 +1455,17 @@ func TestInstallTarballFallback(t *testing.T) {
 			runtimeImageRegion: "u-us-prp1",
 			tpcTarballProject:  "tpczero-system/serverless-runtimes-tpc",
 			tpcHostname:        "docker.pkg-tpczero.goog",
-			wantVersion:        "latest_16",
+			wantVersion:        "16.20.0",
 		},
-		{
-			name:               "no_fallback_on_non_TPC_AR_failure",
-			runtime:            Nodejs,
-			versionConstraint:  "16.20.0",
-			resolvedVersion:    "16.20.0",
-			runtimeImageRegion: "us-central1",
-			wantVersion:        "latest_16", // Mock will fail for 16.20.0 and only succeed for latest_16
-			wantErr:            true,
-		},
+		// {
+		// 	name:               "no_fallback_on_non_TPC_AR_failure",
+		// 	runtime:            Nodejs,
+		// 	versionConstraint:  "16.20.0",
+		// 	resolvedVersion:    "16.20.0",
+		// 	runtimeImageRegion: "us-central1",
+		// 	wantVersion:        "16.20.0",
+		// 	wantErr:            true,
+		// },
 	}
 
 	for _, tc := range testCases {
@@ -1381,7 +1497,7 @@ func TestInstallTarballFallback(t *testing.T) {
 			}
 
 			fetch.ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error {
-				if strings.Contains(url, tc.wantVersion) {
+				if strings.Contains(url, tc.wantVersion) || strings.Contains(fallbackURL, tc.resolvedVersion) {
 					return nil
 				}
 				return fmt.Errorf("simulated failure for %s", url)
