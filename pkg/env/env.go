@@ -185,11 +185,9 @@ const (
 	BuildUniverse = "GOOGLE_BUILD_UNIVERSE"
 
 	// TPCTarballProject is an env var used to specify the project for the TPC tarball.
-	// Example: "tpczero-system/serverless-runtimes-tpc"
 	TPCTarballProject = "GOOGLE_TPC_TARBALL_PROJECT"
 
 	// TPCHostname is an env var used to specify the hostname for the TPC build.
-	// Example: "docker.pkg-tpczero.goog"
 	TPCHostname = "GOOGLE_TPC_HOSTNAME"
 
 	// PythonPackageManager is an env var used to specify the python package manager for the Build.
