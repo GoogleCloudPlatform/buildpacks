@@ -28,10 +28,10 @@ import (
 const (
 	// indexHTML is the name of the index.html file.
 	indexHTML = "index.html"
-	// nginxPathBaseImage is the path to the nginx binary in the static runtimes base image.
+	// nginxPathBaseImage is the path to the nginx root in the static runtimes base image.
 	nginxPathBaseImage = "/opt/nginx/"
-	// nginxMimeTypesPathBaseImage is the path to the mime.types file in the static runtimes base image.
-	nginxMimeTypesPathBaseImage = "/opt/nginx/conf/mime.types"
+	// nginxPathBuildpacks is the path to the nginx root when installed by the nginx buildpack.
+	nginxPathBuildpacks = "/layers/google.utils.nginx/nginx"
 )
 
 // staticAssets is a list of potential static file/folder indicators, ordered by preference.
@@ -70,10 +70,11 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 // BuildFn generates or copies the nginx configuration and registers the web entrypoint.
 func BuildFn(ctx *gcp.Context) error {
-	l, err := ctx.Layer("nginx_config", gcp.LaunchLayer)
+	l, err := ctx.Layer("nginx_config", gcp.LaunchLayer, gcp.BuildLayer)
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
 	}
+	l.BuildEnvironment.Override(env.StaticServe, "true")
 
 	rootPath := ctx.ApplicationRoot()
 	for _, c := range staticAssets {
@@ -95,9 +96,16 @@ func BuildFn(ctx *gcp.Context) error {
 
 	nginxConfPath := filepath.Join(l.Path, static.NginxConfFile)
 	ctx.Logf("Generating default SPA/SSG-friendly %s", static.NginxConfFile)
+
+	nginxPath := nginxPathBuildpacks
+	if env.IsStaticBaseImage() {
+		nginxPath = nginxPathBaseImage
+	}
+	nginxMimeTypesPath := filepath.Join(nginxPath, "conf/mime.types")
+
 	params := static.NginxConfigParams{
 		RootPath:      rootPath,
-		MimeTypesPath: nginxMimeTypesPathBaseImage,
+		MimeTypesPath: nginxMimeTypesPath,
 	}
 	if err := static.WriteNginxConfig(nginxConfPath, params); err != nil {
 		return fmt.Errorf("writing %s: %w", static.NginxConfFile, err)
@@ -107,7 +115,7 @@ func BuildFn(ctx *gcp.Context) error {
 	ctx.AddProcess(gcp.WebProcess, []string{
 		"nginx",
 		// TODO(b/512020384) - remove explicit path once we have dedicated nginx tarball for static case.
-		"-p", nginxPathBaseImage,
+		"-p", nginxPath,
 		"-c", nginxConfPath,
 		"-g", "daemon off;",
 	}, gcp.AsDefaultProcess(), gcp.AsDirectProcess())

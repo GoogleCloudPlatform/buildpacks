@@ -1158,6 +1158,8 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   [[order.group]]
     id = "google.static.serve"
   [[order.group]]
+    id = "google.utils.nginx"
+  [[order.group]]
     id = "google.utils.label-image"
 
 # This buildpack group will always fail but with a clear message that the

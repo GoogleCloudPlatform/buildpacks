@@ -5,7 +5,7 @@ go_library(
     srcs = ["static.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
-        "//cmd/static:__subpackages__",
+        "//:__subpackages__",
     ],
 )
 

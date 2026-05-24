@@ -42,6 +42,8 @@ http {
     }
 }
 `
+	// DefaultStaticNginxVersion is the default Nginx version constraint for runtimes not specified in the map.
+	DefaultStaticNginxVersion = "1.30.x"
 )
 
 // NginxConfigParams holds the runtime configuration parameters for templating nginx.conf.
@@ -64,4 +66,25 @@ func WriteNginxConfig(dstPath string, params NginxConfigParams) error {
 	defer f.Close()
 
 	return tmpl.Execute(f, params)
+}
+
+const (
+	// RuntimeStatic24 is the runtime name for static24 base image.
+	RuntimeStatic24 = "static24"
+)
+
+var (
+	// NginxVersionPerRuntime maps a runtime name to its specific Nginx version constraint.
+	NginxVersionPerRuntime = map[string]string{
+		RuntimeStatic24: "1.30.x",
+	}
+)
+
+// NginxVersionConstraint returns the Nginx version constraint for the specified runtime name.
+// If the runtime name is not found in the map, it returns the default Nginx version constraint.
+func NginxVersionConstraint(runtimeName string) string {
+	if ver, ok := NginxVersionPerRuntime[runtimeName]; ok {
+		return ver
+	}
+	return DefaultStaticNginxVersion
 }

@@ -50,3 +50,40 @@ func TestWriteNginxConfig(t *testing.T) {
 		t.Errorf("WriteNginxConfig() output = %q; missing worker_connections", got)
 	}
 }
+
+func TestNginxVersionConstraint(t *testing.T) {
+	testCases := []struct {
+		name        string
+		runtimeName string
+		want        string
+	}{
+		{
+			name:        "static24_runtime",
+			runtimeName: RuntimeStatic24,
+			want:        "1.30.x",
+		},
+		{
+			name:        "php_runtime",
+			runtimeName: "php",
+			want:        DefaultStaticNginxVersion,
+		},
+		{
+			name:        "buildpacks_runtime",
+			runtimeName: "buildpacks",
+			want:        DefaultStaticNginxVersion,
+		},
+		{
+			name:        "unknown_runtime",
+			runtimeName: "unknown",
+			want:        DefaultStaticNginxVersion,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := NginxVersionConstraint(tc.runtimeName); got != tc.want {
+				t.Errorf("NginxVersionConstraint(%q) = %q, want %q", tc.runtimeName, got, tc.want)
+			}
+		})
+	}
+}

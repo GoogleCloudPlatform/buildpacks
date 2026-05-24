@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -207,6 +208,9 @@ const (
 	// PipTargetDir is the environment variable used to specify the target directory for pip
 	// installation for the maker use case.
 	PipTargetDir = "GOOGLE_PIP_TARGET_DIR"
+
+	// StaticServe indicates that the static serve buildpack was invoked.
+	StaticServe = "GOOGLE_STATIC_SERVE"
 )
 
 const (
@@ -287,4 +291,15 @@ func IsPresentAndTrue(varName string) (bool, error) {
 	}
 
 	return parsed, nil
+}
+
+// UsingStaticServe returns true if the static serve buildpack is active.
+func UsingStaticServe() (bool, error) {
+	return IsPresentAndTrue(StaticServe)
+}
+
+// IsStaticBaseImage returns true if the workload is being built on a static base image (e.g., static24).
+// In generic run images, GOOGLE_RUNTIME is set to 'buildpacks'.
+func IsStaticBaseImage() bool {
+	return strings.HasPrefix(os.Getenv(Runtime), "static")
 }
