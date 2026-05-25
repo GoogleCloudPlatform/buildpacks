@@ -118,6 +118,12 @@ func downloadPNPM(ctx *gcp.Context, dir, version string) error {
 		if _, statErr := os.Stat(fp); os.IsNotExist(statErr) {
 			return gcp.InternalErrorf("expected extracted file %s not found after tarball extraction", fp)
 		}
+
+		// Replace native compiled binary with pure JS shell wrapper to avoid runtime dynamic linker (libatomic) dependencies on minimal run images.
+		wrapperContent := "#!/usr/bin/env bash\nexec node \"$(dirname \"$0\")/dist/pnpm.mjs\" \"$@\"\n"
+		if err := os.WriteFile(fp, []byte(wrapperContent), 0777); err != nil {
+			return gcp.InternalErrorf("writing pnpm shell wrapper: %w", err)
+		}
 		return nil
 	}
 

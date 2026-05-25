@@ -38,25 +38,25 @@ func TestInstallPNPM(t *testing.T) {
 		wantError   bool
 	}{
 		{
-			name:     "no version constraint",
+			name:     "no_version_constraint",
 			wantFile: "bin/pnpm",
 			npmResponse: `{
 				"name": "pnpm",
 				"dist-tags": {
-					"latest": "8.4.0"
+					"latest": "11.0.0"
 				},
 				"versions": {
-					"8.4.0": {
+					"11.0.0": {
 						"name": "npm",
-						"version": "8.4.0"
+						"version": "11.0.0"
 					}
 				},
-				"modified": "2022-01-27T21:10:55.626Z"
+				"modified": "2026-05-21T21:10:55.626Z"
 			}`,
 			packageJSON: PackageJSON{},
 		},
 		{
-			name:     "valid version constraint",
+			name:     "valid_version_constraint",
 			wantFile: "bin/pnpm",
 			npmResponse: `{
 				"name": "pnpm",
@@ -78,7 +78,7 @@ func TestInstallPNPM(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid version",
+			name: "invalid_version",
 			npmResponse: `{
 				"name": "pnpm",
 				"dist-tags": {
@@ -105,7 +105,15 @@ func TestInstallPNPM(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testserver.New(
 				t,
-				testserver.WithJSON(`pnpm!`),
+				testserver.WithHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if strings.Contains(r.URL.String(), ".tar.gz") {
+						w.WriteHeader(http.StatusOK)
+						w.Write(mockTarballBytes(t))
+					} else {
+						w.WriteHeader(http.StatusOK)
+						w.Write([]byte("pnpm!"))
+					}
+				})),
 				testserver.WithMockURL(&pnpmDownloadURL),
 			)
 			testserver.New(
@@ -255,31 +263,12 @@ func TestInstallPNPMV11(t *testing.T) {
 		}
 	}`
 
-	// Create a valid minimal tar.gz in memory containing a file named "pnpm"
-	var buf bytes.Buffer
-	gw := gzip.NewWriter(&buf)
-	tw := tar.NewWriter(gw)
-	hdr := &tar.Header{
-		Name: "pnpm",
-		Mode: 0755,
-		Size: int64(len("pnpm!")),
-	}
-	if err := tw.WriteHeader(hdr); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := tw.Write([]byte("pnpm!")); err != nil {
-		t.Fatal(err)
-	}
-	tw.Close()
-	gw.Close()
-	tarBytes := buf.Bytes()
-
 	testserver.New(
 		t,
 		testserver.WithHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.Contains(r.URL.String(), ".tar.gz") {
 				w.WriteHeader(http.StatusOK)
-				w.Write(tarBytes)
+				w.Write(mockTarballBytes(t))
 			} else {
 				w.WriteHeader(http.StatusNotFound)
 			}
@@ -314,4 +303,25 @@ func TestInstallPNPMV11(t *testing.T) {
 	if _, err := os.Stat(fp); err != nil {
 		t.Errorf("os.Stat(%q) got error: %v, want nil", fp, err)
 	}
+}
+
+func mockTarballBytes(t *testing.T) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+	hdr := &tar.Header{
+		Name: "pnpm",
+		Mode: 0755,
+		Size: int64(len("pnpm!")),
+	}
+	if err := tw.WriteHeader(hdr); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tw.Write([]byte("pnpm!")); err != nil {
+		t.Fatal(err)
+	}
+	tw.Close()
+	gw.Close()
+	return buf.Bytes()
 }

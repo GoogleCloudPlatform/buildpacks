@@ -260,6 +260,9 @@ func installFunctionsFramework(ctx *gcp.Context, l *libcnb.Layer) error {
 	if err != nil {
 		return err
 	}
+	if nodeVersion == "nodejs12" || nodeVersion == "nodejs14" {
+		installCmd = "install"
+	}
 	// NPM expects package.json and the lock file in the prefix directory.
 	if _, err := ctx.Exec([]string{"cp", "-t", l.Path, pjs, pljs}, gcp.WithUserTimingAttribution); err != nil {
 		return err
