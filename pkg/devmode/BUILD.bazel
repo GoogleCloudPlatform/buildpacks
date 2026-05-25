@@ -18,6 +18,7 @@ go_library(
         "//cmd/java:__subpackages__",
         "//cmd/nodejs:__subpackages__",
         "//pkg/clearsource:__subpackages__",
+        "//pkg/dotnet:__subpackages__",
     ],
     deps = [
         "//pkg/env",

@@ -176,6 +176,12 @@ var localRuntimeVersionCmds = map[InstallableRuntime][][]string{
 		{"php", "-r", "echo PHP_VERSION;"},
 		{"php", "--version"},
 	},
+	DotnetSDK: {
+		{"dotnet", "--version"},
+	},
+	AspNetCore: {
+		{"dotnet", "--version"},
+	},
 }
 
 var errUnsupportedRuntime = errors.New("unsupported runtime for local check")
