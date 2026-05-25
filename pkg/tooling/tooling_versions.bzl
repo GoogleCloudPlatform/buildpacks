@@ -55,7 +55,7 @@ TOOLING_VERSIONS = {
     },
     "java": {
         "default": {
-            "maven": "3.9.15",
+            "maven": "3.9.16",
             "gradle": "9.5.0",
         },
         "runtimes": [
