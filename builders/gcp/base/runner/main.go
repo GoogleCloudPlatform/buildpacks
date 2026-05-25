@@ -64,6 +64,7 @@ import (
 	rubyrails "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/rails/lib"
 	rubyrubygems "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/rubygems/lib"
 	rubyruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/runtime/lib"
+	staticserve "github.com/GoogleCloudPlatform/buildpacks/cmd/static/serve/lib"
 	utilsnginx "github.com/GoogleCloudPlatform/buildpacks/cmd/utils/nginx/lib"
 )
 
@@ -304,6 +305,10 @@ func init() {
 	buildpacks["google.utils.nginx"] = gcp.BuildpackFuncs{
 		Detect: utilsnginx.DetectFn,
 		Build:  utilsnginx.BuildFn,
+	}
+	buildpacks["google.static.serve"] = gcp.BuildpackFuncs{
+		Detect: staticserve.DetectFn,
+		Build:  staticserve.BuildFn,
 	}
 }
 
