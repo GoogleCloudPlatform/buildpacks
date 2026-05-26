@@ -351,15 +351,15 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	}
 	ctx.Logf("Installing %s v%s.", runtimeName, version)
 
-	stripComponents := 0
-	if runtime == OpenJDK || runtime == Go || runtime == Jetty {
-		stripComponents = 1
-	}
-
 	registry := tarballRegistry()
 	region, present := os.LookupEnv(env.RuntimeImageRegion)
 
 	useLorry := !tpc.IsTPC() && (registry == tarballRegistryDev || runtime == Go || !present)
+	stripComponents := 0
+	if runtime == OpenJDK || (runtime == Go && useLorry) || runtime == Jetty {
+		stripComponents = 1
+	}
+
 	if useLorry {
 		// Use Lorry for dev env, Go runtime, or if the region is not set.
 		runtimeURL := TarballDownloadURL(runtime, osName, version)

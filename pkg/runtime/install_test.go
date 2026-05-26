@@ -285,6 +285,9 @@ func TestInstallSource(t *testing.T) {
 		serverlessRuntimesTarballs string
 		fasterTarballExtraction    bool
 		failZstdFetch              bool
+		wantStripComponents        int
+		tpcHostname                string
+		tpcTarballProject          string
 	}{
 		{
 			name:         "Lorry_when_region_is_not_set",
@@ -365,22 +368,24 @@ func TestInstallSource(t *testing.T) {
 			wantAR:             true,
 		},
 		{
-			name:               "install_from_artifact_registry_3",
-			runtime:            OpenJDK,
-			version:            "17.1.0",
-			responseFile:       "testdata/dummy-ruby-runtime.tar.gz",
-			runtimeImageRegion: "us-central1",
-			wantError:          false,
-			wantAR:             true,
+			name:                "install_from_artifact_registry_3",
+			runtime:             OpenJDK,
+			version:             "17.1.0",
+			responseFile:        "testdata/dummy-ruby-runtime.tar.gz",
+			runtimeImageRegion:  "us-central1",
+			wantError:           false,
+			wantAR:              true,
+			wantStripComponents: 1,
 		},
 		{
-			name:               "install_from_artifact_registry_4",
-			runtime:            Jetty,
-			version:            "latest",
-			responseFile:       "testdata/dummy-ruby-runtime.tar.gz",
-			runtimeImageRegion: "us-central1",
-			wantError:          false,
-			wantAR:             true,
+			name:                "install_from_artifact_registry_4",
+			runtime:             Jetty,
+			version:             "latest",
+			responseFile:        "testdata/dummy-ruby-runtime.tar.gz",
+			runtimeImageRegion:  "us-central1",
+			wantError:           false,
+			wantAR:              true,
+			wantStripComponents: 1,
 		},
 		{
 			name:               "install_from_artifact_registry_for_java_21.0",
@@ -401,22 +406,24 @@ func TestInstallSource(t *testing.T) {
 			wantAR:       false,
 		},
 		{
-			name:               "AR_Prod_for_jdk_version_with_beta_and_stable_present",
-			runtime:            OpenJDK,
-			version:            "25.0.1-beta",
-			runtimeImageRegion: "us-central1",
-			buildEnv:           "prod",
-			wantAR:             true,
-			wantVersion:        "25.0.1-beta",
+			name:                "AR_Prod_for_jdk_version_with_beta_and_stable_present",
+			runtime:             OpenJDK,
+			version:             "25.0.1-beta",
+			runtimeImageRegion:  "us-central1",
+			buildEnv:            "prod",
+			wantAR:              true,
+			wantVersion:         "25.0.1-beta",
+			wantStripComponents: 1,
 		},
 		{
-			name:               "AR_Prod_for_jdk_version_with_beta_exact",
-			runtime:            OpenJDK,
-			version:            "25.0.1_12-beta",
-			runtimeImageRegion: "us-central1",
-			buildEnv:           "prod",
-			wantAR:             true,
-			wantVersion:        "25.0.1_12-beta",
+			name:                "AR_Prod_for_jdk_version_with_beta_exact",
+			runtime:             OpenJDK,
+			version:             "25.0.1_12-beta",
+			runtimeImageRegion:  "us-central1",
+			buildEnv:            "prod",
+			wantAR:              true,
+			wantVersion:         "25.0.1_12-beta",
+			wantStripComponents: 1,
 		},
 		{
 			name:                    "install_from_artifact_registry_zstd",
@@ -438,6 +445,26 @@ func TestInstallSource(t *testing.T) {
 			wantAR:                  true,
 			fasterTarballExtraction: true,
 			failZstdFetch:           true,
+		},
+		{
+			name:                "TPC_for_Go_runtime",
+			runtime:             Go,
+			version:             "1.24.5",
+			runtimeImageRegion:  "us-west1",
+			tpcHostname:         "us-docker.pkg.dev",
+			tpcTarballProject:   "my-tpc-project",
+			wantAR:              true,
+			wantStripComponents: 0,
+		},
+		{
+			name:                "TPC_for_OpenJDK_runtime",
+			runtime:             OpenJDK,
+			version:             "17.1.0",
+			runtimeImageRegion:  "us-west1",
+			tpcHostname:         "us-docker.pkg.dev",
+			tpcTarballProject:   "my-tpc-project",
+			wantAR:              true,
+			wantStripComponents: 1,
 		},
 	}
 
@@ -470,6 +497,9 @@ func TestInstallSource(t *testing.T) {
 
 			fetch.ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error {
 				fetchedFromAR = true
+				if stripComponents != tc.wantStripComponents {
+					t.Errorf("fetch.ARImage stripComponents = %d, want %d for test %s", stripComponents, tc.wantStripComponents, tc.name)
+				}
 				if tc.fasterTarballExtraction && !tc.failZstdFetch {
 					if !strings.Contains(url, "zstd") {
 						t.Errorf("For zstd, fetch.ARImage URL %q does not contain expected string \"zstd\"", url)
@@ -516,6 +546,12 @@ func TestInstallSource(t *testing.T) {
 			if tc.fasterTarballExtraction {
 				t.Setenv(env.FasterTarballExtraction, "true")
 				t.Setenv(env.Runtime, "nodejs24")
+			}
+			if tc.tpcHostname != "" {
+				t.Setenv(env.TPCHostname, tc.tpcHostname)
+			}
+			if tc.tpcTarballProject != "" {
+				t.Setenv(env.TPCTarballProject, tc.tpcTarballProject)
 			}
 			_, err := InstallTarballIfNotCached(ctx, tc.runtime, tc.version, layer)
 			if tc.wantError == (err == nil) {
