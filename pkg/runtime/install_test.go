@@ -577,6 +577,103 @@ func TestInstallSource(t *testing.T) {
 	}
 }
 
+func TestFetchZstd(t *testing.T) {
+	testCases := []struct {
+		name                    string
+		fasterTarballExtraction string
+		runtime                 string
+		arImageErr              error
+		clearLayerFail          bool
+		wantFetched             bool
+		wantErr                 bool
+	}{
+		{
+			name:        "faster_tarball_extraction_not_set",
+			wantFetched: false,
+		},
+		{
+			name:                    "faster_tarball_extraction_not_true",
+			fasterTarballExtraction: "false",
+			wantFetched:             false,
+		},
+		{
+			name:                    "unsupported_runtime",
+			fasterTarballExtraction: "true",
+			runtime:                 "nodejs18",
+			wantFetched:             false,
+		},
+		{
+			name:                    "arimage_fetch_success",
+			fasterTarballExtraction: "true",
+			runtime:                 "nodejs24",
+			wantFetched:             true,
+		},
+		{
+			name:                    "arimage_fetch_fail_clearlayer_success",
+			fasterTarballExtraction: "true",
+			runtime:                 "nodejs24",
+			arImageErr:              errors.New("fetching AR image failed"),
+			wantFetched:             false,
+		},
+		{
+			name:                    "arimage_fetch_fail_clearlayer_fail",
+			fasterTarballExtraction: "true",
+			runtime:                 "nodejs24",
+			arImageErr:              errors.New("fetching AR image failed"),
+			clearLayerFail:          true,
+			wantFetched:             false,
+			wantErr:                 true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.fasterTarballExtraction != "" {
+				t.Setenv(env.FasterTarballExtraction, tc.fasterTarballExtraction)
+			} else {
+				t.Setenv(env.FasterTarballExtraction, "")
+			}
+			if tc.runtime != "" {
+				t.Setenv(env.Runtime, tc.runtime)
+			} else {
+				t.Setenv(env.Runtime, "")
+			}
+
+			defer func(fn func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error) {
+				fetch.ARImage = fn
+			}(fetch.ARImage)
+			fetch.ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error {
+				if !strings.Contains(url, "zstd") {
+					t.Errorf("fetch.ARImage URL %q does not contain expected string 'zstd'", url)
+				}
+				return tc.arImageErr
+			}
+
+			ctx := gcp.NewContext()
+			layerDir := t.TempDir()
+			layer := &libcnb.Layer{
+				Path: layerDir,
+			}
+
+			if tc.clearLayerFail {
+				// Make ClearLayer fail by removing write permissions on parent dir.
+				if err := os.Chmod(filepath.Dir(layer.Path), 0555); err != nil {
+					t.Fatalf("Failed to chmod parent dir: %v", err)
+				}
+				defer os.Chmod(filepath.Dir(layer.Path), 0755)
+			}
+
+			fetched, err := fetchZstd(ctx, "hostname", "registry", "osName", Nodejs, "version", layer, 0)
+			if tc.wantErr != (err != nil) {
+				t.Errorf("fetchZstd() got err: %v, want err? %t", err, tc.wantErr)
+			}
+			if fetched != tc.wantFetched {
+				t.Errorf("fetchZstd() got fetched: %t, want fetched? %t", fetched, tc.wantFetched)
+			}
+		})
+	}
+}
+
 func TestPinGemAndBundlerVersion(t *testing.T) {
 	testCases := []struct {
 		name         string

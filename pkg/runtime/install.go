@@ -414,6 +414,7 @@ func fetchZstd(ctx *gcp.Context, hostname, registry, osName string, runtime Inst
 			if err := ctx.ClearLayer(layer); err != nil {
 				return false, gcp.InternalErrorf("clearing layer %q for fallback: %w", layer.Name, err)
 			}
+			return false, nil
 		}
 
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.ZstdTarballExtractionCounterID).Increment(1)
