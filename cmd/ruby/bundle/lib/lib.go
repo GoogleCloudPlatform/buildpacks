@@ -23,6 +23,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
 	"github.com/buildpacks/libcnb/v2"
 )
 
@@ -90,42 +91,50 @@ func BuildFn(ctx *gcp.Context) error {
 		return err
 	}
 
+	localGemsDir := filepath.Join(".bundle", "gems")
+	localBinDir := filepath.Join(".bundle", "bin")
+
+	// 1. LOCK PHASE (with Maker override)
+	if cap := ctx.Capability(ruby.BundleLockerCapability); cap != nil {
+		l, ok := cap.(ruby.BundleLocker)
+		if !ok {
+			return gcp.InternalErrorf("capability %q must implement BundleLocker", ruby.BundleLockerCapability)
+		}
+		if err := l.Lock(ctx); err != nil {
+			return err
+		}
+	} else {
+		// Default Lockfile preparation
+		if err := ruby.PrepareLockfile(ctx, localGemsDir, "development test", []string{"x86_64-linux", "ruby"}); err != nil {
+			return err
+		}
+		// Buildpack clears the config after locking to avoid cache hash pollution
+		if err := ctx.RemoveAll(".bundle"); err != nil {
+			return err
+		}
+	}
+
+	// 2. MAKER SHORTCUT EXIT
+	// If in Maker mode, run the custom local installation and exit immediately, bypassing layers/caching.
+	if cap := ctx.Capability(ruby.BundleInstallerCapability); cap != nil {
+		i, ok := cap.(ruby.BundleInstaller)
+		if !ok {
+			return gcp.InternalErrorf("capability %q must implement BundleInstaller", ruby.BundleInstallerCapability)
+		}
+		return i.Install(ctx)
+	}
+
+	// 3. STANDARD BUILDPACK FLOW (Layers & Caching)
 	deps, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", layerName, err)
 	}
 
-	// This layer directory contains the files installed by bundler into the application .bundle directory
 	bundleOutput := filepath.Join(deps.Path, ".bundle")
 
 	cached, err := checkCache(ctx, deps, cache.WithFiles(lockFile))
 	if err != nil {
 		return fmt.Errorf("checking cache: %w", err)
-	}
-
-	localGemsDir := filepath.Join(".bundle", "gems")
-	localBinDir := filepath.Join(".bundle", "bin")
-
-	// Ensure the GCP runtime platform is present in the lockfile. This is needed for Bundler >= 2.2, in case the user's lockfile is specific to a different platform.
-	if _, err := ctx.Exec([]string{"bundle", "config", "--local", "without", "development test"}, gcp.WithUserAttribution); err != nil {
-		return err
-	}
-	if _, err := ctx.Exec([]string{"bundle", "config", "--local", "path", localGemsDir}, gcp.WithUserAttribution); err != nil {
-		return err
-	}
-
-	// This line will override user provided BUNDLED WITH in the Gemfile.lock
-	// It'll use the currently activated bundler version instead
-	// This was a change in bundler 2.1+
-	// https://github.com/rubygems/rubygems/issues/5683
-	if _, err := ctx.Exec([]string{"bundle", "lock", "--add-platform", "x86_64-linux"}, gcp.WithUserAttribution); err != nil {
-		return err
-	}
-	if _, err := ctx.Exec([]string{"bundle", "lock", "--add-platform", "ruby"}, gcp.WithUserAttribution); err != nil {
-		return err
-	}
-	if err := ctx.RemoveAll(".bundle"); err != nil {
-		return err
 	}
 
 	if cached {
@@ -134,34 +143,13 @@ func BuildFn(ctx *gcp.Context) error {
 		ctx.CacheMiss(layerName)
 
 		// Install the bundle locally into .bundle/gems
-		if _, err := ctx.Exec([]string{"bundle", "config", "--local", "deployment", "true"}, gcp.WithUserAttribution); err != nil {
+		bCfg := ruby.BundleConfig{
+			Deployment: true,
+			Frozen:     true,
+		}
+		env := []string{"NOKOGIRI_USE_SYSTEM_LIBRARIES=1", "MALLOC_ARENA_MAX=2", "LANG=C.utf8"}
+		if err := ruby.InstallAndSymlink(ctx, localGemsDir, localBinDir, "development test", bCfg, env); err != nil {
 			return err
-		}
-		if _, err := ctx.Exec([]string{"bundle", "config", "--local", "frozen", "true"}, gcp.WithUserAttribution); err != nil {
-			return err
-		}
-		if _, err := ctx.Exec([]string{"bundle", "config", "--local", "without", "development test"}, gcp.WithUserAttribution); err != nil {
-			return err
-		}
-		if _, err := ctx.Exec([]string{"bundle", "config", "--local", "path", localGemsDir}, gcp.WithUserAttribution); err != nil {
-			return err
-		}
-		if _, err := ctx.Exec([]string{"bundle", "install"},
-			gcp.WithEnv("NOKOGIRI_USE_SYSTEM_LIBRARIES=1", "MALLOC_ARENA_MAX=2", "LANG=C.utf8"), gcp.WithUserAttribution); err != nil {
-			return err
-		}
-
-		// Find any gem-installed binary directory and symlink as a static path
-		foundBinDirs, err := ctx.Glob(".bundle/gems/ruby/*/bin")
-		if err != nil {
-			return fmt.Errorf("finding bin dirs: %w", err)
-		}
-		if len(foundBinDirs) > 1 {
-			return fmt.Errorf("unexpected multiple gem bin dirs: %v", foundBinDirs)
-		} else if len(foundBinDirs) == 1 {
-			if err := ctx.Symlink(filepath.Join(ctx.ApplicationRoot(), foundBinDirs[0]), localBinDir); err != nil {
-				return err
-			}
 		}
 
 		// Move the built .bundle directory into the layer

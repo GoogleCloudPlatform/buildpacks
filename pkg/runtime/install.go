@@ -176,6 +176,11 @@ var localRuntimeVersionCmds = map[InstallableRuntime][][]string{
 		{"php", "-r", "echo PHP_VERSION;"},
 		{"php", "--version"},
 	},
+	Ruby: {
+		{"ruby", "-e", "'puts RUBY_VERSION'"},
+		{"ruby", "--version"},
+		{"ruby", "-v"},
+	},
 	DotnetSDK: {
 		{"dotnet", "--version"},
 	},
@@ -685,15 +690,20 @@ func runtimeMatchesInstallableRuntime(installableRuntime InstallableRuntime) boo
 
 func cleanVersion(v string) string {
 	v = strings.TrimSpace(v)
-	v = strings.TrimPrefix(v, "Python ")
-	if strings.HasPrefix(v, "go version go") {
-		v = strings.TrimPrefix(v, "go version go")
-		v = strings.Fields(v)[0]
+
+	prefixes := []string{"Python ", "PHP ", "ruby ", "go version go"}
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(v, prefix) {
+			v = strings.TrimPrefix(v, prefix)
+			break
+		}
 	}
-	if strings.HasPrefix(v, "PHP ") {
-		v = strings.TrimPrefix(v, "PHP ")
-		v = strings.Fields(v)[0]
+
+	fields := strings.Fields(v)
+	if len(fields) > 0 {
+		v = fields[0]
 	}
+
 	v = strings.TrimPrefix(v, "v")
 	return v
 }

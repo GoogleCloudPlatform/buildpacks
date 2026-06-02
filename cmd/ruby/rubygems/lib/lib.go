@@ -68,6 +68,14 @@ func BuildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating layer: %w", err)
 	}
 
+	if cap := ctx.Capability(ruby.GemsInstallerCapability); cap != nil {
+		i, ok := cap.(ruby.GemsInstaller)
+		if !ok {
+			return gcp.InternalErrorf("capability %q must implement RubyGemsInstaller", ruby.GemsInstallerCapability)
+		}
+		return i.Install(ctx, layer)
+	}
+
 	if err = installRubygems(ctx, layer); err != nil {
 		return err
 	}

@@ -1369,6 +1369,23 @@ func TestCheckLocalRuntimeVersion(t *testing.T) {
 			want: "8.3.12",
 		},
 		{
+			name:    "success ruby",
+			runtime: Ruby,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`ruby -e.*`, mockprocess.WithStdout("3.3.8\n")),
+			},
+			want: "3.3.8",
+		},
+		{
+			name:    "fallback to ruby `--version`",
+			runtime: Ruby,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`ruby -e.*`, mockprocess.WithExitCode(1)),
+				mockprocess.New(`ruby --version`, mockprocess.WithStdout("ruby 3.3.8 (2025-04-09 revision b200bad6cd) [x86_64-linux-gnu]\n")),
+			},
+			want: "3.3.8",
+		},
+		{
 			name:    "unsupported runtime",
 			runtime: "unsupported",
 			wantErr: true,
@@ -1420,6 +1437,9 @@ func TestCleanVersion(t *testing.T) {
 		{"go version go1.24.5 linux/amd64", "1.24.5"},
 		{"go version go1.25 linux/amd64", "1.25"},
 		{"PHP 8.3.12 (cli) ...", "8.3.12"},
+		{"ruby 3.3.8 (2025-04-09 revision b200bad6cd) [x86_64-linux-gnu]", "3.3.8"},
+		{"", ""},
+		{"6.0.402", "6.0.402"},
 	}
 	for _, tc := range testCases {
 		got := cleanVersion(tc.input)
