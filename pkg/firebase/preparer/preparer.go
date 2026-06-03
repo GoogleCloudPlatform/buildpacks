@@ -20,12 +20,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/envvars"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/secrets"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 )
 
 // Options contains data for the preparer to perform pre-build logic.
@@ -98,51 +100,15 @@ func Prepare(ctx context.Context, opts Options) error {
 		appHostingYAML.Env = apphostingschema.MergeEnvVars(appHostingYAML.Env, parsedServerSideEnvVars)
 	}
 
-	// NG_TRUST_PROXY_HEADERS is used by Angular Universal applications to determine which proxy headers to trust.
-	// We inject it here so that it is available to users by default. If the user provides this env var,
-	// we validate its value and use it if correct.
-	if ev, found := apphostingschema.GetEnvVar(&appHostingYAML, ngTrustProxyHeaders); found {
-		// Validate the value of the user provided NG_TRUST_PROXY_HEADERS
-		if ev.Value != expectedProxyHeaderValue {
-			return fmt.Errorf("invalid value for %s (Angular trust proxy headers): got %q, want %q", ngTrustProxyHeaders, ev.Value, expectedProxyHeaderValue)
-		}
-
-		if len(ev.Availability) > 0 && !slices.Contains(ev.Availability, "RUNTIME") {
-			return fmt.Errorf("user-defined environment variable %s must include RUNTIME in its availability", ngTrustProxyHeaders)
-		}
-	} else {
-		appHostingYAML.Env = append(appHostingYAML.Env, apphostingschema.EnvironmentVariable{
-			Variable:     ngTrustProxyHeaders,
-			Value:        expectedProxyHeaderValue,
-			Source:       apphostingschema.SourceFirebaseSystem,
-			Availability: []string{"RUNTIME"},
-		})
+	isAngular, err := configureAngularEnv(&appHostingYAML, opts)
+	if err != nil {
+		return err
 	}
 
-	// NG_ALLOWED_HOSTS secures Angular SSR against Host Poisoning. We try to derive it
-	// from X_FIREBASE_SUPPORTED_HOSTS (reserved default domains provided by Firebase) if not user-set.
-	// Skip silently if X_FIREBASE_SUPPORTED_HOSTS is empty or missing.
-	if _, found := apphostingschema.GetEnvVar(&appHostingYAML, "NG_ALLOWED_HOSTS"); !found {
-		ev, _ := apphostingschema.GetEnvVar(&appHostingYAML, "X_FIREBASE_SUPPORTED_HOSTS")
-		supportedHosts := ev.Value
-
-		if supportedHosts != "" {
-			// Derived NG_ALLOWED_HOSTS defaults to RUNTIME availability as it is required at runtime.
-			appHostingYAML.Env = append(appHostingYAML.Env, apphostingschema.EnvironmentVariable{
-				Variable:     "NG_ALLOWED_HOSTS",
-				Value:        supportedHosts,
-				Availability: []string{"RUNTIME"},
-				Source:       apphostingschema.SourceFirebaseSystem,
-			})
-		}
-	}
 	apphostingschema.Sanitize(&appHostingYAML)
 
-	// If NG_ALLOWED_HOSTS exists at this point, ensure it has RUNTIME availability.
-	if ev, found := apphostingschema.GetEnvVar(&appHostingYAML, "NG_ALLOWED_HOSTS"); found {
-		if !slices.Contains(ev.Availability, "RUNTIME") {
-			return fmt.Errorf("NG_ALLOWED_HOSTS environment variable must be set with RUNTIME availability")
-		}
+	if err = validateAngularEnv(&appHostingYAML, isAngular); err != nil {
+		return err
 	}
 
 	if err := secrets.Normalize(appHostingYAML.Env, opts.ProjectID); err != nil {
@@ -178,6 +144,80 @@ func Prepare(ctx context.Context, opts Options) error {
 	}
 	if err := util.WriteBuildDirectoryContext(cwd, opts.BackendRootDirectory, opts.BuildpackConfigOutputFilePath); err != nil {
 		return fmt.Errorf("writing build directory context: %w", err)
+	}
+
+	return nil
+}
+
+// configureAngularEnv checks if the application is an Angular application and, if so,
+// configures default Angular environment variables (NG_TRUST_PROXY_HEADERS and NG_ALLOWED_HOSTS).
+func configureAngularEnv(appHostingYAML *apphostingschema.AppHostingSchema, opts Options) (bool, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return false, fmt.Errorf("failed to get current working directory: %w", err)
+	}
+	appDir := filepath.Join(cwd, opts.BackendRootDirectory)
+	isAngular, err := nodejs.IsAngularApplication(appDir)
+	if err != nil {
+		return false, fmt.Errorf("error when checking if application is angular: %w", err)
+	}
+
+	if !isAngular {
+		return false, nil
+	}
+
+	// Only configure Angular parameters when an Angular app is detected to allow the
+	// Firebase Console to recognize Angular (via effective_env) and customize the UX.
+
+	// Inject NG_TRUST_PROXY_HEADERS by default for Angular Universal applications,
+	// validating its value if the user has explicitly overridden it.
+	if ev, found := apphostingschema.GetEnvVar(appHostingYAML, ngTrustProxyHeaders); found {
+		// Validate the value of the user provided NG_TRUST_PROXY_HEADERS
+		if ev.Value != expectedProxyHeaderValue {
+			return true, fmt.Errorf("invalid value for %s (Angular trust proxy headers): got %q, want %q", ngTrustProxyHeaders, ev.Value, expectedProxyHeaderValue)
+		}
+
+		if len(ev.Availability) > 0 && !slices.Contains(ev.Availability, "RUNTIME") {
+			return true, fmt.Errorf("user-defined environment variable %s must include RUNTIME in its availability", ngTrustProxyHeaders)
+		}
+	} else {
+		appHostingYAML.Env = append(appHostingYAML.Env, apphostingschema.EnvironmentVariable{
+			Variable:     ngTrustProxyHeaders,
+			Value:        expectedProxyHeaderValue,
+			Source:       apphostingschema.SourceFirebaseSystem,
+			Availability: []string{"RUNTIME"},
+		})
+	}
+
+	// Restrict the allowed domains for Angular SSR to standard default domains
+	// unless the user has defined custom host constraints.
+	if _, found := apphostingschema.GetEnvVar(appHostingYAML, "NG_ALLOWED_HOSTS"); !found {
+		ev, _ := apphostingschema.GetEnvVar(appHostingYAML, "X_FIREBASE_SUPPORTED_HOSTS")
+		supportedHosts := ev.Value
+
+		if supportedHosts != "" {
+			appHostingYAML.Env = append(appHostingYAML.Env, apphostingschema.EnvironmentVariable{
+				Variable:     "NG_ALLOWED_HOSTS",
+				Value:        supportedHosts,
+				Availability: []string{"RUNTIME"},
+				Source:       apphostingschema.SourceFirebaseSystem,
+			})
+		}
+	}
+
+	return true, nil
+}
+
+// validateAngularEnv ensures NG_ALLOWED_HOSTS has RUNTIME availability.
+func validateAngularEnv(appHostingYAML *apphostingschema.AppHostingSchema, isAngular bool) error {
+	if !isAngular {
+		return nil
+	}
+
+	if ev, found := apphostingschema.GetEnvVar(appHostingYAML, "NG_ALLOWED_HOSTS"); found {
+		if !slices.Contains(ev.Availability, "RUNTIME") {
+			return fmt.Errorf("NG_ALLOWED_HOSTS environment variable must be set with RUNTIME availability")
+		}
 	}
 
 	return nil

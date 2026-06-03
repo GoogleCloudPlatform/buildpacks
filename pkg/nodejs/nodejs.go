@@ -577,3 +577,23 @@ func ShouldPrunePnpmBun(ctx *gcp.Context, pjs *PackageJSON, buildNodeEnv string,
 	}
 	return true
 }
+
+// IsAngularApplication returns true if angular.json exists or @angular/core is present in package.json.
+func IsAngularApplication(appDir string) (bool, error) {
+	if _, err := os.Stat(filepath.Join(appDir, "angular.json")); err == nil {
+		return true, nil
+	}
+	pjs, err := ReadPackageJSONIfExists(appDir)
+	if err != nil {
+		return false, err
+	}
+	if pjs != nil {
+		if _, ok := pjs.Dependencies["@angular/core"]; ok {
+			return true, nil
+		}
+		if _, ok := pjs.DevDependencies["@angular/core"]; ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}

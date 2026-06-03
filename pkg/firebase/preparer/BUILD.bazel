@@ -13,6 +13,7 @@ go_library(
         "//pkg/firebase/envvars",
         "//pkg/firebase/secrets",
         "//pkg/firebase/util",
+        "//pkg/nodejs",
     ],
 )
 

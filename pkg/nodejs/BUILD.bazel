@@ -25,6 +25,7 @@ go_library(
         "//pkg/apprunner:__subpackages__",
         "//pkg/apprunner/nodejs:__subpackages__",
         "//cmd/firebase/bundle:__subpackages__",
+        "//pkg/firebase/preparer:__subpackages__",
         "//cmd/nodejs:__subpackages__",
         "//maker:__subpackages__",
         # Ruby on Rails apps require Nodejs and Yarn for precompiling assets

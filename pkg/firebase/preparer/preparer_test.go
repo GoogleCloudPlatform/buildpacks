@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"hash/crc32"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -48,6 +49,7 @@ func TestPrepare(t *testing.T) {
 		wantEnvMap         map[string]string
 		wantSchema         apphostingschema.AppHostingSchema
 		wantErr            string
+		isAngular          bool
 	}{
 		{
 			desc:               "properly prepare apphosting.yaml for lifecycle builds",
@@ -97,8 +99,6 @@ func TestPrepare(t *testing.T) {
 					{Variable: "VERBOSE_API_KEY", Secret: latestSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
 					{Variable: "PINNED_VERBOSE_API_KEY", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceAppHostingYAML},
 					{Variable: "STAGING_SECRET_VARIABLE", Secret: pinnedSecretName, Availability: []string{"BUILD", "RUNTIME"}, Source: "apphosting.staging.yaml"},
-					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
-					{Variable: "NG_ALLOWED_HOSTS", Value: "default.com", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 				},
 			},
 		},
@@ -497,6 +497,7 @@ func TestPrepare(t *testing.T) {
 		{
 			desc:      "accepts correct user provided NG_TRUST_PROXY_HEADERS",
 			projectID: "test-project",
+			isAngular: true,
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}},
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
@@ -517,6 +518,7 @@ func TestPrepare(t *testing.T) {
 		{
 			desc:      "errors if user provided NG_TRUST_PROXY_HEADERS lacks RUNTIME availability",
 			projectID: "test-project",
+			isAngular: true,
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"BUILD"}},
 			},
@@ -525,6 +527,7 @@ func TestPrepare(t *testing.T) {
 		{
 			desc:      "adds default NG_TRUST_PROXY_HEADERS when not provided",
 			projectID: "test-project",
+			isAngular: true,
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
 			},
@@ -544,6 +547,7 @@ func TestPrepare(t *testing.T) {
 		{
 			desc:      "user provided NG_TRUST_PROXY_HEADERS without availability defaults to runtime and build",
 			projectID: "test-project",
+			isAngular: true,
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host"},
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "default.com"},
@@ -565,6 +569,7 @@ func TestPrepare(t *testing.T) {
 		{
 			desc:      "errors on incorrect user provided NG_TRUST_PROXY_HEADERS",
 			projectID: "test-project",
+			isAngular: true,
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "NG_TRUST_PROXY_HEADERS", Value: "Invalid-Header"},
 			},
@@ -574,6 +579,7 @@ func TestPrepare(t *testing.T) {
 			desc:               "derives NG_ALLOWED_HOSTS from X_FIREBASE_SUPPORTED_HOSTS",
 			appHostingYAMLPath: appHostingYAMLPathNonexistent,
 			projectID:          "test-project",
+			isAngular:          true,
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "example.com"},
 			},
@@ -594,6 +600,7 @@ func TestPrepare(t *testing.T) {
 			desc:               "does not override server-side user-defined NG_ALLOWED_HOSTS with X_FIREBASE_SUPPORTED_HOSTS",
 			appHostingYAMLPath: appHostingYAMLPathNonexistent,
 			projectID:          "test-project",
+			isAngular:          true,
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "NG_ALLOWED_HOSTS", Value: "user-defined.com", Availability: []string{"RUNTIME"}},
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "system-defined.com"},
@@ -615,6 +622,7 @@ func TestPrepare(t *testing.T) {
 			desc:               "does not override user-defined NG_ALLOWED_HOSTS in apphosting.yaml with X_FIREBASE_SUPPORTED_HOSTS",
 			appHostingYAMLPath: appHostingYAMLNgPath,
 			projectID:          "test-project",
+			isAngular:          true,
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: "system-defined.com"},
 			},
@@ -635,6 +643,7 @@ func TestPrepare(t *testing.T) {
 			desc:               "succeeds if NG_ALLOWED_HOSTS is missing and X_FIREBASE_SUPPORTED_HOSTS is empty",
 			appHostingYAMLPath: appHostingYAMLPathNonexistent,
 			projectID:          "test-project",
+			isAngular:          true,
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "X_FIREBASE_SUPPORTED_HOSTS", Value: ""},
 			},
@@ -654,6 +663,7 @@ func TestPrepare(t *testing.T) {
 			desc:               "succeeds if NG_ALLOWED_HOSTS is missing and X_FIREBASE_SUPPORTED_HOSTS is missing",
 			appHostingYAMLPath: appHostingYAMLPathNonexistent,
 			projectID:          "test-project",
+			isAngular:          true,
 			serverSideEnvVars:  []apphostingschema.EnvironmentVariable{},
 			wantEnvMap: map[string]string{
 				"FIREBASE_CONFIG":        serverProvidedFirebaseConfig,
@@ -670,6 +680,7 @@ func TestPrepare(t *testing.T) {
 		{
 			desc:               "fails if user-provided NG_ALLOWED_HOSTS has no RUNTIME availability",
 			appHostingYAMLPath: appHostingYAMLPathNonexistent,
+			isAngular:          true,
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "NG_ALLOWED_HOSTS", Value: "example.com", Availability: []string{"BUILD"}},
 			},
@@ -679,6 +690,7 @@ func TestPrepare(t *testing.T) {
 			desc:               "user-defined NG_ALLOWED_HOSTS with both BUILD and RUNTIME availability",
 			appHostingYAMLPath: appHostingYAMLPathNonexistent,
 			projectID:          "test-project",
+			isAngular:          true,
 			serverSideEnvVars: []apphostingschema.EnvironmentVariable{
 				{Variable: "NG_ALLOWED_HOSTS", Value: "both.com", Availability: []string{"BUILD", "RUNTIME"}},
 			},
@@ -693,6 +705,22 @@ func TestPrepare(t *testing.T) {
 					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
 					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseSystem},
 					{Variable: "NG_TRUST_PROXY_HEADERS", Value: "X-Forwarded-Host", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
+				},
+			},
+		},
+		{
+			desc:               "does not inject Angular variables if not Angular",
+			appHostingYAMLPath: appHostingYAMLPathNonexistent,
+			projectID:          "test-project",
+			isAngular:          false,
+			wantEnvMap: map[string]string{
+				"FIREBASE_CONFIG":        serverProvidedFirebaseConfig,
+				"FIREBASE_WEBAPP_CONFIG": serverProvidedFirebaseWebAppConfig,
+			},
+			wantSchema: apphostingschema.AppHostingSchema{
+				Env: []apphostingschema.EnvironmentVariable{
+					{Variable: "FIREBASE_CONFIG", Value: serverProvidedFirebaseConfig, Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
+					{Variable: "FIREBASE_WEBAPP_CONFIG", Value: serverProvidedFirebaseWebAppConfig, Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseSystem},
 				},
 			},
 		},
@@ -738,6 +766,21 @@ func TestPrepare(t *testing.T) {
 			appHostingYAMLForPackPath := filepath.Join(testDir, "outputYAMLForPack")
 			envOutputPath := filepath.Join(testDir, "outputEnv")
 
+			// Simulate Angular app only if the test case specifies it
+			if test.isAngular {
+				if err := os.WriteFile(filepath.Join(testDir, "angular.json"), []byte("{}"), 0644); err != nil {
+					t.Fatalf("writing angular.json: %v", err)
+				}
+			}
+			cwd, err := os.Getwd()
+			if err != nil {
+				t.Fatalf("failed to get cwd: %v", err)
+			}
+			relBackendDir, err := filepath.Rel(cwd, testDir)
+			if err != nil {
+				t.Fatalf("failed to get relative backend dir: %v", err)
+			}
+
 			// Convert server side env vars to string
 			serverSideEnvVars := ""
 			if test.serverSideEnvVars != nil {
@@ -756,7 +799,7 @@ func TestPrepare(t *testing.T) {
 				EnvironmentName:                   test.environmentName,
 				AppHostingYAMLOutputFilePath:      outputFilePathYAML,
 				EnvDereferencedOutputFilePath:     envOutputPath,
-				BackendRootDirectory:              "",
+				BackendRootDirectory:              relBackendDir,
 				BuildpackConfigOutputFilePath:     outputFilePathBuildpackConfig,
 				FirebaseConfig:                    serverProvidedFirebaseConfig,
 				FirebaseWebappConfig:              serverProvidedFirebaseWebAppConfig,
@@ -764,7 +807,7 @@ func TestPrepare(t *testing.T) {
 				ApphostingPreprocessedPathForPack: appHostingYAMLForPackPath,
 			}
 
-			err := Prepare(context.Background(), opts)
+			err = Prepare(context.Background(), opts)
 			if test.wantErr != "" {
 				if err == nil {
 					t.Fatalf("Expected error containing %q, got nil", test.wantErr)
@@ -794,7 +837,18 @@ func TestPrepare(t *testing.T) {
 				t.Errorf("reading in and validating apphosting.yaml at path %v: %v", outputFilePathYAML, err)
 			}
 
-			if diff := cmp.Diff(test.wantSchema, actualAppHostingSchema, cmpopts.SortSlices(func(a, b apphostingschema.EnvironmentVariable) bool { return a.Variable < b.Variable })); diff != "" {
+			wantSchema := test.wantSchema
+			if !test.isAngular {
+				var filteredEnv []apphostingschema.EnvironmentVariable
+				for _, ev := range wantSchema.Env {
+					if ev.Variable != "NG_TRUST_PROXY_HEADERS" && ev.Variable != "NG_ALLOWED_HOSTS" {
+						filteredEnv = append(filteredEnv, ev)
+					}
+				}
+				wantSchema.Env = filteredEnv
+			}
+
+			if diff := cmp.Diff(wantSchema, actualAppHostingSchema, cmpopts.SortSlices(func(a, b apphostingschema.EnvironmentVariable) bool { return a.Variable < b.Variable })); diff != "" {
 				t.Errorf("unexpected prepared YAML schema for test %q (-want, +got):\n%v", test.desc, diff)
 			}
 		})
