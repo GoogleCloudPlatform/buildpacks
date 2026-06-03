@@ -82,7 +82,6 @@ func (b MakerGolangBuilder) Build(ctx *gcp.Context, outBin, buildable, workdir, 
 	envs := []string{
 		"GOOS=linux",
 		"GOARCH=amd64",
-		"GOCACHE=" + gocache,
 	}
 
 	_, err := ctx.Exec(cmd, gcp.WithEnv(envs...), gcp.WithWorkDir(workdir), gcp.WithUserAttribution)
