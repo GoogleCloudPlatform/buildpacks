@@ -104,6 +104,7 @@ const (
 	CanonicalJDK InstallableRuntime = "canonicaljdk"
 	Go           InstallableRuntime = "golang"
 	Jetty        InstallableRuntime = "jetty"
+	Bun          InstallableRuntime = "bun"
 
 	Ubuntu1804 string = "ubuntu1804"
 	Ubuntu2204 string = "ubuntu2204"
@@ -126,6 +127,7 @@ var runtimeNames = map[InstallableRuntime]string{
 	DotnetSDK: ".NET SDK",
 	Go:        "Go",
 	Jetty:     "Jetty",
+	Bun:       "Bun",
 }
 
 // stackToOS contains the mapping of Stack to OS.
