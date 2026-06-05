@@ -39,6 +39,8 @@ http {
         location / {
             try_files $uri $uri/ /index.html;
         }
+
+				absolute_redirect off;
     }
 }
 `
