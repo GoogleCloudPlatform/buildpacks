@@ -71,6 +71,7 @@ go_binary(
         "//cmd/ruby/rubygems/lib",
         "//cmd/ruby/runtime/lib",
         "//cmd/static/serve/lib",
+        "//cmd/utils/devsync/lib",
         "//cmd/utils/nginx/lib",
         "//pkg/commonbuildpacks",
         "//pkg/gcpbuildpack",

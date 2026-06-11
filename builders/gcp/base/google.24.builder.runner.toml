@@ -236,6 +236,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   id = "google.static.serve"
   uri = "serve_using_runner.tgz"
 
+[[buildpacks]]
+  id = "google.utils.devsync"
+  uri = "devsync_using_runner.tgz"
+
 ########
 # .NET #
 
@@ -570,6 +574,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     optional = true
 
   [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
     id = "google.utils.label-image"
 
 # UV order group.
@@ -585,6 +593,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.devsync"
     optional = true
 
   [[order.group]]
@@ -604,6 +616,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.devsync"
     optional = true
 
   [[order.group]]
@@ -622,6 +638,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.config.entrypoint"
 
   [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
     id = "google.utils.label-image"
 
 # UV order group.
@@ -634,6 +654,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
 
   [[order.group]]
     id = "google.utils.label-image"
@@ -649,6 +673,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
 
   [[order.group]]
     id = "google.utils.label-image"
@@ -1005,6 +1033,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     optional = true
 
   [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
     id = "google.utils.label-image"
 
 [[order]]
@@ -1020,6 +1052,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.devsync"
     optional = true
 
   [[order.group]]
@@ -1041,6 +1077,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     optional = true
 
   [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
     id = "google.utils.label-image"
 
 [[order]]
@@ -1056,6 +1096,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.devsync"
     optional = true
 
   [[order.group]]
@@ -1078,6 +1122,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     optional = true
 
   [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
     id = "google.utils.label-image"
 
 # Node.js applications without a package.json.
@@ -1088,6 +1136,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
 
   [[order.group]]
     id = "google.utils.label-image"
@@ -1112,6 +1164,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.python.missing-entrypoint"
 
   [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
     id = "google.utils.label-image"
 
 # UV order group.
@@ -1128,6 +1184,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.python.missing-entrypoint"
+
+  [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
 
   [[order.group]]
     id = "google.utils.label-image"
@@ -1147,6 +1207,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.python.missing-entrypoint"
+
+  [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
 
   [[order.group]]
     id = "google.utils.label-image"

@@ -65,6 +65,7 @@ import (
 	rubyrubygems "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/rubygems/lib"
 	rubyruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/runtime/lib"
 	staticserve "github.com/GoogleCloudPlatform/buildpacks/cmd/static/serve/lib"
+	utilsdevsync "github.com/GoogleCloudPlatform/buildpacks/cmd/utils/devsync/lib"
 	utilsnginx "github.com/GoogleCloudPlatform/buildpacks/cmd/utils/nginx/lib"
 )
 
@@ -301,6 +302,10 @@ func init() {
 	buildpacks["google.ruby.runtime"] = gcp.BuildpackFuncs{
 		Detect: rubyruntime.DetectFn,
 		Build:  rubyruntime.BuildFn,
+	}
+	buildpacks["google.utils.devsync"] = gcp.BuildpackFuncs{
+		Detect: utilsdevsync.DetectFn,
+		Build:  utilsdevsync.BuildFn,
 	}
 	buildpacks["google.utils.nginx"] = gcp.BuildpackFuncs{
 		Detect: utilsnginx.DetectFn,
