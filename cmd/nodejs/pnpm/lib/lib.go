@@ -131,6 +131,9 @@ func pnpmInstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		}
 	}
 	cmd := []string{"pnpm", "install"}
+	if devSync, _ := env.IsDevSync(); devSync {
+		cmd = append(cmd, "--no-frozen-lockfile")
+	}
 	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution, gcp.WithEnv("CI=true"), gcp.WithEnv("NODE_ENV="+buildNodeEnv)); err != nil {
 		return gcp.UserErrorf("installing pnpm dependencies: %w", err)
 	}

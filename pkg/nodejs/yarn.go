@@ -104,6 +104,9 @@ type yarn2Lock struct {
 // UseFrozenLockfile returns an true if the environment supporte Yarn's --frozen-lockfile flag. This
 // is a hack to maintain backwards compatibility on App Engine Node.js 10 and older.
 func UseFrozenLockfile(ctx *gcp.Context) (bool, error) {
+	if devSync, _ := env.IsDevSync(); devSync {
+		return false, nil
+	}
 	oldNode, err := isPreNode11(ctx)
 	return !oldNode, err
 }

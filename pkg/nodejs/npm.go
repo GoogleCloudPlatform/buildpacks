@@ -148,6 +148,9 @@ func NPMInstallCommand(ctx *gcp.Context) (string, error) {
 	if version.LessThan(minNpmCIVersion) {
 		return "install", nil
 	}
+	if devSync, _ := env.IsDevSync(); devSync {
+		return "install", nil
+	}
 	return "ci", nil
 }
 
