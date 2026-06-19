@@ -19,6 +19,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -28,6 +29,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	tpc "github.com/GoogleCloudPlatform/buildpacks/pkg/tpc"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/klauspost/compress/zstd"
@@ -87,6 +89,54 @@ var ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.C
 	defer rc.Close()
 	result := untar(dir, rc, stripComponents, url)
 	return result
+}
+
+const (
+	defaultGDUDownloadHost = "artifactregistry.googleapis.com"
+	defaultGDUProject      = "serverless-runtimes"
+	qaGDUProject           = "serverless-runtimes-qa"
+	defaultGDURegion       = "us-central1"
+	defaultRepo            = "universal-maker"
+	defaultArch            = "x86-64"
+	arGenericDownloadPath  = "/download/v1/projects/%s/locations/%s/repositories/%s/files/%s%%3A%s%%3A%s:download?alt=media"
+)
+
+// ARGenericBinary downloads a pre-compiled binary from an Artifact Registry generic repository.
+var ARGenericBinary = func(ctx *gcp.Context, binaryName, version, outPath string) error {
+	downloadHost := defaultGDUDownloadHost
+	project := defaultGDUProject
+	region := defaultGDURegion
+	repo := defaultRepo
+	arch := defaultArch
+
+	if os.Getenv(env.BuildEnv) == "qual" {
+		project = qaGDUProject
+	}
+
+	if tpc.IsTPC() {
+		if h, present := tpc.GetHostname(); present {
+			downloadHost = h
+		} else {
+			return gcp.InternalErrorf("failed to get hostname for TPC build")
+		}
+		if p, present := tpc.GetTarballProject(); present {
+			project = p
+		} else {
+			return gcp.InternalErrorf("failed to get tarball project for TPC build")
+		}
+	}
+
+	urlPath := fmt.Sprintf(arGenericDownloadPath, project, region, repo, arch, version, binaryName)
+	url := fmt.Sprintf("https://%s%s", downloadHost, urlPath)
+
+	ctx.Logf("Downloading %s binary from Artifact Registry generic repository...", binaryName)
+	if err := File(url, outPath); err != nil {
+		return fmt.Errorf("downloading %s binary: %w", binaryName, err)
+	}
+	if _, err := ctx.Exec([]string{"chmod", "+x", outPath}); err != nil {
+		return fmt.Errorf("chmoding %s binary: %w", binaryName, err)
+	}
+	return nil
 }
 
 // File downloads a file from a URL and writes it to the provided path.

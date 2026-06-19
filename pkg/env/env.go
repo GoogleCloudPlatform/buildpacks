@@ -211,6 +211,9 @@ const (
 
 	// StaticServe indicates that the static serve buildpack was invoked.
 	StaticServe = "GOOGLE_STATIC_SERVE"
+
+	// BuildIntelligenceFeature is an experiment flag to enable build intelligence feature.
+	BuildIntelligenceFeature = "X_GOOGLE_BUILD_INTELLIGENCE"
 )
 
 const (

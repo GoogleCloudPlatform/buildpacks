@@ -5,7 +5,7 @@ Tooling versions generated from tooling.textproto.
 TOOLING_VERSIONS = {
     "python": {
         "default": {
-            "uv": "0.11.18",
+            "uv": "0.11.21",
             "poetry": "2.4.1",
             "setuptools": "82.0.1",
         },

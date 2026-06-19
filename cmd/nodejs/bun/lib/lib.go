@@ -122,11 +122,12 @@ func bunInstallModules(ctx *gcp.Context) error {
 	bunLockbExists, _ := ctx.FileExists("bun.lockb")
 	bunLockExists, _ := ctx.FileExists("bun.lock")
 	cmd := []string{"bun", "install"}
-	if bunLockbExists || bunLockExists {
+	devSync, _ := env.IsDevSync()
+	if (bunLockbExists || bunLockExists) && !devSync {
 		ctx.Logf("Lockfile (bun.lockb or bun.lock) found. Installing dependencies with Bun using --frozen-lockfile.")
 		cmd = append(cmd, "--frozen-lockfile")
 	} else {
-		ctx.Logf("Installing application dependencies with Bun (no lockfile found).")
+		ctx.Logf("Installing application dependencies with Bun (no lockfile found or dev sync enabled).")
 	}
 
 	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution, gcp.WithEnv("NODE_ENV="+buildNodeEnv)); err != nil {

@@ -75,6 +75,7 @@ func TestNPMInstallCommand(t *testing.T) {
 		nodeVersion    string
 		want           string
 		targetPlatform string
+		devSync        bool
 	}{
 		{
 			name:       "8.3.1 should return ci",
@@ -100,6 +101,12 @@ func TestNPMInstallCommand(t *testing.T) {
 			npmVersion: "5.7.0",
 			want:       "install",
 		},
+		{
+			name:       "8.3.1 with dev sync should return install",
+			npmVersion: "8.3.1",
+			want:       "install",
+			devSync:    true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -110,6 +117,9 @@ func TestNPMInstallCommand(t *testing.T) {
 			nodeVersion = func(*gcpbuildpack.Context) (string, error) { return tc.nodeVersion, nil }
 			if tc.targetPlatform != "" {
 				t.Setenv(env.XGoogleTargetPlatform, tc.targetPlatform)
+			}
+			if tc.devSync {
+				t.Setenv(env.DevSync, "true")
 			}
 
 			got, err := NPMInstallCommand(nil)

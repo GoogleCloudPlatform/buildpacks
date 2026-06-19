@@ -283,7 +283,11 @@ func yarn2InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
 
-	cmd := []string{"yarn", "install", "--immutable"}
+	cmd := []string{"yarn", "install"}
+	devSync, _ := env.IsDevSync()
+	if !devSync {
+		cmd = append(cmd, "--immutable")
+	}
 	yarnCacheExists, err := ctx.FileExists(ctx.ApplicationRoot(), ".yarn", "cache")
 	if err != nil {
 		return err
@@ -291,7 +295,7 @@ func yarn2InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 	// In Plug'n'Play mode (https://yarnpkg.com/features/pnp) all dependencies must be included in
 	// the Yarn cache. The --immutable-cache option will abort the install with an error if anything
 	// is missing or out of date.
-	if yarnCacheExists {
+	if yarnCacheExists && !devSync {
 		cmd = append(cmd, "--immutable-cache")
 	}
 	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {

@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/envvars"
@@ -48,7 +49,14 @@ type Options struct {
 }
 
 const ngTrustProxyHeaders = "NG_TRUST_PROXY_HEADERS"
-const expectedProxyHeaderValue = "X-Forwarded-Host"
+const allowedProxyHeadersValue = "X-Forwarded-Host,X-Forwarded-Port,X-Forwarded-Proto,X-Forwarded-For"
+
+var allowedProxyHeaders = map[string]bool{
+	"x-forwarded-host":  true,
+	"x-forwarded-port":  true,
+	"x-forwarded-proto": true,
+	"x-forwarded-for":   true,
+}
 
 // Prepare performs pre-build logic for App Hosting backends including:
 // * Reading, sanitizing, and writing user-defined environment variables in apphosting.yaml to a new file.
@@ -149,6 +157,17 @@ func Prepare(ctx context.Context, opts Options) error {
 	return nil
 }
 
+// isValidProxyHeaders checks if all headers in the user-provided proxy header list are present in the allowed set.
+func isValidProxyHeaders(userVal string) bool {
+	userList := strings.Split(userVal, ",")
+	for _, h := range userList {
+		if trimmed := strings.ToLower(strings.TrimSpace(h)); trimmed != "" && !allowedProxyHeaders[trimmed] {
+			return false
+		}
+	}
+	return true
+}
+
 // configureAngularEnv checks if the application is an Angular application and, if so,
 // configures default Angular environment variables (NG_TRUST_PROXY_HEADERS and NG_ALLOWED_HOSTS).
 func configureAngularEnv(appHostingYAML *apphostingschema.AppHostingSchema, opts Options) (bool, error) {
@@ -173,8 +192,8 @@ func configureAngularEnv(appHostingYAML *apphostingschema.AppHostingSchema, opts
 	// validating its value if the user has explicitly overridden it.
 	if ev, found := apphostingschema.GetEnvVar(appHostingYAML, ngTrustProxyHeaders); found {
 		// Validate the value of the user provided NG_TRUST_PROXY_HEADERS
-		if ev.Value != expectedProxyHeaderValue {
-			return true, fmt.Errorf("invalid value for %s (Angular trust proxy headers): got %q, want %q", ngTrustProxyHeaders, ev.Value, expectedProxyHeaderValue)
+		if !isValidProxyHeaders(ev.Value) {
+			return true, fmt.Errorf("invalid value for %s (Angular trust proxy headers): got %q, must be a subset of %q", ngTrustProxyHeaders, ev.Value, allowedProxyHeadersValue)
 		}
 
 		if len(ev.Availability) > 0 && !slices.Contains(ev.Availability, "RUNTIME") {
@@ -183,7 +202,7 @@ func configureAngularEnv(appHostingYAML *apphostingschema.AppHostingSchema, opts
 	} else {
 		appHostingYAML.Env = append(appHostingYAML.Env, apphostingschema.EnvironmentVariable{
 			Variable:     ngTrustProxyHeaders,
-			Value:        expectedProxyHeaderValue,
+			Value:        allowedProxyHeadersValue,
 			Source:       apphostingschema.SourceFirebaseSystem,
 			Availability: []string{"RUNTIME"},
 		})
