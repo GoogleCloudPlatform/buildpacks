@@ -136,7 +136,8 @@ func pnpmInstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		// NODE_ENV=production (https://github.com/pnpm/pnpm/issues/8827). Pass --prod
 		// explicitly so devDependencies are skipped on pnpm v9 and v10+.
 		cmd = append(cmd, "--prod")
-	if devSync, _ := env.IsDevSync(); devSync {
+	}
+        if devSync, _ := env.IsDevSync(); devSync {
 		cmd = append(cmd, "--no-frozen-lockfile")
 	}
 	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution, gcp.WithEnv("CI=true"), gcp.WithEnv("NODE_ENV="+buildNodeEnv)); err != nil {
