@@ -54,6 +54,17 @@ const (
 	dependencyHashKey = "dependency_hash"
 )
 
+const (
+	// DevDepType is the dependency type for a dev dependency.
+	DevDepType = "dev"
+	// OptionalDepType is the dependency type for an optional dependency.
+	OptionalDepType = "optional"
+	// DevOptionalDepType is the dependency type for a dev-optional dependency.
+	DevOptionalDepType = "devOptional"
+	// NilDepType is the dependency type for a nil dependency.
+	NilDepType = ""
+)
+
 // semVer11 is the smallest possible semantic version with major version 11.
 var semVer11 = semver.MustParse("11.0.0")
 
@@ -100,11 +111,53 @@ type PackageJSON struct {
 	PackageManager  string             `json:"packageManager,omitempty"`
 }
 
-// NpmLockfile represents the contents of a lock file generated with npm.
-type NpmLockfile struct {
-	Packages map[string]struct {
-		Version string `json:"version"`
-	} `json:"packages"`
+// NPMLockfile represents the structure of a package-lock.json file.
+type NPMLockfile struct {
+	LockfileVersion int                `json:"lockfileVersion"`
+	Packages        map[string]Package `json:"packages"`
+}
+
+// Package represents a dependency in the "packages" map (npm v2/v3) in package-lock.json.
+type Package struct {
+	Version              string            `json:"version"`
+	Dependencies         map[string]string `json:"dependencies"`
+	DevDependencies      map[string]string `json:"devDependencies"`
+	OptionalDependencies map[string]string `json:"optionalDependencies"`
+	Dev                  bool              `json:"dev"`
+	Optional             bool              `json:"optional"`
+	DevOptional          bool              `json:"devOptional"`
+}
+
+// DepType returns the dependency type string based on Dev, Optional, and DevOptional flags.
+func (p Package) DepType() string {
+	if p.DevOptional || (p.Dev && p.Optional) {
+		return DevOptionalDepType
+	} else if p.Dev {
+		return DevDepType
+	} else if p.Optional {
+		return OptionalDepType
+	}
+	return NilDepType
+}
+
+// ReadPackageLockJSONIfExists returns deserialized package-lock.json from the given dir.
+// If the provided dir does not contain a package-lock.json file, it returns nil.
+func ReadPackageLockJSONIfExists(dir string) (*NPMLockfile, error) {
+	f := filepath.Join(dir, "package-lock.json")
+	data, err := os.ReadFile(f)
+	if os.IsNotExist(err) {
+		// Return nil if the file doesn't exist (null object pattern).
+		return nil, nil
+	}
+	if err != nil {
+		return nil, gcp.InternalErrorf("reading package-lock.json: %v", err)
+	}
+
+	var lockfile NPMLockfile
+	if err := json.Unmarshal(data, &lockfile); err != nil {
+		return nil, gcp.UserErrorf("unmarshalling package-lock.json: %v", err)
+	}
+	return &lockfile, nil
 }
 
 // PnpmV6Lockfile represents the contents of a lock file v6 generated with pnpm.
@@ -433,7 +486,7 @@ func versionFromYarnLock(rawPackageLock []byte, pjs *PackageJSON, pkg string) (s
 }
 
 func versionFromNpmLock(rawPackageLock []byte, pkg string) (string, error) {
-	var lockfile NpmLockfile
+	var lockfile NPMLockfile
 	if err := json.Unmarshal(rawPackageLock, &lockfile); err != nil {
 		return "", gcp.InternalErrorf("parsing lock file: %w", err)
 	}
