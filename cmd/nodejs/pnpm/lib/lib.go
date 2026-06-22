@@ -131,6 +131,12 @@ func pnpmInstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		}
 	}
 	cmd := []string{"pnpm", "install"}
+	if buildNodeEnv == nodejs.EnvProduction {
+		// pnpm v10 removed the implicit behavior of skipping devDependencies when
+		// NODE_ENV=production (https://github.com/pnpm/pnpm/issues/8827). Pass --prod
+		// explicitly so devDependencies are skipped on pnpm v9 and v10+.
+		cmd = append(cmd, "--prod")
+	}
 	if devSync, _ := env.IsDevSync(); devSync {
 		cmd = append(cmd, "--no-frozen-lockfile")
 	}
