@@ -2,7 +2,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "static",
-    srcs = ["static.go"],
+    srcs = [
+        "firebase.go",
+        "static.go",
+    ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
         "//:__subpackages__",
@@ -11,7 +14,13 @@ go_library(
 
 go_test(
     name = "static_test",
-    srcs = ["static_test.go"],
+    srcs = [
+        "firebase_test.go",
+        "static_test.go",
+    ],
     embed = [":static"],
     rundir = ".",
+    deps = [
+        "@com_github_google_go-cmp//cmp:go_default_library",
+    ],
 )
