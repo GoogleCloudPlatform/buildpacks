@@ -125,13 +125,33 @@ func searchBuildables(ctx *gcp.Context) ([]string, error) {
 
 	var buildables []string
 
+	appRoot := ctx.ApplicationRoot()
+	canonicalAppRoot, err := filepath.EvalSymlinks(appRoot)
+	if err != nil {
+		// Fallback to unresolved appRoot if EvalSymlinks fails
+		canonicalAppRoot = appRoot
+	}
+
 	for _, dir := range strings.Fields(result.Stdout) {
-		rel, err := filepath.Rel(ctx.ApplicationRoot(), dir)
+		canonicalDir, err := filepath.EvalSymlinks(dir)
+		if err != nil {
+			canonicalDir = dir
+		}
+
+		rel, err := filepath.Rel(canonicalAppRoot, canonicalDir)
 		if err != nil {
 			return nil, fmt.Errorf("unable to find relative path for %q: %w", dir, err)
 		}
 
-		buildables = append(buildables, "./"+rel)
+		rel = filepath.ToSlash(rel)
+
+		if rel == "." {
+			buildables = append(buildables, ".")
+		} else if !strings.HasPrefix(rel, "..") {
+			buildables = append(buildables, "./"+rel)
+		} else {
+			buildables = append(buildables, rel)
+		}
 	}
 
 	return buildables, nil
