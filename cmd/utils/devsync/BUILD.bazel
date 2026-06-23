@@ -7,6 +7,7 @@ licenses(["notice"])
 
 buildpack(
     name = "devsync",
+    srcs = glob(["service/**"]),
     executables = [
         ":main",
     ],
@@ -19,6 +20,7 @@ buildpack(
 
 buildpack_using_runner(
     name = "devsync_using_runner",
+    srcs = glob(["service/**"]),
     buildpack_id = "google.utils.devsync",
     prefix = "utils",
     version = "0.0.1",

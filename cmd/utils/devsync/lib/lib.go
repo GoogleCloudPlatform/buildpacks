@@ -21,8 +21,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/devsync"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb/v2"
 )
@@ -50,8 +52,16 @@ func BuildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating devsync layer: %w", err)
 	}
 
+	// Guarantee GOOGLE_DEVSYNC=1 is preserved in the container's runtime environment
+	// so that universal_maker inherits it during live incremental rebuilds.
+	layer.LaunchEnvironment.Default(env.DevSync, "1")
+
 	if err := installMaker(ctx, layer); err != nil {
 		return fmt.Errorf("installing universal_maker: %w", err)
+	}
+
+	if err := configureRunitServiceTree(ctx, layer); err != nil {
+		return fmt.Errorf("configuring runit service tree: %w", err)
 	}
 
 	return nil
@@ -70,6 +80,34 @@ func installMaker(ctx *gcp.Context, layer *libcnb.Layer) error {
 	if err := fetch.ARGenericBinary(ctx, "universal_maker", version, binaryPath); err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func configureRunitServiceTree(ctx *gcp.Context, layer *libcnb.Layer) error {
+	serviceDir := filepath.Join(layer.Path, "service")
+	if err := fileutil.MaybeCopyPathContents(serviceDir, filepath.Join(ctx.BuildpackRoot(), "service"), fileutil.AllPaths); err != nil {
+		return fmt.Errorf("copying service tree: %w", err)
+	}
+
+	webCmd := os.Getenv(env.DevSyncInitEntrypoint)
+	if webCmd == "" {
+		webCmd = "echo 'No web process found'"
+	}
+
+	if err := devsync.UpdateAppRunScript(serviceDir, webCmd, nil); err != nil {
+		return err
+	}
+
+	if err := os.Chmod(filepath.Join(serviceDir, "watcher", "run"), 0755); err != nil {
+		return fmt.Errorf("chmoding watcher/run: %w", err)
+	}
+	if err := os.Chmod(filepath.Join(serviceDir, "app", "control", "t"), 0755); err != nil {
+		return fmt.Errorf("chmoding app/control/t: %w", err)
+	}
+
+	ctx.Logf("Setting web process: runsvdir %s", serviceDir)
+	ctx.AddWebProcess([]string{"runsvdir", serviceDir})
 
 	return nil
 }

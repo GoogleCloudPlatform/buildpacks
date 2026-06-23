@@ -138,13 +138,13 @@ func BuildFn(ctx *gcp.Context) error {
 		}
 	}
 
+	cmd = applyDevSync(ctx, cmd, webserverOrFramework)
+
 	// Rewrite entrypoint for specific environments (e.g. Maker)
 	cmd, err = python.AdaptEntrypoint(ctx, cmd, scriptCmd)
 	if err != nil {
 		return fmt.Errorf("adapting entrypoint: %w", err)
 	}
-
-	cmd = applyDevSync(ctx, cmd, webserverOrFramework)
 
 	ctx.Warnf("Setting default entrypoint: %q", strings.Join(cmd, " "))
 	ctx.AddProcess(gcp.WebProcess, cmd, gcp.AsDefaultProcess())
@@ -244,5 +244,6 @@ func applyDevSync(ctx *gcp.Context, cmd []string, webserverOrFramework string) [
 	if webserverOrFramework == gunicorn {
 		return append([]string{gunicorn, "--reload"}, cmd[1:]...)
 	}
+
 	return cmd
 }

@@ -1,0 +1,7 @@
+#!/bin/bash
+if [ -f supervise/pid ]; then
+  pid=$(cat supervise/pid)
+  if [ -n "$pid" ]; then
+    kill -TERM -"$pid" 2>/dev/null || true
+  fi
+fi

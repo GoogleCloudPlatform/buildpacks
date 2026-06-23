@@ -461,6 +461,14 @@ func AsDefaultProcess() processOption {
 
 // AddProcess adds the given command as named process, overwriting any previous process with the same name.
 func (ctx *Context) AddProcess(name string, cmd []string, opts ...processOption) {
+	if name == WebProcess {
+		if devSync, _ := env.IsDevSync(); devSync {
+			if el, err := ctx.Layer("devsync_env", BuildLayer); err == nil {
+				el.BuildEnvironment.Override(env.DevSyncInitEntrypoint, strings.Join(cmd, " "))
+			}
+		}
+	}
+
 	current := ctx.buildResult.Processes
 	ctx.buildResult.Processes = []libcnb.Process{}
 	for _, p := range current {

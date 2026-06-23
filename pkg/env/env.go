@@ -48,6 +48,9 @@ const (
 	// DevSync is an env var used to enable development sync mode in buildpacks.
 	DevSync = "GOOGLE_DEVSYNC"
 
+	// DevSyncInitEntrypoint is an env var used to specify the initial entrypoint for dev sync mode.
+	DevSyncInitEntrypoint = "GOOGLE_DEV_SYNC_INIT_ENTRYPOINT"
+
 	// Entrypoint is an env var used to override the default entrypoint.
 	// Entrypoint should be respected by at least one buildpack in builders that are not product-specific.
 	// Example: `gunicorn -p :8080 main:app` for Python.

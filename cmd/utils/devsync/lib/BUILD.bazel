@@ -10,8 +10,10 @@ go_library(
         "//:__subpackages__",
     ],
     deps = [
+        "//pkg/devsync",
         "//pkg/env",
         "//pkg/fetch",
+        "//pkg/fileutil",
         "//pkg/gcpbuildpack",
         "@com_github_buildpacks_libcnb_v2//:go_default_library",
     ],

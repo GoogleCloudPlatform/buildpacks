@@ -1,0 +1,2 @@
+#!/bin/bash
+exec universal_maker --devsync -application_dir=/workspace -output_dir=/layers/google.utils.devsync/devsync
