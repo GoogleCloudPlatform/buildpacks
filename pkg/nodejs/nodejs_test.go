@@ -681,6 +681,36 @@ func TestVersion(t *testing.T) {
 			},
 			wantVersion: "17.3.6",
 		},
+		{
+			// Regression: versionFromNpmLock must return an error (not ("", nil)) when
+			// the package is absent, so callers fall back to package.json consistently
+			// with the pnpm and yarn lockfile parsers.
+			name: "Returns error for missing package in package-lock.json",
+			pkg:  "nonexistent-package",
+			nodeDeps: &NodeDependencies{
+				LockfilePath: testdata.MustGetPath("testdata/lock-files/nextjs-package-lock.json"),
+			},
+			wantErr: true,
+		},
+		{
+			name: "Returns error for missing package in pnpm-lock.yaml",
+			pkg:  "nonexistent-package",
+			nodeDeps: &NodeDependencies{
+				LockfilePath: testdata.MustGetPath("testdata/lock-files/nextjs-v9-pnpm-lock.yaml"),
+			},
+			wantErr: true,
+		},
+		{
+			name: "Returns error for missing package in yarn.lock",
+			pkg:  "nonexistent-package",
+			nodeDeps: &NodeDependencies{
+				PackageJSON: &PackageJSON{
+					Dependencies: map[string]string{},
+				},
+				LockfilePath: testdata.MustGetPath("testdata/lock-files/classic-yarn.lock"),
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tc := range testCases {
