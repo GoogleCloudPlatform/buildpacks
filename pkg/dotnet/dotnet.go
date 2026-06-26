@@ -188,6 +188,8 @@ func Publish(ctx *gcp.Context, proj, buildArgs string, useLayer bool) error {
 
 	if useLayer {
 		binLayer.BuildEnvironment.Default(EnvRuntimeVersion, runtimeVersion)
+	} else {
+		os.Setenv(EnvRuntimeVersion, runtimeVersion)
 	}
 
 	// 4. Symlink (only for layers)
