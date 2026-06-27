@@ -238,6 +238,17 @@ func (ctx *Context) ApplicationRoot() string {
 	return ctx.applicationRoot
 }
 
+// Env returns the value of the given environment variable. It first checks the
+// buildpack platform environment, then falls back to the OS process environment.
+func (ctx *Context) Env(key string) string {
+	if ctx.buildContext.Platform.Environment != nil {
+		if val, ok := ctx.buildContext.Platform.Environment[key]; ok {
+			return val
+		}
+	}
+	return os.Getenv(key)
+}
+
 // BuildpackRoot returns the root folder of the buildpack.
 func (ctx *Context) BuildpackRoot() string {
 	return ctx.buildpackRoot

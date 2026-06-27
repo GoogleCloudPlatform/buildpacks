@@ -68,6 +68,31 @@ func TestBuild(t *testing.T) {
 			},
 		},
 		{
+			name: "reads_google_buildable_when_root_package_json_exists",
+			envs: []string{"GOOGLE_BUILDABLE=apps/my-app"},
+			files: map[string]string{
+				"index.js": "",
+				"package.json": `{
+					"name": "root-package"
+				}`,
+				"turbo.json": `{
+					"tasks": {
+						"build": {
+							"outputs": ["dist/**", ".next/**"],
+							"cache": true
+						}
+					}
+				}`,
+				"apps/my-app/package.json": `{
+					"name": "my-app"
+				}`,
+			},
+			wantExitCode: 0,
+			wantBuilderMetadata: map[bmd.MetadataID]bmd.MetadataValue{
+				bmd.MonorepoName: bmd.MetadataValue("turbo"),
+			},
+		},
+		{
 			name: "ambiguous_application_name",
 			files: map[string]string{
 				"index.js": "",
