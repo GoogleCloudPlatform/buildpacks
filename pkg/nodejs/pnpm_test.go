@@ -99,6 +99,34 @@ func TestInstallPNPM(t *testing.T) {
 			},
 			wantError: true,
 		},
+		{
+			// Regression test for https://github.com/GoogleCloudPlatform/buildpacks/issues/627:
+			// a range constraint like ">=9.0.0" resolves to the highest matching version (v11),
+			// which must install via the tarball path rather than 404 on a missing naked binary.
+			name:     "version_range_resolves_to_v11",
+			wantFile: "bin/pnpm",
+			npmResponse: `{
+				"name": "pnpm",
+				"dist-tags": {
+					"latest": "11.0.0"
+				},
+				"versions": {
+					"9.15.0": {
+						"name": "pnpm",
+						"version": "9.15.0"
+					},
+					"11.0.0": {
+						"name": "pnpm",
+						"version": "11.0.0"
+					}
+				}
+			}`,
+			packageJSON: PackageJSON{
+				Engines: packageEnginesJSON{
+					PNPM: ">=9.0.0",
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -299,28 +327,50 @@ func TestInstallPNPMV11(t *testing.T) {
 		t.Fatalf("InstallPNPM(ctx, %v, %+v) got error: %v, want nil", layer, pkgJSON, err)
 	}
 
+	// Verify the native binary was replaced with the bash wrapper that uses node to execute
+	// dist/pnpm.mjs, avoiding a libatomic dependency on minimal run images.
 	fp := filepath.Join(layer.Path, "bin/pnpm")
-	if _, err := os.Stat(fp); err != nil {
-		t.Errorf("os.Stat(%q) got error: %v, want nil", fp, err)
+	content, err := os.ReadFile(fp)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%q) got error: %v, want nil", fp, err)
+	}
+	wantWrapper := "#!/usr/bin/env bash\nexec node \"$(dirname \"$0\")/dist/pnpm.mjs\" \"$@\"\n"
+	if string(content) != wantWrapper {
+		t.Errorf("bin/pnpm content = %q, want wrapper script %q", string(content), wantWrapper)
+	}
+
+	// Verify dist/pnpm.mjs was extracted from the tarball (present in all pnpm v11+ releases).
+	mjsFP := filepath.Join(layer.Path, "bin/dist/pnpm.mjs")
+	if _, err := os.Stat(mjsFP); err != nil {
+		t.Errorf("os.Stat(%q) got error: %v, want nil", mjsFP, err)
 	}
 }
 
+// mockTarballBytes returns a minimal .tar.gz that mirrors the flat structure of real pnpm v11+
+// release tarballs: a "pnpm" native binary at root and a "dist/pnpm.mjs" JS entry point.
 func mockTarballBytes(t *testing.T) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	gw := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gw)
-	hdr := &tar.Header{
-		Name: "pnpm",
-		Mode: 0755,
-		Size: int64(len("pnpm!")),
-	}
-	if err := tw.WriteHeader(hdr); err != nil {
+
+	pnpmBin := []byte("pnpm!")
+	if err := tw.WriteHeader(&tar.Header{Name: "pnpm", Mode: 0755, Size: int64(len(pnpmBin))}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tw.Write([]byte("pnpm!")); err != nil {
+	if _, err := tw.Write(pnpmBin); err != nil {
 		t.Fatal(err)
 	}
+
+	// dist/pnpm.mjs is present in every pnpm v11+ tarball and is referenced by the bash wrapper.
+	mjsContent := []byte("// pnpm.mjs")
+	if err := tw.WriteHeader(&tar.Header{Name: "dist/pnpm.mjs", Mode: 0644, Size: int64(len(mjsContent))}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tw.Write(mjsContent); err != nil {
+		t.Fatal(err)
+	}
+
 	tw.Close()
 	gw.Close()
 	return buf.Bytes()
