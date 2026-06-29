@@ -30,7 +30,6 @@ readonly tar="${2:?tar path missing}"
 readonly descriptor="${3:?descriptor path missing}"
 readonly sha="${4:?sha path missing}"
 
-
 # Blaze does not set $HOME which is required by pack.
 readonly temp="$(mktemp -d)"
 trap "rm -rf $temp" EXIT
