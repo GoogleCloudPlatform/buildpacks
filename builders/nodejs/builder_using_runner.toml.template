@@ -72,6 +72,10 @@ description = "Builder for the Node.js runtime"
   id = "google.firebase.firebasebundle"
   uri = "firebasebundle_v2_using_runner.tgz"
 
+[[buildpacks]]
+  id = "google.nodejs.dependencyextract"
+  uri = "dependencyextract.tgz"
+
 # The Firebase apphosting order group for Node.js applications.
 # TODO: Change the naming convention for firebase apphosting buildpacks
 # since Serverless Runtimes prefers generic buildpack names.
@@ -513,6 +517,10 @@ description = "Builder for the Node.js runtime"
 
   [[order.group]]
     id = "google.nodejs.npm"
+
+  [[order.group]]
+    id = "google.nodejs.dependencyextract"
+    optional = true
 
   [[order.group]]
     id = "google.nodejs.functions-framework"
