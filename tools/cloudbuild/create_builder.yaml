@@ -66,56 +66,6 @@ steps:
       - '--jobs=2'
       - '//builders/gcp/base/acceptance/...'
 
-
-  - id: firebase-tools-build
-    name: bazel-pack
-    entrypoint: /bin/bash
-    args:
-    - -c
-    - |
-      bazel build //cmd/firebase/publisher:main
-      cp bazel-bin/cmd/firebase/publisher/main_/main stacks/firebase_app_hosting_22/publisher
-      bazel build //cmd/firebase/preparer:main
-      cp bazel-bin/cmd/firebase/preparer/main_/main stacks/firebase_app_hosting_22/preparer
-
-  - id: firebase-app-hosting-22-build-image
-    name: gcr.io/cloud-builders/docker
-    dir: stacks/firebase_app_hosting_22
-    args:
-    - 'build'
-    - '--build-arg="packages=build-packages.txt"'
-    - '--build-arg="CANDIDATE_NAME=${_CANDIDATE_NAME}"'
-    - '-t=gcr.io/buildpacks/firebase-app-hosting-22/build:latest'
-    - '-f=build.Dockerfile'
-    - '.'
-
-  - id: firebase-app-hosting-22-run-image
-    name: gcr.io/cloud-builders/docker
-    dir: stacks/firebase_app_hosting_22
-    args:
-    - 'build'
-    - '--build-arg="packages=run-packages.txt"'
-    - '--build-arg="CANDIDATE_NAME=${_CANDIDATE_NAME}"'
-    - '-t=gcr.io/buildpacks/firebase-app-hosting-22/run:latest'
-    - '-f=run.Dockerfile'
-    - '.'
-
-  - id: firebase-app-hosting-22-builder-image
-    name: bazel-pack
-    args: ['build', '//builders/firebase/apphosting:builder.image']
-
-  - id: firebase-app-hosting-22-run-acceptance-tests
-    name: bazel-pack
-    args:
-      - 'test'
-      - '--test_output=errors'
-      - '--flaky_test_attempts=3'
-      - '--test_arg=-cloudbuild'
-      - '--test_arg=-pull-images=false'
-      - '--test_arg=-builder-image=firebase/apphosting'
-      - '--jobs=2'
-      - '//builders/firebase/apphosting/acceptance/...'
-
   - id: add-licenses
     name: bazel-pack
     entrypoint: /bin/bash
@@ -124,15 +74,6 @@ steps:
   - id: validate-licenses
     name: gcr.io/gae-runtimes/license_validator:current
     args: ['-pull_images=false', 'gcp/base']
-
-  - id: add-firebase-licenses
-    name: bazel-pack
-    entrypoint: /bin/bash
-    args: ['-c', 'tools/licenses/add.sh firebase/apphosting']
-
-  - id: validate-firebase-licenses
-    name: gcr.io/gae-runtimes/license_validator:current
-    args: ['-pull_images=false', 'firebase/apphosting']
 
 substitutions:
   _CANDIDATE_NAME: localbuild
