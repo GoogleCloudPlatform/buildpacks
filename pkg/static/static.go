@@ -31,16 +31,39 @@ events {
 
 http {
     include {{.MimeTypesPath}};
+
     server {
         listen 8080;
         root {{.RootPath}};
         index index.html;
 
+        {{range .Redirects}}
+        location ~ {{.Pattern}} {
+            return {{.Code}} {{.Target}};
+        }
+        {{end}}
+
+				{{range .Rewrites}}
+        location ~ {{.Pattern}} {
+            rewrite {{.Pattern}} {{.Target}} break;
+        }
+        {{end}}
+
+        {{range .HeaderBlocks}}
+        location {{.Location}} {
+            {{range .Headers}}
+            add_header "{{.Name}}" "{{.Value}}";
+            {{end}}
+            try_files $uri $uri/ /index.html;
+        }
+        {{end}}
+
+        # Default Fallback
         location / {
             try_files $uri $uri/ /index.html;
         }
 
-				absolute_redirect off;
+        absolute_redirect off;
     }
 }
 `
@@ -48,10 +71,38 @@ http {
 	DefaultStaticNginxVersion = "1.30.x"
 )
 
-// NginxConfigParams holds the runtime configuration parameters for templating nginx.conf.
+// NginxConfigParams holds the generic configuration parameters for templating nginx.conf.
 type NginxConfigParams struct {
 	RootPath      string
 	MimeTypesPath string
+	Rewrites      []NginxRewrite
+	Redirects     []NginxRedirect
+	HeaderBlocks  []NginxHeaderBlock
+}
+
+// NginxRewrite represents a single internal rewrite rule.
+type NginxRewrite struct {
+	Pattern string // Regex pattern (e.g., "^/api/(.*)$")
+	Target  string // Destination (e.g., "http://backend/$1")
+}
+
+// NginxRedirect represents an HTTP redirect.
+type NginxRedirect struct {
+	Pattern string // Regex pattern
+	Target  string // Destination URL
+	Code    int    // HTTP Status Code (e.g. 301, 302)
+}
+
+// NginxHeader represents a single key-value HTTP header.
+type NginxHeader struct {
+	Name  string
+	Value string
+}
+
+// NginxHeaderBlock represents a location block containing HTTP headers.
+type NginxHeaderBlock struct {
+	Location string        // Path matching string (e.g., "~* \.(css|js)$")
+	Headers  []NginxHeader // Slice of custom header key-value pairs (ordered)
 }
 
 // WriteNginxConfig compiles the configuration template with parameters and writes it to disk.

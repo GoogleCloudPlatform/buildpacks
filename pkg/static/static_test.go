@@ -28,6 +28,28 @@ func TestWriteNginxConfig(t *testing.T) {
 	params := NginxConfigParams{
 		RootPath:      "/my/app/root",
 		MimeTypesPath: "/opt/nginx/conf/mime.types",
+		HeaderBlocks: []NginxHeaderBlock{
+			{
+				Location: "/static",
+				Headers: []NginxHeader{
+					{Name: "Cache-Control", Value: "public, max-age=31536000"},
+					{Name: "X-Custom", Value: "value"},
+				},
+			},
+		},
+		Redirects: []NginxRedirect{
+			{
+				Pattern: "/old-path",
+				Target:  "/new-path",
+				Code:    301,
+			},
+		},
+		Rewrites: []NginxRewrite{
+			{
+				Pattern: "^/api/(.*)$",
+				Target:  "/$1",
+			},
+		},
 	}
 
 	if err := WriteNginxConfig(dstPath, params); err != nil {
@@ -48,6 +70,33 @@ func TestWriteNginxConfig(t *testing.T) {
 	}
 	if !strings.Contains(got, "worker_connections 1024;") {
 		t.Errorf("WriteNginxConfig() output = %q; missing worker_connections", got)
+	}
+
+	// Verify header blocks.
+	if !strings.Contains(got, "location /static {") {
+		t.Errorf("WriteNginxConfig() output = %q; missing /static location block for custom headers", got)
+	}
+	if !strings.Contains(got, `add_header "Cache-Control" "public, max-age=31536000";`) {
+		t.Errorf("WriteNginxConfig() output = %q; missing Cache-Control header", got)
+	}
+	if !strings.Contains(got, `add_header "X-Custom" "value";`) {
+		t.Errorf("WriteNginxConfig() output = %q; missing X-Custom header", got)
+	}
+
+	// Verify redirects.
+	if !strings.Contains(got, "location ~ /old-path {") {
+		t.Errorf("WriteNginxConfig() output = %q; missing redirect location block", got)
+	}
+	if !strings.Contains(got, "return 301 /new-path;") {
+		t.Errorf("WriteNginxConfig() output = %q; missing return statement for redirect", got)
+	}
+
+	// Verify rewrites.
+	if !strings.Contains(got, `location ~ ^/api/(.*)$ {`) {
+		t.Errorf("WriteNginxConfig() output = %q; missing rewrite location block", got)
+	}
+	if !strings.Contains(got, `rewrite ^/api/(.*)$ /$1 break;`) {
+		t.Errorf("WriteNginxConfig() output = %q; missing rewrite statement", got)
 	}
 }
 
