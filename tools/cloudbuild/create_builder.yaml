@@ -31,6 +31,8 @@ steps:
   - id: google-22-build-image
     name: gcr.io/cloud-builders/docker
     dir: stacks/google_22
+    env:
+      - 'DOCKER_BUILDKIT=1'
     args:
     - 'build'
     - '--build-arg="packages=build-packages.txt"'
@@ -42,6 +44,8 @@ steps:
   - id: google-22-run-image
     name: gcr.io/cloud-builders/docker
     dir: stacks/google_22
+    env:
+      - 'DOCKER_BUILDKIT=1'
     args:
     - 'build'
     - '--build-arg="packages=run-packages.txt"'
