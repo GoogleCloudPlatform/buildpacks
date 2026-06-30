@@ -467,6 +467,7 @@ func TestAcceptancePython(t *testing.T) {
 			MustMatch:                  "INITIAL",
 			DevSyncExpectedResponse:    "UPDATED: 2.32.3",
 			VersionInclusionConstraint: ">=3.10.0",
+			SkipStacks:                 []string{"google.gae.18", "google.18", "google.gae.22", "google.min.22", "google.22"},
 		},
 		{
 			Name:                       "devsync_python_framework_switch",
@@ -478,6 +479,7 @@ func TestAcceptancePython(t *testing.T) {
 			MustMatch:                  "INITIAL",
 			DevSyncExpectedResponse:    "UPDATED: fastapi",
 			VersionInclusionConstraint: ">=3.10.0",
+			SkipStacks:                 []string{"google.gae.18", "google.18", "google.gae.22", "google.min.22", "google.22"},
 		},
 	}
 

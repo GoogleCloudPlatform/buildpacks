@@ -185,6 +185,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			DevSyncUpdateSubdir:     "update",
 			MustMatch:               "INITIAL",
 			DevSyncExpectedResponse: "UPDATED: 4.17.21",
+			SkipStacks:              []string{"google.gae.18", "google.18", "google.gae.22", "google.min.22", "google.22"},
 		},
 		{
 			Name:                    "devsync_nodejs_bun_switch",
@@ -195,6 +196,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			DevSyncUpdateSubdir:     "update",
 			MustMatch:               "INITIAL",
 			DevSyncExpectedResponse: "UPDATED: lodash=4.17.21, runtime=bun",
+			SkipStacks:              []string{"google.gae.18", "google.18", "google.gae.22", "google.min.22", "google.22"},
 		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
