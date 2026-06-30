@@ -176,6 +176,26 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			MustUse:                    []string{nodeNPM},
 			VersionInclusionConstraint: ">= 20.0.0",
 		},
+		{
+			Name:                    "devsync_nodejs_rebuild",
+			App:                     "devsync_dependency",
+			Env:                     []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual"},
+			MustUse:                 []string{nodeRuntime, nodeNPM, "google.utils.devsync"},
+			EnableDevSyncTest:       true,
+			DevSyncUpdateSubdir:     "update",
+			MustMatch:               "INITIAL",
+			DevSyncExpectedResponse: "UPDATED: 4.17.21",
+		},
+		{
+			Name:                    "devsync_nodejs_bun_switch",
+			App:                     "devsync_entrypoint",
+			Env:                     []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual"},
+			MustUse:                 []string{nodeRuntime, nodeNPM, "google.utils.devsync"},
+			EnableDevSyncTest:       true,
+			DevSyncUpdateSubdir:     "update",
+			MustMatch:               "INITIAL",
+			DevSyncExpectedResponse: "UPDATED: lodash=4.17.21, runtime=bun",
+		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc

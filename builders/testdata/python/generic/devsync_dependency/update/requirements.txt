@@ -1,0 +1,4 @@
+flask==3.0.3
+gunicorn==23.0.0
+Werkzeug==3.0.6
+requests==2.32.3

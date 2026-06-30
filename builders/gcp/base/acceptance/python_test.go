@@ -457,6 +457,28 @@ func TestAcceptancePython(t *testing.T) {
 			VersionInclusionConstraint: ">= 3.13.0",
 			MustMatch:                  "multi_tool_agent",
 		},
+		{
+			Name:                       "devsync_python_rebuild",
+			App:                        "devsync_dependency",
+			Env:                        []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual"},
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint, "google.utils.devsync"},
+			EnableDevSyncTest:          true,
+			DevSyncUpdateSubdir:        "update",
+			MustMatch:                  "INITIAL",
+			DevSyncExpectedResponse:    "UPDATED: 2.32.3",
+			VersionInclusionConstraint: ">=3.10.0",
+		},
+		{
+			Name:                       "devsync_python_framework_switch",
+			App:                        "devsync_entrypoint",
+			Env:                        []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual"},
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint, "google.utils.devsync"},
+			EnableDevSyncTest:          true,
+			DevSyncUpdateSubdir:        "update",
+			MustMatch:                  "INITIAL",
+			DevSyncExpectedResponse:    "UPDATED: fastapi",
+			VersionInclusionConstraint: ">=3.10.0",
+		},
 	}
 
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {

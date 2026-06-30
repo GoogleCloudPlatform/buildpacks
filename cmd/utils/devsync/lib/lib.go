@@ -74,7 +74,7 @@ func installMaker(ctx *gcp.Context, layer *libcnb.Layer) error {
 	}
 
 	// TODO(b/521268420): Integrate with tooling.textproto versioning system.
-	version := "1.0.0"
+	version := "1.0.1"
 	binaryPath := filepath.Join(binDir, "universal_maker")
 
 	if err := fetch.ARGenericBinary(ctx, "universal_maker", version, binaryPath); err != nil {
