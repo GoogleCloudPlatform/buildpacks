@@ -28,28 +28,6 @@ steps:
     name: gcr.io/cloud-builders/docker
     args: ['build', '-t=bazel-pack', '-f=tools/cloudbuild/Dockerfile', '.']
 
-  - id: google-18-build-stack-images
-    name: bazel-pack
-    env:
-      - 'DOCKER_BUILDKIT=0'
-    args: ['run', '//builders/gcp/base/stack:build']
-
-  - id: google-18-create-builder
-    name: bazel-pack
-    args: ['build', '//builders/gcp/base:builder.image']
-
-  - id: google-18-run-acceptance-tests
-    name: bazel-pack
-    args:
-      - 'test'
-      - '--test_output=errors'
-      - '--flaky_test_attempts=3'
-      - '--test_arg=-cloudbuild'
-      - '--test_arg=-pull-images=false'
-      - '--test_arg=-builder-image=gcp/base'
-      - '--jobs=2'
-      - '//builders/gcp/base/acceptance/...'
-
   - id: google-22-build-image
     name: gcr.io/cloud-builders/docker
     dir: stacks/google_22
