@@ -51,6 +51,9 @@ const (
 	// DevSyncInitEntrypoint is an env var used to specify the initial entrypoint for dev sync mode.
 	DevSyncInitEntrypoint = "GOOGLE_DEV_SYNC_INIT_ENTRYPOINT"
 
+	// XGoogleDevSyncUseRunitUniversalMaker is an experiment flag to enable Runit supervision and the new universal_maker for DevSync on Ubuntu 24.04.
+	XGoogleDevSyncUseRunitUniversalMaker = "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER"
+
 	// Entrypoint is an env var used to override the default entrypoint.
 	// Entrypoint should be respected by at least one buildpack in builders that are not product-specific.
 	// Example: `gunicorn -p :8080 main:app` for Python.
