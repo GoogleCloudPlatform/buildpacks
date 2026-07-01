@@ -73,11 +73,11 @@ steps:
   - id: add-licenses
     name: bazel-pack
     entrypoint: /bin/bash
-    args: ['-c', 'tools/licenses/add.sh gcp/base']
+    args: ['-c', 'tools/licenses/add.sh google-22/builder']
 
   - id: validate-licenses
     name: gcr.io/gae-runtimes/license_validator:current
-    args: ['-pull_images=false', 'gcp/base']
+    args: ['-pull_images=false', 'google-22/builder']
 
 substitutions:
   _CANDIDATE_NAME: localbuild
