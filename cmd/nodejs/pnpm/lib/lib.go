@@ -61,6 +61,10 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 // BuildFn is the exported build function.
 func BuildFn(ctx *gcp.Context) error {
 	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.PackageManager, buildermetadata.MetadataValue("pnpm"))
+	if err := ctx.Setenv("PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN", "false"); err != nil {
+		return err
+	}
+
 	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
 	if err != nil {
 		return err
@@ -80,6 +84,7 @@ func BuildFn(ctx *gcp.Context) error {
 	}
 	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
 	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
+	el.SharedEnvironment.Default("PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN", "false")
 
 	// Check for React2Shell vulnerability in the lockfile.
 	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, ctx.ApplicationRoot())
