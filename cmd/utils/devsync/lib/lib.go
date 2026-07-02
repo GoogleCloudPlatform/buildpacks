@@ -42,7 +42,11 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return gcp.OptOut("not a devsync build"), nil
 	}
 
-	return gcp.OptIn("GOOGLE_DEVSYNC is true"), nil
+	if enabled, _ := env.IsDevSyncUseRunitUniversalMaker(); !enabled {
+		return gcp.OptOut("X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER is not set to true"), nil
+	}
+
+	return gcp.OptIn("GOOGLE_DEVSYNC and X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER are true"), nil
 }
 
 // BuildFn is the exported build function.

@@ -179,7 +179,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 		{
 			Name:                    "devsync_nodejs_rebuild",
 			App:                     "devsync_dependency",
-			Env:                     []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual"},
+			Env:                     []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER=1"},
 			MustUse:                 []string{nodeRuntime, nodeNPM, "google.utils.devsync"},
 			EnableDevSyncTest:       true,
 			DevSyncUpdateSubdir:     "update",
@@ -190,7 +190,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 		{
 			Name:                    "devsync_nodejs_bun_switch",
 			App:                     "devsync_entrypoint",
-			Env:                     []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual"},
+			Env:                     []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER=1"},
 			MustUse:                 []string{nodeRuntime, nodeNPM, "google.utils.devsync"},
 			EnableDevSyncTest:       true,
 			DevSyncUpdateSubdir:     "update",

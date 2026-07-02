@@ -282,6 +282,11 @@ func IsDevSync() (bool, error) {
 	return IsPresentAndTrue(DevSync)
 }
 
+// IsDevSyncUseRunitUniversalMaker indicates that Runit supervision and universal_maker for DevSync are enabled.
+func IsDevSyncUseRunitUniversalMaker() (bool, error) {
+	return IsPresentAndTrue(XGoogleDevSyncUseRunitUniversalMaker)
+}
+
 // IsUsingNativeImage returns true if the Java application should be built as a native image.
 func IsUsingNativeImage() (bool, error) {
 	return IsPresentAndTrue(UseNativeImage)

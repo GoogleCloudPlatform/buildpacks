@@ -460,7 +460,7 @@ func TestAcceptancePython(t *testing.T) {
 		{
 			Name:                       "devsync_python_rebuild",
 			App:                        "devsync_dependency",
-			Env:                        []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual"},
+			Env:                        []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER=1"},
 			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint, "google.utils.devsync"},
 			EnableDevSyncTest:          true,
 			DevSyncUpdateSubdir:        "update",
@@ -472,7 +472,7 @@ func TestAcceptancePython(t *testing.T) {
 		{
 			Name:                       "devsync_python_framework_switch",
 			App:                        "devsync_entrypoint",
-			Env:                        []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual"},
+			Env:                        []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER=1"},
 			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint, "google.utils.devsync"},
 			EnableDevSyncTest:          true,
 			DevSyncUpdateSubdir:        "update",
