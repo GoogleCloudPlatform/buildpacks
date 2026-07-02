@@ -70,6 +70,48 @@ steps:
       - '--jobs=2'
       - '//builders/gcp/base/acceptance/...'
 
+  - id: google-24-build-image
+    name: gcr.io/cloud-builders/docker
+    dir: stacks/google_24
+    env:
+      - 'DOCKER_BUILDKIT=1'
+    args:
+    - 'build'
+    - '--build-arg="packages=build-packages.txt"'
+    - '--build-arg="CANDIDATE_NAME=${_CANDIDATE_NAME}"'
+    - '-t=gcr.io/buildpacks/google-24/build:latest'
+    - '-f=build.Dockerfile'
+    - '.'
+
+  - id: google-24-run-image
+    name: gcr.io/cloud-builders/docker
+    dir: stacks/google_24
+    env:
+      - 'DOCKER_BUILDKIT=1'
+    args:
+    - 'build'
+    - '--build-arg="packages=run-packages.txt"'
+    - '--build-arg="CANDIDATE_NAME=${_CANDIDATE_NAME}"'
+    - '-t=gcr.io/buildpacks/google-24/run:latest'
+    - '-f=run.Dockerfile'
+    - '.'
+
+  - id: google-24-builder-image
+    name: bazel-pack
+    args: ['build', '//builders/gcp/base:google_24_builder.image']
+
+  - id: google-24-run-acceptance-tests
+    name: bazel-pack
+    args:
+      - 'test'
+      - '--test_output=errors'
+      - '--flaky_test_attempts=3'
+      - '--test_arg=-cloudbuild'
+      - '--test_arg=-pull-images=false'
+      - '--test_arg=-builder-image=google-24/builder'
+      - '--jobs=2'
+      - '//builders/gcp/base/acceptance/...'
+
   - id: add-licenses
     name: bazel-pack
     entrypoint: /bin/bash
