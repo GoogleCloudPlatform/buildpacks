@@ -186,6 +186,10 @@ func installRubygems(ctx *gcp.Context, layer *libcnb.Layer) error {
 		return err
 	}
 
+	if err := copyDefaultGemspecs(ctx, layer.Path); err != nil {
+		return err
+	}
+
 	// this is used to run bundler/setup
 	// https://github.com/rubygems/rubygems/blob/v3.3.15/bundler/lib/bundler/shared_helpers.rb#L277
 	destExe := filepath.Join(layer.Path, "exe")
@@ -217,4 +221,22 @@ func rubyGemsAndBundlerVersion(ctx *gcp.Context) (string, string) {
 	}
 
 	return rubygemsVersion, bundler2Version
+}
+
+// copyDefaultGemspecs copies default gemspecs to specifications directory.
+func copyDefaultGemspecs(ctx *gcp.Context, layerPath string) error {
+	defaultSpecsDir := filepath.Join(layerPath, "specifications", "default")
+	specsDir := filepath.Join(layerPath, "specifications")
+	gemspecs, err := filepath.Glob(filepath.Join(defaultSpecsDir, "*.gemspec"))
+	if err != nil {
+		return fmt.Errorf("globbing default gemspecs: %w", err)
+	}
+	for _, gemspec := range gemspecs {
+		dest := filepath.Join(specsDir, filepath.Base(gemspec))
+		ctx.Logf("Copying default gemspec %s to %s", gemspec, dest)
+		if err := fileutil.CopyFile(dest, gemspec); err != nil {
+			return fmt.Errorf("copying gemspec %s to %s: %w", gemspec, dest, err)
+		}
+	}
+	return nil
 }
