@@ -57,6 +57,32 @@ func TestDetect(t *testing.T) {
 			envs:  []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
 			want:  100,
 		},
+		{
+			name: "with_firebase_json_valid_public",
+			files: map[string]string{
+				"firebase.json":           `{"hosting": {"public": "custom_build"}}`,
+				"custom_build/index.html": "hello",
+			},
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			want: 0,
+		},
+		{
+			name: "with_firebase_json_invalid_public_fallback",
+			files: map[string]string{
+				"firebase.json": `{"hosting": {"public": "missing_dir"}}`,
+				"index.html":    "hello",
+			},
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			want: 0,
+		},
+		{
+			name: "with_firebase_json_invalid_public_no_fallback",
+			files: map[string]string{
+				"firebase.json": `{"hosting": {"public": "missing_dir"}}`,
+			},
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			want: 100,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -68,10 +94,11 @@ func TestDetect(t *testing.T) {
 
 func TestBuild(t *testing.T) {
 	testCases := []struct {
-		name  string
-		files map[string]string
-		envs  []string
-		want  string
+		name    string
+		files   map[string]string
+		envs    []string
+		want    string
+		wantErr bool
 	}{
 		{
 			name: "with_dist_directory_priority",
@@ -82,13 +109,35 @@ func TestBuild(t *testing.T) {
 			envs: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
 			want: "Target static asset folder found: dist",
 		},
+		{
+			name: "with_firebase_json_public_priority",
+			files: map[string]string{
+				"firebase.json":               `{"hosting": {"public": "my_public_folder"}}`,
+				"my_public_folder/index.html": "hello",
+				"dist/index.html":             "dist file",
+			},
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			want: "Target static asset folder found via firebase.json: my_public_folder",
+		},
+		{
+			name: "with_invalid_firebase_json",
+			files: map[string]string{
+				"index.html":    "hello",
+				"firebase.json": `{ invalid json }`,
+			},
+			envs:    []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			wantErr: true,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := buildpacktest.RunBuild(t, BuildFn, buildpacktest.WithFiles(tc.files), buildpacktest.WithEnvs(tc.envs...), buildpacktest.WithTestName(tc.name))
-			if err != nil {
-				t.Fatalf("error running build: %v, result: %#v", err, result)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("RunBuild() error = %v, wantErr %v, result: %#v", err, tc.wantErr, result)
+			}
+			if tc.wantErr {
+				return
 			}
 			if !strings.Contains(result.Output, tc.want) {
 				t.Errorf("RunBuild().Output = %q, want %q", result.Output, tc.want)

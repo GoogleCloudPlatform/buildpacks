@@ -52,6 +52,19 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return gcp.OptOut("Static runtimes feature is supported only on ALPHA release track."), nil
 	}
 
+	firebaseConfigPath := filepath.Join(ctx.ApplicationRoot(), "firebase.json")
+	if configs, err := static.ParseFirebaseConfig(firebaseConfigPath); err == nil && len(configs) > 0 {
+		// Default to the first config in the array. App Hosting currently only supports deploying
+		// a single target per container, and we do not yet have plumbing to receive a specific
+		// target identifier (like `firebase deploy --only hosting:target`) from the user.
+		if publicDir := configs[0].Public; publicDir != "" {
+			fullPath := filepath.Join(ctx.ApplicationRoot(), publicDir)
+			if info, err := os.Stat(fullPath); err == nil && info.IsDir() {
+				return gcp.OptInFileFound("firebase.json (public: " + publicDir + ")"), nil
+			}
+		}
+	}
+
 	for _, c := range staticAssets {
 		fullPath := filepath.Join(ctx.ApplicationRoot(), c)
 		info, err := os.Stat(fullPath)
@@ -77,20 +90,44 @@ func BuildFn(ctx *gcp.Context) error {
 	l.BuildEnvironment.Override(env.StaticServe, "true")
 
 	rootPath := ctx.ApplicationRoot()
-	for _, c := range staticAssets {
-		fullPath := filepath.Join(ctx.ApplicationRoot(), c)
-		info, err := os.Stat(fullPath)
+	var fbConfig *static.HostingConfig
+
+	firebaseConfigPath := filepath.Join(ctx.ApplicationRoot(), "firebase.json")
+	if info, err := os.Stat(firebaseConfigPath); err == nil && !info.IsDir() {
+		ctx.Logf("Found firebase.json at application root. Parsing...")
+		configs, err := static.ParseFirebaseConfig(firebaseConfigPath)
 		if err != nil {
-			continue
+			return fmt.Errorf("parsing firebase.json: %w", err)
 		}
-		if c == indexHTML && !info.IsDir() {
-			ctx.Logf("Target static asset found: index.html at root.")
-			break
+		if len(configs) > 0 {
+			fbConfig = &configs[0]
+			ctx.Logf("Successfully parsed firebase.json. Applied %d custom header rules.", len(fbConfig.Headers))
+			if fbConfig.Public != "" {
+				fullPath := filepath.Join(ctx.ApplicationRoot(), fbConfig.Public)
+				if info, err := os.Stat(fullPath); err == nil && info.IsDir() {
+					rootPath = fullPath
+					ctx.Logf("Target static asset folder found via firebase.json: %s", fbConfig.Public)
+				}
+			}
 		}
-		if c != indexHTML && info.IsDir() {
-			rootPath = fullPath
-			ctx.Logf("Target static asset folder found: %s", c)
-			break
+	}
+
+	if rootPath == ctx.ApplicationRoot() {
+		for _, c := range staticAssets {
+			fullPath := filepath.Join(ctx.ApplicationRoot(), c)
+			info, err := os.Stat(fullPath)
+			if err != nil {
+				continue
+			}
+			if c == indexHTML && !info.IsDir() {
+				ctx.Logf("Target static asset found: index.html at root.")
+				break
+			}
+			if c != indexHTML && info.IsDir() {
+				rootPath = fullPath
+				ctx.Logf("Target static asset folder found: %s", c)
+				break
+			}
 		}
 	}
 
