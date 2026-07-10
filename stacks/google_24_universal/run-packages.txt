@@ -18,4 +18,5 @@ libyaml-0-2
 libzip4
 locales
 openssl
+runit
 tzdata

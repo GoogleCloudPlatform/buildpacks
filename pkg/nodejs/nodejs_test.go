@@ -392,12 +392,12 @@ func TestRequestedNodejsVersion(t *testing.T) {
 	}{
 		{
 			name: "default_is_empty",
-			want: "22.*.*",
+			want: "24.*.*",
 		},
 		{
 			name:        "package.json_without_engines",
 			packageJSON: `{}`,
-			want:        "22.*.*",
+			want:        "24.*.*",
 		},
 		{
 			name:    "default_on_ubuntu_24_stack",
@@ -585,7 +585,7 @@ func TestVersion(t *testing.T) {
 			nodeDeps: &NodeDependencies{
 				LockfilePath: testdata.MustGetPath("testdata/lock-files/nextjs-package-lock.json"),
 			},
-			wantVersion: "14.1.4",
+			wantVersion: "15.0.0",
 		},
 		{
 			name: "Parses package-lock version angular",
@@ -796,5 +796,57 @@ func setGoogleRuntime(t *testing.T, value string) {
 	})
 	if err := os.Setenv("GOOGLE_RUNTIME", value); err != nil {
 		t.Errorf("Error setting environment variable %q: %v", googleRuntimeEnv, err)
+	}
+}
+
+func TestEntrypoint(t *testing.T) {
+	testCases := []struct {
+		name           string
+		packageManager string
+		capability     bool
+		want           []string
+	}{
+		{
+			name:           "without_capability",
+			packageManager: "yarn",
+			capability:     false,
+			want:           []string{"yarn", "run", "start"},
+		},
+		{
+			name:           "with_capability",
+			packageManager: "yarn",
+			capability:     true,
+			want:           []string{"npm", "run", "start"},
+		},
+		{
+			name:           "pnpm_without_capability",
+			packageManager: "pnpm",
+			capability:     false,
+			want:           []string{"pnpm", "run", "start"},
+		},
+		{
+			name:           "pnpm_with_capability",
+			packageManager: "pnpm",
+			capability:     true,
+			want:           []string{"npm", "run", "start"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var opts []gcp.ContextOption
+			if tc.capability {
+				opts = append(opts, gcp.WithCapability(NPMStartEntrypointCapability, &MakerNPMStartEntrypoint{}))
+			}
+			ctx := gcp.NewContext(opts...)
+
+			got, err := Entrypoint(ctx, tc.packageManager)
+			if err != nil {
+				t.Fatalf("Entrypoint(ctx, %q) returned unexpected error: %v", tc.packageManager, err)
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("Entrypoint(ctx, %q) returned unexpected difference (-want +got):\n%s", tc.packageManager, diff)
+			}
+		})
 	}
 }

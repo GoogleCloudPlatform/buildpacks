@@ -41,5 +41,5 @@ echo "Extracting builder tar:"
 tar xvf "$tar" -C "$temp"
 
 echo "Creating builder:"
-pack builder create "$name" --config="${temp}/${descriptor}" --pull-policy=never
+pack builder create "$name" --config="${temp}/${descriptor}"
 docker inspect --format='{{index .Id}}' "$name" > "$sha"

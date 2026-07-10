@@ -23,9 +23,11 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
@@ -49,7 +51,7 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 // BuildFn installs dependencies using npm.
 func BuildFn(ctx *gcp.Context) error {
-	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NPMUsageCounterID).Increment(1)
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.PackageManager, buildermetadata.MetadataValue("npm"))
 	ml, err := ctx.Layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
@@ -85,6 +87,7 @@ func BuildFn(ctx *gcp.Context) error {
 	if err != nil {
 		return err
 	}
+
 	pjs, err = nodejs.OverrideAppHostingBuildScript(ctx, nodejs.ApphostingPreprocessedPathForPack)
 	if err != nil {
 		return err
@@ -114,7 +117,7 @@ func BuildFn(ctx *gcp.Context) error {
 		}
 		if cached {
 			// Restore cached node_modules.
-			if _, err := ctx.Exec([]string{"cp", "--archive", nm, "node_modules"}, gcp.WithUserTimingAttribution); err != nil {
+			if err := nodejs.RestoreModules(ctx, nm, "node_modules"); err != nil {
 				return err
 			}
 
@@ -133,13 +136,19 @@ func BuildFn(ctx *gcp.Context) error {
 			if _, err := ctx.Exec([]string{"npm", installCmd, "--quiet", "--no-fund", "--no-audit"}, gcp.WithEnv("NODE_ENV="+buildNodeEnv), gcp.WithUserAttribution); err != nil {
 				return err
 			}
-			// Ensure node_modules exists even if no dependencies were installed.
-			if err := ctx.MkdirAll("node_modules", 0755); err != nil {
+			if err := nodejs.SaveModules(ctx, "node_modules", nm); err != nil {
 				return err
 			}
-			if _, err := ctx.Exec([]string{"cp", "--archive", "node_modules", nm}, gcp.WithUserTimingAttribution); err != nil {
-				return err
-			}
+		}
+	}
+
+	// Check for React2Shell vulnerability in the lockfile.
+	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, ctx.ApplicationRoot())
+	if err != nil {
+		ctx.Warnf("Failed to read node dependencies: %v", err)
+	} else {
+		if err := nodejs.CheckVulnerabilities(ctx, nodeDeps); err != nil {
+			return err
 		}
 	}
 
@@ -147,7 +156,7 @@ func BuildFn(ctx *gcp.Context) error {
 		// If there are multiple build scripts to run, run them one-by-one so the logs are
 		// easier to understand.
 		for _, cmd := range buildCmds {
-			execOpts := []gcp.ExecOption{gcp.WithUserAttribution, gcp.WithStderrHead}
+			execOpts := []gcp.ExecOption{gcp.WithUserAttribution}
 			if nodejs.DetectSvelteKitAutoAdapter(pjs) {
 				execOpts = append(execOpts, gcp.WithEnv(nodejs.SvelteAdapterEnv))
 			}
@@ -167,11 +176,7 @@ NOTE: Running the default build script can be skipped by passing the empty envir
 			}
 		}
 
-		shouldPrune, err := shouldPrune(ctx, pjs)
-		if err != nil {
-			return err
-		}
-		if shouldPrune {
+		if shouldPrune(ctx, pjs) {
 			// npm prune deletes devDependencies from node_modules
 			if _, err := ctx.Exec([]string{"npm", "prune", "--production"}, gcp.WithUserAttribution); err != nil {
 				return err
@@ -192,6 +197,18 @@ NOTE: Running the default build script can be skipped by passing the empty envir
 		return fmt.Errorf("detecting start command: %w", err)
 	}
 
+	devSync, err := env.IsDevSync()
+	if err != nil {
+		ctx.Warnf("Unable to determine dev sync status: %v", err)
+	} else if devSync {
+		cmd, err = nodejs.DevSyncEntrypoint(ctx, pjs, "npm")
+		if err != nil {
+			return gcp.InternalErrorf("getting dev sync entrypoint: %w", err)
+		}
+		ctx.AddWebProcess(cmd)
+		return nil
+	}
+
 	if !devmode.Enabled(ctx) {
 		ctx.AddWebProcess(cmd)
 		return nil
@@ -208,25 +225,33 @@ NOTE: Running the default build script can be skipped by passing the empty envir
 	return nil
 }
 
-func shouldPrune(ctx *gcp.Context, pjs *nodejs.PackageJSON) (bool, error) {
+func shouldPrune(ctx *gcp.Context, pjs *nodejs.PackageJSON) bool {
 	// if we are vendoring dependencies, we do not need to prune
 	if nodejs.IsUsingVendoredDependencies() {
-		return false, nil
+		return false
 	}
 
 	// if there are no devDependencies, there is no need to prune.
 	if !nodejs.HasDevDependencies(pjs) {
-		return false, nil
+		return false
 	}
 	if nodeEnv := nodejs.NodeEnv(); nodeEnv != nodejs.EnvProduction {
-		ctx.Logf("Retaining devDependencies because $NODE_ENV=%q.", nodeEnv)
-		return false, nil
+		ctx.Logf("Retaining devDependencies because NODE_ENV=%q.", nodeEnv)
+		return false
+	}
+	if nodejs.SkipPruningDevSync(ctx) {
+		return false
 	}
 	canPrune, err := nodejs.SupportsNPMPrune(ctx)
-	if err == nil && !canPrune {
-		ctx.Warnf("Retaining devDependencies because the version of NPM you are using does not support 'npm prune'.")
+	if err != nil {
+		ctx.Warnf("Unable to determine if npm prune is supported, retaining devDependencies: %v", err)
+		return false
 	}
-	return canPrune, err
+	if !canPrune {
+		ctx.Warnf("Retaining devDependencies because the version of NPM you are using does not support 'npm prune'.")
+		return false
+	}
+	return true
 }
 
 func upgradeNPM(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {

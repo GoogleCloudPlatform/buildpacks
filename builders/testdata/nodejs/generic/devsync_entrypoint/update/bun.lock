@@ -1,0 +1,14 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "devsync-nodejs-entrypoint",
+      "dependencies": {
+        "polka": "^0.5.2",
+        "lodash": "4.17.21",
+        "bun": "^1.1.0"
+      }
+    }
+  },
+  "packages": {}
+}

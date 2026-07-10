@@ -130,11 +130,80 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			// nodejs@8 is not available on Ubuntu 22.04
 			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22", "google.24.full", "google.24"},
 		},
+		{
+			Name:                       "bun_lock",
+			App:                        "bun_lock",
+			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "bun_engine",
+			App:                        "bun_engine",
+			Env:                        []string{"GOOGLE_PACKAGE_MANAGER=bun"},
+			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "bun_lockb",
+			App:                        "bun_lockb",
+			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "simple_no_lock_bun",
+			App:                        "simple_no_lock",
+			Env:                        []string{"GOOGLE_PACKAGE_MANAGER=bun"},
+			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "simple_no_lock_pnpm",
+			App:                        "simple_no_lock",
+			Env:                        []string{"GOOGLE_PACKAGE_MANAGER=pnpm"},
+			MustUse:                    []string{nodePNPM},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "simple_no_lock_yarn",
+			App:                        "simple_no_lock",
+			Env:                        []string{"GOOGLE_PACKAGE_MANAGER=yarn"},
+			MustUse:                    []string{nodeYarn},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "simple_no_lock_default_npm",
+			App:                        "simple_no_lock",
+			MustUse:                    []string{nodeNPM},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                    "devsync_nodejs_rebuild",
+			App:                     "devsync_dependency",
+			Env:                     []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER=1"},
+			MustUse:                 []string{nodeRuntime, nodeNPM, "google.utils.devsync"},
+			EnableDevSyncTest:       true,
+			DevSyncUpdateSubdir:     "update",
+			MustMatch:               "INITIAL",
+			DevSyncExpectedResponse: "UPDATED: 4.17.21",
+			SkipStacks:              []string{"google.gae.18", "google.18", "google.gae.22", "google.min.22", "google.22"},
+		},
+		{
+			Name:                    "devsync_nodejs_bun_switch",
+			App:                     "devsync_entrypoint",
+			Env:                     []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER=1"},
+			MustUse:                 []string{nodeRuntime, nodeNPM, "google.utils.devsync"},
+			EnableDevSyncTest:       true,
+			DevSyncUpdateSubdir:     "update",
+			MustMatch:               "INITIAL",
+			DevSyncExpectedResponse: "UPDATED: lodash=4.17.21, runtime=bun",
+			SkipStacks:              []string{"google.gae.18", "google.18", "google.gae.22", "google.min.22", "google.22"},
+		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			acceptance.TestApp(t, imageCtx, tc)
 		})
@@ -157,7 +226,8 @@ func TestFailuresNodeJs(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})

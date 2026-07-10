@@ -10,7 +10,7 @@ go_library(
         "//:__subpackages__",
     ],
     deps = [
-        "//pkg/buildermetrics",
+        "//pkg/buildermetadata",
         "//pkg/env",
         "//pkg/firebase/faherror",
         "//pkg/gcpbuildpack",

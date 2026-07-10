@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/execd"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
@@ -122,6 +123,9 @@ func BuildFn(ctx *gcp.Context) error {
 
 // installHeapsizeScript copies the exec/heapsize.sh script into the layer's exec.d directory.
 func installHeapsizeScript(ctx *gcp.Context) error {
+	if cap := ctx.Capability(execd.InstallerCapability); cap != nil {
+		return cap.(execd.Installer).Install(ctx, heapsizeLayer, "exec/heapsize.sh")
+	}
 	l, err := ctx.Layer(heapsizeLayer, gcp.LaunchLayer)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", heapsizeLayer, err)

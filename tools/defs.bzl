@@ -4,7 +4,7 @@ load("@rules_pkg//pkg:mappings.bzl", "pkg_mklink")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 
-def buildpack(name, executables, prefix, version, api = "0.9", srcs = None, extension = "tgz", strip_prefix = ".", visibility = None):
+def buildpack(name, executables, prefix, version, api = "0.9", srcs = None, extension = "tgz", strip_prefix = ".", visibility = None, buildpack_id = None):
     """Macro to create a single buildpack as a tgz or tar archive.
 
     The result is a tar or tgz archive with a buildpack descriptor
@@ -23,6 +23,7 @@ def buildpack(name, executables, prefix, version, api = "0.9", srcs = None, exte
       strip_prefix: by default preserves the paths of srcs
       extension: tgz by default
       visibility: the visibility
+      buildpack_id: the full unique ID of the buildpack (e.g., google.nodejs.runtime).
     """
 
     if len(executables) != 1:
@@ -45,6 +46,7 @@ def buildpack(name, executables, prefix, version, api = "0.9", srcs = None, exte
         prefix = prefix,
         bp_name = name,
         output = "buildpack.toml",
+        buildpack_id = buildpack_id,
     )
 
     if not srcs:

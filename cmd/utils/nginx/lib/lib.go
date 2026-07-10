@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Implements utils/nginx buildpack.
-// The nginx buildpack installs the nginx web server, pid1 and serve binaries.
+// The nginx buildpack installs the nginx web server and pid1 binaries.
 package lib
 
 import (
@@ -21,17 +21,18 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb/v2"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/static"
 )
 
 const (
-	// nginxVerConstraint is used to control updating to a new major version with any potential breaking change.
+	// defaultNginxVerConstraint is used to control updating to a new major version with any potential breaking change.
 	// Update this to allow a new major version.
-	nginxVerConstraint = "^1.21.6"
-
+	defaultNginxVerConstraint = "^1.21.6"
 	// pid1VerConstraint is used to control updating to a new major version.
 	pid1VerConstraint = "^1.0.0"
 )
@@ -44,6 +45,18 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 // BuildFn is the exported build function.
 func BuildFn(ctx *gcp.Context) error {
+	usingStaticServe, err := env.UsingStaticServe()
+	if err != nil {
+		ctx.Warnf("failed to parse GOOGLE_STATIC_SERVE: %v, defaulting to false", err)
+	}
+
+	nginxVerConstraint := defaultNginxVerConstraint
+
+	if usingStaticServe {
+		runtimeName := os.Getenv(env.Runtime)
+		nginxVerConstraint = static.NginxVersionConstraint(runtimeName)
+	}
+
 	// install nginx
 	nl, err := install(ctx, "nginx", nginxVerConstraint, runtime.Nginx)
 	if err != nil {
@@ -52,14 +65,17 @@ func BuildFn(ctx *gcp.Context) error {
 	nl.LaunchEnvironment.Append("PATH", string(os.PathListSeparator), filepath.Join(nl.Path, "sbin"))
 	nl.BuildEnvironment.Default("NGINX_ROOT", nl.Path)
 
-	// install pid1
-	pl, err := install(ctx, "pid1", pid1VerConstraint, runtime.Pid1)
-	if err != nil {
-		return err
-	}
+	// Install pid1 unless the static serve buildpack has marked the build environment to exclude it.
+	if !usingStaticServe {
+		// install pid1
+		pl, err := install(ctx, "pid1", pid1VerConstraint, runtime.Pid1)
+		if err != nil {
+			return err
+		}
 
-	pl.LaunchEnvironment.Append("PATH", string(os.PathListSeparator), pl.Path)
-	pl.BuildEnvironment.Default("PID1_DIR", pl.Path)
+		pl.LaunchEnvironment.Append("PATH", string(os.PathListSeparator), pl.Path)
+		pl.BuildEnvironment.Default("PID1_DIR", pl.Path)
+	}
 
 	return nil
 }

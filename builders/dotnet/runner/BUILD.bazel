@@ -1,7 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
-package(default_visibility = ["//:__subpackages__"])
-
 go_binary(
     name = "runner",
     srcs = ["main.go"],
@@ -18,6 +16,7 @@ go_binary(
     deps = [
         "//cmd/dotnet/appengine/lib",
         "//cmd/dotnet/appengine_main/lib",
+        "//cmd/dotnet/flex/lib",
         "//cmd/dotnet/functions_framework/lib",
         "//cmd/dotnet/publish/lib",
         "//cmd/dotnet/runtime/lib",

@@ -19,8 +19,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/google/go-cmp/cmp"
 	"github.com/buildpacks/libcnb/v2"
+
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func TestRuntimeVersion(t *testing.T) {
@@ -36,8 +38,8 @@ func TestRuntimeVersion(t *testing.T) {
 		stackID        string
 	}{
 		{
-			name: "default_to_latest_for_default_stack_ubuntu2204_is_default_for_unit_tests",
-			want: "3.13.*",
+			name: "default_to_latest_for_default_stack_ubuntu2404_is_default_for_unit_tests",
+			want: "3.14.*",
 		},
 		{
 			name:    "default_to_latest_for_stack_ubuntu2404",
@@ -485,4 +487,204 @@ func writeFakePythonScript(t *testing.T, binDir, version string) string {
 		t.Fatalf("Failed to write fake python script: %v", err)
 	}
 	return fakePython
+}
+
+func TestParseExecPrefix(t *testing.T) {
+	testCases := []struct {
+		sysConfig string
+		want      string
+		wantErr   bool
+	}{
+		{
+			sysConfig: "",
+			want:      "",
+			wantErr:   true,
+		},
+		{
+			sysConfig: `installed_base = "/layers/google.python.runtime/python"`,
+			want:      "",
+			wantErr:   true,
+		},
+		{
+			sysConfig: `
+exec_prefix = "/opt/python3.11"
+installed_base = "/layers/google.python.runtime/python"
+			`,
+			want: "/opt/python3.11",
+		},
+		{
+			sysConfig: `
+exec_prefix = "/opt/python3.9"
+installed_base = "/layers/google.python.runtime/python"
+			`,
+			want: "/opt/python3.9",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.sysConfig, func(t *testing.T) {
+			got, err := parseExecPrefix(tc.sysConfig)
+			if (err == nil) == tc.wantErr {
+				t.Errorf("parseExecPrefix() got err: %v, want %v", err, tc.wantErr)
+			}
+			if got != tc.want {
+				t.Errorf("parseExecPrefix(%q) = %q, want %q", tc.sysConfig, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestAdaptEntrypoint(t *testing.T) {
+	testCases := []struct {
+		name      string
+		cmd       []string
+		scriptCmd []string
+		want      []string
+	}{
+		{
+			name: "python",
+			cmd:  []string{"python", "main.py"},
+			want: []string{"python", "main.py"},
+		},
+		{
+			name: "python3",
+			cmd:  []string{"python3", "main.py"},
+			want: []string{"python3", "main.py"},
+		},
+		{
+			name: "gunicorn",
+			cmd:  []string{"gunicorn", "-b", ":8080", "main:app"},
+			want: []string{"python3", "lib/bin/gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "uvicorn",
+			cmd:  []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+			want: []string{"python3", "lib/bin/uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "streamlit",
+			cmd:  []string{"streamlit", "run", "main.py", "--server.address", "0.0.0.0", "--server.port", "8080"},
+			want: []string{"python3", "lib/bin/streamlit", "run", "main.py", "--server.address", "0.0.0.0", "--server.port", "8080"},
+		},
+		{
+			name: "adk",
+			cmd:  []string{"adk", "api_server", "--port", "8080", "--host", "0.0.0.0"},
+			want: []string{"python3", "lib/bin/adk", "api_server", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "uv",
+			cmd:  []string{"uv", "run", "main.py"},
+			want: []string{"python3", "lib/bin/uv", "run", "main.py"},
+		},
+		{
+			name:      "script_cmd_priority",
+			cmd:       []string{"uv", "run", "foo"},
+			scriptCmd: []string{"foo"},
+			want:      []string{"python3", "lib/bin/foo"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext(gcp.WithCapability(EntrypointAdapterCapability, &MakerEntrypointAdapter{}))
+			got, err := AdaptEntrypoint(ctx, tc.cmd, tc.scriptCmd)
+			if err != nil {
+				t.Fatalf("AdaptEntrypoint(%v) failed: %v", tc.cmd, err)
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("AdaptEntrypoint(%v) returned diff (-want +got):\n%s", tc.cmd, diff)
+			}
+		})
+	}
+}
+
+func TestBaseuvPipInstallArgs(t *testing.T) {
+	testCases := []struct {
+		name string
+		req  string
+		want []string
+	}{
+		{
+			name: "install_from_current_directory",
+			req:  ".",
+			want: []string{"uv", "pip", "install", ".", "--reinstall", "--link-mode=copy"},
+		},
+		{
+			name: "install_from_requirements_txt",
+			req:  "requirements.txt",
+			want: []string{"uv", "pip", "install", "-r", "requirements.txt", "--reinstall", "--link-mode=copy"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := baseuvPipInstallArgs(tc.req)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("baseuvPipInstallArgs(%q) returned diff (-want +got):\n%s", tc.req, diff)
+			}
+		})
+	}
+}
+
+func TestMergeRequirementsFiles(t *testing.T) {
+	dir := t.TempDir()
+
+	file1 := filepath.Join(dir, "req1.txt")
+	file2 := filepath.Join(dir, "req2.txt")
+	dest := filepath.Join(dir, "merged.txt")
+
+	if err := os.WriteFile(file1, []byte("flask==2.0.0"), 0644); err != nil {
+		t.Fatalf("writing file1: %v", err)
+	}
+	if err := os.WriteFile(file2, []byte("gunicorn==20.1.0"), 0644); err != nil {
+		t.Fatalf("writing file2: %v", err)
+	}
+
+	reqs := []string{file1, file2}
+	err := mergeRequirementsFiles(reqs, dest)
+	if err != nil {
+		t.Fatalf("mergeRequirementsFiles failed: %v", err)
+	}
+
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("reading merged file: %v", err)
+	}
+
+	want := "flask==2.0.0\ngunicorn==20.1.0\n"
+	if diff := cmp.Diff(want, string(got)); diff != "" {
+		t.Errorf("mergeRequirementsFiles(%v) returned diff (-want +got):\n%s", reqs, diff)
+	}
+}
+
+func TestAdaptEntrypoint_Windows(t *testing.T) {
+	testCases := []struct {
+		name      string
+		cmd       []string
+		scriptCmd []string
+		want      []string
+	}{
+		{
+			name: "gunicorn_windows",
+			cmd:  []string{"gunicorn", "-b", ":8080", "main:app"},
+			want: []string{"python", "lib\\bin\\gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "uvicorn_windows",
+			cmd:  []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+			want: []string{"python", "lib\\bin\\uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext(gcp.WithCapability(EntrypointAdapterCapability, &MakerEntrypointAdapter{TargetPlatform: "windows/amd64"}))
+			got, err := AdaptEntrypoint(ctx, tc.cmd, tc.scriptCmd)
+			if err != nil {
+				t.Fatalf("AdaptEntrypoint(%v) failed: %v", tc.cmd, err)
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("AdaptEntrypoint(%v) returned diff (-want +got):\n%s", tc.cmd, diff)
+			}
+		})
+	}
 }

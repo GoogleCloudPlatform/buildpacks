@@ -30,6 +30,7 @@ const (
 	npm  = "google.nodejs.npm"
 	pnpm = "google.nodejs.pnpm"
 	yarn = "google.nodejs.yarn"
+	bun  = "google.nodejs.bun"
 )
 
 // Setup node_modules directory for testing
@@ -46,7 +47,7 @@ func TestAcceptance(t *testing.T) {
 			Name: "function without package",
 			App:  "no_package",
 			Labels: map[string]string{
-				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.4.5\",\"injected\":true}",
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.5.1\",\"injected\":true}",
 			},
 		},
 		{
@@ -73,7 +74,7 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse:      []string{yarn},
 			EnableCacheTest: true,
 			Labels: map[string]string{
-				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.4.5\",\"injected\":true}",
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.5.1\",\"injected\":true}",
 			},
 		},
 		{
@@ -99,13 +100,19 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse:             []string{npm},
 		},
 		{
+			Name:       "function_with_framework_bun",
+			App:        "with_framework_bun",
+			MustUse:    []string{bun},
+			MustNotUse: []string{npm},
+		},
+		{
 			Name:            "function with dependencies",
 			App:             "with_dependencies",
 			MustUse:         []string{npm},
 			MustNotUse:      []string{yarn},
 			EnableCacheTest: true,
 			Labels: map[string]string{
-				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.4.5\",\"injected\":true}",
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.5.1\",\"injected\":true}",
 			},
 		},
 		{
@@ -114,7 +121,7 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{yarn},
 			MustNotUse: []string{npm},
 			Labels: map[string]string{
-				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.4.5\",\"injected\":true}",
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.5.1\",\"injected\":true}",
 			},
 		},
 		{
@@ -123,7 +130,7 @@ func TestAcceptance(t *testing.T) {
 			MustUse:    []string{npm},
 			MustNotUse: []string{yarn},
 			Labels: map[string]string{
-				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.4.5\",\"injected\":true}",
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.5.1\",\"injected\":true}",
 			},
 		},
 		{
@@ -133,7 +140,7 @@ func TestAcceptance(t *testing.T) {
 			MustUse:                []string{yarn},
 			MustNotUse:             []string{npm},
 			Labels: map[string]string{
-				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.4.5\",\"injected\":true}",
+				"google.functions-framework-version": "{\"runtime\":\"nodejs\",\"version\":\"3.5.1\",\"injected\":true}",
 			},
 		},
 		{
@@ -210,7 +217,8 @@ func TestAcceptance(t *testing.T) {
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := applyStaticAcceptanceTestOptions(tc)
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
@@ -251,6 +259,12 @@ func TestFailures(t *testing.T) {
 			MustMatch: "This project is using pnpm",
 		},
 		{
+			Name:      "bun_without_framework",
+			App:       "no_framework",
+			Env:       []string{"GOOGLE_PACKAGE_MANAGER=bun"},
+			MustMatch: "This project is using bun",
+		},
+		{
 			Name:      "function without framework or injection",
 			App:       "no_framework",
 			Env:       []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=True"},
@@ -261,7 +275,8 @@ func TestFailures(t *testing.T) {
 	for _, tc := range testCases {
 		tc := applyStaticFailureTestOptions(tc)
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}

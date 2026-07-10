@@ -34,8 +34,10 @@ import (
 )
 
 const (
-	layerName                 = "functions-framework"
-	functionsFrameworkPackage = "@google-cloud/functions-framework"
+	layerName = "functions-framework"
+
+	// FunctionsFrameworkPackage is the package name for the Node.js Functions Framework.
+	FunctionsFrameworkPackage = "@google-cloud/functions-framework"
 
 	// nodeJSHeadroomMB is the amount of memory we'll set aside before computing the max memory size.
 	nodeJSHeadroomMB int = 64
@@ -44,7 +46,7 @@ const (
 	cacheDirName       = ".google_node_compile_cache"
 )
 
-var functionsFrameworkNodeModulePath = path.Join("node_modules", functionsFrameworkPackage)
+var functionsFrameworkNodeModulePath = path.Join("node_modules", FunctionsFrameworkPackage)
 
 // DetectFn detects if the function is a Node.js function.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
@@ -85,7 +87,7 @@ func BuildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("reading package.json: %w", err)
 	}
 	if pjs != nil {
-		_, hasFrameworkDependency = pjs.Dependencies[functionsFrameworkPackage]
+		_, hasFrameworkDependency = pjs.Dependencies[FunctionsFrameworkPackage]
 		if pjs.Main != "" {
 			fnFile = pjs.Main
 		}
@@ -114,6 +116,18 @@ func BuildFn(ctx *gcp.Context) error {
 	}
 	if pnpmLockExists && !hasFrameworkDependency {
 		return gcp.UserErrorf("This project is using pnpm but you have not included the Functions Framework in your dependencies. Please add it by running: 'pnpm add @google-cloud/functions-framework'.")
+	}
+
+	bunLockbExists, err := ctx.FileExists(nodejs.BunLockb)
+	if err != nil {
+		return err
+	}
+	bunLockExists, err := ctx.FileExists(nodejs.BunLock)
+	if err != nil {
+		return err
+	}
+	if (bunLockbExists || bunLockExists) && !hasFrameworkDependency {
+		return gcp.UserErrorf("This project is using bun but you have not included the Functions Framework in your dependencies. Please add it by running: 'bun add @google-cloud/functions-framework'.")
 	}
 
 	// TODO(mattrobertson) remove this check once Nodejs has backported the fix to v16. More info here:
@@ -247,6 +261,9 @@ func installFunctionsFramework(ctx *gcp.Context, l *libcnb.Layer) error {
 	installCmd, err := nodejs.NPMInstallCommand(ctx)
 	if err != nil {
 		return err
+	}
+	if nodeVersion == "nodejs12" || nodeVersion == "nodejs14" {
+		installCmd = "install"
 	}
 	// NPM expects package.json and the lock file in the prefix directory.
 	if _, err := ctx.Exec([]string{"cp", "-t", l.Path, pjs, pljs}, gcp.WithUserTimingAttribution); err != nil {

@@ -10,9 +10,10 @@ gae_runtimes = {
     "nodejs14": "14.21.3",
     "nodejs16": "16.20.2",
     "nodejs18": "18.20.8",
-    "nodejs20": "20.19.5",
-    "nodejs22": "22.21.1",
-    "nodejs24": "24.11.0",
+    "nodejs20": "20.20.2",
+    "nodejs22": "22.23.1",
+    "nodejs24": "24.18.0",
+    "nodejs26": "26.4.0",
 }
 
 gcf_runtimes = {
@@ -22,16 +23,18 @@ gcf_runtimes = {
     "nodejs14": "14.21.3",
     "nodejs16": "16.20.2",
     "nodejs18": "18.20.8",
-    "nodejs20": "20.19.5",
-    "nodejs22": "22.21.1",
-    "nodejs24": "24.11.0",
+    "nodejs20": "20.20.2",
+    "nodejs22": "22.23.1",
+    "nodejs24": "24.18.0",
+    "nodejs26": "26.4.0",
 }
 
 flex_runtimes = {
     "nodejs18": "18.20.8",
-    "nodejs20": "20.19.5",
-    "nodejs22": "22.21.1",
-    "nodejs24": "24.11.0",
+    "nodejs20": "20.20.2",
+    "nodejs22": "22.23.1",
+    "nodejs24": "24.18.0",
+    "nodejs26": "26.4.0",
 }
 
 version_to_stack = {
@@ -43,5 +46,6 @@ version_to_stack = {
     "nodejs20": "google-22-full",
     "nodejs22": "google-22-full",
     "nodejs24": "google-24-full",
+    "nodejs26": "google-24-full",
     "nodejs8": "google-18-full",
 }

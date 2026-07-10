@@ -114,6 +114,8 @@ acceptance_test_argo_source(
     srcs = [
         "//builders/testdata/java:appengine.tgz",
         "//builders/testdata/java:functions.tgz",
+        "//cmd/apprunner:app-runner",
+        "//cmd/apprunner:functional_test",
     ],
     testdata = "//builders/testdata/java:all_files",
 )

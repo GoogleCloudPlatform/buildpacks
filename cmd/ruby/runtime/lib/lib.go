@@ -31,6 +31,7 @@ import (
 var osNodeVersionMap = map[string]string{
 	"ubuntu1804": "12.22.12",
 	"ubuntu2204": "*",
+	"ubuntu2404": "*",
 }
 
 // Rails apps using the "webpack" gem require Node.js for asset precompilation.

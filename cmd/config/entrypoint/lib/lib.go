@@ -19,17 +19,12 @@ package lib
 import (
 	"fmt"
 	"os"
-	"regexp"
-	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/entrypoint"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
-
-var (
-	processRe = regexp.MustCompile(`(?m)^(\w+):\s*(.+)$`)
 )
 
 // DetectFn is the exported detect function.
@@ -107,25 +102,12 @@ func BuildFn(ctx *gcp.Context) error {
 
 // addProcfileProcesses adds all processes from the given Procfile contents.
 func addProcfileProcesses(ctx *gcp.Context, content string) error {
-	matches := processRe.FindAllStringSubmatch(content, -1)
-	if len(matches) == 0 {
-		return gcp.UserErrorf("did not find any processes in Procfile")
+	processes, err := entrypoint.Parse(ctx, content)
+	if err != nil {
+		return err
 	}
 
-	found := make(map[string]bool, len(matches))
-	for _, match := range matches {
-		// Sanity check, if this fails there is a mistake in the regex.
-		// One group for overall match and two subgroups.
-		if len(match) != 3 {
-			return gcp.InternalErrorf("invalid process match, want slice of two strings, got: %v", match)
-		}
-		name, command := match[1], strings.TrimSpace(match[2])
-		if found[name] {
-			ctx.Warnf("Skipping duplicate %s process: %s", gcp.WebProcess, command)
-			continue
-		}
-		found[name] = true
-
+	for name, command := range processes {
 		if name == gcp.WebProcess {
 			ctx.Logf("Using entrypoint from Procfile: %s", command)
 			ctx.AddProcess(name, []string{command}, gcp.AsDefaultProcess())
@@ -134,8 +116,12 @@ func addProcfileProcesses(ctx *gcp.Context, content string) error {
 		}
 	}
 
-	if !found[gcp.WebProcess] {
-		return gcp.UserErrorf("web process not found in Procfile: %#v", matches)
+	if _, found := processes[gcp.WebProcess]; !found {
+		foundProcesses := make([]string, 0, len(processes))
+		for p := range processes {
+			foundProcesses = append(foundProcesses, p)
+		}
+		return gcp.UserErrorf("web process not found in Procfile, found processes: %v", foundProcesses)
 	}
 	return nil
 }

@@ -5,6 +5,7 @@ licenses(["notice"])
 go_library(
     name = "lib",
     srcs = ["lib.go"],
+    embedsrcs = ["requirements.txt"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
         "//:__subpackages__",

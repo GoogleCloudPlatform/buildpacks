@@ -79,6 +79,7 @@ type config struct {
 	want           int
 	appPath        string
 	mockProcesses  []*mockprocess.Mock
+	capabilities   map[string]any
 	codeDir        string
 }
 
@@ -165,6 +166,13 @@ func WithExecMocks(mocks ...*mockprocess.Mock) Option {
 			cfg.mockProcesses = []*mockprocess.Mock{}
 		}
 		cfg.mockProcesses = append(cfg.mockProcesses, mocks...)
+	}
+}
+
+// WithCapabilities sets the capabilities for the buildpack test.
+func WithCapabilities(caps map[string]any) Option {
+	return func(cfg *config) {
+		cfg.capabilities = caps
 	}
 }
 
@@ -310,6 +318,10 @@ func runBuildpackPhase(t *testing.T, cfg *config) (bool, error) {
 			t.Fatalf("error creating mock exec command: %v", err)
 		}
 		opts = append(opts, gcp.WithExecCmd(eCmd))
+	}
+
+	for k, v := range cfg.capabilities {
+		opts = append(opts, gcp.WithCapability(k, v))
 	}
 
 	// Logs all ctx.Exec commands to stderr

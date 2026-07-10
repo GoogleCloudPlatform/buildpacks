@@ -27,7 +27,8 @@ const (
 	layerMode os.FileMode = 0755
 )
 
-type layerOption func(ctx *Context, l *libcnb.Layer) error
+// LayerOption is an option for configuring a layer.
+type LayerOption func(ctx *Context, l *libcnb.Layer) error
 
 // BuildLayer specifies a Build layer.
 var BuildLayer = func(ctx *Context, l *libcnb.Layer) error {
@@ -79,7 +80,7 @@ var LaunchLayerUnlessSkipRuntimeLaunch = func(ctx *Context, l *libcnb.Layer) err
 }
 
 // Layer returns a layer, creating its directory.
-func (ctx *Context) Layer(name string, opts ...layerOption) (*libcnb.Layer, error) {
+func (ctx *Context) Layer(name string, opts ...LayerOption) (*libcnb.Layer, error) {
 	if strings.Contains(name, "/") {
 		return nil, buildererror.Errorf(buildererror.StatusInternal, "%v is an invalid layer name; layer names may not contain '/'", name)
 	}

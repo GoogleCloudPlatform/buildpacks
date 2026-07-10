@@ -1,0 +1,11 @@
+{
+  "name": "devsync-nodejs-entrypoint",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "polka": "^0.5.2",
+    "bun": "^1.1.0"
+  }
+}

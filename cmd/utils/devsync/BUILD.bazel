@@ -1,0 +1,44 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+# Buildpack for DevSync.
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
+
+licenses(["notice"])
+
+buildpack(
+    name = "devsync",
+    srcs = glob(["service/**"]),
+    executables = [
+        ":main",
+    ],
+    prefix = "utils",
+    version = "0.0.1",
+    visibility = [
+        "//builders:__subpackages__",
+    ],
+)
+
+buildpack_using_runner(
+    name = "devsync_using_runner",
+    srcs = glob(["service/**"]),
+    buildpack_id = "google.utils.devsync",
+    prefix = "utils",
+    version = "0.0.1",
+    visibility = [
+        "//builders:__subpackages__",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//cmd/utils/devsync/lib",
+        "//pkg/gcpbuildpack",
+    ],
+)

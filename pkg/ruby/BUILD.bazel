@@ -14,10 +14,12 @@ go_library(
         # Ruby on Rails apps require Nodejs and Yarn for precompiling assets
         "//cmd/nodejs/runtime:__subpackages__",
         "//cmd/ruby:__subpackages__",
+        "//maker:__subpackages__",
     ],
     deps = [
         "//pkg/env",
         "//pkg/gcpbuildpack",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
         "@com_github_masterminds_semver//:go_default_library",
     ],
 )

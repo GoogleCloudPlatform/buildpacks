@@ -5,7 +5,10 @@ licenses(["notice"])
 package(default_visibility = [
     "//builders/gcp/base/acceptance:__pkg__",
     "//builders/osonly/acceptance:__pkg__",
+    "//maker:__pkg__",
 ])
+
+exports_files(["google.24.builder.toml"])
 
 BUILDPACKS = [
     "//cmd/config/entrypoint:entrypoint.tgz",
@@ -15,6 +18,8 @@ BUILDPACKS = [
     "//cmd/config/flex:flex.tgz",
     "//cmd/python/webserver:webserver.tgz",
     "//cmd/python/appengine:appengine.tgz",
+    "//cmd/static/serve:serve.tgz",
+    "//cmd/utils/devsync:devsync.tgz",
 ]
 
 GROUPS = {
@@ -59,6 +64,15 @@ GROUPS = {
         "//cmd/nodejs/runtime:runtime.tgz",
         "//cmd/nodejs/yarn:yarn.tgz",
         "//cmd/nodejs/pnpm:pnpm.tgz",
+        "//cmd/nodejs/bun:bun.tgz",
+        "//cmd/nodejs/firebasenextjs:firebasenextjs.tgz",
+        "//cmd/nodejs/firebaseangular:firebaseangular.tgz",
+        "//cmd/nodejs/firebasebundle:firebasebundle.tgz",
+        "//cmd/nodejs/firebasenx:firebasenx.tgz",
+        "//cmd/nodejs/turborepo:turborepo.tgz",
+    ],
+    "firebase": [
+        "//cmd/firebase/bundle:firebasebundle_v2.tgz",
     ],
     "python": [
         "//cmd/python/functions_framework:functions_framework.tgz",
@@ -93,6 +107,8 @@ BUILDPACKS_USING_RUNNER = [
     "//cmd/config/flex:flex_using_runner.tgz",
     "//cmd/python/webserver:webserver_using_runner.tgz",
     "//cmd/python/appengine:appengine_using_runner.tgz",
+    "//cmd/static/serve:serve_using_runner.tgz",
+    "//cmd/utils/devsync:devsync_using_runner.tgz",
 ]
 
 GROUPS_USING_RUNNER = {
@@ -137,6 +153,15 @@ GROUPS_USING_RUNNER = {
         "//cmd/nodejs/runtime:runtime_using_runner.tgz",
         "//cmd/nodejs/yarn:yarn_using_runner.tgz",
         "//cmd/nodejs/pnpm:pnpm_using_runner.tgz",
+        "//cmd/nodejs/bun:bun_using_runner.tgz",
+        "//cmd/nodejs/firebasenextjs:firebasenextjs_using_runner.tgz",
+        "//cmd/nodejs/firebaseangular:firebaseangular_using_runner.tgz",
+        "//cmd/nodejs/firebasebundle:firebasebundle_using_runner.tgz",
+        "//cmd/nodejs/firebasenx:firebasenx_using_runner.tgz",
+        "//cmd/nodejs/turborepo:turborepo_using_runner.tgz",
+    ],
+    "firebase": [
+        "//cmd/firebase/bundle:firebasebundle_v2_using_runner.tgz",
     ],
     "python": [
         "//cmd/python/functions_framework:functions_framework_using_runner.tgz",

@@ -17,21 +17,11 @@ package python
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb/v2"
 )
-
-// IsUVRequirementsEnabled checks if the uv requirements.txt feature is enabled.
-// For any future changes to the release stage, this is the single place to make changes.
-func IsUVRequirementsEnabled(ctx *gcp.Context) bool {
-	if isUVDefaultPackageManagerForRequirements(ctx) {
-		return true
-	}
-	return env.IsBetaSupported()
-}
 
 // IsUVRequirements checks if the application is a UV requirements.txt application.
 func IsUVRequirements(ctx *gcp.Context) (bool, string, error) {
@@ -46,6 +36,14 @@ func IsUVRequirements(ctx *gcp.Context) (bool, string, error) {
 
 // UVInstallRequirements installs dependencies from requirements.txt using 'uv pip install' and returns the path to the venv.
 func UVInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) (string, error) {
+	if cap := ctx.Capability(UVDependencyInstallerCapability); cap != nil {
+		i, ok := cap.(UVDependenciesInstaller)
+		if !ok {
+			return "", gcp.InternalErrorf("capability %q does not implement UVDependenciesInstaller interface", UVDependencyInstallerCapability)
+		}
+		return "", i.Install(ctx, l, reqs...)
+	}
+
 	shouldInstall, err := prepareDependenciesLayer(ctx, l, "uv", reqs...)
 	venvDir := filepath.Join(l.Path, ".venv")
 	if err != nil {
@@ -57,22 +55,14 @@ func UVInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) (s
 	}
 	ctx.Logf("Installing application dependencies with uv.")
 
-	pythonVersion, err := Version(ctx)
-	if err != nil {
+	if err := ensureUVVenv(ctx, venvDir, ""); err != nil {
 		return "", err
-	}
-	pythonVersion = strings.TrimPrefix(pythonVersion, "Python ")
-
-	ctx.Logf("Creating virtual environment at %s with Python %s", venvDir, pythonVersion)
-	venvCmd := []string{"uv", "venv", venvDir, "--python", pythonVersion}
-	if _, err := ctx.Exec(venvCmd, gcp.WithUserAttribution); err != nil {
-		return "", fmt.Errorf("failed to create virtual environment with uv: %w", err)
 	}
 
 	for _, req := range reqs {
 		ctx.Logf("Installing dependencies from %s...", req)
-		installCmd := []string{"uv", "pip", "install", "--requirement", req, "--reinstall", "--no-cache"}
-		installCmd = appendVendoringFlags(installCmd)
+		installCmd := baseuvPipInstallArgs(req)
+		installCmd = append(installCmd, "--no-cache")
 		if _, err := ctx.Exec(installCmd, gcp.WithUserAttribution, gcp.WithEnv("VIRTUAL_ENV="+venvDir)); err != nil {
 			return "", fmt.Errorf("failed to install dependencies from %s with uv: %w", req, err)
 		}
@@ -85,5 +75,8 @@ func UVInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) (s
 	ctx.Logf("Finished compiling bytecode.")
 
 	l.SharedEnvironment.Prepend("PATH", string(filepath.ListSeparator), filepath.Join(venvDir, "bin"))
+	if err := CheckUVIncompatibleDependencies(ctx, venvDir); err != nil {
+		return "", err
+	}
 	return venvDir, nil
 }

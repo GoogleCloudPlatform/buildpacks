@@ -1,0 +1,4 @@
+lockfileVersion: '6.0'
+dependencies:
+  next:
+    version: 14.1.4(react@0.0.0)

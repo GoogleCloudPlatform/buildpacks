@@ -73,7 +73,7 @@ func TestAcceptancePythonFn(t *testing.T) {
 			Name:       "function_with_uv",
 			App:        "uv",
 			Path:       "/testFunction",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0", "X_GOOGLE_RELEASE_TRACK=BETA"},
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
 			MustUse:    []string{pythonRuntime, pythonUV, pythonFF},
 			MustNotUse: []string{entrypoint},
 		},
@@ -81,7 +81,7 @@ func TestAcceptancePythonFn(t *testing.T) {
 			Name:       "function_with_poetry",
 			App:        "poetry",
 			Path:       "/testFunction",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0", "X_GOOGLE_RELEASE_TRACK=BETA"},
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
 			MustUse:    []string{pythonRuntime, pythonPoetry, pythonFF},
 			MustNotUse: []string{entrypoint},
 		},
@@ -89,7 +89,7 @@ func TestAcceptancePythonFn(t *testing.T) {
 			Name:       "pyproject",
 			App:        "pyproject",
 			Path:       "/testFunction",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0", "X_GOOGLE_RELEASE_TRACK=BETA"},
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
 			MustUse:    []string{pythonRuntime, pythonUV, pythonFF},
 			MustNotUse: []string{entrypoint},
 		},
@@ -97,7 +97,7 @@ func TestAcceptancePythonFn(t *testing.T) {
 			Name:       "pyproject_pip",
 			App:        "pyproject",
 			Path:       "/testFunction",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0", "X_GOOGLE_RELEASE_TRACK=BETA", "GOOGLE_PYTHON_PACKAGE_MANAGER=pip"},
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0", "GOOGLE_PYTHON_PACKAGE_MANAGER=pip"},
 			MustUse:    []string{pythonRuntime, pythonPIP, pythonFF},
 			MustNotUse: []string{entrypoint},
 		},
@@ -105,7 +105,7 @@ func TestAcceptancePythonFn(t *testing.T) {
 			Name:       "pyproject_uv",
 			App:        "pyproject",
 			Path:       "/testFunction",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0", "X_GOOGLE_RELEASE_TRACK=BETA", "GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0", "GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
 			MustUse:    []string{pythonRuntime, pythonUV, pythonFF},
 			MustNotUse: []string{entrypoint},
 		},
@@ -113,7 +113,8 @@ func TestAcceptancePythonFn(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			acceptance.TestApp(t, imageCtx, tc)
 		})
@@ -140,7 +141,7 @@ func TestFailuresPythonFn(t *testing.T) {
 		{
 			Name:      "missing_framework_pyproject",
 			App:       "fail_pyproject_without_framework",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0", "X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
 			MustMatch: "This project is using pyproject.toml but you have not included the Functions Framework in your dependencies. Please add it to your pyproject.toml.",
 		},
 	}
@@ -148,7 +149,8 @@ func TestFailuresPythonFn(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})

@@ -32,9 +32,8 @@ import (
 
 // source: https://rubygems.org/pages/download
 var (
-	rubygemsURL     = "https://rubygems.org/rubygems/rubygems-3.3.15.tgz"
-	bundler1Version = "1.17.3"
-	bundler2Version = "2.3.15"
+	rubygemsURLTemplate = "https://rubygems.org/rubygems/rubygems-%s.tgz"
+	bundler1Version     = "1.17.3"
 )
 
 const (
@@ -67,6 +66,14 @@ func BuildFn(ctx *gcp.Context) error {
 	layer, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerUnlessSkipRuntimeLaunch)
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
+	}
+
+	if cap := ctx.Capability(ruby.GemsInstallerCapability); cap != nil {
+		i, ok := cap.(ruby.GemsInstaller)
+		if !ok {
+			return gcp.InternalErrorf("capability %q must implement RubyGemsInstaller", ruby.GemsInstallerCapability)
+		}
+		return i.Install(ctx, layer)
 	}
 
 	if err = installRubygems(ctx, layer); err != nil {
@@ -165,13 +172,8 @@ func installRubygems(ctx *gcp.Context, layer *libcnb.Layer) error {
 	}
 	defer os.RemoveAll(tempDir)
 
-	// Since Ruby 2.5.x has issues with the default RubyGems (3.3.15) and Bunder 2 versions,
-	// use an older version to maintain functionality.
-	if ruby.IsRuby25(ctx) {
-		rubygemsURL = "https://rubygems.org/rubygems/rubygems-3.2.26.tgz"
-		bundler2Version = "2.2.26"
-	}
-
+	rubygemsVersion, bundler2Version := rubyGemsAndBundlerVersion(ctx)
+	rubygemsURL := fmt.Sprintf(rubygemsURLTemplate, rubygemsVersion)
 	if err = fetch.Tarball(rubygemsURL, tempDir, 1); err != nil {
 		return fmt.Errorf("fetching rubygems tarball from %s, err: %q", rubygemsURL, err)
 	}
@@ -181,6 +183,10 @@ func installRubygems(ctx *gcp.Context, layer *libcnb.Layer) error {
 		gcp.WithWorkDir(tempDir),
 		gcp.WithUserAttribution,
 	); err != nil {
+		return err
+	}
+
+	if err := copyDefaultGemspecs(ctx, layer.Path); err != nil {
 		return err
 	}
 
@@ -196,5 +202,41 @@ func installRubygems(ctx *gcp.Context, layer *libcnb.Layer) error {
 		return err
 	}
 
+	return nil
+}
+
+// rubyGemsAndBundlerVersion returns the rubygems and bundler2 versions to use based on the Ruby version.
+func rubyGemsAndBundlerVersion(ctx *gcp.Context) (string, string) {
+	rubygemsVersion := "3.3.15"
+	bundler2Version := "2.3.15"
+
+	if ruby.IsRuby25(ctx) {
+		rubygemsVersion = "3.2.26"
+		bundler2Version = "2.2.26"
+	}
+
+	if ruby.IsRuby4(ctx) {
+		rubygemsVersion = "4.0.3"
+		bundler2Version = "4.0.3"
+	}
+
+	return rubygemsVersion, bundler2Version
+}
+
+// copyDefaultGemspecs copies default gemspecs to specifications directory.
+func copyDefaultGemspecs(ctx *gcp.Context, layerPath string) error {
+	defaultSpecsDir := filepath.Join(layerPath, "specifications", "default")
+	specsDir := filepath.Join(layerPath, "specifications")
+	gemspecs, err := filepath.Glob(filepath.Join(defaultSpecsDir, "*.gemspec"))
+	if err != nil {
+		return fmt.Errorf("globbing default gemspecs: %w", err)
+	}
+	for _, gemspec := range gemspecs {
+		dest := filepath.Join(specsDir, filepath.Base(gemspec))
+		ctx.Logf("Copying default gemspec %s to %s", gemspec, dest)
+		if err := fileutil.CopyFile(dest, gemspec); err != nil {
+			return fmt.Errorf("copying gemspec %s to %s: %w", gemspec, dest, err)
+		}
+	}
 	return nil
 }

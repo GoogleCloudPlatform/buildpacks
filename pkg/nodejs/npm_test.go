@@ -16,6 +16,9 @@ package nodejs
 
 import (
 	"encoding/json"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"google3/security/safeopen/safeopen"
@@ -72,6 +75,7 @@ func TestNPMInstallCommand(t *testing.T) {
 		nodeVersion    string
 		want           string
 		targetPlatform string
+		devSync        bool
 	}{
 		{
 			name:       "8.3.1 should return ci",
@@ -97,6 +101,12 @@ func TestNPMInstallCommand(t *testing.T) {
 			npmVersion: "5.7.0",
 			want:       "install",
 		},
+		{
+			name:       "8.3.1 with dev sync should return install",
+			npmVersion: "8.3.1",
+			want:       "install",
+			devSync:    true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -107,6 +117,9 @@ func TestNPMInstallCommand(t *testing.T) {
 			nodeVersion = func(*gcpbuildpack.Context) (string, error) { return tc.nodeVersion, nil }
 			if tc.targetPlatform != "" {
 				t.Setenv(env.XGoogleTargetPlatform, tc.targetPlatform)
+			}
+			if tc.devSync {
+				t.Setenv(env.DevSync, "true")
 			}
 
 			got, err := NPMInstallCommand(nil)
@@ -438,6 +451,184 @@ func TestDefaultStartCommand(t *testing.T) {
 			}
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("DefaultStartCommand() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestRestoreAndSaveModules(t *testing.T) {
+	testCases := []struct {
+		name       string
+		capability any
+		wantExec   bool
+	}{
+		{
+			name:     "default_copier_executes_cp",
+			wantExec: true,
+		},
+		{
+			name:       "maker_copier_does_not_execute_cp",
+			capability: &MakerNPMCacheCopier{},
+			wantExec:   false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			executed := false
+			mockExec := func(cmd string, args ...string) *exec.Cmd {
+				if cmd == "cp" {
+					executed = true
+				}
+				return exec.Command("true")
+			}
+
+			opts := []gcpbuildpack.ContextOption{
+				gcpbuildpack.WithExecCmd(mockExec),
+			}
+			if tc.capability != nil {
+				opts = append(opts, gcpbuildpack.WithCapability(NPMCacheCopierCapability, tc.capability))
+			}
+
+			ctx := gcpbuildpack.NewContext(opts...)
+			tmpDir := t.TempDir()
+			src := filepath.Join(tmpDir, "src")
+			dst := filepath.Join(tmpDir, "dst")
+
+			if err := RestoreModules(ctx, src, dst); err != nil {
+				t.Errorf("RestoreModules(%q, %q) returned unexpected error: %v", src, dst, err)
+			}
+			if executed != tc.wantExec {
+				t.Errorf("RestoreModules(%q, %q) executed cp = %v, want %v", src, dst, executed, tc.wantExec)
+			}
+
+			executed = false
+			if err := SaveModules(ctx, src, dst); err != nil {
+				t.Errorf("SaveModules(%q, %q) returned unexpected error: %v", src, dst, err)
+			}
+			if executed != tc.wantExec {
+				t.Errorf("SaveModules(%q, %q) executed cp = %v, want %v", src, dst, executed, tc.wantExec)
+			}
+		})
+	}
+}
+
+func TestWatchEntrypointFile(t *testing.T) {
+	testCases := []struct {
+		name        string
+		packageJSON *PackageJSON
+		files       []string
+		want        string
+	}{
+		{
+			name: "main",
+			packageJSON: &PackageJSON{
+				Main: "main.js",
+			},
+			want: "main.js",
+		},
+		{
+			name:        "server_js",
+			packageJSON: &PackageJSON{},
+			files:       []string{"server.js", "index.js"},
+			want:        "server.js",
+		},
+		{
+			name:        "index_js",
+			packageJSON: &PackageJSON{},
+			files:       []string{"index.js"},
+			want:        "index.js",
+		},
+		{
+			name:        "default",
+			packageJSON: &PackageJSON{},
+			want:        "index.js",
+		},
+		{
+			name:        "nil_package_json_with_server_js",
+			packageJSON: nil,
+			files:       []string{"server.js"},
+			want:        "server.js",
+		},
+		{
+			name:        "nil_package_json_without_server_js",
+			packageJSON: nil,
+			files:       []string{},
+			want:        "index.js",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testDir := t.TempDir()
+			for _, f := range tc.files {
+				if err := os.WriteFile(filepath.Join(testDir, f), []byte(""), 0644); err != nil {
+					t.Fatalf("Failed to write file %s: %v", f, err)
+				}
+			}
+			ctx := gcpbuildpack.NewContext(gcpbuildpack.WithApplicationRoot(testDir))
+			got, err := watchEntrypointFile(ctx, tc.packageJSON)
+			if err != nil {
+				t.Fatalf("watchEntrypointFile got error: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("watchEntrypointFile() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestDevSyncEntrypoint(t *testing.T) {
+	testCases := []struct {
+		name        string
+		packageJSON *PackageJSON
+		files       []string
+		pkgManager  string
+		want        []string
+	}{
+		{
+			name: "dev script",
+			packageJSON: &PackageJSON{
+				Scripts: map[string]string{"dev": "node server.js"},
+			},
+			pkgManager: "npm",
+			want:       []string{"npm", "run", "dev"},
+		},
+		{
+			name: "watch server.js",
+			packageJSON: &PackageJSON{
+				Scripts: map[string]string{},
+			},
+			files:      []string{"server.js", "index.js"},
+			pkgManager: "npm",
+			want:       []string{"node", "--watch", "server.js"},
+		},
+		{
+			name: "watch index.js",
+			packageJSON: &PackageJSON{
+				Scripts: map[string]string{},
+			},
+			files:      []string{"index.js"},
+			pkgManager: "npm",
+			want:       []string{"node", "--watch", "index.js"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testDir := t.TempDir()
+			for _, f := range tc.files {
+				if err := os.WriteFile(filepath.Join(testDir, f), []byte(""), 0644); err != nil {
+					t.Fatalf("Failed to write file %s: %v", f, err)
+				}
+			}
+			ctx := gcpbuildpack.NewContext(gcpbuildpack.WithApplicationRoot(testDir))
+			got, err := DevSyncEntrypoint(ctx, tc.packageJSON, tc.pkgManager)
+			if err != nil {
+				t.Fatalf("DevSyncEntrypoint got error: %v", err)
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("DevSyncEntrypoint() returned unexpected difference (-want +got):\n%s", diff)
 			}
 		})
 	}

@@ -18,6 +18,8 @@ import (
 	"testing"
 
 	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 func TestDetect(t *testing.T) {
@@ -90,5 +92,23 @@ func TestDetect(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			buildpacktest.TestDetect(t, DetectFn, tc.name, tc.files, tc.env, tc.want)
 		})
+	}
+}
+
+func TestSetRuntimeEnvVars(t *testing.T) {
+	ctx := gcp.NewContext()
+	layer := &libcnb.Layer{
+		Path:              "mock-path",
+		LaunchEnvironment: make(libcnb.Environment),
+	}
+	setRuntimeEnvVars(ctx, layer)
+	if got := layer.LaunchEnvironment["DOTNET_ROOT.default"]; got != "mock-path" {
+		t.Errorf("DOTNET_ROOT.default = %q, want %q", got, "mock-path")
+	}
+	if got := layer.LaunchEnvironment["DOTNET_RUNNING_IN_CONTAINER.default"]; got != "true" {
+		t.Errorf("DOTNET_RUNNING_IN_CONTAINER.default = %q, want %q", got, "true")
+	}
+	if got := layer.LaunchEnvironment["PATH.prepend"]; got != "mock-path" {
+		t.Errorf("PATH.prepend = %q, want %q", got, "mock-path")
 	}
 }

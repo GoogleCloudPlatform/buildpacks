@@ -46,6 +46,7 @@ const (
 	nodeFF                  = "google.nodejs.functions-framework"
 	nodeNPM                 = "google.nodejs.npm"
 	nodePNPM                = "google.nodejs.pnpm"
+	nodeBun                 = "google.nodejs.bun"
 	nodeRuntime             = "google.nodejs.runtime"
 	nodeYarn                = "google.nodejs.yarn"
 	phpRuntime              = "google.php.runtime"

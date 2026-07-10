@@ -98,6 +98,12 @@ type Context struct {
 	buildResult       libcnb.BuildResult
 	layerContributors []layerContributor
 
+	// capabilities holds dependency injection overrides (e.g., for Maker).
+	// Keys are scoped strings (e.g., "runtime.Installer"), and values are interface implementations.
+	// This allows the Maker tool to inject lightweight mock implementations for heavy operations
+	// like runtime installation, avoiding the need to download large artifacts during local simulation.
+	capabilities map[string]any
+
 	execCmd func(name string, arg ...string) *exec.Cmd
 }
 
@@ -155,6 +161,19 @@ func WithStackID(stackID string) ContextOption {
 	}
 }
 
+// WithCapability allows the entrypoint (Maker or Runner) to inject a strategy/capability.
+// This is used to override default behaviors with specialized implementations, specifically
+// for the "maker" use case where we simulate build steps without performing full operations
+// (like downloading runtimes).
+func WithCapability(key string, impl any) ContextOption {
+	return func(ctx *Context) {
+		if ctx.capabilities == nil {
+			ctx.capabilities = make(map[string]any)
+		}
+		ctx.capabilities[key] = impl
+	}
+}
+
 // NewContext creates a context.
 func NewContext(opts ...ContextOption) *Context {
 	debug, err := env.IsDebugMode()
@@ -207,6 +226,13 @@ func (ctx *Context) BuildpackName() string {
 	return ctx.info.Name
 }
 
+// Capability returns a capability from Context.
+// This is used to retrieve injected dependencies/strategies, allowing buildpacks to
+// behave differently depending on the context (e.g., real build vs maker simulation).
+func (ctx *Context) Capability(key string) any {
+	return ctx.capabilities[key]
+}
+
 // ApplicationRoot returns the root folder of the application code.
 func (ctx *Context) ApplicationRoot() string {
 	return ctx.applicationRoot
@@ -219,7 +245,10 @@ func (ctx *Context) BuildpackRoot() string {
 
 // StackID returns the stack id.
 func (ctx *Context) StackID() string {
-	return ctx.buildContext.StackID
+	if stackID := ctx.buildContext.StackID; stackID != "" {
+		return stackID
+	}
+	return ctx.detectContext.StackID
 }
 
 // Debug returns whether debug mode is enabled.
@@ -230,6 +259,11 @@ func (ctx *Context) Debug() bool {
 // Processes returns the list of processes added by buildpacks.
 func (ctx *Context) Processes() []libcnb.Process {
 	return ctx.buildResult.Processes
+}
+
+// Labels returns the list of labels added by buildpacks.
+func (ctx *Context) Labels() []libcnb.Label {
+	return ctx.buildResult.Labels
 }
 
 // Main is the main entrypoint to a buildpack's detect and build functions.
@@ -427,6 +461,14 @@ func AsDefaultProcess() processOption {
 
 // AddProcess adds the given command as named process, overwriting any previous process with the same name.
 func (ctx *Context) AddProcess(name string, cmd []string, opts ...processOption) {
+	if name == WebProcess {
+		if devSync, _ := env.IsDevSync(); devSync {
+			if el, err := ctx.Layer("devsync_env", BuildLayer); err == nil {
+				el.BuildEnvironment.Override(env.DevSyncInitEntrypoint, strings.Join(cmd, " "))
+			}
+		}
+	}
+
 	current := ctx.buildResult.Processes
 	ctx.buildResult.Processes = []libcnb.Process{}
 	for _, p := range current {
@@ -474,6 +516,63 @@ func (ctx *Context) AddLabel(key, value string) {
 	key = "google." + strings.ToLower(strings.ReplaceAll(key, "_", "-"))
 	ctx.Logf("Adding image label %s: %s", key, value)
 	ctx.buildResult.Labels = append(ctx.buildResult.Labels, libcnb.Label{Key: key, Value: value})
+}
+
+// SaveLayerMetadataAndEnv iterates over the layer contributors and writes their metadata and environment files to disk.
+//
+// This function is required for the "maker" tool, which runs buildpacks as in-process functions
+// rather than separate binaries. Unlike the standard lifecycle where `libcnb` automatically
+// persists layer data upon process exit, the in-process model requires this manual step to:
+// 1. Finalize layer state (by calling `Contribute`).
+// 2. Persist environment variables to `env`, `env.build`, and `env.launch` directories.
+//
+// This enables the maker tool to read these environment files and propagate changes to
+// subsequent buildpacks, mimicking the standard Cloud Native Buildpacks lifecycle behavior.
+func (ctx *Context) SaveLayerMetadataAndEnv() error {
+	for i, creator := range ctx.layerContributors {
+		l, err := ctx.buildContext.Layers.Layer(creator.Name())
+		if err != nil {
+			return err
+		}
+		l, err = creator.Contribute(l)
+		if err != nil {
+			return err
+		}
+		ctx.buildResult.Layers[i] = l
+
+		for dir, env := range map[string]map[string]string{
+			"env.build":  l.BuildEnvironment,
+			"env":        l.SharedEnvironment,
+			"env.launch": l.LaunchEnvironment,
+		} {
+			if len(env) > 0 {
+				if err := writeEnvDir(filepath.Join(l.Path, dir), env); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// writeEnvDir writes the environment variables to the specified directory.
+// This mimics the behavior of libcnb's internal EnvironmentWriter (which cannot be imported directly).
+func writeEnvDir(dir string, env map[string]string) error {
+	const envFilePerm = 0644
+
+	if err := os.MkdirAll(dir, layerMode); err != nil {
+		return fmt.Errorf("mkdir %s: %w", dir, err)
+	}
+	for k, v := range env {
+		f := filepath.Join(dir, k)
+		if err := os.MkdirAll(filepath.Dir(f), layerMode); err != nil {
+			return fmt.Errorf("mkdir %s: %w", filepath.Dir(f), err)
+		}
+		if err := os.WriteFile(f, []byte(v), envFilePerm); err != nil {
+			return fmt.Errorf("writing %s: %w", f, err)
+		}
+	}
+	return nil
 }
 
 // MainRunner is the main entrypoint for runners.

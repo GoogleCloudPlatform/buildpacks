@@ -47,8 +47,22 @@ const (
 	// ApphostingPreprocessedPathForPack is the path to the preprocessed apphosting.yaml file in the workspace.
 	ApphostingPreprocessedPathForPack = "/workspace/apphosting_preprocessed"
 
+	// NPMStartEntrypointCapability is the capability key for the NPMStartEntrypoint.
+	NPMStartEntrypointCapability = "nodejs.NPMStartEntrypoint"
+
 	nodeVersionKey    = "node_version"
 	dependencyHashKey = "dependency_hash"
+)
+
+const (
+	// DevDepType is the dependency type for a dev dependency.
+	DevDepType = "dev"
+	// OptionalDepType is the dependency type for an optional dependency.
+	OptionalDepType = "optional"
+	// DevOptionalDepType is the dependency type for a dev-optional dependency.
+	DevOptionalDepType = "devOptional"
+	// NilDepType is the dependency type for a nil dependency.
+	NilDepType = ""
 )
 
 // semVer11 is the smallest possible semantic version with major version 11.
@@ -63,7 +77,7 @@ var (
 	}
 
 	cachedPackageJSONs        = map[string]*PackageJSON{}
-	possibleLockfileFilenames = []string{"pnpm-lock.yaml", "yarn.lock", "npm-shrinkwrap.json", "package-lock.json"}
+	possibleLockfileFilenames = []string{"pnpm-lock.yaml", "yarn.lock", "npm-shrinkwrap.json", "package-lock.json", "bun.lock", "bun.lockb"}
 	dependencyRegex           = regexp.MustCompile(`\r?\n\r?\n`)
 )
 
@@ -72,6 +86,7 @@ type packageEnginesJSON struct {
 	NPM  string `json:"npm"`
 	Yarn string `json:"yarn"`
 	PNPM string `json:"pnpm"`
+	Bun  string `json:"bun"`
 }
 
 const (
@@ -96,11 +111,53 @@ type PackageJSON struct {
 	PackageManager  string             `json:"packageManager,omitempty"`
 }
 
-// NpmLockfile represents the contents of a lock file generated with npm.
-type NpmLockfile struct {
-	Packages map[string]struct {
-		Version string `json:"version"`
-	} `json:"packages"`
+// NPMLockfile represents the structure of a package-lock.json file.
+type NPMLockfile struct {
+	LockfileVersion int                `json:"lockfileVersion"`
+	Packages        map[string]Package `json:"packages"`
+}
+
+// Package represents a dependency in the "packages" map (npm v2/v3) in package-lock.json.
+type Package struct {
+	Version              string            `json:"version"`
+	Dependencies         map[string]string `json:"dependencies"`
+	DevDependencies      map[string]string `json:"devDependencies"`
+	OptionalDependencies map[string]string `json:"optionalDependencies"`
+	Dev                  bool              `json:"dev"`
+	Optional             bool              `json:"optional"`
+	DevOptional          bool              `json:"devOptional"`
+}
+
+// DepType returns the dependency type string based on Dev, Optional, and DevOptional flags.
+func (p Package) DepType() string {
+	if p.DevOptional || (p.Dev && p.Optional) {
+		return DevOptionalDepType
+	} else if p.Dev {
+		return DevDepType
+	} else if p.Optional {
+		return OptionalDepType
+	}
+	return NilDepType
+}
+
+// ReadPackageLockJSONIfExists returns deserialized package-lock.json from the given dir.
+// If the provided dir does not contain a package-lock.json file, it returns nil.
+func ReadPackageLockJSONIfExists(dir string) (*NPMLockfile, error) {
+	f := filepath.Join(dir, "package-lock.json")
+	data, err := os.ReadFile(f)
+	if os.IsNotExist(err) {
+		// Return nil if the file doesn't exist (null object pattern).
+		return nil, nil
+	}
+	if err != nil {
+		return nil, gcp.InternalErrorf("reading package-lock.json: %v", err)
+	}
+
+	var lockfile NPMLockfile
+	if err := json.Unmarshal(data, &lockfile); err != nil {
+		return nil, gcp.UserErrorf("unmarshalling package-lock.json: %v", err)
+	}
+	return &lockfile, nil
 }
 
 // PnpmV6Lockfile represents the contents of a lock file v6 generated with pnpm.
@@ -429,7 +486,7 @@ func versionFromYarnLock(rawPackageLock []byte, pjs *PackageJSON, pkg string) (s
 }
 
 func versionFromNpmLock(rawPackageLock []byte, pkg string) (string, error) {
-	var lockfile NpmLockfile
+	var lockfile NPMLockfile
 	if err := json.Unmarshal(rawPackageLock, &lockfile); err != nil {
 		return "", gcp.InternalErrorf("parsing lock file: %w", err)
 	}
@@ -455,7 +512,7 @@ func Version(deps *NodeDependencies, pkg string) (string, error) {
 }
 
 // parsePackageManager parses the packageManager field and returns the manager name and version.
-// packageManagerField must have this regex (pnpm|yarn)@\d+\.\d+\.\d+(-.+)?, e.g. pnpm@9.0.0.
+// packageManagerField must have this regex (pnpm|yarn|bun)@\d+\.\d+\.\d+(-.+)?, e.g. pnpm@9.0.0.
 func parsePackageManager(packageManagerField string) (string, string, error) {
 	packageManagerSplit := strings.Split(packageManagerField, "@")
 	if len(packageManagerSplit) != 2 {
@@ -472,6 +529,26 @@ func MajorVersion(versionString string) (string, error) {
 	}
 
 	return parts[0], nil
+}
+
+// MakerNPMStartEntrypoint implements the entrypoint capability for the maker tool.
+type MakerNPMStartEntrypoint struct{}
+
+// command returns the entrypoint command for the maker tool.
+func (e *MakerNPMStartEntrypoint) command() []string {
+	return []string{"npm", "run", "start"}
+}
+
+// Entrypoint returns the entrypoint command based on the package manager and capabilities.
+func Entrypoint(ctx *gcp.Context, packageManager string) ([]string, error) {
+	if cap := ctx.Capability(NPMStartEntrypointCapability); cap != nil {
+		c, ok := cap.(*MakerNPMStartEntrypoint)
+		if !ok {
+			return nil, gcp.InternalErrorf("capability %q must be of type *MakerNPMStartEntrypoint", NPMStartEntrypointCapability)
+		}
+		return c.command(), nil
+	}
+	return []string{packageManager, "run", "start"}, nil
 }
 
 // OverrideAppHostingBuildScript overrides the "apphosting:build" script in package.json
@@ -508,4 +585,68 @@ func OverrideAppHostingBuildScript(ctx *gcp.Context, preprocessedApphostingPath 
 	}
 
 	return pjs, nil
+}
+
+// IsPackageManagerConfigured checks if the environment is configured to use the specified package manager.
+func IsPackageManagerConfigured(pm string) bool {
+	pmPreference := os.Getenv(env.PackageManager)
+	return strings.EqualFold(pmPreference, pm) // Case insensitive comparison.
+}
+
+// SkipPruningDevSync returns true if dev sync is enabled, or if dev sync status cannot be determined.
+func SkipPruningDevSync(ctx *gcp.Context) bool {
+	devSync, err := env.IsDevSync()
+	if err != nil {
+		ctx.Warnf("Unable to determine dev sync status: %v", err)
+		return true // If we can't determine, we skip pruning to be safe.
+	}
+	if devSync {
+		ctx.Logf("Skipping pruning devDependencies because dev sync is enabled.")
+	}
+	return devSync
+}
+
+// ShouldPrunePnpmBun returns true if dev dependencies should be pruned for pnpm/bun.
+func ShouldPrunePnpmBun(ctx *gcp.Context, pjs *PackageJSON, buildNodeEnv string, nodeEnvPresent bool) bool {
+	if !HasDevDependencies(pjs) {
+		return false
+	}
+	if nodeEnvPresent {
+		if buildNodeEnv != EnvProduction {
+			ctx.Logf("Retaining devDependencies because NODE_ENV=%q.", buildNodeEnv)
+		}
+		return false
+	}
+	if buildNodeEnv != EnvDevelopment {
+		return false
+	}
+	if SkipPruningDevSync(ctx) {
+		return false
+	}
+	// We don't prune if the user is using App Hosting since App Hosting builds don't
+	// rely on the node_modules folder at this point.
+	if env.IsFAH() {
+		return false
+	}
+	return true
+}
+
+// IsAngularApplication returns true if angular.json exists or @angular/core is present in package.json.
+func IsAngularApplication(appDir string) (bool, error) {
+	if _, err := os.Stat(filepath.Join(appDir, "angular.json")); err == nil {
+		return true, nil
+	}
+	pjs, err := ReadPackageJSONIfExists(appDir)
+	if err != nil {
+		return false, err
+	}
+	if pjs != nil {
+		if _, ok := pjs.Dependencies["@angular/core"]; ok {
+			return true, nil
+		}
+		if _, ok := pjs.DevDependencies["@angular/core"]; ok {
+			return true, nil
+		}
+	}
+	return false, nil
 }

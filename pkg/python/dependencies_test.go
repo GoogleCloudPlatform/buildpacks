@@ -69,7 +69,7 @@ func TestPackagePresent(t *testing.T) {
 					dependencies = ["gunicorn>=20.1.0"]
 				`,
 			},
-			want: false,
+			want: true,
 		},
 		{
 			name:         "pyproject.toml_exists_and_contains_gunicorn_in_tool.poetry.dependencies",

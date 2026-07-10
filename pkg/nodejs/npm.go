@@ -33,12 +33,12 @@ const (
 	// GoogleNodeRunScriptsEnv is the env var that can be used to configure a list of package.json
 	// scripts that should be run during the build process.
 	GoogleNodeRunScriptsEnv = "GOOGLE_NODE_RUN_SCRIPTS"
-	// nodejsNPMBuildEnv is an env var that enables running `npm run build` by default.
-	nodejsNPMBuildEnv = "GOOGLE_EXPERIMENTAL_NODEJS_NPM_BUILD_ENABLED"
 	// VendorNpmDeps for vendoring npm dependencies
 	VendorNpmDeps = "GOOGLE_VENDOR_NPM_DEPENDENCIES"
 	// AppHostingBuildEnv is the env var that contains the build command to run for Firebase backends.
 	AppHostingBuildEnv = "APPHOSTING_BUILD"
+	// NPMCacheCopierCapability is the capability key for the NPMCacheCopier.
+	NPMCacheCopierCapability = "npm.CacheCopier"
 )
 
 var (
@@ -47,6 +47,43 @@ var (
 	// minNpmCIVersion is the first npm version that suports the ci command.
 	minNpmCIVersion = semver.MustParse("6.14.0")
 )
+
+// watchEntrypointFile returns the entrypoint file to be used with node --watch.
+// The entrypoint file is determined in the following order of preference:
+// 1. The value of the `main` field in package.json, if present.
+// 2. `server.js`, if it exists.
+// 3. `index.js`, as the final default if none of the above are found.
+func watchEntrypointFile(ctx *gcp.Context, pjs *PackageJSON) (string, error) {
+	if pjs != nil && pjs.Main != "" {
+		return pjs.Main, nil
+	}
+	serverExists, err := ctx.FileExists(ctx.ApplicationRoot(), "server.js")
+	if err != nil {
+		return "", err
+	}
+	if serverExists {
+		return "server.js", nil
+	}
+	return "index.js", nil
+}
+
+// DevSyncEntrypoint returns the entrypoint command for dev sync mode.
+func DevSyncEntrypoint(ctx *gcp.Context, pjs *PackageJSON, packageManager string) ([]string, error) {
+	if pjs != nil {
+		if devScript, ok := pjs.Scripts["dev"]; ok && devScript != "" {
+			ctx.Logf("Dev script found in package.json, using %q for dev sync.", packageManager+" run dev")
+			return []string{packageManager, "run", "dev"}, nil
+		}
+	}
+
+	// If no dev script, use node --watch.
+	entryFile, err := watchEntrypointFile(ctx, pjs)
+	if err != nil {
+		return nil, err
+	}
+	ctx.Logf("No dev script found in package.json, using %q for dev sync.", "node --watch "+entryFile)
+	return []string{"node", "--watch", entryFile}, nil
+}
 
 // RequestedNPMVersion returns any customer provided NPM version constraint configured in the
 // "engines" section of the package.json file in the given application dir.
@@ -109,6 +146,9 @@ func NPMInstallCommand(ctx *gcp.Context) (string, error) {
 	}
 	// HACK: For backwards compatibility with old versions of npm always use `npm install`.
 	if version.LessThan(minNpmCIVersion) {
+		return "install", nil
+	}
+	if devSync, _ := env.IsDevSync(); devSync {
 		return "install", nil
 	}
 	return "ci", nil
@@ -236,4 +276,63 @@ func DefaultStartCommand(ctx *gcp.Context, pjs *PackageJSON) ([]string, error) {
 		return []string{"node", pjs.Main}, nil
 	}
 	return []string{"node", "index.js"}, nil
+}
+
+// npmCacheCopier defines the interface for copying node_modules to and from the cache layer.
+type npmCacheCopier interface {
+	Restore(ctx *gcp.Context, src, dst string) error
+	Save(ctx *gcp.Context, src, dst string) error
+}
+
+// RestoreModules restores node_modules from the cache layer.
+func RestoreModules(ctx *gcp.Context, src, dst string) error {
+	c := resolveCacheCopier(ctx)
+	return c.Restore(ctx, src, dst)
+}
+
+// SaveModules saves node_modules to the cache layer.
+func SaveModules(ctx *gcp.Context, src, dst string) error {
+	c := resolveCacheCopier(ctx)
+	return c.Save(ctx, src, dst)
+}
+
+func resolveCacheCopier(ctx *gcp.Context) npmCacheCopier {
+	if capability := ctx.Capability(NPMCacheCopierCapability); capability != nil {
+		if c, ok := capability.(npmCacheCopier); ok {
+			return c
+		}
+	}
+	return defaultNPMCacheCopier{}
+}
+
+// defaultNPMCacheCopier is the default implementation that copies files.
+type defaultNPMCacheCopier struct{}
+
+// Restore copies files from the src path to the dst path.
+func (d defaultNPMCacheCopier) Restore(ctx *gcp.Context, src, dst string) error {
+	_, err := ctx.Exec([]string{"cp", "--archive", src, dst}, gcp.WithUserTimingAttribution)
+	return err
+}
+
+// Save copies files from the src path to the dst path.
+func (d defaultNPMCacheCopier) Save(ctx *gcp.Context, src, dst string) error {
+	// Ensure node_modules exists even if no dependencies were installed.
+	if err := ctx.MkdirAll(src, 0755); err != nil {
+		return err
+	}
+	_, err := ctx.Exec([]string{"cp", "--archive", src, dst}, gcp.WithUserTimingAttribution)
+	return err
+}
+
+// MakerNPMCacheCopier is the implementation for the maker tool that does nothing.
+type MakerNPMCacheCopier struct{}
+
+// Restore is a no-op.
+func (m MakerNPMCacheCopier) Restore(ctx *gcp.Context, src, dst string) error {
+	return nil
+}
+
+// Save is a no-op.
+func (m MakerNPMCacheCopier) Save(ctx *gcp.Context, src, dst string) error {
+	return nil
 }

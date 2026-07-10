@@ -1,0 +1,3 @@
+runConfig:
+  cpu: 4
+  memoryMiB: 1024

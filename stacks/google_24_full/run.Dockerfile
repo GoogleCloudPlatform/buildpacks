@@ -73,8 +73,8 @@ RUN --mount=type=secret,id=pro-attach-config,target=/etc/secrets/pro-attach-conf
   rm -rf /var/log/*
 
 
-# Install the start and serve binaries.
-RUN mkdir /usr/lib/pid1 && mkdir /usr/lib/serve && \
+# Install the start, serve and app-runner binaries.
+RUN mkdir /usr/lib/pid1 && mkdir /usr/lib/serve && mkdir /usr/lib/app-runner && \
   curl -A GCPBuildpacks https://dl.google.com/runtimes/serve/serve-1.0.1.tar.gz \
     | tar xvz -C /usr/lib/serve && \
   curl -A GCPBuildpacks https://dl.google.com/runtimes/pid1/pid1-1.0.4.tar.gz \
@@ -82,6 +82,7 @@ RUN mkdir /usr/lib/pid1 && mkdir /usr/lib/serve && \
   # These invoked as start, serve, /start and /serve in some places.
   cp /usr/lib/pid1/pid1 /usr/bin/pid1 && \
   cp /usr/lib/serve/main /usr/bin/serve && \
+  cp /usr/lib/app-runner/app-runner /usr/bin/app-runner && \
   ln -s /usr/bin/pid1 /start && \
   ln -s /usr/bin/pid1 /usr/bin/start && \
   ln -s /usr/bin/serve /serve && \

@@ -1,7 +1,11 @@
 # Test data for builder acceptance tests.
 licenses(["notice"])
 
-package(default_visibility = ["//builders:__subpackages__"])
+package(default_visibility = [
+    "//builders:__subpackages__",
+    "//cmd:__subpackages__",
+    "//pkg/apprunner:__subpackages__",
+])
 
 exports_files(
     [
@@ -46,10 +50,11 @@ filegroup(
         for subpkg in subpackages(
             include = ["**"],
             exclude = [
-                "dart/**",
-                "php/**",
                 "cpp/**",
+                "dart/**",
                 "osonly/**",
+                "php/**",
+                "static/**",
             ],
         )
     ],

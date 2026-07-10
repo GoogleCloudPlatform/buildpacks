@@ -37,6 +37,10 @@ description = "Builder for the Node.js runtime"
   uri = "pnpm_using_runner.tgz"
 
 [[buildpacks]]
+  id = "google.nodejs.bun"
+  uri = "bun_using_runner.tgz"
+
+[[buildpacks]]
   id = "google.utils.label-image"
   uri = "label_image_using_runner.tgz"
 
@@ -63,6 +67,14 @@ description = "Builder for the Node.js runtime"
 [[buildpacks]]
   id = "google.nodejs.firebasebundle"
   uri = "firebasebundle_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.firebase.firebasebundle"
+  uri = "firebasebundle_v2_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.dependencyextract"
+  uri = "dependencyextract_using_runner.tgz"
 
 # The Firebase apphosting order group for Node.js applications.
 # TODO: Change the naming convention for firebase apphosting buildpacks
@@ -94,9 +106,39 @@ description = "Builder for the Node.js runtime"
   [[order.group]]
     id = "google.nodejs.firebasenextjs"
   [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
     id = "google.nodejs.pnpm"
   [[order.group]]
     id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"
@@ -122,11 +164,41 @@ description = "Builder for the Node.js runtime"
     id = "google.nodejs.firebasenx"
     optional = true
   [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
     id = "google.nodejs.firebaseangular"
   [[order.group]]
     id = "google.nodejs.yarn"
   [[order.group]]
     id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"
@@ -154,9 +226,39 @@ description = "Builder for the Node.js runtime"
   [[order.group]]
     id = "google.nodejs.firebaseangular"
   [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
     id = "google.nodejs.npm"
   [[order.group]]
     id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"
@@ -168,7 +270,28 @@ description = "Builder for the Node.js runtime"
   [[order.group]]
     id = "google.nodejs.runtime"
   [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
     id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.npm"
   [[order.group]]
     id = "google.nodejs.firebasebundle"
 [[order]]
@@ -177,7 +300,7 @@ description = "Builder for the Node.js runtime"
   [[order.group]]
     id = "google.nodejs.npm"
   [[order.group]]
-    id = "google.nodejs.firebasebundle"
+    id = "google.firebase.firebasebundle"
 
 # GAE Flex for yarn
 [[order]]
@@ -358,6 +481,30 @@ description = "Builder for the Node.js runtime"
   [[order.group]]
     id = "google.utils.label-image"
 
+# The GCP / GCF order group for bun package manager.
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    # archive source is marked as optional so that this order group can be used by GCP
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.bun"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
 # The GCP / GCF order group for npm
 [[order]]
   [[order.group]]
@@ -424,4 +571,4 @@ description = "Builder for the Node.js runtime"
   run-image = "${STACK_RUN_IMAGE}"
 
 [lifecycle]
-  version = "0.20.5"
+  version = "0.21.12"

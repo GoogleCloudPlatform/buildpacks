@@ -109,6 +109,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
   uri = "nodejs/pnpm.tgz"
 
 [[buildpacks]]
+  id = "google.nodejs.bun"
+  uri = "nodejs/bun.tgz"
+
+[[buildpacks]]
   id = "google.nodejs.functions-framework"
   uri = "nodejs/functions_framework.tgz"
 
@@ -732,6 +736,24 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.nodejs.runtime"
 
   [[order.group]]
+    id = "google.nodejs.bun"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
     id = "google.nodejs.npm"
 
   [[order.group]]
@@ -849,4 +871,4 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
   run-image = "gcr.io/buildpacks/google-22/run"
 
 [lifecycle]
-  version = "0.20.5"
+  version = "0.21.12"

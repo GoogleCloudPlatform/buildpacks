@@ -39,9 +39,6 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return gcp.OptOut(message), err
 	}
 	if isUVPyproject {
-		if !python.IsPyprojectEnabled(ctx) {
-			return gcp.OptOut("Python UV Buildpack for pyproject.toml is not supported in the current release track."), nil
-		}
 		return gcp.OptIn(message), nil
 	}
 
@@ -62,9 +59,6 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return gcp.OptOut(message), err
 	}
 	if isUVRequirements {
-		if !python.IsUVRequirementsEnabled(ctx) {
-			return gcp.OptOut("Python UV Buildpack for requirements.txt is not supported in the current release track."), nil
-		}
 		return gcp.OptIn(message, gcp.WithBuildPlans(plan)), nil
 	}
 
@@ -90,20 +84,20 @@ func BuildFn(ctx *gcp.Context) error {
 		return err
 	}
 
-	var venvDir string
-
 	if isUVPyproject {
-		buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.ConfigFile, buildermetadata.MetadataValue("pyproject.toml"))
-		if err := python.EnsureUVLockfile(ctx); err != nil {
-			return fmt.Errorf("ensuring uv.lock file: %w", err)
-		}
-		venvDir, err = python.UVInstallDependenciesAndConfigureEnv(ctx, l)
-		if err != nil {
+		buildermetadata.GlobalBuilderMetadata().SetValue(
+			buildermetadata.ConfigFile,
+			buildermetadata.MetadataValue("pyproject.toml"),
+		)
+		if _, err = python.UVInstallDependenciesAndConfigureEnv(ctx, l); err != nil {
 			return fmt.Errorf("installing dependencies with uv: %w", err)
 		}
 	} else {
 		// This is the requirements.txt path
-		buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.ConfigFile, buildermetadata.MetadataValue("requirements.txt"))
+		buildermetadata.GlobalBuilderMetadata().SetValue(
+			buildermetadata.ConfigFile,
+			buildermetadata.MetadataValue("requirements.txt"),
+		)
 		reqs := filepath.SplitList(strings.Trim(os.Getenv(python.RequirementsFilesEnv), string(os.PathListSeparator)))
 		ctx.Debugf("Found requirements.txt files provided by other buildpacks: %s", reqs)
 
@@ -117,19 +111,10 @@ func BuildFn(ctx *gcp.Context) error {
 		}
 
 		ctx.Logf("Found requirements.txt, installing with `uv pip install`.")
-		venvDir, err = python.UVInstallRequirements(ctx, l, reqs...)
-		if err != nil {
+		if _, err = python.UVInstallRequirements(ctx, l, reqs...); err != nil {
 			return gcp.UserErrorf("installing requirements.txt with uv: %w", err)
 		}
 	}
 
-	ctx.Logf("Checking for incompatible dependencies.")
-	result, err := ctx.Exec([]string{"uv", "pip", "check"}, gcp.WithUserAttribution, gcp.WithEnv("VIRTUAL_ENV="+venvDir))
-	if result == nil {
-		return fmt.Errorf("uv pip check: %w", err)
-	}
-	if result.ExitCode == 0 {
-		return nil
-	}
-	return gcp.UserErrorf("found incompatible dependencies: %q", result.Stderr)
+	return nil
 }

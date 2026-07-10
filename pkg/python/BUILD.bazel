@@ -11,7 +11,12 @@ go_library(
         "requirements.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
-    visibility = ["//cmd/python:__subpackages__"],
+    visibility = [
+        "//cmd/apprunner:__subpackages__",
+        "//cmd/python:__subpackages__",
+        "//maker:__subpackages__",
+        "//pkg/apprunner:__subpackages__",
+    ],
     deps = [
         "//pkg/ar",
         "//pkg/buildererror",
@@ -20,6 +25,7 @@ go_library(
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "//pkg/runtime",
+        "//pkg/tooling",
         "@com_github_buildpacks_libcnb_v2//:go_default_library",
         "@com_github_burntsushi_toml//:go_default_library",
         "@com_github_masterminds_semver//:go_default_library",
@@ -40,5 +46,6 @@ go_test(
         "//pkg/env",
         "//pkg/gcpbuildpack",
         "@com_github_buildpacks_libcnb_v2//:go_default_library",
+        "@com_github_google_go-cmp//cmp:go_default_library",
     ],
 )

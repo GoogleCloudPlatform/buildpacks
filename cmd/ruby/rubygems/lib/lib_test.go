@@ -165,7 +165,7 @@ func TestBuild(t *testing.T) {
 				t,
 				testserver.WithStatus(tc.httpStatusInstaller),
 				testserver.WithFile(testdata.MustGetPath(tc.tarFile)),
-				testserver.WithMockURL(&rubygemsURL),
+				testserver.WithMockURL(&rubygemsURLTemplate),
 			)
 
 			opts := []buildpacktest.Option{

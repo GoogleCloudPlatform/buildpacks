@@ -11,15 +11,18 @@ gcf_runtimes = {
     "dotnet3": "3.1.426",
     "dotnet6": "6.0.428",
     "dotnet8": "8.0.415",
+    "dotnet10": "10.0.100",
 }
 
 flex_runtimes = {
     "dotnet6": "6.0.428",
     "dotnet8": "8.0.415",
+    "dotnet10": "10.0.100",
 }
 
 version_to_stack = {
     "dotnet": "google-18-full",
+    "dotnet10": "google-24-full",
     "dotnet3": "google-18-full",
     "dotnet6": "google-22-full",
     "dotnet8": "google-22-full",

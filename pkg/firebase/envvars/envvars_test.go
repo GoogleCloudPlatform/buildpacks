@@ -239,6 +239,36 @@ func TestParseEnvVarsFromString(t *testing.T) {
 			wantEnvVars:       []apphostingschema.EnvironmentVariable{},
 		},
 		{
+			desc: "Parse server side env vars with all secret formats correctly",
+			serverSideEnvVars: `
+			[
+				{
+					"Variable": "SECRET_FORMAT_ONE",
+					"Secret": "secretID"
+				},
+				{
+					"Variable": "SECRET_FORMAT_TWO",
+					"Secret": "secretID@5"
+				},
+				{
+					"Variable": "SECRET_FORMAT_THREE",
+					"Secret": "projects/test-project/secrets/secretID"
+				},
+				{
+					"Variable": "SECRET_FORMAT_FOUR",
+					"Secret": "projects/test-project/secrets/secretID/versions/6"
+				}
+			]
+		`,
+			wantEnvVars: []apphostingschema.EnvironmentVariable{
+				{Variable: "SECRET_FORMAT_ONE", Secret: "secretID", Source: apphostingschema.SourceFirebaseConsole},
+				{Variable: "SECRET_FORMAT_TWO", Secret: "secretID@5", Source: apphostingschema.SourceFirebaseConsole},
+				{Variable: "SECRET_FORMAT_THREE", Secret: "projects/test-project/secrets/secretID", Source: apphostingschema.SourceFirebaseConsole},
+				{Variable: "SECRET_FORMAT_FOUR", Secret: "projects/test-project/secrets/secretID/versions/6", Source: apphostingschema.SourceFirebaseConsole},
+			},
+		},
+
+		{
 			desc:              "Malformed server side env vars string",
 			serverSideEnvVars: "a malformed string",
 			wantEnvVars:       nil,

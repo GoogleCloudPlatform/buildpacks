@@ -24,8 +24,10 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -34,6 +36,7 @@ func TestUseFrozenLockfile(t *testing.T) {
 		name    string
 		version string
 		want    bool
+		devSync bool
 	}{
 		{
 			version: "v10.1.1",
@@ -47,12 +50,20 @@ func TestUseFrozenLockfile(t *testing.T) {
 			version: "v15.11.0",
 			want:    true,
 		},
+		{
+			version: "v15.11.0",
+			want:    false,
+			devSync: true,
+		},
 	}
 
 	for _, tc := range testCases {
-		t.Run(fmt.Sprintf("Node.js %s", tc.version), func(t *testing.T) {
+		t.Run(fmt.Sprintf("Node.js %s devSync %t", tc.version, tc.devSync), func(t *testing.T) {
 			defer func(fn func(*gcpbuildpack.Context) (string, error)) { nodeVersion = fn }(nodeVersion)
 			nodeVersion = func(*gcpbuildpack.Context) (string, error) { return tc.version, nil }
+			if tc.devSync {
+				t.Setenv(env.DevSync, "true")
+			}
 
 			got, err := UseFrozenLockfile(nil)
 			if err != nil {
@@ -126,8 +137,8 @@ __metadata:
 			want: false,
 		},
 		{
-			name:      "no yarn.lock",
-			wantError: true,
+			name: "no yarn.lock",
+			want: false,
 		},
 	}
 
@@ -223,7 +234,7 @@ func TestDetectYarnVersion(t *testing.T) {
 		wantError   bool
 	}{
 		{
-			name:        "no package.json returns latest",
+			name:        "json_returns_latest_version_from_tooling_bzl",
 			packageJSON: PackageJSON{},
 			npmResponse: `{
 				"name": "yarn",
@@ -238,7 +249,7 @@ func TestDetectYarnVersion(t *testing.T) {
 				},
 				"modified": "2022-01-27T21:10:55.626Z"
 			}`,
-			wantVersion: "2.2.2",
+			wantVersion: "1.22.22",
 		},
 		{
 			name: "only engines version",
@@ -283,7 +294,10 @@ func TestDetectYarnVersion(t *testing.T) {
 				testserver.WithMockURL(&npmRegistryURL),
 			)
 
-			version, err := detectYarnVersion(&tc.packageJSON)
+			ctx := gcpbuildpack.NewContext()
+			defer tooling.MockData()()
+
+			version, err := detectYarnVersion(ctx, &tc.packageJSON)
 			if version != tc.wantVersion {
 				t.Errorf("detectYarnVersion() got version: %v, want version: %v", version, tc.wantVersion)
 			}

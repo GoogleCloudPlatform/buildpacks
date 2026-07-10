@@ -11,7 +11,7 @@ buildpack(
         ":main",
     ],
     prefix = "nodejs",
-    version = "1.1.0",
+    version = "1.1.1",
     visibility = [
         "//builders:nodejs_builders",
     ],
@@ -21,7 +21,7 @@ buildpack_using_runner(
     name = "npm_using_runner",
     buildpack_id = "google.nodejs.npm",
     prefix = "nodejs",
-    version = "1.1.0",
+    version = "1.1.1",
     visibility = [
         "//builders:nodejs_builders",
     ],

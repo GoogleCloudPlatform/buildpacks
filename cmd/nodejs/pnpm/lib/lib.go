@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -47,20 +47,29 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !pnpmLockExists {
-		return gcp.OptOutFileNotFound(nodejs.PNPMLock), nil
+	if pnpmLockExists {
+		return gcp.OptIn("found pnpm-lock.yaml and package.json"), nil
 	}
 
-	return gcp.OptIn("found pnpm-lock.yaml and package.json"), nil
+	if nodejs.IsPackageManagerConfigured("pnpm") {
+		return gcp.OptIn("package.json found and GOOGLE_PACKAGE_MANAGER=pnpm"), nil
+	}
+
+	return gcp.OptOut("pnpm-lock.yaml not found and GOOGLE_PACKAGE_MANAGER is not set to pnpm"), nil
 }
 
 // BuildFn is the exported build function.
 func BuildFn(ctx *gcp.Context) error {
-	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.PNPMUsageCounterID).Increment(1)
+	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.PackageManager, buildermetadata.MetadataValue("pnpm"))
+	if err := ctx.Setenv("PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN", "false"); err != nil {
+		return err
+	}
+
 	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
 	if err != nil {
 		return err
 	}
+
 	if err := installPNPM(ctx, pjs); err != nil {
 		return gcp.InternalErrorf("installing pnpm: %w", err)
 	}
@@ -75,9 +84,37 @@ func BuildFn(ctx *gcp.Context) error {
 	}
 	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
 	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
+	el.SharedEnvironment.Default("PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN", "false")
+
+	// Check for React2Shell vulnerability in the lockfile.
+	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, ctx.ApplicationRoot())
+	if err != nil {
+		ctx.Warnf("Failed to read node dependencies: %v", err)
+	} else {
+		if err := nodejs.CheckVulnerabilities(ctx, nodeDeps); err != nil {
+			return err
+		}
+	}
 
 	// Configure the entrypoint for production.
-	ctx.AddWebProcess([]string{"pnpm", "run", "start"})
+	entrypoint, err := nodejs.Entrypoint(ctx, "pnpm")
+	if err != nil {
+		return err
+	}
+
+	devSync, err := env.IsDevSync()
+	if err != nil {
+		ctx.Warnf("Unable to determine dev sync status: %v", err)
+	} else if devSync {
+		entrypoint, err = nodejs.DevSyncEntrypoint(ctx, pjs, "pnpm")
+		if err != nil {
+			return gcp.InternalErrorf("getting dev sync entrypoint: %w", err)
+		}
+		ctx.AddWebProcess(entrypoint)
+		return nil
+	}
+
+	ctx.AddWebProcess(entrypoint)
 	return nil
 }
 
@@ -99,6 +136,15 @@ func pnpmInstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		}
 	}
 	cmd := []string{"pnpm", "install"}
+	if buildNodeEnv == nodejs.EnvProduction {
+		// pnpm v10 removed the implicit behavior of skipping devDependencies when
+		// NODE_ENV=production (https://github.com/pnpm/pnpm/issues/8827). Pass --prod
+		// explicitly so devDependencies are skipped on pnpm v9 and v10+.
+		cmd = append(cmd, "--prod")
+	}
+	if devSync, _ := env.IsDevSync(); devSync {
+		cmd = append(cmd, "--no-frozen-lockfile")
+	}
 	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution, gcp.WithEnv("CI=true"), gcp.WithEnv("NODE_ENV="+buildNodeEnv)); err != nil {
 		return gcp.UserErrorf("installing pnpm dependencies: %w", err)
 	}
@@ -118,13 +164,7 @@ func pnpmInstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 			}
 		}
 	}
-	shouldPruneDevDependencies := buildNodeEnv == nodejs.EnvDevelopment && !nodeEnvPresent && nodejs.HasDevDependencies(pjs)
-	if shouldPruneDevDependencies {
-		if env.IsFAH() {
-			// We don't prune if the user is using App Hosting since App Hosting builds don't
-			// rely on the node_modules folder at this point.
-			return nil
-		}
+	if nodejs.ShouldPrunePnpmBun(ctx, pjs, buildNodeEnv, nodeEnvPresent) {
 		// If we installed dependencies with NODE_ENV=development and the user didn't explicitly set
 		// NODE_ENV we should prune the devDependencies from the final app image.
 		cmd := []string{"pnpm", "prune", "--prod"}

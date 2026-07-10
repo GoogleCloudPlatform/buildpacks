@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -40,7 +41,18 @@ const (
 	// DevMode is an env var used to enable development mode in buildpacks.
 	// DevMode should be respected by all buildpacks that are not product-specific.
 	// Example: `true`, `True`, `1` will enable development mode.
+	//
+	// Deprecated: Use GOOGLE_DEVSYNC instead.
 	DevMode = "GOOGLE_DEVMODE"
+
+	// DevSync is an env var used to enable development sync mode in buildpacks.
+	DevSync = "GOOGLE_DEVSYNC"
+
+	// DevSyncInitEntrypoint is an env var used to specify the initial entrypoint for dev sync mode.
+	DevSyncInitEntrypoint = "GOOGLE_DEV_SYNC_INIT_ENTRYPOINT"
+
+	// XGoogleDevSyncUseRunitUniversalMaker is an experiment flag to enable Runit supervision and the new universal_maker for DevSync on Ubuntu 24.04.
+	XGoogleDevSyncUseRunitUniversalMaker = "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER"
 
 	// Entrypoint is an env var used to override the default entrypoint.
 	// Entrypoint should be respected by at least one buildpack in builders that are not product-specific.
@@ -158,6 +170,12 @@ const (
 	// ColdStartImprovementsBuildStudy is an experiment flag to enable cold start improvements build study.
 	ColdStartImprovementsBuildStudy = "EXPERIMENTAL_RUNTIMES_COLD_START_BUILD"
 
+	// FasterLanguageTarballInstallation is an experiment flag to enable faster language tarball installation.
+	FasterLanguageTarballInstallation = "X_GOOGLE_FASTER_LANGUAGE_TARBALL_INSTALLATION"
+
+	// FasterTarballExtraction is an experiment flag to enable faster tarball extraction.
+	FasterTarballExtraction = "X_GOOGLE_USE_ZSTD_FOR_EXTRACTION"
+
 	// NodeCompileCache is an env var used to enable bytecode caching for Node.js applications.
 	NodeCompileCache = "NODE_COMPILE_CACHE"
 
@@ -169,9 +187,39 @@ const (
 	// Example: dev, qual, prod.
 	BuildEnv = "GOOGLE_BUILD_ENV"
 
+	// BuildUniverse is an env var used to specify the universe for the Build.
+	// Example: gdu, prp, tsq, tsp.
+	BuildUniverse = "GOOGLE_BUILD_UNIVERSE"
+
+	// TPCTarballProject is an env var used to specify the project for the TPC tarball.
+	TPCTarballProject = "GOOGLE_TPC_TARBALL_PROJECT"
+
+	// TPCHostname is an env var used to specify the hostname for the TPC build.
+	TPCHostname = "GOOGLE_TPC_HOSTNAME"
+
 	// PythonPackageManager is an env var used to specify the python package manager for the Build.
 	// Example: `pip`, `uv`.
 	PythonPackageManager = "GOOGLE_PYTHON_PACKAGE_MANAGER"
+
+	// AllowVulnerableDependencies is an env var used to disable react2shell vulnerability checks.
+	AllowVulnerableDependencies = "GOOGLE_ALLOW_VULNERABLE_DEPENDENCIES"
+
+	// GoogleUseGenericFirebaseBundle enables the generic firebase bundle buildpack.
+	GoogleUseGenericFirebaseBundle = "GOOGLE_USE_GENERIC_FIREBASEBUNDLE"
+
+	// PackageManager is an env var used to specify the package manager for the Build.
+	// Example: `npm`, `bun`.
+	PackageManager = "GOOGLE_PACKAGE_MANAGER"
+
+	// PipTargetDir is the environment variable used to specify the target directory for pip
+	// installation for the maker use case.
+	PipTargetDir = "GOOGLE_PIP_TARGET_DIR"
+
+	// StaticServe indicates that the static serve buildpack was invoked.
+	StaticServe = "GOOGLE_STATIC_SERVE"
+
+	// BuildIntelligenceFeature is an experiment flag to enable build intelligence feature.
+	BuildIntelligenceFeature = "X_GOOGLE_BUILD_INTELLIGENCE"
 )
 
 const (
@@ -229,6 +277,16 @@ func IsDevMode() (bool, error) {
 	return IsPresentAndTrue(DevMode)
 }
 
+// IsDevSync indicates that the builder is running in Dev Sync mode.
+func IsDevSync() (bool, error) {
+	return IsPresentAndTrue(DevSync)
+}
+
+// IsDevSyncUseRunitUniversalMaker indicates that Runit supervision and universal_maker for DevSync are enabled.
+func IsDevSyncUseRunitUniversalMaker() (bool, error) {
+	return IsPresentAndTrue(XGoogleDevSyncUseRunitUniversalMaker)
+}
+
 // IsUsingNativeImage returns true if the Java application should be built as a native image.
 func IsUsingNativeImage() (bool, error) {
 	return IsPresentAndTrue(UseNativeImage)
@@ -247,4 +305,15 @@ func IsPresentAndTrue(varName string) (bool, error) {
 	}
 
 	return parsed, nil
+}
+
+// UsingStaticServe returns true if the static serve buildpack is active.
+func UsingStaticServe() (bool, error) {
+	return IsPresentAndTrue(StaticServe)
+}
+
+// IsStaticBaseImage returns true if the workload is being built on a static base image (e.g., static24).
+// In generic run images, GOOGLE_RUNTIME is set to 'buildpacks'.
+func IsStaticBaseImage() bool {
+	return strings.HasPrefix(os.Getenv(Runtime), "static")
 }

@@ -26,15 +26,16 @@ var baseEnv = []string{
 
 const (
 	// Buildpack identifiers used to verify that buildpacks were or were not used.
-	nodeNPM             = "google.nodejs.npm"
-	nodePNPM            = "google.nodejs.pnpm"
-	nodeRuntime         = "google.nodejs.runtime"
-	nodeYarn            = "google.nodejs.yarn"
-	nodeFirebaseNextJs  = "google.nodejs.firebasenextjs"
-	nodeFirebaseAngular = "google.nodejs.firebaseangular"
-	nodeFirebaseNx      = "google.nodejs.firebasenx"
-	nodeTurborepo       = "google.nodejs.turborepo"
-	nodeFirebaseBundle  = "google.nodejs.firebasebundle"
+	nodeNPM               = "google.nodejs.npm"
+	nodePNPM              = "google.nodejs.pnpm"
+	nodeRuntime           = "google.nodejs.runtime"
+	nodeYarn              = "google.nodejs.yarn"
+	nodeFirebaseNextJs    = "google.nodejs.firebasenextjs"
+	nodeFirebaseAngular   = "google.nodejs.firebaseangular"
+	nodeFirebaseNx        = "google.nodejs.firebasenx"
+	nodeTurborepo         = "google.nodejs.turborepo"
+	nodeFirebaseBundle    = "google.nodejs.firebasebundle"
+	genericFirebaseBundle = "google.firebase.firebasebundle"
 )
 
 func init() {
@@ -171,13 +172,48 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			},
 			MustMatchStatusCode: 200,
 		},
+		{
+			Name: "nextjs with npm and generic bundle enabled",
+			App:  "nextjs_npm",
+			Env:  []string{"GOOGLE_BUILDABLE=./", "GOOGLE_USE_GENERIC_FIREBASEBUNDLE=true"},
+			MustUse: []string{
+				nodeRuntime,
+				nodeFirebaseNextJs,
+				nodeNPM,
+				genericFirebaseBundle,
+			},
+			MustNotUse: []string{nodeYarn, nodePNPM, nodeFirebaseAngular, nodeFirebaseNx, nodeTurborepo, nodeFirebaseBundle},
+			MustOutput: []string{
+				"✓ Compiled successfully",
+				"Setting run command from bundle.yaml: node .next/standalone/server.js",
+			},
+			MustMatchStatusCode: 200,
+		},
+		{
+			Name: "nextjs with npm and generic bundle disabled",
+			App:  "nextjs_npm",
+			Env:  []string{"GOOGLE_BUILDABLE=./", "GOOGLE_USE_GENERIC_FIREBASEBUNDLE=false"},
+			MustUse: []string{
+				nodeRuntime,
+				nodeFirebaseNextJs,
+				nodeNPM,
+				nodeFirebaseBundle,
+			},
+			MustNotUse: []string{nodeYarn, nodePNPM, nodeFirebaseAngular, nodeFirebaseNx, nodeTurborepo, genericFirebaseBundle},
+			MustOutput: []string{
+				"✓ Compiled successfully",
+				"Setting run command from bundle.yaml: node .next/standalone/server.js",
+			},
+			MustMatchStatusCode: 200,
+		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		// Prepend baseEnv to tc.Env, so that the baseEnv values can be overridden by the test case.
 		tc.Env = append(baseEnv, tc.Env...)
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			acceptance.TestApp(t, imageCtx, tc)
 		})
@@ -201,7 +237,8 @@ func TestFailuresNodeJs(t *testing.T) {
 		tc.Env = append(baseEnv, tc.Env...)
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})

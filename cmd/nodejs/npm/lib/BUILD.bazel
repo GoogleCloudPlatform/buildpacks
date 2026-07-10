@@ -13,9 +13,11 @@ go_library(
     ],
     deps = [
         "//pkg/ar",
+        "//pkg/buildermetadata",
         "//pkg/buildermetrics",
         "//pkg/cache",
         "//pkg/devmode",
+        "//pkg/env",
         "//pkg/firebase/faherror",
         "//pkg/gcpbuildpack",
         "//pkg/nodejs",

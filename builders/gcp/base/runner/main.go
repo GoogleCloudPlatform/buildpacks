@@ -17,6 +17,7 @@ import (
 	dotnetpublish "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/publish/lib"
 	dotnetruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/runtime/lib"
 	dotnetsdk "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/sdk/lib"
+	firebasebundlev2 "github.com/GoogleCloudPlatform/buildpacks/cmd/firebase/bundle/lib"
 	gobuild "github.com/GoogleCloudPlatform/buildpacks/cmd/go/build/lib"
 	goclearsource "github.com/GoogleCloudPlatform/buildpacks/cmd/go/clear_source/lib"
 	gofunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/go/functions_framework/lib"
@@ -33,11 +34,17 @@ import (
 	javanativeimage "github.com/GoogleCloudPlatform/buildpacks/cmd/java/native_image/lib"
 	javaruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/java/runtime/lib"
 	javaspringboot "github.com/GoogleCloudPlatform/buildpacks/cmd/java/spring_boot/lib"
+	nodejsbun "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/bun/lib"
+	nodejsfirebaseangular "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebaseangular/lib"
+	nodejsfirebasebundle "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebasebundle/lib"
+	nodejsfirebasenextjs "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebasenextjs/lib"
+	nodejsfirebasenx "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebasenx/lib"
 	nodejsfunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/functions_framework/lib"
-	nodejnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/npm/lib"
-	nodejppnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/pnpm/lib"
-	nodejruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/runtime/lib"
-	nodejyarn "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/yarn/lib"
+	nodejsnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/npm/lib"
+	nodejspnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/pnpm/lib"
+	nodejsruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/runtime/lib"
+	nodejsturborepo "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/turborepo/lib"
+	nodejsyarn "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/yarn/lib"
 	phpcomposer "github.com/GoogleCloudPlatform/buildpacks/cmd/php/composer/lib"
 	phpcomposergcpbuild "github.com/GoogleCloudPlatform/buildpacks/cmd/php/composer_gcp_build/lib"
 	phpcomposerinstall "github.com/GoogleCloudPlatform/buildpacks/cmd/php/composer_install/lib"
@@ -57,6 +64,8 @@ import (
 	rubyrails "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/rails/lib"
 	rubyrubygems "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/rubygems/lib"
 	rubyruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/runtime/lib"
+	staticserve "github.com/GoogleCloudPlatform/buildpacks/cmd/static/serve/lib"
+	utilsdevsync "github.com/GoogleCloudPlatform/buildpacks/cmd/utils/devsync/lib"
 	utilsnginx "github.com/GoogleCloudPlatform/buildpacks/cmd/utils/nginx/lib"
 )
 
@@ -105,6 +114,10 @@ func init() {
 	buildpacks["google.dotnet.sdk"] = gcp.BuildpackFuncs{
 		Detect: dotnetsdk.DetectFn,
 		Build:  dotnetsdk.BuildFn,
+	}
+	buildpacks["google.firebase.firebasebundle"] = gcp.BuildpackFuncs{
+		Detect: firebasebundlev2.DetectFn,
+		Build:  firebasebundlev2.BuildFn,
 	}
 	buildpacks["google.go.build"] = gcp.BuildpackFuncs{
 		Detect: gobuild.DetectFn,
@@ -175,20 +188,44 @@ func init() {
 		Build:  nodejsfunctionsframework.BuildFn,
 	}
 	buildpacks["google.nodejs.npm"] = gcp.BuildpackFuncs{
-		Detect: nodejnpm.DetectFn,
-		Build:  nodejnpm.BuildFn,
+		Detect: nodejsnpm.DetectFn,
+		Build:  nodejsnpm.BuildFn,
 	}
 	buildpacks["google.nodejs.pnpm"] = gcp.BuildpackFuncs{
-		Detect: nodejppnpm.DetectFn,
-		Build:  nodejppnpm.BuildFn,
+		Detect: nodejspnpm.DetectFn,
+		Build:  nodejspnpm.BuildFn,
 	}
 	buildpacks["google.nodejs.runtime"] = gcp.BuildpackFuncs{
-		Detect: nodejruntime.DetectFn,
-		Build:  nodejruntime.BuildFn,
+		Detect: nodejsruntime.DetectFn,
+		Build:  nodejsruntime.BuildFn,
 	}
 	buildpacks["google.nodejs.yarn"] = gcp.BuildpackFuncs{
-		Detect: nodejyarn.DetectFn,
-		Build:  nodejyarn.BuildFn,
+		Detect: nodejsyarn.DetectFn,
+		Build:  nodejsyarn.BuildFn,
+	}
+	buildpacks["google.nodejs.bun"] = gcp.BuildpackFuncs{
+		Detect: nodejsbun.DetectFn,
+		Build:  nodejsbun.BuildFn,
+	}
+	buildpacks["google.nodejs.firebaseangular"] = gcp.BuildpackFuncs{
+		Detect: nodejsfirebaseangular.DetectFn,
+		Build:  nodejsfirebaseangular.BuildFn,
+	}
+	buildpacks["google.nodejs.firebasebundle"] = gcp.BuildpackFuncs{
+		Detect: nodejsfirebasebundle.DetectFn,
+		Build:  nodejsfirebasebundle.BuildFn,
+	}
+	buildpacks["google.nodejs.firebasenextjs"] = gcp.BuildpackFuncs{
+		Detect: nodejsfirebasenextjs.DetectFn,
+		Build:  nodejsfirebasenextjs.BuildFn,
+	}
+	buildpacks["google.nodejs.firebasenx"] = gcp.BuildpackFuncs{
+		Detect: nodejsfirebasenx.DetectFn,
+		Build:  nodejsfirebasenx.BuildFn,
+	}
+	buildpacks["google.nodejs.turborepo"] = gcp.BuildpackFuncs{
+		Detect: nodejsturborepo.DetectFn,
+		Build:  nodejsturborepo.BuildFn,
 	}
 	buildpacks["google.php.composer"] = gcp.BuildpackFuncs{
 		Detect: phpcomposer.DetectFn,
@@ -266,9 +303,17 @@ func init() {
 		Detect: rubyruntime.DetectFn,
 		Build:  rubyruntime.BuildFn,
 	}
+	buildpacks["google.utils.devsync"] = gcp.BuildpackFuncs{
+		Detect: utilsdevsync.DetectFn,
+		Build:  utilsdevsync.BuildFn,
+	}
 	buildpacks["google.utils.nginx"] = gcp.BuildpackFuncs{
 		Detect: utilsnginx.DetectFn,
 		Build:  utilsnginx.BuildFn,
+	}
+	buildpacks["google.static.serve"] = gcp.BuildpackFuncs{
+		Detect: staticserve.DetectFn,
+		Build:  staticserve.BuildFn,
 	}
 }
 

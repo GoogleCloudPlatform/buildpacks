@@ -18,7 +18,10 @@ package python
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
+	"regexp"
+	stdruntime "runtime"
 	"strings"
 	"time"
 
@@ -50,6 +53,9 @@ const (
 	// VendorPipDepsEnv is the envar used to opt using vendored pip dependencies
 	VendorPipDepsEnv = "GOOGLE_VENDOR_PIP_DEPENDENCIES"
 
+	// DefaultPipTargetDir is the default directory to install python dependencies.
+	DefaultPipTargetDir = "lib"
+
 	versionFile = ".python-version"
 	versionKey  = "version"
 	versionEnv  = "GOOGLE_PYTHON_VERSION"
@@ -76,7 +82,25 @@ var (
 		runtime.Ubuntu2204: "3.13.*",
 		runtime.Ubuntu2404: "3.14.*",
 	}
+
+	execPrefixRegex = regexp.MustCompile(`exec_prefix\s*=\s*"([^"]+)`)
 )
+
+// SysconfigPatcherCapability is the capability key for the SysconfigPatcher.
+const SysconfigPatcherCapability = "python.SysconfigPatcher"
+
+// sysconfigPatcher is an interface for patching python sysconfig.
+type sysconfigPatcher interface {
+	PatchSysconfig(ctx *gcp.Context, layer *libcnb.Layer) error
+}
+
+// PipInstallerCapability is the capability key for the PipInstaller.
+const PipInstallerCapability = "python.PipInstaller"
+
+// pipInstaller is an interface for installing python dependencies.
+type pipInstaller interface {
+	Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error
+}
 
 // Version returns the installed version of Python.
 func Version(ctx *gcp.Context) (string, error) {
@@ -192,6 +216,14 @@ func versionFromFile(ctx *gcp.Context, dir string) (string, error) {
 // accidentally override some builtin stdlib modules, e.g. typing, enum, etc., and cause both
 // build-time and run-time failures.
 func PIPInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
+	if cap := ctx.Capability(PipInstallerCapability); cap != nil {
+		i, ok := cap.(pipInstaller)
+		if !ok {
+			return gcp.InternalErrorf("capability %q does not implement pipInstaller interface", PipInstallerCapability)
+		}
+		return i.Install(ctx, l, reqs...)
+	}
+
 	shouldInstall, err := prepareDependenciesLayer(ctx, l, "pip", reqs...)
 	if err != nil {
 		return err
@@ -251,18 +283,10 @@ func PIPInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) e
 	}
 
 	for _, req := range reqs {
-		cmd := []string{
-			"python3", "-m", "pip", "install",
-			"--requirement", req,
-			"--upgrade",
-			"--upgrade-strategy", "only-if-needed",
-			"--no-warn-script-location",   // bin is added at run time by lifecycle.
-			"--no-warn-conflicts",         // Needed for python37 which allowed users to override dependencies. For newer versions, we do a separate `pip check`.
-			"--force-reinstall",           // Some dependencies may be in the build image but not run image. Later requirements.txt should override earlier.
-			"--no-compile",                // Prevent default timestamp-based bytecode compilation. Deterministic pycs are generated in a second step below.
-			"--disable-pip-version-check", // If we were going to upgrade pip, we would have done it already in the runtime buildpack.
-			"--no-cache-dir",              // We used to save this to a layer, but it made builds slower because it includes http caching of pypi requests.
-		}
+		cmd := basePipInstallArgs(req)
+		cmd = append(cmd,
+			"--no-cache-dir", // We used to save this to a layer, but it made builds slower because it includes http caching of pypi requests.
+		)
 		cmd = appendVendoringFlags(cmd)
 		if !virtualEnv {
 			cmd = append(cmd, "--user") // Install into user site-packages directory.
@@ -273,7 +297,60 @@ func PIPInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) e
 		}
 	}
 
-	return compileBytecode(ctx, l.Path)
+	if err := compileBytecode(ctx, l.Path); err != nil {
+		return err
+	}
+
+	return CheckIncompatibleDependencies(ctx)
+}
+
+// CheckIncompatibleDependencies checks for incompatible dependencies using pip check.
+func CheckIncompatibleDependencies(ctx *gcp.Context) error {
+	ctx.Logf("Checking for incompatible dependencies.")
+	result, err := ctx.Exec([]string{"python3", "-m", "pip", "check"}, gcp.WithUserAttribution)
+	if result == nil {
+		return fmt.Errorf("pip check: %w", err)
+	}
+	if result.ExitCode == 0 {
+		return nil
+	}
+	pyVer, err := Version(ctx)
+	if err != nil {
+		return err
+	}
+	// HACK: For backwards compatibility on App Engine and Cloud Functions Python 3.7 only report a
+	//   warning.
+	if strings.HasPrefix(pyVer, "Python 3.7") {
+		ctx.Warnf("Found incompatible dependencies: %q", result.Stdout)
+		return nil
+	}
+	return gcp.UserErrorf("found incompatible dependencies: %q", result.Stdout)
+}
+
+// MakerPipInstaller implements the PipInstaller interface for the maker tool.
+type MakerPipInstaller struct {
+	TargetPlatform string
+}
+
+// PipTargetDir returns the target directory for installing python dependencies.
+func PipTargetDir() string {
+	targetDir := os.Getenv(env.PipTargetDir)
+	if targetDir == "" {
+		targetDir = DefaultPipTargetDir
+	}
+	return targetDir
+}
+
+// Install installs python dependencies to the target directory specified by GOOGLE_PIP_TARGET_DIR.
+// If GOOGLE_PIP_TARGET_DIR is not set, it defaults to "lib".
+func (i MakerPipInstaller) Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
+	return installDependenciesToTarget(ctx, l, reqs, "pip", i.TargetPlatform, func(req string) []string {
+		cmd := basePipInstallArgs(req)
+		if stdruntime.GOOS == "windows" && len(cmd) > 0 && cmd[0] == "python3" {
+			cmd[0] = "python"
+		}
+		return appendVendoringFlags(cmd)
+	})
 }
 
 // prepareDependenciesLayer is a helper function that handles the common logic for preparing a dependency layer.
@@ -442,4 +519,271 @@ func isBothPyprojectAndRequirementsPresent(ctx *gcp.Context) bool {
 	pyprojectTomlExists, _ := ctx.FileExists(pyprojectToml)
 	requirementsTxtExists, _ := ctx.FileExists(requirements)
 	return pyprojectTomlExists && requirementsTxtExists
+}
+
+// PatchSysconfig patches the python sysconfig variable prefix.
+func PatchSysconfig(ctx *gcp.Context, layer *libcnb.Layer) error {
+	if cap := ctx.Capability(SysconfigPatcherCapability); cap != nil {
+		p, ok := cap.(sysconfigPatcher)
+		if !ok {
+			return gcp.InternalErrorf("capability %q must implement sysconfigPatcher", SysconfigPatcherCapability)
+		}
+		return p.PatchSysconfig(ctx, layer)
+	}
+	// replace python sysconfig variable prefix from "/opt/python" to "/layers/google.python.runtime/python/" which is the layer.Path
+	// python is installed in /layers/google.python.runtime/python/ for unified builder,
+	// while the python downloaded from debs is installed in "/opt/python".
+	sysconfig, err := ctx.Exec([]string{filepath.Join(layer.Path, "bin/python3"), "-m", "sysconfig"})
+	if err != nil {
+		ctx.Warnf("Getting python sysconfig: %v", err)
+	}
+	execPrefix, err := parseExecPrefix(sysconfig.Stdout)
+	if err != nil {
+		return err
+	}
+	result, err := ctx.Exec([]string{
+		"grep",
+		"-rlI",
+		execPrefix,
+		layer.Path,
+	})
+	if err != nil {
+		ctx.Warnf("Grep failed: %v", err)
+	}
+	paths := strings.Split(result.Stdout, "\n")
+	for _, path := range paths {
+		if _, err := ctx.Exec([]string{
+			"sed",
+			"-i",
+			"s|" + execPrefix + "|" + layer.Path + "|g",
+			path,
+		}); err != nil {
+			ctx.Warnf("Patching file %q: %v", path, err)
+		}
+	}
+	return nil
+}
+
+func parseExecPrefix(sysconfig string) (string, error) {
+	match := execPrefixRegex.FindStringSubmatch(sysconfig)
+	if len(match) < 2 {
+		return "", fmt.Errorf("determining Python exec prefix: %v", match)
+	}
+	return match[1], nil
+}
+
+// MakerSysconfigPatcher implements the sysconfigPatcher interface for the maker tool.
+type MakerSysconfigPatcher struct{}
+
+// PatchSysconfig does nothing, as no patching is required for maker.
+func (p MakerSysconfigPatcher) PatchSysconfig(ctx *gcp.Context, layer *libcnb.Layer) error {
+	return nil
+}
+
+func basePipInstallArgs(req string) []string {
+	return []string{
+		"python3", "-m", "pip", "install",
+		"--requirement", req,
+		"--upgrade",
+		"--upgrade-strategy", "only-if-needed",
+		"--no-warn-script-location",   // bin is added at run time by lifecycle.
+		"--no-warn-conflicts",         // Needed for python37 and maker mode which allowed users to override dependencies. For newer versions, we do a separate `pip check`.
+		"--force-reinstall",           // Some dependencies may be in the build image but not run image. Later requirements.txt should override earlier.
+		"--no-compile",                // Prevent default timestamp-based bytecode compilation. Deterministic pycs are generated in a second step below.
+		"--disable-pip-version-check", // If we were going to upgrade pip, we would have done it already in the runtime buildpack.
+	}
+}
+
+// EntrypointAdapterCapability is the capability key for the EntrypointAdapter.
+const EntrypointAdapterCapability = "python.EntrypointAdapter"
+
+// entrypointAdapter is an interface for rewriting the entrypoint command.
+type entrypointAdapter interface {
+	adapt(cmd []string, scriptCmd []string) ([]string, error)
+}
+
+// AdaptEntrypoint rewrites the entrypoint command if the capability is present.
+func AdaptEntrypoint(ctx *gcp.Context, cmd []string, scriptCmd []string) ([]string, error) {
+	if cap := ctx.Capability(EntrypointAdapterCapability); cap != nil {
+		a, ok := cap.(entrypointAdapter)
+		if !ok {
+			return nil, gcp.InternalErrorf("capability %q does not implement entrypointAdapter interface", EntrypointAdapterCapability)
+		}
+		return a.adapt(cmd, scriptCmd)
+	}
+	return cmd, nil
+}
+
+// MakerEntrypointAdapter implements the entrypointAdapter interface for
+// the maker tool.
+type MakerEntrypointAdapter struct {
+	TargetPlatform string
+}
+
+// adapt modifies the entrypoint command for the maker tool.
+func (a MakerEntrypointAdapter) adapt(cmd []string, scriptCmd []string) ([]string, error) {
+	commandToAdapt := cmd
+	if len(scriptCmd) > 0 {
+		// If scriptCmd is present, it takes precedence over cmd.
+		commandToAdapt = scriptCmd
+	}
+
+	if len(commandToAdapt) == 0 {
+		return commandToAdapt, nil
+	}
+	if commandToAdapt[0] == "python" || commandToAdapt[0] == "python3" {
+		return commandToAdapt, nil
+	}
+
+	targetDir := PipTargetDir()
+
+	pythonCmd := "python3"
+	var binPath string
+	if strings.HasPrefix(a.TargetPlatform, "windows") {
+		pythonCmd = "python"
+		binPath = strings.Join([]string{targetDir, "bin", commandToAdapt[0]}, "\\")
+	} else {
+		binPath = path.Join(targetDir, "bin", commandToAdapt[0])
+	}
+
+	return append([]string{pythonCmd, binPath}, commandToAdapt[1:]...), nil
+}
+
+// UVDependencyInstallerCapability is the capability key for the
+// UVDependenciesInstaller.
+const UVDependencyInstallerCapability = "python.UVDependencyInstaller"
+
+// UVDependenciesInstaller is an interface for installing python dependencies
+// using uv.
+type UVDependenciesInstaller interface {
+	Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error
+}
+
+// CheckUVIncompatibleDependencies checks for incompatible dependencies using
+// uv pip check.
+func CheckUVIncompatibleDependencies(ctx *gcp.Context, venvDir string) error {
+	ctx.Logf("Checking for incompatible dependencies.")
+	result, err := ctx.Exec([]string{"uv", "pip", "check"}, gcp.WithUserAttribution, gcp.WithEnv("VIRTUAL_ENV="+venvDir))
+	if result == nil {
+		return fmt.Errorf("uv pip check: %w", err)
+	}
+	if result.ExitCode == 0 {
+		return nil
+	}
+	return gcp.UserErrorf("found incompatible dependencies: %q", result.Stderr)
+}
+
+// MakerUVDependencyInstaller implements the UVDependenciesInstaller interface
+// for the maker tool.
+type MakerUVDependencyInstaller struct {
+	TargetPlatform string
+}
+
+// Install installs python dependencies locally to the target directory
+// specified by GOOGLE_PIP_TARGET_DIR using uv. This supports the Maker's
+// artifact generation by installing packages into a specific directory
+// unlike the standard buildpack which installs into a virtual environment.
+func (i MakerUVDependencyInstaller) Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
+	return installDependenciesToTarget(ctx, l, reqs, "uv", i.TargetPlatform, func(req string) []string {
+		return baseuvPipInstallArgs(req)
+	})
+}
+
+func baseuvPipInstallArgs(req string) []string {
+	cmd := []string{"uv", "pip", "install"}
+	if req == "." {
+		cmd = append(cmd, ".")
+	} else {
+		cmd = append(cmd, "-r", req)
+	}
+	// --reinstall: Reinstall all packages to ensure fresh installation.
+	// --link-mode=copy: Copy files instead of hardlinking to ensure the target
+	// directory is self-contained and portable.
+	cmd = append(cmd, "--reinstall", "--link-mode=copy")
+	return appendVendoringFlags(cmd)
+}
+
+func installDependenciesToTarget(ctx *gcp.Context, l *libcnb.Layer, reqs []string, installerName string, targetPlatform string, cmdBuilder func(string) []string) error {
+	targetDir, targetPath := resolvePipTargetPaths(ctx)
+	ctx.Logf("Installing dependencies to target directory: %s using %s", targetDir, installerName)
+
+	separator := ":"
+	if strings.HasPrefix(targetPlatform, "windows") {
+		separator = ";"
+	}
+
+	// We set PYTHONPATH so that the python interpreter can find the dependencies
+	// in the target directory. We also add the application root to PYTHONPATH so
+	// that the application can import modules from the root.
+	l.LaunchEnvironment.Override("PYTHONPATH", targetDir+separator+".")
+	l.SharedEnvironment.Override("PYTHONPATH", targetPath+string(os.PathListSeparator)+ctx.ApplicationRoot())
+
+	return installRequirementsToTarget(ctx, targetPath, reqs, cmdBuilder)
+}
+
+func resolvePipTargetPaths(ctx *gcp.Context) (string, string) {
+	targetDir := PipTargetDir()
+	var targetPath string
+	if filepath.IsAbs(targetDir) {
+		targetPath = targetDir
+	} else {
+		targetPath = filepath.Join(ctx.ApplicationRoot(), targetDir)
+	}
+	return targetDir, targetPath
+}
+
+// mergeRequirementsFiles reads all files in reqs and appends their contents to dest file.
+func mergeRequirementsFiles(reqs []string, dest string) error {
+	destFile, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open destination file: %w", err)
+	}
+	defer destFile.Close()
+
+	for _, req := range reqs {
+		content, err := os.ReadFile(req)
+		if err != nil {
+			return fmt.Errorf("failed to read requirements file %q: %w", req, err)
+		}
+		if _, err := destFile.Write(content); err != nil {
+			return fmt.Errorf("failed to write to destination file: %w", err)
+		}
+		// Add a newline to ensure files are separated correctly
+		if _, err := destFile.Write([]byte("\n")); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func installRequirementsToTarget(ctx *gcp.Context, targetPath string, reqs []string, cmdBuilder func(string) []string) error {
+	if len(reqs) == 0 {
+		return nil
+	}
+
+	reqFile := reqs[0]
+
+	if len(reqs) > 1 {
+		// Create a temporary file to merge all requirements
+		tmpFile, err := os.CreateTemp("", "merged_requirements_*.txt")
+		if err != nil {
+			return fmt.Errorf("failed to create temp file for requirements: %w", err)
+		}
+		tmpFile.Close()
+		defer os.Remove(tmpFile.Name())
+
+		if err := mergeRequirementsFiles(reqs, tmpFile.Name()); err != nil {
+			return err
+		}
+		reqFile = tmpFile.Name()
+	}
+
+	cmd := cmdBuilder(reqFile)
+	cmd = append(cmd, "--target", targetPath)
+
+	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
+		return fmt.Errorf("installing dependencies: %w", err)
+	}
+
+	return nil
 }

@@ -93,6 +93,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
   uri = "java/clear_source_using_runner.tgz"
 
 [[buildpacks]]
+  id = "google.java.spring-boot"
+  uri = "java/spring_boot.tgz"
+
+[[buildpacks]]
   id = "google.nodejs.runtime"
   uri = "nodejs/runtime_using_runner.tgz"
 
@@ -107,6 +111,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
 [[buildpacks]]
   id = "google.nodejs.pnpm"
   uri = "nodejs/pnpm_using_runner.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.bun"
+  uri = "nodejs/bun_using_runner.tgz"
 
 [[buildpacks]]
   id = "google.nodejs.functions-framework"
@@ -337,6 +345,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.java.maven"
 
   [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
+
+  [[order.group]]
     id = "google.java.functions-framework"
     optional = true
 
@@ -362,6 +374,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
 
   [[order.group]]
     id = "google.java.functions-framework"
@@ -411,6 +427,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.java.maven"
 
   [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
+
+  [[order.group]]
     id = "google.config.entrypoint"
 
   [[order.group]]
@@ -426,6 +446,10 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
 
   [[order.group]]
     id = "google.java.entrypoint"
@@ -732,6 +756,24 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.nodejs.runtime"
 
   [[order.group]]
+    id = "google.nodejs.bun"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
     id = "google.nodejs.npm"
 
   [[order.group]]
@@ -849,4 +891,4 @@ description = "Ubuntu 22.04 base image with buildpacks for .NET, Dart, Go, Java,
   run-image = "gcr.io/buildpacks/google-22/run"
 
 [lifecycle]
-  version = "0.20.5"
+  version = "0.21.12"

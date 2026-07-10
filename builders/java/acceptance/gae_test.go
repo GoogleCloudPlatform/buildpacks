@@ -86,6 +86,13 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput: []string{"WARNING"},
 		},
 		{
+			Name:                       "custom_entrypoint_with_appengine_web_xml",
+			VersionInclusionConstraint: ">=25.0.0",
+			App:                        "custom_entrypoint_appengine_web_xml",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=java Main.java"},
+			MustNotOutput:              []string{"WARNING"},
+		},
+		{
 			Name:          "single_jar",
 			App:           "single_jar",
 			MustNotOutput: []string{"WARNING"},
@@ -180,20 +187,18 @@ func TestAcceptance(t *testing.T) {
 			MustNotOutput:              []string{"WARNING"},
 			Setup:                      updateGradleVersions,
 		},
-		// Spring boot app, spring-boot-buildpack must opt in for Java25 and not for Java21
+		// Spring boot app, spring-boot-buildpack must opt in for all java versions >=Java17
 		{
-			Name:                       "hello_springboot_maven_for_java_25",
+			Name:                       "hello_springboot_maven_for_java_17_and_above",
 			App:                        "springboot-helloworld",
-			VersionInclusionConstraint: ">=25.0.0",
-			Env:                        []string{"GOOGLE_RUNTIME_VERSION=25.0.0_36.0.LTS"},
+			VersionInclusionConstraint: ">=17.0.0",
 			MustUse:                    []string{"google.java.spring-boot"},
 			MustNotOutput:              []string{"ERROR"},
 		},
 		{
-			Name:                       "hello_springboot_maven_for_java_21",
+			Name:                       "hello_springboot_maven_for_java_11",
 			App:                        "springboot-helloworld",
-			VersionInclusionConstraint: "<25.0.0 >17.0.0",
-			Env:                        []string{"GOOGLE_RUNTIME_VERSION=21.0"},
+			VersionInclusionConstraint: "<17.0.0",
 			MustNotUse:                 []string{"google.java.spring-boot"},
 			MustNotOutput:              []string{"ERROR"},
 		},
@@ -203,7 +208,8 @@ func TestAcceptance(t *testing.T) {
 		tc.FlakyBuildAttempts = 3
 
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gae")
 

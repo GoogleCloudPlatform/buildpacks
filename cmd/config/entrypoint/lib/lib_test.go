@@ -16,6 +16,7 @@ package lib
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 
 	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
@@ -180,7 +181,10 @@ dev:     foo
 			if err != nil {
 				t.Fatalf("addProcfileProcesses(%s) got error: %v", tc.content, err)
 			}
-			if got := ctx.Processes(); !reflect.DeepEqual(got, tc.want) {
+			got := ctx.Processes()
+			sort.Slice(got, func(i, j int) bool { return got[i].Type < got[j].Type })
+			sort.Slice(tc.want, func(i, j int) bool { return tc.want[i].Type < tc.want[j].Type })
+			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("addProcfileProcesses(%s) = %#v, want %#v", tc.content, got, tc.want)
 			}
 		})

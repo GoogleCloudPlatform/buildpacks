@@ -49,7 +49,7 @@ func TestDetect(t *testing.T) {
 				"pyproject.toml": `[project]
 name = "my-pip-project"`,
 			},
-			env:  []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=pip", "X_GOOGLE_RELEASE_TRACK=BETA"},
+			env:  []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=pip"},
 			want: 0,
 		},
 	}

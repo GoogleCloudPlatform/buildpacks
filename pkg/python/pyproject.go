@@ -27,6 +27,8 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/libcnb/v2"
 )
@@ -50,14 +52,17 @@ var (
 	poetryLockCmd    = []string{"poetry", "lock", "--no-interaction"}
 )
 
+type layerType int
+
+const (
+	buildLayer layerType = iota
+	buildAndLaunchLayer
+)
+
 // IsPoetryProject checks if the application is a Poetry project.
 func IsPoetryProject(ctx *gcp.Context) (bool, string, error) {
-	poetryLockExists, err := ctx.FileExists(poetryLock)
-	if err != nil {
-		return false, "", fmt.Errorf("checking for %s: %w", poetryLock, err)
-	}
-	if poetryLockExists {
-		return true, fmt.Sprintf("found %s", poetryLock), nil
+	if isBothPyprojectAndRequirementsPresent(ctx) {
+		return false, fmt.Sprintf("%s and %s found, prefer requirements.txt", pyprojectToml, requirements), nil
 	}
 
 	pyprojectTomlExists, err := ctx.FileExists(pyprojectToml)
@@ -66,6 +71,14 @@ func IsPoetryProject(ctx *gcp.Context) (bool, string, error) {
 	}
 	if !pyprojectTomlExists {
 		return false, fmt.Sprintf("%s not found", pyprojectToml), nil
+	}
+
+	poetryLockExists, err := ctx.FileExists(poetryLock)
+	if err != nil {
+		return false, "", fmt.Errorf("checking for %s: %w", poetryLock, err)
+	}
+	if poetryLockExists {
+		return true, fmt.Sprintf("found %s", poetryLock), nil
 	}
 
 	pyprojectTomlContent, err := ctx.ReadFile(pyprojectToml)
@@ -89,7 +102,7 @@ func IsPoetryProject(ctx *gcp.Context) (bool, string, error) {
 
 // InstallPoetry installs the poetry CLI using uv to speed up the installation.
 func InstallPoetry(ctx *gcp.Context) error {
-	err := installTool(ctx, pip, uv, uvLayer, "")
+	err := installTool(ctx, pip, uv, uvLayer, "", buildLayer)
 	if err != nil {
 		return fmt.Errorf("installing uv: %w", err)
 	}
@@ -99,14 +112,8 @@ func InstallPoetry(ctx *gcp.Context) error {
 		return fmt.Errorf("getting poetry version constraint: %w", err)
 	}
 
-	if err := installTool(ctx, uv, poetry, poetryLayer, poetryVersionConstraint); err != nil {
+	if err := installTool(ctx, uv, poetry, poetryLayer, poetryVersionConstraint, buildAndLaunchLayer); err != nil {
 		return fmt.Errorf("installing poetry with uv: %w", err)
-	}
-
-	ctx.Logf("Uninstalling uv to remove it from the final image.")
-	uninstallUVCmd := []string{"python3", "-m", "pip", "uninstall", "-y", uv}
-	if _, err := ctx.Exec(uninstallUVCmd); err != nil {
-		ctx.Warnf("Failed to uninstall uv, it may remain in the final image: %v", err)
 	}
 
 	return nil
@@ -260,8 +267,35 @@ func IsUVInstalledInPath(ctx *gcp.Context) (bool, error) {
 	return true, nil
 }
 
+// UVToolInstallerCapability is the capability key for the UVInstaller.
+const UVToolInstallerCapability = "python.UVInstaller"
+
+// UVToolInstaller is an interface for installing the uv tool.
+type UVToolInstaller interface {
+	Install(ctx *gcp.Context) error
+}
+
+// MakerUVInstaller implements the UVToolInstaller interface for the maker tool.
+type MakerUVInstaller struct{}
+
+// Install does nothing, as uv is expected to be present in the
+// maker environment. In Maker mode, we rely on the pre-installed `uv`
+// binary on the user's system to avoid the overhead of downloading
+// and installing it during the local build simulation.
+func (i MakerUVInstaller) Install(ctx *gcp.Context) error {
+	return nil
+}
+
 // InstallUV installs UV into a dedicated layer, respecting version constraints.
 func InstallUV(ctx *gcp.Context) error {
+	if cap := ctx.Capability(UVToolInstallerCapability); cap != nil {
+		i, ok := cap.(UVToolInstaller)
+		if !ok {
+			return gcp.InternalErrorf("capability %q does not implement UVToolInstaller interface", UVToolInstallerCapability)
+		}
+		return i.Install(ctx)
+	}
+
 	uvVersionConstraint, err := RequestedUVVersion(ctx)
 	if err != nil {
 		return fmt.Errorf("getting uv version constraint: %w", err)
@@ -275,7 +309,7 @@ func InstallUV(ctx *gcp.Context) error {
 			return nil
 		}
 	}
-	return installTool(ctx, pip, uv, uvLayer, uvVersionConstraint)
+	return installTool(ctx, pip, uv, uvLayer, uvVersionConstraint, buildAndLaunchLayer)
 }
 
 // EnsureUVLockfile checks for uv.lock and generates it if it doesn't exist.
@@ -287,6 +321,18 @@ func EnsureUVLockfile(ctx *gcp.Context) error {
 
 // UVInstallDependenciesAndConfigureEnv installs dependencies and sets up the runtime environment using uv.
 func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) (string, error) {
+	if cap := ctx.Capability(UVDependencyInstallerCapability); cap != nil {
+		i, ok := cap.(UVDependenciesInstaller)
+		if !ok {
+			return "", gcp.InternalErrorf("capability %q does not implement UVDependenciesInstaller interface", UVDependencyInstallerCapability)
+		}
+		return "", i.Install(ctx, l, ".")
+	}
+
+	if err := EnsureUVLockfile(ctx); err != nil {
+		return "", fmt.Errorf("ensuring uv.lock file: %w", err)
+	}
+
 	pythonVersion, err := Version(ctx)
 	if err != nil {
 		return "", err
@@ -294,13 +340,11 @@ func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) (st
 	pythonVersion = strings.TrimPrefix(pythonVersion, "Python ")
 
 	venvDir := filepath.Join(l.Path, ".venv")
-	ctx.Logf("Creating virtual environment at %s with Python %s", venvDir, pythonVersion)
-	venvCmd := []string{"uv", "venv", venvDir, "--python", pythonVersion}
-	if _, err := ctx.Exec(venvCmd, gcp.WithUserAttribution); err != nil {
-		return "", fmt.Errorf("failed to create virtual environment with uv: %w", err)
+	if err := ensureUVVenv(ctx, venvDir, pythonVersion); err != nil {
+		return "", err
 	}
 
-	syncCmd := []string{"uv", "sync", "--active", "--link-mode=copy"}
+	syncCmd := []string{"uv", "sync", "--active", "--link-mode=copy", "--python", pythonVersion}
 	syncCmd = appendVendoringFlags(syncCmd)
 
 	ctx.Logf("Installing dependencies with `uv sync` into the virtual environment...")
@@ -311,14 +355,31 @@ func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) (st
 
 	venvBinDir := filepath.Join(venvDir, "bin")
 	l.SharedEnvironment.Prepend("PATH", string(filepath.ListSeparator), venvBinDir)
+	if err := CheckUVIncompatibleDependencies(ctx, venvDir); err != nil {
+		return "", err
+	}
 	return venvDir, nil
 }
 
 // installTool handles the common logic of installing a python tool with either pip or uv.
-func installTool(ctx *gcp.Context, provider, toolName, layerName, versionConstraint string) error {
-	layer, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer)
+func installTool(ctx *gcp.Context, provider, toolName, layerName, versionConstraint string, layerType layerType) error {
+	opts := []gcp.LayerOption{gcp.BuildLayer, gcp.CacheLayer}
+	if layerType == buildAndLaunchLayer {
+		opts = append(opts, gcp.LaunchLayer)
+	}
+	layer, err := ctx.Layer(layerName, opts...)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", layerName, err)
+	}
+
+	if versionConstraint == "" {
+		toolVersion, err := tooling.ResolveToolVersion("python", toolName, os.Getenv(env.RuntimeVersion), runtime.OSForStack(ctx))
+		if err != nil || toolVersion == "" {
+			ctx.Warnf("Could not resolve pinned %s version, falling back: %v", toolName, err)
+		} else {
+			versionConstraint = "==" + toolVersion
+			ctx.Logf("Resolved pinned %s version: %s", toolName, versionConstraint)
+		}
 	}
 
 	dependencyToInstall := toolName
@@ -332,19 +393,21 @@ func installTool(ctx *gcp.Context, provider, toolName, layerName, versionConstra
 	var installCmd []string
 	switch provider {
 	case "pip":
-		installCmd = []string{"python3", "-m", "pip", "install", dependencyToInstall}
+		installCmd = []string{"python3", "-m", "pip", "install", "--user", "--no-cache-dir", "--no-compile", "--disable-pip-version-check", dependencyToInstall}
 		ctx.Logf("Installing %s into %s using pip", dependencyToInstall, layer.Path)
 	case "uv":
-		installCmd = []string{"uv", "pip", "install", "--system", "--link-mode=copy", "-q", dependencyToInstall}
+		if err := ensureUVVenv(ctx, layer.Path, ""); err != nil {
+			return err
+		}
+		installCmd = []string{"uv", "pip", "install", "--python", layer.Path, "--no-cache", "-q", dependencyToInstall}
 		ctx.Logf("Installing %s into %s using uv", dependencyToInstall, layer.Path)
 	default:
 		return fmt.Errorf("unknown provider: %s", provider)
 	}
 
-	os.Setenv("PYTHONUSERBASE", layer.Path)
 	ctx.Logf("Running: %s", strings.Join(installCmd, " "))
-	_, err = ctx.Exec(installCmd, gcp.WithUserAttribution)
-	os.Unsetenv("PYTHONUSERBASE")
+	_, err = ctx.Exec(installCmd, gcp.WithUserAttribution, gcp.WithEnv("PYTHONUSERBASE="+layer.Path))
+
 	if err != nil {
 		if versionConstraint == "" {
 			return buildererror.Errorf(buildererror.StatusInternal, "failed to install %s with %s: %v", toolName, provider, err)
@@ -355,8 +418,50 @@ func installTool(ctx *gcp.Context, provider, toolName, layerName, versionConstra
 	ctx.Logf("%s installed successfully.", toolName)
 
 	binDir := filepath.Join(layer.Path, "bin")
-	layer.BuildEnvironment.Prepend("PATH", string(os.PathListSeparator), binDir)
+	if layerType == buildAndLaunchLayer {
+		layer.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), binDir)
+	} else {
+		layer.BuildEnvironment.Prepend("PATH", string(os.PathListSeparator), binDir)
+	}
 
+	currentPath := os.Getenv("PATH")
+	if currentPath == "" {
+		os.Setenv("PATH", binDir)
+	} else {
+		os.Setenv("PATH", fmt.Sprintf("%s%c%s", binDir, os.PathListSeparator, currentPath))
+	}
+
+	return nil
+}
+
+// ensureUVVenv checks for an existing environment at the given path and creates one if it doesn't exist.
+func ensureUVVenv(ctx *gcp.Context, path, pythonVersion string) error {
+	venvConfigFile := filepath.Join(path, "pyvenv.cfg")
+	if _, err := os.Stat(venvConfigFile); err == nil {
+		ctx.Logf("Reusing existing environment at %s", path)
+		return nil
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to check environment path %s: %w", path, err)
+	}
+	ctx.Logf("Creating isolated layer environment at %s", path)
+	venvCmd := []string{"uv", "venv", path, "--clear"}
+	if pythonVersion == "" {
+		pv, err := Version(ctx)
+		if err != nil {
+			return err
+		}
+		if pv != "" {
+			pythonVersion = strings.TrimPrefix(pv, "Python ")
+		}
+	}
+
+	if pythonVersion != "" {
+		ctx.Logf("Using python %s to create virtual environment.", pythonVersion)
+		venvCmd = append(venvCmd, "--python", pythonVersion)
+	}
+	if _, err := ctx.Exec(venvCmd, gcp.WithUserAttribution); err != nil {
+		return fmt.Errorf("failed to create layer environment: %w", err)
+	}
 	return nil
 }
 
@@ -426,7 +531,6 @@ func GetScriptCommand(ctx *gcp.Context) ([]string, error) {
 }
 
 // IsPyprojectEnabled checks if the pyproject feature is enabled.
-// For any future changes to the release stage, this is the single place to make changes.
 func IsPyprojectEnabled(ctx *gcp.Context) bool {
 	pyprojectTomlExists, _ := ctx.FileExists(pyprojectToml)
 	if !pyprojectTomlExists {
@@ -435,14 +539,11 @@ func IsPyprojectEnabled(ctx *gcp.Context) bool {
 	if isBothPyprojectAndRequirementsPresent(ctx) {
 		return false // Prefer requirements.txt over pyproject.toml.
 	}
-	return env.IsBetaSupported()
+	return true
 }
 
 // IsPipPyproject checks if the application is a pip pyproject.
 func IsPipPyproject(ctx *gcp.Context) bool {
-	if isBothPyprojectAndRequirementsPresent(ctx) {
-		return false // Prefer requirements.txt over pyproject.toml.
-	}
 	return isPackageManagerConfigured(pip) && IsPyprojectEnabled(ctx) && (env.IsGCP() || env.IsGCF())
 }
 
@@ -485,13 +586,26 @@ func PipInstallPyproject(ctx *gcp.Context, l *libcnb.Layer) error {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
 
+	l.SharedEnvironment.Default("PYTHONUSERBASE", l.Path)
+	if err := ctx.Setenv("PYTHONUSERBASE", l.Path); err != nil {
+		return err
+	}
+	binDir := filepath.Join(l.Path, "bin")
+	l.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), binDir)
+	if err := ctx.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH")); err != nil {
+		return err
+	}
+
 	cmd := []string{
 		"python3", "-m", "pip", "install",
 		".",
+		"--user",
 		"--upgrade",
 		"--upgrade-strategy", "only-if-needed",
 		"--no-warn-script-location",   // bin is added at run time by lifecycle.
 		"--disable-pip-version-check", // If we were going to upgrade pip, we would have done it already in the runtime buildpack.
+		"--force-reinstall",           // Some dependencies may be in the build image but not run image. Later requirements.txt should override earlier.
+		"--no-compile",                // Prevent default timestamp-based bytecode compilation. Deterministic pycs are generated in a second step below.
 		"--no-cache-dir",              // We don't want http caching of pypi requests.
 	}
 	vendorDir, isVendored := os.LookupEnv(VendorPipDepsEnv)

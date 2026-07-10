@@ -5,6 +5,8 @@ load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
+exports_files(["exec/heapsize.sh"])
+
 buildpack(
     name = "runtime",
     srcs = [
