@@ -1,0 +1,16 @@
+# google3/third_party/gcp_buildpacks/tools/bigquery_transform/BUILD
+load("//javascript/angular/tools/node/jasmine/builddefs:jasmine_node.bzl", "jasmine_node_test")
+load("//javascript/tools/nodejs:nodejs_rules.bzl", "nodejs_module")
+
+package(default_visibility = ["//:__subpackages__"])
+
+nodejs_module(
+    name = "transformation_module",
+    srcs = ["transformation.js"],
+)
+
+jasmine_node_test(
+    name = "transformation_test",
+    srcs = ["transformation_test.js"],
+    deps = [":transformation_module"],
+)
