@@ -382,14 +382,14 @@ func MergeWithEnvironmentSpecificYAML(appHostingSchema *AppHostingSchema, appHos
 	return nil
 }
 
-// IsKeyUserDefined determines whether the provided KEY environment variable is already user defined.
-func IsKeyUserDefined(schema *AppHostingSchema, key string) bool {
+// GetEnvVar returns the environment variable with the provided key, and whether it was found in the provided AppHostingSchema.
+func GetEnvVar(schema *AppHostingSchema, key string) (EnvironmentVariable, bool) {
 	for _, e := range schema.Env {
 		if e.Variable == key {
-			return true
+			return e, true
 		}
 	}
-	return false
+	return EnvironmentVariable{}, false
 }
 
 // WriteToFile writes the given app hosting schema to the specified path.

@@ -30,7 +30,7 @@ func TestAcceptanceCppFn(t *testing.T) {
 	testCases := []acceptance.Test{
 		{
 			// Cpp is not supported on new stacks starting Ubuntu 22.04.
-			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22"},
+			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22", "google.24"},
 			Name:       "function with additional dependencies",
 			App:        "test_function",
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=test_function", "GOOGLE_FUNCTION_SIGNATURE_TYPE=http"},
@@ -40,7 +40,7 @@ func TestAcceptanceCppFn(t *testing.T) {
 		},
 		{
 			// Cpp is not supported on new stacks starting Ubuntu 22.04.
-			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22"},
+			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22", "google.24"},
 			Name:       "function using declarative configuration",
 			App:        "test_declarative",
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=test_function"},

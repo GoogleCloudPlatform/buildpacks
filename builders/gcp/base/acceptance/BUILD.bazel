@@ -35,12 +35,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/dart:generic)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-dart-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/dart:generic",
     ],
     embed = [":acceptance"],
@@ -58,12 +58,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/dotnet:generic)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-dotnet-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/dotnet:generic",
     ],
     embed = [":acceptance"],
@@ -81,12 +81,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/go:generic)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-go-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/go:generic",
     ],
     embed = [":acceptance"],
@@ -104,12 +104,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/java:generic)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-java-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/java:generic",
     ],
     embed = [":acceptance"],
@@ -127,12 +127,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/nodejs:generic)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-nodejs-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/nodejs:generic",
     ],
     embed = [":acceptance"],
@@ -150,12 +150,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/php:generic)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-php-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/php:generic",
     ],
     embed = [":acceptance"],
@@ -173,12 +173,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/python:generic)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-python-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/python:generic",
     ],
     embed = [":acceptance"],
@@ -196,12 +196,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/ruby:generic)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-ruby-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/ruby:generic",
     ],
     embed = [":acceptance"],
@@ -219,12 +219,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/cpp:functions)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-cpp-fn-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/cpp:functions",
     ],
     embed = [":acceptance"],
@@ -242,12 +242,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/dotnet:functions)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-dotnet-fn-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/dotnet:functions",
     ],
     embed = [":acceptance"],
@@ -265,12 +265,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/nodejs:functions)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-nodejs-fn-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/nodejs:functions",
     ],
     embed = [":acceptance"],
@@ -288,12 +288,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/go:functions)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-go-fn-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/go:functions",
     ],
     embed = [":acceptance"],
@@ -311,12 +311,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/java:functions.tgz)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-java-fn-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/java:functions.tgz",
     ],
     embed = [":acceptance"],
@@ -334,12 +334,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/python:functions)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-python-fn-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/python:functions",
     ],
     embed = [":acceptance"],
@@ -357,12 +357,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/ruby:functions)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-ruby-fn-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/ruby:functions",
     ],
     embed = [":acceptance"],

@@ -81,20 +81,33 @@ func buildSDKLayer(ctx *gcp.Context, version string, isDevMode bool) error {
 	if _, err := runtime.InstallTarballIfNotCached(ctx, runtime.DotnetSDK, version, sdkl); err != nil {
 		return err
 	}
-	setSDKEnvVars(ctx, sdkl, isDevMode)
+	if err := setSDKEnvVars(ctx, sdkl, isDevMode); err != nil {
+		return err
+	}
 	ctx.SetMetadata(sdkl, devModeKey, strconv.FormatBool(isDevMode))
 	return nil
 }
 
-func setSDKEnvVars(ctx *gcp.Context, sdkl *libcnb.Layer, isDevMode bool) {
+func setSDKEnvVars(ctx *gcp.Context, sdkl *libcnb.Layer, isDevMode bool) error {
 	if dotnet.RequiresGlobalizationInvariant(ctx) {
 		sdkl.BuildEnvironment.Default("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1")
 	}
+
+	cap := ctx.Capability(dotnet.SkipEnvVariablesAssignmentCapability)
+	if cap != nil {
+		skip, ok := cap.(dotnet.SkipEnvVariablesAssignment)
+		if !ok {
+			return gcp.InternalErrorf("capability %q must implement dotnet.SkipEnvVariablesAssignment", dotnet.SkipEnvVariablesAssignmentCapability)
+		}
+		return skip.SkipVariables(ctx, sdkl)
+	}
+
 	if isDevMode {
 		setSDKEnvVarsDevMode(sdkl)
 	} else {
 		setSDKEnvVarsForBuild(sdkl)
 	}
+	return nil
 }
 
 // setSDKEnvVarsDevMode sets the env vars for dev mode. In dev mode, the full

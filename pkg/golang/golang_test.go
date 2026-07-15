@@ -22,6 +22,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
 	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
@@ -632,12 +634,12 @@ func TestRuntimeVersion(t *testing.T) {
 		{
 			name:    "no_env_use_latest for the stack id",
 			stackID: "google.22",
-			want:    "1.25.*",
+			want:    "1.26.*",
 		},
 		{
 			name:    "invalid stack id, will fallback to ubuntu2204 and pass",
 			stackID: "abc",
-			want:    "1.25.*",
+			want:    "1.26.*",
 		},
 	}
 
@@ -685,6 +687,37 @@ func TestRuntimeVersionError(t *testing.T) {
 	}
 }
 
+func TestRuntimeVersionMaker(t *testing.T) {
+	testCases := []struct {
+		name      string
+		goVersion string
+		want      string
+	}{
+		{
+			name:      "Local Go version preferred in maker mode",
+			goVersion: "go version go1.24.5 linux/amd64",
+			want:      "1.24.5",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockReadGoVersion(t, tc.goVersion)
+			mockResolveGoVersion(t, nil)
+			// InstallerCapability presence indicates maker mode. Use non-nil value.
+			ctx := gcp.NewContext(gcp.WithCapability(GoBuilderCapability, "dummy"))
+
+			got, err := RuntimeVersion(ctx)
+			if err != nil {
+				t.Fatalf("RuntimeVersion() failed unexpectedly; err=%v", err)
+			}
+			if got != tc.want {
+				t.Errorf("RuntimeVersion() got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func mockResolveGoVersion(t *testing.T, err error) {
 	origResolveGoVersion := ResolveGoVersion
 	ResolveGoVersion = func(verConstraint string) (string, error) {
@@ -718,4 +751,55 @@ func mockCleanModCache(t *testing.T) {
 	t.Cleanup(func() {
 		cleanModCache = origCleanModCache
 	})
+}
+
+func TestBuild(t *testing.T) {
+	testCases := []struct {
+		name         string
+		capabilities map[string]any
+		wantExecuted string
+	}{
+		{
+			name: "WithCapability",
+			capabilities: map[string]any{
+				GoBuilderCapability: &MakerGolangBuilder{},
+			},
+			wantExecuted: `go build.*-o \./main`,
+		},
+		{
+			name:         "Default",
+			wantExecuted: `go build.*-o bin/main`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dummyBuildFn := func(ctx *gcp.Context) error {
+				bl, err := ctx.Layer("bin", gcp.LaunchLayer)
+				if err != nil {
+					return err
+				}
+				_, _, err = PerformBuild(ctx, bl, ".", ctx.ApplicationRoot(), "/gocache", []string{})
+				return err
+			}
+
+			opts := []buildpacktest.Option{
+				buildpacktest.WithTestName(tc.name),
+				buildpacktest.WithFiles(map[string]string{"main.go": ""}),
+				buildpacktest.WithExecMocks(mockprocess.New(`^go build`)),
+			}
+			if tc.capabilities != nil {
+				opts = append(opts, buildpacktest.WithCapabilities(tc.capabilities))
+			}
+
+			result, err := buildpacktest.RunBuild(t, dummyBuildFn, opts...)
+			if err != nil {
+				t.Fatalf("RunBuild() failed: %v", err)
+			}
+
+			if !result.CommandExecuted(tc.wantExecuted) {
+				t.Errorf("expected command %q to be executed, but it was not. Output:\n%s", tc.wantExecuted, result.Output)
+			}
+		})
+	}
 }

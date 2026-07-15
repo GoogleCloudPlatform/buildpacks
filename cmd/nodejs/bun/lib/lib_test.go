@@ -32,30 +32,6 @@ func TestDetect(t *testing.T) {
 		want  int
 	}{
 		{
-			name: "with_lock_alpha",
-			files: map[string]string{
-				"index.js":     "",
-				"package.json": "",
-				"bun.lock":     "",
-			},
-			envs: []string{
-				env.ReleaseTrack + "=ALPHA",
-			},
-			want: 0,
-		},
-		{
-			name: "with_lock_beta",
-			files: map[string]string{
-				"index.js":     "",
-				"package.json": "",
-				"bun.lock":     "",
-			},
-			envs: []string{
-				env.ReleaseTrack + "=BETA",
-			},
-			want: 0,
-		},
-		{
 			name: "with_lock",
 			files: map[string]string{
 				"index.js":     "",
@@ -63,30 +39,6 @@ func TestDetect(t *testing.T) {
 				"bun.lock":     "",
 			},
 			envs: []string{},
-			want: 100,
-		},
-		{
-			name: "with_lockb_alpha",
-			files: map[string]string{
-				"index.js":     "",
-				"package.json": "",
-				"bun.lockb":    "",
-			},
-			envs: []string{
-				env.ReleaseTrack + "=ALPHA",
-			},
-			want: 0,
-		},
-		{
-			name: "with_lockb_beta",
-			files: map[string]string{
-				"index.js":     "",
-				"package.json": "",
-				"bun.lockb":    "",
-			},
-			envs: []string{
-				env.ReleaseTrack + "=BETA",
-			},
 			want: 0,
 		},
 		{
@@ -97,30 +49,6 @@ func TestDetect(t *testing.T) {
 				"bun.lockb":    "",
 			},
 			envs: []string{},
-			want: 100,
-		},
-		{
-			name: "package_no_lock_alpha",
-			files: map[string]string{
-				"index.js":     "",
-				"package.json": "",
-			},
-			envs: []string{
-				env.PackageManager + "=bun",
-				env.ReleaseTrack + "=ALPHA",
-			},
-			want: 0,
-		},
-		{
-			name: "package_no_lock_beta",
-			files: map[string]string{
-				"index.js":     "",
-				"package.json": "",
-			},
-			envs: []string{
-				env.PackageManager + "=bun",
-				env.ReleaseTrack + "=BETA",
-			},
 			want: 0,
 		},
 		{
@@ -132,7 +60,7 @@ func TestDetect(t *testing.T) {
 			envs: []string{
 				env.PackageManager + "=bun",
 			},
-			want: 100,
+			want: 0,
 		},
 		{
 			name: "without_package",

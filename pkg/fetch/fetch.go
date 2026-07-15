@@ -19,6 +19,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -28,8 +29,10 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	tpc "github.com/GoogleCloudPlatform/buildpacks/pkg/tpc"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/klauspost/compress/zstd"
 	"github.com/klauspost/pgzip"
 )
 
@@ -43,7 +46,7 @@ func Tarball(url, dir string, stripComponents int) error {
 		return err
 	}
 	defer response.Body.Close()
-	return untar(dir, response.Body, stripComponents)
+	return untar(dir, response.Body, stripComponents, url)
 }
 
 // ARVersions downloads list of versions from artifact registry.
@@ -84,7 +87,56 @@ var ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.C
 		return err
 	}
 	defer rc.Close()
-	return untar(dir, rc, stripComponents)
+	result := untar(dir, rc, stripComponents, url)
+	return result
+}
+
+const (
+	defaultGDUDownloadHost = "artifactregistry.googleapis.com"
+	defaultGDUProject      = "serverless-runtimes"
+	qaGDUProject           = "serverless-runtimes-qa"
+	defaultGDURegion       = "us-central1"
+	defaultRepo            = "universal-maker"
+	defaultArch            = "x86-64"
+	arGenericDownloadPath  = "/download/v1/projects/%s/locations/%s/repositories/%s/files/%s%%3A%s%%3A%s:download?alt=media"
+)
+
+// ARGenericBinary downloads a pre-compiled binary from an Artifact Registry generic repository.
+var ARGenericBinary = func(ctx *gcp.Context, binaryName, version, outPath string) error {
+	downloadHost := defaultGDUDownloadHost
+	project := defaultGDUProject
+	region := defaultGDURegion
+	repo := defaultRepo
+	arch := defaultArch
+
+	if os.Getenv(env.BuildEnv) == "qual" {
+		project = qaGDUProject
+	}
+
+	if tpc.IsTPC() {
+		if h, present := tpc.GetHostname(); present {
+			downloadHost = h
+		} else {
+			return gcp.InternalErrorf("failed to get hostname for TPC build")
+		}
+		if p, present := tpc.GetTarballProject(); present {
+			project = p
+		} else {
+			return gcp.InternalErrorf("failed to get tarball project for TPC build")
+		}
+	}
+
+	urlPath := fmt.Sprintf(arGenericDownloadPath, project, region, repo, arch, version, binaryName)
+	url := fmt.Sprintf("https://%s%s", downloadHost, urlPath)
+
+	ctx.Logf("Downloading %s binary from Artifact Registry generic repository...", binaryName)
+	if err := File(url, outPath); err != nil {
+		return fmt.Errorf("downloading %s binary: %w", binaryName, err)
+	}
+	if _, err := ctx.Exec([]string{"chmod", "+x", outPath}); err != nil {
+		return fmt.Errorf("chmoding %s binary: %w", binaryName, err)
+	}
+	return nil
 }
 
 // File downloads a file from a URL and writes it to the provided path.
@@ -136,19 +188,31 @@ func GetURL(url string, f io.Writer) error {
 }
 
 // untar extracts a tarball from a reader and writes it to the given directory.
-func untar(dir string, r io.Reader, stripComponents int) error {
-	var gzr io.ReadCloser
+func untar(dir string, r io.Reader, stripComponents int, url string) error {
+	var dr io.Reader
 	var err error
-	if v, _ := env.IsPresentAndTrue(env.FasterLanguageTarballInstallation); v {
-		gzr, err = pgzip.NewReader(r)
+	if strings.Contains(url, "/zstd/") {
+		zr, err := zstd.NewReader(r)
+		if err != nil {
+			return err
+		}
+		defer zr.Close()
+		dr = zr
 	} else {
-		gzr, err = gzip.NewReader(r)
+		var gzr io.ReadCloser
+		if v, _ := env.IsPresentAndTrue(env.FasterLanguageTarballInstallation); v {
+			gzr, err = pgzip.NewReader(r)
+		} else {
+			gzr, err = gzip.NewReader(r)
+		}
+		if err != nil {
+			return err
+		}
+		defer gzr.Close()
+		dr = gzr
 	}
-	if err != nil {
-		return err
-	}
-	defer gzr.Close()
-	return untarWithReader(dir, gzr, stripComponents)
+
+	return untarWithReader(dir, dr, stripComponents)
 }
 
 func untarWithReader(dir string, gzr io.Reader, stripComponents int) error {
@@ -201,6 +265,7 @@ func untarWithReader(dir string, gzr io.Reader, stripComponents int) error {
 				return gcp.InternalErrorf("opening file %q: %v", target, err)
 			}
 			if _, err := io.CopyBuffer(f, tr, buffer); err != nil {
+				f.Close() // Close the file on error
 				return gcp.InternalErrorf("copying file %q: %v", target, err)
 			}
 			if err := f.Close(); err != nil {

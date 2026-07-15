@@ -624,3 +624,67 @@ func TestBaseuvPipInstallArgs(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeRequirementsFiles(t *testing.T) {
+	dir := t.TempDir()
+
+	file1 := filepath.Join(dir, "req1.txt")
+	file2 := filepath.Join(dir, "req2.txt")
+	dest := filepath.Join(dir, "merged.txt")
+
+	if err := os.WriteFile(file1, []byte("flask==2.0.0"), 0644); err != nil {
+		t.Fatalf("writing file1: %v", err)
+	}
+	if err := os.WriteFile(file2, []byte("gunicorn==20.1.0"), 0644); err != nil {
+		t.Fatalf("writing file2: %v", err)
+	}
+
+	reqs := []string{file1, file2}
+	err := mergeRequirementsFiles(reqs, dest)
+	if err != nil {
+		t.Fatalf("mergeRequirementsFiles failed: %v", err)
+	}
+
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("reading merged file: %v", err)
+	}
+
+	want := "flask==2.0.0\ngunicorn==20.1.0\n"
+	if diff := cmp.Diff(want, string(got)); diff != "" {
+		t.Errorf("mergeRequirementsFiles(%v) returned diff (-want +got):\n%s", reqs, diff)
+	}
+}
+
+func TestAdaptEntrypoint_Windows(t *testing.T) {
+	testCases := []struct {
+		name      string
+		cmd       []string
+		scriptCmd []string
+		want      []string
+	}{
+		{
+			name: "gunicorn_windows",
+			cmd:  []string{"gunicorn", "-b", ":8080", "main:app"},
+			want: []string{"python", "lib\\bin\\gunicorn", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "uvicorn_windows",
+			cmd:  []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+			want: []string{"python", "lib\\bin\\uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext(gcp.WithCapability(EntrypointAdapterCapability, &MakerEntrypointAdapter{TargetPlatform: "windows/amd64"}))
+			got, err := AdaptEntrypoint(ctx, tc.cmd, tc.scriptCmd)
+			if err != nil {
+				t.Fatalf("AdaptEntrypoint(%v) failed: %v", tc.cmd, err)
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("AdaptEntrypoint(%v) returned diff (-want +got):\n%s", tc.cmd, diff)
+			}
+		})
+	}
+}

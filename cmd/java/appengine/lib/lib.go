@@ -72,10 +72,22 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 // BuildFn is the exported build function.
 func BuildFn(ctx *gcp.Context) error {
-	return appengine.Build(ctx, "java", entrypoint)
+	jettyEntrypoint, err := jettyEntrypoint(ctx)
+	if err != nil {
+		return err
+	}
+	eg := func(*gcp.Context) (*appstart.Entrypoint, error) {
+		if jettyEntrypoint != nil {
+			return jettyEntrypoint, nil
+		}
+		// Putting this line within this closure defers it to a later point and thereby ensures that it
+		// is called only when it is not an appengine-web.xml deployment.
+		return customEntrypoint(ctx)
+	}
+	return appengine.Build(ctx, "java", eg)
 }
 
-func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
+func jettyEntrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
 	webXMLExists, err := ctx.FileExists("WEB-INF", "appengine-web.xml")
 	if err != nil {
 		return nil, err
@@ -98,7 +110,10 @@ func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
 			Command: "serve WEB-INF/appengine-web.xml",
 		}, nil
 	}
+	return nil, nil
+}
 
+func customEntrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
 	executable, err := java.ExecutableJar(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("finding executable jar: %w", err)

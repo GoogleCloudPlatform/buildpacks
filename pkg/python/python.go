@@ -18,8 +18,10 @@ package python
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
+	stdruntime "runtime"
 	"strings"
 	"time"
 
@@ -326,7 +328,9 @@ func CheckIncompatibleDependencies(ctx *gcp.Context) error {
 }
 
 // MakerPipInstaller implements the PipInstaller interface for the maker tool.
-type MakerPipInstaller struct{}
+type MakerPipInstaller struct {
+	TargetPlatform string
+}
 
 // PipTargetDir returns the target directory for installing python dependencies.
 func PipTargetDir() string {
@@ -340,8 +344,11 @@ func PipTargetDir() string {
 // Install installs python dependencies to the target directory specified by GOOGLE_PIP_TARGET_DIR.
 // If GOOGLE_PIP_TARGET_DIR is not set, it defaults to "lib".
 func (i MakerPipInstaller) Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
-	return installDependenciesToTarget(ctx, l, reqs, "pip", func(req string) []string {
+	return installDependenciesToTarget(ctx, l, reqs, "pip", i.TargetPlatform, func(req string) []string {
 		cmd := basePipInstallArgs(req)
+		if stdruntime.GOOS == "windows" && len(cmd) > 0 && cmd[0] == "python3" {
+			cmd[0] = "python"
+		}
 		return appendVendoringFlags(cmd)
 	})
 }
@@ -609,7 +616,9 @@ func AdaptEntrypoint(ctx *gcp.Context, cmd []string, scriptCmd []string) ([]stri
 
 // MakerEntrypointAdapter implements the entrypointAdapter interface for
 // the maker tool.
-type MakerEntrypointAdapter struct{}
+type MakerEntrypointAdapter struct {
+	TargetPlatform string
+}
 
 // adapt modifies the entrypoint command for the maker tool.
 func (a MakerEntrypointAdapter) adapt(cmd []string, scriptCmd []string) ([]string, error) {
@@ -628,8 +637,16 @@ func (a MakerEntrypointAdapter) adapt(cmd []string, scriptCmd []string) ([]strin
 
 	targetDir := PipTargetDir()
 
-	binPath := filepath.Join(targetDir, "bin", commandToAdapt[0])
-	return append([]string{"python3", binPath}, commandToAdapt[1:]...), nil
+	pythonCmd := "python3"
+	var binPath string
+	if strings.HasPrefix(a.TargetPlatform, "windows") {
+		pythonCmd = "python"
+		binPath = strings.Join([]string{targetDir, "bin", commandToAdapt[0]}, "\\")
+	} else {
+		binPath = path.Join(targetDir, "bin", commandToAdapt[0])
+	}
+
+	return append([]string{pythonCmd, binPath}, commandToAdapt[1:]...), nil
 }
 
 // UVDependencyInstallerCapability is the capability key for the
@@ -658,14 +675,16 @@ func CheckUVIncompatibleDependencies(ctx *gcp.Context, venvDir string) error {
 
 // MakerUVDependencyInstaller implements the UVDependenciesInstaller interface
 // for the maker tool.
-type MakerUVDependencyInstaller struct{}
+type MakerUVDependencyInstaller struct {
+	TargetPlatform string
+}
 
 // Install installs python dependencies locally to the target directory
 // specified by GOOGLE_PIP_TARGET_DIR using uv. This supports the Maker's
 // artifact generation by installing packages into a specific directory
 // unlike the standard buildpack which installs into a virtual environment.
 func (i MakerUVDependencyInstaller) Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
-	return installDependenciesToTarget(ctx, l, reqs, "uv", func(req string) []string {
+	return installDependenciesToTarget(ctx, l, reqs, "uv", i.TargetPlatform, func(req string) []string {
 		return baseuvPipInstallArgs(req)
 	})
 }
@@ -684,14 +703,19 @@ func baseuvPipInstallArgs(req string) []string {
 	return appendVendoringFlags(cmd)
 }
 
-func installDependenciesToTarget(ctx *gcp.Context, l *libcnb.Layer, reqs []string, installerName string, cmdBuilder func(string) []string) error {
+func installDependenciesToTarget(ctx *gcp.Context, l *libcnb.Layer, reqs []string, installerName string, targetPlatform string, cmdBuilder func(string) []string) error {
 	targetDir, targetPath := resolvePipTargetPaths(ctx)
 	ctx.Logf("Installing dependencies to target directory: %s using %s", targetDir, installerName)
+
+	separator := ":"
+	if strings.HasPrefix(targetPlatform, "windows") {
+		separator = ";"
+	}
 
 	// We set PYTHONPATH so that the python interpreter can find the dependencies
 	// in the target directory. We also add the application root to PYTHONPATH so
 	// that the application can import modules from the root.
-	l.LaunchEnvironment.Override("PYTHONPATH", targetDir+string(os.PathListSeparator)+".")
+	l.LaunchEnvironment.Override("PYTHONPATH", targetDir+separator+".")
 	l.SharedEnvironment.Override("PYTHONPATH", targetPath+string(os.PathListSeparator)+ctx.ApplicationRoot())
 
 	return installRequirementsToTarget(ctx, targetPath, reqs, cmdBuilder)
@@ -708,14 +732,58 @@ func resolvePipTargetPaths(ctx *gcp.Context) (string, string) {
 	return targetDir, targetPath
 }
 
-func installRequirementsToTarget(ctx *gcp.Context, targetPath string, reqs []string, cmdBuilder func(string) []string) error {
-	for _, req := range reqs {
-		cmd := cmdBuilder(req)
-		cmd = append(cmd, "--target", targetPath)
+// mergeRequirementsFiles reads all files in reqs and appends their contents to dest file.
+func mergeRequirementsFiles(reqs []string, dest string) error {
+	destFile, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open destination file: %w", err)
+	}
+	defer destFile.Close()
 
-		if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
-			return fmt.Errorf("installing dependencies from %s: %w", req, err)
+	for _, req := range reqs {
+		content, err := os.ReadFile(req)
+		if err != nil {
+			return fmt.Errorf("failed to read requirements file %q: %w", req, err)
+		}
+		if _, err := destFile.Write(content); err != nil {
+			return fmt.Errorf("failed to write to destination file: %w", err)
+		}
+		// Add a newline to ensure files are separated correctly
+		if _, err := destFile.Write([]byte("\n")); err != nil {
+			return err
 		}
 	}
+	return nil
+}
+
+func installRequirementsToTarget(ctx *gcp.Context, targetPath string, reqs []string, cmdBuilder func(string) []string) error {
+	if len(reqs) == 0 {
+		return nil
+	}
+
+	reqFile := reqs[0]
+
+	if len(reqs) > 1 {
+		// Create a temporary file to merge all requirements
+		tmpFile, err := os.CreateTemp("", "merged_requirements_*.txt")
+		if err != nil {
+			return fmt.Errorf("failed to create temp file for requirements: %w", err)
+		}
+		tmpFile.Close()
+		defer os.Remove(tmpFile.Name())
+
+		if err := mergeRequirementsFiles(reqs, tmpFile.Name()); err != nil {
+			return err
+		}
+		reqFile = tmpFile.Name()
+	}
+
+	cmd := cmdBuilder(reqFile)
+	cmd = append(cmd, "--target", targetPath)
+
+	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
+		return fmt.Errorf("installing dependencies: %w", err)
+	}
+
 	return nil
 }

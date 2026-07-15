@@ -50,10 +50,11 @@ filegroup(
         for subpkg in subpackages(
             include = ["**"],
             exclude = [
-                "dart/**",
-                "php/**",
                 "cpp/**",
+                "dart/**",
                 "osonly/**",
+                "php/**",
+                "static/**",
             ],
         )
     ],

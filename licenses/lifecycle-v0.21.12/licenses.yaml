@@ -45,13 +45,13 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/aws/aws-sdk-go-v2/internal/endpoints/v2/LICENSE.txt
 
-- package: github.com/aws/aws-sdk-go-v2/internal/ini
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/aws/aws-sdk-go-v2/internal/ini/LICENSE.txt
-
 - package: github.com/aws/aws-sdk-go-v2/internal/sync/singleflight
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/github.com/aws/aws-sdk-go-v2/internal/sync/singleflight/LICENSE
+
+- package: github.com/aws/aws-sdk-go-v2/internal/v4a
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/aws/aws-sdk-go-v2/internal/v4a/LICENSE.txt
 
 - package: github.com/aws/aws-sdk-go-v2/service/ecr
   license_name: Apache-2.0

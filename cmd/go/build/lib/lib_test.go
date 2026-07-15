@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 )
 
 func TestDetect(t *testing.T) {
@@ -97,5 +99,46 @@ func clearAndSetEnv(env []string) {
 		if len(kv) == 2 {
 			os.Setenv(kv[0], kv[1])
 		}
+	}
+}
+
+func TestBuild(t *testing.T) {
+	testCases := []struct {
+		name         string
+		files        map[string]string
+		capabilities map[string]any
+		wantExecuted string
+	}{
+		{
+			name: "BuildWithCapability",
+			files: map[string]string{
+				"main.go": "",
+			},
+			capabilities: map[string]any{
+				golang.GoBuilderCapability: &golang.MakerGolangBuilder{},
+			},
+			wantExecuted: "go build.*-o ./main",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			opts := []buildpacktest.Option{
+				buildpacktest.WithTestName(tc.name),
+				buildpacktest.WithFiles(tc.files),
+				buildpacktest.WithExecMocks(mockprocess.New(`go build`)),
+			}
+			if tc.capabilities != nil {
+				opts = append(opts, buildpacktest.WithCapabilities(tc.capabilities))
+			}
+			result, err := buildpacktest.RunBuild(t, BuildFn, opts...)
+			if err != nil {
+				t.Fatalf("RunBuild() failed: %v", err)
+			}
+			if tc.wantExecuted != "" {
+				if !result.CommandExecuted(tc.wantExecuted) {
+					t.Errorf("expected command %q to be executed, but it wasn't. Output:\n%s", tc.wantExecuted, result.Output)
+				}
+			}
+		})
 	}
 }

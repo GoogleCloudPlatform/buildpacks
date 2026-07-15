@@ -1544,8 +1544,8 @@ gazelle_dependencies()
 go_repository(
     name = "com_github_masterminds_semver",
     importpath = "github.com/Masterminds/semver/v3",
-    sum = "h1:hLg3sBzpNErnxhQtUy/mmLR2I9foDujNK030IGemrRc=",
-    version = "v3.1.1",
+    sum = "h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=",
+    version = "v3.5.0",
 )
 
 go_repository(

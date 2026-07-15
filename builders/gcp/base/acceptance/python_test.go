@@ -457,6 +457,30 @@ func TestAcceptancePython(t *testing.T) {
 			VersionInclusionConstraint: ">= 3.13.0",
 			MustMatch:                  "multi_tool_agent",
 		},
+		{
+			Name:                       "devsync_python_rebuild",
+			App:                        "devsync_dependency",
+			Env:                        []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER=1"},
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint, "google.utils.devsync"},
+			EnableDevSyncTest:          true,
+			DevSyncUpdateSubdir:        "update",
+			MustMatch:                  "INITIAL",
+			DevSyncExpectedResponse:    "UPDATED: 2.32.3",
+			VersionInclusionConstraint: ">=3.10.0",
+			SkipStacks:                 []string{"google.gae.18", "google.18", "google.gae.22", "google.min.22", "google.22"},
+		},
+		{
+			Name:                       "devsync_python_framework_switch",
+			App:                        "devsync_entrypoint",
+			Env:                        []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER=1"},
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint, "google.utils.devsync"},
+			EnableDevSyncTest:          true,
+			DevSyncUpdateSubdir:        "update",
+			MustMatch:                  "INITIAL",
+			DevSyncExpectedResponse:    "UPDATED: fastapi",
+			VersionInclusionConstraint: ">=3.10.0",
+			SkipStacks:                 []string{"google.gae.18", "google.18", "google.gae.22", "google.min.22", "google.22"},
+		},
 	}
 
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {

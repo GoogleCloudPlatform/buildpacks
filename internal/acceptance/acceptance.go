@@ -173,6 +173,13 @@ type Test struct {
 	MustNotOutputCached []string
 	// MustRebuildOnChange specifies a file that, when changed in Dev Mode, triggers a rebuild.
 	MustRebuildOnChange string
+	// EnableDevSyncTest run the DevSync E2E test flow instead of the standard flow.
+	EnableDevSyncTest bool
+	// DevSyncUpdateSubdir is the subdirectory under the app's testdata containing the updated files
+	// (e.g. "devsync_update"). These files will be copied into the container during the test.
+	DevSyncUpdateSubdir string
+	// DevSyncExpectedResponse is the expected response body after the rebuild completes.
+	DevSyncExpectedResponse string
 	// MustMatchStatusCode specifies the HTTP status code hitting the function endpoint should return.
 	MustMatchStatusCode int
 	// FlakyBuildAttempts specifies the number of times a failing build should be retried.
@@ -235,11 +242,17 @@ type builderTOML struct {
 
 func constructImageName(t *testing.T, name, builderName string) string {
 	t.Helper()
-	image := fmt.Sprintf("%s-%s", strings.ToLower(specialChars.ReplaceAllString(name, "-")), builderName)
+	modifiedName := strings.ToLower(specialChars.ReplaceAllString(name, "-"))
+	// Fix: Trim leading/trailing hyphens to ensure a valid Docker repository name.
+	modifiedName = strings.Trim(modifiedName, "-")
+
+	// Docker tags cannot contain colons. Sanitize builderName which may contain
+	// colons if derived from a versioned builder path (e.g. go:builder_22.tar).
+	tag := strings.ReplaceAll(builderName, ":", "-")
 	if remoteRepo != "" {
-		return fmt.Sprintf("us-docker.pkg.dev/%s/acceptance-tests/%s", remoteRepo, image)
+		return fmt.Sprintf("us-docker.pkg.dev/%s/acceptance-tests/%s:%s", remoteRepo, modifiedName, tag)
 	}
-	return image
+	return fmt.Sprintf("%s:%s", modifiedName, tag)
 }
 
 // TestApp builds and a single application and verifies that it runs and handles requests.
@@ -296,7 +309,7 @@ func testApp(t *testing.T, src, image, builderName, runName string, env map[stri
 	verifyBuildMetadata(t, image, cfg.MustUse, cfg.MustNotUse)
 	verifyLabelValues(t, image, cfg.Labels)
 	verifyStructure(t, image, builderName, cacheEnabled, checks)
-	invokeApp(t, cfg, image, cacheEnabled)
+	invokeApp(t, cfg, image, src, cacheEnabled)
 }
 
 // FailureTest describes a failure test.
@@ -368,7 +381,7 @@ func TestBuildFailure(t *testing.T, imageCtx ImageContext, cfg FailureTest) {
 }
 
 // invokeApp performs an HTTP GET or sends a Cloud Event payload to the app.
-func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
+func invokeApp(t *testing.T, cfg Test, image string, srcDir string, cache bool) {
 	t.Helper()
 
 	containerID, host, port, cleanup := startContainer(t, image, cfg.Entrypoint, cfg.RunEnv, cache)
@@ -406,6 +419,11 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 		}
 	}
 
+	if cfg.EnableDevSyncTest {
+		verifyDevSyncReload(t, containerID, host, port, cfg, srcDir)
+		return
+	}
+
 	if cfg.MustRebuildOnChange != "" {
 		start = time.Now()
 		// Modify a source file in the running container.
@@ -414,28 +432,12 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 		}
 
 		// Check that the application responds with `UPDATED`.
-		tries := 30
-		for try := tries; try >= 1; try-- {
-			time.Sleep(1 * time.Second)
-
-			body, status, _, err := sendRequestWithTimeout(host, port, cfg.Path, 10*time.Second, reqType)
-			// An app that is rebuilding can be unresponsive.
-			if err != nil {
-				if try == 1 {
-					t.Fatalf("Unable to invoke app after updating source with %d attempts: %v", tries, err)
-				}
-				continue
-			}
-
-			want := "UPDATED"
-			if body == want {
-				t.Logf("Got response: status %v, body %q (in %s)", status, body, time.Since(start))
-				break
-			}
-			if try == 1 {
-				t.Errorf("Wrong body: got %q, want %q", body, want)
-			}
+		want := "UPDATED"
+		body, err := pollEndpoint(host, port, cfg.Path, want, reqType, 30*time.Second)
+		if err != nil {
+			t.Fatalf("Unable to invoke app after updating source: %v", err)
 		}
+		t.Logf("Got response: body %q (in %s)", body, time.Since(start))
 	}
 }
 
@@ -957,7 +959,8 @@ func buildCommand(srcDir, image, builderName, runName string, env map[string]str
 	args := strings.Fields(cmd)
 	if runName != "" {
 		args = append(args, "--run-image", runName)
-		if hasRuntimePreinstalled(runName) {
+		// TODO(b/493840996): Remove the Ruby34 check once we root cause and fix Ruby 3.4 issues.
+		if hasRuntimePreinstalled(runName) && !isRuby34(runName) {
 			// This skips adding the language runtime downloaded during the build to the final
 			// image as a launch layer. For non-generic run images, the language runtime is already
 			// included in the base image.
@@ -1012,6 +1015,11 @@ func hasRuntimePreinstalled(runName string) bool {
 	// gcr.io/${PROJECT}/buildpacks/${RUNTIME}/run
 	re := regexp.MustCompile(`/buildpacks/(?:go|nodejs|dotnet|java|php|ruby|python)\d+/run`)
 	return re.MatchString(runName)
+}
+
+// isRuby34 returns whether or not the run image is of Ruby 3.4.
+func isRuby34(runName string) bool {
+	return strings.Contains(runName, "ruby34")
 }
 
 // buildApp builds an application image from source.
@@ -1562,4 +1570,102 @@ func getNewVersions(runtime string) []string {
 		return nil
 	}
 	return versionMap[runtime]
+}
+
+// readContainerFile reads the content of a file inside a running container.
+func readContainerFile(containerID, path string) (string, error) {
+	out, err := runOutput(ContainerEngine, "exec", containerID, "cat", path)
+	if err != nil {
+		return "", fmt.Errorf("reading file %s from container %s: %w", path, containerID, err)
+	}
+	return strings.TrimSpace(out), nil
+}
+
+// readWebProcessPid retrieves the active PID of the supervised web application.
+func readWebProcessPid(containerID string) (int, error) {
+	const pidPath = "/layers/google.utils.devsync/devsync/service/app/supervise/pid"
+	pidStr, err := readContainerFile(containerID, pidPath)
+	if err != nil {
+		return 0, fmt.Errorf("retrieving web process PID: %w", err)
+	}
+	pid, err := strconv.Atoi(pidStr)
+	if err != nil {
+		return 0, fmt.Errorf("parsing web process PID %q: %w", pidStr, err)
+	}
+	return pid, nil
+}
+
+// copyToContainer copies files from the host path to the specified destination inside the container.
+func copyToContainer(hostPath, containerID, containerPath string) error {
+	// Append "/." to copy the contents of the directory if it's a directory
+	src := hostPath
+	if fi, err := os.Stat(hostPath); err == nil && fi.IsDir() {
+		src = hostPath + "/."
+	}
+	dest := fmt.Sprintf("%s:%s", containerID, containerPath)
+	if _, err := runOutput(ContainerEngine, "cp", src, dest); err != nil {
+		return fmt.Errorf("copying %s to %s: %w", src, dest, err)
+	}
+	return nil
+}
+
+// pollEndpoint polls the endpoint until the response body contains the expected string or times out.
+func pollEndpoint(host string, port int, path string, expectedResponse string, reqType requestType, timeout time.Duration) (string, error) {
+	start := time.Now()
+	interval := 1 * time.Second
+	deadline := start.Add(timeout)
+
+	for time.Now().Before(deadline) {
+		body, _, _, err := sendRequestWithTimeout(host, port, path, 2*time.Second, reqType)
+		if err == nil && strings.Contains(body, expectedResponse) {
+			return body, nil
+		}
+		time.Sleep(interval)
+	}
+	return "", fmt.Errorf("timed out after %s waiting for response containing %q", timeout, expectedResponse)
+}
+
+// verifyDevSyncReload orchestrates the DevSync E2E hot-rebuild and reload verification on a running container.
+func verifyDevSyncReload(t *testing.T, containerID, host string, port int, cfg Test, srcDir string) {
+	t.Helper()
+
+	// 1. Read initial web process PID (the container has already successfully booted and passed initial probing in invokeApp)
+	initialPid, err := readWebProcessPid(containerID)
+	if err != nil {
+		t.Fatalf("Failed to read initial PID: %v", err)
+	}
+	t.Logf("Initial web process PID: %d", initialPid)
+
+	// 2. Copy updated files (code + manifest) to the container to trigger DevSync hot-reload
+	updateSrcDir := filepath.Join(srcDir, cfg.DevSyncUpdateSubdir)
+	t.Logf("Triggering DevSync: copying updated files from %s", updateSrcDir)
+	if err := copyToContainer(updateSrcDir, containerID, "/workspace/"); err != nil {
+		t.Fatalf("Failed to copy updated files: %v", err)
+	}
+
+	// 3. Poll the endpoint and wait for the rebuild/restart to complete
+	t.Logf("Waiting for rebuild and reload to complete...")
+	reqType := HTTPType
+	if cfg.RequestType != "" {
+		reqType = cfg.RequestType
+	}
+	finalBody, err := pollEndpoint(host, port, cfg.Path, cfg.DevSyncExpectedResponse, reqType, 60*time.Second)
+	if err != nil {
+		outputContainerLogs(t, containerID)
+		t.Fatalf("Rebuild verification failed: %v", err)
+	}
+	t.Logf("Rebuild succeeded! Updated response: %q", finalBody)
+
+	// 4. Verify that the web process was physically restarted (PID changed)
+	newPid, err := readWebProcessPid(containerID)
+	if err != nil {
+		t.Fatalf("Failed to read post-rebuild PID: %v", err)
+	}
+	t.Logf("Post-rebuild web process PID: %d", newPid)
+
+	if newPid == initialPid {
+		t.Errorf("FAIL: Web process PID did not change (%d == %d). A physical process restart did not occur!", initialPid, newPid)
+	} else {
+		t.Logf("SUCCESS: DevSync reload verified. Process restarted successfully (PID changed from %d to %d)", initialPid, newPid)
+	}
 }

@@ -105,7 +105,7 @@ func TestFailuresDotNet(t *testing.T) {
 			Name:      "bad runtime version",
 			App:       "simple",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
-			MustMatch: "invalid .NET SDK version specified: improper constraint: BAD_NEWS_BEARS",
+			MustMatch: "invalid .NET SDK version specified: improper constraint: \"BAD_NEWS_BEARS\"",
 		},
 	}
 

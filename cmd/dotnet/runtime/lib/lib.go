@@ -25,6 +25,7 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 const (
@@ -87,11 +88,25 @@ func buildRuntimeLayer(ctx *gcp.Context, rtVersion string) error {
 		return err
 	}
 	ctx.AddInstalledRuntimeVersion(rtVersion)
+
+	cap := ctx.Capability(dotnet.SkipEnvVariablesAssignmentCapability)
+	if cap != nil {
+		skip, ok := cap.(dotnet.SkipEnvVariablesAssignment)
+		if !ok {
+			return gcp.InternalErrorf("capability %q must implement dotnet.SkipEnvVariablesAssignment", dotnet.SkipEnvVariablesAssignmentCapability)
+		}
+		return skip.SkipVariables(ctx, rtl)
+	}
+
+	setRuntimeEnvVars(ctx, rtl)
+	return nil
+}
+
+func setRuntimeEnvVars(ctx *gcp.Context, rtl *libcnb.Layer) {
 	rtl.LaunchEnvironment.Default("DOTNET_ROOT", rtl.Path)
 	rtl.LaunchEnvironment.Prepend("PATH", string(os.PathListSeparator), rtl.Path)
 	rtl.LaunchEnvironment.Default("DOTNET_RUNNING_IN_CONTAINER", "true")
 	if dotnet.RequiresGlobalizationInvariant(ctx) {
 		rtl.LaunchEnvironment.Default("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1")
 	}
-	return nil
 }

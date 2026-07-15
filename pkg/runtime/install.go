@@ -25,6 +25,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -52,11 +53,39 @@ var (
 	runtimeVersionsURL = "https://dl.google.com/runtimes/%s/%s/version.json"
 	// goTarballURL is the location from which we download Go. This is different from other runtimes
 	// because the Go team already provides re-built tarballs on the same CDN.
-	goTarballURL          = "https://dl.google.com/go/go%s.linux-amd64.tar.gz"
-	runtimeImageARRepoURL = "%s/%s/runtimes-%s/%s"
-	runtimeImageARURL     = runtimeImageARRepoURL + ":%s"
-	fallbackRegion        = "us"
+	goTarballURL              = "https://dl.google.com/go/go%s.linux-amd64.tar.gz"
+	runtimeImageARRepoURL     = "%s/%s/runtimes-%s/%s"
+	runtimeImageARRepoURLZstd = "%s/%s/runtimes-%s/zstd/%s"
+	runtimeImageARURL         = runtimeImageARRepoURL + ":%s"
+	runtimeImageARURLZstd     = runtimeImageARRepoURLZstd + ":%s"
+	fallbackRegion            = "us"
 )
+
+// TODO(hemantgoyal): Extract this to a seperate file and use in TPC shuttle as well.
+var packagesWithMajorVersionGrouping = map[string]bool{
+	"aspnetcore":   true,
+	"dotnetsdk":    true,
+	"canonicaljdk": true,
+	"nginx":        true,
+	"nodejs":       true,
+	"openjdk":      true,
+	"pid1":         true,
+}
+
+func extractMajorVersion(fullVersion string, language string) string {
+	if language == "jetty" {
+		return ""
+	}
+	if packagesWithMajorVersionGrouping[language] {
+		parts := strings.SplitN(fullVersion, ".", 2)
+		return parts[0]
+	}
+	parts := strings.SplitN(fullVersion, ".", 3)
+	if len(parts) >= 2 {
+		return strings.Join(parts[:2], ".")
+	}
+	return ""
+}
 
 // InstallableRuntime is used to hold runtimes information
 type InstallableRuntime string
@@ -73,8 +102,9 @@ const (
 	AspNetCore   InstallableRuntime = "aspnetcore"
 	OpenJDK      InstallableRuntime = "openjdk"
 	CanonicalJDK InstallableRuntime = "canonicaljdk"
-	Go           InstallableRuntime = "go"
+	Go           InstallableRuntime = "golang"
 	Jetty        InstallableRuntime = "jetty"
+	Bun          InstallableRuntime = "bun"
 
 	Ubuntu1804 string = "ubuntu1804"
 	Ubuntu2204 string = "ubuntu2204"
@@ -97,6 +127,7 @@ var runtimeNames = map[InstallableRuntime]string{
 	DotnetSDK: ".NET SDK",
 	Go:        "Go",
 	Jetty:     "Jetty",
+	Bun:       "Bun",
 }
 
 // stackToOS contains the mapping of Stack to OS.
@@ -127,9 +158,37 @@ const (
 	gcpUserAgent = "GCPBuildpacks"
 )
 
-var localRuntimeVersionCmds = map[InstallableRuntime][]string{
-	Python: {"python3", "-c", "import platform; print(platform.python_version())"},
-	Nodejs: {"node", "-p", "process.versions.node"},
+var localRuntimeVersionCmds = map[InstallableRuntime][][]string{
+	Python: {
+		{"python3", "-c", "import platform; print(platform.python_version())"},
+		{"python", "-c", "import platform; print(platform.python_version())"},
+		{"python3", "--version"},
+		{"python", "--version"},
+	},
+	Nodejs: {
+		{"node", "-p", "process.versions.node"},
+		{"nodejs", "-p", "process.versions.node"},
+		{"node", "--version"},
+		{"nodejs", "--version"},
+	},
+	Go: {
+		{"go", "version"},
+	},
+	PHP: {
+		{"php", "-r", "echo PHP_VERSION;"},
+		{"php", "--version"},
+	},
+	Ruby: {
+		{"ruby", "-e", "'puts RUBY_VERSION'"},
+		{"ruby", "--version"},
+		{"ruby", "-v"},
+	},
+	DotnetSDK: {
+		{"dotnet", "--version"},
+	},
+	AspNetCore: {
+		{"dotnet", "--version"},
+	},
 }
 
 var errUnsupportedRuntime = errors.New("unsupported runtime for local check")
@@ -268,8 +327,8 @@ func InstallFlutterSDK(ctx *gcp.Context, layer *libcnb.Layer, version string, ar
 // Returns true if a cached layer is used.
 func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, versionConstraint string, layer *libcnb.Layer) (bool, error) {
 	if cap := ctx.Capability(InstallerCapability); cap != nil {
-		if ri, ok := cap.(Installer); ok {
-			return ri.InstallTarballIfNotCached(ctx, runtime, versionConstraint, layer)
+		if mi, ok := cap.(Installer); ok {
+			return mi.InstallTarballIfNotCached(ctx, runtime, versionConstraint, layer)
 		}
 	}
 	runtimeName := runtimeNames[runtime]
@@ -299,50 +358,38 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	}
 	ctx.Logf("Installing %s v%s.", runtimeName, version)
 
-	stripComponents := 0
-	if runtime == OpenJDK || runtime == Go || runtime == Jetty {
-		stripComponents = 1
-	}
-
 	registry := tarballRegistry()
 	region, present := os.LookupEnv(env.RuntimeImageRegion)
 
-	// TODO(b/466126787): Add Golang support for TPC. Combine this block with the else condition once Golang support is added.
-	if tpc.IsTPC() {
-		hostname, err := arHostname(ctx, region)
-		if err != nil {
-			return false, err
-		}
-		url := runtimeImageURL(hostname, registry, osName, runtime, version)
-		if err := fetch.ARImage(url, "", layer.Path, stripComponents, ctx); err != nil {
-			ctx.Warnf("Failed to download %s version %s osName %s from artifact registry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
-			return false, err
-		}
-	} else if registry == tarballRegistryDev || runtime == Go || !present {
+	useLorry := !tpc.IsTPC() && (registry == tarballRegistryDev || runtime == Go || !present)
+	stripComponents := 0
+	if runtime == OpenJDK || (runtime == Go && useLorry) || runtime == Jetty {
+		stripComponents = 1
+	}
+
+	if useLorry {
 		// Use Lorry for dev env, Go runtime, or if the region is not set.
-		runtimeURL := tarballDownloadURL(runtime, osName, version)
+		runtimeURL := TarballDownloadURL(runtime, osName, version)
 		if err := fetch.Tarball(runtimeURL, layer.Path, stripComponents); err != nil {
 			ctx.Warnf("Failed to download %s version %s osName %s from lorry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable. To use Artifact Registry instead, set the GOOGLE_RUNTIME_IMAGE_REGION environment variable (e.g., 'us').", runtimeName, version, osName)
 			return false, err
 		}
 	} else {
-		// Use Artifact Registry for other cases.
 		hostname, err := arHostname(ctx, region)
 		if err != nil {
 			return false, err
 		}
 		url := runtimeImageURL(hostname, registry, osName, runtime, version)
 
-		fallbackHostname, err := arHostname(ctx, fallbackRegion)
-		if err != nil {
-			// Fallback region should always be valid in GDU.
-			return false, gcp.InternalErrorf("failed to get hostname for fallback region %s: %w", fallbackRegion, err)
-		}
-		fallbackURL := runtimeImageURL(fallbackHostname, registry, osName, runtime, version)
-
-		if err := fetch.ARImage(url, fallbackURL, layer.Path, stripComponents, ctx); err != nil {
-			ctx.Warnf("Failed to download %s version %s osName %s from artifact registry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
-			return false, err
+		if fetched, err := fetchZstd(ctx, hostname, registry, osName, runtime, version, layer, stripComponents); !fetched || err != nil {
+			fallbackURL, err := fallbackRuntimeImageURL(ctx, hostname, registry, osName, runtime, version, false)
+			if err != nil {
+				return false, err
+			}
+			if err := fetch.ARImage(url, fallbackURL, layer.Path, stripComponents, ctx); err != nil {
+				ctx.Warnf("Failed to download %s version %s osName %s from artifact registry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
+				return false, err
+			}
 		}
 	}
 
@@ -356,7 +403,56 @@ func runtimeImageURL(hostname, registry, osName string, runtime InstallableRunti
 	return fmt.Sprintf(runtimeImageARURL, hostname, registry, osName, runtime, version)
 }
 
-func tarballDownloadURL(runtime InstallableRuntime, os, version string) string {
+func runtimeImageURLZstd(hostname, registry, osName string, runtime InstallableRuntime, version string) string {
+	return fmt.Sprintf(runtimeImageARURLZstd, hostname, registry, osName, runtime, version)
+}
+
+func fetchZstd(ctx *gcp.Context, hostname, registry, osName string, runtime InstallableRuntime, version string, layer *libcnb.Layer, stripComponents int) (bool, error) {
+	// TODO(b/493740533): Add support for other runtimes.
+	if v, _ := env.IsPresentAndTrue(env.FasterTarballExtraction); v && isZstdSupportedRuntime(os.Getenv(env.Runtime)) {
+		urlZstd := runtimeImageURLZstd(hostname, registry, osName, runtime, version)
+		fallbackURLZstd, err := fallbackRuntimeImageURL(ctx, hostname, registry, osName, runtime, version, true)
+		if err != nil {
+			return false, err
+		}
+
+		if err := fetch.ARImage(urlZstd, fallbackURLZstd, layer.Path, stripComponents, ctx); err != nil {
+			ctx.Warnf("Zstd extraction failed: %v. Falling back to default gzip extraction.", err)
+			if err := ctx.ClearLayer(layer); err != nil {
+				return false, gcp.InternalErrorf("clearing layer %q for fallback: %w", layer.Name, err)
+			}
+			return false, nil
+		}
+
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.ZstdTarballExtractionCounterID).Increment(1)
+		return true, nil
+	}
+	return false, nil
+}
+
+func fallbackRuntimeImageURL(ctx *gcp.Context, hostname, registry, osName string, runtime InstallableRuntime, version string, isZstd bool) (string, error) {
+	fallbackURL := ""
+	extractor := runtimeImageURL
+	if isZstd {
+		extractor = runtimeImageURLZstd
+	}
+	if tpc.IsTPC() {
+		if majorVersion := extractMajorVersion(version, string(runtime)); majorVersion != "" {
+			fallbackURL = extractor(hostname, registry, osName, runtime, "latest_"+majorVersion)
+		}
+	} else {
+		fallbackHostname, err := arHostname(ctx, fallbackRegion)
+		if err != nil {
+			// Fallback region should always be valid in GDU.
+			return "", gcp.InternalErrorf("failed to get hostname for fallback region %s: %w", fallbackRegion, err)
+		}
+		fallbackURL = extractor(fallbackHostname, registry, osName, runtime, version)
+	}
+	return fallbackURL, nil
+}
+
+// TarballDownloadURL returns URL to download tarball from lorry.
+func TarballDownloadURL(runtime InstallableRuntime, os, version string) string {
 	if runtime == Go {
 		return fmt.Sprintf(goTarballURL, version)
 	}
@@ -594,22 +690,47 @@ func runtimeMatchesInstallableRuntime(installableRuntime InstallableRuntime) boo
 	}
 }
 
+func cleanVersion(v string) string {
+	v = strings.TrimSpace(v)
+
+	prefixes := []string{"Python ", "PHP ", "ruby ", "go version go"}
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(v, prefix) {
+			v = strings.TrimPrefix(v, prefix)
+			break
+		}
+	}
+
+	fields := strings.Fields(v)
+	if len(fields) > 0 {
+		v = fields[0]
+	}
+
+	v = strings.TrimPrefix(v, "v")
+	return v
+}
+
 func checkLocalRuntimeVersion(ctx *gcp.Context, runtime InstallableRuntime) (string, error) {
 	// TODO(b/481611857): Support other runtimes for local version check.
-	cmd, ok := localRuntimeVersionCmds[runtime]
+	cmds, ok := localRuntimeVersionCmds[runtime]
 	if !ok {
 		return "", fmt.Errorf("%s: %w", runtime, errUnsupportedRuntime)
 	}
 
-	result, err := ctx.Exec(cmd, gcp.WithUserAttribution)
-	if err != nil {
-		return "", fmt.Errorf("checking local %s version: %w", runtime, err)
+	var lastErr error
+	for _, cmd := range cmds {
+		result, err := ctx.Exec(cmd, gcp.WithUserAttribution)
+		if err == nil {
+			version := cleanVersion(result.Stdout)
+			if version != "" {
+				return version, nil
+			}
+			err = fmt.Errorf("command %v returned empty output", cmd)
+		}
+		lastErr = err
 	}
-	version := strings.TrimSpace(result.Stdout)
-	if version == "" {
-		return "", fmt.Errorf("local %s version check returned empty string", runtime)
-	}
-	return version, nil
+
+	return "", fmt.Errorf("failed to check local %s version using any candidate command: %w", runtime, lastErr)
 }
 
 // MakerInstaller implements the Installer interface for the maker tool.
@@ -621,17 +742,53 @@ type MakerInstaller struct{}
 // InstallTarballIfNotCached for the maker tool only resolves the runtime version (locally if supported)
 // and adds a label. It bypasses the actual download and installation of the runtime tarball.
 func (mi MakerInstaller) InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, versionConstraint string, layer *libcnb.Layer) (bool, error) {
-	version, err := checkLocalRuntimeVersion(ctx, runtime)
-	if err != nil {
-		if errors.Is(err, errUnsupportedRuntime) {
-			return false, gcp.UserErrorf("runtime %s is not supported by the maker tool", runtime)
+	var resolvedVersion string
+	if version.IsExactSemver(versionConstraint) {
+		resolvedVersion = versionConstraint
+	} else if !slices.Contains(languageRuntimes, runtime) {
+		// Bypassing Nginx and Pid1 local resolution. Those helper runtimes are not language
+		// runtimes, so they do not dictate standard base-image requirements and are fully bypassed
+		// via custom capabilities in Maker mode (like MakerWebConfigurator).
+		if runtime == Nginx {
+			resolvedVersion = "1.25.0"
+		} else {
+			resolvedVersion = "1.0.0"
 		}
-		return false, gcp.UserErrorf("failed to detect local %s runtime version: %v. Please ensure it is installed and in your PATH", runtime, err)
+	} else {
+		v, err := checkLocalRuntimeVersion(ctx, runtime)
+		if err != nil {
+			if errors.Is(err, errUnsupportedRuntime) {
+				return false, gcp.UserErrorf("runtime %s is not supported by the maker tool", runtime)
+			}
+			return false, gcp.UserErrorf("failed to detect local %s runtime version: %v. Please ensure it is installed and in your PATH", runtime, err)
+		}
+		resolvedVersion = v
 	}
 
 	// For the maker use case, we only need to resolve the version and add it as a label.
 	// We do not need to download or install the runtime tarball.
-	ctx.AddLabel(localRuntimeVersionLabel, version)
-	ctx.AddLabel(languageNameLabel, string(runtime))
+	if slices.Contains(languageRuntimes, runtime) {
+		ctx.AddLabel(localRuntimeVersionLabel, resolvedVersion)
+		ctx.AddLabel(languageNameLabel, string(runtime))
+	}
 	return false, nil
+}
+
+// isZstdSupportedRuntime checks if the given runtime environment string supports Zstd extraction.
+func isZstdSupportedRuntime(runtimeEnv string) bool {
+	supported := []string{
+		// Node.js
+		"nodejs20", "nodejs22", "nodejs24",
+		// Python
+		"python310", "python311", "python312", "python313", "python314",
+		// Ruby
+		"ruby32", "ruby33", "ruby34", "ruby40",
+		// PHP
+		"php82", "php83", "php84", "php85",
+		// Java
+		"java17", "java21", "java25",
+		// Dotnet
+		"dotnet8", "dotnet10",
+	}
+	return slices.Contains(supported, runtimeEnv)
 }

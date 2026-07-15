@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/buildpacks/libcnb/v2"
 )
 
@@ -36,35 +37,29 @@ func InstallBun(ctx *gcp.Context, bunLayer *libcnb.Layer, pjs *PackageJSON) erro
 		return i.InstallBun(ctx, bunLayer, pjs)
 	}
 
-	layerName := bunLayer.Name
 	installDir := filepath.Join(bunLayer.Path, "bin")
 	version, err := detectBunVersion(pjs)
 	if err != nil {
 		return err
 	}
 
-	// Check the metadata in the cache layer to determine if we need to proceed.
-	metaVersion := ctx.GetMetadata(bunLayer, bunVersionKey)
-	if metaVersion == version {
-		ctx.CacheHit(layerName)
-		ctx.Logf("Bun v%s cache hit, skipping installation.", version)
-	} else {
-		ctx.CacheMiss(layerName)
-		ctx.Logf("Installing Bun v%s.", version)
+	cached, err := runtime.InstallTarballIfNotCached(ctx, runtime.Bun, version, bunLayer)
+	// TODO(b/520284867): Remove this fallback block once things work fine with the AR approach.
+	if err != nil {
+		ctx.Logf("Failed to download Bun v%s tarball: %v. Falling back to script download.", version, err)
 		if err := ctx.ClearLayer(bunLayer); err != nil {
 			return fmt.Errorf("clearing bun layer: %w", err)
 		}
-
-		ctx.Logf("Installing Bun v%s", version)
+		ctx.Logf("Installing Bun v%s via script", version)
 		installCmd := []string{"bash", "-c", fmt.Sprintf("curl -fsSL https://bun.sh/install | bash -s bun-v%s 2>/dev/null", version)}
 		if _, err := ctx.Exec(installCmd, gcp.WithEnv("BUN_INSTALL="+bunLayer.Path), gcp.WithUserAttribution); err != nil {
 			return fmt.Errorf("installing bun: %w", err)
 		}
 		ctx.SetMetadata(bunLayer, bunVersionKey, version)
+		ctx.SetMetadata(bunLayer, "stack", ctx.StackID())
+	} else if !cached {
+		ctx.Logf("Successfully installed Bun v%s from tarball.", version)
 	}
-
-	// Store layer flags and metadata.
-	ctx.SetMetadata(bunLayer, bunVersionKey, version)
 
 	// We need to update the path here to ensure the version we just installed takes precedence.
 	if err := ctx.Setenv("PATH", installDir+":"+os.Getenv("PATH")); err != nil {

@@ -100,20 +100,42 @@ func moveOrCopyPath(moveOrCopy action, destPath, srcPath string, condition func(
 
 // CopyFile copies a file from src to dest
 func CopyFile(dest, src string) error {
+	absSrc, err := filepath.Abs(src)
+	if err != nil {
+		return err
+	}
+	absDest, err := filepath.Abs(dest)
+	if err != nil {
+		return err
+	}
+	if absSrc == absDest {
+		return nil // early exit to prevent destructive self-truncation
+	}
+
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer srcFile.Close()
 
-	destFile, err := os.Create(dest)
+	mode := srcInfo.Mode() | 0600
+
+	destFile, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE|os.O_TRUNC, mode)
 	if err != nil {
 		return err
 	}
 	defer destFile.Close()
 
-	_, err = io.Copy(destFile, srcFile)
-	return err
+	if _, err = io.Copy(destFile, srcFile); err != nil {
+		return err
+	}
+
+	return os.Chmod(dest, mode)
 }
 
 // EnsureUnixLineEndings replaces windows style CRLF line endings with unix LF line endings. This is

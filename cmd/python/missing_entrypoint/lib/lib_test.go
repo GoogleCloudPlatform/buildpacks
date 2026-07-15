@@ -628,6 +628,71 @@ google-adk = "*_*"`,
 			wantCmd: []string{"adk", "api_server", "--port", "8080", "--host", "0.0.0.0"},
 		},
 		{
+			name: "gunicorn_devsync",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "gunicorn",
+			},
+			env: []string{
+				env.RuntimeVersion + "=3.13.0",
+				env.DevSync + "=true",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "--reload", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "uvicorn_devsync",
+			files: map[string]string{
+				"main.py":          "",
+				"requirements.txt": "uvicorn",
+			},
+			env: []string{
+				env.RuntimeVersion + "=3.13.0",
+				env.DevSync + "=true",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"uvicorn", "main:app", "--port", "8080", "--host", "0.0.0.0"},
+		},
+		{
+			name: "gunicorn_devsync_app_py",
+			files: map[string]string{
+				"app.py":           "",
+				"requirements.txt": "gunicorn",
+			},
+			env: []string{
+				env.RuntimeVersion + "=3.13.0",
+				env.DevSync + "=true",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "--reload", "-b", ":8080", "app:app"},
+		},
+		{
+			name: "pyproject_gunicorn_devsync",
+			files: map[string]string{
+				"main.py": "",
+				"pyproject.toml": `[project]
+dependencies = ["gunicorn"]`,
+			},
+			env: []string{
+				env.RuntimeVersion + "=3.13.0",
+				env.DevSync + "=true",
+			},
+			runtime: "python3.13",
+			wantCmd: []string{"gunicorn", "--reload", "-b", ":8080", "main:app"},
+		},
+		{
+			name: "pyproject_script_devsync",
+			files: map[string]string{
+				"main.py": "",
+				"pyproject.toml": `[project.scripts]
+any_start_cmd = "main:app"`,
+			},
+			env: []string{
+				env.DevSync + "=true",
+			},
+			wantCmd: []string{"uv", "run", "any_start_cmd"},
+		},
+		{
 			name: "google_adk_with_gunicorn",
 			files: map[string]string{
 				"main.py":          "",

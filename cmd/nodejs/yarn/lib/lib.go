@@ -55,11 +55,14 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !yarnLockExists {
-		return gcp.OptOutFileNotFound("yarn.lock"), nil
+	if yarnLockExists {
+		return gcp.OptIn("found yarn.lock and package.json"), nil
+	}
+	if nodejs.IsPackageManagerConfigured("yarn") {
+		return gcp.OptIn("package.json found and GOOGLE_PACKAGE_MANAGER=yarn"), nil
 	}
 
-	return gcp.OptIn("found yarn.lock and package.json"), nil
+	return gcp.OptOut("yarn.lock not found and GOOGLE_PACKAGE_MANAGER is not set to yarn"), nil
 }
 
 // BuildFn is the exported build function.
@@ -109,6 +112,18 @@ func BuildFn(ctx *gcp.Context) error {
 		return err
 	}
 
+	devSync, err := env.IsDevSync()
+	if err != nil {
+		ctx.Warnf("Unable to determine dev sync status: %v", err)
+	} else if devSync {
+		cmd, err = nodejs.DevSyncEntrypoint(ctx, pjs, "yarn")
+		if err != nil {
+			return gcp.InternalErrorf("getting dev sync entrypoint: %w", err)
+		}
+		ctx.AddWebProcess(cmd)
+		return nil
+	}
+
 	if !devmode.Enabled(ctx) {
 		ctx.AddWebProcess(cmd)
 		return nil
@@ -130,6 +145,11 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		return cap.(yarnModuleInstaller).InstallModules(ctx, pjs)
 	}
 
+	yarnLockExists, err := ctx.FileExists(nodejs.YarnLock)
+	if err != nil {
+		return err
+	}
+
 	freezeLockfile, err := nodejs.UseFrozenLockfile(ctx)
 	if err != nil {
 		return err
@@ -144,9 +164,11 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
 
-	_, err = nodejs.CheckOrClearCache(ctx, ml, cache.WithFiles("package.json", nodejs.YarnLock))
-	if err != nil {
-		return fmt.Errorf("checking cache: %w", err)
+	if yarnLockExists {
+		_, err = nodejs.CheckOrClearCache(ctx, ml, cache.WithFiles("package.json", nodejs.YarnLock))
+		if err != nil {
+			return fmt.Errorf("checking cache: %w", err)
+		}
 	}
 
 	// Use Yarn's --modules-folder flag to install directly into the layer and then symlink them into
@@ -184,7 +206,7 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 	cmd := []string{"yarn", "install", "--non-interactive", "--prefer-offline", locationFlag}
 
 	// HACK: For backwards compatibility on App Engine Node.js 10 and older, skip using `--frozen-lockfile`.
-	if freezeLockfile {
+	if freezeLockfile && yarnLockExists {
 		cmd = append(cmd, "--frozen-lockfile")
 	}
 	gcpBuild := nodejs.HasGCPBuild(pjs)
@@ -223,15 +245,7 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 
 		// If there was a gcp-build script we installed all the devDependencies above. We should try to
 		// prune them from the final app image.
-		nodeEnv := nodejs.NodeEnv()
-		if nodejs.NodeEnv() != nodejs.EnvProduction {
-			ctx.Logf("Retaining devDependencies because NODE_ENV=%q", nodeEnv)
-		} else {
-			if env.IsFAH() {
-				// We don't prune if the user is using App Hosting since App Hosting builds don't
-				// rely on the node_modules folder at this point.
-				return nil
-			}
+		if shouldPruneYarn1(ctx) {
 			// For Yarn1, setting `--production=true` causes all `devDependencies` to be deleted.
 			ctx.Logf("Pruning devDependencies")
 			cmd := []string{"yarn", "install", "--ignore-scripts", "--prefer-offline", "--production=true", locationFlag}
@@ -247,12 +261,33 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 	return nil
 }
 
+func shouldPruneYarn1(ctx *gcp.Context) bool {
+	nodeEnv := nodejs.NodeEnv()
+	if nodeEnv != nodejs.EnvProduction {
+		ctx.Logf("Retaining devDependencies because NODE_ENV=%q.", nodeEnv)
+		return false
+	}
+	if nodejs.SkipPruningDevSync(ctx) {
+		return false
+	}
+	if env.IsFAH() {
+		// We don't prune if the user is using App Hosting since App Hosting builds don't
+		// rely on the node_modules folder at this point.
+		return false
+	}
+	return true
+}
+
 func yarn2InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 	if err := ar.GenerateYarnConfig(ctx); err != nil {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
 
-	cmd := []string{"yarn", "install", "--immutable"}
+	cmd := []string{"yarn", "install"}
+	devSync, _ := env.IsDevSync()
+	if !devSync {
+		cmd = append(cmd, "--immutable")
+	}
 	yarnCacheExists, err := ctx.FileExists(ctx.ApplicationRoot(), ".yarn", "cache")
 	if err != nil {
 		return err
@@ -260,7 +295,7 @@ func yarn2InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 	// In Plug'n'Play mode (https://yarnpkg.com/features/pnp) all dependencies must be included in
 	// the Yarn cache. The --immutable-cache option will abort the install with an error if anything
 	// is missing or out of date.
-	if yarnCacheExists {
+	if yarnCacheExists && !devSync {
 		cmd = append(cmd, "--immutable-cache")
 	}
 	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
@@ -278,30 +313,38 @@ func yarn2InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		}
 	}
 
-	// If there are no devDependencies, there is nothing to prune. We are done.
-	if !nodejs.HasDevDependencies(pjs) {
-		return nil
+	if shouldPruneYarn2(ctx, pjs) {
+		// For Yarn2, dependency pruning is via the workspaces plugin.
+		ctx.Logf("Pruning devDependencies")
+		if _, err := ctx.Exec([]string{"yarn", "workspaces", "focus", "--all", "--production"}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
 	}
+	return nil
+}
 
+func shouldPruneYarn2(ctx *gcp.Context, pjs *nodejs.PackageJSON) bool {
+	if !nodejs.HasDevDependencies(pjs) {
+		return false
+	}
 	nodeEnv := nodejs.NodeEnv()
 	if nodeEnv != nodejs.EnvProduction {
-		ctx.Logf("Retaining devDependencies because NODE_ENV=%q", nodeEnv)
-		return nil
+		ctx.Logf("Retaining devDependencies because NODE_ENV=%q.", nodeEnv)
+		return false
+	}
+	if nodejs.SkipPruningDevSync(ctx) {
+		return false
 	}
 	hasWorkPlugin, err := nodejs.HasYarnWorkspacePlugin(ctx)
 	if err != nil {
-		return err
+		ctx.Warnf("Unable to determine if Yarn workspace-tools plugin is installed, skipping devDependencies pruning: %v", err)
+		return false
 	}
 	if !hasWorkPlugin {
 		ctx.Warnf("Keeping devDependencies because the Yarn workspace-tools plugin is not installed. You can add it to your project by running 'yarn plugin import workspace-tools'")
-		return nil
+		return false
 	}
-	// For Yarn2, dependency pruning is via the workspaces plugin.
-	ctx.Logf("Pruning devDependencies")
-	if _, err := ctx.Exec([]string{"yarn", "workspaces", "focus", "--all", "--production"}, gcp.WithUserAttribution); err != nil {
-		return err
-	}
-	return nil
+	return true
 }
 
 func installYarn(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {

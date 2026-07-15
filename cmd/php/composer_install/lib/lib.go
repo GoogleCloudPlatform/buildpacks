@@ -66,6 +66,14 @@ func BuildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating %v layer: %w", composerLayer, err)
 	}
 
+	if cap := ctx.Capability(php.ComposerInstallerCapability); cap != nil {
+		i, ok := cap.(php.ComposerInstaller)
+		if !ok {
+			return gcp.InternalErrorf("capability %q must implement ComposerInstaller", php.ComposerInstallerCapability)
+		}
+		return i.Install(ctx, l, composerVer)
+	}
+
 	// Check the metadata in the cache layer to determine if we need to proceed.
 	metaVersion := ctx.GetMetadata(l, versionKey)
 	if composerVer == metaVersion {

@@ -2,6 +2,12 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 licenses(["notice"])
 
+alias(
+    name = "extractdeps",
+    actual = "//pkg/nodejs/extractdeps",
+    visibility = ["//visibility:public"],
+)
+
 go_library(
     name = "nodejs",
     srcs = [
@@ -25,10 +31,12 @@ go_library(
         "//pkg/apprunner:__subpackages__",
         "//pkg/apprunner/nodejs:__subpackages__",
         "//cmd/firebase/bundle:__subpackages__",
+        "//pkg/firebase/preparer:__subpackages__",
         "//cmd/nodejs:__subpackages__",
         "//maker:__subpackages__",
         # Ruby on Rails apps require Nodejs and Yarn for precompiling assets
         "//cmd/ruby:__subpackages__",
+        "//pkg/nodejs:__subpackages__",
     ],
     deps = [
         "//pkg/buildermetrics",
@@ -38,6 +46,7 @@ go_library(
         "//pkg/firebase/apphostingschema",
         "//pkg/gcpbuildpack",
         "//pkg/runtime",
+        "//pkg/tooling",
         "//pkg/version",
         "@com_github_buildpacks_libcnb_v2//:go_default_library",
         "@com_github_hashicorp_go_retryablehttp//:go_default_library",
@@ -74,7 +83,7 @@ go_test(
         "vulnerability_test.go",
         "yarn_test.go",
     ],
-    data = glob(["testdata/**"]),
+    data = glob(["testdata/**"]) + ["//pkg/tooling:tooling_versions_mock_json"],
     embed = [":nodejs"],
     rundir = ".",
     deps = [
@@ -85,6 +94,7 @@ go_test(
         "//pkg/firebase/apphostingschema",
         "//pkg/gcpbuildpack",
         "//pkg/testdata",
+        "//pkg/tooling",
         "@com_github_buildpacks_libcnb_v2//:go_default_library",
         "@com_github_google_go-cmp//cmp:go_default_library",
     ],

@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 	"github.com/google/go-cmp/cmp"
 )
@@ -170,5 +171,80 @@ func TestGetURL(t *testing.T) {
 				t.Errorf("GetURL(%q, buffer) = %v, want %v", server.URL, buf.String(), tc.want)
 			}
 		})
+	}
+}
+
+func TestFile(t *testing.T) {
+	testCases := []struct {
+		name       string
+		httpStatus int
+		response   string
+		wantError  bool
+		want       string
+	}{
+		{
+			name:     "simple file download",
+			response: "hello world",
+			want:     "hello world",
+		},
+		{
+			name:       "not found",
+			httpStatus: http.StatusNotFound,
+			wantError:  true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			server := testserver.New(
+				t,
+				testserver.WithStatus(tc.httpStatus),
+				testserver.WithJSON(tc.response))
+
+			dir := t.TempDir()
+			outPath := filepath.Join(dir, "output.txt")
+			err := File(server.URL, outPath)
+			if tc.wantError == (err == nil) {
+				t.Fatalf("File(%q, %q) got error: %v, want error? %v", server.URL, outPath, err, tc.wantError)
+			}
+			if !tc.wantError {
+				b, err := os.ReadFile(outPath)
+				if err != nil {
+					t.Fatalf("reading downloaded file: %v", err)
+				}
+				if string(b) != tc.want {
+					t.Errorf("File content = %q, want %q", string(b), tc.want)
+				}
+			}
+		})
+	}
+}
+
+func TestARGenericBinary(t *testing.T) {
+	server := testserver.New(
+		t,
+		testserver.WithStatus(http.StatusOK),
+		testserver.WithJSON("binary-content"))
+
+	originalARGenericBinary := ARGenericBinary
+	defer func() { ARGenericBinary = originalARGenericBinary }()
+
+	ARGenericBinary = func(ctx *gcp.Context, binaryName, version, outPath string) error {
+		return File(server.URL, outPath)
+	}
+
+	ctx := gcp.NewContext()
+	dir := t.TempDir()
+	outPath := filepath.Join(dir, "universal_maker")
+
+	if err := ARGenericBinary(ctx, "universal_maker", "1.0.0", outPath); err != nil {
+		t.Fatalf("ARGenericBinary failed: %v", err)
+	}
+	b, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("reading downloaded binary: %v", err)
+	}
+	if string(b) != "binary-content" {
+		t.Errorf("ARGenericBinary content = %q, want %q", string(b), "binary-content")
 	}
 }

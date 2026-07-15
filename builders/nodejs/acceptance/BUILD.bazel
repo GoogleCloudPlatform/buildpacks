@@ -122,6 +122,8 @@ acceptance_test_argo_source(
     name = "argo_source",
     srcs = [
         ":8.17.0_gcf_test_cloudbuild_bin",
+        "//cmd/apprunner:app-runner",
+        "//cmd/apprunner:functional_test",
     ],
     testdata = "//builders/testdata/nodejs:all_files",
 )

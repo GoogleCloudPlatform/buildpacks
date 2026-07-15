@@ -21,8 +21,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 	"github.com/buildpacks/libcnb/v2"
 	"github.com/Masterminds/semver"
 	"gopkg.in/yaml.v2"
@@ -102,13 +104,20 @@ type yarn2Lock struct {
 // UseFrozenLockfile returns an true if the environment supporte Yarn's --frozen-lockfile flag. This
 // is a hack to maintain backwards compatibility on App Engine Node.js 10 and older.
 func UseFrozenLockfile(ctx *gcp.Context) (bool, error) {
+	if devSync, _ := env.IsDevSync(); devSync {
+		return false, nil
+	}
 	oldNode, err := isPreNode11(ctx)
 	return !oldNode, err
 }
 
 // IsYarn2 detects whether the given lockfile was generated with Yarn 2.
 func IsYarn2(rootDir string) (bool, error) {
-	data, err := ioutil.ReadFile(filepath.Join(rootDir, YarnLock))
+	path := filepath.Join(rootDir, YarnLock)
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return false, nil
+	}
+	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return false, gcp.InternalErrorf("reading yarn.lock: %v", err)
 	}
@@ -139,9 +148,15 @@ func HasYarnWorkspacePlugin(ctx *gcp.Context) (bool, error) {
 // returns the latest stable version available.
 // TODO(b/338411091) create a shared packagejson util library and refactor out a generic detect
 // package manager version function.
-func detectYarnVersion(pjs *PackageJSON) (string, error) {
+func detectYarnVersion(ctx *gcp.Context, pjs *PackageJSON) (string, error) {
 	if pjs == nil || (pjs.Engines.Yarn == "" && pjs.PackageManager == "") {
-		version, err := latestPackageVersion("yarn")
+		version, err := tooling.ResolveToolVersion("nodejs", "yarn", os.Getenv(env.RuntimeVersion), "")
+		if err == nil && version != "" {
+			return version, nil
+		}
+		ctx.Warnf("Could not resolve pinned yarn version, falling back to latest: %v", err)
+
+		version, err = latestPackageVersion("yarn")
 		if err != nil {
 			return "", gcp.InternalErrorf("fetching available Yarn versions: %w", err)
 		}
@@ -174,7 +189,7 @@ func InstallYarnLayer(ctx *gcp.Context, yarnLayer *libcnb.Layer, pjs *PackageJSO
 	}
 
 	layerName := yarnLayer.Name
-	version, err := detectYarnVersion(pjs)
+	version, err := detectYarnVersion(ctx, pjs)
 	if err != nil {
 		return err
 	}

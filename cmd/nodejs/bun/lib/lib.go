@@ -34,9 +34,6 @@ const (
 
 // DetectFn detects if package.json is present.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !env.IsBetaSupported() {
-		return gcp.OptOut("Bun package manager is not supported in the current release track."), nil
-	}
 	pkgJSONExists, err := ctx.FileExists("package.json")
 	if err != nil {
 		return nil, err
@@ -58,7 +55,7 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if bunLockExists {
 		return gcp.OptInFileFound(nodejs.BunLock), nil
 	}
-	if os.Getenv(env.PackageManager) == "bun" {
+	if nodejs.IsPackageManagerConfigured("bun") {
 		return gcp.OptIn("package.json found and GOOGLE_PACKAGE_MANAGER=bun"), nil
 	}
 	return gcp.OptOut("bun.lockb or bun.lock not found"), nil
@@ -87,6 +84,18 @@ func BuildFn(ctx *gcp.Context) error {
 	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
 	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
 
+	devSync, err := env.IsDevSync()
+	if err != nil {
+		ctx.Warnf("Unable to determine dev sync status: %v", err)
+	} else if devSync {
+		cmd, err := nodejs.DevSyncEntrypoint(ctx, pjs, "bun")
+		if err != nil {
+			return gcp.InternalErrorf("getting dev sync entrypoint: %w", err)
+		}
+		ctx.AddWebProcess(cmd)
+		return nil
+	}
+
 	// Configure the entrypoint for production.
 	ctx.AddWebProcess([]string{"npm", "run", "start"})
 	return nil
@@ -113,11 +122,12 @@ func bunInstallModules(ctx *gcp.Context) error {
 	bunLockbExists, _ := ctx.FileExists("bun.lockb")
 	bunLockExists, _ := ctx.FileExists("bun.lock")
 	cmd := []string{"bun", "install"}
-	if bunLockbExists || bunLockExists {
+	devSync, _ := env.IsDevSync()
+	if (bunLockbExists || bunLockExists) && !devSync {
 		ctx.Logf("Lockfile (bun.lockb or bun.lock) found. Installing dependencies with Bun using --frozen-lockfile.")
 		cmd = append(cmd, "--frozen-lockfile")
 	} else {
-		ctx.Logf("Installing application dependencies with Bun (no lockfile found).")
+		ctx.Logf("Installing application dependencies with Bun (no lockfile found or dev sync enabled).")
 	}
 
 	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution, gcp.WithEnv("NODE_ENV="+buildNodeEnv)); err != nil {
@@ -140,11 +150,7 @@ func bunInstallModules(ctx *gcp.Context) error {
 			}
 		}
 	}
-	shouldPruneDevDependencies := buildNodeEnv == nodejs.EnvDevelopment && !nodeEnvPresent && nodejs.HasDevDependencies(pjs)
-	if shouldPruneDevDependencies {
-		if env.IsFAH() {
-			return nil
-		}
+	if nodejs.ShouldPrunePnpmBun(ctx, pjs, buildNodeEnv, nodeEnvPresent) {
 		// If we installed dependencies with NODE_ENV=development and the user didn't explicitly set
 		// NODE_ENV we should prune the DevDependencies from the final app image.
 		ctx.Logf("Pruning DevDependencies.")
