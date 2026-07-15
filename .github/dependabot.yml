@@ -6,43 +6,48 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    exclude-paths:
-      - "go.mod"
-      - "go.sum"
+    ignore:
+      - dependency-name: "*"
+
+  # Go modules: Include all other go.mod and go.sum files
+  - package-ecosystem: "gomod"
+    directory: "/**"
+    schedule:
+      interval: "weekly"
 
   # Node.js (npm / yarn / pnpm)
   - package-ecosystem: "npm"
-    directory: "/"
+    directory: "/**"
     schedule:
       interval: "weekly"
 
   # Python (pip)
   - package-ecosystem: "pip"
-    directory: "/"
+    directory: "/**"
     schedule:
       interval: "weekly"
 
   # PHP (composer)
   - package-ecosystem: "composer"
-    directory: "/"
+    directory: "/**"
     schedule:
       interval: "weekly"
 
   # Ruby (bundler)
   - package-ecosystem: "bundler"
-    directory: "/"
+    directory: "/**"
     schedule:
       interval: "weekly"
 
   # .NET / C# (nuget)
   - package-ecosystem: "nuget"
-    directory: "/"
+    directory: "/**"
     schedule:
       interval: "weekly"
 
   # Dockerfiles
   - package-ecosystem: "docker"
-    directory: "/"
+    directory: "/**"
     schedule:
       interval: "weekly"
 
