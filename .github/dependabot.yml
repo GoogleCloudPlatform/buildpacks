@@ -1,7 +1,7 @@
 # Dependabot configuration for googlecloudplatform/buildpacks
 version: 2
 updates:
-  # Go modules: Exclude root go.mod and go.sum files
+  # Go modules: Ignore updates for root go.mod
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
@@ -9,45 +9,53 @@ updates:
     ignore:
       - dependency-name: "*"
 
-  # Go modules: Include all other go.mod and go.sum files
+  # Go modules: Scan all nested subdirectories except root
   - package-ecosystem: "gomod"
-    directory: "/**"
+    directories:
+      - "/*"
+      - "/*/**"
     schedule:
       interval: "weekly"
 
   # Node.js (npm / yarn / pnpm)
   - package-ecosystem: "npm"
-    directory: "/**"
+    directories:
+      - "/**"
     schedule:
       interval: "weekly"
 
   # Python (pip)
   - package-ecosystem: "pip"
-    directory: "/**"
+    directories:
+      - "/**"
     schedule:
       interval: "weekly"
 
   # PHP (composer)
   - package-ecosystem: "composer"
-    directory: "/**"
+    directories:
+      - "/**"
     schedule:
       interval: "weekly"
 
   # Ruby (bundler)
   - package-ecosystem: "bundler"
-    directory: "/**"
+    directories:
+      - "/**"
     schedule:
       interval: "weekly"
 
   # .NET / C# (nuget)
   - package-ecosystem: "nuget"
-    directory: "/**"
+    directories:
+      - "/**"
     schedule:
       interval: "weekly"
 
   # Dockerfiles
   - package-ecosystem: "docker"
-    directory: "/**"
+    directories:
+      - "/**"
     schedule:
       interval: "weekly"
 
