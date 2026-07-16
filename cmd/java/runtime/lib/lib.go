@@ -60,6 +60,7 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		"META-INF/MANIFEST.MF",
 	}
 	for _, f := range files {
+		ctx.Logf("Checking for file: %s", f)
 		exists, err := ctx.FileExists(f)
 		if err != nil {
 			return nil, err

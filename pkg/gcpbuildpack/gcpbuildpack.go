@@ -104,6 +104,8 @@ type Context struct {
 	// like runtime installation, avoiding the need to download large artifacts during local simulation.
 	capabilities map[string]any
 
+	disabledCapabilities map[string]bool
+
 	execCmd func(name string, arg ...string) *exec.Cmd
 }
 
@@ -174,6 +176,16 @@ func WithCapability(key string, impl any) ContextOption {
 	}
 }
 
+// WithDisabledCapability disables a capability in the context.
+func WithDisabledCapability(key string) ContextOption {
+	return func(ctx *Context) {
+		if ctx.disabledCapabilities == nil {
+			ctx.disabledCapabilities = make(map[string]bool)
+		}
+		ctx.disabledCapabilities[key] = true
+	}
+}
+
 // NewContext creates a context.
 func NewContext(opts ...ContextOption) *Context {
 	debug, err := env.IsDebugMode()
@@ -202,8 +214,8 @@ func newDetectContext(detectContext libcnb.DetectContext) *Context {
 	return ctx
 }
 
-func newBuildContext(buildContext libcnb.BuildContext) *Context {
-	ctx := NewContext(WithBuildpackInfo(buildContext.Buildpack.Info))
+func newBuildContext(buildContext libcnb.BuildContext, opts ...ContextOption) *Context {
+	ctx := NewContext(append(opts, WithBuildpackInfo(buildContext.Buildpack.Info))...)
 	ctx.buildContext = buildContext
 	ctx.applicationRoot = ctx.buildContext.ApplicationPath
 	ctx.buildpackRoot = ctx.buildContext.Buildpack.Path
@@ -231,6 +243,14 @@ func (ctx *Context) BuildpackName() string {
 // behave differently depending on the context (e.g., real build vs maker simulation).
 func (ctx *Context) Capability(key string) any {
 	return ctx.capabilities[key]
+}
+
+// IsDisabled returns whether a capability is disabled.
+func (ctx *Context) IsDisabled(key string) bool {
+	if ctx.disabledCapabilities == nil {
+		return false
+	}
+	return ctx.disabledCapabilities[key]
 }
 
 // ApplicationRoot returns the root folder of the application code.
@@ -267,12 +287,12 @@ func (ctx *Context) Labels() []libcnb.Label {
 }
 
 // Main is the main entrypoint to a buildpack's detect and build functions.
-func Main(d DetectFn, b BuildFn) {
+func Main(d DetectFn, b BuildFn, buildOpts ...ContextOption) {
 	switch filepath.Base(os.Args[0]) {
 	case "detect":
 		detect(d)
 	case "build":
-		build(b)
+		build(b, buildOpts...)
 	default:
 		defaultLogger.Print("Unknown command, expected 'detect' or 'build'.")
 		os.Exit(1)
@@ -326,10 +346,10 @@ type gcpbuilder struct {
 }
 
 // buildFnWrapper creates a libcnb.BuildFunc that wraps the given buildFn.
-func buildFnWrapper(buildFn BuildFn) libcnb.BuildFunc {
+func buildFnWrapper(buildFn BuildFn, opts ...ContextOption) libcnb.BuildFunc {
 	return func(lbctx libcnb.BuildContext) (libcnb.BuildResult, error) {
 		start := time.Now()
-		ctx := newBuildContext(lbctx)
+		ctx := newBuildContext(lbctx, opts...)
 		ctx.Logf("=== %s (%s@%s) ===", ctx.BuildpackName(), ctx.BuildpackID(), ctx.BuildpackVersion())
 
 		status := buildererror.StatusInternal
@@ -360,14 +380,14 @@ func buildFnWrapper(buildFn BuildFn) libcnb.BuildFunc {
 }
 
 // build implements the /bin/build phase of the buildpack.
-func build(buildFn BuildFn) {
+func build(buildFn BuildFn, opts ...ContextOption) {
 	options := []libcnb.Option{
 		// Without this flag the build SBOM is NOT written to the image's "io.buildpacks.build.metadata" label.
 		// The acceptence tests rely on this being present.
 		// libcnb.WithBOMLabel(true),
 	}
 	config := libcnb.NewConfig(options...)
-	wrappedBuildFn := buildFnWrapper(buildFn)
+	wrappedBuildFn := buildFnWrapper(buildFn, opts...)
 	libcnb.Build(wrappedBuildFn, config)
 }
 
@@ -576,7 +596,7 @@ func writeEnvDir(dir string, env map[string]string) error {
 }
 
 // MainRunner is the main entrypoint for runners.
-func MainRunner(buildpacks map[string]BuildpackFuncs, buildpackID *string, phase *string) {
+func MainRunner(buildpacks map[string]BuildpackFuncs, buildpackID *string, phase *string, buildOpts ...ContextOption) {
 	ctx := NewContext()
 	if *buildpackID == "" {
 		err := buildererror.Errorf(buildererror.StatusInternal, "Usage: runner -buildpack <id> [args...]")
@@ -598,7 +618,7 @@ func MainRunner(buildpacks map[string]BuildpackFuncs, buildpackID *string, phase
 	case "detect":
 		detect(bp.Detect)
 	case "build":
-		build(bp.Build)
+		build(bp.Build, buildOpts...)
 	default:
 		err := buildererror.Errorf(buildererror.StatusInternal, "Invalid phase %q, expected 'detect' or 'build'", *phase)
 		ctx.Exit(failStatusCode, err)

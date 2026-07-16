@@ -15,8 +15,6 @@ go_library(
         "//pkg/fileutil",
         "//pkg/gcpbuildpack",
         "//pkg/java",
-        "//pkg/runtime",
-        "//pkg/tooling",
     ],
 )
 

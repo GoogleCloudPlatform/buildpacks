@@ -18,6 +18,9 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 )
 
+// GradleInstallerCapability is the capability key for the maker Gradle installer.
+const GradleInstallerCapability = "java.GradleInstaller"
+
 var (
 	gradleVersionURL = "https://services.gradle.org/versions/current"
 )

@@ -1436,6 +1436,7 @@ func TestCleanVersion(t *testing.T) {
 		{"3.10.12", "3.10.12"},
 		{"go version go1.24.5 linux/amd64", "1.24.5"},
 		{"go version go1.25 linux/amd64", "1.25"},
+		{"openjdk version \"25\" 2025-01-20", "25"},
 		{"PHP 8.3.12 (cli) ...", "8.3.12"},
 		{"ruby 3.3.8 (2025-04-09 revision b200bad6cd) [x86_64-linux-gnu]", "3.3.8"},
 		{"", ""},

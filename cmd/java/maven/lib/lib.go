@@ -27,29 +27,11 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
+	java "github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 )
 
 const (
-	// TODO(b/151198698): Remove this once we confirm pinning works as expected in all environments.
-	defaultMavenVersion = "3.9.11"
-	mavenLayer          = "maven"
-	m2Layer             = "m2"
-	versionKey          = "version"
-)
-
-var (
-	mavenURLs = []string{
-		// The CDN URL is incredibly fast (> 10x faster) but it only has latest version(s). Fall-back to the archive URL when the current version is no longer in the CDN
-		"https://dlcdn.apache.org/maven/maven-3/%[1]s/binaries/apache-maven-%[1]s-bin.tar.gz",
-		"https://archive.apache.org/dist/maven/maven-3/%[1]s/binaries/apache-maven-%[1]s-bin.tar.gz",
-	}
-	validStatuses = []string{
-		"HTTP/1.1 200 OK",
-		"HTTP/2 200",
-	}
+	m2Layer = "m2"
 )
 
 // DetectFn is the exported detect function.
@@ -158,7 +140,11 @@ func provisionOrDetectMaven(ctx *gcp.Context) (string, error) {
 	if mvnInstalled {
 		return "mvn", nil
 	}
-	mvn, err := installMaven(ctx)
+	if ctx.IsDisabled(java.MavenInstallerCapability) {
+		ctx.Logf("MavenInstaller capability is disabled. Skipping installation of Maven.")
+		return "", nil
+	}
+	mvn, err := java.InstallMaven(ctx)
 	if err != nil {
 		return "", fmt.Errorf("installing Maven: %w", err)
 	}
@@ -200,69 +186,6 @@ func mvnInstalled(ctx *gcp.Context) (bool, error) {
 		return false, err
 	}
 	return result.Stdout != "", nil
-}
-
-// installMaven installs Maven and returns the path of the mvn binary
-func installMaven(ctx *gcp.Context) (string, error) {
-	mvnl, err := ctx.Layer(mavenLayer, gcp.CacheLayer, gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
-	if err != nil {
-		return "", fmt.Errorf("creating %v layer: %w", mavenLayer, err)
-	}
-
-	// Check the metadata in the cache layer to determine if we need to proceed.
-	metaVersion := ctx.GetMetadata(mvnl, versionKey)
-	mavenVersion := resolveMavenVersion(ctx)
-	if mavenVersion == metaVersion {
-		ctx.CacheHit(mavenLayer)
-		ctx.Logf("Maven cache hit, skipping installation.")
-		return filepath.Join(mvnl.Path, "bin", "mvn"), nil
-	}
-	ctx.CacheMiss(mavenLayer)
-	if err := ctx.ClearLayer(mvnl); err != nil {
-		return "", fmt.Errorf("clearing layer %q: %w", mvnl.Name, err)
-	}
-
-	// Download and install maven in layer.
-	ctx.Logf("Installing Maven v%s", mavenVersion)
-	archiveURL, err := resolveMavenURL(ctx, mavenVersion)
-	if err != nil {
-		return "", fmt.Errorf("failed to get Maven: %w", err)
-	}
-	command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xz --directory %s --strip-components=1", archiveURL, mvnl.Path)
-	if _, err := ctx.Exec([]string{"bash", "-c", command}); err != nil {
-		return "", err
-	}
-	ctx.Logf("Downloading Maven from %s", archiveURL)
-
-	ctx.SetMetadata(mvnl, versionKey, mavenVersion)
-	return filepath.Join(mvnl.Path, "bin", "mvn"), nil
-}
-
-func resolveMavenVersion(ctx *gcp.Context) string {
-	latestVersion, err := tooling.ResolveToolVersion("java", "maven", os.Getenv(env.RuntimeVersion), runtime.OSForStack(ctx))
-	if err != nil || latestVersion == "" {
-		ctx.Warnf("Could not resolve pinned maven version, falling back to latest: %v, %v", defaultMavenVersion, err)
-		latestVersion = defaultMavenVersion
-	} else {
-		ctx.Logf("Using Maven version %s from tooling.ResolveToolVersion", latestVersion)
-	}
-	return latestVersion
-}
-
-func resolveMavenURL(ctx *gcp.Context, mavenVersion string) (string, error) {
-	for _, url := range mavenURLs {
-		archiveURL := fmt.Sprintf(url, mavenVersion)
-		curlHead := fmt.Sprintf("curl --head --fail --silent --location %s", archiveURL)
-		result, err := ctx.Exec([]string{"bash", "-c", curlHead})
-		if err == nil {
-			for _, status := range validStatuses {
-				if strings.Contains(result.Stdout, status) {
-					return archiveURL, nil
-				}
-			}
-		}
-	}
-	return "", gcp.InternalErrorf("Maven version %s does not exist at any of the URLs %v (status not 200).", mavenVersion, mavenURLs)
 }
 
 func pomFilePath(ctx *gcp.Context) (string, error) {

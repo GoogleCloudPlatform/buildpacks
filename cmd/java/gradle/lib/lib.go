@@ -61,6 +61,7 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 // BuildFn is the exported build function.
 func BuildFn(ctx *gcp.Context) error {
+
 	gradleCachedRepo, err := ctx.Layer(cacheLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
 	if err != nil {
 		return fmt.Errorf("creating %v layer: %w", cacheLayer, err)
@@ -132,6 +133,10 @@ func provisionOrDetectGradle(ctx *gcp.Context) (string, error) {
 	}
 	if installed {
 		return "gradle", nil
+	}
+	if ctx.IsDisabled(java.GradleInstallerCapability) {
+		ctx.Logf("GradleInstaller capability is disabled. Skipping installation of Gradle.")
+		return "", nil
 	}
 	gradle, err := installGradle(ctx)
 	if err != nil {

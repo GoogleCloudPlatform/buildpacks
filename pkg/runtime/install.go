@@ -159,11 +159,18 @@ const (
 )
 
 var localRuntimeVersionCmds = map[InstallableRuntime][][]string{
-	Python: {
-		{"python3", "-c", "import platform; print(platform.python_version())"},
-		{"python", "-c", "import platform; print(platform.python_version())"},
-		{"python3", "--version"},
-		{"python", "--version"},
+	// go/keep-sorted start
+	AspNetCore: {
+		{"dotnet", "--version"},
+	},
+	CanonicalJDK: {
+		{"java", "-version"},
+	},
+	DotnetSDK: {
+		{"dotnet", "--version"},
+	},
+	Go: {
+		{"go", "version"},
 	},
 	Nodejs: {
 		{"node", "-p", "process.versions.node"},
@@ -171,24 +178,25 @@ var localRuntimeVersionCmds = map[InstallableRuntime][][]string{
 		{"node", "--version"},
 		{"nodejs", "--version"},
 	},
-	Go: {
-		{"go", "version"},
+	OpenJDK: {
+		{"java", "-version"},
 	},
 	PHP: {
 		{"php", "-r", "echo PHP_VERSION;"},
 		{"php", "--version"},
+	},
+	Python: {
+		{"python3", "-c", "import platform; print(platform.python_version())"},
+		{"python", "-c", "import platform; print(platform.python_version())"},
+		{"python3", "--version"},
+		{"python", "--version"},
 	},
 	Ruby: {
 		{"ruby", "-e", "'puts RUBY_VERSION'"},
 		{"ruby", "--version"},
 		{"ruby", "-v"},
 	},
-	DotnetSDK: {
-		{"dotnet", "--version"},
-	},
-	AspNetCore: {
-		{"dotnet", "--version"},
-	},
+	// go/keep-sorted end
 }
 
 var errUnsupportedRuntime = errors.New("unsupported runtime for local check")
@@ -690,10 +698,12 @@ func runtimeMatchesInstallableRuntime(installableRuntime InstallableRuntime) boo
 	}
 }
 
+// cleanVersion removes any non-semantic version prefixes and suffixes from the version string.
+// For example, "Python 3.12.4" becomes "3.12.4", and "go version go1.21.5" becomes "1.21.5".
 func cleanVersion(v string) string {
 	v = strings.TrimSpace(v)
 
-	prefixes := []string{"Python ", "PHP ", "ruby ", "go version go"}
+	prefixes := []string{"Python ", "PHP ", "ruby ", "go version go", "openjdk version "}
 	for _, prefix := range prefixes {
 		if strings.HasPrefix(v, prefix) {
 			v = strings.TrimPrefix(v, prefix)
@@ -706,6 +716,7 @@ func cleanVersion(v string) string {
 		v = fields[0]
 	}
 
+	v = strings.ReplaceAll(v, "\"", "")
 	v = strings.TrimPrefix(v, "v")
 	return v
 }
@@ -721,7 +732,7 @@ func checkLocalRuntimeVersion(ctx *gcp.Context, runtime InstallableRuntime) (str
 	for _, cmd := range cmds {
 		result, err := ctx.Exec(cmd, gcp.WithUserAttribution)
 		if err == nil {
-			version := cleanVersion(result.Stdout)
+			version := cleanVersion(result.Combined)
 			if version != "" {
 				return version, nil
 			}

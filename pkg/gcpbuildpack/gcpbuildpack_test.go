@@ -727,3 +727,20 @@ func setOSArgs(t *testing.T, args []string) {
 		os.Args = oldArgs
 	})
 }
+
+func TestDisabledCapabilities(t *testing.T) {
+	ctx := NewContext(
+		WithDisabledCapability("cap1"),
+		WithDisabledCapability("cap2"),
+	)
+
+	if !ctx.IsDisabled("cap1") {
+		t.Errorf("Expected cap1 to be disabled")
+	}
+	if !ctx.IsDisabled("cap2") {
+		t.Errorf("Expected cap2 to be disabled")
+	}
+	if ctx.IsDisabled("cap3") {
+		t.Errorf("Expected cap3 to NOT be disabled")
+	}
+}
