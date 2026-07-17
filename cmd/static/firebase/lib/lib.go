@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package lib provides the buildpack logic for serving static sites.
+// Package lib provides the buildpack logic for serving static sites configured with firebase.json.
 package lib
 
 import (
@@ -26,49 +26,36 @@ import (
 )
 
 const (
-	// indexHTML is the name of the index.html file.
-	indexHTML = "index.html"
 	// nginxPathBaseImage is the path to the nginx root in the static runtimes base image.
 	nginxPathBaseImage = "/opt/nginx/"
 	// nginxPathBuildpacks is the path to the nginx root when installed by the nginx buildpack.
 	nginxPathBuildpacks = "/layers/google.utils.nginx/nginx"
 )
 
-// staticAssets is a list of potential static file/folder indicators, ordered by preference.
-// Output directories take precedence over a raw index.html to ensure compiled distribution logic wins.
-var staticAssets = []string{
-	"build",
-	"dist",
-	"public",
-	"_site",
-	"site",
-	indexHTML,
-}
-
-// DetectFn checks for standard static compiled directories or an index.html.
+// DetectFn checks for firebase.json with a valid public directory.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	// Restrict this feature behind ALPHA release track.
 	if !env.IsAlphaSupported() {
 		return gcp.OptOut("Static runtimes feature is supported only on ALPHA release track."), nil
 	}
 
-	for _, c := range staticAssets {
-		fullPath := filepath.Join(ctx.ApplicationRoot(), c)
-		info, err := os.Stat(fullPath)
-		if err == nil {
-			if c == indexHTML && !info.IsDir() {
-				return gcp.OptInFileFound(c), nil
-			}
-			if c != indexHTML && info.IsDir() {
-				return gcp.OptInFileFound(c), nil
+	firebaseConfigPath := filepath.Join(ctx.ApplicationRoot(), "firebase.json")
+	if configs, err := static.ParseFirebaseConfig(firebaseConfigPath); err == nil && len(configs) > 0 {
+		// Default to the first config in the array. App Hosting currently only supports deploying
+		// a single target per container, and we do not yet have plumbing to receive a specific
+		// target identifier (like `firebase deploy --only hosting:target`) from the user.
+		if publicDir := configs[0].Public; publicDir != "" {
+			fullPath := filepath.Join(ctx.ApplicationRoot(), publicDir)
+			if info, err := os.Stat(fullPath); err == nil && info.IsDir() {
+				return gcp.OptInFileFound("firebase.json (public: " + publicDir + ")"), nil
 			}
 		}
 	}
 
-	return gcp.OptOut("No static asset folders or index.html found."), nil
+	return gcp.OptOut("No valid firebase.json public asset folder found."), nil
 }
 
-// BuildFn generates or copies the nginx configuration and registers the web entrypoint.
+// BuildFn generates the nginx configuration for a firebase.json application and registers the web entrypoint.
 func BuildFn(ctx *gcp.Context) error {
 	l, err := ctx.Layer("nginx_config", gcp.LaunchLayer, gcp.BuildLayer)
 	if err != nil {
@@ -77,25 +64,30 @@ func BuildFn(ctx *gcp.Context) error {
 	l.BuildEnvironment.Override(env.StaticServe, "true")
 
 	rootPath := ctx.ApplicationRoot()
-	for _, c := range staticAssets {
-		fullPath := filepath.Join(ctx.ApplicationRoot(), c)
-		info, err := os.Stat(fullPath)
+	var fbConfig *static.HostingConfig
+
+	firebaseConfigPath := filepath.Join(ctx.ApplicationRoot(), "firebase.json")
+	if info, err := os.Stat(firebaseConfigPath); err == nil && !info.IsDir() {
+		ctx.Logf("Found firebase.json at application root. Parsing...")
+		configs, err := static.ParseFirebaseConfig(firebaseConfigPath)
 		if err != nil {
-			continue
+			return fmt.Errorf("parsing firebase.json: %w", err)
 		}
-		if c == indexHTML && !info.IsDir() {
-			ctx.Logf("Target static asset found: index.html at root.")
-			break
-		}
-		if c != indexHTML && info.IsDir() {
-			rootPath = fullPath
-			ctx.Logf("Target static asset folder found: %s", c)
-			break
+		if len(configs) > 0 {
+			fbConfig = &configs[0]
+			ctx.Logf("Successfully parsed firebase.json. Applied %d custom header rules.", len(fbConfig.Headers))
+			if fbConfig.Public != "" {
+				fullPath := filepath.Join(ctx.ApplicationRoot(), fbConfig.Public)
+				if info, err := os.Stat(fullPath); err == nil && info.IsDir() {
+					rootPath = fullPath
+					ctx.Logf("Target static asset folder found via firebase.json: %s", fbConfig.Public)
+				}
+			}
 		}
 	}
 
 	nginxConfPath := filepath.Join(l.Path, static.NginxConfFile)
-	ctx.Logf("Generating default SPA/SSG-friendly %s", static.NginxConfFile)
+	ctx.Logf("Generating default SPA/SSG-friendly %s for firebase.json", static.NginxConfFile)
 
 	nginxPath := nginxPathBuildpacks
 	if env.IsStaticBaseImage() {

@@ -237,6 +237,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   uri = "serve_using_runner.tgz"
 
 [[buildpacks]]
+  id = "google.static.firebase"
+  uri = "firebase_using_runner.tgz"
+
+[[buildpacks]]
   id = "google.utils.devsync"
   uri = "devsync_using_runner.tgz"
 
@@ -1218,6 +1222,14 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 ##########
 # Static Web Applications
 ##########
+[[order]]
+  [[order.group]]
+    id = "google.static.firebase"
+  [[order.group]]
+    id = "google.utils.nginx"
+  [[order.group]]
+    id = "google.utils.label-image"
+
 [[order]]
   [[order.group]]
     id = "google.static.serve"

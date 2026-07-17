@@ -29,33 +29,38 @@ func TestDetect(t *testing.T) {
 		want  int
 	}{
 		{
-			name: "with_index_html_at_root",
+			name: "with_firebase_json_valid_public",
 			files: map[string]string{
-				"index.html": "hello",
+				"firebase.json":           `{"hosting": {"public": "custom_build"}}`,
+				"custom_build/index.html": "hello",
 			},
 			envs: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
 			want: 0,
 		},
 		{
-			name: "with_dist_directory",
+			name: "with_firebase_json_invalid_public_fallback",
 			files: map[string]string{
-				"dist/index.html": "hello",
+				"firebase.json": `{"hosting": {"public": "missing_dir"}}`,
+				"index.html":    "hello",
 			},
 			envs: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
-			want: 0,
-		},
-		{
-			name: "with_index_html_but_release_track_not_alpha",
-			files: map[string]string{
-				"index.html": "hello",
-			},
 			want: 100,
 		},
 		{
-			name:  "neither_index_nor_build_folders",
-			files: map[string]string{},
-			envs:  []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
-			want:  100,
+			name: "with_firebase_json_invalid_public_no_fallback",
+			files: map[string]string{
+				"firebase.json": `{"hosting": {"public": "missing_dir"}}`,
+			},
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			want: 100,
+		},
+		{
+			name: "with_index_html_only_no_firebase",
+			files: map[string]string{
+				"index.html": "hello",
+			},
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			want: 100,
 		},
 	}
 
@@ -74,13 +79,14 @@ func TestBuild(t *testing.T) {
 		want  string
 	}{
 		{
-			name: "with_dist_directory_priority",
+			name: "with_firebase_json_public_priority",
 			files: map[string]string{
-				"dist/index.html": "hello",
-				"index.html":      "root dummy file",
+				"firebase.json":               `{"hosting": {"public": "my_public_folder"}}`,
+				"my_public_folder/index.html": "hello",
+				"dist/index.html":             "dist file",
 			},
 			envs: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
-			want: "Target static asset folder found: dist",
+			want: "Target static asset folder found via firebase.json: my_public_folder",
 		},
 	}
 
