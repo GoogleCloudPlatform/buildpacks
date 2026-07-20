@@ -63,13 +63,14 @@ var (
 
 // TODO(hemantgoyal): Extract this to a seperate file and use in TPC shuttle as well.
 var packagesWithMajorVersionGrouping = map[string]bool{
-	"aspnetcore":   true,
-	"dotnetsdk":    true,
-	"canonicaljdk": true,
-	"nginx":        true,
-	"nodejs":       true,
-	"openjdk":      true,
-	"pid1":         true,
+	"aspnetcore":     true,
+	"dotnetsdk":      true,
+	"canonicaljdk":   true,
+	"nginx":          true,
+	"canonicalnginx": true,
+	"nodejs":         true,
+	"openjdk":        true,
+	"pid1":           true,
 }
 
 func extractMajorVersion(fullVersion string, language string) string {
@@ -92,19 +93,20 @@ type InstallableRuntime string
 
 // All runtimes that can be installed using the InstallTarballIfNotCached function.
 const (
-	Nodejs       InstallableRuntime = "nodejs"
-	PHP          InstallableRuntime = "php"
-	Python       InstallableRuntime = "python"
-	Ruby         InstallableRuntime = "ruby"
-	Nginx        InstallableRuntime = "nginx"
-	Pid1         InstallableRuntime = "pid1"
-	DotnetSDK    InstallableRuntime = "dotnetsdk"
-	AspNetCore   InstallableRuntime = "aspnetcore"
-	OpenJDK      InstallableRuntime = "openjdk"
-	CanonicalJDK InstallableRuntime = "canonicaljdk"
-	Go           InstallableRuntime = "golang"
-	Jetty        InstallableRuntime = "jetty"
-	Bun          InstallableRuntime = "bun"
+	Nodejs         InstallableRuntime = "nodejs"
+	PHP            InstallableRuntime = "php"
+	Python         InstallableRuntime = "python"
+	Ruby           InstallableRuntime = "ruby"
+	Nginx          InstallableRuntime = "nginx"
+	CanonicalNginx InstallableRuntime = "canonicalnginx"
+	Pid1           InstallableRuntime = "pid1"
+	DotnetSDK      InstallableRuntime = "dotnetsdk"
+	AspNetCore     InstallableRuntime = "aspnetcore"
+	OpenJDK        InstallableRuntime = "openjdk"
+	CanonicalJDK   InstallableRuntime = "canonicaljdk"
+	Go             InstallableRuntime = "golang"
+	Jetty          InstallableRuntime = "jetty"
+	Bun            InstallableRuntime = "bun"
 
 	Ubuntu1804 string = "ubuntu1804"
 	Ubuntu2204 string = "ubuntu2204"
@@ -118,16 +120,17 @@ const (
 
 // User friendly display name of all runtime (e.g. for use in error message).
 var runtimeNames = map[InstallableRuntime]string{
-	Nodejs:    "Node.js",
-	PHP:       "PHP Runtime",
-	Python:    "Python",
-	Ruby:      "Ruby Runtime",
-	Nginx:     "Nginx Web Server",
-	Pid1:      "Pid1",
-	DotnetSDK: ".NET SDK",
-	Go:        "Go",
-	Jetty:     "Jetty",
-	Bun:       "Bun",
+	Nodejs:         "Node.js",
+	PHP:            "PHP Runtime",
+	Python:         "Python",
+	Ruby:           "Ruby Runtime",
+	Nginx:          "Nginx Web Server",
+	CanonicalNginx: "Nginx Web Server (provided by Canonical)",
+	Pid1:           "Pid1",
+	DotnetSDK:      ".NET SDK",
+	Go:             "Go",
+	Jetty:          "Jetty",
+	Bun:            "Bun",
 }
 
 // stackToOS contains the mapping of Stack to OS.

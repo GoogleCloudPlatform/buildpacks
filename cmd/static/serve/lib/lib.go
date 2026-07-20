@@ -28,10 +28,10 @@ import (
 const (
 	// indexHTML is the name of the index.html file.
 	indexHTML = "index.html"
-	// nginxPathBaseImage is the path to the nginx root in the static runtimes base image.
-	nginxPathBaseImage = "/opt/nginx/"
-	// nginxPathBuildpacks is the path to the nginx root when installed by the nginx buildpack.
-	nginxPathBuildpacks = "/layers/google.utils.nginx/nginx"
+	// nginxPathBaseImage is the path to the nginx configuration root in the static runtimes base image.
+	nginxPathBaseImage = "/etc/nginx/"
+	// nginxPathBuildpacks is the path to the nginx configuration root when installed by the nginx buildpack.
+	nginxPathBuildpacks = "/layers/google.utils.nginx/nginx/conf"
 )
 
 // staticAssets is a list of potential static file/folder indicators, ordered by preference.
@@ -101,7 +101,7 @@ func BuildFn(ctx *gcp.Context) error {
 	if env.IsStaticBaseImage() {
 		nginxPath = nginxPathBaseImage
 	}
-	nginxMimeTypesPath := filepath.Join(nginxPath, "conf/mime.types")
+	nginxMimeTypesPath := filepath.Join(nginxPath, "mime.types")
 
 	params := static.NginxConfigParams{
 		RootPath:      rootPath,

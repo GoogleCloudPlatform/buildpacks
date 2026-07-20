@@ -25,12 +25,22 @@ const (
 	// NginxConfFile is the default configuration file name for nginx in static runtimes.
 	NginxConfFile = "nginx.conf"
 	nginxConfTmpl = `
+pid /tmp/nginx.pid;
+error_log /dev/stderr notice;
+
 events {
     worker_connections 1024;
 }
 
 http {
     include {{.MimeTypesPath}};
+    access_log /dev/stdout;
+
+    client_body_temp_path /tmp/nginx_client_body;
+    proxy_temp_path /tmp/nginx_proxy;
+    fastcgi_temp_path /tmp/nginx_fastcgi;
+    uwsgi_temp_path /tmp/nginx_uwsgi;
+    scgi_temp_path /tmp/nginx_scgi;
 
     server {
         listen 8080;
@@ -68,7 +78,7 @@ http {
 }
 `
 	// DefaultStaticNginxVersion is the default Nginx version constraint for runtimes not specified in the map.
-	DefaultStaticNginxVersion = "1.30.x"
+	DefaultStaticNginxVersion = "1.24.x"
 )
 
 // NginxConfigParams holds the generic configuration parameters for templating nginx.conf.
@@ -129,7 +139,7 @@ const (
 var (
 	// NginxVersionPerRuntime maps a runtime name to its specific Nginx version constraint.
 	NginxVersionPerRuntime = map[string]string{
-		RuntimeStatic24: "1.30.x",
+		RuntimeStatic24: "1.24.x",
 	}
 )
 

@@ -35,6 +35,10 @@ const (
 	defaultNginxVerConstraint = "^1.21.6"
 	// pid1VerConstraint is used to control updating to a new major version.
 	pid1VerConstraint = "^1.0.0"
+	// default nginx installable runtime name
+	defaultNginxInstallableRuntime = runtime.Nginx
+	// staticNginxInstallableRuntime is the nginx installable runtime name for static runtimes.
+	staticNginxInstallableRuntime = runtime.CanonicalNginx
 )
 
 // DetectFn is the exported detect function.
@@ -51,19 +55,26 @@ func BuildFn(ctx *gcp.Context) error {
 	}
 
 	nginxVerConstraint := defaultNginxVerConstraint
-
+	nginxInstallableRuntime := defaultNginxInstallableRuntime
 	if usingStaticServe {
 		runtimeName := os.Getenv(env.Runtime)
 		nginxVerConstraint = static.NginxVersionConstraint(runtimeName)
+		nginxInstallableRuntime = staticNginxInstallableRuntime
 	}
 
 	// install nginx
-	nl, err := install(ctx, "nginx", nginxVerConstraint, runtime.Nginx)
-	if err != nil {
-		return err
+	if env.IsStaticBaseImage() {
+		ctx.Logf("Skipping nginx install for static base image.")
+	} else {
+		ctx.Logf("installing nginx: %s", nginxInstallableRuntime)
+		nl, err := install(ctx, "nginx", nginxVerConstraint, runtime.CanonicalNginx)
+		if err != nil {
+			return err
+		}
+
+		nl.LaunchEnvironment.Append("PATH", string(os.PathListSeparator), filepath.Join(nl.Path, "sbin"))
+		nl.BuildEnvironment.Default("NGINX_ROOT", nl.Path)
 	}
-	nl.LaunchEnvironment.Append("PATH", string(os.PathListSeparator), filepath.Join(nl.Path, "sbin"))
-	nl.BuildEnvironment.Default("NGINX_ROOT", nl.Path)
 
 	// Install pid1 unless the static serve buildpack has marked the build environment to exclude it.
 	if !usingStaticServe {

@@ -109,7 +109,7 @@ func TestNginxVersionConstraint(t *testing.T) {
 		{
 			name:        "static24_runtime",
 			runtimeName: RuntimeStatic24,
-			want:        "1.30.x",
+			want:        "1.24.x",
 		},
 		{
 			name:        "php_runtime",
