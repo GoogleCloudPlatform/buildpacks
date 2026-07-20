@@ -54,6 +54,9 @@ const (
 	// XGoogleDevSyncUseRunitUniversalMaker is an experiment flag to enable Runit supervision and the new universal_maker for DevSync on Ubuntu 24.04.
 	XGoogleDevSyncUseRunitUniversalMaker = "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER"
 
+	// XGoogleDevSyncActivated is an experiment flag to enable DevSync logic in buildpacks.
+	XGoogleDevSyncActivated = "X_GOOGLE_DEVSYNC_ACTIVATED"
+
 	// Entrypoint is an env var used to override the default entrypoint.
 	// Entrypoint should be respected by at least one buildpack in builders that are not product-specific.
 	// Example: `gunicorn -p :8080 main:app` for Python.
