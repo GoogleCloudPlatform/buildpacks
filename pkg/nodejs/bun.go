@@ -29,6 +29,11 @@ var (
 
 // InstallBun installs Bun in the given layer using the curl installer.
 func InstallBun(ctx *gcp.Context, bunLayer *libcnb.Layer, pjs *PackageJSON) error {
+	if ctx.IsDisabled(BunInstallerCapability) {
+		ctx.Logf("BunInstaller capability is disabled. Skipping installation.")
+		return nil
+	}
+
 	if cap := ctx.Capability(BunInstallerCapability); cap != nil {
 		i, ok := cap.(bunInstaller)
 		if !ok {
@@ -101,13 +106,4 @@ func detectBunVersion(pjs *PackageJSON) (string, error) {
 		return "", gcp.UserErrorf("finding bun version that matched %q: %w", requestedVersion, err)
 	}
 	return version, nil
-}
-
-// MakerBunInstaller implements the BunInstaller interface for the maker tool.
-type MakerBunInstaller struct{}
-
-// InstallBun does nothing, assuming bun is already present in the environment.
-func (i MakerBunInstaller) InstallBun(ctx *gcp.Context, bunLayer *libcnb.Layer, pjs *PackageJSON) error {
-	// No-op for maker as of now. Can be extended in future to run something like `npm install -g bun`
-	return nil
 }

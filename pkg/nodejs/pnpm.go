@@ -43,6 +43,11 @@ func init() {
 
 // InstallPNPM installs pnpm in the given layer if it is not already cached.
 func InstallPNPM(ctx *gcp.Context, pnpmLayer *libcnb.Layer, pjs *PackageJSON) error {
+	if ctx.IsDisabled(PNPMInstallerCapability) {
+		ctx.Logf("PNPMInstaller capability is disabled. Skipping installation.")
+		return nil
+	}
+
 	if cap := ctx.Capability(PNPMInstallerCapability); cap != nil {
 		i, ok := cap.(PNPMInstaller)
 		if !ok {
@@ -171,13 +176,4 @@ func detectPNPMVersion(ctx *gcp.Context, pjs *PackageJSON, stackID string) (stri
 		return "", gcp.UserErrorf("finding pnpm version that matched %q: %w", requestedVersion, err)
 	}
 	return version, nil
-}
-
-// MakerPNPMInstaller implements the PNPMInstaller interface for the maker tool.
-type MakerPNPMInstaller struct{}
-
-// InstallPNPM does nothing, assuming pnpm is already present in the environment.
-func (i MakerPNPMInstaller) InstallPNPM(ctx *gcp.Context, pnpmLayer *libcnb.Layer, pjs *PackageJSON) error {
-	// No-op for maker as of now. Can be extended in future to run something like `npm install -g pnpm`
-	return nil
 }

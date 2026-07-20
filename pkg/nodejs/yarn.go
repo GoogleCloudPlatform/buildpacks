@@ -53,21 +53,6 @@ type yarnInstaller interface {
 	InstallYarn(ctx *gcp.Context, yarnLayer *libcnb.Layer, pjs *PackageJSON) error
 }
 
-// MakerYarnInstaller implements the YarnInstaller interface for the maker tool.
-//
-// Example:
-//
-//	if cap := ctx.Capability(YarnInstallerCapability); cap != nil {
-//		// yarnInstaller is an internal interface in this package
-//		return cap.(yarnInstaller).InstallYarn(ctx, yarnLayer, pjs)
-//	}
-type MakerYarnInstaller struct{}
-
-// InstallYarn does nothing, assuming Yarn is already present in the environment.
-func (i MakerYarnInstaller) InstallYarn(ctx *gcp.Context, yarnLayer *libcnb.Layer, pjs *PackageJSON) error {
-	return nil
-}
-
 // MakerYarn1ModuleInstaller implements the Yarn1ModuleInstaller interface for the maker tool.
 //
 // Example:
@@ -184,6 +169,11 @@ func detectYarnVersion(ctx *gcp.Context, pjs *PackageJSON) (string, error) {
 
 // InstallYarnLayer installs Yarn in the given layer if it is not already cached.
 func InstallYarnLayer(ctx *gcp.Context, yarnLayer *libcnb.Layer, pjs *PackageJSON) error {
+	if ctx.IsDisabled(YarnInstallerCapability) {
+		ctx.Logf("YarnInstaller capability is disabled. Skipping installation.")
+		return nil
+	}
+
 	if cap := ctx.Capability(YarnInstallerCapability); cap != nil {
 		return cap.(yarnInstaller).InstallYarn(ctx, yarnLayer, pjs)
 	}

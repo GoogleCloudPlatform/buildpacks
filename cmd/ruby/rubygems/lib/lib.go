@@ -68,6 +68,11 @@ func BuildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating layer: %w", err)
 	}
 
+	if ctx.IsDisabled(ruby.GemsInstallerCapability) {
+		ctx.Logf("GemsInstaller capability is disabled. Skipping installation.")
+		return nil
+	}
+
 	if cap := ctx.Capability(ruby.GemsInstallerCapability); cap != nil {
 		i, ok := cap.(ruby.GemsInstaller)
 		if !ok {

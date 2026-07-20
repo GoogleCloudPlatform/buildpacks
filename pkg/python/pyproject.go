@@ -275,19 +275,13 @@ type UVToolInstaller interface {
 	Install(ctx *gcp.Context) error
 }
 
-// MakerUVInstaller implements the UVToolInstaller interface for the maker tool.
-type MakerUVInstaller struct{}
-
-// Install does nothing, as uv is expected to be present in the
-// maker environment. In Maker mode, we rely on the pre-installed `uv`
-// binary on the user's system to avoid the overhead of downloading
-// and installing it during the local build simulation.
-func (i MakerUVInstaller) Install(ctx *gcp.Context) error {
-	return nil
-}
-
 // InstallUV installs UV into a dedicated layer, respecting version constraints.
 func InstallUV(ctx *gcp.Context) error {
+	if ctx.IsDisabled(UVToolInstallerCapability) {
+		ctx.Logf("UVToolInstaller capability is disabled. Skipping installation.")
+		return nil
+	}
+
 	if cap := ctx.Capability(UVToolInstallerCapability); cap != nil {
 		i, ok := cap.(UVToolInstaller)
 		if !ok {

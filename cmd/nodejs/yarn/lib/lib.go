@@ -141,6 +141,11 @@ func BuildFn(ctx *gcp.Context) error {
 }
 
 func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
+	if ctx.IsDisabled(nodejs.Yarn1ModuleInstallerCapability) {
+		ctx.Logf("Yarn1ModuleInstaller capability is disabled. Skipping module installation.")
+		return nil
+	}
+
 	if cap := ctx.Capability(nodejs.Yarn1ModuleInstallerCapability); cap != nil {
 		return cap.(yarnModuleInstaller).InstallModules(ctx, pjs)
 	}

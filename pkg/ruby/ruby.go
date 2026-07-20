@@ -202,15 +202,6 @@ type GemsInstaller interface {
 	Install(ctx *gcp.Context, l *libcnb.Layer) error
 }
 
-// MakerRubyGemsInstaller implements the GemsInstaller interface for the maker tool.
-type MakerRubyGemsInstaller struct{}
-
-// Install does nothing, assuming RubyGems is already present in the environment.
-func (i MakerRubyGemsInstaller) Install(ctx *gcp.Context, l *libcnb.Layer) error {
-	ctx.Logf("RubyGems is assumed to be installed by the user. Skipping installation.")
-	return nil
-}
-
 // BundleLockerCapability is the capability key for the maker Bundle locker.
 const BundleLockerCapability = "ruby.BundleLocker"
 
