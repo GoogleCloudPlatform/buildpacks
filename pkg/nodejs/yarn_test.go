@@ -63,6 +63,7 @@ func TestUseFrozenLockfile(t *testing.T) {
 			nodeVersion = func(*gcpbuildpack.Context) (string, error) { return tc.version, nil }
 			if tc.devSync {
 				t.Setenv(env.DevSync, "true")
+				t.Setenv(env.XGoogleDevSyncActivated, "true")
 			}
 
 			got, err := UseFrozenLockfile(nil)

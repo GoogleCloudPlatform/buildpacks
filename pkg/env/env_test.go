@@ -93,11 +93,13 @@ func TestIsDebugMode(t *testing.T) {
 
 func TestIsDevSync(t *testing.T) {
 	testCases := []struct {
-		name    string
-		notSet  bool
-		value   string
-		wantErr bool
-		want    bool
+		name            string
+		notSet          bool
+		value           string
+		activatedNotSet bool
+		activatedValue  string
+		wantErr         bool
+		want            bool
 	}{
 		{
 			name:   "not set",
@@ -132,10 +134,43 @@ func TestIsDevSync(t *testing.T) {
 			value: "0",
 			want:  false,
 		},
+		{
+			name:            "activated not set",
+			value:           "true",
+			activatedNotSet: true,
+			want:            false,
+		},
+		{
+			name:           "activated set to false",
+			value:          "true",
+			activatedValue: "false",
+			want:           false,
+		},
+		{
+			name:           "activated set to bad value",
+			value:          "true",
+			activatedValue: "not a bool",
+			wantErr:        true,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.activatedNotSet {
+				if err := os.Unsetenv(XGoogleDevSyncActivated); err != nil {
+					t.Fatalf("Failed to unset env: %v", err)
+				}
+			} else {
+				val := tc.activatedValue
+				if val == "" {
+					val = "true"
+				}
+				if err := os.Setenv(XGoogleDevSyncActivated, val); err != nil {
+					t.Fatalf("Failed to set env: %v", err)
+				}
+				defer os.Unsetenv(XGoogleDevSyncActivated)
+			}
+
 			if tc.notSet {
 				if err := os.Unsetenv(DevSync); err != nil {
 					t.Fatalf("Failed to unset env: %v", err)
@@ -144,11 +179,7 @@ func TestIsDevSync(t *testing.T) {
 				if err := os.Setenv(DevSync, tc.value); err != nil {
 					t.Fatalf("Failed to set env: %v", err)
 				}
-				defer func() {
-					if err := os.Unsetenv(DevSync); err != nil {
-						t.Fatalf("Failed to unset env: %v", err)
-					}
-				}()
+				defer os.Unsetenv(DevSync)
 			}
 
 			got, err := IsDevSync()

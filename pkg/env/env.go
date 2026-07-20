@@ -282,6 +282,9 @@ func IsDevMode() (bool, error) {
 
 // IsDevSync indicates that the builder is running in Dev Sync mode.
 func IsDevSync() (bool, error) {
+	if active, err := IsPresentAndTrue(XGoogleDevSyncActivated); err != nil || !active {
+		return false, err
+	}
 	return IsPresentAndTrue(DevSync)
 }
 

@@ -120,6 +120,7 @@ func TestNPMInstallCommand(t *testing.T) {
 			}
 			if tc.devSync {
 				t.Setenv(env.DevSync, "true")
+				t.Setenv(env.XGoogleDevSyncActivated, "true")
 			}
 
 			got, err := NPMInstallCommand(nil)

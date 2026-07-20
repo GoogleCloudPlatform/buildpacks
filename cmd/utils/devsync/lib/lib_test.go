@@ -30,13 +30,18 @@ func TestDetect(t *testing.T) {
 		opts []gcp.ContextOption
 	}{
 		{
-			name: "with GOOGLE_DEVSYNC=true and X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER=true",
-			envs: map[string]string{"GOOGLE_DEVSYNC": "true", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER": "true"},
+			name: "with GOOGLE_DEVSYNC=true and X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER=true and X_GOOGLE_DEVSYNC_ACTIVATED=true",
+			envs: map[string]string{"GOOGLE_DEVSYNC": "true", "X_GOOGLE_DEVSYNC_ACTIVATED": "true", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER": "true"},
 			want: true,
 		},
 		{
+			name: "with GOOGLE_DEVSYNC=true without X_GOOGLE_DEVSYNC_ACTIVATED",
+			envs: map[string]string{"GOOGLE_DEVSYNC": "true", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER": "true"},
+			want: false,
+		},
+		{
 			name: "with GOOGLE_DEVSYNC=true without X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER",
-			envs: map[string]string{"GOOGLE_DEVSYNC": "true"},
+			envs: map[string]string{"GOOGLE_DEVSYNC": "true", "X_GOOGLE_DEVSYNC_ACTIVATED": "true"},
 			want: false,
 		},
 		{
@@ -46,12 +51,12 @@ func TestDetect(t *testing.T) {
 		},
 		{
 			name: "with GOOGLE_DEVSYNC=false",
-			envs: map[string]string{"GOOGLE_DEVSYNC": "false", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER": "true"},
+			envs: map[string]string{"GOOGLE_DEVSYNC": "false", "X_GOOGLE_DEVSYNC_ACTIVATED": "true", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER": "true"},
 			want: false,
 		},
 		{
 			name: "with Maker capability SkipDevsyncCapability",
-			envs: map[string]string{"GOOGLE_DEVSYNC": "true", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER": "true"},
+			envs: map[string]string{"GOOGLE_DEVSYNC": "true", "X_GOOGLE_DEVSYNC_ACTIVATED": "true", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER": "true"},
 			want: false,
 			opts: []gcp.ContextOption{gcp.WithCapability(SkipDevsyncCapability, true)},
 		},
@@ -62,6 +67,7 @@ func TestDetect(t *testing.T) {
 			opts := append(tc.opts, gcp.WithApplicationRoot(testdata.MustGetPath("testdata/empty")))
 			ctx := gcp.NewContext(opts...)
 			os.Unsetenv("GOOGLE_DEVSYNC")
+			os.Unsetenv("X_GOOGLE_DEVSYNC_ACTIVATED")
 			os.Unsetenv("X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER")
 			for k, v := range tc.envs {
 				t.Setenv(k, v)
