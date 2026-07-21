@@ -67,7 +67,7 @@ func BuildFn(ctx *gcp.Context) error {
 		ctx.Logf("Skipping nginx install for static base image.")
 	} else {
 		ctx.Logf("installing nginx: %s", nginxInstallableRuntime)
-		nl, err := install(ctx, "nginx", nginxVerConstraint, runtime.CanonicalNginx)
+		nl, err := install(ctx, "nginx", nginxVerConstraint, nginxInstallableRuntime)
 		if err != nil {
 			return err
 		}
