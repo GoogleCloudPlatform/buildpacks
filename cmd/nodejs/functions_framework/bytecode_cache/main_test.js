@@ -90,7 +90,11 @@ describe('Bytecode Cache Generation Script', () => {
     expect(fsMkdirSyncSpy).toHaveBeenCalledWith(cachePath);
     expect(mockEnableCompileCache).toHaveBeenCalledWith(cachePath);
     // Check that the entrypoint was required by the script
-    expect(requireSpy).toHaveBeenCalledWith(entrypoint, jasmine.anything(), false);
+    const entrypointCall = requireSpy.calls.all().find(c => c.args[0] === entrypoint);
+    expect(entrypointCall).toBeDefined();
+    if (entrypointCall) {
+      expect(entrypointCall.args[2]).toBe(false);
+    }
     expect(mockFlushCompileCache).toHaveBeenCalled();
     expect(processExitSpy).not.toHaveBeenCalled();
     expect(consoleErrorSpy).not.toHaveBeenCalled();
@@ -104,7 +108,11 @@ describe('Bytecode Cache Generation Script', () => {
     expect(fsExistsSyncSpy).toHaveBeenCalledWith(cachePath);
     expect(mockEnableCompileCache).toHaveBeenCalledWith(cachePath);
     // Check that the entrypoint was required by the script
-    expect(requireSpy).toHaveBeenCalledWith(entrypoint, jasmine.anything(), false);
+    const entrypointCall = requireSpy.calls.all().find(c => c.args[0] === entrypoint);
+    expect(entrypointCall).toBeDefined();
+    if (entrypointCall) {
+      expect(entrypointCall.args[2]).toBe(false);
+    }
     expect(mockFlushCompileCache).toHaveBeenCalled();
     expect(processExitSpy).not.toHaveBeenCalled();
     expect(consoleErrorSpy).not.toHaveBeenCalled();
