@@ -490,7 +490,11 @@ func versionFromNpmLock(rawPackageLock []byte, pkg string) (string, error) {
 	if err := json.Unmarshal(rawPackageLock, &lockfile); err != nil {
 		return "", gcp.InternalErrorf("parsing lock file: %w", err)
 	}
-	return lockfile.Packages["node_modules/"+pkg].Version, nil
+	entry, ok := lockfile.Packages["node_modules/"+pkg]
+	if !ok || entry.Version == "" {
+		return "", gcp.InternalErrorf("Failed to find version for package %s in npm lockfile", pkg)
+	}
+	return entry.Version, nil
 }
 
 // Version tries to get the concrete package version used based on lock file.
