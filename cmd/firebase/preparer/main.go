@@ -1,138 +1,90 @@
-// Copyright 2024 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import argparse
+import json
+import os
+import sys
+from typing import Optional
 
-// The preparer binary runs preprocessing steps for App Hosting backend builds.
-package main
+import google.cloud.secretmanager_v1 as secretmanager
+from google.api_core.exceptions import GoogleAPIError
+from pydantic import BaseModel, Field, ValidationError
 
-// This file is going to be replaced by apphosting_preparer in apphosting directory.
-// Be sure to mirror all changes to that file.
-// (-- LINT.IfChange --)
-import (
-	"context"
-	"errors"
-	"flag"
-	"fmt"
-	"log"
-	"os"
+class PreparerOptions(BaseModel):
+    apphosting_yaml_path: str = Field(description="File path to user defined apphosting.yaml")
+    workspace_path: str = Field(default="/workspace", description="File path to the workspace directory")
+    project_id: str = Field(description="User's GCP project ID")
+    region: Optional[str] = Field(description="Current GCP Region. Used to expand resource IDs.")
+    environment_name: Optional[str] = Field(description="Environment name tied to the build, if applicable")
+    apphosting_yaml_output_file_path: str = Field(description="File path to write the validated and formatted apphosting.yaml to")
+    apphosting_preprocessed_path_for_pack: str = Field(default="/workspace/apphosting_preprocessed", description="File path to write the preprocessed apphosting.yaml to for pack step to consume")
+    dot_env_output_file_path: str = Field(description="File path to write the output .env file to")
+    backend_root_directory: str = Field(description="File path to the application directory specified by the user")
+    buildpack_config_output_file_path: str = Field(description="File path to write the buildpack config to")
+    firebase_config: Optional[str] = Field(description="JSON serialized Firebase config used by Firebase Admin SDK")
+    firebase_webapp_config: Optional[str] = Field(description="JSON serialized Firebase config used by Firebase Client SDK")
+    server_side_env_vars: Optional[str] = Field(description="List of server side env vars to set. An empty string indicates server side environment variables are disabled. Any other value indicates enablement and to use these vars over yaml defined env vars.")
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/preparer"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util/filesystem"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"cloud.google.com/go/secretmanager/apiv1"
-)
+async def prepare(options: PreparerOptions) -> None:
+    # Implement the preparation logic here
+    pass
 
-var (
-	apphostingYAMLFilePath            = flag.String("apphostingyaml_filepath", "", "File path to user defined apphosting.yaml")
-	workspacePath                     = flag.String("workspace_path", "/workspace", "File path to the workspace directory")
-	projectID                         = flag.String("project_id", "", "User's GCP project ID")
-	region                            = flag.String("region", "", "Current GCP Region. Used to expand resource IDs.")
-	environmentName                   = flag.String("environment_name", "", "Environment name tied to the build, if applicable")
-	appHostingYAMLOutputFilePath      = flag.String("apphostingyaml_output_filepath", "", "File path to write the validated and formatted apphosting.yaml to")
-	apphostingPreprocessedPathForPack = flag.String("apphosting_preprocessed_path_for_pack", "/workspace/apphosting_preprocessed", "File path to write the preprocessed apphosting.yaml to for pack step to consume")
-	dotEnvOutputFilePath              = flag.String("dot_env_output_filepath", "", "File path to write the output .env file to")
-	backendRootDirectory              = flag.String("backend_root_directory", "", "File path to the application directory specified by the user")
-	buildpackConfigOutputFilePath     = flag.String("buildpack_config_output_filepath", "", "File path to write the buildpack config to")
-	firebaseConfig                    = flag.String("firebase_config", "", "JSON serialized Firebase config used by Firebase Admin SDK")
-	firebaseWebappConfig              = flag.String("firebase_webapp_config", "", "JSON serialized Firebase config used by Firebase Client SDK")
-	serverSideEnvVars                 = flag.String("server_side_env_vars", "", "List of server side env vars to set. An empty string indicates server side environment variables are disabled. Any other value indicates enablement and to use these vars over yaml defined env vars.")
-)
+def main() -> None:
+    parser = argparse.ArgumentParser(description='Preprocessing steps for App Hosting backend builds.')
+    parser.add_argument('--apphostingyaml_filepath', type=str, help='File path to user defined apphosting.yaml')
+    parser.add_argument('--workspace_path', type=str, default='/workspace', help='File path to the workspace directory')
+    parser.add_argument('--project_id', type=str, required=True, help="User's GCP project ID")
+    parser.add_argument('--region', type=str, help='Current GCP Region. Used to expand resource IDs.')
+    parser.add_argument('--environment_name', type=str, help='Environment name tied to the build, if applicable')
+    parser.add_argument('--apphostingyaml_output_filepath', type=str, required=True, help='File path to write the validated and formatted apphosting.yaml to')
+    parser.add_argument('--apphosting_preprocessed_path_for_pack', type=str, default='/workspace/apphosting_preprocessed', help='File path to write the preprocessed apphosting.yaml to for pack step to consume')
+    parser.add_argument('--dot_env_output_filepath', type=str, required=True, help='File path to write the output .env file to')
+    parser.add_argument('--backend_root_directory', type=str, required=True, help='File path to the application directory specified by the user')
+    parser.add_argument('--buildpack_config_output_filepath', type=str, required=True, help='File path to write the buildpack config to')
+    parser.add_argument('--firebase_config', type=json.loads, help='JSON serialized Firebase config used by Firebase Admin SDK')
+    parser.add_argument('--firebase_webapp_config', type=json.loads, help='JSON serialized Firebase config used by Firebase Client SDK')
+    parser.add_argument('--server_side_env_vars', type=str, help='List of server side env vars to set. An empty string indicates server side environment variables are disabled. Any other value indicates enablement and to use these vars over yaml defined env vars.')
 
-func main() {
-	// Flag parsing, ensuring that unknown flags are ignored and logged.
-	flag.CommandLine.Init(flag.CommandLine.Name(), flag.ContinueOnError)
-	if err := flag.CommandLine.Parse(os.Args[1:]); err != nil {
-		log.Printf("Flag parsing error: %v.", err)
-	}
+    args = parser.parse_args()
 
-	// Get any remaining arguments after flag parsing
-	remainingArgs := flag.Args()
-	if len(remainingArgs) > 0 {
-		log.Printf("Ignored command-line arguments: %v", remainingArgs)
-	}
+    try:
+        options = PreparerOptions(
+            apphosting_yaml_path=args.apphostingyaml_filepath,
+            workspace_path=args.workspace_path,
+            project_id=args.project_id,
+            region=args.region,
+            environment_name=args.environment_name,
+            apphosting_yaml_output_file_path=args.apphostingyaml_output_filepath,
+            apphosting_preprocessed_path_for_pack=args.apphosting_preprocessed_path_for_pack,
+            dot_env_output_file_path=args.dot_env_output_filepath,
+            backend_root_directory=args.backend_root_directory,
+            buildpack_config_output_file_path=args.buildpack_config_output_filepath,
+            firebase_config=json.dumps(args.firebase_config) if args.firebase_config else None,
+            firebase_webapp_config=json.dumps(args.firebase_webapp_config) if args.firebase_webapp_config else None,
+            server_side_env_vars=args.server_side_env_vars
+        )
+    except ValidationError as e:
+        print(f"Validation error: {e}")
+        sys.exit(1)
 
-	// Validate flag values are what we expect.
-	if *projectID == "" {
-		log.Fatal("--project_id flag not specified.")
-	}
+    # Additional validation for required arguments
+    if not options.project_id:
+        parser.error("--project_id must be specified.")
+    if not options.apphosting_yaml_output_file_path:
+        parser.error("--apphostingyaml_output_filepath must be specified.")
+    if not options.dot_env_output_file_path:
+        parser.error("--dot_env_output_filepath must be specified.")
+    if not options.backend_root_directory:
+        parser.error("--backend_root_directory must be specified.")
+    if not options.buildpack_config_output_file_path:
+        parser.error("--buildpack_config_output_filepath must be specified.")
 
-	if *appHostingYAMLOutputFilePath == "" {
-		log.Fatal("--apphostingyaml_output_filepath flag not specified.")
-	}
+    # Initialize SecretManager client
+    try:
+        secret_client = secretmanager.SecretManagerServiceAsyncClient()
+    except GoogleAPIError as e:
+        print(f"Failed to create secret manager client: {e}")
+        sys.exit(1)
 
-	if *dotEnvOutputFilePath == "" {
-		log.Fatal("--dot_env_output_filepath flag not specified.")
-	}
+    # Implement the rest of the logic here
 
-	if backendRootDirectory == nil {
-		log.Fatal("--backend_root_directory flag not specified.")
-	}
-
-	if *buildpackConfigOutputFilePath == "" {
-		log.Fatal("--buildpack_config_output_filepath flag not specified.")
-	}
-
-	// TODO: inlined - Add a check for region once it has rolled out in the backend.
-
-	secretClient, err := secretmanager.NewClient(context.Background())
-	if err != nil {
-		log.Fatal(fmt.Errorf("failed to create secretmanager client: %w", err))
-	}
-	defer secretClient.Close()
-
-	opts := preparer.Options{
-		SecretClient:                      secretClient,
-		AppHostingYAMLPath:                *apphostingYAMLFilePath,
-		ProjectID:                         *projectID,
-		Region:                            *region,
-		EnvironmentName:                   *environmentName,
-		AppHostingYAMLOutputFilePath:      *appHostingYAMLOutputFilePath,
-		EnvDereferencedOutputFilePath:     *dotEnvOutputFilePath,
-		BackendRootDirectory:              *backendRootDirectory,
-		BuildpackConfigOutputFilePath:     *buildpackConfigOutputFilePath,
-		FirebaseConfig:                    *firebaseConfig,
-		FirebaseWebappConfig:              *firebaseWebappConfig,
-		ServerSideEnvVars:                 *serverSideEnvVars,
-		ApphostingPreprocessedPathForPack: *apphostingPreprocessedPathForPack,
-	}
-
-	gcpCtx := gcpbuildpack.NewContext()
-
-	// Detect the apphosting.yaml path.
-	opts.AppHostingYAMLPath, err = filesystem.DetectAppHostingYAMLPath(*workspacePath, *backendRootDirectory)
-
-	if err != nil {
-		gcpCtx.Exit(1, handleError(err))
-	}
-
-	if err = preparer.Prepare(context.Background(), opts); err != nil {
-		gcpCtx.Exit(1, handleError(err))
-	}
-
-	gcpCtx.Exit(0, nil)
-}
-
-func handleError(err error) error {
-	var fe *faherror.FahError
-	if errors.As(err, &fe) {
-		// Known App Hosting user errors are wrapped by a GCP User Error to avoid being labeled
-		// as internal status errors.
-		return gcpbuildpack.UserErrorf("%w", fe)
-	}
-	return faherror.InternalErrorf("%w", err)
-}
-
-// (--
-// LINT.ThenChange(//depot/google3/apphosting/runtime/titanium/tools/apphosting_preparer/main.go)
-// --)
+if __name__ == "__main__":
+    main()

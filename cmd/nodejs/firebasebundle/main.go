@@ -1,29 +1,93 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import asyncio
+import shutil
+import os
 
-// Implements nodejs/firebasebundle buildpack.
-// The output bundle buildpack sets up the output bundle for future steps
-// It will do the following
-// 1. Copy over static assets to the output bundle dir
-// 2. Override run script with a new one to run the optimized build
-package main
+app = FastAPI()
 
-import (
-	"github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebasebundle/lib"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+class DetectRequest(BaseModel):
+    environment: dict
+    files: list[str]
 
-func main() {
-	gcp.Main(lib.DetectFn, lib.BuildFn)
-}
+class DetectResponse(BaseModel):
+    applicable: bool
+    priority: int
+
+class BuildRequest(BaseModel):
+    source_path: str
+    output_path: str
+    environment: dict
+
+class BuildResponse(BaseModel):
+    run_script_path: str
+
+async def detect(request: DetectRequest) -> DetectResponse:
+    """
+    Detect if this buildpack applies to the current build context.
+    """
+    # Example detection logic (can be customized)
+    has_firebase = "firebase.json" in request.files
+    return DetectResponse(applicable=has_firebase, priority=0)
+
+async def copy_assets(source_path: str, output_path: str) -> None:
+    """Copy static assets to the output directory."""
+    try:
+        # Use asyncio.to_thread to run blocking operations in separate threads
+        await asyncio.to_thread(
+            shutil.copytree,
+            source_path,
+            output_path,
+            ignore=shutil.ignore_patterns('node_modules', '*.pyc')
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error copying assets: {str(e)}")
+
+async def override_run_script(output_path: str) -> str:
+    """Generate and return the path to the new run script."""
+    run_script = os.path.join(output_path, "run")
+    try:
+        await asyncio.to_thread(
+            lambda: open(run_script, 'w').write("#!/bin/sh\nnode dist/main.js")
+        )
+        # Make the script executable
+        await asyncio.to_thread(lambda: os.chmod(run_script, 0o755))
+        return run_script
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating run script: {str(e)}")
+
+@app.post("/detect")
+async def handle_detect(request: DetectRequest) -> DetectResponse:
+    """Handle detect request."""
+    return await detect(request)
+
+@app.post("/build")
+async def handle_build(request: BuildRequest) -> BuildResponse:
+    """Handle build request."""
+    try:
+        # Create output directory if it doesn't exist
+        await asyncio.to_thread(lambda: os.makedirs(request.output_path, exist_ok=True))
+
+        # Copy static assets
+        await copy_assets(request.source_path, request.output_path)
+
+        # Generate run script
+        run_script_path = await override_run_script(request.output_path)
+
+        return BuildResponse(run_script_path=run_script_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    import uvicorn
+
+    # Configure CORS
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    uvicorn.run(app, host="0.0.0.0", port=8080)

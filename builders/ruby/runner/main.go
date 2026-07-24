@@ -1,85 +1,74 @@
-// The runner binary executes buildpacks for the Ruby language builder.
-package main
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import asyncio
+from typing import Dict, Any
+import gcp_buildpacks  # Assuming equivalent Python package structure
 
-import (
-	"flag"
+app = FastAPI()
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/commonbuildpacks"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+class BuildpackRequest(BaseModel):
+    buildpack_id: str
+    phase: str
 
-	// Buildpack libraries
-	nodejsruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/runtime/lib"
-	nodejyarn "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/yarn/lib"
-	rubyappengine "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/appengine/lib"
-	rubyappenginevalidation "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/appengine_validation/lib"
-	rubybundle "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/bundle/lib"
-	rubyflexentrypoint "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/flex_entrypoint/lib"
-	rubyfunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/functions_framework/lib"
-	rubymissingentrypoint "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/missing_entrypoint/lib"
-	rubyrails "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/rails/lib"
-	rubyrubygems "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/rubygems/lib"
-	rubyruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/runtime/lib"
-)
+# Register buildpack functions
+buildpacks: Dict[str, Dict[str, callable]] = {}
 
-var (
-	buildpackID = flag.String("buildpack", "", "The ID of the buildpack to run (e.g., google.nodejs.runtime)")
-	phase       = flag.String("phase", "", "The phase to run: 'detect' or 'build'")
-)
+def register_buildpack(buildpack_id: str, detect_fn, build_fn) -> None:
+    buildpacks[buildpack_id] = {
+        'detect': detect_fn,
+        'build': build_fn
+    }
 
-// Register buildpack functions here
-var buildpacks = commonbuildpacks.CommonBuildpacks()
+@app.post("/run")
+async def run_buildpack(request_data: BuildpackRequest) -> Dict[str, Any]:
+    try:
+        # Parse request data
+        buildpack_id = request_data.buildpack_id
+        phase = request_data.phase
 
-// (-- LINT.IfChange --)
-func init() {
-	buildpacks["google.nodejs.runtime"] = gcp.BuildpackFuncs{
-		Detect: nodejsruntime.DetectFn,
-		Build:  nodejsruntime.BuildFn,
-	}
-	buildpacks["google.nodejs.yarn"] = gcp.BuildpackFuncs{
-		Detect: nodejyarn.DetectFn,
-		Build:  nodejyarn.BuildFn,
-	}
-	buildpacks["google.ruby.appengine"] = gcp.BuildpackFuncs{
-		Detect: rubyappengine.DetectFn,
-		Build:  rubyappengine.BuildFn,
-	}
-	buildpacks["google.ruby.appengine-validation"] = gcp.BuildpackFuncs{
-		Detect: rubyappenginevalidation.DetectFn,
-		Build:  rubyappenginevalidation.BuildFn,
-	}
-	buildpacks["google.ruby.bundle"] = gcp.BuildpackFuncs{
-		Detect: rubybundle.DetectFn,
-		Build:  rubybundle.BuildFn,
-	}
-	buildpacks["google.ruby.flex-entrypoint"] = gcp.BuildpackFuncs{
-		Detect: rubyflexentrypoint.DetectFn,
-		Build:  rubyflexentrypoint.BuildFn,
-	}
-	buildpacks["google.ruby.functions-framework"] = gcp.BuildpackFuncs{
-		Detect: rubyfunctionsframework.DetectFn,
-		Build:  rubyfunctionsframework.BuildFn,
-	}
-	buildpacks["google.ruby.missing-entrypoint"] = gcp.BuildpackFuncs{
-		Detect: rubymissingentrypoint.DetectFn,
-		Build:  rubymissingentrypoint.BuildFn,
-	}
-	buildpacks["google.ruby.rails"] = gcp.BuildpackFuncs{
-		Detect: rubyrails.DetectFn,
-		Build:  rubyrails.BuildFn,
-	}
-	buildpacks["google.ruby.runtime"] = gcp.BuildpackFuncs{
-		Detect: rubyruntime.DetectFn,
-		Build:  rubyruntime.BuildFn,
-	}
-	buildpacks["google.ruby.rubygems"] = gcp.BuildpackFuncs{
-		Detect: rubyrubygems.DetectFn,
-		Build:  rubyrubygems.BuildFn,
-	}
-}
+        if not buildpack_id or not phase:
+            raise HTTPException(
+                status_code=400,
+                detail="Both buildpack_id and phase must be provided"
+            )
 
-// (-- LINT.ThenChange(//depot/google3/third_party/gcp_buildpacks/builders/ruby/runner/BUILD) --)
+        # Run the buildpack based on phase
+        if phase.lower() == 'detect':
+            result = await asyncio.get_event_loop().run_in_executor(
+                None,
+                buildpacks[buildpack_id]['detect']
+            )
+        elif phase.lower() == 'build':
+            result = await asyncio.get_event_loop().run_in_executor(
+                None,
+                buildpacks[buildpack_id]['build']
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid phase. Must be either 'detect' or 'build'"
+            )
 
-func main() {
-	flag.Parse()
-	gcp.MainRunner(buildpacks, buildpackID, phase)
-}
+        return {"result": result}
+    except KeyError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Buildpack '{buildpack_id}' not found"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+def main():
+    # Register buildpacks (equivalent to Go init() function)
+    register_buildpack("google.nodejs.runtime", gcp_buildpacks.nodejsruntime.detect, gcp_buildpacks.nodejsruntime.build)
+    register_buildpack("google.nodejs.yarn", gcp_buildpacks.nodejyarn.detect, gcp_buildpacks.nodejyarn.build)
+    register_buildpack("google.ruby.appengine", gcp_buildpacks.rubyappengine.detect, gcp_buildpacks.rubyappengine.build)
+    # ... (register all other buildpacks similarly)
+
+if __name__ == "__main__":
+    main()
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,85 +1,81 @@
-// The runner binary executes buildpacks for the Go language builder.
-package main
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from pydantic import BaseModel
+import asyncio
+import shutil
+import os
 
-import (
-	"flag"
+app = FastAPI()
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/commonbuildpacks"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+class BuildpackRequest(BaseModel):
+    buildpack_id: str
+    phase: str
+    source_files: list[UploadFile]
 
-	// Buildpack libraries
-	goappengine "github.com/GoogleCloudPlatform/buildpacks/cmd/go/appengine/lib"
-	goappenginegomod "github.com/GoogleCloudPlatform/buildpacks/cmd/go/appengine_gomod/lib"
-	goappenginegopath "github.com/GoogleCloudPlatform/buildpacks/cmd/go/appengine_gopath/lib"
-	gobuild "github.com/GoogleCloudPlatform/buildpacks/cmd/go/build/lib"
-	goclearsource "github.com/GoogleCloudPlatform/buildpacks/cmd/go/clear_source/lib"
-	goflexgomod "github.com/GoogleCloudPlatform/buildpacks/cmd/go/flex_gomod/lib"
-	gofunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/go/functions_framework/lib"
-	gogomod "github.com/GoogleCloudPlatform/buildpacks/cmd/go/gomod/lib"
-	gogopath "github.com/GoogleCloudPlatform/buildpacks/cmd/go/gopath/lib"
-	golegacyworker "github.com/GoogleCloudPlatform/buildpacks/cmd/go/legacy_worker/lib"
-	goruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/go/runtime/lib"
-)
+class BuildpackResponse(BaseModel):
+    output: dict[str, str]
+    success: bool
 
-var (
-	buildpackID = flag.String("buildpack", "", "The ID of the buildpack to run (e.g., google.nodejs.runtime)")
-	phase       = flag.String("phase", "", "The phase to run: 'detect' or 'build'")
-)
+# Register buildpack functions here
+buildpacks = {}
 
-// Register buildpack functions here
-var buildpacks = commonbuildpacks.CommonBuildpacks()
+async def detect(buildpack_id: str) -> bool:
+    # Implement detection logic for each buildpack
+    pass
 
-// (-- LINT.IfChange --)
-func init() {
-	buildpacks["google.go.appengine"] = gcp.BuildpackFuncs{
-		Detect: goappengine.DetectFn,
-		Build:  goappengine.BuildFn,
-	}
-	buildpacks["google.go.appengine-gomod"] = gcp.BuildpackFuncs{
-		Detect: goappenginegomod.DetectFn,
-		Build:  goappenginegomod.BuildFn,
-	}
-	buildpacks["google.go.flex-gomod"] = gcp.BuildpackFuncs{
-		Detect: goflexgomod.DetectFn,
-		Build:  goflexgomod.BuildFn,
-	}
-	buildpacks["google.go.appengine-gopath"] = gcp.BuildpackFuncs{
-		Detect: goappenginegopath.DetectFn,
-		Build:  goappenginegopath.BuildFn,
-	}
-	buildpacks["google.go.build"] = gcp.BuildpackFuncs{
-		Detect: gobuild.DetectFn,
-		Build:  gobuild.BuildFn,
-	}
-	buildpacks["google.go.clear-source"] = gcp.BuildpackFuncs{
-		Detect: goclearsource.DetectFn,
-		Build:  goclearsource.BuildFn,
-	}
-	buildpacks["google.go.functions-framework"] = gcp.BuildpackFuncs{
-		Detect: gofunctionsframework.DetectFn,
-		Build:  gofunctionsframework.BuildFn,
-	}
-	buildpacks["google.go.gomod"] = gcp.BuildpackFuncs{
-		Detect: gogomod.DetectFn,
-		Build:  gogomod.BuildFn,
-	}
-	buildpacks["google.go.gopath"] = gcp.BuildpackFuncs{
-		Detect: gogopath.DetectFn,
-		Build:  gogopath.BuildFn,
-	}
-	buildpacks["google.go.legacy-worker"] = gcp.BuildpackFuncs{
-		Detect: golegacyworker.DetectFn,
-		Build:  golegacyworker.BuildFn,
-	}
-	buildpacks["google.go.runtime"] = gcp.BuildpackFuncs{
-		Detect: goruntime.DetectFn,
-		Build:  goruntime.BuildFn,
-	}
-}
+async def build(buildpack_id: str, source_files: list[UploadFile]) -> dict:
+    # Implement build logic for each buildpack
+    pass
 
-// (-- LINT.ThenChange(//depot/google3/third_party/gcp_buildpacks/builders/go/runner/BUILD) --)
+@app.post("/run_buildpack")
+async def run_buildpack(request_data: BuildpackRequest) -> BuildpackResponse:
+    try:
+        if request_data.phase not in ["detect", "build"]:
+            raise HTTPException(status_code=400, detail="Invalid phase specified")
 
-func main() {
-	flag.Parse()
-	gcp.MainRunner(buildpacks, buildpackID, phase)
-}
+        # Check if buildpack is registered
+        if request_data.buildpack_id not in buildpacks:
+            raise HTTPException(status_code=400, detail="Buildpack not found")
+
+        # Run the appropriate phase
+        if request_data.phase == "detect":
+            result = await detect(request_data.buildpack_id)
+        else:
+            # Handle file uploads asynchronously
+            upload_dir = f"uploads/{id(request_data)}"
+            os.makedirs(upload_dir, exist_ok=True)
+
+            for file in request_data.source_files:
+                file_path = os.path.join(upload_dir, file.filename)
+                with open(file_path, "wb") as buffer:
+                    await asyncio.to_thread(shutil.copyfileobj, file.file, buffer)
+
+            result = await build(request_data.buildpack_id, upload_dir)
+
+        return BuildpackResponse(output=result, success=True)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Register your buildpacks here
+def register_buildpack(buildpack_id: str):
+    def decorator(detect_fn, build_fn):
+        nonlocal buildpacks
+        buildpacks[buildpack_id] = {
+            "detect": detect_fn,
+            "build": build_fn
+        }
+        return None
+    return decorator
+
+# Example usage:
+@register_buildpack("google.go.runtime")
+async def go_runtime_detect():
+    # Implement detection logic
+    pass
+
+async def go_runtime_build(source_dir: str) -> dict:
+    # Implement build logic
+    pass
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

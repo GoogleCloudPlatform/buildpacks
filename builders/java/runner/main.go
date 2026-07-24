@@ -1,75 +1,51 @@
-// The runner binary executes buildpacks for the Java language builder.
-package main
+import argparse
+import logging
+from typing import Dict, Any, Callable, Optional
 
-import (
-	"flag"
+from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/commonbuildpacks"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+from google_buildpacks.cmd.java.appengine.lib import detect_fn as java_appengine_detect, build_fn as java_appengine_build
+# ... (similar imports for all other Java buildpack functions)
 
-	// Buildpack libraries
-	javaappengine "github.com/GoogleCloudPlatform/buildpacks/cmd/java/appengine/lib"
-	javaclearsource "github.com/GoogleCloudPlatform/buildpacks/cmd/java/clear_source/lib"
-	javaentrypoint "github.com/GoogleCloudPlatform/buildpacks/cmd/java/entrypoint/lib"
-	javaexplodedjar "github.com/GoogleCloudPlatform/buildpacks/cmd/java/exploded_jar/lib"
-	javafunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/java/functions_framework/lib"
-	javagradle "github.com/GoogleCloudPlatform/buildpacks/cmd/java/gradle/lib"
-	javamaven "github.com/GoogleCloudPlatform/buildpacks/cmd/java/maven/lib"
-	javaruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/java/runtime/lib"
-	javaspringboot "github.com/GoogleCloudPlatform/buildpacks/cmd/java/spring_boot/lib"
-)
+app = FastAPI()
 
-var (
-	buildpackID = flag.String("buildpack", "", "The ID of the buildpack to run (e.g., google.nodejs.runtime)")
-	phase       = flag.String("phase", "", "The phase to run: 'detect' or 'build'")
-)
+class BuildpackFuncs(BaseModel):
+    detect: Callable
+    build: Callable
 
-// Register buildpack functions here
-var buildpacks = commonbuildpacks.CommonBuildpacks()
-
-// (-- LINT.IfChange --)
-func init() {
-	buildpacks["google.java.appengine"] = gcp.BuildpackFuncs{
-		Detect: javaappengine.DetectFn,
-		Build:  javaappengine.BuildFn,
-	}
-	buildpacks["google.java.clear-source"] = gcp.BuildpackFuncs{
-		Detect: javaclearsource.DetectFn,
-		Build:  javaclearsource.BuildFn,
-	}
-	buildpacks["google.java.entrypoint"] = gcp.BuildpackFuncs{
-		Detect: javaentrypoint.DetectFn,
-		Build:  javaentrypoint.BuildFn,
-	}
-	buildpacks["google.java.exploded-jar"] = gcp.BuildpackFuncs{
-		Detect: javaexplodedjar.DetectFn,
-		Build:  javaexplodedjar.BuildFn,
-	}
-	buildpacks["google.java.functions-framework"] = gcp.BuildpackFuncs{
-		Detect: javafunctionsframework.DetectFn,
-		Build:  javafunctionsframework.BuildFn,
-	}
-	buildpacks["google.java.gradle"] = gcp.BuildpackFuncs{
-		Detect: javagradle.DetectFn,
-		Build:  javagradle.BuildFn,
-	}
-	buildpacks["google.java.maven"] = gcp.BuildpackFuncs{
-		Detect: javamaven.DetectFn,
-		Build:  javamaven.BuildFn,
-	}
-	buildpacks["google.java.runtime"] = gcp.BuildpackFuncs{
-		Detect: javaruntime.DetectFn,
-		Build:  javaruntime.BuildFn,
-	}
-	buildpacks["google.java.spring-boot"] = gcp.BuildpackFuncs{
-		Detect: javaspringboot.DetectFn,
-		Build:  javaspringboot.BuildFn,
-	}
+buildpacks: Dict[str, BuildpackFuncs] = {
+    "google.java.appengine": BuildpackFuncs(
+        detect=java_appengine_detect,
+        build=java_appengine_build
+    ),
+    # ... (similar setup for all other Java buildpack functions)
 }
 
-// (-- LINT.ThenChange(//depot/google3/third_party/gcp_buildpacks/builders/java/runner/BUILD) --)
+@app.get("/run-buildpack")
+async def run_buildpack(request: Request, buildpack_id: str, phase: str):
+    if buildpack_id not in buildpacks:
+        raise HTTPException(status_code=404, detail="Buildpack not found")
 
-func main() {
-	flag.Parse()
-	gcp.MainRunner(buildpacks, buildpackID, phase)
-}
+    func_map = {
+        'detect': buildpacks[buildpack_id].detect,
+        'build': buildpacks[buildpack_id].build
+    }
+
+    if phase not in ['detect', 'build']:
+        raise HTTPException(status_code=400, detail="Invalid phase")
+
+    try:
+        result = await func_map[phase]()
+        return {"result": result}
+    except Exception as e:
+        logging.error(f"Error running {buildpack_id} {phase}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+def main():
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+if __name__ == "__main__":
+    main()
