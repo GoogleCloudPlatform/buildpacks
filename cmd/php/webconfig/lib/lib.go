@@ -1,282 +1,210 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements php/webconfig buildpack.
-// The runtime buildpack installs the config needed for PHP runtime.
-package lib
+"""Implements php/webconfig buildpack."""
 
-import (
-	"fmt"
-	"os"
-	"os/user"
-	"path/filepath"
+import os
+import sys
+from pathlib import Path
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/nginx"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/webconfig"
-	"github.com/Masterminds/semver"
-)
+import semver
+from google.cloud.buildpacks.gcpbuildpack import gcp  # type: ignore
 
-const (
-	// pid1
-	appSocket = "app.sock"
-	pid1Log   = "pid1.log"
-
-	defaultFlexAddress = "127.0.0.1:9000"
-
-	// nginx
-	defaultFrontController = "index.php"
-	defaultNginxBinary     = "nginx"
-	defaultNginxPort       = 8080
-	defaultRoot            = "/workspace"
-	nginxConf              = "nginx.conf"
-	nginxLog               = "nginx.log"
-
-	// php-fpm
-	defaultDynamicWorkers = false
-	defaultFPMBinary      = "php-fpm"
-	defaultFPMWorkers     = 2
-	phpFpmPid             = "php-fpm.pid"
-)
-
-var (
-	overrides = webconfig.OverrideProperties{}
-)
-
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	return gcp.OptInAlways(), nil
+const = {
+    "appSocket": "app.sock",
+    "pid1Log": "pid1.log",
+    "defaultFlexAddress": "127.0.0.1:9000",
+    "defaultFrontController": "index.php",
+    "defaultNginxBinary": "nginx",
+    "defaultNginxPort": 8080,
+    "defaultRoot": "/workspace",
+    "nginxConf": "nginx.conf",
+    "nginxLog": "nginx.log",
+    "phpFpmPid": "php-fpm.pid",
 }
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	// create webconfig layer
-	l, err := ctx.Layer("webconfig", gcp.LaunchLayer)
-	if err != nil {
-		return fmt.Errorf("creating layer: %w", err)
-	}
-
-	if env.IsFlex() {
-		runtimeConfig, err := appyaml.PhpConfiguration(ctx.ApplicationRoot())
-		if err != nil {
-			return err
-		}
-		overrides = webconfig.OverriddenProperties(ctx, runtimeConfig)
-		webconfig.SetEnvVariables(l, overrides)
-	}
-
-	if customNginxConf, present := os.LookupEnv(php.CustomNginxConfig); present {
-		overrides.NginxConfOverride = true
-		overrides.NginxConfOverrideFileName = filepath.Join(defaultRoot, customNginxConf)
-	}
-
-	nginxServesStaticFiles, err := env.IsPresentAndTrue(php.NginxServesStaticFiles)
-	if err != nil {
-		return err
-	}
-	overrides.NginxServesStaticFiles = nginxServesStaticFiles
-
-	fpmConfFile, err := writeFpmConfig(ctx, l.Path, overrides)
-	if err != nil {
-		return err
-	}
-	defer fpmConfFile.Close()
-
-	nginxServerConfFile, err := writeNginxServerConfig(l.Path, overrides)
-	if err != nil {
-		return err
-	}
-	defer nginxServerConfFile.Close()
-
-	procExists, err := ctx.FileExists("Procfile")
-	if err != nil {
-		return err
-	}
-	_, entrypointExists := os.LookupEnv(env.Entrypoint)
-
-	if !procExists && !entrypointExists {
-		if cap := ctx.Capability(php.WebConfigCapability); cap != nil {
-			c, ok := cap.(php.WebConfigurator)
-			if !ok {
-				return gcp.InternalErrorf("capability %q must implement WebConfigurator", php.WebConfigCapability)
-			}
-			return c.Configure(ctx)
-		}
-		cmd := []string{
-			filepath.Join(os.Getenv("PID1_DIR"), "pid1"),
-			"--nginxBinaryPath", defaultNginxBinary,
-			"--nginxErrLogFilePath", filepath.Join(l.Path, nginxLog),
-			"--customAppCmd", fmt.Sprintf("%q", fmt.Sprintf("%s -R --nodaemonize --fpm-config %s", defaultFPMBinary, fpmConfFile.Name())),
-			"--pid1LogFilePath", filepath.Join(l.Path, pid1Log),
-			// Ideally, we should be able to use the path of the nginx layer and not hardcode it here.
-			// This needs some investigation on how to pass values between build steps of buildpacks.
-			"--mimeTypesPath", filepath.Join("/layers/google.utils.nginx/nginx", "conf/mime.types"),
-		}
-		addArgs, err := addNginxConfCmdArgs(l.Path, nginxServerConfFile.Name(), overrides)
-		if err != nil {
-			return err
-		}
-		cmd = append(cmd, addArgs...)
-
-		ctx.AddProcess(gcp.WebProcess, cmd, gcp.AsDefaultProcess())
-	}
-
-	return nil
+overrides = {
+    "nginx_conf_override": False,
+    "nginx_conf_override_filename": "",
+    "nginx_serves_static_files": False,
+    "phpfpm_override": False,
+    "phpfpm_override_filename": "",
+    "front_controller": "",
+    "document_root": "",
+    "nginx_server_conf_include": False,
+    "nginx_server_conf_include_filename": "",
+    "nginx_http_include": False,
+    "nginx_http_include_filename": "",
 }
 
-func getInstalledPhpVersion(ctx *gcp.Context) (string, error) {
-	version, err := php.ExtractVersion(ctx)
-	if err != nil {
-		return "", fmt.Errorf("determining runtime version: %w", err)
-	}
+def DetectFn():
+    """Detect function for the buildpack."""
+    return gcp.OptInAlways()
 
-	resolvedVersion, err := runtime.ResolveVersion(ctx, php.GetInstallableRuntime(ctx), version, runtime.OSForStack(ctx))
-	if err != nil {
-		return "", fmt.Errorf("resolving runtime version: %w", err)
-	}
+def BuildFn(context):
+    """Build function for the buildpack."""
+    # Create webconfig layer
+    layer = context.Layer("webconfig", gcp.LaunchLayer)
+    
+    if os.getenv("FLEX_ENV"):
+        runtime_config = appyaml.PhpConfiguration(context.ApplicationRoot())
+        overrides.update(webconfig.OverriddenProperties(context, runtime_config))
+        webconfig.SetEnvVariables(layer, overrides)
 
-	return resolvedVersion, nil
-}
+    # Handle custom nginx config
+    custom_nginx_conf = os.getenv(php.CustomNginxConfig)
+    if custom_nginx_conf:
+        overrides["nginx_conf_override"] = True
+        overrides["nginx_conf_override_filename"] = Path(defaultRoot) / custom_nginx_conf
 
-// isVersion73OrGreater checks if the installed PHP version is 7.3.0 or newer.
-// This is used to enable features like 'decorate_workers_output = no' and 'log_limit'.
-// (1) For php >= 7.3.0, the directive decorate_workers_output prevents php from prepending a warning
-// message to all logged entries.  Prior to 7.3.0, decorate_workers_output was not available, and
-// these warning messages were prepended to all logged entries.  Here we choose to set
-// decorate_workers_output = no if the runtime version is >= 7.3.0.
-// (2) Set log_limit to 256kb.
-func isVersion73OrGreater(ctx *gcp.Context) (bool, error) {
-	v, err := getInstalledPhpVersion(ctx)
-	if err != nil {
-		return false, err
-	}
+    # Set nginx serves static files
+    overrides["nginx_serves_static_files"] = env.IsPresentAndTrue(php.NginxServesStaticFiles)
 
-	// Only latest php versions post 8.3 version are tested with RC candidate
-	// and will support the below constraint (>= 7.3.0).
-	if runtime.IsReleaseCandidate(v) {
-		return true, nil
-	}
+    # Write FPM config
+    fpm_config_file = writeFpmConfig(context, layer.Path, overrides)
+    
+    # Write nginx server config
+    nginx_server_config_file = writeNginxServerConfig(layer.Path, overrides)
 
-	c, err := semver.NewConstraint(">= 7.3.0")
-	if err != nil {
-		return false, err
-	}
-	sv, err := semver.NewVersion(v)
-	if err != nil {
-		return false, fmt.Errorf("parsing semver: %w", err)
-	}
-	return c.Check(sv), nil
-}
+    # Handle Procfile and entrypoint
+    proc_exists = context.FileExists("Procfile")
+    entrypoint_exists = os.getenv(env.Entrypoint) is not None
 
-func writeFpmConfig(ctx *gcp.Context, path string, overrides webconfig.OverrideProperties) (*os.File, error) {
-	isVersion73OrGreater, err := isVersion73OrGreater(ctx)
-	if err != nil {
-		return nil, err
-	}
-	conf, err := fpmConfig(path, isVersion73OrGreater, overrides)
-	if err != nil {
-		return nil, err
-	}
-	return nginx.WriteFpmConfigToPath(path, conf)
-}
+    if not proc_exists and not entrypoint_exists:
+        capability = context.Capability(php.WebConfigCapability)
+        if capability:
+            configurer = capability.Get()
+            return configurer.Configure(context)
+        
+        # Set up command
+        cmd = [
+            os.path.join(os.getenv("PID1_DIR"), "pid1"),
+            "--nginxBinaryPath", defaultNginxBinary,
+            "--nginxErrLogFilePath", os.path.join(layer.Path, nginxLog),
+            "--customAppCmd", f"{defaultFPMBinary} -R --nodaemonize --fpm-config {fpm_config_file.name}",
+            "--pid1LogFilePath", os.path.join(layer.Path, pid1Log),
+            "--mimeTypesPath", os.path.join("/layers/google.utils.nginx/nginx", "conf/mime.types")
+        ]
+        
+        add_args = addNginxConfCmdArgs(layer.Path, nginx_server_config_file.name, overrides)
+        cmd.extend(add_args)
 
-func fpmConfig(layer string, isVersion73OrGreater bool, overrides webconfig.OverrideProperties) (nginx.FPMConfig, error) {
-	user, err := user.Current()
-	if err != nil {
-		return nginx.FPMConfig{}, fmt.Errorf("getting current user: %w", err)
-	}
+        context.AddProcess(gcp.WebProcess, cmd, gcp.AsDefaultProcess())
 
-	fpm := nginx.FPMConfig{
-		PidPath:              filepath.Join(layer, phpFpmPid),
-		NumWorkers:           defaultFPMWorkers,
-		ListenAddress:        filepath.Join(layer, appSocket),
-		DynamicWorkers:       defaultDynamicWorkers,
-		Username:             user.Username,
-		AddNoDecorateWorkers: isVersion73OrGreater,
-		UseLogLimit:          isVersion73OrGreater,
-	}
+def getInstalledPhpVersion(context):
+    """Get installed PHP version."""
+    version = php.ExtractVersion(context)
+    resolved_version = runtime.ResolveVersion(
+        context,
+        php.GetInstallableRuntime(context),
+        version,
+        runtime.OSForStack(context)
+    )
+    return resolved_version
 
-	if env.IsFlex() {
-		fpm.ListenAddress = defaultFlexAddress
-	}
+def isVersion73OrGreater(context):
+    """Check if PHP version is 7.3 or greater."""
+    version = getInstalledPhpVersion(context)
+    if runtime.IsReleaseCandidate(version):
+        return True, None
+    constraint = semver.Constraint(">=7.3.0")
+    sv = semver.Version.parse(version)
+    return constraint.matches(sv), None
 
-	if overrides.PHPFPMOverride {
-		fpm.ConfOverride = overrides.PHPFPMOverrideFileName
-	}
+def writeFpmConfig(context, path, overrides):
+    """Write FPM configuration."""
+    is_73_plus, _ = isVersion73OrGreater(context)
+    config = fpmConfig(path, is_73_plus, overrides)
+    return nginx.WriteFpmConfigToPath(path, config)
 
-	return fpm, nil
-}
+def fpmConfig(layer, is_73_plus, overrides):
+    """Generate FPM configuration."""
+    user = os.getenv("USER")
+    
+    config = {
+        "pid_path": os.path.join(layer, phpFpmPid),
+        "num_workers": defaultFPMWorkers,
+        "listen_address": os.path.join(layer, appSocket),
+        "dynamic_workers": defaultDynamicWorkers,
+        "username": user,
+        "add_no_decorate_workers": is_73_plus,
+        "use_log_limit": is_73_plus
+    }
 
-func addNginxConfCmdArgs(path, nginxServerConfFileName string, overrides webconfig.OverrideProperties) ([]string, error) {
-	var args []string
-	if env.IsFlex() {
-		args = []string{"--customAppPort", "9000"}
-	} else {
-		args = []string{"--customAppSocket", filepath.Join(path, appSocket)}
-	}
+    if os.getenv("FLEX_ENV"):
+        config["listen_address"] = defaultFlexAddress
 
-	if overrides.NginxConfOverride {
-		return append(args, "--nginxConfigPath", overrides.NginxConfOverrideFileName), nil
-	}
+    if overrides.get("phpfpm_override"):
+        config["conf_override"] = overrides.get("phpfpm_override_filename")
 
-	args = append(args,
-		"--nginxConfigPath", filepath.Join(path, nginxConf),
-		"--serverConfigPath", nginxServerConfFileName,
-	)
+    return config
 
-	if overrides.NginxHTTPInclude {
-		args = append(args, "--httpIncludeConfigPath", overrides.NginxHTTPIncludeFileName)
-	}
+def addNginxConfCmdArgs(path, nginx_server_conf_file_name, overrides):
+    """Add Nginx configuration command arguments."""
+    args = []
+    if os.getenv("FLEX_ENV"):
+        args.append("--customAppPort")
+        args.append("9000")
+    else:
+        args.append("--customAppSocket")
+        args.append(os.path.join(path, appSocket))
 
-	return args, nil
-}
+    if overrides.get("nginx_conf_override"):
+        args.extend(["--nginxConfigPath", overrides["nginx_conf_override_filename"]])
+        return args
 
-func nginxConfig(layer string, overrides webconfig.OverrideProperties) nginx.Config {
-	frontController := defaultFrontController
-	if overrides.FrontController != "" {
-		frontController = overrides.FrontController
-	}
+    args.extend([
+        "--nginxConfigPath",
+        os.path.join(path, nginxConf),
+        "--serverConfigPath",
+        nginx_server_conf_file_name
+    ])
 
-	root := defaultRoot
-	if overrides.DocumentRoot != "" {
-		root = filepath.Join(defaultRoot, overrides.DocumentRoot)
-	}
+    if overrides.get("nginx_http_include"):
+        args.extend([
+            "--httpIncludeConfigPath",
+            overrides["nginx_http_include_filename"]
+        ])
 
-	nginx := nginx.Config{
-		Port:                  defaultNginxPort,
-		FrontControllerScript: frontController,
-		Root:                  root,
-		AppListenAddress:      "unix:" + filepath.Join(layer, appSocket),
-		ServesStaticFiles:     overrides.NginxServesStaticFiles,
-	}
+    return args
 
-	if env.IsFlex() {
-		nginx.AppListenAddress = defaultFlexAddress
-	}
+def nginxConfig(layer, overrides):
+    """Generate Nginx configuration."""
+    front_controller = defaultFrontController
+    if overrides.get("front_controller"):
+        front_controller = overrides["front_controller"]
 
-	if overrides.NginxServerConfInclude {
-		nginx.NginxConfInclude = overrides.NginxServerConfIncludeFileName
-	}
+    root = defaultRoot
+    if overrides.get("document_root"):
+        root = os.path.join(defaultRoot, overrides["document_root"])
 
-	return nginx
-}
+    config = {
+        "port": defaultNginxPort,
+        "front_controller_script": front_controller,
+        "root": root,
+        "app_listen_address": f"unix:{os.path.join(layer, appSocket)}"
+    }
 
-func writeNginxServerConfig(path string, overrides webconfig.OverrideProperties) (*os.File, error) {
-	conf := nginxConfig(path, overrides)
-	return nginx.WriteNginxConfigToPath(path, conf)
-}
+    if os.getenv("FLEX_ENV"):
+        config["app_listen_address"] = defaultFlexAddress
+
+    if overrides.get("nginx_server_conf_include"):
+        config["nginx_conf_include"] = overrides["nginx_server_conf_include_filename"]
+
+    return config
+
+def writeNginxServerConfig(path, overrides):
+    """Write Nginx server configuration."""
+    config = nginxConfig(path, overrides)
+    return nginx.WriteNginxConfigToPath(path, config)

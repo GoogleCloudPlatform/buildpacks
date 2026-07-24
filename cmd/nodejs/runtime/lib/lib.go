@@ -1,145 +1,141 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements nodejs/runtime buildpack.
-// The runtime buildpack installs the Node.js runtime.
-package lib
+import os
+import glob
+import shutil
+from pathlib import Path
 
-import (
-	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
+from gcpbuildpack import context, errors
+from pkg.nodejs import nodejs
+from pkg.ruby import ruby
+from pkg.runtime import runtime
+from pkg.env import env
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/execd"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-)
-
-const (
-	nodeLayer           = "node"
-	heapsizeLayer       = "heapsize"
-	runtimeVersionLabel = "runtime_version"
-)
-
-// DetectFn detects if package.json or .js files are present.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	result := runtime.CheckOverride("nodejs")
-	isRailsApp, _ := ruby.NeedsRailsAssetPrecompile(ctx)
-
-	// certain Ruby on Rails apps (< 7.x) require Node.js for asset precompilation
-	if !isRailsApp && result != nil {
-		return result, nil
-	}
-
-	pkgJSONExists, err := ctx.FileExists("package.json")
-	if err != nil {
-		return nil, err
-	}
-	if pkgJSONExists {
-		return gcp.OptInFileFound("package.json"), nil
-	}
-	jsFiles, err := ctx.Glob("*.js")
-	if err != nil {
-		return nil, fmt.Errorf("finding js files: %w", err)
-	}
-	if len(jsFiles) > 0 {
-		return gcp.OptIn("found .js files"), nil
-	}
-
-	tsFiles, err := ctx.Glob("*.ts")
-	if err != nil {
-		return nil, fmt.Errorf("finding ts files: %w", err)
-	}
-	version, err := nodejs.RequestedNodejsVersion(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("getting node version: %w", err)
-	}
-	version = strings.TrimPrefix(version, "^")
-	version = strings.TrimPrefix(version, "~")
-	version = strings.NewReplacer("*", "0", "x", "0", "X", "0").Replace(version)
-	isNodeVersionGreaterThanOrEqual24, err := nodejs.VersionMatchesSemver(ctx, ">=24.0.0", version)
-	if err != nil {
-		return nil, fmt.Errorf("checking if node version is greater than 24.0.0: %w", err)
-	}
-	if len(tsFiles) > 0 && isNodeVersionGreaterThanOrEqual24 {
-		return gcp.OptIn("found .ts files"), nil
-	}
-
-	return gcp.OptOut("neither package.json nor any .js files found"), nil
+const = {
+    "node_layer": "node",
+    "heapsize_layer": "heapsize",
+    "runtime_version_label": "runtime_version"
 }
 
-// BuildFn installs the Node.js runtime.
-func BuildFn(ctx *gcp.Context) error {
-	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
-	if err != nil {
-		return err
-	}
-	version, err := nodejs.RequestedNodejsVersion(ctx, pjs)
-	if err != nil {
-		return err
-	}
+def detect_fn(ctx: context.Context) -> int:
+    result = runtime.check_override("nodejs")
+    is_rails_app, _ = ruby.needs_rails_asset_precompile(ctx)
+    
+    if not is_rails_app and result is not None:
+        return result
 
-	if _, ok := os.LookupEnv(env.FirebaseOutputDir); ok {
-		osName := runtime.OSForStack(ctx)
-		latestAvailableVersion, err := runtime.ResolveVersion(ctx, runtime.Nodejs, version, osName)
-		if err != nil {
-			return fmt.Errorf("resolving version %s: %w", version, err)
-		}
-		majorVersion, err := nodejs.MajorVersion(latestAvailableVersion)
-		if err != nil {
-			return fmt.Errorf("getting major version for %s: %w", latestAvailableVersion, err)
-		}
-		ctx.AddLabel(runtimeVersionLabel, string(runtime.Nodejs)+majorVersion)
-	}
+    try:
+        pkg_json_exists = ctx.file_exists("package.json")
+    except errors.FileError as e:
+        raise e
+        
+    if pkg_json_exists:
+        return context.OptInFileFound("package.json")
 
-	nrl, err := ctx.Layer(nodeLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerUnlessSkipRuntimeLaunch)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", nodeLayer, err)
-	}
-	if _, err = runtime.InstallTarballIfNotCached(ctx, runtime.Nodejs, version, nrl); err != nil {
-		return fmt.Errorf("installing nodejs: %w", err)
-	}
-	if err = installHeapsizeScript(ctx); err != nil {
-		return fmt.Errorf("installing heapsize script: %w", err)
-	}
-	return err
-}
+    try:
+        js_files = glob.glob("*.js")
+    except Exception as e:
+        raise errors.GlobError(f"finding js files: {e}") from e
 
-// installHeapsizeScript copies the exec/heapsize.sh script into the layer's exec.d directory.
-func installHeapsizeScript(ctx *gcp.Context) error {
-	if cap := ctx.Capability(execd.InstallerCapability); cap != nil {
-		return cap.(execd.Installer).Install(ctx, heapsizeLayer, "exec/heapsize.sh")
-	}
-	l, err := ctx.Layer(heapsizeLayer, gcp.LaunchLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", heapsizeLayer, err)
-	}
-	ctx.Logf("Installing the heapsize.sh exec.d script.")
-	scriptPath := filepath.Join(ctx.BuildpackRoot(), "exec", "heapsize.sh")
-	destPath := filepath.Join(l.Exec.Path, "heapsize.sh")
-	data, err := ioutil.ReadFile(scriptPath)
-	if err != nil {
-		return fmt.Errorf("reading %s: %w", scriptPath, err)
-	}
-	ctx.MkdirAll(l.Exec.Path, 0755)
-	if err := ioutil.WriteFile(destPath, data, 0777); err != nil {
-		return fmt.Errorf("writing %s: %w", destPath, err)
-	}
-	return nil
-}
+    if len(js_files) > 0:
+        return context.OptIn("found .js files")
+
+    try:
+        ts_files = glob.glob("*.ts")
+    except Exception as e:
+        raise errors.GlobError(f"finding ts files: {e}") from e
+
+    version, err = nodejs.requested_nodejs_version(ctx, None)
+    if err:
+        raise errors.NodeJSVersionError(f"getting node version: {err}")
+
+    version = version.lstrip("^~")
+    version = version.replace("*", "0").replace("x", "0").replace("X", "0")
+
+    try:
+        is_node_24_plus = nodejs.version_matches_semver(ctx, ">=24.0.0", version)
+    except errors.VersionError as e:
+        raise errors.VersionCheckError(f"checking if node version is greater than 24.0.0: {e}") from e
+
+    if len(ts_files) > 0 and is_node_24_plus:
+        return context.OptIn("found .ts files")
+
+    return context.OptOut("neither package.json nor any .js files found")
+
+def build_fn(ctx: context.Context) -> None:
+    try:
+        pjs = nodejs.read_package_json_if_exists(ctx.application_root)
+    except errors.FileError as e:
+        raise e
+
+    version, err = nodejs.requested_nodejs_version(ctx, pjs)
+    if err:
+        raise err
+
+    if env.firebase_output_dir in os.environ:
+        os_name = runtime.os_for_stack(ctx)
+        latest_available_version, err = runtime.resolve_version(ctx, runtime.Nodejs, version, os_name)
+        if err:
+            raise errors.ResolutionError(f"resolving version {version}: {err}")
+
+        major_version, err = nodejs.major_version(latest_available_version)
+        if err:
+            raise errors.VersionParseError(f"getting major version for {latest_available_version}: {err}")
+
+        ctx.add_label(const["runtime_version_label"], f"{runtime.Nodejs}{major_version}")
+
+    try:
+        nrl = ctx.layer(const["node_layer"], context.BuildLayer, context.CacheLayer, context.LaunchLayerUnlessSkipRuntimeLaunch)
+    except errors.LayerError as e:
+        raise errors.LayerCreationError(f"creating {const['node_layer']} layer: {e}") from e
+
+    try:
+        runtime.install_tarball_if_not_cached(ctx, runtime.Nodejs, version, nrl)
+    except errors.InstallationError as e:
+        raise errors.RuntimeInstallationError(f"installing nodejs: {e}") from e
+
+    if install_heapsize_script(ctx):
+        pass
+
+def install_heapsize_script(ctx: context.Context) -> bool:
+    try:
+        cap = ctx.capability(execd.installer_capability)
+    except errors.CapabilityError as e:
+        raise e
+        
+    if cap is not None:
+        return cap.install(ctx, const["heapsize_layer"], "exec/heapsize.sh")
+
+    try:
+        l = ctx.layer(const["heapsize_layer"], context.LaunchLayer)
+    except errors.LayerError as e:
+        raise errors.LayerCreationError(f"creating {const['heapsize_layer']} layer: {e}") from e
+
+    script_path = Path(ctx.buildpack_root) / "exec" / "heapsize.sh"
+    dest_path = l.exec.path / "heapsize.sh"
+
+    try:
+        data = script_path.read_bytes()
+    except FileNotFoundError as e:
+        raise errors.FileNotFoundError(f"reading {script_path}: {e}") from e
+
+    os.makedirs(dest_path.parent, exist_ok=True)
+    
+    try:
+        dest_path.write_bytes(data)
+    except IOError as e:
+        raise errors.WriteError(f"writing {dest_path}: {e}") from e
+
+    return True

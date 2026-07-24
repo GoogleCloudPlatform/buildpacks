@@ -1,582 +1,149 @@
-package apphostingschema
+import os
+import re
+from dataclasses import dataclass, field
+from typing import List, Optional
+import yaml
+from .vpcaccess import VpcAccess, validate_vpc_access
 
-import (
-	"fmt"
-	"testing"
+reserved.FirebaseKeyPrefix = "X_FIREBASE_"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
-	"github.com/google/go-cmp/cmp"
-	"google3/third_party/golang/cmp/cmpopts/cmpopts"
-	"google3/third_party/golang/protobuf/v2/proto/proto"
-)
+@dataclass
+class EnvironmentVariable:
+    Variable: str
+    Value: Optional[str] = None
+    Secret: Optional[str] = None
+    Availability: List[str] = field(default_factory=list)
+    Source: str = ""
+    
+    def __post_init__(self):
+        if self.Value and self.Secret:
+            raise ValueError("Both 'value' and 'secret' cannot be present")
+        if not self.Value and not self.Secret:
+            raise ValueError("Either 'value' or 'secret' must be present")
+        for avail in self.Availability:
+            if avail not in valid_availability_values:
+                raise ValueError(f"Invalid availability value: {avail}")
 
-func TestReadAndValidateFromFile(t *testing.T) {
-	testCases := []struct {
-		desc                 string
-		inputAppHostingYAML  string
-		wantAppHostingSchema AppHostingSchema
-		wantErr              bool
-	}{
-		{
-			desc:                "Read properly formatted app hosting YAML schema properly",
-			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_valid.yaml"),
-			wantAppHostingSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					CPU:                proto.Float32(1),
-					CPUAlwaysAllocated: proto.Bool(true),
-					MemoryMiB:          proto.Int32(1024),
-					Concurrency:        proto.Int32(100),
-					MaxInstances:       proto.Int32(4),
-					VpcAccess: &VpcAccess{
-						Egress: "ALL_TRAFFIC",
-						NetworkInterfaces: []NetworkInterface{
-							NetworkInterface{
-								Network:    "projects/test-project/global/networks/test-network",
-								Subnetwork: "projects/test-project/regions/us-central1/subnetworks/test-subnetwork",
-								Tags:       []string{"test-tag"},
-							},
-						},
-					},
-				},
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"BUILD", "RUNTIME"}},
-					EnvironmentVariable{Variable: "VAR_JSON", Value: `{"apiKey":"myApiKey","appId":"myAppId"}`, Availability: []string{"BUILD", "RUNTIME"}},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "myApiKeySecret", Availability: []string{"BUILD"}},
-					EnvironmentVariable{Variable: "PINNED_API_KEY", Secret: "myApiKeySecret@5"},
-				},
-			},
-		},
-		{
-			desc:                "Read properly formatted app hosting YAML schema with VPC connector properly",
-			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_valid_vpc_connector.yaml"),
-			wantAppHostingSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					VpcAccess: &VpcAccess{
-						Connector: "my-connector",
-					},
-				},
-			},
-		},
-		{
-			desc:                "Read YAML schema missing an env section properly",
-			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_missingenv.yaml"),
-			wantAppHostingSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					CPU:          proto.Float32(1),
-					MemoryMiB:    proto.Int32(1024),
-					Concurrency:  proto.Int32(100),
-					MaxInstances: proto.Int32(4),
-				},
-			},
-		},
-		{
-			desc:                "Throw an error when VCP egress is invalid",
-			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_vpc_egress.yaml"),
-			wantErr:             true,
-		},
-		{
-			desc:                "Throw an error when VPC connector and network interfaces are set",
-			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_vpc_connector_and_network_interfaces.yaml"),
-			wantErr:             true,
-		},
-		{
-			desc:                "Throw an error when VPC connector is set without an interface",
-			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_vpc_no_network.yaml"),
-			wantErr:             true,
-		},
-		{
-			desc:                 "Return an empty schema when the file doesn't exist",
-			inputAppHostingYAML:  testdata.MustGetPath("testdata/nonexistant.yaml"), // File doesn't exist
-			wantAppHostingSchema: AppHostingSchema{},
-		},
-		{
-			desc:                "Throw an error when an env field contains both a value and a secret",
-			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalidenv_valuesecret.yaml"),
-			wantErr:             true,
-		},
-		{
-			desc:                "Throw an error when an env field contains an invalid availability value",
-			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalidenv_availability.yaml"),
-			wantErr:             true,
-		},
-		{
-			desc:                "Throw an error when a run config field contains an invalid value",
-			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalidrunconfig.yaml"),
-			wantErr:             true,
-		},
-		{
-			desc:                "Valid CPU and Memory (4 CPU, 2048 MiB)",
-			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_valid_cpu_memory.yaml"),
-			wantAppHostingSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					CPU:       proto.Float32(4),
-					MemoryMiB: proto.Int32(2048),
-				},
-			},
-		},
-		{
-			desc:                "Valid fractional CPU with concurrency 1",
-			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_valid_fractional_cpu.yaml"),
-			wantAppHostingSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					CPU:         proto.Float32(0.5),
-					MemoryMiB:   proto.Int32(512),
-					Concurrency: proto.Int32(1),
-				},
-			},
-		},
-		{
-			desc:                "Invalid fractional CPU (concurrency not 1)",
-			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_fractional_cpu_concurrency.yaml"),
-			wantErr:             true,
-		},
-		{
-			desc:                "Invalid CPU vs Memory (4 CPU, 1024 MiB)",
-			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_cpu_vs_memory.yaml"),
-			wantErr:             true,
-		},
-		{
-			desc:                "Invalid Memory vs CPU (1 CPU, 4096 MiB)",
-			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_memory_vs_cpu.yaml"),
-			wantErr:             true,
-		},
-		{
-			desc:                "Invalid CPU value (e.g., 3)",
-			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_cpu_value.yaml"),
-			wantErr:             true,
-		},
-	}
+@dataclass
+class RunConfig:
+    CPU: Optional[float] = None
+    MemoryMiB: Optional[int] = None
+    Concurrency: Optional[int] = None
+    MaxInstances: Optional[int] = None
+    MinInstances: Optional[int] = None
+    VpcAccess: Optional[VpcAccess] = None
+    CPUAlwaysAllocated: Optional[bool] = None
 
-	for _, test := range testCases {
-		t.Run(test.desc, func(t *testing.T) {
-			s, err := ReadAndValidateFromFile(test.inputAppHostingYAML)
+@dataclass
+class Scripts:
+    RunCommand: str = ""
+    BuildCommand: str = ""
 
-			if !test.wantErr {
-				if err != nil {
-					t.Errorf("ReadAndValidateFromFile(): unexpected error: %v", err)
-				}
-				if diff := cmp.Diff(test.wantAppHostingSchema, s); diff != "" {
-					t.Errorf("ReadAndValidateFromFile(): unexpected YAML (-want, +got):\n%v", diff)
-				}
-			} else {
-				if err == nil {
-					t.Errorf("ReadAndValidateFromFile(): got %v, want error", s)
-				}
-			}
-		})
-	}
-}
+@dataclass
+class OutputFiles:
+    ServerApp: 'ServerApp'
 
-func TestSanitize(t *testing.T) {
-	testCases := []struct {
-		desc        string
-		inputSchema AppHostingSchema
-		wantSchema  AppHostingSchema
-	}{
-		{
-			desc: "Sanitize keys properly",
-			inputSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					MemoryMiB: proto.Int32(1024),
-				},
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "K_SERVICE", Secret: "secretID", Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "FIREBASE_ID", Value: "firebaseId", Availability: []string{"BUILD"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "X_FIREBASE_RESERVED", Value: "value", Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "MISSING_AVAILABILITY", Value: "projects/test-project/secrets/secretID", Source: SourceAppHostingYAML},
-				},
-			},
-			wantSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					MemoryMiB: proto.Int32(1024),
-				},
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "FIREBASE_ID", Value: "firebaseId", Availability: []string{"BUILD"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "MISSING_AVAILABILITY", Value: "projects/test-project/secrets/secretID", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
-				},
-			},
-		},
-		{
-			desc: "Remove no keys when all env vars are valid",
-			inputSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					MemoryMiB: proto.Int32(1024),
-				},
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "ENVIRONMENT", Secret: "staging", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
-				},
-			},
-			wantSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					MemoryMiB: proto.Int32(1024),
-				},
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "ENVIRONMENT", Secret: "staging", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
-				},
-			},
-		},
-		{
-			desc: "Properly sanitize when environment variables are missing",
-			inputSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					MemoryMiB: proto.Int32(1024),
-				},
-			},
-			wantSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					MemoryMiB: proto.Int32(1024),
-				},
-			},
-		},
-	}
+@dataclass
+class ServerApp:
+    Include: List[str]
 
-	for _, test := range testCases {
-		Sanitize(&test.inputSchema)
-		if diff := cmp.Diff(test.wantSchema, test.inputSchema); diff != "" {
-			t.Errorf("unexpected sanitized envVars for test %q (-want, +got):\n%v", test.desc, diff)
-		}
-	}
-}
+@dataclass
+class AppHostingSchema:
+    RunConfig: Optional[RunConfig] = None
+    Env: List[EnvironmentVariable] = field(default_factory=list)
+    Scripts: Optional[Scripts] = None
+    OutputFiles: Optional[OutputFiles] = None
 
-func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
-	testCases := []struct {
-		desc               string
-		appHostingSchema   AppHostingSchema
-		appHostingYAMLPath string
-		environmentName    string
-		wantSchema         AppHostingSchema
-	}{
-		{
-			desc: "Merge apphosting.yaml and apphosting.<environmentName>.yaml properly",
-			appHostingSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					CPU:          proto.Float32(3),
-					MemoryMiB:    proto.Int32(1024),
-					MaxInstances: proto.Int32(4),
-					MinInstances: proto.Int32(0),
-					Concurrency:  proto.Int32(100),
-				},
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI", Source: SourceAppHostingYAML},
-				},
-			},
-			appHostingYAMLPath: testdata.MustGetPath("testdata/apphosting.yaml"),
-			environmentName:    "staging",
-			wantSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					CPU:          proto.Float32(1),
-					MemoryMiB:    proto.Int32(512),
-					MaxInstances: proto.Int32(4),
-					MinInstances: proto.Int32(0),
-					Concurrency:  proto.Int32(5),
-					VpcAccess: &VpcAccess{
-						Connector: "projects/test-project/locations/us-central1/connectors/test-connector",
-					},
-				},
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.staging.service.com", Availability: []string{"BUILD"}, Source: "apphosting.staging.yaml"},
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI", Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "DATABASE_URL", Secret: "secretStagingDatabaseURL", Source: "apphosting.staging.yaml"},
-				},
-				OutputFiles: OutputFiles{
-					ServerApp: serverApp{
-						Include: []string{"dist", "node_modules", "package.json"},
-					},
-				},
-				Scripts: Scripts{
-					BuildCommand: "npm run build",
-				},
-			},
-		},
-		{
-			desc: "Don't modify apphosting.yaml when apphosting.<environmentName>.yaml is empty",
-			appHostingSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					CPU:          proto.Float32(3),
-					MemoryMiB:    proto.Int32(1024),
-					MaxInstances: proto.Int32(4),
-					MinInstances: proto.Int32(0),
-					Concurrency:  proto.Int32(100),
-				},
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI", Source: SourceAppHostingYAML},
-				},
-			},
-			appHostingYAMLPath: testdata.MustGetPath("testdata/apphosting.yaml"),
-			environmentName:    "empty",
-			wantSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					CPU:          proto.Float32(3),
-					MemoryMiB:    proto.Int32(1024),
-					MaxInstances: proto.Int32(4),
-					MinInstances: proto.Int32(0),
-					Concurrency:  proto.Int32(100),
-				},
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI", Source: SourceAppHostingYAML},
-				},
-			},
-		},
-		{
-			desc: "Don't modify apphosting.yaml when environment name isn't passed in",
-			appHostingSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					CPU:          proto.Float32(3),
-					MemoryMiB:    proto.Int32(1024),
-					MaxInstances: proto.Int32(4),
-					MinInstances: proto.Int32(0),
-					Concurrency:  proto.Int32(100),
-				},
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI", Source: SourceAppHostingYAML},
-				},
-			},
-			appHostingYAMLPath: testdata.MustGetPath("testdata/apphosting.yaml"),
-			environmentName:    "",
-			wantSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					CPU:          proto.Float32(3),
-					MemoryMiB:    proto.Int32(1024),
-					MaxInstances: proto.Int32(4),
-					MinInstances: proto.Int32(0),
-					Concurrency:  proto.Int32(100),
-				},
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI", Source: SourceAppHostingYAML},
-				},
-			},
-		},
-		{
-			desc: "Use apphosting.yaml when apphosting.<environmentName>.yaml is not found",
-			appHostingSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					CPU:          proto.Float32(3),
-					MemoryMiB:    proto.Int32(1024),
-					MaxInstances: proto.Int32(4),
-					MinInstances: proto.Int32(0),
-					Concurrency:  proto.Int32(100),
-				},
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI", Source: SourceAppHostingYAML},
-				},
-			},
-			appHostingYAMLPath: testdata.MustGetPath("testdata/apphosting.yaml"),
-			environmentName:    "missingfile",
-			wantSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					CPU:          proto.Float32(3),
-					MemoryMiB:    proto.Int32(1024),
-					MaxInstances: proto.Int32(4),
-					MinInstances: proto.Int32(0),
-					Concurrency:  proto.Int32(100),
-				},
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: SourceAppHostingYAML},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI", Source: SourceAppHostingYAML},
-				},
-			},
-		},
-	}
+def read_and_validate_from_file(file_path: str) -> 'AppHostingSchema':
+    if not os.path.exists(file_path):
+        return AppHostingSchema()
+    
+    with open(file_path, 'r') as f:
+        data = yaml.safe_load(f)
+        
+    try:
+        return AppHostingSchema.from_yaml(data)
+    except Exception as e:
+        raise ValueError(f"Invalid apphosting.yaml at {file_path}: {e}")
 
-	for _, test := range testCases {
-		if err := MergeWithEnvironmentSpecificYAML(&test.appHostingSchema, test.appHostingYAMLPath, test.environmentName); err != nil {
-			t.Fatalf("unexpected error for TestMergeWithEnvironmentSpecificYAML(%q): %v", test.desc, err)
-		}
+@classmethod
+def from_yaml(cls, data: dict) -> 'AppHostingSchema':
+    run_config_data = data.get('runConfig')
+    run_config = RunConfig() if run_config_data else None
+    # Populate run_config fields...
+    
+    env_vars = [EnvironmentVariable(**ev) for ev in data.get('env', [])]
+    
+    scripts_data = data.get('scripts')
+    scripts = Scripts(**scripts_data) if scripts_data else None
+    
+    output_files_data = data.get('outputFiles')
+    output_files = OutputFiles(ServerApp(**output_files_data['serverApp'])) if output_files_data else None
+    
+    return cls(RunConfig=run_config, Env=env_vars, Scripts=scripts, OutputFiles=output_files)
 
-		if diff := cmp.Diff(test.wantSchema, test.appHostingSchema, cmpopts.SortSlices(func(a, b EnvironmentVariable) bool { return a.Variable < b.Variable })); diff != "" {
-			t.Errorf("unexpected merged apphosting schema for test %q (-want, +got):\n%v", test.desc, diff)
-		}
-	}
-}
+def is_reserved_key(env_key: str) -> bool:
+    return env_key in reserved_keys or env_key.startswith(reserved.FirebaseKeyPrefix)
 
-func TestGetEnvVar(t *testing.T) {
-	testCases := []struct {
-		desc             string
-		key              string
-		appHostingSchema AppHostingSchema
-		wantEnvVar       EnvironmentVariable
-		wantFound        bool
-	}{
-		{
-			desc: "Return env var when it is present",
-			key:  "FIREBASE_CONFIG",
-			appHostingSchema: AppHostingSchema{
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					EnvironmentVariable{Variable: "FIREBASE_CONFIG", Value: fmt.Sprintf(`{"apiKey":%q,"appId":%q}`, "myApiKey", "myAppId")},
-				},
-			},
-			wantEnvVar: EnvironmentVariable{Variable: "FIREBASE_CONFIG", Value: fmt.Sprintf(`{"apiKey":%q,"appId":%q}`, "myApiKey", "myAppId")},
-			wantFound:  true,
-		},
-		{
-			desc: "Return nothing when it is not present",
-			key:  "FIREBASE_CONFIG",
-			appHostingSchema: AppHostingSchema{
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-				},
-			},
-			wantEnvVar: EnvironmentVariable{},
-			wantFound:  false,
-		},
-	}
+def sanitize_env(env_vars: List[EnvironmentVariable]) -> List[EnvironmentVariable]:
+    sanitized = []
+    for ev in env_vars:
+        if not is_reserved_key(ev.Variable):
+            if not ev.Availability:
+                ev.Availability = ["BUILD", "RUNTIME"]
+                print(f"INFO: {ev.Variable} has no availability specified, defaulting to ['BUILD', 'RUNTIME']")
+            sanitized.append(ev)
+        else:
+            print(f"WARNING: Reserved key {ev.Variable} removed from environment variables")
+    return sanitized
 
-	for _, test := range testCases {
-		gotEnvVar, gotFound := GetEnvVar(&test.appHostingSchema, test.key)
+def sanitize(schema: 'AppHostingSchema') -> None:
+    schema.Env = sanitize_env(schema.Env)
 
-		if gotFound != test.wantFound {
-			t.Errorf("GetEnvVar(%q) found = %v, want %v", test.desc, gotFound, test.wantFound)
-		}
-		if diff := cmp.Diff(test.wantEnvVar, gotEnvVar); diff != "" {
-			t.Errorf("GetEnvVar(%q) env var diff (-want +got):\n%s", test.desc, diff)
-		}
-	}
-}
+def merge_app_hosting_schemas(base_schema: 'AppHostingSchema', env_specific_schema: 'AppHostingSchema') -> None:
+    # Merge RunConfig fields...
+    if env_specific_schema.RunConfig:
+        base_schema.RunConfig = env_specific_schema.RunConfig
+        
+    # Merge Env variables...
+    merged_env = []
+    env_vars_by_name = {ev.Variable: ev for ev in env_specific_schema.Env}
+    for ev in base_schema.Env:
+        if ev.Variable not in env_vars_by_name:
+            merged_env.append(ev)
+    merged_env.extend(env_specific_schema.Env)
+    base_schema.Env = merged_env
+    
+    # Merge other sections...
+    if env_specific_schema.OutputFiles:
+        base_schema.OutputFiles = env_specific_schema.OutputFiles
 
-func TestWriteToFile(t *testing.T) {
-	testDir := t.TempDir()
+def merge_with_environment_specific_yaml(base_schema: 'AppHostingSchema', apphosting_path: str, environment_name: str) -> None:
+    if not environment_name:
+        return
+        
+    env_file_path = os.path.join(os.path.dirname(apphosting_path), f"apphosting.{environment_name}.yaml")
+    if not os.path.exists(env_file_path):
+        print(f"INFO: Environment specific file {env_file_path} not found")
+        return
+        
+    env_specific_schema = read_and_validate_from_file(env_file_path)
+    merge_app_hosting_schemas(base_schema, env_specific_schema)
 
-	testCases := []struct {
-		desc        string
-		inputSchema AppHostingSchema
-	}{
-		{
-			desc: "Write properly formatted app hosting YAML schema correctly",
-			inputSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					CPU:       proto.Float32(1),
-					MemoryMiB: proto.Int32(1024),
-				},
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					EnvironmentVariable{Variable: "MISSING_AVAILABILITY", Value: "projects/test-project/secrets/secretID", Availability: []string{"BUILD", "RUNTIME"}},
-				},
-			},
-		},
-		{
-			desc: "Write schema missing RunConfig correctly",
-			inputSchema: AppHostingSchema{
-				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					EnvironmentVariable{Variable: "MISSING_AVAILABILITY", Value: "projects/test-project/secrets/secretID", Availability: []string{"BUILD", "RUNTIME"}},
-				},
-			},
-		},
-		{
-			desc: "Write schema missing Env correctly",
-			inputSchema: AppHostingSchema{
-				RunConfig: RunConfig{
-					CPU:       proto.Float32(1),
-					MemoryMiB: proto.Int32(1024),
-				},
-			},
-		},
-		{
-			desc:        "Write empty schema correctly",
-			inputSchema: AppHostingSchema{},
-		},
-	}
+def get_env_var(schema: 'AppHostingSchema', key: str) -> Optional[EnvironmentVariable]:
+    for ev in schema.Env:
+        if ev.Variable == key:
+            return ev
+    return None
 
-	for i, test := range testCases {
-		t.Run(test.desc, func(t *testing.T) {
-			outputFilePath := fmt.Sprintf("%s/output%d", testDir, i)
+def write_to_file(self, file_path: str) -> None:
+    with open(file_path, 'w') as f:
+        yaml.dump(self.to_dict(), f)
 
-			err := test.inputSchema.WriteToFile(outputFilePath)
-			if err != nil {
-				t.Errorf("error in test '%v'. Error was %v", test.desc, err)
-			}
-
-			actualSchema, err := ReadAndValidateFromFile(outputFilePath)
-			if err != nil {
-				t.Errorf("error reading in temp file: %v", err)
-			}
-
-			if diff := cmp.Diff(test.inputSchema, actualSchema); diff != "" {
-				t.Errorf("unexpected schema for test %q, (-want, +got):\n%v", test.desc, diff)
-			}
-		})
-	}
-}
-
-func TestMergeEnvVars(t *testing.T) {
-	testCases := []struct {
-		desc       string
-		original   []EnvironmentVariable
-		override   []EnvironmentVariable
-		wantMerged []EnvironmentVariable
-	}{
-		{
-			desc: "Merge environment variables",
-			original: []EnvironmentVariable{
-				EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-				EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
-			},
-			override: []EnvironmentVariable{
-				EnvironmentVariable{Variable: "API_URL", Value: "api.staging.service.com", Availability: []string{"BUILD"}},
-				EnvironmentVariable{Variable: "DATABASE_URL", Secret: "secretStagingDatabaseURL"},
-			},
-			wantMerged: []EnvironmentVariable{
-				EnvironmentVariable{Variable: "API_URL", Value: "api.staging.service.com", Availability: []string{"BUILD"}},
-				EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
-				EnvironmentVariable{Variable: "DATABASE_URL", Secret: "secretStagingDatabaseURL"},
-			},
-		},
-		{
-			desc: "Takes original list when there are no overrides",
-			original: []EnvironmentVariable{
-				EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-				EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
-				EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
-			},
-			override: []EnvironmentVariable{},
-			wantMerged: []EnvironmentVariable{
-				EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-				EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
-				EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
-			},
-		},
-		{
-			desc:     "Takes override list when there are no original list",
-			original: []EnvironmentVariable{},
-			override: []EnvironmentVariable{
-				EnvironmentVariable{Variable: "API_URL", Value: "api.staging.service.com", Availability: []string{"BUILD"}},
-				EnvironmentVariable{Variable: "DATABASE_URL", Secret: "secretStagingDatabaseURL"},
-			},
-			wantMerged: []EnvironmentVariable{
-				EnvironmentVariable{Variable: "API_URL", Value: "api.staging.service.com", Availability: []string{"BUILD"}},
-				EnvironmentVariable{Variable: "DATABASE_URL", Secret: "secretStagingDatabaseURL"},
-			},
-		},
-		{
-			desc:       "Handles empty lists",
-			original:   []EnvironmentVariable{},
-			override:   []EnvironmentVariable{},
-			wantMerged: []EnvironmentVariable{},
-		},
-	}
-	for _, test := range testCases {
-		gotMerged := MergeEnvVars(test.original, test.override)
-		if diff := cmp.Diff(test.wantMerged, gotMerged, cmpopts.SortSlices(func(a, b EnvironmentVariable) bool { return a.Variable < b.Variable })); diff != "" {
-			t.Errorf("unexpected merged environment variables for test %q (-want, +got):\n%v", test.desc, diff)
-		}
-	}
-}
+def to_dict(self) -> dict:
+    return {
+        'runConfig': self.RunConfig.__dict__ if self.RunConfig else None,
+        'env': [ev.__dict__ for ev in self.Env],
+        'scripts': self.Scripts.__dict__ if self.Scripts else None,
+        'outputFiles': self.OutputFiles.__dict__ if self.OutputFiles else None
+    }

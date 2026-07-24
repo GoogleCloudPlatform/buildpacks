@@ -1,105 +1,92 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements go/appengine buildpack.
-// The appengine buildpack sets the image entrypoint.
-package lib
+"""Implements go/appengine buildpack. The appengine buildpack sets the image entrypoint."""
 
-import (
-	"strings"
+import os
+import subprocess
+from typing import List, Optional
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
-)
+import gcp_buildpack as gcp
+from packages.appengine import AppEngineBuildpack
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if env.IsGAE() {
-		return appengine.OptInTargetPlatformGAE(), nil
-	}
-	return appengine.OptOutTargetPlatformNotGAE(), nil
-}
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	if err := validateAppEngineAPIs(ctx); err != nil {
-		return err
-	}
-	return appengine.Build(ctx, "go", entrypoint)
-}
+def detect_fn(context: gcp.Context) -> tuple[int, Optional[Exception]]:
+    """Detect function for the appengine buildpack."""
+    if os.getenv("GAE_ENV"):
+        return (AppEngineBuildpack.OPT_IN_TARGET_PLATFORM_GAE, None)
+    return (AppEngineBuildpack.OPT_OUT_TARGET_PLATFORM_NOT_GAE, None)
 
-func validateAppEngineAPIs(ctx *gcp.Context) error {
-	supportsApis, err := golang.SupportsAppEngineApis(ctx)
-	if err != nil {
-		return err
-	}
 
-	dirDeps, err := directDeps(ctx)
-	if err != nil {
-		return err
-	}
-	if !supportsApis && appEngineInDeps(dirDeps) {
-		// TODO(b/179431689) Change to error.
-		ctx.Warnf(appengine.DepWarning)
-		return nil
-	}
+def build_fn(context: gcp.Context) -> Optional[Exception]:
+    """Build function for the appengine buildpack."""
+    if error := validate_app_engine_apis(context):
+        return error
+    return AppEngineBuildpack.build(
+        context, "go", entrypoint
+    )
 
-	deps, err := allDeps(ctx)
-	if err != nil {
-		return err
-	}
-	usingAppEngine := appEngineInDeps(deps)
-	if supportsApis && !usingAppEngine {
-		ctx.Warnf(appengine.UnusedAPIWarning)
-	}
 
-	if !supportsApis && usingAppEngine {
-		ctx.Warnf(appengine.IndirectDepWarning)
-	}
+def validate_app_engine_apis(context: gcp.Context) -> Optional[Exception]:
+    """Validates usage of App Engine APIs."""
+    supportsApis = golang_supports_appengine_apis(context)
+    if not supportsApis:
+        direct_deps = get_direct_deps(context)
+        if app_engine_in_deps(direct_deps):
+            context.warn(AppEngineBuildpack.APP_ENGINE_WARNING)
+            return None
 
-	return nil
-}
+    all_deps = get_all_deps(context)
+    usingAppEngine = app_engine_in_deps(all_deps)
+    
+    if supportsApis and not usingAppEngine:
+        context.warn(AppEngineBuildpack.APP_ENGINE_UNUSED_API_WARNING)
+        
+    if not supportsApis and usingAppEngine:
+        context.warn(AppEngineBuildpack.APP_ENGINE_INDIRECT_DEP_WARNING)
+        
+    return None
 
-func entrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
-	ctx.Logf("No user entrypoint specified. Using the generated entrypoint %q", golang.OutBin)
-	return &appstart.Entrypoint{Type: appstart.EntrypointGenerated.String(), Command: golang.OutBin}, nil
-}
 
-func appEngineInDeps(deps []string) bool {
-	for _, s := range deps {
-		if strings.HasPrefix(s, "google.golang.org/appengine") {
-			return true
-		}
-	}
-	return false
-}
+def entrypoint(context: gcp.Context) -> dict:
+    """Generates the entrypoint configuration."""
+    context.log(f"No user entrypoint specified. Using the generated entrypoint {golang.OUT_BIN}")
+    return {
+        "type": AppEngineBuildpack.EntrypointType.GENERATED.value,
+        "command": golang.OUT_BIN
+    }
 
-func allDeps(ctx *gcp.Context) ([]string, error) {
-	result, err := ctx.Exec([]string{"go", "list", "-e", "-f", `{{join .Deps "\n"}}`, "./..."}, gcp.WithUserAttribution, gcp.WithLogOutput(false))
-	if err != nil {
-		return nil, err
-	}
-	return strings.Fields(result.Stdout), nil
-}
 
-func directDeps(ctx *gcp.Context) ([]string, error) {
-	result, err := ctx.Exec([]string{"go", "list", "-e", "-f", `{{join .Imports "\n" }}`, "./..."}, gcp.WithUserAttribution, gcp.WithLogOutput(false))
-	if err != nil {
-		return nil, err
-	}
-	return strings.Fields(result.Stdout), nil
-}
+def app_engine_in_deps(deps: List[str]) -> bool:
+    """Checks if any dependency is related to App Engine."""
+    for dep in deps:
+        if dep.startswith("google.golang.org/appengine"):
+            return True
+    return False
+
+
+def get_all_deps(context: gcp.Context) -> List[str]:
+    """Retrieves all dependencies using go list."""
+    result = context.exec(["go", "list", "-e", "-f", "{{join .Deps \"\\n\"}}", "./..."])
+    if result.error:
+        return []
+    return result.stdout.strip().split()
+
+
+def get_direct_deps(context: gcp.Context) -> List[str]:
+    """Retrieves direct dependencies using go list."""
+    result = context.exec(["go", "list", "-e", "-f", "{{join .Imports \"\\n\"}}", "./..."])
+    if result.error:
+        return []
+    return result.stdout.strip().split()

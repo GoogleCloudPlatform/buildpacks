@@ -1,176 +1,103 @@
-// Copyright 2022 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import os
+import shutil
+import tempfile
+import unittest
+from pathlib import Path
 
-// Package fileutil contains utilities for filesystem operations.
-package fileutil
+from pkg.fileutil import fileutil
 
-import (
-	"bytes"
-	"fmt"
-	"io"
-	"io/fs"
-	"os"
-	"path/filepath"
-)
+class TestFileUtil(unittest.TestCase):
+    def test_maybe_copy_path_contents(self):
+        test_cases = [
+            {
+                "name": "copyAll",
+                "app": "testdata/path_with_subdir",
+                "condition": lambda path, d: (True, None),
+                "want_excluded": []
+            },
+            {
+                "name": "skipFile",
+                "app": "testdata/path_with_subdir",
+                "condition": lambda path, d: (
+                    (False, None) if os.path.basename(path) == "go.mod" else (True, None)
+                ),
+                "want_excluded": ["subdir/example.com/htmlreturn/go.mod"]
+            },
+            {
+                "name": "skipDir",
+                "app": "testdata/path_with_subdir",
+                "condition": lambda path, d: (
+                    (False, None) if d.is_dir() and os.path.basename(path) == "subdir" else (True, None)
+                ),
+                "want_excluded": ["subdir"]
+            }
+        ]
 
-type action string
+        for case in test_cases:
+            with self.subTest(case["name"]):
+                tmp_dir = tempfile.mkdtemp()
+                src_path = os.path.join(os.path.dirname(__file__), case["app"])
+                
+                fileutil.MaybeCopyPathContents(tmp_dir, src_path, case["condition"])
 
-const (
-	move action = "move"
-	copy action = "copy"
-)
+                exclude = {".": None}
+                for path in case["want_excluded"]:
+                    exclude[path] = None
 
-// AllPaths indicates all paths should be recursively walked for functions
-// that walk the filesystem.
-var AllPaths = func(path string, d fs.DirEntry) (bool, error) {
-	return true, nil
-}
+                for root, dirs, files in os.walk(src_path):
+                    rel_root = os.path.relpath(root, src_path)
+                    
+                    if rel_root in exclude:
+                        continue
+                    
+                    for entry in dirs + files:
+                        src_entry = os.path.join(root, entry)
+                        dest_entry = os.path.join(tmp_dir, os.path.relpath(src_entry, src_path))
+                        
+                        self.assertTrue(os.path.exists(dest_entry), f"Expected {dest_entry} to exist")
 
-// MaybeCopyPathContents recursively copies the contents of srcPath to destPath.
-func MaybeCopyPathContents(destPath, srcPath string, copyCondition func(path string, d fs.DirEntry) (bool, error)) error {
-	return moveOrCopyPath(copy, destPath, srcPath, copyCondition)
-}
+    def test_ensure_unix_line_endings(self):
+        test_cases = [
+            {
+                "name": "no_new_lines",
+                "content": "no new lines",
+                "want": "no new lines"
+            },
+            {
+                "name": "windows_style_replaced",
+                "content": "#!/bin/sh\r\n\r\necho Windows\r\n",
+                "want": "#!/bin/sh\n\necho Windows\n"
+            },
+            {
+                "name": "unix_style_unmodified",
+                "content": "#!/bin/sh\n\necho Unix\n",
+                "want": "#!/bin/sh\n\necho Unix\n"
+            }
+        ]
 
-// MaybeMovePathContents moves the contents of srcPath to destPath.
-func MaybeMovePathContents(destPath, srcPath string, moveCondition func(path string, d fs.DirEntry) (bool, error)) error {
-	return moveOrCopyPath(move, destPath, srcPath, moveCondition)
-}
+        for case in test_cases:
+            with self.subTest(case["name"]):
+                temp_dir = tempfile.mkdtemp()
+                file_path = os.path.join(temp_dir, "file.txt")
+                
+                Path(file_path).write_bytes(case["content"].encode())
+                
+                fileutil.EnsureUnixLineEndings(file_path)
+                
+                content = Path(file_path).read_text()
+                self.assertEqual(content, case["want"])
 
-// moveOrCopyPath recursively copies or moves files and directories: from srcPath to destPath.
-func moveOrCopyPath(moveOrCopy action, destPath, srcPath string, condition func(path string, d fs.DirEntry) (bool, error)) error {
-	return filepath.WalkDir(srcPath, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
+    def test_copy_file(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            src = os.path.join(temp_dir, "src.txt")
+            dest = os.path.join(temp_dir, "dest.txt")
+            
+            content = "hello world"
+            Path(src).write_text(content)
+            
+            fileutil.CopyFile(dest, src)
+            
+            self.assertEqual(Path(dest).read_text(), content)
 
-		// Skip the root
-		if path == srcPath {
-			return nil
-		}
-
-		shouldCopy, err := condition(path, d)
-		if err != nil {
-			return err
-		}
-
-		if !shouldCopy {
-			if d.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		relPath, err := filepath.Rel(srcPath, path)
-		if err != nil {
-			return err
-		}
-
-		dest := filepath.Join(destPath, relPath)
-
-		if moveOrCopy == move {
-			if err := os.Rename(path, dest); err != nil {
-				return err
-			}
-			// Rename moves the entire directory, so don't need to continue
-			// walking the directory.
-			if d.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		if d.IsDir() {
-			return os.MkdirAll(dest, 0744)
-		}
-
-		return CopyFile(dest, path)
-	})
-}
-
-// CopyFile copies a file from src to dest
-func CopyFile(dest, src string) error {
-	absSrc, err := filepath.Abs(src)
-	if err != nil {
-		return err
-	}
-	absDest, err := filepath.Abs(dest)
-	if err != nil {
-		return err
-	}
-	if absSrc == absDest {
-		return nil // early exit to prevent destructive self-truncation
-	}
-
-	srcInfo, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer srcFile.Close()
-
-	mode := srcInfo.Mode() | 0600
-
-	destFile, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE|os.O_TRUNC, mode)
-	if err != nil {
-		return err
-	}
-	defer destFile.Close()
-
-	if _, err = io.Copy(destFile, srcFile); err != nil {
-		return err
-	}
-
-	return os.Chmod(dest, mode)
-}
-
-// EnsureUnixLineEndings replaces windows style CRLF line endings with unix LF line endings. This is
-// necessary for executable scripts with shebang as the "\r" gets seen as part of the shebang
-// target, which doesn't exist.
-func EnsureUnixLineEndings(file ...string) error {
-	isWriteable, err := IsWritable(file...)
-	if err != nil {
-		return err
-	}
-	if !isWriteable {
-		return nil
-	}
-
-	path := filepath.Join(file...)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-
-	data = bytes.ReplaceAll(data, []byte{'\r', '\n'}, []byte{'\n'})
-
-	if err := os.WriteFile(path, data, os.FileMode(0755)); err != nil {
-		return err
-	}
-	return nil
-}
-
-// IsWritable returns true if the file at the path constructed by joining elem is writable by the owner.
-func IsWritable(elem ...string) (bool, error) {
-	path := filepath.Join(elem...)
-	info, err := os.Stat(path)
-	if err != nil {
-		return false, fmt.Errorf("stat %q: %v", path, err)
-	}
-	// check that that user writable permission bit is set
-	return info.Mode().Perm()&0200 != 0, nil
-}
+if __name__ == "__main__":
+    unittest.main()

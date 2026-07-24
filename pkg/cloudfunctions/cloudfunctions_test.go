@@ -1,95 +1,64 @@
-// Copyright 2021 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import os
+import logging
+from pathlib import Path
+from typing import Optional
 
-package cloudfunctions
+from pkg.appstart import Config as AppStartConfig, EntrypointGenerator
+from pkg.gcpbuildpack import Context, Layer, LaunchLayer
 
-import (
-	"os"
-	"reflect"
-	"testing"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+def get_config(ctx: Context, runtime: str, eg: EntrypointGenerator) -> tuple[AppStartConfig, Optional[Exception]]:
+    config = AppStartConfig()
+    
+    if os.getenv(env.runtime):
+        ctx.log(f"Using {env.runtime}: {os.getenv(env.runtime)}")
+        config.runtime = os.getenv(env.runtime)
+    else:
+        ctx.log(f"Using runtime: {runtime}")
+        config.runtime = runtime
 
-func TestGetConfig(t *testing.T) {
-	testCases := []struct {
-		name       string
-		runtimeEnv string
-		want       appstart.Config
-	}{
-		{
-			name: "default",
-			want: appstart.Config{
-				Runtime: "runtime",
-				Entrypoint: appstart.Entrypoint{
-					Type:    appstart.EntrypointGenerated.String(),
-					Command: "generated",
-				},
-			},
-		},
-		{
-			name:       "runtime from env",
-			runtimeEnv: "custom runtime",
-			want: appstart.Config{
-				Runtime: "custom runtime",
-				Entrypoint: appstart.Entrypoint{
-					Type:    appstart.EntrypointGenerated.String(),
-					Command: "generated",
-				},
-			},
-		},
-	}
+    entrypoint, err = eg(ctx)
+    if err:
+        return None, Exception(f"getting entrypoint: {err}")
 
-	ctx := gcp.NewContext()
-	eg := func(*gcp.Context) (*appstart.Entrypoint, error) {
-		return &appstart.Entrypoint{
-			Type:    appstart.EntrypointGenerated.String(),
-			Command: "generated",
-		}, nil
-	}
+    config.entrypoint = entrypoint
+    ctx.log(f"Using config {config}")
+    return config, None
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			setEnv(t, "GOOGLE_RUNTIME", tc.runtimeEnv)
 
-			got, err := getConfig(ctx, "runtime", eg)
-			if err != nil {
-				t.Errorf("unexpected error: %v", err)
-			}
-			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("got %#v, want %#v", got, tc.want)
-			}
-		})
-	}
-}
+def assert_framework_injection_allowed() -> Optional[Exception]:
+    should_skip, err = is_skip_framework_injection_enabled()
+    if err:
+        return err
 
-func setEnv(t *testing.T, name, value string) {
-	t.Helper()
+    if should_skip:
+        return Exception("Functions Framework must be set as a dependency when skipping automatic framework injection has been enabled via GOOGLE_SKIP_FRAMEWORK_INJECTION")
 
-	old, oldPresent := os.LookupEnv(name)
-	if err := os.Setenv(name, value); err != nil {
-		t.Fatal(err)
-	}
+    return None
 
-	t.Cleanup(func() {
-		if oldPresent {
-			if err := os.Setenv(name, old); err != nil {
-				t.Fatal(err)
-			}
-		} else if err := os.Unsetenv(name); err != nil {
-			t.Fatal(err)
-		}
-	})
-}
+
+def build(ctx: Context, runtime: str, eg: EntrypointGenerator) -> Optional[Exception]:
+    layer, err = ctx.create_layer("serve", LaunchLayer())
+    if err:
+        return Exception(f"creating layer: {err}")
+
+    bin_dir = Path(layer.path) / "bin"
+    try:
+        bin_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        return e
+
+    try:
+        os.symlink("/usr/bin/serve2", str(bin_dir / "serve"))
+    except OSError as e:
+        return e
+
+    config, err = get_config(ctx, runtime, eg)
+    if err:
+        return Exception(f"building config: {err}")
+
+    if not config.write(ctx):
+        return Exception("writing config failed")
+
+    ctx.add_web_process(["pid1"])
+    return None

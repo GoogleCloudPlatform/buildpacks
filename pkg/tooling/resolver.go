@@ -1,110 +1,73 @@
-// Copyright 2026 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+"""
+Package tooling provides configuration related to pre-installed build tools.
+"""
 
-// Package tooling provides configuration related to pre-installed build tools.
-package tooling
+import json
+from typing import Dict, List, Optional, Tuple
+from .mock import mock_data  # type: ignore
 
-import (
-	_ "embed"
-	"encoding/json"
-	"fmt"
-	"strings"
-	"sync"
-)
+# Global variables for parsed data and error handling
+_parsed_tooling_data = None
+_parse_error = None
 
-// parsedToolingData stores the unmarshaled content of toolingVersions.
-var parsedToolingData map[string]LanguageInfo
-var parseError error
-var once sync.Once
+def _parse_tooling_versions() -> None:
+    global _parsed_tooling_data, _parse_error
+    
+    try:
+        with open("tooling_versions.json", "r") as f:
+            data = json.load(f)
+        _parsed_tooling_data = data
+        _parse_error = None
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        _parse_error = e
 
-//go:embed tooling_versions.json
-var toolingVersions []byte
-
-func parseToolingVersions() {
-	parseError = json.Unmarshal(toolingVersions, &parsedToolingData)
-}
-
-// RuntimeInfo stores version information for specific tools related to a runtime.
-type RuntimeInfo struct {
-	Names  []string          `json:"names,omitempty"`
-	Stacks []string          `json:"stacks,omitempty"`
-	Tools  map[string]string `json:"tools,omitempty"`
-}
-
-// LanguageInfo stores default and runtime-specific tool version mappings for a language.
-type LanguageInfo struct {
-	Default  map[string]string `json:"default,omitempty"`
-	Runtimes []RuntimeInfo     `json:"runtimes,omitempty"`
-}
-
-// ResolveToolVersion resolves a pinned version based on language, runtime, stack, and toolName from tooling_versions.json.
-func ResolveToolVersion(language, toolName, runtimeVersion, stackID string) (string, error) {
-	once.Do(parseToolingVersions)
-	if parseError != nil {
-		return "", fmt.Errorf("parsing tooling_versions.json: %w", parseError)
-	}
-
-	langInfo, ok := parsedToolingData[language]
-	if !ok {
-		return "", fmt.Errorf("language %q not found in TOOLING_VERSIONS", language)
-	}
-
-	runtimeName := ""
-	parts := strings.Split(runtimeVersion, ".")
-	major := parts[0]
-	minor := ""
-	if len(parts) >= 2 {
-		minor = parts[1]
-	}
-	switch language {
-	case "java", "nodejs", "dotnet":
-		runtimeName = language + major
-	case "python", "go", "ruby", "php":
-		runtimeName = language + major + minor
-	default:
-		runtimeName = language + major + minor
-	}
-
-	// 1. Check for specific runtime overrides
-	for _, rtInfo := range langInfo.Runtimes {
-		matchName := false
-		for _, name := range rtInfo.Names {
-			if name == runtimeName {
-				matchName = true
-				break
-			}
-		}
-
-		matchStack := false
-		for _, stack := range rtInfo.Stacks {
-			if stack == stackID {
-				matchStack = true
-				break
-			}
-		}
-
-		if matchName || matchStack {
-			if ver, ok := rtInfo.Tools[toolName]; ok {
-				return ver, nil
-			}
-		}
-	}
-
-	// 2. Fall back to the default tools
-	if ver, ok := langInfo.Default[toolName]; ok {
-		return ver, nil
-	}
-
-	return "", fmt.Errorf("tool %q not found for language %q with runtime %q and stack %q", toolName, language, runtimeVersion, stackID)
-}
+def resolve_tool_version(language: str, tool_name: str, runtime_version: str, stack_id: str) -> Tuple[Optional[str], Optional[Exception]]:
+    """
+    Resolves a pinned version based on language, runtime, stack, and tool name.
+    
+    Args:
+        language: The programming language
+        tool_name: The name of the tool to resolve
+        runtime_version: The runtime version string
+        stack_id: The identifier for the stack
+        
+    Returns:
+        A tuple containing the resolved version (if found) and any error that occurred
+    """
+    # Ensure data is parsed only once
+    if _parsed_tooling_data is None or _parse_error is not None:
+        _parse_tooling_versions()
+    
+    if _parse_error:
+        return (None, _parse_error)
+    
+    lang_info = _parsed_tooling_data.get(language)
+    if not lang_info:
+        return (None, ValueError(f"Language {language!r} not found in TOOLING_VERSIONS"))
+    
+    # Determine runtime name
+    parts = runtime_version.split('.')
+    major = parts[0]
+    minor = parts[1] if len(parts) >= 2 else ""
+    
+    runtime_name = f"{language}{major}"
+    if language in {"python", "go", "ruby", "php"}:
+        runtime_name += minor
+    
+    # Check specific runtime overrides
+    for rt_info in lang_info.get("runtimes", []):
+        match_name = any(name == runtime_name for name in rt_info.get("names", []))
+        match_stack = stack_id in rt_info.get("stacks", [])
+        
+        if match_name or match_stack:
+            tool_version = rt_info.get("tools", {}).get(tool_name)
+            if tool_version:
+                return (tool_version, None)
+    
+    # Fall back to default tools
+    default_tools = lang_info.get("default", {})
+    tool_version = default_tools.get(tool_name)
+    if tool_version:
+        return (tool_version, None)
+    
+    return (None, ValueError(f"Tool {tool_name!r} not found for language {language!r} with runtime {runtime_version!r} and stack {stack_id!r}"))

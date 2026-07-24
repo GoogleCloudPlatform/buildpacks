@@ -1,104 +1,89 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements utils/nginx buildpack.
-// The nginx buildpack installs the nginx web server and pid1 binaries.
-package lib
+"""Implements utils/nginx buildpack. Installs nginx web server and pid1 binaries."""
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
+import os
+import sys
+from pathlib import Path
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpacks/libcnb/v2"
+import gcpbuildpack as gcp
+from libcnb import Layer
+import env
+import runtime
+import static
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/static"
-)
 
-const (
-	// defaultNginxVerConstraint is used to control updating to a new major version with any potential breaking change.
-	// Update this to allow a new major version.
-	defaultNginxVerConstraint = "^1.21.6"
-	// pid1VerConstraint is used to control updating to a new major version.
-	pid1VerConstraint = "^1.0.0"
-	// default nginx installable runtime name
-	defaultNginxInstallableRuntime = runtime.Nginx
-	// staticNginxInstallableRuntime is the nginx installable runtime name for static runtimes.
-	staticNginxInstallableRuntime = runtime.CanonicalNginx
-)
+DEFAULT_NGINX_VERSION_CONSTRAINT = "^1.21.6"
+PID1_VERSION_CONSTRAINT = "^1.0.0"
+DEFAULT_NGINX_INSTALLABLE_RUNTIME = runtime.Nginx
+STATIC_NGINX_INSTALLABLE_RUNTIME = runtime.CanonicalNginx
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	// Always opt in.
-	return gcp.OptInAlways(), nil
-}
+def DetectFn(context: gcp.Context) -> bool:
+    """Detect if the nginx buildpack should be used."""
+    return True  # Always opt in
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	usingStaticServe, err := env.UsingStaticServe()
-	if err != nil {
-		ctx.Warnf("failed to parse GOOGLE_STATIC_SERVE: %v, defaulting to false", err)
-	}
+def BuildFn(context: gcp.Context) -> None:
+    """Build function for installing nginx and related components."""
+    using_static_serve, err = env.UsingStaticServe()
+    if err is not None:
+        context.Warn(f"Failed to parse GOOGLE_STATIC_SERVE: {err}, defaulting to false")
+        using_static_serve = False
 
-	nginxVerConstraint := defaultNginxVerConstraint
-	nginxInstallableRuntime := defaultNginxInstallableRuntime
-	if usingStaticServe {
-		runtimeName := os.Getenv(env.Runtime)
-		nginxVerConstraint = static.NginxVersionConstraint(runtimeName)
-		nginxInstallableRuntime = staticNginxInstallableRuntime
-	}
+    nginx_version_constraint = DEFAULT_NGINX_VERSION_CONSTRAINT
+    nginx_installable_runtime = DEFAULT_NGINX_INSTALLABLE_RUNTIME
 
-	// install nginx
-	if env.IsStaticBaseImage() {
-		ctx.Logf("Skipping nginx install for static base image.")
-	} else {
-		ctx.Logf("installing nginx: %s", nginxInstallableRuntime)
-		nl, err := install(ctx, "nginx", nginxVerConstraint, nginxInstallableRuntime)
-		if err != nil {
-			return err
-		}
+    if using_static_serve:
+        runtime_name = os.getenv(env.RUNTIME)
+        nginx_version_constraint = static.GetNginxVersionConstraint(runtime_name)
+        nginx_installable_runtime = STATIC_NGINX_INSTALLABLE_RUNTIME
 
-		nl.LaunchEnvironment.Append("PATH", string(os.PathListSeparator), filepath.Join(nl.Path, "sbin"))
-		nl.BuildEnvironment.Default("NGINX_ROOT", nl.Path)
-	}
+    if env.IsStaticBaseImage():
+        context.Log("Skipping nginx install for static base image.")
+    else:
+        context.Log(f"Installing nginx: {nginx_installable_runtime}")
+        layer, err = Install(context, "nginx", nginx_version_constraint, nginx_installable_runtime)
+        if err is not None:
+            raise ValueError(f"Failed to install nginx: {err}")
 
-	// Install pid1 unless the static serve buildpack has marked the build environment to exclude it.
-	if !usingStaticServe {
-		// install pid1
-		pl, err := install(ctx, "pid1", pid1VerConstraint, runtime.Pid1)
-		if err != nil {
-			return err
-		}
+        # Update launch environment
+        layer.launch_environment.Append("PATH", os.pathsep, str(Path(layer.path) / "sbin"))
+        layer.build_environment.Default("NGINX_ROOT", str(layer.path))
 
-		pl.LaunchEnvironment.Append("PATH", string(os.PathListSeparator), pl.Path)
-		pl.BuildEnvironment.Default("PID1_DIR", pl.Path)
-	}
+    if not using_static_serve:
+        context.Log("Installing pid1")
+        layer, err = Install(context, "pid1", PID1_VERSION_CONSTRAINT, runtime.Pid1)
+        if err is not None:
+            raise ValueError(f"Failed to install pid1: {err}")
 
-	return nil
-}
+        # Update launch environment
+        layer.launch_environment.Append("PATH", os.pathsep, str(Path(layer.path)))
+        layer.build_environment.Default("PID1_DIR", str(layer.path))
 
-func install(ctx *gcp.Context, name, verConstraint string, ir runtime.InstallableRuntime) (*libcnb.Layer, error) {
-	l, err := ctx.Layer(name, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
-	if err != nil {
-		return nil, fmt.Errorf("creating layer: %w", err)
-	}
-	if _, err = runtime.InstallTarballIfNotCached(ctx, ir, verConstraint, l); err != nil {
-		return nil, err
-	}
+def Install(context: gcp.Context, name: str, version_constraint: str, installable_runtime: runtime.InstallableRuntime) -> tuple[Layer, None]:
+    """Install software using the specified parameters."""
+    try:
+        # Create or get existing layer
+        layer = context.Layer(name=name, layers=[gcp.BUILD_LAYER, gcp.CACHE_LAYER, gcp.LAUNCH_LAYER])
+        
+        # Install tarball if not cached
+        runtime.InstallTarballIfNotCached(context, installable_runtime, version_constraint, layer)
+        return layer, None
+    except Exception as err:
+        context.Log(f"Error installing {name}: {err}")
+        return None, err
 
-	return l, nil
-}
+if __name__ == "__main__":
+    # This is a library module and should not be run directly
+    sys.exit(1)

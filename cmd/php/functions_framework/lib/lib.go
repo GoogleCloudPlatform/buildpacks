@@ -1,230 +1,190 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements php/functions_framework buildpack.
-// The functions_framework buildpack converts a function into an application and sets up the execution environment.
-package lib
+"""
+Implements php/functions_framework buildpack.
+The functions_framework buildpack converts a function into an application and sets up the execution environment.
+"""
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
+import os
+import json
+import subprocess
+from pathlib import Path
+from typing import Optional, Dict, Any
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/cloudfunctions"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
-)
+import google.cloud.buildpacks.gcpbuildpack as gcp
+import google.cloud.buildpacks.php as php_utils
+import google.cloud.buildpacks.cloudfunctions as cloudfunctions
 
-const (
-	// ffPackage is the name of the functions framework Packagist package. It's also the path
-	// to the functions framework under the vendor directory, so it's used in both senses.
-	ffPackage = "google/cloud-functions-framework"
+# Constants
+FF_PACKAGE = "google/cloud-functions-framework"
+FF_VERSION = "^1.1"
+FF_WITH_VERSION = f"{FF_PACKAGE}:{FF_VERSION}"
+ROUTER_SCRIPT = "vendor/google/cloud-functions-framework/router.php"
+CACHE_TAG = "functions-framework dependencies"
 
-	// ffVersion is the default version of functions framework to install in the container.
-	// This value must match the version specified by converter/composer.json
-	ffVersion = "^1.1"
+def detect_fn(context: gcp.Context) -> Dict[str, Any]:
+    """
+    Detects if the functions framework should be used based on environment variables.
+    Returns a dictionary indicating whether to opt in or out.
+    """
+    function_target = os.getenv(env.FUNCTION_TARGET)
+    if function_target is not None:
+        return {"result": gcp.OPT_IN, "reason": f"Function target {function_target} is set"}
+    return {"result": gcp.OPT_OUT, "reason": f"Function target environment variable not set"}
 
-	// ffPackageWithVersion is the package that we `composer require` when adding the functions
-	// framework to an existing vendor directory.
-	ffPackageWithVersion = ffPackage + ":" + ffVersion
+def build_fn(context: gcp.Context) -> None:
+    """
+    Builds the functions framework environment.
+    """
+    fn_file = "index.php"
+    function_source = os.getenv(env.FUNCTION_SOURCE)
+    if function_source is not None:
+        fn_file = function_source
 
-	ffGitHubURL    = "https://github.com/GoogleCloudPlatform/functions-framework-php"
-	ffPackagistURL = "https://packagist.org/packages/google/cloud-functions-framework"
+    # Syntax check
+    try:
+        subprocess.run(["php", "-l", fn_file], check=True, cwd=context.application_root)
+    except subprocess.CalledProcessError as e:
+        raise gcp.BuildpackError(f"Syntax check failed for {fn_file}") from e
 
-	// routerScript is the path to the functions framework invoker script.
-	routerScript = "vendor/google/cloud-functions-framework/router.php"
+    # Handle composer.json cases
+    if (context.application_root / "composer.json").exists():
+        handle_composer_json(context)
+    else:
+        handle_no_composer_json(context)
 
-	// cacheTag is the cache tag for the `composer install` layer. We only cache in one case: There
-	// is no composer.json file and there is no vendor directory (i.e. a dependency-less function).
-	// That's the only case where we create the vendor dir from scratch, so it's cacheable based on
-	// the composer.lock file. Other cases involve modifying an existing vendor directory, whether
-	// created by the composer buildpack or provided by the user.
-	cacheTag = "functions-framework dependencies"
-)
+    # Add web process
+    context.add_web_process(["php", "-S", "0.0.0.0:${PORT}", ROUTER_SCRIPT])
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
-		return gcp.OptInEnvSet(env.FunctionTarget), nil
-	}
-	return gcp.OptOutEnvNotSet(env.FunctionTarget), nil
-}
+    # Create and configure layer
+    try:
+        layer = context.create_layer("functions-framework", gcp.LayerPurpose.BUILD | gcp.LayerPurpose.LAUNCH)
+        if not layer:
+            raise gcp.BuildpackError("Failed to create functions-framework layer")
+        set_functions_env_vars(context, layer)
+    except Exception as e:
+        raise gcp.BuildpackError(f"Failed to configure layer: {e}") from e
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	fnFile := "index.php"
-	if fnSource, ok := os.LookupEnv(env.FunctionSource); ok {
-		fnFile = fnSource
-	}
+def handle_composer_json(context: gcp.Context) -> None:
+    """
+    Handles cases where a composer.json file is present.
+    """
+    try:
+        cjs = php_utils.read_composer_json(context.application_root)
+    except Exception as e:
+        raise gcp.BuildpackError(f"Reading composer.json failed: {e}") from e
 
-	// Syntax check the function code without executing.
-	command := []string{"php", "-l", fnFile}
-	if _, err := ctx.Exec(command, gcp.WithCombinedTail, gcp.WithUserAttribution); err != nil {
-		return err
-	}
+    if FF_PACKAGE not in cjs.get("require", {}):
+        context.log_info("Handling function without dependency on functions framework")
+        cloudfunctions.assert_framework_injection_allowed()
+        try:
+            php_utils.composer_require(context, [FF_WITH_VERSION])
+        except Exception as e:
+            raise gcp.BuildpackError(f"Composer require failed: {e}") from e
+        cloudfunctions.add_framework_version_label(
+            context,
+            runtime="php",
+            version=FF_VERSION,
+            injected=True
+        )
+    else:
+        version = cjs["require"][FF_PACKAGE]
+        context.log_info(f"Handling function with dependency on functions framework ({FF_PACKAGE}:{version})")
+        cloudfunctions.add_framework_version_label(
+            context,
+            runtime="php",
+            version=version,
+            injected=False
+       )
 
-	composerJSONExists, err := ctx.FileExists("composer.json")
-	if err != nil {
-		return err
-	}
-	// Install the functions framework if need be.
-	if composerJSONExists {
-		if err := handleComposerJSON(ctx); err != nil {
-			return err
-		}
-	} else {
-		if err := handleNoComposerJSON(ctx); err != nil {
-			return err
-		}
-	}
+def handle_no_composer_json(context: gcp.Context) -> None:
+    """
+    Handles cases where no composer.json file is present.
+    """
+    context.log_info("Handling function without composer.json")
+    
+    vendor_dir = context.application_root / php_utils.VENDOR_DIR
+    if not vendor_dir.exists():
+        context.log_info("No vendor directory present, installing functions framework")
+        converter_dir = Path(__file__).parent.parent / "converter"
+        
+        # Copy composer files from template
+        try:
+            subprocess.run(["cp", str(converter_dir / "composer.json"), "."], cwd=context.application_root, check=True)
+            subprocess.run(["cp", str(converter_dir / "composer.lock"), "."], cwd=context.application_root, check=True)
+        except subprocess.CalledProcessError as e:
+            raise gcp.BuildpackError(f"Failed to copy composer files: {e}") from e
 
-	ctx.AddWebProcess([]string{"/bin/bash", "-c", fmt.Sprintf("php -S 0.0.0.0:${PORT} %s", routerScript)})
+        # Install dependencies
+        try:
+            php_utils.composer_install(context, CACHE_TAG)
+        except Exception as e:
+            raise gcp.BuildpackError(f"Composer install failed: {e}") from e
 
-	l, err := ctx.Layer("functions-framework", gcp.BuildLayer, gcp.LaunchLayer)
-	if err != nil {
-		return fmt.Errorf("creating layer: %w", err)
-	}
-	if err := ctx.SetFunctionsEnvVars(l); err != nil {
-		return err
-	}
-	return nil
-}
+        cloudfunctions.add_framework_version_label(
+            context,
+            runtime="php",
+            version=FF_VERSION,
+            injected=True
+        )
+        return
 
-// handleComposerJSON installs the functions framework, if required, in the case
-// that a composer.json file is present.
-func handleComposerJSON(ctx *gcp.Context) error {
-	cjs, err := php.ReadComposerJSON(ctx.ApplicationRoot())
-	if err != nil {
-		return fmt.Errorf("reading composer.json: %w", err)
-	}
+    # Check for existing functions framework in vendor
+    ff_path = vendor_dir / FF_PACKAGE.replace("/", os.sep)
+    if ff_path.exists():
+        context.log_info("Functions framework is already present in the vendor directory")
+        
+        router_script_path = context.application_root / ROUTER_SCRIPT.lstrip("/")
+        if not router_script_path.exists():
+            raise gcp.UserError(f"Functions framework router script {ROUTER_SCRIPT} is not present")
 
-	// Determine if the function has a dependency on the functions framework.
-	if version, ok := cjs.Require[ffPackage]; !ok {
-		ctx.Logf("Handling function without dependency on functions framework")
-		if err := cloudfunctions.AssertFrameworkInjectionAllowed(); err != nil {
-			return err
-		}
-		if err := php.ComposerRequire(ctx, []string{ffPackageWithVersion}); err != nil {
-			return err
-		}
-		cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
-			Runtime:  "php",
-			Version:  ffVersion,
-			Injected: true,
-		})
-	} else {
-		ctx.Logf("Handling function with dependency on functions framework (%s:%s)", ffPackage, version)
-		cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
-			Runtime:  "php",
-			Version:  version,
-			Injected: false,
-		})
-	}
+        cloudfunctions.add_framework_version_label(
+            context,
+            runtime="php",
+            version="unknown-vendored",
+            injected=False
+        )
+        return
 
-	return nil
-}
+    # Attempt to install functions framework if allowed
+    cloudfunctions.assert_framework_injection_allowed()
+    
+    installed_json = vendor_dir / "composer" / "installed.json"
+    if not installed_json.exists():
+        raise gcp.UserError(f"{installed_json} is not present, so it appears that Composer was not used to install dependencies.")
+    
+    context.log_info("Installing functions framework")
+    try:
+        php_utils.composer_require(context, [FF_WITH_VERSION])
+    except Exception as e:
+        raise gcp.BuildpackError(f"Failed to install functions framework: {e}") from e
 
-// handleNoComposerJSON installs the functions framework, if required, in the case
-// that there is no composer.json file present.
-func handleNoComposerJSON(ctx *gcp.Context) error {
-	ctx.Logf("Handling function without composer.json")
+    cloudfunctions.add_framework_version_label(
+        context,
+        runtime="php",
+        version=FF_VERSION,
+        injected=True
+    )
 
-	vendorExists, err := ctx.FileExists(php.Vendor)
-	if err != nil {
-		return err
-	}
-	// Check if there's a vendor directory. If not, this is truly a dependency-less function
-	// so we can `composer install` the framework and cache the vendor dir.
-	if !vendorExists {
-		ctx.Logf("No vendor directory present, installing functions framework")
-		cvt := filepath.Join(ctx.BuildpackRoot(), "converter")
-		if _, err := ctx.Exec([]string{"cp", filepath.Join(cvt, "composer.json"), filepath.Join(cvt, "composer.lock"), "."}); err != nil {
-			return err
-		}
-
-		if _, err := php.ComposerInstall(ctx, cacheTag); err != nil {
-			return fmt.Errorf("composer install: %w", err)
-		}
-
-		cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
-			Runtime:  "php",
-			Version:  ffVersion,
-			Injected: true,
-		})
-
-		return nil
-	}
-
-	ffPath := filepath.Join(php.Vendor, ffPackage)
-	ffExists, err := ctx.FileExists(ffPath)
-	if err != nil {
-		return err
-	}
-	// Check if the vendor directory contains the functions framework. If so we're done.
-	if ffExists {
-		ctx.Logf("Functions framework is already present in the vendor directory")
-
-		routerScriptExists, err := ctx.FileExists(routerScript)
-		if err != nil {
-			return err
-		}
-		// Make sure the router script also exists. If the user is vendoring their own deps
-		// you never know how they've structured their vendor directory.
-		if !routerScriptExists {
-			return gcp.UserErrorf("functions framework router script %s is not present", routerScript)
-		}
-
-		cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
-			Runtime:  "php",
-			Version:  "unknown-vendored",
-			Injected: false,
-		})
-
-		return nil
-	}
-
-	if err := cloudfunctions.AssertFrameworkInjectionAllowed(); err != nil {
-		return err
-	}
-
-	// The user did not vendor the functions framework. Before installing it, let's see if they used
-	// Composer to install their deps. If so we can safely `composer require` the framework even
-	// without composer.json; vendor/composer/installed.json contains the info required to resolve
-	// a working set of dependencies.
-	ctx.Warnf("Functions framework is not present at %s, so automatic injection will be attempted. Please add a dependency on it to avoid unexpected conflicts or breakages that result from this. See %s and %s", ffPath, ffGitHubURL, ffPackagistURL)
-	installed := filepath.Join(php.Vendor, "composer", "installed.json")
-	installedExists, err := ctx.FileExists(installed)
-	if err != nil {
-		return err
-	}
-	if !installedExists {
-		return gcp.UserErrorf("%s is not present, so it appears that Composer was not used to install dependencies.", installed)
-	}
-
-	// All clear to install the functions framework! We'll do this via `composer require`
-	// because we're adding a package to an already existing vendor directory.
-	ctx.Logf("Installing functions framework %s", ffPackageWithVersion)
-	if err := php.ComposerRequire(ctx, []string{ffPackageWithVersion}); err != nil {
-		return nil
-	}
-
-	cloudfunctions.AddFrameworkVersionLabel(ctx, &cloudfunctions.FrameworkVersionInfo{
-		Runtime:  "php",
-		Version:  ffVersion,
-		Injected: true,
-	})
-
-	return nil
-}
+def set_functions_env_vars(context: gcp.Context, layer: gcp.Layer) -> None:
+    """
+    Sets environment variables related to functions framework.
+    """
+    try:
+        context.set_env_vars({
+            "FUNCTIONS_FRAMEWORK_LAYER": str(layer.path)
+        })
+    except Exception as e:
+        raise gcp.BuildpackError(f"Failed to set environment variables: {e}") from e

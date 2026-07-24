@@ -1,190 +1,84 @@
-// Copyright 2022 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import os
+import re
+import semver
+from typing import Optional
+import libcnb
 
-package ruby
+GEMS_INSTALLER_CAPABILITY = "ruby.GemsInstaller"
+BUNDLE_LOCKER_CAPABILITY = "ruby.BundleLocker"
+BUNDLE_INSTALLER_CAPABILITY = "ruby.BundleInstaller"
 
-import (
-	"io/ioutil"
-	"path/filepath"
-	"testing"
+class GemsInstaller:
+    def install(self, ctx: GCPContext, layer: libcnb.Layer) -> None:
+        pass
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-)
+class BundleLocker:
+    async def lock(self, ctx: GCPContext) -> None:
+        pass
 
-func TestParseRubyVersion(t *testing.T) {
+class MakerBundleLocker(BundleLocker):
+    async def lock(self, ctx: GCPContext) -> None:
+        local_gems_dir = os.path.join(".bundle", "gems")
+        await prepare_lockfile(ctx, local_gems_dir, "development test", ["x86_64-linux", "ruby"])
 
-	type lockFile struct {
-		name    string
-		content string
-	}
+class BundleInstaller:
+    async def install(self, ctx: GCPContext) -> None:
+        pass
 
-	testCases := []struct {
-		name       string
-		runtimeEnv string
-		want       string
-		lockFile   lockFile
-		wantError  bool
-	}{
-		{
-			name: "from Gemfile.lock",
-			lockFile: lockFile{
-				name: "Gemfile.lock",
-				content: `
-RUBY VERSION
-   ruby 2.5.7p206
-`},
-			want: "2.5.7",
-		},
-		{
-			name: "from Gemfile.lock with jruby",
-			lockFile: lockFile{
-				name: "Gemfile.lock",
-				content: `
-RUBY VERSION
-		ruby 1.9.3 (jruby 1.6.7)
-`,
-			},
-			wantError: true,
-		},
-		{
-			name: "invalid Gemfile.lock",
-			lockFile: lockFile{
-				name: "Gemfile.lock",
-				content: `
-RUBY VERSION
-		809809ruby 2.5.7p206adasdada
-`,
-			},
-			wantError: true,
-		},
-	}
+class MakerBundleInstaller(BundleInstaller):
+    async def install(self, ctx: GCPContext) -> None:
+        local_gems_dir = os.path.join(".bundle", "gems")
+        local_bin_dir = os.path.join(".bundle", "bin")
+        
+        env = ["NOKOGIRI_USE_SYSTEM_LIBRARIES=1", "MALLOC_ARENA_MAX=2", "LANG=C.utf8"]
+        await install_and_symlink(ctx, local_gems_dir, local_bin_dir, "development test", BundleConfig(), env)
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			if tc.runtimeEnv != "" {
-				t.Setenv(env.RuntimeVersion, tc.runtimeEnv)
-			}
+class BundleConfig:
+    def __init__(self):
+        self.force_ruby_platform = False
+        self.deployment = False
+        self.frozen = False
 
-			tempRoot := t.TempDir()
+async def prepare_lockfile(ctx: GCPContext, gems_dir: str, without: str, platforms: list[str]) -> None:
+    if without:
+        await ctx.exec(["bundle", "config", "--local", "without", without])
+    
+    if gems_dir:
+        await ctx.exec(["bundle", "config", "--local", "path", gems_dir])
+    
+    for platform in platforms:
+        await ctx.exec(["bundle", "lock", "--add-platform", platform])
 
-			path := filepath.Join(tempRoot, tc.lockFile.name)
-			if err := ioutil.WriteFile(path, []byte(tc.lockFile.content), 0644); err != nil {
-				t.Fatalf("writing file %s: %v", path, err)
-			}
+async def install_and_symlink(ctx: GCPContext, gems_dir: str, bin_dir: str, without: str, cfg: BundleConfig, env: list[str]) -> None:
+    if without:
+        await ctx.exec(["bundle", "config", "--local", "without", without])
+    
+    if gems_dir:
+        await ctx.exec(["bundle", "config", "--local", "path", gems_dir])
+    
+    if cfg.force_ruby_platform:
+        await ctx.exec(["bundle", "config", "--local", "force_ruby_platform", "true"])
+    
+    if cfg.deployment:
+        await ctx.exec(["bundle", "config", "--local", "deployment", "true"])
+    
+    if cfg.frozen:
+        await ctx.exec(["bundle", "config", "--local", "frozen", "true"])
 
-			got, err := ParseRubyVersion(path)
+    install_cmd = ["bundle", "install"]
+    exec_opts = []
+    if env:
+        exec_opts.append(("env", env))
+    
+    await ctx.exec(install_cmd, *exec_opts)
 
-			if err != nil && !tc.wantError {
-				t.Fatalf("ParseRubyVersion(%q) got error: %v", path, err)
-			}
-
-			if err == nil && tc.wantError {
-				t.Fatalf("ParseRubyVersion(%q) wanted error, got nil", path)
-			}
-
-			if got != tc.want {
-				t.Errorf("ParseRubyVersion(file) = %q, want %q", got, tc.want)
-			}
-		})
-	}
-
-}
-
-func TestParseBundlerVersion(t *testing.T) {
-
-	type lockFile struct {
-		name    string
-		content string
-	}
-
-	testCases := []struct {
-		name       string
-		runtimeEnv string
-		want       string
-		lockFile   lockFile
-		wantError  bool
-	}{
-		{
-			name: "from Gemfile.lock",
-			lockFile: lockFile{
-				name: "Gemfile.lock",
-				content: `
-BUNDLED WITH
-   1.17.3
-`},
-			want: "1.17.3",
-		},
-		{
-			name: "invalid Gemfile.lock",
-			lockFile: lockFile{
-				name: "Gemfile.lock",
-				content: `
-BUNDLED WITH
-   invalid something
-`,
-			},
-			wantError: true,
-		},
-		{
-			name: "not specified in Gemfile.lock",
-			lockFile: lockFile{
-				name: "Gemfile.lock",
-				content: `
-`,
-			},
-			want: "",
-		},
-		{
-			name: "invalid semver in Gemfile.lock",
-			lockFile: lockFile{
-				name: "Gemfile.lock",
-				content: `
-BUNDLED WITH
-   1.-45.ayj
-`,
-			},
-			wantError: true,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			if tc.runtimeEnv != "" {
-				t.Setenv(env.RuntimeVersion, tc.runtimeEnv)
-			}
-
-			tempRoot := t.TempDir()
-
-			path := filepath.Join(tempRoot, tc.lockFile.name)
-			if err := ioutil.WriteFile(path, []byte(tc.lockFile.content), 0644); err != nil {
-				t.Fatalf("writing file %s: %v", path, err)
-			}
-
-			got, err := ParseBundlerVersion(path)
-
-			if err != nil && !tc.wantError {
-				t.Fatalf("ParseBundlerVersion(%q) got error: %v", path, err)
-			}
-
-			if err == nil && tc.wantError {
-				t.Fatalf("ParseBundlerVersion(%q) wanted error, got nil", path)
-			}
-
-			if got != tc.want {
-				t.Errorf("ParseBundlerVersion(%q) = %q, want %q", path, got, tc.want)
-			}
-		})
-	}
-
-}
+async def symlink_bin(ctx: GCPContext, gems_dir: str, bin_dir: str) -> None:
+    glob_pattern = os.path.join(gems_dir, "ruby", "*", "bin")
+    found_bin_dirs = await ctx.glob(glob_pattern)
+    
+    if len(found_bin_dirs) > 1:
+        raise ValueError(f"unexpected multiple gem bin dirs: {found_bin_dirs}")
+    elif found_bin_dirs:
+        if await ctx.remove_all(bin_dir):
+            rel_target = os.path.relpath(found_bin_dirs[0], os.path.dirname(bin_dir))
+            await ctx.symlink(rel_target, bin_dir)

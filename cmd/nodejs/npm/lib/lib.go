@@ -1,287 +1,270 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements nodejs/npm buildpack.
-// The npm buildpack installs dependencies using npm.
-package lib
+"""Implements nodejs/npm buildpack. The npm buildpack installs dependencies using npm."""
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
+import os
+import subprocess
+from pathlib import Path
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
-)
+import gcpbuildpack as gcp
+import ar
+import buildermetadata
+import buildermetrics
+import cache
+import devmode
+import env
+import firebase.faherror
+import nodejs
 
-const (
-	cacheTag = "prod dependencies"
-)
+cache_tag = "prod dependencies"
 
-// DetectFn detects if package.json is present.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	pkgJSONExists, err := ctx.FileExists("package.json")
-	if err != nil {
-		return nil, err
-	}
-	if !pkgJSONExists {
-		return gcp.OptOutFileNotFound("package.json"), nil
-	}
-	return gcp.OptInFileFound("package.json"), nil
-}
 
-// BuildFn installs dependencies using npm.
-func BuildFn(ctx *gcp.Context) error {
-	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.PackageManager, buildermetadata.MetadataValue("npm"))
-	ml, err := ctx.Layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
-	if err != nil {
-		return fmt.Errorf("creating layer: %w", err)
-	}
-	nm := filepath.Join(ml.Path, "node_modules")
-	if nmExists, _ := ctx.FileExists("node_modules"); nmExists {
-		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmNodeModulesCounterID).Increment(1)
+def detect_fn(ctx: gcp.Context) -> tuple[gcp.DetectResult, Exception | None]:
+    """Detects if package.json is present."""
+    try:
+        if ctx.file_exists("package.json"):
+            return gcp.opt_in_file_found("package.json"), None
+        return gcp.opt_out_file_not_found("package.json"), None
+    except Exception as e:
+        return None, e
 
-	}
-	vendorNpmDeps := nodejs.IsUsingVendoredDependencies()
-	if !vendorNpmDeps {
-		if err := ctx.RemoveAll("node_modules"); err != nil {
-			return err
-		}
-	}
-	if err := ar.GenerateNPMConfig(ctx); err != nil {
-		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
-	}
 
-	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
-	if err != nil {
-		return err
-	}
-	if err := upgradeNPM(ctx, pjs); err != nil {
-		vendorError := ""
-		if vendorNpmDeps {
-			vendorError = "Vendored dependencies detected, please remove the npm version from your package.json to avoid installing npm and instead use the bundled npm"
-		}
-		return fmt.Errorf("%s Error: %w", vendorError, err)
-	}
+def build_fn(ctx: gcp.Context) -> Exception | None:
+    """Builds the npm project by installing dependencies."""
+    try:
+        buildermetadata.global_builder_metadata().set_value(
+            buildermetadata.PackageManager,
+            buildermetadata.MetadataValue("npm")
+        )
+        
+        # Layer handling
+        ml = ctx.layer("npm_modules", gcp.BuildLayer, gcp.CacheLayer)
+        nm = Path(ml.path) / "node_modules"
+        
+        # Node modules cleanup and metrics
+        if (Path(ctx.application_root()) / "node_modules").exists():
+            buildermetrics.global_builder_metrics().get_counter(
+                buildermetrics.NpmNodeModulesCounterID
+            ).increment(1)
 
-	lockfile, err := nodejs.EnsureLockfile(ctx)
-	if err != nil {
-		return err
-	}
+        vendor_npm_deps = nodejs.is_using_vendored_dependencies()
+        
+        # Clean up existing node_modules if not vendoring dependencies
+        if not vendor_npm_deps:
+            if ctx.remove_all("node_modules") != 0:
+                return Exception("Failed to clean up node_modules")
 
-	pjs, err = nodejs.OverrideAppHostingBuildScript(ctx, nodejs.ApphostingPreprocessedPathForPack)
-	if err != nil {
-		return err
-	}
-	buildCmds, isCustomBuild := nodejs.DetermineBuildCommands(pjs, "npm")
-	// Respect the user's NODE_ENV value if it's set
-	buildNodeEnv, nodeEnvPresent := os.LookupEnv(nodejs.EnvNodeEnv)
-	if !nodeEnvPresent {
-		if len(buildCmds) > 0 {
-			// Assume that dev dependencies are required to run build scripts to
-			// support the most use cases possible.
-			buildNodeEnv = nodejs.EnvDevelopment
-		} else {
-			buildNodeEnv = nodejs.EnvProduction
-		}
-	}
+        # Generate NPM config
+        if ar.generate_npm_config(ctx) != 0:
+            return Exception("Generating Artifact Registry credentials failed")
 
-	if vendorNpmDeps {
-		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmVendorDependenciesCounterID).Increment(1)
-		if _, err := ctx.Exec([]string{"npm", "rebuild"}, gcp.WithEnv("NODE_ENV="+buildNodeEnv), gcp.WithUserAttribution); err != nil {
-			return err
-		}
-	} else {
-		cached, err := nodejs.CheckOrClearCache(ctx, ml, cache.WithStrings(buildNodeEnv), cache.WithFiles("package.json", lockfile))
-		if err != nil {
-			return fmt.Errorf("checking cache: %w", err)
-		}
-		if cached {
-			// Restore cached node_modules.
-			if err := nodejs.RestoreModules(ctx, nm, "node_modules"); err != nil {
-				return err
-			}
+        # Read and process package.json
+        pjs = nodejs.read_package_json_if_exists(ctx.application_root())
+        if not pjs:
+            return Exception("Failed to read package.json")
 
-			// Always run npm install to run preinstall/postinstall scripts.
-			// Otherwise it should be a no-op because the lockfile is unchanged.
-			if _, err := ctx.Exec([]string{"npm", "install", "--quiet"}, gcp.WithEnv("NODE_ENV="+buildNodeEnv), gcp.WithUserAttribution); err != nil {
-				return err
-			}
-		} else {
-			ctx.Logf("Installing application dependencies.")
-			installCmd, err := nodejs.NPMInstallCommand(ctx)
-			if err != nil {
-				return err
-			}
+        # Upgrade npm if needed
+        error = upgrade_npm(ctx, pjs)
+        if error:
+            vendor_error = ""
+            if vendor_npm_deps:
+                vendor_error = "Vendored dependencies detected, please remove the npm version from your package.json to avoid installing npm and instead use the bundled npm"
+            return Exception(f"{vendor_error} Error: {error}")
 
-			if _, err := ctx.Exec([]string{"npm", installCmd, "--quiet", "--no-fund", "--no-audit"}, gcp.WithEnv("NODE_ENV="+buildNodeEnv), gcp.WithUserAttribution); err != nil {
-				return err
-			}
-			if err := nodejs.SaveModules(ctx, "node_modules", nm); err != nil {
-				return err
-			}
-		}
-	}
+        # Ensure lockfile
+        lockfile = nodejs.ensure_lockfile(ctx)
+        if not lockfile:
+            return Exception("Failed to ensure lockfile")
 
-	// Check for React2Shell vulnerability in the lockfile.
-	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, ctx.ApplicationRoot())
-	if err != nil {
-		ctx.Warnf("Failed to read node dependencies: %v", err)
-	} else {
-		if err := nodejs.CheckVulnerabilities(ctx, nodeDeps); err != nil {
-			return err
-		}
-	}
+        # Override build script for AppHosting
+        pjs, err = nodejs.override_app_hosting_build_script(
+            ctx.application_root(),
+            nodejs.ApphostingPreprocessedPathForPack
+        )
+        if err:
+            return err
 
-	if len(buildCmds) > 0 {
-		// If there are multiple build scripts to run, run them one-by-one so the logs are
-		// easier to understand.
-		for _, cmd := range buildCmds {
-			execOpts := []gcp.ExecOption{gcp.WithUserAttribution}
-			if nodejs.DetectSvelteKitAutoAdapter(pjs) {
-				execOpts = append(execOpts, gcp.WithEnv(nodejs.SvelteAdapterEnv))
-			}
-			split := strings.Split(cmd, " ")
-			if _, err := ctx.Exec(split, execOpts...); err != nil {
-				if !isCustomBuild {
-					return fmt.Errorf(`%w
-NOTE: Running the default build script can be skipped by passing the empty environment variable "%s=" to the build`, err, nodejs.GoogleNodeRunScriptsEnv)
-				}
-				if fahCmd, fahCmdPresent := os.LookupEnv(nodejs.AppHostingBuildEnv); fahCmdPresent {
-					return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(fahCmd, err))
-				}
-				if nodejs.HasApphostingPackageBuild(pjs) {
-					return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(pjs.Scripts[nodejs.ScriptApphostingBuild], err))
-				}
-				return err
-			}
-		}
+        # Determine build commands and environment
+        build_cmds, is_custom_build = nodejs.determine_build_commands(pjs, "npm")
+        
+        # Determine NODE_ENV
+        build_node_env = os.getenv(nodejs.EnvNodeEnv)
+        if not build_node_env:
+            if len(build_cmds) > 0:
+                build_node_env = nodejs.EnvDevelopment
+            else:
+                build_node_env = nodejs.EnvProduction
 
-		if shouldPrune(ctx, pjs) {
-			// npm prune deletes devDependencies from node_modules
-			if _, err := ctx.Exec([]string{"npm", "prune", "--production"}, gcp.WithUserAttribution); err != nil {
-				return err
-			}
-		}
-	}
+        # Handle vendoring vs caching
+        if vendor_npm_deps:
+            buildermetrics.global_builder_metrics().get_counter(
+                buildermetrics.NpmVendorDependenciesCounterID
+            ).increment(1)
+            
+            # Rebuild vendored dependencies
+            result = ctx.exec(["npm", "rebuild"], env={"NODE_ENV": build_node_env})
+            if result != 0:
+                return Exception("Failed to rebuild vendored dependencies")
+        else:
+            # Check or clear cache
+            cached, err = nodejs.check_or_clear_cache(
+                ctx,
+                ml,
+                cache.WithStrings(build_node_env),
+                cache.WithFiles("package.json", lockfile)
+            )
+            if err:
+                return f"Checking cache failed: {err}"
 
-	el, err := ctx.Layer("env", gcp.BuildLayer, gcp.LaunchLayer)
-	if err != nil {
-		return fmt.Errorf("creating layer: %w", err)
-	}
-	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
-	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
+            if cached:
+                # Restore cached modules and run npm install
+                if nodejs.restore_modules(ctx, str(nm), "node_modules") != 0:
+                    return Exception("Failed to restore cached modules")
+                
+                result = ctx.exec(
+                    ["npm", "install", "--quiet"],
+                    env={"NODE_ENV": build_node_env}
+                )
+                if result != 0:
+                    return Exception("Failed to install dependencies")
+            else:
+                # Install new dependencies
+                ctx.log("Installing application dependencies.")
+                install_cmd, err = nodejs.npm_install_command(ctx)
+                if err:
+                    return f"Getting npm install command failed: {err}"
 
-	// Configure the entrypoint for production.
-	cmd, err := nodejs.DefaultStartCommand(ctx, pjs)
-	if err != nil {
-		return fmt.Errorf("detecting start command: %w", err)
-	}
+                cmd = ["npm", install_cmd, "--quiet", "--no-fund", "--no-audit"]
+                result = ctx.exec(cmd, env={"NODE_ENV": build_node_env})
+                if result != 0:
+                    return Exception("Failed to install dependencies")
 
-	devSync, err := env.IsDevSync()
-	if err != nil {
-		ctx.Warnf("Unable to determine dev sync status: %v", err)
-	} else if devSync {
-		cmd, err = nodejs.DevSyncEntrypoint(ctx, pjs, "npm")
-		if err != nil {
-			return gcp.InternalErrorf("getting dev sync entrypoint: %w", err)
-		}
-		ctx.AddWebProcess(cmd)
-		return nil
-	}
+                if nodejs.save_modules(ctx, "node_modules", str(nm)) != 0:
+                    return Exception("Failed to save modules")
 
-	if !devmode.Enabled(ctx) {
-		ctx.AddWebProcess(cmd)
-		return nil
-	}
+        # Check for vulnerabilities
+        node_deps = nodejs.read_node_dependencies(ctx.application_root())
+        if not node_deps:
+            ctx.warn(f"Failed to read node dependencies: {node_deps}")
+        else:
+            err = nodejs.check_vulnerabilities(ctx, node_deps)
+            if err:
+                return f"Checking vulnerabilities failed: {err}"
 
-	// Configure the entrypoint and metadata for dev mode.
-	if err := devmode.AddFileWatcherProcess(ctx, devmode.Config{
-		RunCmd: cmd,
-		Ext:    devmode.NodeWatchedExtensions,
-	}); err != nil {
-		return fmt.Errorf("adding devmode file watcher: %w", err)
-	}
+        # Run build commands
+        if len(build_cmds) > 0:
+            for cmd in build_cmds.split():
+                exec_opts = [gcp.WithUserAttribution]
+                if nodejs.detect_svelte_kit_auto_adapter(pjs):
+                    exec_opts.append(gcp.WithEnv(nodejs.SvelteAdapterEnv))
 
-	return nil
-}
+                result = ctx.exec(cmd.split(), *exec_opts)
+                if result != 0:
+                    if not is_custom_build:
+                        return f"Build command failed: {cmd}"
+                    return f"Custom build command failed: {cmd}"
 
-func shouldPrune(ctx *gcp.Context, pjs *nodejs.PackageJSON) bool {
-	// if we are vendoring dependencies, we do not need to prune
-	if nodejs.IsUsingVendoredDependencies() {
-		return false
-	}
+            # Prune dev dependencies if needed
+            if should_prune(ctx, pjs):
+                result = ctx.exec(["npm", "prune", "--production"])
+                if result != 0:
+                    return Exception("Failed to prune dev dependencies")
 
-	// if there are no devDependencies, there is no need to prune.
-	if !nodejs.HasDevDependencies(pjs) {
-		return false
-	}
-	if nodeEnv := nodejs.NodeEnv(); nodeEnv != nodejs.EnvProduction {
-		ctx.Logf("Retaining devDependencies because NODE_ENV=%q.", nodeEnv)
-		return false
-	}
-	if nodejs.SkipPruningDevSync(ctx) {
-		return false
-	}
-	canPrune, err := nodejs.SupportsNPMPrune(ctx)
-	if err != nil {
-		ctx.Warnf("Unable to determine if npm prune is supported, retaining devDependencies: %v", err)
-		return false
-	}
-	if !canPrune {
-		ctx.Warnf("Retaining devDependencies because the version of NPM you are using does not support 'npm prune'.")
-		return false
-	}
-	return true
-}
+        # Configure environment and entrypoint
+        el = ctx.layer("env", gcp.BuildLayer, gcp.LaunchLayer)
+        env_path = str(Path(ctx.application_root()) / "node_modules" / ".bin")
+        el.shared_environment.prepend("PATH", os.pathsep, env_path)
+        el.shared_environment.default("NODE_ENV", nodejs.node_env())
 
-func upgradeNPM(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
-	npmVersion, err := nodejs.RequestedNPMVersion(pjs)
-	if err != nil {
-		return err
-	}
-	if npmVersion == "" {
-		// if an NPM version was not requested, use whatever was bundled with Node.js.
-		return nil
-	}
-	npmLayer, err := ctx.Layer("npm", gcp.BuildLayer, gcp.LaunchLayer, gcp.CacheLayer)
-	if err != nil {
-		return fmt.Errorf("creating layer: %w", err)
-	}
-	metaVersion := ctx.GetMetadata(npmLayer, "version")
-	if metaVersion == npmVersion {
-		ctx.Logf("npm@%s cache hit, skipping installation.", npmVersion)
-		return nil
-	}
-	ctx.ClearLayer(npmLayer)
-	prefix := fmt.Sprintf("--prefix=%s", npmLayer.Path)
-	pkg := fmt.Sprintf("npm@%s", npmVersion)
-	if _, err := ctx.Exec([]string{"npm", "install", "-g", prefix, pkg}, gcp.WithUserAttribution); err != nil {
-		return err
-	}
-	// Set the path here to ensure the version we just installed takes precedence over the npm bundled
-	// with the Node.js engine.
-	if err := ctx.Setenv("PATH", filepath.Join(npmLayer.Path, "bin")+":"+os.Getenv("PATH")); err != nil {
-		return err
-	}
-	return nil
-}
+        # Configure entrypoint
+        cmd, err = nodejs.default_start_command(ctx, pjs)
+        if err:
+            return f"Detecting start command failed: {err}"
+
+        dev_sync = env.is_dev_sync()
+        if dev_sync is None:
+            ctx.warn("Unable to determine dev sync status")
+        elif dev_sync:
+            cmd, err = nodejs.dev_sync_entrypoint(ctx, pjs, "npm")
+            if err:
+                return f"Getting dev sync entrypoint failed: {err}"
+            ctx.add_web_process(cmd)
+            return
+
+        if not devmode.enabled(ctx):
+            ctx.add_web_process(cmd)
+            return
+
+        # Configure for development mode
+        err = devmode.add_file_watcher_process(
+            ctx,
+            devmode.Config(
+                run_cmd=cmd,
+                ext=devmode.NodeWatchedExtensions
+            )
+        )
+        if err:
+            return f"Adding dev mode file watcher failed: {err}"
+
+        return None
+
+    except Exception as e:
+        return e
+
+
+def should_prune(ctx: gcp.Context, pjs) -> bool:
+    """Determines if dev dependencies should be pruned."""
+    if nodejs.is_using_vendored_dependencies():
+        return False
+    if not nodejs.has_dev_dependencies(pjs):
+        return False
+    if os.getenv(nodejs.EnvNodeEnv, "") != nodejs.EnvProduction:
+        ctx.log(f"Retaining devDependencies because NODE_ENV={os.getenv(nodejs.EnvNodeEnv, '')}")
+        return False
+    if nodejs.skip_pruning_dev_sync(ctx):
+        return False
+    can_prune, err = nodejs.supports_npm_prune(ctx)
+    if not can_prune:
+        ctx.warn("Retaining devDependencies because npm prune is not supported")
+        return False
+    return True
+
+
+def upgrade_npm(ctx: gcp.Context, pjs) -> Exception | None:
+    """Upgrades npm to the requested version."""
+    npm_version = nodejs.requested_npm_version(pjs)
+    if not npm_version:
+        return None
+
+    npm_layer = ctx.layer("npm", gcp.BuildLayer, gcp.LaunchLayer, gcp.CacheLayer)
+    meta_version = ctx.get_metadata(npm_layer, "version")
+    if meta_version == npm_version:
+        ctx.log(f"npm@{npm_version} cache hit, skipping installation.")
+        return None
+
+    ctx.clear_layer(npm_layer)
+    prefix = f"--prefix={npm_layer.path}"
+    package_arg = f"npm@{npm_version}"
+
+    result = ctx.exec(["npm", "install", "-g", prefix, package_arg])
+    if result != 0:
+        return Exception("Failed to install npm version")
+
+    # Update PATH
+    new_path = os.pathsep.join([os.getenv("PATH"), str(Path(npm_layer.path) / "bin")])
+    if ctx.setenv("PATH", new_path):
+        return None
+    else:
+        return Exception("Failed to update PATH environment variable")

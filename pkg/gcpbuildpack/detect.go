@@ -1,99 +1,90 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Complete refactored code here
+import os
+import json
+import time
+import random
+import logging
+from typing import Optional, Dict, Any
+from pathlib import Path
 
-package gcpbuildpack
+import buildererror
+import buildermetadata
+import buildermetrics
+import builderoutput
 
-import (
-	"fmt"
-	"os"
+logger = logging.getLogger(__name__)
 
-	"github.com/buildpacks/libcnb/v2"
-)
+class Context:
+    def __init__(self):
+        self.buildpack_id = ""
+        self.buildpack_version = ""
+        self.warnings = []
+        self.installed_runtime_versions = []
+        self.stats = {
+            "user": 0.0,
+            "total": 0.0
+        }
 
-// DetectResult represents the result of the detect run and the reason for it.
-type DetectResult interface {
-	Result() libcnb.DetectResult
-	Reason() string
-}
+def save_error_output(ctx: Context, err: Exception):
+    be = buildererror.Error.from_exception(err)
+    output_dir = os.getenv(builderoutput.BUILDER_OUTPUT_ENV)
+    if not output_dir:
+        return
 
-type detectResult struct {
-	result libcnb.DetectResult
-	reason string
-}
+    max_message_bytes = 49000
+    if len(be.message) > max_message_bytes:
+        be.message = keep_tail(be.message, max_message_bytes)
 
-func (d *detectResult) Result() libcnb.DetectResult {
-	return d.result
-}
+    be.buildpack_id = ctx.buildpack_id
+    be.buildpack_version = ctx.buildpack_version
 
-func (d *detectResult) Reason() string {
-	return d.reason
-}
+    bo = builderoutput.BuilderOutput()
+    bo.error = be
+    bo.metrics = buildermetrics.global_metrics().to_dict()
+    bo.metadata = buildermetadata.global_metadata().to_dict()
 
-// DetectResultOption is a function that returns strings to be hashed when computing a cache key.
-type DetectResultOption func(r *detectResult)
+    try:
+        data = json.dumps(bo.to_dict())
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        temp_path = Path(output_dir) / f"{builderoutput.BUILDER_OUTPUT_FILENAME}-{random.randint(0, 1000)}"
+        with open(temp_path, 'w') as f:
+            f.write(data)
+        final_path = Path(output_dir) / builderoutput.BUILDER_OUTPUT_FILENAME
+        temp_path.rename(final_path)
 
-// WithBuildPlans adds build plans to the detect result.
-func WithBuildPlans(plans ...libcnb.BuildPlan) DetectResultOption {
-	return func(r *detectResult) {
-		r.result.Plans = plans
-	}
-}
+    except Exception as e:
+        logger.warning(f"Failed to save error output: {e}")
 
-// OptIn is used during the detect phase to opt in to the build process.
-func OptIn(reason string, opts ...DetectResultOption) DetectResult {
-	return opt(true, "Opting in: "+reason, opts...)
-}
+def keep_tail(message: str, max_length: int) -> str:
+    if len(message) <= max_length:
+        return message
+    return f"...{message[-(max_length - 3):]}"
 
-// OptInAlways is used to always opt into the build process.
-func OptInAlways(opts ...DetectResultOption) DetectResult {
-	return OptIn("always enabled", opts...)
-}
+def keep_head(message: str, max_length: int) -> str:
+    if len(message) <= max_length:
+        return message
+    return f"{message[:max_length-3]}..."
 
-// OptInFileFound is used to opt into the build process based on file presence.
-func OptInFileFound(file string, opts ...DetectResultOption) DetectResult {
-	return OptIn("found "+file, opts...)
-}
+def save_success_output(ctx: Context, duration: float):
+    output_dir = os.getenv(builderoutput.BUILDER_OUTPUT_ENV)
+    if not output_dir:
+        return
 
-// OptInEnvSet is used to opt into the build process based on env var presence.
-func OptInEnvSet(env string, opts ...DetectResultOption) DetectResult {
-	return OptIn(fmt.Sprintf("%s set to %q", env, os.Getenv(env)), opts...)
-}
-
-// OptOut is used during the detect phase to opt out of the build process.
-func OptOut(reason string, opts ...DetectResultOption) DetectResult {
-	return opt(false, "Opting out: "+reason, opts...)
-}
-
-// OptOutFileNotFound is used to opt out of the build process based on file absence.
-func OptOutFileNotFound(file string, opts ...DetectResultOption) DetectResult {
-	return OptOut(file+" not found", opts...)
-}
-
-// OptOutEnvNotSet is used to opt out of the build process based on env var absence.
-func OptOutEnvNotSet(env string, opts ...DetectResultOption) DetectResult {
-	return OptOut(fmt.Sprintf("%s not set", env), opts...)
-}
-
-func opt(pass bool, reason string, opts ...DetectResultOption) DetectResult {
-	r := &detectResult{
-		reason: reason,
-		result: libcnb.DetectResult{
-			Pass: pass,
-		},
-	}
-	for _, o := range opts {
-		o(r)
-	}
-	return r
-}
+    bo = builderoutput.BuilderOutput()
+    bo.installed_runtime_versions.extend(ctx.installed_runtime_versions)
+    
+    stats = {
+        "buildpack_id": ctx.buildpack_id,
+        "buildpack_version": ctx.buildpack_version,
+        "duration_ms": duration * 1000,
+        "user_duration_ms": ctx.stats["user"] * 1000
+    }
+    bo.stats.append(stats)
+    
+    try:
+        data = json.dumps(bo.to_dict())
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        with open(Path(output_dir) / builderoutput.BUILDER_OUTPUT_FILENAME, 'w') as f:
+            f.write(data)
+    except Exception as e:
+        logger.warning(f"Failed to save success output: {e}")

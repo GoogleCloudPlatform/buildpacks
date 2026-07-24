@@ -1,123 +1,158 @@
-// Copyright 2026 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-package static
+import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import List, Optional
 
-import (
-	"encoding/json"
-	"fmt"
-	"os"
-)
+@dataclass
+class HeaderConfig:
+    key: str
+    value: str
 
-// HeaderConfig represents a single header key-value pair in firebase.json.
-type HeaderConfig struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
+@dataclass
+class Header:
+    source: str
+    regex: Optional[str]
+    headers: List[HeaderConfig]
 
-// Header represents the headers configuration in firebase.json.
-type Header struct {
-	Source  string         `json:"source"`
-	Regex   string         `json:"regex,omitempty"`
-	Headers []HeaderConfig `json:"headers"`
-}
+@dataclass
+class Run:
+    service_id: str
+    region: Optional[str]
 
-// Run represents a Cloud Run configuration for rewrites.
-type Run struct {
-	ServiceID string `json:"serviceId"`
-	Region    string `json:"region,omitempty"`
-}
+@dataclass
+class Rewrite:
+    source: str
+    regex: Optional[str]
+    destination: Optional[str]
+    function: Optional[str]
+    run: Optional[Run]
+    dynamic_links: bool
 
-// Rewrite represents a rewrite rule in firebase.json.
-type Rewrite struct {
-	Source       string `json:"source"`
-	Regex        string `json:"regex,omitempty"`
-	Destination  string `json:"destination,omitempty"`
-	Function     string `json:"function,omitempty"`
-	Run          *Run   `json:"run,omitempty"`
-	DynamicLinks bool   `json:"dynamicLinks,omitempty"`
-}
+@dataclass
+class Redirect:
+    source: str
+    regex: Optional[str]
+    destination: str
+    type_: int  # Using 'type_' to avoid keyword conflict
 
-// Redirect represents a redirect rule in firebase.json.
-type Redirect struct {
-	Source      string `json:"source"`
-	Regex       string `json:"regex,omitempty"`
-	Destination string `json:"destination"`
-	Type        int    `json:"type"`
-}
+@dataclass
+class HostingConfig:
+    target: Optional[str]
+    site: Optional[str]
+    public: Optional[str]
+    clean_urls: bool
+    trailing_slash: Optional[bool]
+    rewrites: List[Rewrite]
+    redirects: List[Redirect]
+    headers: List[Header]
 
-// HostingConfig represents a single hosting target configuration in firebase.json.
-type HostingConfig struct {
-	Target        string     `json:"target,omitempty"`
-	Site          string     `json:"site,omitempty"`
-	Public        string     `json:"public,omitempty"`
-	CleanUrls     bool       `json:"cleanUrls,omitempty"`
-	TrailingSlash *bool      `json:"trailingSlash,omitempty"`
-	Rewrites      []Rewrite  `json:"rewrites,omitempty"`
-	Redirects     []Redirect `json:"redirects,omitempty"`
-	Headers       []Header   `json:"headers,omitempty"`
-}
+def parse_firebase_config(path: str) -> List[HostingConfig]:
+    firebase_json_path = Path(path)
+    
+    if not firebase_json_path.exists():
+        return []
+    
+    try:
+        with open(firebase_json_path, 'r') as f:
+            data = json.load(f)
+            
+        hosting_configs = []
+        
+        if isinstance(data.get('hosting'), list):
+            for config in data['hosting']:
+                hosting_config = HostingConfig(
+                    target=config.get('target'),
+                    site=config.get('site'),
+                    public=config.get('public'),
+                    clean_urls=config.get('cleanUrls', False),
+                    trailing_slash=config.get('trailingSlash'),
+                    rewrites=_parse_rewrites(config.get('rewrites', [])),
+                    redirects=_parse_redirects(config.get('redirects', [])),
+                    headers=_parse_headers(config.get('headers', []))
+                )
+                hosting_configs.append(hosting_config)
+        elif isinstance(data.get('hosting'), dict):
+            config = data['hosting']
+            hosting_config = HostingConfig(
+                target=config.get('target'),
+                site=config.get('site'),
+                public=config.get('public'),
+                clean_urls=config.get('cleanUrls', False),
+                trailing_slash=config.get('trailingSlash'),
+                rewrites=_parse_rewrites(config.get('rewrites', [])),
+                redirects=_parse_redirects(config.get('redirects', [])),
+                headers=_parse_headers(config.get('headers', []))
+            )
+            hosting_configs.append(hosting_config)
+            
+        return hosting_configs
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Failed to parse firebase.json: {e}") from e
 
-// FirebaseJSON represents the root structure of firebase.json.
-type FirebaseJSON struct {
-	Hosting []HostingConfig `json:"-"`
-}
+def _parse_rewrites(rewrites_json):
+    rewrites = []
+    for rw in rewrites_json:
+        rewrite = Rewrite(
+            source=rw.get('source'),
+            regex=rw.get('regex'),
+            destination=rw.get('destination'),
+            function=rw.get('function'),
+            run=_parse_run(rw.get('run')),
+            dynamic_links=rw.get('dynamicLinks', False)
+        )
+        rewrites.append(rewrite)
+    return rewrites
 
-// UnmarshalJSON is a custom unmarshaler to handle the hosting field as either an object or an array.
-func (f *FirebaseJSON) UnmarshalJSON(data []byte) error {
-	var raw struct {
-		Hosting json.RawMessage `json:"hosting"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
+def _parse_run(run_json):
+    if run_json:
+        return Run(
+            service_id=run_json.get('serviceId'),
+            region=run_json.get('region')
+        )
+    return None
 
-	if len(raw.Hosting) == 0 || string(raw.Hosting) == "null" {
-		return nil
-	}
+def _parse_redirects(redirects_json):
+    redirects = []
+    for red in redirects_json:
+        redirect = Redirect(
+            source=red.get('source'),
+            regex=red.get('regex'),
+            destination=red.get('destination'),
+            type_=red.get('type')
+        )
+        redirects.append(redirect)
+    return redirects
 
-	// Try unmarshaling as an array
-	var arr []HostingConfig
-	if err := json.Unmarshal(raw.Hosting, &arr); err == nil {
-		f.Hosting = arr
-		return nil
-	}
+def _parse_headers(headers_json):
+    headers = []
+    for hdr in headers_json:
+        header = Header(
+            source=hdr.get('source'),
+            regex=hdr.get('regex'),
+            headers=_parse_header_configs(hdr.get('headers', []))
+        )
+        headers.append(header)
+    return headers
 
-	// Try unmarshaling as a single object
-	var single HostingConfig
-	if err := json.Unmarshal(raw.Hosting, &single); err != nil {
-		return fmt.Errorf("failed to parse hosting config: %w", err)
-	}
-	f.Hosting = []HostingConfig{single}
-	return nil
-}
-
-// ParseFirebaseConfig reads and parses a firebase.json file.
-// If the file does not exist, it returns an empty slice and no error.
-func ParseFirebaseConfig(path string) ([]HostingConfig, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil // No firebase.json found
-		}
-		return nil, fmt.Errorf("reading file: %w", err)
-	}
-
-	var fb FirebaseJSON
-	if err := json.Unmarshal(data, &fb); err != nil {
-		return nil, fmt.Errorf("parsing firebase.json: %w", err)
-	}
-
-	return fb.Hosting, nil
-}
+def _parse_header_configs(headers_config_json):
+    configs = []
+    for config in headers_config_json:
+        configs.append(HeaderConfig(
+            key=config['key'],
+            value=config['value']
+        ))
+    return configs

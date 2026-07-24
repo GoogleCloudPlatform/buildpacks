@@ -1,666 +1,576 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import json
+import os
+import re
+import shutil
+from pathlib import Path
+from typing import Optional, Tuple, List, Dict, Any
+import xml.etree.ElementTree as ET
 
-package dotnet
+import cache  # Assuming cache is in the same directory or imported correctly
+import devmode
+import env
+import gcpbuildpack as gcp
+import runtime
+import libcnb
 
-import (
-	"bytes"
-	"encoding/xml"
-	"io/ioutil"
-	"os"
-	"path"
-	"path/filepath"
-	"reflect"
-	"strings"
-	"testing"
-	"text/template"
+# Constants
+asp_dotnet_core = "Microsoft.AspNetCore.App"
+env_sdk_version = "GOOGLE_DOTNET_SDK_VERSION"
+google_min_22 = "google.min.22"
+EnvRuntimeVersion = "GOOGLE_ASP_NET_CORE_VERSION"
+PublishLayerName = "publish"
+PublishOutputDirName = "bin"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
-	"github.com/google/go-cmp/cmp"
-	"google3/third_party/golang/cmp/cmpopts/cmpopts"
-	"github.com/buildpacks/libcnb/v2"
-)
+SkipEnvVariablesAssignmentCapability = "dotnet.SkipEnvVariablesAssignmentCapability"
 
-func TestReadProjectFile(t *testing.T) {
-	d, err := ioutil.TempDir("/tmp", "test-read-project-file")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(d)
 
-	contents := `
-<Project Sdk="Microsoft.NET.Sdk.Web">
-	<PropertyGroup>
-		<AssemblyName>Foo</AssemblyName>
-		<TargetFramework>net48</TargetFramework>
-		<TargetFrameworks>netcoreapp3.1;netstandard2.0</TargetFrameworks>
-	</PropertyGroup>
+class MakerSkipEnvVariablesAssignment:
+    def SkipVariables(self, ctx: gcp.Context, rtl: libcnb.Layer) -> None:
+        pass
 
-	<ItemGroup>
-		<PackageReference Include="Google.Cloud.Some.Package" Version="1.0.0" />
-	</ItemGroup>
-</Project>
-`
 
-	if err := ioutil.WriteFile(filepath.Join(d, "test.csproj"), []byte(contents), 0644); err != nil {
-		t.Fatalf("Failed to write project file: %v", err)
-	}
+PublisherCapability = "dotnet.PublisherCapability"
 
-	want := Project{
-		XMLName: xml.Name{Local: "Project"},
-		PropertyGroups: []PropertyGroup{
-			PropertyGroup{
-				AssemblyName:     "Foo",
-				TargetFramework:  "net48",
-				TargetFrameworks: "netcoreapp3.1;netstandard2.0",
-			},
-		},
-		ItemGroups: []ItemGroup{
-			ItemGroup{
-				PackageReferences: []PackageReference{
-					PackageReference{
-						Include: "Google.Cloud.Some.Package",
-						Version: "1.0.0",
-					},
-				},
-			},
-		},
-	}
 
-	got, err := readProjectFile([]byte(contents), d)
-	if err != nil {
-		t.Fatalf("ReadProjectFile got error: %v", err)
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("ReadProjectFile\ngot %#v\nwant %#v", got, want)
-	}
+class Publisher:
+    def Publish(self, ctx: gcp.Context, proj: str, build_args: str) -> None:
+        raise NotImplementedError()
+
+
+class MakerDotnetPublisher:
+    def Publish(self, ctx: gcp.Context, proj: str, build_args: str) -> None:
+        Publish(ctx, proj, build_args, False)
+
+
+cache_tag = "prod dependencies"
+dependency_hash_key = "dependency_hash"
+version_key = "version"
+
+
+def Publish(
+    ctx: gcp.Context,
+    proj: str,
+    build_args: str,
+    use_layer: bool
+) -> None:
+    output_directory = ""
+    pkg_layer: Optional[libcnb.Layer] = None
+    bin_layer: Optional[libcnb.Layer] = None
+
+    if use_layer:
+        ctx.Log("Installing application dependencies.")
+        pkg_layer, err = ctx.Layer("packages", gcp.BuildLayer, gcp.CacheLayer)
+        if err is not None:
+            raise RuntimeError(f"Creating layer failed: {err}")
+
+        cached, err = CheckCache(ctx, pkg_layer)
+        if err is not None:
+            raise RuntimeError(f"Checking cache failed: {err}")
+        if cached:
+            ctx.CacheHit(cache_tag)
+        else:
+            ctx.CacheMiss(cache_tag)
+
+        bin_layer, err = ctx.Layer(PublishLayerName, gcp.BuildLayer, gcp.LaunchLayer)
+        if err is not None:
+            raise RuntimeError(f"Creating layer failed: {err}")
+
+        output_directory = str(Path(bin_layer.Path) / PublishOutputDirName)
+
+        proj_path = Path(ctx.ApplicationRoot()) / proj
+        if not proj_path.is_file():
+            ctx.Warn("No project file found; skipping publish.")
+            return
+
+        deleted, err = DeleteFolder(ctx, Path(ctx.ApplicationRoot()) / PublishOutputDirName)
+        if err is not None:
+            raise RuntimeError(f"Deleting upload bin failed: {err}")
+        if deleted:
+            ctx.Warn(f"A project file was uploaded, causing `dotnet publish` to be called, but the output bin folder already existed in application source. Deleting {output_directory}.")
+
+    else:
+        output_directory = str(Path(ctx.ApplicationRoot()) / PublishOutputDirName)
+
+        global_json = Path(ctx.ApplicationRoot()) / "global.json"
+        if global_json.exists():
+            ctx.Log("Temporarily renaming global.json to global.json.bak to roll forward SDK build.")
+            global_json.rename(global_json.with_suffix(".json.bak"))
+            ctx.AddCleanup(lambda: global_json.with_suffix(".json.bak").rename(global_json))
+
+    # Restore
+    restore_cmd = ["dotnet", "restore"]
+    if use_layer:
+        restore_cmd.extend(["--packages", pkg_layer.Path])
+    restore_cmd.append(proj)
+
+    _, err = ctx.Exec(restore_cmd, env={"DOTNET_CLI_TELEMETRY_OPTOUT": "true"}, user_attribution=True)
+    if err is not None:
+        raise RuntimeError(f"Restore command failed: {err}")
+
+    # Publish
+    publish_cmd = [
+        "dotnet",
+        "publish",
+        "-nologo",
+        "--verbosity", "minimal",
+        "--configuration", "Release",
+        "--output", output_directory,
+        "--no-restore"
+    ]
+    if use_layer:
+        publish_cmd.extend(["--packages", pkg_layer.Path])
+    publish_cmd.append(proj)
+
+    if build_args:
+        publish_cmd = ["/bin/bash", "-c"] + [" ".join(publish_cmd + build_args.split())]
+
+    _, err = ctx.Exec(publish_cmd, env={"DOTNET_CLI_TELEMETRY_OPTOUT": "true"}, user_attribution=True)
+    if err is not None:
+        raise RuntimeError(f"Publish command failed: {err}")
+
+    # Runtime Version
+    runtime_version, err = GetRuntimeVersion(ctx, output_directory)
+    if err is not None:
+        raise RuntimeError(f"Getting runtime version failed: {err}")
+
+    if use_layer:
+        bin_layer.BuildEnvironment.Default(EnvRuntimeVersion, runtime_version)
+    else:
+        os.environ[EnvRuntimeVersion] = runtime_version
+
+    # Symlink
+    if use_layer:
+        ConfigureBinSymlink(ctx, output_directory)
+
+    # Entrypoint
+    entrypoint = os.getenv(env.Entrypoint)
+    if entrypoint:
+        entrypoint = f"exec {entrypoint}"
+    else:
+        ep, err = Entrypoint(ctx, output_directory, proj)
+        if err is not None:
+            raise RuntimeError(f"Getting entrypoint failed: {err}")
+        entrypoint = ep
+        if use_layer:
+            bin_layer.BuildEnvironment.Default(env.Entrypoint, entrypoint)
+
+    if use_layer:
+        bin_layer.LaunchEnvironment.Default("DOTNET_RUNNING_IN_CONTAINER", "true")
+
+        if not devmode.Enabled(ctx):
+            ctx.AddWebProcess(["/bin/bash", "-c", entrypoint])
+            return
+
+        ctx.AddWebProcess(["dotnet", "watch", "--project", proj, "run"])
+        return
+
+    # MakerMode
+    ctx.AddWebProcess(["/bin/bash", "-c", entrypoint])
+
+
+def CheckCache(
+    ctx: gcp.Context,
+    layer: libcnb.Layer
+) -> Tuple[bool, Optional[Exception]]:
+    project_files, err = ProjectFiles(ctx, ".")
+    if err is not None:
+        return False, err
+
+    global_json_path = Path(ctx.ApplicationRoot()) / "global.json"
+    if global_json_path.exists():
+        project_files.append(str(global_json_path))
+
+    result, err = ctx.Exec(["dotnet", "--version"])
+    if err is not None:
+        return False, err
+    current_version = result.Stdout
+
+    hash_value, cached, err = cache.HashAndCheck(
+        ctx,
+        layer,
+        dependency_hash_key,
+        strings=[current_version],
+        files=project_files
+    )
+    if err is not None:
+        return False, err
+
+    if cached:
+        return True, None
+
+    cache.Add(ctx, layer, dependency_hash_key, hash_value)
+    ctx.SetMetadata(layer, version_key, current_version)
+    return False, None
+
+
+def DeleteFolder(
+    ctx: gcp.Context,
+    folder_path: Path
+) -> Tuple[bool, Optional[Exception]]:
+    if not folder_path.exists():
+        return False, None
+
+    try:
+        shutil.rmtree(folder_path)
+        return True, None
+    except Exception as e:
+        return False, e
+
+
+def ConfigureBinSymlink(
+    ctx: gcp.Context,
+    bin_layer_path: str
+) -> Optional[Exception]:
+    link_target = Path(ctx.ApplicationRoot()) / PublishOutputDirName
+
+    deleted, err = DeleteFolder(ctx, link_target)
+    if err is not None:
+        return f"Deleting {link_target}: {err}"
+    if deleted:
+        ctx.Warn(f"Deleted folder: {link_target}")
+    else:
+        ctx.Warn(f"Not deleting folder: {link_target}")
+
+    try:
+        os.symlink(bin_layer_path, link_target)
+    except Exception as e:
+        return f"Linking {bin_layer_path}: {e}"
+    return None
+
+
+def AssemblyName(ctx: gcp.Context, proj: str) -> Tuple[str, Optional[Exception]]:
+    project_content, err = ReadProjectFile(ctx, proj)
+    if err is not None:
+        return "", RuntimeError(f"Reading project file failed: {err}")
+
+    assembly_names = []
+    for pg in project_content.PropertyGroups:
+        if pg.AssemblyName:
+            assembly_names.append(pg.AssemblyName)
+
+    if len(assembly_names) != 1:
+        return "", gcp.UserError(f"Expected exactly one AssemblyName, found {assembly_names}")
+    
+    return assembly_names[0], None
+
+
+def Entrypoint(
+    ctx: gcp.Context,
+    bin_dir: str,
+    proj: str
+) -> Tuple[str, Optional[Exception]]:
+    ctx.Log(f"Determining entrypoint from output directory {bin_dir} and project file {proj}")
+    p = Path(proj).stem
+
+    ep, err = EntrypointCmd(ctx, os.path.join(bin_dir, p))
+    if err is not None:
+        return "", RuntimeError(f"Getting entrypoint command failed: {err}")
+
+    if ep:
+        return ep, None
+
+    an, err = AssemblyName(ctx, proj)
+    if err is not None:
+        return "", RuntimeError(f"Getting assembly name failed: {err}")
+
+    ep, err = EntrypointCmd(ctx, os.path.join(bin_dir, an))
+    if err is not None or not ep:
+        return "", gcp.UserError("Unable to find executable produced from {proj}, try setting the AssemblyName property".format(proj=proj))
+    
+    return ep, None
+
+
+def EntrypointCmd(
+    ctx: gcp.Context,
+    exe_path: str
+) -> Tuple[str, Optional[Exception]]:
+    dll_path = exe_path + ".dll"
+    if not Path(dll_path).exists():
+        return "", None
+
+    dir_path = os.path.dirname(dll_path)
+    try:
+        rel_dir = os.path.relpath(dir_path, ctx.ApplicationRoot())
+        if not rel_dir.startswith(".."):
+            return f"exec dotnet {os.path.join(rel_dir, os.path.basename(dll_path))}", None
+        else:
+            return f"cd {dir_path} && exec dotnet {os.path.basename(dll_path)}", None
+    except Exception as e:
+        return "", RuntimeError(f"Constructing entrypoint command failed: {e}")
+
+
+latest_dotnet_sdk_version_per_stack = {
+    runtime.Ubuntu2204: "8.*.*",
+    runtime.Ubuntu2404: "10.*.*",
 }
 
-func TestProjectFiles(t *testing.T) {
-	d, err := ioutil.TempDir("", "test-project-files")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(d)
+proj_re = re.compile(r'(?i)\.(cs|fs|vb)proj$')
 
-	testFiles := []string{
-		"test.csproj",
-		"test.fsproj",
-		"test.vbproj",
-		"other.txt",
-		"sub/another.csproj",
-		"sub/more.txt",
-	}
-	want := []string{
-		filepath.Join(d, "test.csproj"),
-		filepath.Join(d, "test.fsproj"),
-		filepath.Join(d, "test.vbproj"),
-		filepath.Join(d, "sub/another.csproj"),
-	}
 
-	for _, f := range testFiles {
-		dir := filepath.Dir(filepath.Join(d, f))
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			t.Fatalf("Failed to create dir %s: %v", dir, err)
-		}
-		if err := ioutil.WriteFile(filepath.Join(d, f), []byte("test"), 0644); err != nil {
-			t.Fatalf("Failed to write file %s: %v", f, err)
-		}
-	}
+def ProjectFiles(
+    ctx: gcp.Context,
+    dir_path: str
+) -> Tuple[List[str], Optional[Exception]]:
+    project_files = []
+    
+    try:
+        for root, dirs, files in os.walk(dir_path):
+            for file in files:
+                if proj_re.search(file):
+                    project_files.append(os.path.join(root, file))
+        return project_files, None
+    except Exception as e:
+        return [], RuntimeError(f"Finding project files failed: {e}")
 
-	ctx := gcp.NewContext()
-	got, err := ProjectFiles(ctx, d)
-	if err != nil {
-		t.Fatalf("ProjectFiles got error: %v", err)
-	}
 
-	if diff := cmp.Diff(want, got, cmpopts.SortSlices(func(a, b string) bool { return a < b })); diff != "" {
-		t.Errorf("ProjectFiles returned unexpected diff (-want +got):\n%s", diff)
-	}
-}
+class Project:
+    def __init__(self):
+        self.PropertyGroups = []
+        self.ItemGroups = []
 
-func TestRuntimeConfigJSONFiles(t *testing.T) {
-	testCases := []struct {
-		Name                 string
-		TestDataRelativePath string
-		ExpectedResult       []string
-	}{
-		{
-			Name:                 "finds_single_file_in_root_dir",
-			TestDataRelativePath: "singleRtCfg",
-			ExpectedResult:       []string{"singleRtCfg/my.runtimeconfig.json"},
-		},
-		{
-			Name:                 "doesn't_find_recursively",
-			TestDataRelativePath: "nestedRtCfg",
-			ExpectedResult:       []string{},
-		},
-		{
-			Name:                 "finds_multiples_in_root_dir",
-			TestDataRelativePath: "multipleRtCfg",
-			ExpectedResult:       []string{"multipleRtCfg/my.runtimeconfig.json", "multipleRtCfg/my.second.runtimeconfig.json"},
-		},
-	}
+class PropertyGroup:
+    def __init__(self):
+        self.AssemblyName = ""
+        self.TargetFramework = ""
+        self.TargetFrameworks = ""
 
-	for _, tc := range testCases {
-		t.Run(tc.Name, func(t *testing.T) {
-			rootDir := testdata.MustGetPath("testdata/runtimeconfig")
-			tstDir := path.Join(rootDir, tc.TestDataRelativePath)
-			files, err := RuntimeConfigJSONFiles(tstDir)
-			if err != nil {
-				t.Fatalf("RuntimeConfigFiles(%v) got error: %v", tstDir, err)
-			}
-			// the test cases are written without the full path to make writing test cases easier
-			// prepend the tstDir to the relative paths to get the true expected result
-			fullPathExpectedResults := make([]string, 0, len(tc.ExpectedResult))
-			for _, val := range tc.ExpectedResult {
-				fullPathExpectedResults = append(fullPathExpectedResults, path.Join(rootDir, val))
-			}
-			if !cmp.Equal(files, fullPathExpectedResults, cmpopts.SortSlices(func(a, b string) bool { return a < b })) {
-				t.Errorf("RuntimeConfigFiles(%v) = %q, want %q", tstDir, files, fullPathExpectedResults)
-			}
-		})
-	}
-}
+class ItemGroup:
+    def __init__(self):
+        self.PackageReferences = []
 
-func TestReadRuntimeConfigJSON(t *testing.T) {
-	path := "testdata/runtimeconfig/singleRtCfg/my.runtimeconfig.json"
-	rtCfg, err := ReadRuntimeConfigJSON(testdata.MustGetPath(path))
-	if err != nil {
-		t.Fatalf("ReadRuntimeConfigJSON(%v) got error: %v", path, err)
-	}
-	expectedTFM := "netcoreapp3.1"
-	if rtCfg.RuntimeOptions.TFM != expectedTFM {
-		t.Errorf("unexpected tfm value: got %q, want %q", rtCfg.RuntimeOptions.TFM, expectedTFM)
-	}
-}
+class PackageReference:
+    def __init__(self):
+        self.Include = ""
+        self.Version = ""
 
-func TestGetSDKVersion(t *testing.T) {
-	testCases := []struct {
-		Name                 string
-		SDKVersionEnvVar     string
-		RuntimeVersionEnvVar string
-		ApplicationRoot      string
-		ExpectedResult       string
-		StackID              string
-		WantError            bool
-	}{
-		{
-			Name:                 "Should_read_from_GOOGLE_RUNTIME_VERSION",
-			RuntimeVersionEnvVar: "2.1.100",
-			ApplicationRoot:      "",
-			ExpectedResult:       "2.1.100",
-		},
-		{
-			Name:             "Should_read_from_GOOGLE_DOTNET_SDK_VERSION",
-			SDKVersionEnvVar: "2.1.100",
-			ApplicationRoot:  "",
-			ExpectedResult:   "2.1.100",
-		},
-		{
-			Name:                 "GOOGLE_DOTNET_SDK_VERSION_takes_precedence_over_GOOGLE_RUNTIME_VERSION",
-			SDKVersionEnvVar:     "2.1.100",
-			RuntimeVersionEnvVar: "3.1.100",
-			ApplicationRoot:      "",
-			ExpectedResult:       "2.1.100",
-		},
-		{
-			Name:                 "Env_var_should_take_precedence_over_global.json",
-			RuntimeVersionEnvVar: "2.1.100",
-			ApplicationRoot:      testdata.MustGetPath("testdata/"),
-			ExpectedResult:       "2.1.100",
-		},
-		{
-			Name:                 "Should_read_from_global.json",
-			RuntimeVersionEnvVar: "",
-			ApplicationRoot:      testdata.MustGetPath("testdata/"),
-			ExpectedResult:       "3.1.100",
-		},
-		{
-			Name:                 "Should_read_from_global.json",
-			RuntimeVersionEnvVar: "",
-			ApplicationRoot:      testdata.MustGetPath("testdata/"),
-			ExpectedResult:       "3.1.100",
-		},
-		{
-			Name:                 "Should_return_latest_version_available_for_ubuntu2204",
-			RuntimeVersionEnvVar: "",
-			ApplicationRoot:      "",
-			ExpectedResult:       "8.*.*",
-			StackID:              "google.22",
-		},
-		{
-			Name:                 "Should_error_out_for_ubuntu1804,_since_no_supported_version_on_that",
-			RuntimeVersionEnvVar: "",
-			ApplicationRoot:      "",
-			ExpectedResult:       "",
-			StackID:              "google.gae.18",
-			WantError:            true,
-		},
-		{
-			Name:                 "Will_pickup_ubuntu2404_by_default,_pick_up_latest_version",
-			RuntimeVersionEnvVar: "",
-			ApplicationRoot:      "",
-			ExpectedResult:       "10.*.*",
-		},
-	}
 
-	for _, tc := range testCases {
-		t.Run(tc.Name, func(t *testing.T) {
+def ReadProjectFile(
+    ctx: gcp.Context,
+    proj_path: str
+) -> Tuple[Project, Optional[Exception]]:
+    try:
+        with open(proj_path, 'r') as f:
+            content = f.read()
+        return read_project_file(content, proj_path)
+    except Exception as e:
+        return Project(), RuntimeError(f"Reading project file failed: {e}")
 
-			opts := []gcp.ContextOption{gcp.WithApplicationRoot(tc.ApplicationRoot)}
-			if tc.StackID != "" {
-				opts = append(opts, gcp.WithStackID(tc.StackID))
-			}
 
-			ctx := gcp.NewContext(opts...)
-			if tc.SDKVersionEnvVar != "" {
-				t.Setenv(envSdkVersion, tc.SDKVersionEnvVar)
-			}
-			if tc.RuntimeVersionEnvVar != "" {
-				t.Setenv(env.RuntimeVersion, tc.RuntimeVersionEnvVar)
-			}
+def read_project_file(
+    xml_content: str,
+    proj_path: str
+) -> Tuple[Project, Optional[Exception]]:
+    try:
+        root = ET.fromstring(xml_content)
+        project = Project()
+        
+        for pg_elem in root.findall('PropertyGroup'):
+            pg = PropertyGroup()
+            pg.AssemblyName = pg_elem.findtext('AssemblyName', '')
+            pg.TargetFramework = pg_elem.findtext('TargetFramework', '')
+            pg.TargetFrameworks = pg_elem.findtext('TargetFrameworks', '')
+            project.PropertyGroups.append(pg)
+            
+        for ig_elem in root.findall('ItemGroup'):
+            ig = ItemGroup()
+            for pr_elem in ig_elem.findall('PackageReference'):
+                pr = PackageReference()
+                pr.Include = pr_elem.get('Include', '')
+                pr.Version = pr_elem.get('Version', '')
+                ig.PackageReferences.append(pr)
+            project.ItemGroups.append(ig)
+            
+        return project, None
+    except Exception as e:
+        return Project(), gcp.UserError(f"Unmarshalling {proj_path}: {e}")
 
-			result, err := GetSDKVersion(ctx)
 
-			if tc.WantError {
-				if err == nil {
-					t.Fatalf("expected error, got nil")
-				}
-				return
-			}
+def BuildableDir() -> str:
+    buildable = os.getenv(env.Buildable)
+    if not buildable:
+        return "."
+    
+    if Path(buildable).suffix.lower() in ('.csproj', '.fsproj', '.vbproj'):
+        return os.path.dirname(buildable)
+    return buildable
 
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if tc.ExpectedResult != result {
-				t.Fatalf("result mismatch: got %q, want %q", result, tc.ExpectedResult)
-			}
-		})
-	}
-}
 
-func TestGetRuntimeVersion(t *testing.T) {
-	testCases := []struct {
-		Name            string
-		RtVersionEnvVar string
-		RtCfgSearchRoot string
-		ExpectedVersion string
-		ExpectError     bool
-		ExpectErrSubStr string
-	}{
-		{
-			Name:            "NoEnvVar_ReadFromRuntimeConfigJson",
-			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/singleRtCfg/"),
-			ExpectedVersion: "3.1.0",
-		},
-		{
-			Name:            "EnvVarPrecedenceOverRuntimeConfigJson",
-			RtVersionEnvVar: "6.0.5",
-			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/singleRtCfg/"),
-			ExpectedVersion: "6.0.5",
-		},
-		{
-			Name:            "NoRuntimeConfigJson_Fails",
-			RtCfgSearchRoot: testdata.MustGetPath("testdata/"),
-			ExpectError:     true,
-		},
-		{
-			Name:            "EnvVarSet_NoRuntimeConfigJson_Succeeds",
-			RtVersionEnvVar: "6.0.5",
-			RtCfgSearchRoot: testdata.MustGetPath("testdata/"),
-			ExpectedVersion: "6.0.5",
-		},
-		{
-			Name:            "MultipleRuntimeConfigJson_Fails",
-			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/multipleRtCfg"),
-			ExpectError:     true,
-		},
-		{
-			Name:            "EnvVarSet_MultipleRuntimeConfigJson_Succeeds",
-			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/multipleRtCfg"),
-			ExpectError:     true,
-		},
-		{
-			Name:            "NoEnvVar_NonAspRuntimeConfigJson_Fails",
-			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/nonAspRtCfg"),
-			ExpectError:     true,
-			ExpectErrSubStr: "when GOOGLE_ASP_NET_CORE_VERSION absent, getting version from runtimeconfig.json failed: couldn't find runtime version for framework Microsoft.AspNetCore.App",
-		},
-	}
+def RuntimeConfigJSONFiles(path_dir: str) -> Tuple[List[str], Optional[Exception]]:
+    try:
+        pattern = os.path.join(path_dir, "*runtimeconfig.json")
+        return glob.glob(pattern), None
+    except Exception as e:
+        return [], RuntimeError(f"Finding runtime config files failed: {e}")
 
-	for _, tc := range testCases {
-		t.Run(tc.Name, func(t *testing.T) {
-			ctx := gcp.NewContext()
-			if tc.RtVersionEnvVar != "" {
-				t.Setenv(EnvRuntimeVersion, tc.RtVersionEnvVar)
-			}
-			runtimeVersion, err := GetRuntimeVersion(ctx, tc.RtCfgSearchRoot)
 
-			if tc.ExpectError == true {
-				if err == nil {
-					t.Fatalf("%s: got no error and expected error", tc.Name)
-				} else {
-					if tc.ExpectErrSubStr != "" && !strings.Contains(err.Error(), tc.ExpectErrSubStr) {
-						t.Fatalf("got error message %s and expected substring in error %s", err.Error(), tc.ExpectErrSubStr)
-					}
-					return
-				}
-			}
-			if err != nil {
-				t.Fatalf("GetRuntimeVersion(ctx, %v) got unexpected error: %v",
-					tc.RtCfgSearchRoot, err)
-			}
-			if tc.ExpectedVersion != runtimeVersion {
-				t.Errorf("GetRuntimeVersion(ctx, %v) = %v, want %v",
-					tc.RtCfgSearchRoot, runtimeVersion, tc.ExpectedVersion)
-			}
-		})
-	}
-}
+class RuntimeConfigJSON:
+    def __init__(self):
+        self.RuntimeOptions = runtimeOptions()
 
-func TestRequiresGlobalizationInvariant(t *testing.T) {
-	testCases := []struct {
-		Stack string
-		Want  bool
-	}{
-		{
-			Stack: googleMin22,
-			Want:  true,
-		},
-		{
-			Stack: "google.gae.22",
-			Want:  false,
-		},
-	}
+class runtimeOptions:
+    def __init__(self):
+        self.TFM = ""
+        self.Framework = framework()
+        self.Frameworks = []
+        self.ConfigProperties = configProperties()
 
-	for _, tc := range testCases {
-		t.Run(tc.Stack, func(t *testing.T) {
-			buildCtx := libcnb.BuildContext{
-				StackID: tc.Stack,
-			}
-			ctx := gcp.NewContext(gcp.WithBuildContext(buildCtx))
+class framework:
+    def __init__(self):
+        self.Name = ""
+        self.Version = ""
 
-			got := RequiresGlobalizationInvariant(ctx)
-			if got != tc.Want {
-				t.Errorf("RequiresGlobalizationInvariant(ctx) = %t, want %t", got, tc.Want)
-			}
-		})
-	}
-}
+class configProperties:
+    def __init__(self):
+        self.SystemGCServer = False
 
-func TestAssemblyName(t *testing.T) {
-	tcs := []struct {
-		name string
-		want string
-		err  bool
-		data string
-	}{
-		{
-			name: "no AssemblyName fields",
-			err:  true,
-			data: `<Project Sdk="Microsoft.NET.Sdk.Web">
 
-	</Project>`,
-		},
-		{
-			name: "one AssemblyName field",
-			want: "MyApp",
-			err:  false,
-			data: `<Project Sdk="Microsoft.NET.Sdk.Web">
+def ReadRuntimeConfigJSON(path_file: str) -> Tuple[Optional[RuntimeConfigJSON], Optional[Exception]]:
+    try:
+        with open(path_file, 'r') as f:
+            data = json.load(f)
+        runtime_cfg = RuntimeConfigJSON()
+        runtime_cfg.RuntimeOptions.TFM = data.get('runtimeOptions', {}).get('tfm', '')
+        
+        if 'framework' in data['runtimeOptions']:
+            fw = framework()
+            fw.Name = data['runtimeOptions']['framework'].get('name', '')
+            fw.Version = data['runtimeOptions']['framework'].get('version', '')
+            runtime_cfg.RuntimeOptions.Framework = fw
+        
+        for fwm in data['runtimeOptions'].get('frameworks', []):
+            fw = framework()
+            fw.Name = fwm.get('name', '')
+            fw.Version = fwm.get('version', '')
+            runtime_cfg.RuntimeOptions.Frameworks.append(fw)
+            
+        cp = configProperties()
+        cp.SystemGCServer = data['runtimeOptions']['configProperties'].get('System.GC.Server', False)
+        runtime_cfg.RuntimeOptions.ConfigProperties = cp
+        
+        return runtime_cfg, None
+    except Exception as e:
+        return None, RuntimeError(f"Reading {path_file} failed: {e}")
 
-		<PropertyGroup>
-			<AssemblyName>MyApp</AssemblyName>
-		</PropertyGroup>
 
-	</Project>`,
-		},
-		{
-			name: "two AssemblyName fields",
-			want: "",
-			err:  true,
-			data: `<Project Sdk="Microsoft.NET.Sdk.Web">
+def GetSDKVersion(ctx: gcp.Context) -> Tuple[str, Optional[Exception]]:
+    version = os.getenv(env_sdk_version)
+    if version:
+        ctx.Log(f"Using .NET Core SDK version from {env_sdk_version}: {version}")
+        return version, None
 
-		<PropertyGroup>
-			<AssemblyName>MyApp</AssemblyName>
-		</PropertyGroup>
+    version = os.getenv(env.RuntimeVersion)
+    if version:
+        ctx.Log(f"Using .NET Core SDK version from {env.RuntimeVersion}: {version}")
+        return version, None
 
-		<PropertyGroup>
-			<AssemblyName>Oopsie</AssemblyName>
-		</PropertyGroup>
+    global_json = GetGlobalJSON(ctx.ApplicationRoot())
+    if global_json and global_json.Sdk.Version:
+        ctx.Log(f"Using .NET Core SDK version from global.json: {global_json.Sdk.Version}")
+        return global_json.Sdk.Version, None
 
-	</Project>`,
-		},
-		{
-			name: "malformed xml",
-			want: "",
-			err:  true,
-			data: `<Project Sdk="Microsoft.NET.Sdk.Web">
+    os_name = runtime.OSForStack(ctx)
+    version = latest_dotnet_sdk_version_per_stack.get(os_name)
+    if not version:
+        return "", gcp.UserError(f"Invalid stack for .NET runtime: {os_name}. Please use a supported stack")
+    
+    ctx.Log(f".NET SDK version not specified, using the latest available .NET SDK for the stack {os_name}")
+    return version, None
 
-		<PropertyGroup>
 
-	</Project>`,
-		},
-	}
-	for _, tc := range tcs {
-		ctx := gcp.NewContext()
-		t.Run(tc.name, func(t *testing.T) {
-			tmpDir, err := ioutil.TempDir("", "dotnettest")
-			if err != nil {
-				t.Fatalf("creating temp dir: %v", err)
-			}
-			defer os.RemoveAll(tmpDir)
+def GetGlobalJSON(application_root: str) -> Optional[globalJSON]:
+    global_json_path = os.path.join(application_root, "global.json")
+    if not os.path.exists(global_json_path):
+        return None
+    
+    try:
+        with open(global_json_path, 'r') as f:
+            data = json.load(f)
+        sdk_version = data.get('sdk', {}).get('version', '')
+        return globalJSON(Sdk=SDKVersion(version=sdk_version)) if sdk_version else None
+    except Exception as e:
+        return None
 
-			filename := filepath.Join(tmpDir, "app.csproj")
-			if err = ioutil.WriteFile(filename, []byte(tc.data), 0644); err != nil {
-				t.Fatalf("writing project file: %v", err)
-			}
 
-			v, err := AssemblyName(ctx, filename)
-			if err != nil {
-				if !tc.err {
-					t.Errorf("got no error, want an error")
-				}
-				return
-			}
-			if v != tc.want {
-				t.Errorf("got %s, want %s", v, tc.want)
-			}
-		})
-	}
-}
+class SDKVersion:
+    def __init__(self, version: str):
+        self.Version = version
 
-func TestEntrypointCmd(t *testing.T) {
-	d, err := ioutil.TempDir("", "test-entrypoint-cmd")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(d)
+class globalJSON:
+    def __init__(self, Sdk: SDKVersion):
+        self.Sdk = Sdk
 
-	ctx := gcp.NewContext(gcp.WithApplicationRoot(d))
-	ep := filepath.Join(d, "bin", "app")
-	if err := os.MkdirAll(filepath.Dir(ep), 0755); err != nil {
-		t.Fatalf("Failed to create bin dir: %v", err)
-	}
-	if err := ioutil.WriteFile(ep+".dll", []byte("dll"), 0644); err != nil {
-		t.Fatalf("Failed to write dll: %v", err)
-	}
 
-	got, err := EntrypointCmd(ctx, ep)
-	if err != nil {
-		t.Fatalf("EntrypointCmd got unexpected error: %v", err)
-	}
-	want := "exec dotnet bin/app.dll"
-	if got != want {
-		t.Errorf("EntrypointCmd = %q, want %q", got, want)
-	}
-}
+def FindProjectFile(ctx: gcp.Context) -> Tuple[str, Optional[Exception]]:
+    proj = os.getenv(env.Buildable)
+    if not proj:
+        proj = "."
+    
+    try:
+        if os.path.isdir(proj):
+            project_files, err = ProjectFiles(ctx, proj)
+            if err is not None:
+                return "", RuntimeError(f"Finding project files failed: {err}")
+            
+            if len(project_files) != 1:
+                return "", gcp.UserError(f"Expected exactly one project file in directory {proj}, found {project_files}")
+                
+            proj = project_files[0]
+        return proj, None
+    except Exception as e:
+        return "", RuntimeError(f"Finding project file failed: {e}")
 
-func TestEntrypoint(t *testing.T) {
-	tcs := []struct {
-		name string
-		exe  string
-		proj string
-		data string
-		want string
-	}{
-		{
-			name: "dll from project file",
-			exe:  "myapp.dll",
-			proj: "myapp.proj",
-			want: "cd {{.Tmp}} && exec dotnet myapp.dll",
-		},
-		{
-			name: "dll from project file with dots",
-			exe:  "my.app.dll",
-			proj: "my.app.proj",
-			want: "cd {{.Tmp}} && exec dotnet my.app.dll",
-		},
-		{
-			name: "exe from assembly name",
-			exe:  "customapp.dll",
-			proj: "myapp.proj",
-			data: `<Project Sdk="Microsoft.NET.Sdk.Web">
 
-		<PropertyGroup>
-			<AssemblyName>customapp</AssemblyName>
-		</PropertyGroup>
+def GetRuntimeVersion(
+    ctx: gcp.Context,
+    dir_path: str
+) -> Tuple[str, Optional[Exception]]:
+    env_version = os.getenv(EnvRuntimeVersion)
+    if env_version:
+        ctx.Log(f"Determined runtime version from {EnvRuntimeVersion}: {env_version}")
+        return env_version, None
 
-	</Project>`,
-			want: "cd {{.Tmp}} && exec dotnet customapp.dll",
-		},
-		{
-			name: "dll from assembly name",
-			exe:  "customapp.dll",
-			proj: "myapp.proj",
-			data: `<Project Sdk="Microsoft.NET.Sdk.Web">
+    rt_cfg_version, rt_cfg_file, err = GetRuntimeVersionFromRtCfgDir(ctx, dir_path)
+    if err is not None:
+        return "", RuntimeError(f"{EnvRuntimeVersion} was not set; getting version from runtimeconfig.json failed: {err}")
+    
+    ctx.Log(f"Determined runtime version from {rt_cfg_file}: {rt_cfg_version}")
+    return rt_cfg_version, None
 
-		<PropertyGroup>
-			<AssemblyName>customapp</AssemblyName>
-		</PropertyGroup>
 
-	</Project>`,
-			want: "cd {{.Tmp}} && exec dotnet customapp.dll",
-		},
-	}
+def GetRuntimeVersionFromRtCfgDir(
+    ctx: gcp.Context,
+    dir_path: str
+) -> Tuple[str, str, Optional[Exception]]:
+    rt_cfg_files, err = RuntimeConfigJSONFiles(dir_path)
+    if err is not None:
+        return "", "", RuntimeError(f"Finding runtimeconfig.json failed: {err}")
+    
+    if len(rt_cfg_files) > 1:
+        return "", "", RuntimeError(f"More than one runtimeconfig.json file found: {rt_cfg_files}")
+    
+    if not rt_cfg_files:
+        return "", "", RuntimeError("No runtimeconfig.json file was found")
+    
+    ctx.Log(f"Found runtimeconfig file {rt_cfg_files[0]}")
 
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			ctx := gcp.NewContext()
+    runtime_cfg, err = ReadRuntimeConfigJSON(rt_cfg_files[0])
+    if err is not None:
+        return "", rt_cfg_files[0], RuntimeError(f"Reading runtimeconfig.json failed: {err}")
 
-			tmpDir, err := ioutil.TempDir("", "dotnettest")
-			if err != nil {
-				t.Fatalf("creating temp dir: %v", err)
-			}
-			defer func() {
-				if err := os.RemoveAll(tmpDir); err != nil {
-					t.Fatalf("removing temp dir: %v", err)
-				}
-			}()
+    version = ""
+    if runtime_cfg.RuntimeOptions.Framework.Name == asp_dotnet_core:
+        version = runtime_cfg.RuntimeOptions.Framework.Version
+    else:
+        for fw in runtime_cfg.RuntimeOptions.Frameworks:
+            if fw.Name == asp_dotnet_core:
+                version = fw.Version
+                break
+    
+    if not version:
+        return "", rt_cfg_files[0], RuntimeError(f"Couldn't find runtime version for framework {asp_dotnet_core} from runtimeconfig.json")
+    
+    return version, rt_cfg_files[0], None
 
-			// Write the expected exe file.
-			exe := filepath.Join(tmpDir, tc.exe)
-			if err = ioutil.WriteFile(exe, []byte(""), 0644); err != nil {
-				t.Fatalf("writing exe file: %v", err)
-			}
 
-			// Write the project file.
-			proj := filepath.Join(tmpDir, tc.proj)
-			if err = ioutil.WriteFile(proj, []byte(tc.data), 0644); err != nil {
-				t.Fatalf("writing proj file: %v", err)
-			}
-
-			ep, err := Entrypoint(ctx, tmpDir, proj)
-			if err != nil {
-				t.Fatalf("getting entrypoint: %v", err)
-			}
-
-			tmpl, err := template.New("want").Parse(tc.want)
-			if err != nil {
-				t.Fatalf("executing template: %v", err)
-			}
-
-			var buf bytes.Buffer
-			if err = tmpl.Execute(&buf, struct{ Tmp string }{tmpDir}); err != nil {
-				t.Fatalf("executing template: %v", err)
-			}
-
-			if want := buf.String(); ep != want {
-				t.Errorf("got %s, want %s", ep, want)
-			}
-		})
-	}
-}
-
-func TestDeleteFolder(t *testing.T) {
-	testCases := []struct {
-		name         string
-		toDelete     string
-		createFolder string
-		createFiles  []string
-		want         bool
-	}{
-		{
-			name:     "target doesn't exist",
-			toDelete: "bin",
-			want:     false,
-		},
-		{
-			name:        "bin file",
-			toDelete:    "bin",
-			createFiles: []string{"bin"},
-			want:        true,
-		},
-		{
-			name:         "empty folder",
-			toDelete:     "bin",
-			createFolder: "bin",
-			want:         true,
-		},
-		{
-			name:         "non-empty folder",
-			toDelete:     "bin",
-			createFolder: "bin",
-			createFiles:  []string{"bin/a", "bin/b"},
-			want:         true,
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			dir := t.TempDir()
-
-			if tc.createFolder != "" {
-				if err := os.MkdirAll(filepath.Join(dir, tc.createFolder), os.ModePerm); err != nil {
-					t.Fatalf("error making %v dir: %v", tc.createFolder, err)
-				}
-			}
-
-			for _, f := range tc.createFiles {
-				if _, err := os.Create(filepath.Join(dir, f)); err != nil {
-					t.Fatalf("error creating %v: %v", f, err)
-				}
-			}
-
-			deleted, err := deleteFolder(gcp.NewContext(gcp.WithApplicationRoot(dir)), filepath.Join(dir, tc.toDelete))
-			if err != nil {
-				t.Fatalf("an error occurred, but none was expected: %v", err)
-			}
-			if tc.want != deleted {
-				t.Errorf("got %v, want %v", deleted, tc.want)
-			}
-		})
-	}
-}
+def RequiresGlobalizationInvariant(ctx: gcp.Context) -> bool:
+    return ctx.StackID() == google_min_22

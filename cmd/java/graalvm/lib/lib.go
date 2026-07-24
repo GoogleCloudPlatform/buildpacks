@@ -1,103 +1,94 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import logging
+from pathlib import Path
+import os
+from typing import Dict, Any
 
-// Implements Java GraalVM Native Image buildpack.
-// This buildpack installs the GraalVM compiler into a layer and builds a native image of the Java application.
-package lib
-
-import (
-	"fmt"
-	"path/filepath"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpacks/libcnb/v2"
+import google_cloud_platform.buildpacks.gcp_buildpack as gcp
+from google_cloud_platform.buildpacks.gcp_buildpack.types import (
+    BuildPlanProvide,
+    DetectResult,
 )
+from google_cloud_platform.buildpacks.env import is_using_native_image
 
-const (
-	// TODO(mpeddada): Upgrade the GraalVM version. The version has currently been
-	// downgraded from 21.1.0 as building a native image for a standard GCF
-	// workflow by calling `native-image -cp ...` was resulting in a parsing error.
-	graalvmVersion = "21.0.0"
-	graalvmURL     = "https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-%[1]s/graalvm-ce-java11-linux-amd64-%[1]s.tar.gz"
-	layerName      = "java-graalvm"
-	versionKey     = "version"
-)
+logger = logging.getLogger(__name__)
 
-var (
-	providesGraalvm = []libcnb.BuildPlanProvide{{Name: "graalvm"}}
-	planProvides    = libcnb.BuildPlan{Provides: providesGraalvm}
-)
+# Constants
+GRAALVM_VERSION = "21.0.0"
+GRAALVM_URL_TEMPLATE = "https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-{version}/graalvm-ce-java11-linux-amd64-{version}.tar.gz"
+LAYER_NAME = "java-graalvm"
+VERSION_KEY = "version"
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	useNativeImage, err := env.IsUsingNativeImage()
-	if err != nil {
-		return nil, gcp.UserErrorf("failed to parse GOOGLE_JAVA_USE_NATIVE_IMAGE: %v", err)
-	}
+# Provides
+PROVIDES_GRAALVM = [BuildPlanProvide(name="graalvm")]
+PLAN_PROVIDES = BuildPlan(Provides=PROVIDES_GRAALVM)
 
-	if useNativeImage {
-		ctx.Warnf("The GraalVM Native Image buildpack is enabled. Note: This is under development and not ready for use.")
-		return gcp.OptInEnvSet(env.UseNativeImage, gcp.WithBuildPlans(planProvides)), nil
-	}
+def detect_fn(context: gcp.Context) -> DetectResult:
+    """Detect whether to opt-in or opt-out of the buildpack."""
+    try:
+        use_native_image, _ = is_using_native_image()
+    except Exception as e:
+        logger.error(f"Failed to parse GOOGLE_JAVA_USE_NATIVE_IMAGE: {e}")
+        raise ValueError(f"failed to parse GOOGLE_JAVA_USE_NATIVE_IMAGE: {e}") from e
 
-	return gcp.OptOutEnvNotSet(env.UseNativeImage), nil
-}
+    if use_native_image:
+        logger.warning("The GraalVM Native Image buildpack is enabled. Note: This is under development and not ready for use.")
+        return gcp.OptInEnvSet(GOOGLE_JAVA_USE_NATIVE_IMAGE, plan_provides=PLAN_PROVIDES)
+    
+    return gcp.OptOutEnvNotSet(GOOGLE_JAVA_USE_NATIVE_IMAGE)
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	if err := installGraalVM(ctx); err != nil {
-		return err
-	}
+def build_fn(context: gcp.Context) -> None:
+    """Build function that installs GraalVM and builds the native image."""
+    install_graalvm(context)
 
-	return nil
-}
+class LayerContext:
+    def __init__(self, layer_name: str):
+        self.layer_name = layer_name
+        self.metadata_path = os.path.join(layer_name, "metadata.json")
 
-func installGraalVM(ctx *gcp.Context) error {
-	graalLayer, err := ctx.Layer(layerName, gcp.CacheLayer, gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", graalLayer, err)
-	}
+    def get_metadata(self) -> Dict[str, Any]:
+        """Get metadata from the layer."""
+        if not os.path.exists(self.metadata_path):
+            return {}
+        with open(self.metadata_path, 'r') as f:
+            return json.load(f)
 
-	metaVersion := ctx.GetMetadata(graalLayer, versionKey)
-	if graalvmVersion == metaVersion {
-		ctx.CacheHit(layerName)
-		ctx.Logf("GraalVM cache hit, skipping installation.")
-		return nil
-	}
+    def set_metadata(self, key: str, value: Any) -> None:
+        """Set metadata for the layer."""
+        current = self.get_metadata()
+        current[key] = value
+        os.makedirs(os.path.dirname(self.metadata_path), exist_ok=True)
+        with open(self.metadata_path, 'w') as f:
+            json.dump(current, f)
 
-	ctx.CacheMiss(layerName)
-	if err := ctx.ClearLayer(graalLayer); err != nil {
-		return fmt.Errorf("clearing layer %q: %w", graalLayer.Name, err)
-	}
+    def exec_command(self, command: str, user_attribution: bool = False) -> None:
+        """Execute a shell command within the context."""
+        logger.info(f"Executing command: {command}")
+        subprocess.run(command, shell=True, check=True)
 
-	// Install graalvm into layer.
-	archiveURL := fmt.Sprintf(graalvmURL, graalvmVersion)
-	command := fmt.Sprintf(
-		"curl --fail --show-error --silent --location %s "+
-			"| tar xz --directory %s --strip-components=1", archiveURL, graalLayer.Path)
-	if _, err := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
-		return err
-	}
+def install_graalvm(context: gcp.Context) -> None:
+    """Install GraalVM into the specified layer."""
+    try:
+        graal_layer = context.Layer(LAYER_NAME)
+    except Exception as e:
+        logger.error(f"Failed to create {LAYER_NAME} layer: {e}")
+        raise
 
-	// Install native-image component
-	graalUpdater := filepath.Join(graalLayer.Path, "bin", "gu")
-	_, err = ctx.Exec([]string{graalUpdater, "install", "native-image"}, gcp.WithUserAttribution)
-	if err != nil {
-		return err
-	}
+    metadata = graal_layer.get_metadata()
+    if metadata.get(VERSION_KEY) == GRAALVM_VERSION:
+        logger.info("GraalVM cache hit, skipping installation.")
+        return
 
-	ctx.SetMetadata(graalLayer, versionKey, graalvmVersion)
-	return nil
-}
+    graal_layer.clear_layer()
+
+    # Download and extract GraalVM
+    archive_url = GRAALVM_URL_TEMPLATE.format(version=GRAALVM_VERSION)
+    download_command = f"curl --fail --show-error --silent --location {archive_url} | tar xz --directory {graal_layer.path} --strip-components=1"
+    graal_layer.exec_command(download_command)
+
+    # Install native-image component
+    graalUpdater = os.path.join(graal_layer.path, "bin", "gu")
+    install_command = f"{graalUpdater} install native-image"
+    graal_layer.exec_command(install_command)
+
+    # Update metadata
+    graal_layer.set_metadata(VERSION_KEY, GRAALVM_VERSION)

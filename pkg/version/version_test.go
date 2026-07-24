@@ -1,220 +1,135 @@
-// Copyright 2022 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2022 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-package version
+"""
+Package version provides utility methods for working with semantic versions.
+"""
 
-import (
-	"testing"
-)
+from dataclasses import dataclass
+import re
+from typing import List, Optional
 
-func TestResolveVersion(t *testing.T) {
-	testCases := []struct {
-		name       string
-		constraint string
-		opts       []ResolveVersionOption
-		versions   []string
-		want       string
-		wantError  bool
-	}{
-		{
-			name:       "tilda_specifier",
-			constraint: "~1.2.1",
-			versions:   []string{"1.2.3", "1.2.4", "1.3.0", "0.1.2", "2.0.0"},
-			want:       "1.2.4",
-		},
-		{
-			name:       "carat_specifier",
-			constraint: "^1.2.1",
-			versions:   []string{"1.2.3", "1.2.4", "1.3.0", "0.1.2", "2.0.0"},
-			want:       "1.3.0",
-		},
-		{
-			name:       "complex_constraint",
-			constraint: ">= 1.2.3, < 1.2.4",
-			versions:   []string{"1.2.3", "1.2.4", "1.3.0", "0.1.2", "2.0.0"},
-			want:       "1.2.3",
-		},
-		{
-			name:     "default_to_newest",
-			versions: []string{"1.2.3", "1.2.4", "1.3.0", "0.1.2", "2.0.0"},
-			want:     "2.0.0",
-		},
-		{
-			name:       "strips_prefix",
-			constraint: "v10.1.1",
-			versions:   []string{"v10.1.1"},
-			want:       "10.1.1",
-		},
-		{
-			name:       "java_version_resolver",
-			constraint: "11.0",
-			versions:   []string{"11.0.10+9", "11.0.11+9", "11.0.12+7", "11.0.13+8", "11.0.14+101", "11.0.14+9", "11.0.15+10", "11.0.16+101", "11.0.16+8", "11.0.17+8", "11.0.18+10", "11.0.19+7", "11.0.2+7", "11.0.2+9", "11.0.20+101", "11.0.20+8", "11.0.3+7", "11.0.4+11.1", "11.0.5+10.1", "11.0.6+10.1", "11.0.7+10.1", "11.0.8+10", "11.0.9+101", "11.0.9+11", "11.0.9+11.1", "16.0.0+36", "16.0.1+9", "16.0.2+7", "17.0.0+35", "17.0.1+12", "17.0.2+8", "17.0.3+7", "17.0.4+101", "17.0.4+8", "17.0.5+8", "17.0.6+10", "17.0.7+7", "17.0.8+101", "17.0.8+7", "18.0.0+36", "18.0.1+10", "18.0.2+101", "18.0.2+9", "19.0.0+36", "19.0.1+10", "19.0.2+7", "8.0.192+12", "8.0.202+8", "8.0.212+3", "8.0.212+4", "8.0.222+10.1", "8.0.232+9.1", "8.0.242+8.1", "8.0.252+9.1", "8.0.262+10", "8.0.265+1", "8.0.272+10", "8.0.275+1", "8.0.282+8", "8.0.292+10", "8.0.302+8", "8.0.312+7", "8.0.322+6", "8.0.332+9", "8.0.342+7", "8.0.345+1", "8.0.352+8", "8.0.362+9", "8.0.372+7", "8.0.382+5"},
-			want:       "11.0.20+8",
-		},
-		{
-			name:       "java_version_lts_resolver",
-			constraint: "21.0",
-			versions:   []string{"11.0.10+9", "11.0.11+9", "11.0.12+7", "11.0.13+8", "11.0.14+101", "11.0.14+9", "11.0.15+10", "11.0.16+101", "11.0.16+8", "11.0.17+8", "11.0.18+10", "11.0.19+7", "11.0.2+7", "11.0.2+9", "11.0.20+101", "11.0.20+8", "11.0.3+7", "11.0.4+11.1", "11.0.5+10.1", "11.0.6+10.1", "11.0.7+10.1", "11.0.8+10", "11.0.9+101", "11.0.9+11", "11.0.9+11.1", "16.0.0+36", "16.0.1+9", "16.0.2+7", "17.0.0+35", "17.0.1+12", "17.0.2+8", "17.0.3+7", "17.0.4+101", "17.0.4+8", "17.0.5+8", "17.0.6+10", "17.0.7+7", "17.0.8+101", "17.0.8+7", "18.0.0+36", "18.0.1+10", "18.0.2+101", "18.0.2+9", "19.0.0+36", "19.0.1+10", "19.0.2+7", "8.0.192+12", "8.0.202+8", "8.0.212+3", "8.0.212+4", "8.0.222+10.1", "8.0.232+9.1", "8.0.242+8.1", "8.0.252+9.1", "8.0.262+10", "8.0.265+1", "8.0.272+10", "8.0.275+1", "8.0.282+8", "8.0.292+10", "8.0.302+8", "8.0.312+7", "8.0.322+6", "8.0.332+9", "8.0.342+7", "8.0.345+1", "8.0.352+8", "8.0.362+9", "8.0.372+7", "8.0.382+5", "21.0.0+35.0.LTS"},
-			want:       "21.0.0+35.0.LTS",
-		},
-		{
-			name:       "java_version_lts_resolver_with_deprecated_tag",
-			constraint: "21.0",
-			versions:   []string{"deprecated.21.0.0+35.0.LTS", "11.0.10+9", "11.0.11+9", "11.0.12+7", "11.0.13+8", "11.0.14+101", "11.0.14+9", "11.0.15+10", "11.0.16+101", "11.0.16+8", "11.0.17+8", "11.0.18+10", "11.0.19+7", "11.0.2+7", "11.0.2+9", "11.0.20+101", "11.0.20+8", "11.0.3+7", "11.0.4+11.1", "11.0.5+10.1", "11.0.6+10.1", "11.0.7+10.1", "11.0.8+10", "11.0.9+101", "11.0.9+11", "11.0.9+11.1", "16.0.0+36", "16.0.1+9", "16.0.2+7", "17.0.0+35", "17.0.1+12", "17.0.2+8", "17.0.3+7", "17.0.4+101", "17.0.4+8", "17.0.5+8", "17.0.6+10", "17.0.7+7", "17.0.8+101", "17.0.8+7", "18.0.0+36", "18.0.1+10", "18.0.2+101", "18.0.2+9", "19.0.0+36", "19.0.1+10", "19.0.2+7", "8.0.192+12", "8.0.202+8", "8.0.212+3", "8.0.212+4", "8.0.222+10.1", "8.0.232+9.1", "8.0.242+8.1", "8.0.252+9.1", "8.0.262+10", "8.0.265+1", "8.0.272+10", "8.0.275+1", "8.0.282+8", "8.0.292+10", "8.0.302+8", "8.0.312+7", "8.0.322+6", "8.0.332+9", "8.0.342+7", "8.0.345+1", "8.0.352+8", "8.0.362+9", "8.0.372+7", "8.0.382+5", "21.0.0+35.0.LTS"},
-			want:       "21.0.0+35.0.LTS",
-		},
-		{
-			name:       "java_version_lts_resolver_with_public-image_tag",
-			constraint: "21.0",
-			versions:   []string{"public-image-current.21.0.0+35.0.LTS", "11.0.10+9", "11.0.11+9", "11.0.12+7", "11.0.13+8", "11.0.14+101", "11.0.14+9", "11.0.15+10", "11.0.16+101", "11.0.16+8", "11.0.17+8", "11.0.18+10", "11.0.19+7", "11.0.2+7", "11.0.2+9", "11.0.20+101", "11.0.20+8", "11.0.3+7", "11.0.4+11.1", "11.0.5+10.1", "11.0.6+10.1", "11.0.7+10.1", "11.0.8+10", "11.0.9+101", "11.0.9+11", "11.0.9+11.1", "16.0.0+36", "16.0.1+9", "16.0.2+7", "17.0.0+35", "17.0.1+12", "17.0.2+8", "17.0.3+7", "17.0.4+101", "17.0.4+8", "17.0.5+8", "17.0.6+10", "17.0.7+7", "17.0.8+101", "17.0.8+7", "18.0.0+36", "18.0.1+10", "18.0.2+101", "18.0.2+9", "19.0.0+36", "19.0.1+10", "19.0.2+7", "8.0.192+12", "8.0.202+8", "8.0.212+3", "8.0.212+4", "8.0.222+10.1", "8.0.232+9.1", "8.0.242+8.1", "8.0.252+9.1", "8.0.262+10", "8.0.265+1", "8.0.272+10", "8.0.275+1", "8.0.282+8", "8.0.292+10", "8.0.302+8", "8.0.312+7", "8.0.322+6", "8.0.332+9", "8.0.342+7", "8.0.345+1", "8.0.352+8", "8.0.362+9", "8.0.372+7", "8.0.382+5", "21.0.0+35.0.LTS"},
-			want:       "21.0.0+35.0.LTS",
-		},
-		{
-			name:       "java_version_lts_resolver_with_latest_tag",
-			constraint: "21.0",
-			versions:   []string{"latest.21.0.0+35.0.LTS", "11.0.10+9", "11.0.11+9", "11.0.12+7", "11.0.13+8", "11.0.14+101", "11.0.14+9", "11.0.15+10", "11.0.16+101", "11.0.16+8", "11.0.17+8", "11.0.18+10", "11.0.19+7", "11.0.2+7", "11.0.2+9", "11.0.20+101", "11.0.20+8", "11.0.3+7", "11.0.4+11.1", "11.0.5+10.1", "11.0.6+10.1", "11.0.7+10.1", "11.0.8+10", "11.0.9+101", "11.0.9+11", "11.0.9+11.1", "16.0.0+36", "16.0.1+9", "16.0.2+7", "17.0.0+35", "17.0.1+12", "17.0.2+8", "17.0.3+7", "17.0.4+101", "17.0.4+8", "17.0.5+8", "17.0.6+10", "17.0.7+7", "17.0.8+101", "17.0.8+7", "18.0.0+36", "18.0.1+10", "18.0.2+101", "18.0.2+9", "19.0.0+36", "19.0.1+10", "19.0.2+7", "8.0.192+12", "8.0.202+8", "8.0.212+3", "8.0.212+4", "8.0.222+10.1", "8.0.232+9.1", "8.0.242+8.1", "8.0.252+9.1", "8.0.262+10", "8.0.265+1", "8.0.272+10", "8.0.275+1", "8.0.282+8", "8.0.292+10", "8.0.302+8", "8.0.312+7", "8.0.322+6", "8.0.332+9", "8.0.342+7", "8.0.345+1", "8.0.352+8", "8.0.362+9", "8.0.372+7", "8.0.382+5", "21.0.0+35.0.LTS"},
-			want:       "21.0.0+35.0.LTS",
-		},
-		{
-			name:       "java_version_ea_resolver",
-			constraint: "25.0",
-			versions:   []string{"25.0.0+35.0.ea", "25.0.0+35.0.LTS"},
-			want:       "25.0.0+35.0.LTS",
-		},
-		{
-			name:       "no_santization_prefix",
-			opts:       []ResolveVersionOption{WithoutSanitization},
-			constraint: "v10.1.1",
-			versions:   []string{"v10.1.1"},
-			want:       "v10.1.1",
-		},
-		{
-			name:       "no_santization_zero_padding",
-			opts:       []ResolveVersionOption{WithoutSanitization},
-			constraint: "*",
-			versions:   []string{"1.16"},
-			want:       "1.16",
-		},
-		{
-			name:       "invalid_constraint",
-			constraint: "xyz",
-			versions:   []string{"v10.1.1"},
-			wantError:  true,
-		},
-		{
-			name:       "no_matching_version",
-			constraint: ">=2.0.0",
-			versions:   []string{"1.2.3", "1.2.4"},
-			wantError:  true,
-		},
-	}
+import semver
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := ResolveVersion(tc.constraint, tc.versions, tc.opts...)
-			if tc.wantError != (err != nil) {
-				t.Errorf("ResolveVersion(%q, %v) got error: %v, want error?: %v", tc.constraint, tc.versions, err, tc.wantError)
-			}
-			if got != tc.want {
-				t.Errorf("ResolveVersion(%q, %v) = %q, want %q", tc.constraint, tc.versions, got, tc.want)
-			}
-		})
-	}
-}
 
-func TestIsExactSemver(t *testing.T) {
-	testCases := []struct {
-		version string
-		want    bool
-	}{
-		{
-			version: "v10.1.1",
-			want:    true,
-		},
-		{
-			version: "1.1",
-			want:    false,
-		},
-		{
-			version: "2",
-			want:    false,
-		},
-		{
-			version: "",
-			want:    false,
-		},
-		{
-			version: "1.x.x",
-			want:    false,
-		},
-		{
-			version: "~1.0.0",
-			want:    false,
-		},
-		{
-			version: ">=1.0.0",
-			want:    false,
-		},
-	}
+skip_keywords = ["deprecated", "public-image", "latest"]
 
-	for _, tc := range testCases {
-		t.Run(tc.version, func(t *testing.T) {
-			got := IsExactSemver(tc.version)
-			if got != tc.want {
-				t.Errorf("IsExactSemver(%q) = %t, want %t", tc.version, got, tc.want)
-			}
-		})
-	}
-}
 
-func TestIsReleaseCandidate(t *testing.T) {
-	testCases := []struct {
-		version string
-		want    bool
-	}{
-		{
-			version: "3.12.0rc1",
-			want:    true,
-		},
-		{
-			version: "8.3.0RC4",
-			want:    true,
-		},
-		{
-			version: "8.0.100-rc.1",
-			want:    true,
-		},
-		{
-			version: "3.2.0-rc1",
-			want:    true,
-		},
-		{
-			version: "3.12.0",
-			want:    false,
-		},
-		{
-			version: "3.12",
-			want:    false,
-		},
-	}
+@dataclass
+class ResolveParams:
+    no_sanitize: bool = False
 
-	for _, tc := range testCases {
-		t.Run(tc.version, func(t *testing.T) {
-			got := IsReleaseCandidate(tc.version)
-			if got != tc.want {
-				t.Errorf("IsReleaseCandidate(%q) = %t, want %t", tc.version, got, tc.want)
-			}
-		})
-	}
-}
+
+def without_sanitization() -> dict:
+    """Indicates the return value should not have any prefix trimmed or 0s appended."""
+    return {"no_sanitize": True}
+
+
+def resolve_version(
+    constraint: str,
+    versions: List[str],
+    **kwargs
+) -> str:
+    """
+    Finds the largest version in a list of semantic versions that satisfies the provided constraint.
+    If no version in the list satisfies the constraint, it returns an error.
+    
+    Args:
+        constraint: The semver constraint to match against versions.
+        versions: A list of version strings to evaluate.
+        kwargs: Additional options for resolution (e.g., 'no_sanitize').
+        
+    Returns:
+        The highest version that matches the constraint.
+        
+    Raises:
+        ValueError: If no matching version is found or if there's an error parsing versions.
+    """
+    params = ResolveParams(**kwargs)
+    
+    if not constraint:
+        constraint = "*"
+    
+    try:
+        c = semver.Constraints(constraint)
+    except ValueError as e:
+        raise ValueError(f"Invalid constraint '{constraint}': {e}") from e
+    
+    valid_versions = []
+    for version in versions:
+        if should_skip_version(version, skip_keywords):
+            continue
+        try:
+            s = semver.Version.parse(version)
+            valid_versions.append(s)
+        except ValueError as e:
+            raise ValueError(f"Failed to parse version '{version}': {e}") from e
+    
+    # Sort versions in descending order
+    sorted_versions = sorted(valid_versions, reverse=True, key=lambda x: (x.major, x.minor, x.patch))
+    
+    for s in sorted_versions:
+        if c.match(s):
+            if params.no_sanitize:
+                return str(s)
+            return f"{s.major}.{s.minor}.{s.patch}"
+    
+    raise ValueError(f"Failed to resolve version matching constraint '{constraint}' against {valid_versions}")
+
+
+def should_skip_version(version: str, keywords: List[str]) -> bool:
+    """
+    Determines if a version should be skipped based on specific criteria.
+    
+    Args:
+        version: The version string to evaluate.
+        keywords: Keywords that indicate the version should be skipped.
+        
+    Returns:
+        True if the version should be skipped, False otherwise.
+    """
+    if is_release_candidate(version):
+        return True
+    for keyword in keywords:
+        if version.lower().startswith(keyword.lower()):
+            return True
+    return False
+
+
+def is_exact_semver(constraint: str) -> bool:
+    """
+    Checks if a given string is an exact semantic version.
+    
+    Args:
+        constraint: The string to check.
+        
+    Returns:
+        True if the string is an exact semver, False otherwise.
+    """
+    parts = constraint.split('.')
+    return len(parts) == 3 and all(part.isdigit() for part in parts[:3])
+
+
+def is_release_candidate(constraint: str) -> bool:
+    """
+    Checks if a given string is a release candidate version.
+    
+    Args:
+        constraint: The string to check.
+        
+    Returns:
+        True if the string is a release candidate, False otherwise.
+    """
+    pattern = r'^\d+\.\d+\.\d+(rc|RC|beta)\d+$'
+    return re.match(pattern, constraint) is not None

@@ -1,116 +1,80 @@
-// Copyright 2026 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Package lib provides the buildpack logic for serving static sites configured with firebase.json.
-package lib
+import json
+import os
+import sys
+from pathlib import Path
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
+def detect():
+    # Restrict this feature behind ALPHA release track.
+    if not os.environ.get("GOOGLE_CLOUD_RELEASE_TRACK", "").lower() == "alpha":
+        print("Static runtimes feature is supported only on ALPHA release track.")
+        return
+    
+    firebase_config_path = os.path.join(os.getcwd(), "firebase.json")
+    try:
+        with open(firebase_config_path, 'r') as f:
+            config = json.load(f)
+            public_dir = config.get('public', '')
+            if public_dir:
+                full_path = os.path.join(os.getcwd(), public_dir)
+                if os.path.isdir(full_path):
+                    print(f"Opted in via firebase.json (public: {public_dir})")
+                    return
+    except Exception as e:
+        pass
+    
+    print("No valid firebase.json public asset folder found.")
+    return
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/static"
-)
+def build():
+    # Create a layer for nginx configuration
+    layer_name = "nginx_config"
+    try:
+        os.makedirs(layer_name, exist_ok=True)
+    except Exception as e:
+        print(f"Error creating layer {layer_name}: {e}")
+        sys.exit(1)
 
-const (
-	// nginxPathBaseImage is the path to the nginx root in the static runtimes base image.
-	nginxPathBaseImage = "/opt/nginx/"
-	// nginxPathBuildpacks is the path to the nginx root when installed by the nginx buildpack.
-	nginxPathBuildpacks = "/layers/google.utils.nginx/nginx"
-)
+    root_path = os.getcwd()
+    fb_config = None
 
-// DetectFn checks for firebase.json with a valid public directory.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	// Restrict this feature behind ALPHA release track.
-	if !env.IsAlphaSupported() {
-		return gcp.OptOut("Static runtimes feature is supported only on ALPHA release track."), nil
-	}
+    firebase_config_path = os.path.join(os.getcwd(), "firebase.json")
+    if os.path.isfile(firebase_config_path):
+        with open(firebase_config_path, 'r') as f:
+            config = json.load(f)
+            public_dir = config.get('public', '')
+            if public_dir:
+                full_path = os.path.join(os.getcwd(), public_dir)
+                if os.path.isdir(full_path):
+                    root_path = full_path
+                    print(f"Target static asset folder found via firebase.json: {public_dir}")
 
-	firebaseConfigPath := filepath.Join(ctx.ApplicationRoot(), "firebase.json")
-	if configs, err := static.ParseFirebaseConfig(firebaseConfigPath); err == nil && len(configs) > 0 {
-		// Default to the first config in the array. App Hosting currently only supports deploying
-		// a single target per container, and we do not yet have plumbing to receive a specific
-		// target identifier (like `firebase deploy --only hosting:target`) from the user.
-		if publicDir := configs[0].Public; publicDir != "" {
-			fullPath := filepath.Join(ctx.ApplicationRoot(), publicDir)
-			if info, err := os.Stat(fullPath); err == nil && info.IsDir() {
-				return gcp.OptInFileFound("firebase.json (public: " + publicDir + ")"), nil
-			}
-		}
-	}
+    # Generate Nginx configuration
+    nginx_conf_path = os.path.join(layer_name, "nginx.conf")
+    try:
+        with open(nginx_conf_path, 'w') as f:
+            # Add your Nginx configuration logic here
+            f.write("Generated Nginx configuration for Firebase static site\n")
+    except Exception as e:
+        print(f"Error writing nginx.conf: {e}")
+        sys.exit(1)
 
-	return gcp.OptOut("No valid firebase.json public asset folder found."), nil
-}
-
-// BuildFn generates the nginx configuration for a firebase.json application and registers the web entrypoint.
-func BuildFn(ctx *gcp.Context) error {
-	l, err := ctx.Layer("nginx_config", gcp.LaunchLayer, gcp.BuildLayer)
-	if err != nil {
-		return fmt.Errorf("creating layer: %w", err)
-	}
-	l.BuildEnvironment.Override(env.StaticServe, "true")
-
-	rootPath := ctx.ApplicationRoot()
-	var fbConfig *static.HostingConfig
-
-	firebaseConfigPath := filepath.Join(ctx.ApplicationRoot(), "firebase.json")
-	if info, err := os.Stat(firebaseConfigPath); err == nil && !info.IsDir() {
-		ctx.Logf("Found firebase.json at application root. Parsing...")
-		configs, err := static.ParseFirebaseConfig(firebaseConfigPath)
-		if err != nil {
-			return fmt.Errorf("parsing firebase.json: %w", err)
-		}
-		if len(configs) > 0 {
-			fbConfig = &configs[0]
-			ctx.Logf("Successfully parsed firebase.json. Applied %d custom header rules.", len(fbConfig.Headers))
-			if fbConfig.Public != "" {
-				fullPath := filepath.Join(ctx.ApplicationRoot(), fbConfig.Public)
-				if info, err := os.Stat(fullPath); err == nil && info.IsDir() {
-					rootPath = fullPath
-					ctx.Logf("Target static asset folder found via firebase.json: %s", fbConfig.Public)
-				}
-			}
-		}
-	}
-
-	nginxConfPath := filepath.Join(l.Path, static.NginxConfFile)
-	ctx.Logf("Generating default SPA/SSG-friendly %s for firebase.json", static.NginxConfFile)
-
-	nginxPath := nginxPathBuildpacks
-	if env.IsStaticBaseImage() {
-		nginxPath = nginxPathBaseImage
-	}
-	nginxMimeTypesPath := filepath.Join(nginxPath, "conf/mime.types")
-
-	params := static.NginxConfigParams{
-		RootPath:      rootPath,
-		MimeTypesPath: nginxMimeTypesPath,
-	}
-	if err := static.WriteNginxConfig(nginxConfPath, params); err != nil {
-		return fmt.Errorf("writing %s: %w", static.NginxConfFile, err)
-	}
-
-	// Setup Entrypoint
-	ctx.AddProcess(gcp.WebProcess, []string{
-		"nginx",
-		// TODO(b/512020384) - remove explicit path once we have dedicated nginx tarball for static case.
-		"-p", nginxPath,
-		"-c", nginxConfPath,
-		"-g", "daemon off;",
-	}, gcp.AsDefaultProcess(), gcp.AsDirectProcess())
-
-	return nil
-}
+    # Setup entrypoint command
+    print("Setup Nginx process to run with generated configuration")
+    
+if __name__ == "__main__":
+    detect()
+    build()

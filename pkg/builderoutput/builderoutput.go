@@ -1,75 +1,84 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2020 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Package builderoutput provides an interface for serializing BuilderOutput.
-package builderoutput
+import json
+from dataclasses import dataclass, field
+from typing import List, Optional
 
-import (
-	"encoding/json"
-	"fmt"
+from pkg.buildererror import Error as BuilderError, Status
+from pkg.buildermetadata import BuilderMetadata
+from pkg.buildermetrics import BuilderMetrics
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
-)
 
-// FromJSON parses json bytes to a BuilderOutput.
-func FromJSON(bytes []byte) (BuilderOutput, error) {
-	var bout BuilderOutput
-	if err := json.Unmarshal(bytes, &bout); err != nil {
-		return BuilderOutput{}, fmt.Errorf("unmarshalling json: %w", err)
-	}
-	return bout, nil
-}
+@dataclass
+class BuilderStat:
+    buildpack_id: str = ""
+    buildpack_version: str = ""
+    duration_ms: int = 0
+    user_duration_ms: int = 0
 
-// JSON encodes a BuilderOutput as json
-func (bo BuilderOutput) JSON() ([]byte, error) {
-	bytes, err := json.Marshal(bo)
-	if err != nil {
-		return nil, fmt.Errorf("marshalling json: %w", err)
-	}
-	return bytes, nil
-}
+    @classmethod
+    def from_json(cls, data: dict):
+        return cls(
+            buildpack_id=data.get("buildpackId", ""),
+            buildpack_version=data.get("buildpackVersion", ""),
+            duration_ms=data.get("totalDurationMs", 0),
+            user_duration_ms=data.get("userDurationMs", 0)
+        )
 
-// BuilderOutput contains data about the outcome of a build
-type BuilderOutput struct {
-	InstalledRuntimeVersions []string                        `json:"rtVersions,omitempty"`
-	Metrics                  buildermetrics.BuilderMetrics   `json:"metrics"`
-	Error                    buildererror.Error              `json:"error"`
-	Metadata                 buildermetadata.BuilderMetadata `json:"metadata"`
-	Stats                    []BuilderStat                   `json:"stats"`
-	Warnings                 []string                        `json:"warnings"`
-	CustomImage              bool                            `json:"customImage"`
-}
 
-// New constructs a BuilderOutput and returns a pointer.
-func New() *BuilderOutput {
-	return &BuilderOutput{
-		Metrics:  buildermetrics.NewBuilderMetrics(),
-		Metadata: buildermetadata.NewBuilderMetadata(),
-	}
-}
+@dataclass
+class BuilderOutput:
+    installed_runtime_versions: List[str] = field(default_factory=list)
+    metrics: BuilderMetrics = field(default_factory=BuilderMetrics)
+    error: Optional[BuilderError] = None
+    metadata: BuilderMetadata = field(default_factory=BuilderMetadata)
+    stats: List[BuilderStat] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    custom_image: bool = False
 
-// IsSystemError determines if the error type is a SYSTEM-attributed error
-func (bo BuilderOutput) IsSystemError() bool {
-	return bo.Error.Type == buildererror.StatusInternal
-}
+    @classmethod
+    def from_json(cls, json_bytes: bytes) -> 'BuilderOutput':
+        data = json.loads(json_bytes.decode('utf-8'))
+        
+        return cls(
+            installed_runtime_versions=data.get("rtVersions", []),
+            metrics=BuilderMetrics.from_json(data.get("metrics", {})),
+            error=BuilderError.from_json(data.get("error", {})) if "error" in data else None,
+            metadata=BuilderMetadata.from_json(data.get("metadata", {})),
+            stats=[BuilderStat.from_json(stat) for stat in data.get("stats", [])],
+            warnings=data.get("warnings", []),
+            custom_image=data.get("customImage", False)
+        )
 
-// BuilderStat contains statistics about a build step
-type BuilderStat struct {
-	BuildpackID      string `json:"buildpackId"`
-	BuildpackVersion string `json:"buildpackVersion"`
-	DurationMs       int64  `json:"totalDurationMs"`
-	UserDurationMs   int64  `json:"userDurationMs"`
-}
+    def to_json(self) -> bytes:
+        return json.dumps({
+            "rtVersions": self.installed_runtime_versions,
+            "metrics": self.metrics.to_dict(),
+            "error": self.error.to_dict() if self.error else {},
+            "metadata": self.metadata.to_dict(),
+            "stats": [stat.__dict__ for stat in self.stats],
+            "warnings": self.warnings,
+            "customImage": self.custom_image
+        }).encode('utf-8')
+
+    @staticmethod
+    def new() -> 'BuilderOutput':
+        return BuilderOutput(
+            metrics=BuilderMetrics.new(),
+            metadata=BuilderMetadata.new()
+        )
+
+    def is_system_error(self) -> bool:
+        return self.error and self.error.type == Status.INTERNAL

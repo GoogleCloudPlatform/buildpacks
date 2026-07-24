@@ -1,52 +1,68 @@
-// Copyright 2026 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import pytest
+from io import StringIO
 
-// Package entrypoint provides functions to parse Procfiles.
-package entrypoint
+from pkg.entrypoint.procfile import parse_procfile
+from gcpbuildpack.context import Context
 
-import (
-	"regexp"
-	"strings"
+test_cases = [
+    {
+        "name": "empty_file",
+        "content": "",
+        "want_error": True,
+    },
+    {
+        "name": "one_process",
+        "content": "web: bundle exec rackup",
+        "want": {"web": "bundle exec rackup"},
+    },
+    {
+        "name": "multiple_processes",
+        "content": "web: bundle exec rackup\nworker: bundle exec rake jobs",
+        "want": {"web": "bundle exec rackup", "worker": "bundle exec rake jobs"},
+    },
+    {
+        "name": "extra_whitespace",
+        "content": "web:    bundle exec rackup   ",
+        "want": {"web": "bundle exec rackup"},
+    },
+    {
+        "name": "duplicate_process_keeps_first",
+        "content": "web: command1\nweb: command2",
+        "want": {"web": "command1"},
+        "want_warning": "Skipping duplicate web process: command2",
+    },
+    {
+        "name": "empty_lines_and_comments",
+        "content": "# comment\n\nweb: command1",
+        "want": {"web": "command1"},
+    },
+    {
+        "name": "empty_lines_and_comments_only",
+        "content": "# comment\n\n",
+        "want_error": True,
+    },
+]
 
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
-
-var (
-	processRe = regexp.MustCompile(`(?m)^(\w+):\s*(.+)$`)
-)
-
-// Parse parses a Procfile content and returns a map of process names to commands.
-// If multiple processes have the same name, only the first one is returned.
-func Parse(ctx *gcp.Context, content string) (map[string]string, error) {
-	matches := processRe.FindAllStringSubmatch(content, -1)
-	if len(matches) == 0 {
-		return nil, gcp.UserErrorf("did not find any processes in Procfile")
-	}
-
-	processes := make(map[string]string)
-	for _, match := range matches {
-		// Sanity check, if this fails there is a mistake in the regex.
-		// One group for overall match and two subgroups.
-		if len(match) != 3 {
-			return nil, gcp.InternalErrorf("invalid process match, want slice of two strings, got: %v", match)
-		}
-		name, command := match[1], strings.TrimSpace(match[2])
-		if _, exists := processes[name]; exists {
-			ctx.Warnf("Skipping duplicate %s process: %s", name, command)
-			continue
-		}
-		processes[name] = command
-	}
-	return processes, nil
-}
+@pytest.mark.parametrize("case", test_cases)
+def test_parse_procfile(case):
+    ctx = Context()
+    content = case["content"]
+    
+    if case.get("want_error"):
+        with pytest.raises(UserError):
+            parse_procfile(ctx, content)
+        return
+    
+    processes = parse_procfile(ctx, content)
+    
+    # Check the result
+    assert processes == case["want"], f"Test {case['name']} failed: expected {case['want']}, got {processes}"
+    
+    # Check warnings if applicable
+    want_warnings = case.get("want_warning")
+    actual_warnings = [rec.message for rec in ctx.logger.handlers[0].buffer]
+    
+    if want_warnings is not None:
+        assert len(actual_warnings) == 1 and actual_warnings[0] == want_warnings, f"Expected warning '{want_warnings}', got {actual_warnings}"
+    else:
+        assert not actual_warnings, "Unexpected warnings were logged"

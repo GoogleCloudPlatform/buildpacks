@@ -1,43 +1,24 @@
-package nodejs
+class NodeJS:
+    @staticmethod
+    def detect_svelte_kit_auto_adapter(package_json: dict) -> bool:
+        dev_deps = package_json.get("devDependencies", {})
+        
+        # Check for adapter-auto and no other adapters
+        has_auto = False
+        for dep in dev_deps.keys():
+            if dep.startswith("@sveltejs/adapter-"):
+                if dep == "@sveltejs/adapter-auto":
+                    has_auto = True
+                else:
+                    return False
+        
+        return has_auto
 
-import (
-	"strings"
-
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
-
-// SvelteAdapterEnv is an env var that enables SvelteKit to detect
-// Google Cloud Buildpacks and use adapter-node when adapter-auto is detected
-// https://github.com/sveltejs/kit/blob/main/packages/adapter-auto/adapters.js
-const SvelteAdapterEnv = "GCP_BUILDPACKS=TRUE"
-
-// DetectSvelteKitAutoAdapter returns true if the given package.json file
-// contains the @sveltejs/adapter-auto dependency and no others.
-func DetectSvelteKitAutoAdapter(p *PackageJSON) bool {
-	// Check and reject if the package contains an adapter that is
-	// not the @sveltejs/adapter-auto dependency.
-	for k := range p.DevDependencies {
-		if strings.HasPrefix(k, "@sveltejs/adapter-") && k != "@sveltejs/adapter-auto" {
-			return false
-		}
-	}
-	_, ok := p.DevDependencies["@sveltejs/adapter-auto"]
-	return ok
-}
-
-// SvelteKitStartCommand determines if this is a SvelteKit application and returns the command to start the
-// SvelteKit server. If not it is not a SvelteKit application it returns nil.
-func SvelteKitStartCommand(ctx *gcp.Context) ([]string, error) {
-	configExists, err := ctx.FileExists(ctx.ApplicationRoot(), "svelte.config.js")
-	if err != nil {
-		return nil, err
-	}
-	serverExists, err := ctx.FileExists(ctx.ApplicationRoot(), "build/index.js")
-	if err != nil {
-		return nil, err
-	}
-	if configExists && serverExists {
-		return []string{"node", "build/index.js"}, nil
-	}
-	return nil, nil
-}
+    @staticmethod
+    def svelte_kit_start_command(application_root: str) -> Optional[list[str]]:
+        config_path = Path(application_root) / "svelte.config.js"
+        server_path = Path(application_root) / "build/index.js"
+        
+        if config_path.exists() and server_path.exists():
+            return ["node", "build/index.js"]
+        return None

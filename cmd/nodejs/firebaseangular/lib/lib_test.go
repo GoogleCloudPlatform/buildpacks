@@ -1,525 +1,113 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-package lib
+# Implements nodejs/firebaseangular buildpack.
+# The nodejs/firebaseangular buildpack does some prep work for angular and runs the build script.
 
-import (
-	"testing"
+import os
+import json
+from pathlib import Path
+from packaging.version import Version
+import warnings
 
-	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
-	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
-	bmd "github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
-)
+from gcpbuildpack import Context, DetectResult, OptIn, OptOut, UserError, BuildLayer, CacheLayer
+from buildermetadata import GlobalBuilderMetadata, MetadataID, MetadataValue
+import nodejs
+import apphostingschema
+import faherror
+import util
 
-const (
-	mockLatestAngularAdapterVersion = "17.2.14"
-)
+MIN_ANGULAR_VERSION = Version("17.2.0")
+FRAMEWORK_VERSION_ENV_VAR = "FRAMEWORK_VERSION"
 
-func TestDetect(t *testing.T) {
-	testCases := []struct {
-		name  string
-		files map[string]string
-		envs  []string
-		want  int
-	}{
-		{
-			name: "not a firebase apphosting app",
-			files: map[string]string{
-				"index.js":     "",
-				"angular.json": "",
-			},
-			want: 100,
-		},
-		{
-			name: "with angular config",
-			files: map[string]string{
-				"index.js":     "",
-				"angular.json": "",
-			},
-			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
-			want: 0,
-		},
-		{
-			name: "with angular config in app dir",
-			files: map[string]string{
-				"packages/foo/index.js":     "",
-				"packages/foo/angular.json": "",
-			},
-			envs: []string{"GOOGLE_BUILDABLE=packages/foo", "X_GOOGLE_TARGET_PLATFORM=fah"},
-			want: 0,
-		},
-		{
-			name: "without angular config",
-			files: map[string]string{
-				"package.json": `{
-				"dependencies": {
-				},
-				"devDependencies": {
-				}
-			}`, "package-lock.json": `{
-				"packages": {
-				}
-			}`,
-			},
-			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
-			want: 100,
-		},
-		{
-			name: "with angular builder dependency",
-			files: map[string]string{
-				"package.json": `{
-					"scripts": {
-						"build": "ng build"
-					},
-					"dependencies": {
-						"@angular/core": "17.2.0"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-						"node_modules/@angular/core": {
-							"version": "17.2.0"
-						},
-						"node_modules/@angular-devkit/build-angular": {
-							"version": "17.2.0"
-						}
-					}
-				}`,
-			},
-			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
-			want: 0,
-		},
-		{
-			name: "with apphosting:build script",
-			files: map[string]string{
-				"package.json": `{
-					"scripts": {
-						"apphosting:build": "adapter build"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-						"node_modules/@angular/core": {
-							"version": "17.2.0"
-						},
-						"node_modules/@angular-devkit/build-angular": {
-							"version": "17.2.0"
-						}
-					}
-				}`,
-			},
-			want: 100,
-		},
-		{
-			name: "with apphosting.yaml buildcommand",
-			files: map[string]string{
-				"apphosting.yaml": `outputFiles:
-  scripts:
-    buildCommand: ng build`,
-			},
-			want: 100,
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			bpt.TestDetect(t, DetectFn, tc.name, tc.files, tc.envs, tc.want)
-		})
-	}
-}
+def detect_fn(context: Context) -> tuple[DetectResult, Exception]:
+    if not env.is_fah():
+        return OptOut("not a firebase apphosting application"), None
+    app_dir = util.application_directory(context)
+    
+    angular_json_path = app_dir / "angular.json"
+    if os.path.exists(angular_json_path):
+        return OptInFileFound("angular.json"), None
+    
+    node_deps, err = nodejs.read_node_dependencies(context, app_dir)
+    if err:
+        return None, err
 
-func TestBuild(t *testing.T) {
-	testCases := []struct {
-		name                string
-		wantExitCode        int
-		wantCommands        []string
-		dontWantCommands    []string
-		wantBuilderMetadata map[bmd.MetadataID]bmd.MetadataValue
-		mocks               []*mockprocess.Mock
-		files               map[string]string
-	}{
-		{
-			name: "replace build script",
-			files: map[string]string{
-				"package.json": `{
-				"scripts": {
-					"build": "ng build"
-				},
-				"dependencies": {
-					"@angular/core": "17.2.0"
-				}
-			}`,
-				"package-lock.json": `{
-				"packages": {
-					"node_modules/@angular/core": {
-						"version": "17.2.0"
-					},
-					"node_modules/@angular-devkit/build-angular": {
-						"version": "17.2.0"
-					}
-				}
-			}`,
-			},
-			mocks: []*mockprocess.Mock{
-				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
-			},
-			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
-			},
-		},
-		{
-			name: "build script doesnt exist",
-			files: map[string]string{
-				"package.json": `{
-					"dependencies": {
-						"@angular/core": "17.2.0"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-						"node_modules/@angular/core": {
-							"version": "17.2.0"
-						},
-					}
-				}`,
-			},
-			mocks: []*mockprocess.Mock{
-				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
-			},
-			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
-			},
-		},
-		{
-			name: "build script already set",
-			files: map[string]string{
-				"package.json": `{
-					"scripts": {
-						"build": "apphosting-adapter-angular-build"
-					},
-					"dependencies": {
-						"@angular/core": "17.2.0"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-						"node_modules/@angular/core": {
-							"version": "17.2.0"
-						},
-					}
-				}`,
-			},
-			mocks: []*mockprocess.Mock{
-				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
-			},
-			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
-			},
-		},
-		{
-			name: "adapter already installed",
-			files: map[string]string{
-				"package.json": `{
-					"scripts": {
-						"build": "apphosting-adapter-angular-build"
-					},
-					"dependencies": {
-						"@apphosting/adapter-angular": "17.2.5"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-						"node_modules/@angular/core": {
-							"version": "17.2.0"
-						},
-					}
-				}`,
-			},
-			dontWantCommands: []string{
-				"npm view @apphosting/adapter-angular version",
-				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
-			},
-		},
-		{
-			name: "error out if the builder version is below 17.2.0",
-			files: map[string]string{
-				"package.json": `{
-				"dependencies": {
-					"@angular/core": "17.2.0",
-					"@angular-devkit/build-angular": "17.0.0"
-				}
-			}`,
-				"package-lock.json": `{
-				"packages": {
-					"node_modules/@angular/core": {
-						"version": "17.2.0"
-					},
-				}
-			}`,
-			},
-			wantExitCode: 1,
-		},
-		{
-			name: "should work if the version is exactly 17.2.0",
-			files: map[string]string{
-				"package.json": `{
-				"dependencies": {
-					"@angular/core": "17.2.0",
-					"@angular-devkit/build-angular": "17.2.0"
-				}
-			}`,
-				"package-lock.json": `{
-				"packages": {
-					"node_modules/@angular/core": {
-						"version": "17.2.0"
-					},
-				}
-			}`,
-			},
-			mocks: []*mockprocess.Mock{
-				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
-			},
-			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
-			},
-			wantExitCode: 0,
-		},
-		{
-			name: "supports versions with constraints",
-			files: map[string]string{
-				"package.json": `{
-					"scripts": {
-						"build": "apphosting-adapter-angular-build"
-					},
-					"dependencies": {
-						"@angular/core": "^17.0.0"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-						"node_modules/@angular/core": {
-							"version": "17.2.1"
-						},
-					}
-				}`,
-			},
-			mocks: []*mockprocess.Mock{
-				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
-			},
-			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
-			},
-		},
-		{
-			name: "read supported concrete version from package-lock.json",
-			files: map[string]string{
-				"package.json": `{
-					"dependencies": {
-						"@angular/core": "15.0.0 - 17.2.0"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-						"node_modules/@angular/core": {
-							"version": "17.2.0"
-						},
-					}
-				}`,
-			},
-			mocks: []*mockprocess.Mock{
-				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
-			},
-			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
-			},
-		},
-		{
-			name: "read supported concrete version from pnpm-lock.yaml",
-			files: map[string]string{
-				"package.json": `{
-					"dependencies": {
-						"@angular/core": "15.0.0 - 17.2.0"
-					}
-				}`,
-				"pnpm-lock.yaml": `
-dependencies:
-  '@angular/core':
-    version: 17.2.3(rxjs@7.8.1)(zone.js@0.14.4)
-`,
-			},
-			mocks: []*mockprocess.Mock{
-				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
-			},
-			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
-			},
-		},
-		{
-			name: "read supported concrete version from yaml.lock berry",
-			files: map[string]string{
-				"package.json": `{
-					"dependencies": {
-						"@angular/core": "^17.1.0"
-					}
-				}`,
-				"yarn.lock": `
-	"@angular/core@npm:^17.1.0":
-	version: 17.2.0`,
-			},
-			mocks: []*mockprocess.Mock{
-				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
-			},
-			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
-			},
-		},
-		{
-			name: "read supported concrete version from yaml.lock classic",
-			files: map[string]string{
-				"package.json": `{
-					"dependencies": {
-						"@angular/core": "^17.1.0"
-					}
-				}`,
-				"yarn.lock": `
-				@angular/core@^17.1.0:
-	version: "17.2.0"
-	`,
-			},
-			mocks: []*mockprocess.Mock{
-				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
-			},
-			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
-			},
-		}, {
-			name: "read supported concrete version from package.json with unsupported lock file format",
-			files: map[string]string{
-				"package.json": `{
-					"dependencies": {
-						"@angular/core": "17.2.0"
-					}
-				}`,
-				"pnpm-lock.yaml": `
-unsupported:
-  '@angular/core':
-    version: 17.2.3(rxjs@7.8.1)(zone.js@0.14.4)
-`,
-			},
-			mocks: []*mockprocess.Mock{
-				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
-			},
-			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
-			},
-		}, {
-			name: "read version range from package.json with unsupported lock file format",
-			files: map[string]string{
-				"package.json": `{
-					"dependencies": {
-						"@angular/core": "17.2.0 - 18.0.0"
-					}
-				}`,
-				"pnpm-lock.yaml": `
-unsupported:
-  '@angular/core':
-    version: 17.2.3(rxjs@7.8.1)(zone.js@0.14.4)
-`,
-			},
-			mocks: []*mockprocess.Mock{
-				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
-			},
-			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
-			},
-		}, {
-			name: "set builder metadata correctly",
-			files: map[string]string{
-				"package.json": `{
-					"scripts": {
-						"build": "apphosting-adapter-angular-build"
-					},
-					"dependencies": {
-						"@angular/core": "17.2.0"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-						"node_modules/@angular/core": {
-							"version": "17.2.0"
-						}
-					}
-				}`,
-			},
-			mocks: []*mockprocess.Mock{
-				mockprocess.New("npm view @apphosting/adapter-angular version", mockprocess.WithStdout(mockLatestAngularAdapterVersion)),
-				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+mockLatestAngularAdapterVersion, mockprocess.WithStdout("installed adaptor")),
-			},
-			wantCommands: []string{
-				"npm install --prefix npm_modules @apphosting/adapter-angular@" + mockLatestAngularAdapterVersion,
-			},
-			wantBuilderMetadata: map[bmd.MetadataID]bmd.MetadataValue{
-				bmd.FrameworkName:    bmd.MetadataValue("angular"),
-				bmd.FrameworkVersion: bmd.MetadataValue("17.2.0"),
-				bmd.AdapterName:      bmd.MetadataValue("@apphosting/adapter-angular"),
-				bmd.AdapterVersion:   bmd.MetadataValue(mockLatestAngularAdapterVersion),
-			},
-		},
-	}
+    apphosting_schema, err = apphostingschema.read_and_validate_from_file(nodejs.APPHOSTING_PREPROCESSED_PATH_FOR_PACK)
+    if err:
+        return None, err
+    
+    if nodejs.has_apphosting_package_or_yaml_build(node_deps.package_json, apphosting_schema):
+        return OptOut("apphosting build script found"), None
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			opts := []bpt.Option{
-				bpt.WithTestName(tc.name),
-				bpt.WithFiles(tc.files),
-				bpt.WithExecMocks(tc.mocks...),
-			}
-			result, err := bpt.RunBuild(t, BuildFn, opts...)
-			if err != nil && tc.wantExitCode == 0 {
-				t.Fatalf("error running build: %v, logs: %s", err, result.Output)
-			}
+    version = nodejs.version(node_deps, "@angular/core")
+    if version:
+        return OptIn("angular dependency found"), None
+    else:
+        return OptOut("angular dependency not found"), None
 
-			if result.ExitCode != tc.wantExitCode {
-				t.Errorf("build exit code mismatch, got: %d, want: %d", result.ExitCode, tc.wantExitCode)
-			}
+def build_fn(context: Context) -> Exception:
+    app_dir = util.application_directory(context)
+    
+    node_deps, err = nodejs.read_node_dependencies(context, app_dir)
+    if err:
+        return err
+    
+    if not node_deps.lockfile_path:
+        return UserError(f"{faherror.MissingLockFileError(app_dir)}")
+    
+    builder_version = nodejs.version(node_deps, "@angular/core") or node_deps.package_json.dev_dependencies.get("@angular/core", "")
+    err = validate_version(context, builder_version)
+    if err:
+        return err
+    
+    if version := node_deps.package_json.dependencies.get("@apphosting/adapter-angular"):
+        context.log(f"*** Already have @apphosting/adapter-angular@{version}, skipping installation ***")
+        context.log("*** Please ensure your build command is set to apphosting-adapter-angular-build ***")
+        return None
+    
+    build_script = node_deps.package_json.scripts.get("build", "")
+    if build_script and build_script not in ["ng build", "apphosting-adapter-angular-build"]:
+        warnings.warn("*** Custom build command detected, will proceed but may fail due to unexpected output structure ***")
 
-			for _, cmd := range tc.wantCommands {
-				if !result.CommandExecuted(cmd) {
-					t.Errorf("expected command %q to be executed, but it was not, build output: %s", cmd, result.Output)
-				}
-			}
-			for _, cmd := range tc.dontWantCommands {
-				if result.CommandExecuted(cmd) {
-					t.Errorf("didn't expect command %q to be executed, but it was, build output: %s", cmd, result.Output)
-				}
-			}
+    layer, err = context.layer("npm_modules", BuildLayer | CacheLayer)
+    if err:
+        return err
+    
+    if err := nodejs.install_angular_build_adapter(context, layer):
+        return err
 
-			for id, m := range tc.wantBuilderMetadata {
-				if m != result.MetadataAdded()[id] {
-					t.Errorf("builder metadata %q mismatch, got: %s, want: %s", bmd.MetadataIDNames[id], result.MetadataAdded()[id], m)
-				}
-			}
-		})
-	}
-}
+    layer.build_environment[f"{FRAMEWORK_VERSION_ENV_VAR}"] = builder_version
+    GlobalBuilderMetadata().set_value(MetadataID.FrameworkName, "angular")
+    GlobalBuilderMetadata().set_value(MetadataID.FrameworkVersion, MetadataValue(builder_version))
+    
+    adapter_version = context.get_metadata(layer, nodejs.ANGULAR_VERSION_KEY)
+    GlobalBuilderMetadata().set_value(MetadataID.AdapterName, "@apphosting/adapter-angular")
+    GlobalBuilderMetadata().set_value(MetadataID.AdapterVersion, MetadataValue(adapter_version))
+
+    nodejs.override_angular_build_script(layer)
+
+    return None
+
+def validate_version(context: Context, dep_version: str) -> Exception:
+    try:
+        version = Version(dep_version)
+    except ValueError:
+        context.warn(f"Unrecognized angular version: {dep_version}")
+        context.warn(f"Consider updating to >= {MIN_ANGULAR_VERSION}")
+        return None
+    if version < MIN_ANGULAR_VERSION:
+        context.warn(f"Update angular dependencies to >= {MIN_ANGULAR_VERSION}")
+        return UserError(f"{faherror.UnsupportedFrameworkVersionError('angular', dep_version)}")
+    return None

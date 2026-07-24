@@ -1,72 +1,65 @@
-// Copyright 2021 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Script to extract Go package from a given source directory.
-package main
+import argparse
+import os
 
-import (
-	"flag"
-	"fmt"
-	"go/parser"
-	"go/token"
-	"log"
-)
+def extract_package(source):
+    """Extracts the Go package name from a directory of .go files."""
+    if not os.path.isdir(source):
+        return None, f"Directory does not exist: {source}"
+    
+    package_name = None
+    go_files = [f for f in os.listdir(source) if f.endswith('.go')]
+    
+    if not go_files:
+        return None, "No .go files found in the directory."
+    
+    for filename in go_files:
+        file_path = os.path.join(source, filename)
+        with open(file_path, 'r') as f:
+            package_found = False
+            for line in f:
+                stripped_line = line.strip()
+                if stripped_line.startswith('package'):
+                    parts = stripped_line.split()
+                    current_pkg = parts[1].rstrip(';')
+                    package_found = True
+                    break
+            if not package_found:
+                return None, f"No package declaration found in {filename}"
+            
+            if package_name is None:
+                package_name = current_pkg
+            elif current_pkg != package_name:
+                return None, (f"Multiple packages detected: {package_name} vs. "
+                              f"{current_pkg} in {filename}")
+    
+    return package_name, None
 
-var (
-	dir = flag.String("dir", "", "Directory containing *.go files from which to extract a package name.")
-)
+def main():
+    """Main entry point for the get_package script."""
+    parser = argparse.ArgumentParser(description='Extract Go package name from a directory.')
+    parser.add_argument('--dir', required=True, help='Directory containing *.go files')
+    args = parser.parse_args()
 
-// extract extracts the name of the package in the specified directory.
-// Expects that the specified directory contains one and only one Go package.
-func extract(source string) (string, error) {
-	fset := token.NewFileSet() // positions are relative to fset
+    package, err = extract_package(args.dir)
+    if err is not None:
+        print(f"Error: {err}")
+        exit(1)
+    
+    print(package)
 
-	// Parse all .go files in dir but stop after processing the package.
-	pkgs, err := parser.ParseDir(fset, source, nil, parser.PackageClauseOnly)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse source in %s: %v", source, err)
-	}
-
-	// Check if all files belong to the same package
-	packageName := ""
-	for k := range pkgs {
-		if packageName == "" {
-			packageName = k
-			continue
-		}
-
-		if k != packageName {
-			return "", fmt.Errorf("multiple packages in user code directory: %s != %s", packageName, k)
-		}
-	}
-
-	if packageName == "" {
-		return "", fmt.Errorf("unable to find Go package in %s", source)
-	}
-	return packageName, nil
-}
-
-func main() {
-	flag.Parse()
-
-	if *dir == "" {
-		log.Fatalf("No directory specified.")
-	}
-
-	pkg, err := extract(*dir)
-	if err != nil {
-		log.Fatalf("Unable to extract package name: %v.", err)
-	}
-	fmt.Print(pkg)
-}
+if __name__ == "__main__":
+    main()

@@ -1,130 +1,100 @@
-// Copyright 2024 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import os
+import errno
+from pathlib import Path
+from typing import Optional, Tuple, Union
 
-// Package util provides utility functions to build applications using the Firebase App Hosting builder.
-package util
+supported_monorepo_config_files = ("nx.json", "turbo.json")
 
-import (
-	"errors"
-	"os"
-	"path/filepath"
+class InvalidRootDirectoryError(Exception):
+    pass
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
+def application_directory(ctx: dict) -> str:
+    """
+    Looks up the path to the application directory from the context. Returns
+    the application root by default.
+    """
+    app_dir = ctx.get("application_root")
+    buildable = os.getenv("BUILDPACK_APP_DIR", "")
+    
+    if buildable:
+        app_dir = os.path.join(ctx["application_root"], buildable)
+        
+    return app_dir
 
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+def supported_monorepo_config_file_exists(dir_path: str) -> bool:
+    """
+    Checks if a supported monorepo config file exists in the specified directory.
+    Returns True if any of the supported files exist, False otherwise.
+    """
+    dir_path = os.path.abspath(dir_path)
+    
+    for filename in supported_monorepo_config_files:
+        file_path = os.path.join(dir_path, filename)
+        
+        try:
+            with open(file_path, "r") as f:
+                return True
+        except FileNotFoundError:
+            continue
+        
+    return False
 
-var (
-	supportedMonorepoConfigFiles = []string{"nx.json", "turbo.json"}
-)
+def build_directory_context(cwd: str, user_specified_app_dir: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Returns the build directory and relative project directory context.
+    
+    If a monorepo config file is detected, it sets the build directory to the
+    nearest monorepo root and the relative project directory to the specified app dir
+    relative to that root. Otherwise, returns the user-specified app dir as both values.
+    """
+    if not user_specified_app_dir:
+        return (None, None)
+        
+    absolute_app_dir = os.path.join(cwd, user_specified_app_dir)
+    
+    try:
+        if not os.path.exists(absolute_app_dir):
+            raise InvalidRootDirectoryError(f"Application directory {user_specified_app_dir} does not exist")
+            
+        current_path = absolute_app_dir
+        monorepo_root = None
+        
+        while True:
+            if current_path in (os.getcwd(), "/", "."):
+                break
+                
+            if supported_monorepo_config_file_exists(current_path):
+                monorepo_root = current_path
+                break
+                
+            current_path = os.path.dirname(current_path)
+            
+        if not monorepo_root:
+            return (user_specified_app_dir, None)
+            
+        build_dir = os.path.relpath(monorepo_root, cwd)
+        relative_project_dir = os.path.relpath(absolute_app_dir, monorepo_root)
+        
+        return (build_dir, relative_project_dir)
+        
+    except Exception as e:
+        raise ValueError(f"Error determining build directory context: {str(e)}")
 
-// ApplicationDirectory looks up the path to the application directory from the environment. Returns
-// the application root by default.
-func ApplicationDirectory(ctx *gcp.Context) string {
-	appDir := ctx.ApplicationRoot()
-	if appDirEnv, exists := os.LookupEnv(env.Buildable); exists {
-		appDir = filepath.Join(ctx.ApplicationRoot(), appDirEnv)
-	}
-	return appDir
-}
-
-// supportedMonorepoConfigFileExists checks if a supported monorepo config file exists in the
-// specified directory.
-func supportedMonorepoConfigFileExists(dir string) (bool, error) {
-	for _, filename := range supportedMonorepoConfigFiles {
-		f := filepath.Join(dir, filename)
-		_, err := os.ReadFile(f)
-		if os.IsNotExist(err) {
-			continue
-		}
-		if err != nil {
-			return false, err
-		}
-		return true, nil
-	}
-	return false, nil
-}
-
-// buildDirectoryContext returns (1) the "build directory" from which the buildpacks will be run,
-// and (2) the directory containing the application to be built, relative to the build directory.
-//
-// The build directory and application directory are different in monorepo contexts, in which we
-// want to run the buildpacks process from the root of the monorepo to ensure all necessary files
-// are accessible, but we want to build the application inside the user-specified subdirectory.
-// see go/apphosting-monorepo-support for more details.
-func buildDirectoryContext(cwd, userSpecifiedAppDirPath string) (string, string, error) {
-	if userSpecifiedAppDirPath == "" {
-		return "", "", nil
-	}
-
-	absoluteAppDirPath := filepath.Join(cwd, userSpecifiedAppDirPath)
-	_, err := os.Stat(absoluteAppDirPath)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return "", "", faherror.InvalidRootDirectoryError(userSpecifiedAppDirPath, err)
-		}
-		return "", "", err
-	}
-	var monorepoRootPath string
-	curr := absoluteAppDirPath
-	for {
-		exists, err := supportedMonorepoConfigFileExists(curr)
-		if err != nil {
-			return "", "", err
-		}
-		if exists {
-			monorepoRootPath = curr
-			break
-		}
-		if curr == cwd || curr == "/" || curr == "." {
-			break
-		}
-		curr = filepath.Dir(curr)
-	}
-	if monorepoRootPath == "" {
-		// If no monorepo config file is detected, then the user-specified app directory path is the
-		// root of an application in a subdirectory.
-		return userSpecifiedAppDirPath, "", nil
-	}
-	// If a monorepo config file is detected, then the monorepo root is the "build directory" and the
-	// user-specified app directory path is the root of the sub-application.
-	mrp, err := filepath.Rel(cwd, monorepoRootPath)
-	if err != nil {
-		return "", "", err
-	}
-	adp, err := filepath.Rel(monorepoRootPath, absoluteAppDirPath)
-	if err != nil {
-		return "", "", err
-	}
-	return mrp, adp, nil
-}
-
-// WriteBuildDirectoryContext writes the build directory context to the specified buildpack config
-// file path.
-func WriteBuildDirectoryContext(cwd, appDirectoryPath, buildpackConfigOutputFilePath string) error {
-	buildDirectory, relativeProjectDirectory, err := buildDirectoryContext(cwd, appDirectoryPath)
-	if err != nil {
-		return err
-	}
-	err = os.MkdirAll(buildpackConfigOutputFilePath, 0755)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(filepath.Join(buildpackConfigOutputFilePath, "build-directory.txt"), []byte(buildDirectory), 0644)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(buildpackConfigOutputFilePath, "relative-project-directory.txt"), []byte(relativeProjectDirectory), 0644)
-}
+def write_build_directory_context(cwd: str, app_dir_path: str, output_dir: str) -> None:
+    """
+    Writes the build directory context to files in the specified output directory.
+    Creates necessary directories if they don't exist.
+    """
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+        
+        build_dir, relative_project_dir = build_directory_context(cwd, app_dir_path)
+        
+        with open(os.path.join(output_dir, "build-directory.txt"), "w") as f:
+            f.write(build_dir if build_dir is not None else "")
+            
+        with open(os.path.join(output_dir, "relative-project-directory.txt"), "w") as f:
+            f.write(relative_project_dir if relative_project_dir is not None else "")
+            
+    except Exception as e:
+        raise RuntimeError(f"Error writing build directory context: {str(e)}")

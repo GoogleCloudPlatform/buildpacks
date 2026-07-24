@@ -1,127 +1,170 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+"""
+Binary dotnet/runtime buildpack detects .NET applications
+and install the corresponding version of .NET runtime.
+"""
 
-// Binary dotnet/runtime buildpack detects .NET applications
-// and install the corresponding version of .NET runtime.
-package lib
+import os
+from typing import Dict, List, Optional
 
-import (
-	"fmt"
-	"os"
-	"strconv"
-	"strings"
+import pkg.dotnet as dotnet  # type: ignore
+import pkg.env as env  # type: ignore
+import pkg.gcpbuildpack as gcp  # type: ignore
+import pkg.runtime as runtime  # type: ignore
+from buildpacks.libcnb.v2 import Layer, Environment
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/dotnet"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/buildpacks/libcnb/v2"
-)
+sdk_layer_name = "sdk"
+dev_mode_key = "devmode"
 
-const (
-	sdkLayerName = "sdk"
-	devModeKey   = "devmode"
-)
+def detect_fn(ctx: gcp.Context) -> Optional[gcp.DetectResult]:
+    """
+    Detect function for .NET SDK buildpack.
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if result := runtime.CheckOverride("dotnet"); result != nil {
-		return result, nil
-	}
+    Args:
+        ctx: The context object containing build information and utilities.
 
-	files, err := dotnet.ProjectFiles(ctx, ".")
-	if err != nil {
-		return nil, err
-	}
-	if len(files) != 0 {
-		return gcp.OptIn("found project files: " + strings.Join(files, ", ")), nil
-	}
+    Returns:
+        A DetectResult indicating whether the buildpack should be used.
+    """
+    if runtime.check_override("dotnet"):
+        return None
 
-	return gcp.OptOut("no project files or .dll files found"), nil
-}
+    try:
+        files = dotnet.project_files(ctx, ".")
+        if files:
+            return gcp.OptIn(f"found project files: {', '.join(files)}")
+    except Exception as e:
+        logger.error(f"Error checking project files: {e}")
+        raise
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	sdkVersion, err := dotnet.GetSDKVersion(ctx)
-	if err != nil {
-		return err
-	}
-	isDevMode, err := env.IsDevMode()
-	if err != nil {
-		return fmt.Errorf("checking if dev mode is enabled: %w", err)
-	}
-	if err := buildSDKLayer(ctx, sdkVersion, isDevMode); err != nil {
-		return fmt.Errorf("building the sdk layer: %w", err)
-	}
-	return nil
-}
+    return gcp.OptOut("no project files or .dll files found")
 
-func buildSDKLayer(ctx *gcp.Context, version string, isDevMode bool) error {
-	// Keep the SDK layer for launch in devmode because we use `dotnet watch`.
-	sdkl, err := ctx.Layer(sdkLayerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", sdkLayerName, err)
-	}
-	if strconv.FormatBool(isDevMode) != ctx.GetMetadata(sdkl, devModeKey) {
-		if err := ctx.ClearLayer(sdkl); err != nil {
-			return fmt.Errorf("clearing layer %q: %w", sdkl.Name, err)
-		}
-	}
-	if _, err := runtime.InstallTarballIfNotCached(ctx, runtime.DotnetSDK, version, sdkl); err != nil {
-		return err
-	}
-	if err := setSDKEnvVars(ctx, sdkl, isDevMode); err != nil {
-		return err
-	}
-	ctx.SetMetadata(sdkl, devModeKey, strconv.FormatBool(isDevMode))
-	return nil
-}
+def build_fn(ctx: gcp.Context) -> None:
+    """
+    Build function for .NET SDK buildpack.
 
-func setSDKEnvVars(ctx *gcp.Context, sdkl *libcnb.Layer, isDevMode bool) error {
-	if dotnet.RequiresGlobalizationInvariant(ctx) {
-		sdkl.BuildEnvironment.Default("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1")
-	}
+    Args:
+        ctx: The context object containing build information and utilities.
+    """
+    try:
+        sdk_version = dotnet.get_sdk_version(ctx)
+        is_dev_mode = env.is_dev_mode()
+        build_sdk_layer(ctx, sdk_version, is_dev_mode)
+    except Exception as e:
+        logger.error(f"Error building SDK layer: {e}")
+        raise
 
-	cap := ctx.Capability(dotnet.SkipEnvVariablesAssignmentCapability)
-	if cap != nil {
-		skip, ok := cap.(dotnet.SkipEnvVariablesAssignment)
-		if !ok {
-			return gcp.InternalErrorf("capability %q must implement dotnet.SkipEnvVariablesAssignment", dotnet.SkipEnvVariablesAssignmentCapability)
-		}
-		return skip.SkipVariables(ctx, sdkl)
-	}
+def build_sdk_layer(
+    ctx: gcp.Context,
+    version: str,
+    is_dev_mode: bool
+) -> None:
+    """
+    Build the SDK layer for the .NET runtime.
 
-	if isDevMode {
-		setSDKEnvVarsDevMode(sdkl)
-	} else {
-		setSDKEnvVarsForBuild(sdkl)
-	}
-	return nil
-}
+    Args:
+        ctx: The context object containing build information and utilities.
+        version: The version of the .NET SDK to install.
+        is_dev_mode: Whether the buildpack is running in development mode.
+    """
+    try:
+        sdkl = ctx.layer(
+            sdk_layer_name,
+            gcp.BuildLayer,
+            gcp.CacheLayer,
+            gcp.LaunchLayerIfDevMode
+        )
+    except Exception as e:
+        logger.error(f"Error creating {sdk_layer_name} layer: {e}")
+        raise
 
-// setSDKEnvVarsDevMode sets the env vars for dev mode. In dev mode, the full
-// SDK is present at launch time and the runtime layer is not created.
-func setSDKEnvVarsDevMode(sdkl *libcnb.Layer) {
-	sdkl.SharedEnvironment.Default("DOTNET_ROOT", sdkl.Path)
-	sdkl.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), sdkl.Path)
-	sdkl.LaunchEnvironment.Default("DOTNET_RUNNING_IN_CONTAINER", "true")
-}
+    current_dev_mode = ctx.get_metadata(sdkl, dev_mode_key)
+    if str(is_dev_mode) != current_dev_mode:
+        try:
+            ctx.clear_layer(sdkl)
+        except Exception as e:
+            logger.error(f"Error clearing layer {sdkl.name}: {e}")
+            raise
 
-// setSDKEnvVarsForBuild sets the SDK variables needed at build time. The SDK
-// layer is only present for the build and the runtime layer is present in the launch
-// image.
-func setSDKEnvVarsForBuild(sdkl *libcnb.Layer) {
-	sdkl.BuildEnvironment.Default("DOTNET_ROOT", sdkl.Path)
-	sdkl.BuildEnvironment.Prepend("PATH", string(os.PathListSeparator), sdkl.Path)
-}
+    try:
+        runtime.install_tarball_if_not_cached(
+            ctx,
+            runtime.dotnet_sdk,
+            version,
+            sdkl
+        )
+    except Exception as e:
+        logger.error(f"Error installing SDK tarball: {e}")
+        raise
+
+    try:
+        set_sdk_env_vars(ctx, sdkl, is_dev_mode)
+    except Exception as e:
+        logger.error(f"Error setting SDK environment variables: {e}")
+        raise
+
+    ctx.set_metadata(sdkl, dev_mode_key, str(is_dev_mode))
+
+def set_sdk_env_vars(
+    ctx: gcp.Context,
+    sdkl: Layer,
+    is_dev_mode: bool
+) -> None:
+    """
+    Set the environment variables for the SDK layer.
+
+    Args:
+        ctx: The context object containing build information and utilities.
+        sdkl: The SDK layer to modify.
+        is_dev_mode: Whether the buildpack is running in development mode.
+    """
+    if dotnet.requires_globalization_invariant(ctx):
+        sdkl.build_environment.default(
+            "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT",
+            "1"
+        )
+
+    cap = ctx.capability(dotnet.skip_env_variables_assignment_capability)
+    if cap:
+        try:
+            skip_vars = cap.skip_variables  # type: ignore
+            skip_vars(ctx, sdkl)
+        except Exception as e:
+            logger.error(f"Error skipping environment variable assignment: {e}")
+            raise
+
+    if is_dev_mode:
+        set_sdk_env_vars_dev_mode(sdkl)
+    else:
+        set_sdk_env_vars_for_build(sdkl)
+
+def set_sdk_env_vars_dev_mode(sdkl: Layer) -> None:
+    """
+    Set environment variables specific to development mode.
+
+    Args:
+        sdkl: The SDK layer to modify.
+    """
+    sdkl.shared_environment.default("DOTNET_ROOT", sdkl.path)
+    sdkl.shared_environment.prepend(
+        "PATH",
+        os.sep,
+        sdkl.path
+    )
+    sdkl.launch_environment.default(
+        "DOTNET_RUNNING_IN_CONTAINER",
+        "true"
+    )
+
+def set_sdk_env_vars_for_build(sdkl: Layer) -> None:
+    """
+    Set environment variables for build time.
+
+    Args:
+        sdkl: The SDK layer to modify.
+    """
+    sdkl.build_environment.default("DOTNET_ROOT", sdkl.path)
+    sdkl.build_environment.prepend(
+        "PATH",
+        os.sep,
+        sdkl.path
+    )

@@ -1,104 +1,93 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import os
+import time
+from typing import List, Optional
+import logging
+import fnmatch
 
-// Package clearsource contains tools to delete source code.
-package clearsource
-
-import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"strconv"
-	"time"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+from buildpack.gcpbuildpack import (
+    DetectResult,
+    OptOut,
+    OptOutEnvNotSet,
+    UserErrorf,
 )
+from buildpack.env import ClearSource as env_ClearSource
+from buildpack.devmode import Enabled as devmode_Enabled
+from buildpack.appstart import ConfigDir
 
-var (
-	defaultExclusions = []string{appstart.ConfigDir}
-)
+default_exclusions = [ConfigDir]
 
-// DetectFn detemines if clear source buildpacks should opt out.
-// In case the buildpack shouldn't opt out, the function does not make a
-// determination and instead returns a nil result.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if devmode.Enabled(ctx) {
-		return gcp.OptOut("development mode enabled"), nil
-	}
+def DetectFn(ctx: dict) -> tuple[Optional[DetectResult], Optional[str]]:
+    """
+    Determines if clear source buildpacks should opt out.
+    Returns a detection result or nil if it shouldn't opt out.
+    """
+    if devmode_Enabled(ctx):
+        return OptOut("development mode enabled"), None
 
-	if clearSource, ok := os.LookupEnv(env.ClearSource); ok {
-		clear, err := strconv.ParseBool(clearSource)
-		if err != nil {
-			return nil, gcp.UserErrorf("parsing %q: %v", env.ClearSource, err)
-		}
+    clear_source = os.getenv(env_ClearSource)
+    if clear_source is not None:
+        try:
+            clear = bool(clear_source)
+            if clear:
+                return None, None
+        except ValueError as e:
+            return None, str(UserErrorf(f"parsing {env_ClearSource!r}: {e}"))
+    
+    return OptOutEnvNotSet(env_ClearSource), None
 
-		if clear {
-			// It is up to the buildpack to determine if clear source has any effect
-			// and if it should opt in, e.g. Java only opts in for Gradle/Maven builds.
-			return nil, nil
-		}
-	}
-	return gcp.OptOutEnvNotSet(env.ClearSource), nil
-}
+def BuildFn(ctx: dict, exclusions: List[str]) -> Optional[str]:
+    """
+    Clears the workspace while leaving exclusion patterns untouched.
+    Exclusions are relative to the application directory.
+    Returns an error if any occurs during clearing.
+    """
+    logging.info("Clearing source")
+    
+    start_time = time.time()
+    try:
+        # Perform the clear operation
+        exclusions += default_exclusions
+        paths, err = paths_to_remove(ctx, ctx["ApplicationRoot"](), exclusions)
+        if err is not None:
+            return f"Filtering paths: {err}"
+        
+        for path in paths:
+            if os.path.exists(path):
+                if os.path.isdir(path):
+                    os.rmdir(path)
+                else:
+                    os.remove(path)
+    finally:
+        # Log the duration of the clear operation
+        elapsed = time.time() - start_time
+        logging.info(f"Clear source completed in {elapsed:.2f}s")
+    
+    return None
 
-// BuildFn clears the workspace while leaving exclusion patterns untouched.
-// exclusions is a list of pattern strings relative to the user application directory.
-func BuildFn(ctx *gcp.Context, exclusions []string) error {
-	ctx.Logf("Clearing source")
-
-	defer func(now time.Time) {
-		ctx.Span("Clear source", now, buildererror.StatusOk)
-	}(time.Now())
-
-	exclusions = append(exclusions, defaultExclusions...)
-	paths, err := pathsToRemove(ctx, ctx.ApplicationRoot(), exclusions)
-	if err != nil {
-		return fmt.Errorf("filtering paths: %w", err)
-	}
-	for _, path := range paths {
-		if err := ctx.RemoveAll(path); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// pathsToRemove returns a list of entries in dir, filtering entries that match any in exclusions. exclusions should be a partial path relative to dir.
-func pathsToRemove(ctx *gcp.Context, dir string, exclusions []string) ([]string, error) {
-	paths, err := ctx.Glob(filepath.Join(dir, "*"))
-	if err != nil {
-		return nil, fmt.Errorf("finding paths: %w", err)
-	}
-	var filteredPaths []string
-	for _, path := range paths {
-		remove := true
-		for _, exclusion := range exclusions {
-			if match, err := filepath.Match(path, filepath.Join(dir, exclusion)); err != nil {
-				return nil, fmt.Errorf("matching pattern %q with path %q: %v", filepath.Join(dir, exclusion), path, err)
-			} else if match {
-				remove = false
-				break
-			}
-		}
-		if remove {
-			filteredPaths = append(filteredPaths, path)
-		}
-	}
-	return filteredPaths, nil
-}
+def paths_to_remove(ctx: dict, directory: str, exclusions: List[str]) -> tuple[List[str], Optional[str]]:
+    """
+    Returns a list of paths to remove, excluding those that match any pattern.
+    Exclusions are relative to the given directory.
+    Returns an error if any occurs during globbing.
+    """
+    try:
+        # Get all items in the directory
+        with os.scandir(directory) as entries:
+            paths = [os.path.join(directory, entry.name) for entry in entries]
+    except OSError as e:
+        return [], str(e)
+    
+    filtered_paths = []
+    for path in paths:
+        remove = True
+        for exclusion in exclusions:
+            pattern = os.path.join(directory, exclusion)
+            # Check if the current path matches any exclusion pattern
+            if fnmatch.fnmatch(path, pattern):
+                remove = False
+                break
+        
+        if remove:
+            filtered_paths.append(path)
+    
+    return filtered_paths, None

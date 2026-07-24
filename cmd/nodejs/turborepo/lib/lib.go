@@ -1,91 +1,101 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements nodejs/turborepo buildpack.
-// The nodejs/turborepo buildpack analyzes and configures a build for monorepos using Turborepo.
-package lib
+"""
+Implements nodejs/turborepo buildpack.
+The nodejs/turborepo buildpack analyzes and configures a build for monorepos using Turborepo.
+"""
 
-import (
-	"fmt"
-	"strings"
+import json
+import os
+from typing import Optional, Dict, Any
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
-)
+import gcpbuildpack as gcp
+from gcpbuildpack.layers import Layer
+from buildermetadata import BuilderMetadata
+import nodejs
 
-var (
-	versionKey = "version"
-	// The Turbo buildpack build function sets the following environment variables to configure the build
-	// behavior of subsequent buildpacks.
-	monorepoProject   = "MONOREPO_PROJECT"    // The name of the target application in a turbo monorepo.
-	monorepoCommand   = "MONOREPO_COMMAND"    // The CLI command utility ("turbo").
-	monorepoBuildArgs = "MONOREPO_BUILD_ARGS" // The build arguments to pass to the turbo command.
-)
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	turboJSONExists, err := ctx.FileExists("turbo.json")
-	if err != nil {
-		return nil, err
-	}
-	if !turboJSONExists {
-		return gcp.OptOutFileNotFound("turbo.json"), nil
-	}
-	return gcp.OptInFileFound("turbo.json"), nil
-}
+# Constants
+VERSION_KEY = "version"
+MONOREPO_PROJECT_ENV_VAR = "MONOREPO_PROJECT"
+MONOREPO_COMMAND_ENV_VAR = "MONOREPO_COMMAND"
+MONOREPO_BUILD_ARGS_ENV_VAR = "MONOREPO_BUILD_ARGS"
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	appDir := util.ApplicationDirectory(ctx)
 
-	turboJSON, err := nodejs.ReadTurboJSONIfExists(ctx.ApplicationRoot())
-	if err != nil {
-		return err
-	}
-	if turboJSON == nil {
-		return gcp.UserErrorf("turbo.json file does not exist")
-	}
+def DetectFn(context: gcp.Context) -> Optional[gcp.DetectResult]:
+    """
+    Detects if the buildpack should be used based on presence of turbo.json.
+    
+    Args:
+        context (gcp.Context): The build context
+        
+    Returns:
+        Optional[gcp.DetectResult]: Detection result
+    """
+    turbo_json_path = os.path.join(context.application_root, "turbo.json")
+    if not os.path.exists(turbo_json_path):
+        return gcp.OptOutFileNotFound("turbo.json")
+    
+    return gcp.OptInFileFound("turbo.json")
 
-	appPackageJSON, err := nodejs.ReadPackageJSONIfExists(appDir)
-	if err != nil {
-		return err
-	}
 
-	var appName string
-	if appPackageJSON != nil {
-		appName = appPackageJSON.Name
-	}
-	// Target application is ambiguous, so we fail the build.
-	if appName == "" {
-		return gcp.UserErrorf("target application in Turbo monorepo is ambiguous. Please specify the application directory path during onboarding.")
-	}
-
-	buildArgs := []string{fmt.Sprintf("--filter=%s", appName), "--env-mode=loose"}
-
-	turbol, err := ctx.Layer("turbo", gcp.BuildLayer, gcp.CacheLayer)
-	if err != nil {
-		return fmt.Errorf("creating turbo layer: %w", err)
-	}
-	// Set environment variables that will configure the build to use Turborepo.
-	turbol.BuildEnvironment.Override(monorepoProject, appName)
-	turbol.BuildEnvironment.Override(monorepoCommand, "turbo")
-	turbol.BuildEnvironment.Override(monorepoBuildArgs, strings.Join(buildArgs, ","))
-
-	// add turbo as the monorepo name to the builder metadata
-	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.MonorepoName, "turbo")
-
-	return nil
-}
+def BuildFn(context: gcp.Context) -> None:
+    """
+    Builds the application using Turborepo configuration.
+    
+    Args:
+        context (gcp.Context): The build context
+    """
+    app_dir = os.path.join(context.application_root, "app")
+    
+    # Read Turbo configuration
+    turbo_json_path = os.path.join(context.application_root, "turbo.json")
+    turbo_config: Optional[Dict[str, Any]] = None
+    if os.path.exists(turbo_json_path):
+        with open(turbo_json_path) as f:
+            turbo_config = json.load(f)
+    
+    if not turbo_config:
+        raise gcp.UserError("turbo.json file does not exist")
+    
+    # Read application package.json
+    app_package_json_path = os.path.join(app_dir, "package.json")
+    app_package: Optional[Dict[str, Any]] = None
+    if os.path.exists(app_package_json_path):
+        with open(app_package_json_path) as f:
+            app_package = json.load(f)
+    
+    # Determine application name
+    app_name = app_package.get("name") if app_package else ""
+    if not app_name:
+        raise gcp.UserError(
+            "Target application in Turbo monorepo is ambiguous. "
+            "Please specify the application directory path during onboarding."
+        )
+    
+    # Prepare build arguments
+    build_args = [
+        f"--filter={app_name}",
+        "--env-mode=loose"
+    ]
+    
+    # Create Turbo layer
+    turbo_layer = context.layers.create("turbo", gcp.LayerType.BUILD)
+    turbo_layer.build_environment[MONOREPO_PROJECT_ENV_VAR] = app_name
+    turbo_layer.build_environment[MONOREPO_COMMAND_ENV_VAR] = "turbo"
+    turbo_layer.build_environment[MONOREPO_BUILD_ARGS_ENV_VAR] = ",".join(build_args)
+    
+    # Update builder metadata
+    BuilderMetadata().set_value(BuilderMetadata.MONOREPO_NAME, "turbo")

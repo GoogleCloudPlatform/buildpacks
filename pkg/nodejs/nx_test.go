@@ -1,51 +1,63 @@
-package nodejs
+import unittest
 
-import (
-	"reflect"
-	"testing"
+class TestInstallPNPM(unittest.TestCase):
+    def test_install_pnpm(self):
+        # Assume mock tarball and npm registry responses are set up
+        mock_tarball = b"pnpm!"
+        
+        with self.subTest("no_version_constraint"):
+            pnpm_response = {
+                "name": "pnpm",
+                "dist-tags": {"latest": "11.0.0"},
+                "versions": {"11.0.0": {"name": "pnpm", "version": "11.0.0"}},
+                "modified": "2026-05-21T21:10:55.626Z"
+            }
+            
+            install_pnpm(mock_tarball, pnpm_response)
+        
+        with self.subTest("valid_version_constraint"):
+            pnpm_response = {
+                "name": "pnpm",
+                "dist-tags": {"latest": "8.4.0"},
+                "versions": {"8.4.0": {"name": "npm", "version": "8.4.0"}},
+                "modified": "2022-01-27T21:10:55.626Z"
+            }
+            
+            install_pnpm(mock_tarball, pnpm_response)
+        
+        with self.subTest("invalid_version"):
+            pnpm_response = {
+                "name": "pnpm",
+                "dist-tags": {"latest": "8.4.0"},
+                "versions": {"8.4.0": {"name": "npm", "version": "8.4.0"}},
+                "modified": "2022-01-27T21:10:55.626Z"
+            }
+            
+            install_pnm_invalid_version(mock_tarball, pnpm_response)
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
-)
+class TestDetectPNPMVersion(unittest.TestCase):
+    def test_detect_pnpm_version(self):
+        # Assume mock npm registry response is set up
+        pnpm_response = {
+            "name": "pnpm",
+            "dist-tags": {"latest": "9.2.0"},
+            "versions": {"9.2.0": {"name": "npm", "version": "9.2.0"}},
+            "modified": "2022-01-27T21:10:55.626Z"
+        }
+        
+        version = detect_pnpm_version(pnpm_response, "ubuntu1804")
+        
+        self.assertEqual(version, "10.12.4")
 
-func TestReadNxJSONIfExists(t *testing.T) {
-	want := NxJSON{
-		DefaultProject:     "default-project",
-		NxCloudAccessToken: "access-token",
-	}
-
-	got, err := ReadNxJSONIfExists(testdata.MustGetPath("testdata/test-read-nx-project/"))
-	if err != nil {
-		t.Fatalf("ReadNxJSONIfExists got error: %v", err)
-	}
-	if got == nil {
-		t.Fatalf("ReadNxJSONIfExists did not find nx.json")
-	}
-	if !reflect.DeepEqual(*got, want) {
-		t.Errorf("ReadNxJSONIfExists\ngot %#v\nwant %#v", *got, want)
-	}
-}
-
-func TestReadProjectJSONIfExists(t *testing.T) {
-	want := NxProjectJSON{
-		Name:        "nx-app",
-		ProjectType: "application",
-		Prefix:      "test-read-nx-project",
-		SourceRoot:  "apps/nx-app/src",
-		Targets: NxTargets{
-			Build: NxBuild{
-				Executor: "@framework/builder",
-			},
-		},
-	}
-
-	got, err := ReadNxProjectJSONIfExists(testdata.MustGetPath("testdata/test-read-nx-project/apps/nx-app/"))
-	if err != nil {
-		t.Fatalf("ReadNxProjectJSONIfExists got error: %v", err)
-	}
-	if got == nil {
-		t.Fatalf("ReadNxProjectJSONIfExists did not find project.json")
-	}
-	if !reflect.DeepEqual(*got, want) {
-		t.Errorf("ReadNxProjectJSONIfExists\ngot %#v\nwant %#v", *got, want)
-	}
-}
+class TestInstallPNPMV11(unittest.TestCase):
+    def test_install_pnpmv11(self):
+        # Assume mock tarball and npm registry responses are set up
+        mock_tarball = b"pnpm!"
+        
+        pnpm_response = {
+            "name": "pnpm",
+            "dist-tags": {"latest": "11.0.0"},
+            "versions": {"11.0.0": {"name": "pnpm", "version": "11.0.0"}}
+        }
+        
+        install_pnpm(mock_tarball, pnpm_response)

@@ -1,61 +1,54 @@
-// Copyright 2022 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any
 
-package buildermetrics
+class LabelType(Enum):
+    Bool = 0
+    Int = 1
+    String = 2
 
-import (
-	"encoding/json"
-)
+@dataclass(frozen=True)
+class Label:
+    name: str
+    label_type: LabelType
 
-// LegacyCounter is an increasing metric to be recorded in BuilderMetrics.
-type LegacyCounter legacyMetric[int64]
+@dataclass
+class Field:
+    label: Label
+    value: Any
 
-// LegacyFloatDP is a float64 distribution point measurement to be recorded in BuilderMetrics.  All
-// LegacyFloatDPs for a given metric name should be added to a single distribution as they are
-// aggregated and recorded when processing BuilderOutput.  Do not use this type for recording
-// non-distribution type metrics.
-//
-// Also, keep in mind that these are floats, and care must be taken with comparisons and overflow.
-type LegacyFloatDP legacyMetric[float64]
+def labels_match(ll1: list[Label], ll2: list[Label]) -> bool:
+    if len(ll1) != len(ll2):
+        return False
+    count1 = {}
+    count2 = {}
+    for l in ll1:
+        key = (l.name, l.label_type)
+        count1[key] = count1.get(key, 0) + 1
+    for l in ll2:
+        key = (l.name, l.label_type)
+        count2[key] = count2.get(key, 0) + 1
+    return count1 == count2
 
-type legacyMetric[T interface{ int64 | float64 }] struct {
-	value T
-}
+def types_match(label: Label, field: Field) -> bool:
+    if isinstance(field.value, bool):
+        return label.label_type == LabelType.Bool
+    elif isinstance(field.value, int):
+        return label.label_type == LabelType.Int
+    elif isinstance(field.value, str):
+        return label.label_type == LabelType.String
+    else:
+        return False
 
-// Add increases the value of a Counter by addend
-func (l *legacyMetric[T]) Add(addend T) {
-	l.value += addend
-}
-
-// Value retrieves the value of a Counter
-func (l *legacyMetric[T]) Value() T {
-	return l.value
-}
-
-// Legacy metrics must un/marshal in the same way as the original metrics for compatibility
-
-// MarshalJSON serializes a Counter into json
-func (l *legacyMetric[T]) MarshalJSON() ([]byte, error) {
-	return json.Marshal(l.value)
-}
-
-// UnmarshalJSON deserializes json into a Counter
-func (l *legacyMetric[T]) UnmarshalJSON(b []byte) error {
-	var val T
-	if err := json.Unmarshal(b, &val); err != nil {
-		return err
-	}
-	l.value = val
-	return nil
-}
+def fields_match(fl1: list[Field], fl2: list[Field]) -> bool:
+    if len(fl1) != len(fl2):
+        return False
+    count1 = {}
+    count2 = {}
+    for f in fl1:
+        key = (f.label.name, f.label.label_type, type(f.value))
+        count1[key] = count1.get(key, 0) + 1
+    for f in fl2:
+        key = (f.label.name, f.label.label_type, type(f.value))
+        count2[key] = count2.get(key, 0) + 1
+    return count1 == count2

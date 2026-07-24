@@ -1,278 +1,253 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements the legacy GCF Go 1.11 worker buildpack.
-// The legacy_worker buildpack converts a function into an application and sets up the execution environment.
-package lib
+"""
+Implements the legacy GCF Go 1.11 worker buildpack.
+The legacy_worker buildpack converts a function into an application and sets up the execution environment.
+"""
 
-import (
-	_ "embed"
-	"fmt"
-	"os"
-	"path/filepath"
-	"text/template"
+import os
+from pathlib import Path
+import textwrap
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
-)
+import gcpbuildpack as gcp
+from gcpbuildpack import Context, DetectResult, BuildableLayer, LaunchEnvironment
 
-const (
-	layerName       = "legacy-worker"
-	gopathLayerName = "gopath"
-	appModule       = "functions.local/app"
-	fnSourceDir     = "serverless_function_source_code"
-)
+# Constants
+layer_name = "legacy-worker"
+gopath_layer_name = "gopath"
+app_module = "functions.local/app"
+fn_source_dir = "serverless_function_source_code"
 
-var (
-	googleDirs = []string{fnSourceDir, ".googlebuild", ".googleconfig"}
-	//go:embed converter/worker/main.tmpl
-	workerTmplFile string
-	//go:embed converter/worker/gomod.tmpl
-	goModTmplFile string
-)
+# Global variables
+google_dirs = [fn_source_dir, ".googlebuild", ".googleconfig"]
+worker_tmpl_file = textwrap.dedent("""\
+    import (
+        "log"
+        "net/http"
+        userfunction "{{ .Package }}"
+    )
 
-type fnInfo struct {
-	Source  string
-	Target  string
-	Package string
-}
+    func extraUseOfUserFunction() {
+        var handler interface{} = userfunction.{{ .Target }}
+    }
 
-// DetectFn detects if this is a Go 1.11 legacy worker function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !golang.IsGo111Runtime() {
-		return gcp.OptOut("Only compatible with go111"), nil
-	}
-	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
-		return gcp.OptInEnvSet(env.FunctionTarget), nil
-	}
-	return gcp.OptOutEnvNotSet(env.FunctionTarget), nil
-}
+    func main() {
+        var handler interface{} = userfunction.{{ .Target }}
+        http.HandleFunc("/", extraUseOfUserFunction)
+        err := http.ListenAndServe(":"+"8080", nil)
+        if err != nil {
+            log.Fatalf("Error starting the Worker server for Go: %s\n", err)
+        }
+    }
+""")
 
-// BuildFn converts the function into an application and sets up the execution environment.
-func BuildFn(ctx *gcp.Context) error {
-	l, err := ctx.Layer(layerName, gcp.LaunchLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", layerName, err)
-	}
-	if err := ctx.SetFunctionsEnvVars(l); err != nil {
-		return err
-	}
-	ctx.AddWebProcess([]string{golang.OutBin})
+go_mod_tmpl_file = textwrap.dedent("""\
+    // Copyright 2021 Google LLC
+    //
+    // Licensed under the Apache License, Version 2.0 (the "License");
+    // you may not use this file except in compliance with the License.
+    // You may obtain a copy of the License at
+    //
+    //      http://www.apache.org/licenses/LICENSE-2.0
+    //
+    // Unless required by applicable law or agreed to in writing, software
+    // distributed under the License is distributed on an "AS IS" BASIS,
+    // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    // See the License for the specific language governing permissions and
+    // limitations under the License.
 
-	fnTarget := os.Getenv(env.FunctionTarget)
+    module functions.local/app
 
-	// Move the function source code into a subdirectory in order to construct the app in the main application root.
-	if err := ctx.RemoveAll(fnSourceDir); err != nil {
-		return err
-	}
-	if err := ctx.MkdirAll(fnSourceDir, 0755); err != nil {
-		return err
-	}
-	// mindepth=1 excludes '.', '+' collects all file names before running the command.
-	// Exclude serverless_function_source_code and .google* dir e.g. .googlebuild, .googleconfig
-	command := fmt.Sprintf("find . -mindepth 1 -not -name %[1]s -prune -not -name %[2]q -prune -exec mv -t %[1]s {} +", fnSourceDir, ".google*")
-	if _, err := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserTimingAttribution); err != nil {
-		return err
-	}
+    require fnmod v0.0.0
 
-	fnSource := filepath.Join(ctx.ApplicationRoot(), fnSourceDir)
-	pkgName, err := extractPackageNameInDir(ctx, fnSource)
-	if err != nil {
-		return fmt.Errorf("extracting package name: %w", err)
-	}
-	fn := fnInfo{
-		Source:  fnSource,
-		Target:  fnTarget,
-		Package: pkgName,
-	}
+    replace fnmod => ./serverless_function_source_code
+""")
 
-	l.LaunchEnvironment.Default("X_GOOGLE_ENTRY_POINT", os.Getenv(env.FunctionTarget))
-	triggerType := os.Getenv(env.FunctionSignatureType)
-	if triggerType == "http" || triggerType == "" {
-		triggerType = "HTTP_TRIGGER"
-	}
-	l.LaunchEnvironment.Default("X_GOOGLE_FUNCTION_TRIGGER_TYPE", triggerType)
+class FnInfo:
+    def __init__(self, source: str, target: str, package: str):
+        self.source = source
+        self.target = target
+        self.package = package
 
-	goMod := filepath.Join(fn.Source, "go.mod")
-	goModExists, err := ctx.FileExists(goMod)
-	if err != nil {
-		return err
-	}
-	if !goModExists {
-		return createMainVendored(ctx, fn)
-	}
-	isWriteable, err := ctx.IsWritable(goMod)
-	if err != nil {
-		return err
-	}
-	if !isWriteable {
-		// Preempt an obscure failure mode: if go.mod is not writable then `go list -m` can fail saying:
-		//     go: updates to go.sum needed, disabled by -mod=readonly
-		return gcp.UserErrorf("go.mod exists but is not writable")
-	}
-	return createMainGoMod(ctx, fn)
-}
+def detect_fn(ctx: Context) -> DetectResult:
+    if not os.getenv("GOOGLE_RUNTIME") == "go111":
+        return DetectResult.OptOut("Only compatible with go111")
+    
+    function_target = os.getenv(env.FunctionTarget)
+    if function_target is not None:
+        return DetectResult.OptInEnvSet(env.FunctionTarget)
+    
+    return DetectResult.OptOutEnvNotSet(env.FunctionTarget)
 
-/*
-createMainGoMod creates the `main.go` and `go.mod` required to form a
-module-based Go application that wraps the user function into a server.
-The main application's Go module depends on the user function's Go module,
-which is assumed to be a subdirectory of the main application's source code.
+def build_fn(ctx: Context) -> None:
+    try:
+        layer = ctx.layer(layer_name, BuildableLayer.LAUNCH_LAYER)
+    except Exception as e:
+        raise RuntimeError(f"Creating {layer_name} layer failed: {e}") from e
+    
+    if not ctx.set_functions_env_vars(layer):
+        return
+    
+    ctx.add_web_process(["go", "out", "bin"])
 
-ctx.ApplicationRoot()
-├── go.mod // `module functions.local/app`
-├── main.go
-└── serverless_function_source_code // assumed to aleady exist
+    fn_target = os.getenv(env.FunctionTarget)
 
-	├── go.mod // `module <user's module name>`
-	├── fn.go
-	└── ...
-*/
-func createMainGoMod(ctx *gcp.Context, fn fnInfo) error {
-	l, err := ctx.Layer(gopathLayerName, gcp.BuildLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", gopathLayerName, err)
-	}
-	l.BuildEnvironment.Override("GOPATH", l.Path)
-	if err := ctx.Setenv("GOPATH", l.Path); err != nil {
-		return err
-	}
+    # Move function source code into subdirectory
+    try:
+        ctx.remove_all(fn_source_dir)
+        ctx.mkdir_all(fn_source_dir, 0o755)
+    except Exception as e:
+        raise RuntimeError(f"Failed to prepare {fn_source_dir}: {e}") from e
 
-	fnMod, fnPackage, err := moduleAndPackageNames(ctx, fn)
-	if err != nil {
-		return fmt.Errorf("extracting module and package names: %w", err)
-	}
-	fn.Package = fnPackage
+    command = f"find . -mindepth 1 -not -name '{fn_source_dir}' -prune -not -name '.google*' -prune -exec mv -t {fn_source_dir} {{}} +"
+    if not ctx.exec(["bash", "-c", command], user_timing_attribution=True):
+        return
 
-	if err := createMainGoModFile(ctx, fnMod, filepath.Join(ctx.ApplicationRoot(), "go.mod")); err != nil {
-		return fmt.Errorf("error creating `go.mod` for function application: %w", err)
-	}
+    fn_source = str(Path(ctx.application_root()) / fn_source_dir)
+    try:
+        pkg_name = extract_package_name_in_dir(ctx, fn_source)
+    except Exception as e:
+        raise RuntimeError(f"Extracting package name failed: {e}") from e
+    
+    fn = FnInfo(source=fn_source, target=fn_target, package=pkg_name)
 
-	return createMainGoFile(ctx, fn, filepath.Join(ctx.ApplicationRoot(), "main.go"))
-}
+    layer.launch_environment.default("X_GOOGLE_ENTRY_POINT", os.getenv(env.FunctionTarget))
+    trigger_type = os.getenv(env.FunctionSignatureType)
+    if trigger_type in ("http", ""):
+        trigger_type = "HTTP_TRIGGER"
+    layer.launch_environment.default("X_GOOGLE_FUNCTION_TRIGGER_TYPE", trigger_type)
 
-func createMainGoModFile(ctx *gcp.Context, fnMod string, goModPath string) error {
-	f, err := ctx.CreateFile(goModPath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+    go_mod_path = str(Path(fn.source) / "go.mod")
+    try:
+        go_mod_exists = ctx.file_exists(go_mod_path)
+    except Exception as e:
+        raise RuntimeError(f"Checking {go_mod_path} existence failed: {e}") from e
+    
+    if not go_mod_exists:
+        create_main_vendored(ctx, fn)
+        return
 
-	tmpl, err := template.New("worker_gomod").Parse(goModTmplFile)
-	if err != nil {
-		return err
-	}
+    is_writable = ctx.is_writable(go_mod_path)
+    if not is_writable:
+        raise gcp.UserError("go.mod exists but is not writable")
+    
+    create_main_go_mod(ctx, fn)
 
-	tmplSubs := struct {
-		AppModule string
-		FnModule  string
-		FnSource  string
-	}{
-		AppModule: appModule,
-		FnModule:  fnMod,
-		FnSource:  fnSourceDir,
-	}
+def create_main_go_mod(ctx: Context, fn: FnInfo) -> None:
+    try:
+        layer = ctx.layer(gopath_layer_name, BuildableLayer.BUILD_LAYER)
+    except Exception as e:
+        raise RuntimeError(f"Creating {gopath_layer_name} layer failed: {e}") from e
+    
+    layer.build_environment.override("GOPATH", str(layer.path))
+    if not ctx.setenv("GOPATH", str(layer.path)):
+        return
 
-	return tmpl.Execute(f, tmplSubs)
-}
+    fn_mod, fn_package, err = module_and_package_names(ctx, fn)
+    if err:
+        raise RuntimeError(f"Extracting module and package names failed: {err}")
 
-// moduleAndPackageNames extracts the module name and package name of the function.
-func moduleAndPackageNames(ctx *gcp.Context, fn fnInfo) (string, string, error) {
-	result, err := ctx.Exec([]string{"go", "list", "-m"}, gcp.WithWorkDir(fn.Source), gcp.WithUserAttribution)
-	if err != nil {
-		return "", "", err
-	}
-	fnMod := result.Stdout
-	// Add the module name to the the package name, such that go build will be able to find it,
-	// if a directory with the package name is not at the app root. Otherwise, assume the package is at the module root.
-	fnPackage := fnMod
-	fnPackageExists, err := ctx.FileExists(ctx.ApplicationRoot(), fn.Package)
-	if err != nil {
-		return "", "", err
-	}
-	if fnPackageExists {
-		fnPackage = fmt.Sprintf("%s/%s", fnMod, fn.Package)
-	}
-	return fnMod, fnPackage, nil
-}
+    fn.package = fn_package
 
-// createMainVendored creates the main.go file for vendored functions.
-// This should only be run for Go 1.11 and 1.13.
-// Go 1.11 and 1.13 on GCF allow for vendored go.mod deployments without a go.mod file.
-// Note that despite the lack of a go.mod file, this does *not* mean that these are GOPATH deployments.
-// These deployments were created by running `go mod vendor` and then .gcloudignoring the go.mod file,
-// so that Go versions that don't natively handle gomod vendoring would be able to pick up the vendored deps.
-// n.b. later versions of Go (1.14+) handle vendored go.mod files natively, and so we just use the go.mod route there.
-func createMainVendored(ctx *gcp.Context, fn fnInfo) error {
-	l, err := ctx.Layer(gopathLayerName, gcp.BuildLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", gopathLayerName, err)
-	}
-	gopath := ctx.ApplicationRoot()
-	gopathSrc := filepath.Join(gopath, "src")
-	if err := ctx.MkdirAll(gopathSrc, 0755); err != nil {
-		return err
-	}
-	l.BuildEnvironment.Override(env.Buildable, appModule+"/main")
-	l.BuildEnvironment.Override("GOPATH", gopath)
-	l.BuildEnvironment.Override("GO111MODULE", "auto")
-	if err := ctx.Setenv("GOPATH", gopath); err != nil {
-		return err
-	}
+    create_main_go_mod_file(ctx, fn_mod, str(Path(ctx.application_root()) / "go.mod"))
+    create_main_go_file(ctx, fn, str(Path(ctx.application_root()) / "main.go"))
 
-	appPath := filepath.Join(gopathSrc, appModule, "main")
-	if err := ctx.MkdirAll(appPath, 0755); err != nil {
-		return err
-	}
+def create_main_go_mod_file(ctx: Context, fn_mod: str, go_mod_path: str) -> None:
+    try:
+        with ctx.create_file(go_mod_path) as f:
+            tmpl = textwrap.Template(go_mod_tmpl_file)
+            tmpl_subs = {
+                "AppModule": app_module,
+                "FnModule": fn_mod,
+                "FnSource": fn_source_dir
+            }
+            f.write(tmpl.substitute(**tmpl_subs))
+    except Exception as e:
+        raise RuntimeError(f"Error creating go.mod for function application: {e}") from e
 
-	// We move the function source (including any vendored deps) into GOPATH.
-	if err := ctx.Rename(fn.Source, filepath.Join(gopathSrc, fn.Package)); err != nil {
-		return err
-	}
-	return createMainGoFile(ctx, fn, filepath.Join(appPath, "main.go"))
-}
+def module_and_package_names(ctx: Context, fn: FnInfo) -> tuple[str, str, Exception]:
+    try:
+        result = ctx.exec(
+            ["go", "list", "-m"],
+            work_dir=fn.source,
+            user_attribution=True
+        )
+    except Exception as e:
+        return ("", "", e)
+    
+    fn_mod = result.stdout.strip()
+    fn_package = fn_mod
 
-func createMainGoFile(ctx *gcp.Context, fn fnInfo, main string) error {
-	f, err := ctx.CreateFile(main)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+    package_path = str(Path(ctx.application_root()) / fn.package)
+    try:
+        if ctx.file_exists(package_path):
+            fn_package = f"{fn_mod}/{fn.package}"
+    except Exception as e:
+        return ("", "", e)
+    
+    return (fn_mod, fn_package, None)
 
-	tmpl, err := template.New("worker_main").Parse(workerTmplFile)
-	if err != nil {
-		return err
-	}
+def create_main_vendored(ctx: Context, fn: FnInfo) -> None:
+    try:
+        layer = ctx.layer(gopath_layer_name, BuildableLayer.BUILD_LAYER)
+    except Exception as e:
+        raise RuntimeError(f"Creating {gopath_layer_name} layer failed: {e}") from e
+    
+    gopath = str(ctx.application_root())
+    gopath_src = str(Path(gopath) / "src")
+    
+    if not ctx.mkdir_all(gopath_src, 0o755):
+        return
 
-	return tmpl.Execute(f, fn)
-}
+    layer.build_environment.override(env.Buildable, f"{app_module}/main")
+    layer.build_environment.override("GOPATH", gopath)
+    layer.build_environment.override("GO111MODULE", "auto")
 
-// extractPackageNameInDir builds the script that does the extraction, and then runs it with the
-// specified source directory.
-// The parser is dependent on the language version being used, and it's highly likely that the buildpack binary
-// will be built with a different version of the language than the function deployment. Building this script ensures
-// that the version of Go used to build the function app will be the same as the version used to parse it.
-func extractPackageNameInDir(ctx *gcp.Context, source string) (string, error) {
-	script := filepath.Join(ctx.BuildpackRoot(), "converter", "get_package", "main.go")
-	cacheDir, err := ctx.TempDir("app")
-	if err != nil {
-		return "", fmt.Errorf("creating temp directory: %w", err)
-	}
-	result, err := ctx.Exec([]string{"go", "run", script, "-dir", source}, gcp.WithEnv("GOCACHE="+cacheDir), gcp.WithUserAttribution)
-	if err != nil {
-		return "", err
-	}
-	return result.Stdout, nil
-}
+    if not ctx.setenv("GOPATH", gopath):
+        return
+
+    app_path = str(Path(gopath_src) / app_module / "main")
+    if not ctx.mkdir_all(app_path, 0o755):
+        return
+
+    try:
+        ctx.rename(fn.source, str(Path(gopath_src) / fn.package))
+    except Exception as e:
+        raise RuntimeError(f"Failed to rename directory: {e}") from e
+    
+    create_main_go_file(ctx, fn, str(Path(app_path) / "main.go"))
+
+def create_main_go_file(ctx: Context, fn: FnInfo, main_path: str) -> None:
+    try:
+        with ctx.create_file(main_path) as f:
+            tmpl = textwrap.Template(worker_tmpl_file)
+            f.write(tmpl.substitute(fn.__dict__))
+    except Exception as e:
+        raise RuntimeError(f"Error creating main.go file: {e}") from e
+
+def extract_package_name_in_dir(ctx: Context, source: str) -> tuple[str, Exception]:
+    script_path = str(Path(ctx.buildpack_root()) / "converter" / "get_package" / "main.py")
+    cache_dir = ctx.temp_dir("app")
+
+    try:
+        result = ctx.exec(
+            ["python3", script_path, "-dir", source],
+            env={"GOCACHE": str(cache_dir)},
+            user_attribution=True
+        )
+    except Exception as e:
+        return ("", e)
+    
+    return (result.stdout.strip(), None)

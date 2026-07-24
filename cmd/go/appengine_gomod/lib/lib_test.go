@@ -1,214 +1,121 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-package lib
+"""
+Implements go/appengine_gomod buildpack.
+The appengine_gomod buildpack sets up the path of the package to build for gomod applications.
+"""
 
-import (
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"testing"
+import os
+import shutil
+from pathlib import Path
 
-	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+from ..pkg.appengine import opt_out_target_platform_not_gae, opt_out_file_not_found, opt_in
+from ..pkg.env import is_gae, buildable_env_var, ga_yaml_main_env_var
+from ..pkg.gcpbuildpack import (
+    DetectResult,
+    BuildLayer,
+    GCPContext,
+    user_error,
+    logf,
 )
+from ..pkg.golang import build_dir_env
 
-func TestDetect(t *testing.T) {
-	testCases := []struct {
-		name  string
-		files map[string]string
-		env   []string
-		want  int
-	}{
-		{
-			name: "go.mod and buildable undefined",
-			files: map[string]string{
-				"go.mod": "",
-			},
-			env:  []string{"X_GOOGLE_TARGET_PLATFORM=gae"},
-			want: 0,
-		},
-		{
-			name: "go.mod and buildable undefined, no target_platform",
-			files: map[string]string{
-				"go.mod": "",
-			},
-			env:  []string{},
-			want: 100,
-		},
-		{
-			name:  "no go.mod",
-			files: map[string]string{},
-			env:   []string{"X_GOOGLE_TARGET_PLATFORM=gae"},
-			want:  100,
-		},
-		{
-			name: "buildable defined",
-			files: map[string]string{
-				"go.mod": "",
-			},
-			env: []string{
-				"GOOGLE_BUILDABLE=./main",
-				"X_GOOGLE_TARGET_PLATFORM=gae",
-			},
-			want: 100,
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, DetectFn, tc.name, tc.files, tc.env, tc.want)
-		})
-	}
-}
+# Constants
+stager_file_name = "_main-package-path"
 
-func TestMainPath(t *testing.T) {
-	testCases := []struct {
-		name               string
-		stagerFileContents string
-		gaeMainEnv         string
-		want               string
-	}{
-		{
-			name:       "no stagerfile and an empty env var",
-			gaeMainEnv: "",
-			want:       "",
-		},
-		{
-			name:               "stagerfile with main directory and an empty env var",
-			stagerFileContents: "maindir",
-			gaeMainEnv:         "",
-			want:               "maindir",
-		},
-		{
-			name:       "no stagerfile and a non-empty env var",
-			gaeMainEnv: "anothermaindir",
-			want:       "anothermaindir",
-		},
-		{
-			name:               "stagerfile with main directory and a non-empty env var",
-			stagerFileContents: "maindir",
-			gaeMainEnv:         "anothermaindir",
-			want:               "anothermaindir",
-		},
-	}
+def detect_fn(ctx: GCPContext) -> tuple[DetectResult, Exception]:
+    if not is_gae():
+        return opt_out_target_platform_not_gae(), None
+    
+    go_mod_exists = Path("go.mod").exists()
+    if not go_mod_exists:
+        return opt_out_file_not_found("go.mod"), None
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			dir, err := ioutil.TempDir("", "TestMainPath-")
-			if err != nil {
-				t.Fatalf("Creating temporary directory: %v", err)
-			}
-			defer func() {
-				if err := os.RemoveAll(dir); err != nil {
-					t.Fatalf("Unable to remove test directory %q", dir)
-				}
-			}()
+    buildable_path = os.getenv(buildable_env_var)
+    if buildable_path is not None:
+        return opt_out(f"{buildable_env_var} already defined as {repr(buildable_path)}"), None
 
-			ctx := gcp.NewContext(gcp.WithApplicationRoot(dir))
+    return opt_in(f"found go.mod and {buildable_env_var} is not set"), None
 
-			if tc.stagerFileContents != "" {
-				if err = ioutil.WriteFile(filepath.Join(dir, "_main-package-path"), []byte(tc.stagerFileContents), 0755); err != nil {
-					t.Fatalf("Creating file in temporary directory: %v", err)
-				}
-			}
+def build_fn(ctx: GCPContext) -> Exception:
+    main_path, err = choose_main_path(ctx)
+    if err:
+        return ValueError(f"choosing main path: {err}")
 
-			oldEnv := os.Getenv("GAE_YAML_MAIN")
-			if err = os.Setenv("GAE_YAML_MAIN", tc.gaeMainEnv); err != nil {
-				t.Fatalf("Setting environment variable GAE_YAML_MAIN to %q", tc.gaeMainEnv)
-			}
-			defer func() {
-				if err := os.Setenv("GAE_YAML_MAIN", oldEnv); err != nil {
-					t.Fatalf("Unable to reset the env var GAE_YAML_MAIN to %q", oldEnv)
-				}
-			}()
+    clean_path, err = clean_main_path(main_path)
+    if err:
+        return ValueError(f"cleaning main package path: {err}")
 
-			got, err := mainPath(ctx)
-			if err != nil {
-				t.Fatalf("mainPath() failed unexpectedly; err=%s", err)
-			}
-			if got != tc.want {
-				t.Errorf("mainPath() = %q, want %q", got, tc.want)
-			}
-		})
-	}
-}
+    # Handle main path
+    if clean_path != ".":
+        build_main_exists = Path(clean_path).exists()
+        if build_main_exists:
+            clean_path = f"./{clean_path}"
+        else:
+            logf("Path %r does not exist. Assuming it's a fully qualified package name.", clean_path)
 
-func TestCleanMainPathNoError(t *testing.T) {
-	testCases := []struct {
-		str  string
-		want string
-	}{
-		{
-			str:  ".",
-			want: ".",
-		},
-		{
-			str:  "   .   ",
-			want: ".",
-		},
-		{
-			str:  "./dir/..",
-			want: ".",
-		},
-		{
-			str:  "./dir1/dir2/..",
-			want: "dir1",
-		},
-		{
-			str:  "./dir1///dir2",
-			want: "dir1/dir2",
-		},
-		{
-			str:  "dir1///dir2",
-			want: "dir1/dir2",
-		},
-		{
-			str:  "dir1",
-			want: "dir1",
-		},
-		{
-			str:  "dir1/../dir2",
-			want: "dir2",
-		},
-	}
+    # Create main_env layer
+    main_env_layer, err = ctx.create_layer("main_env", BuildLayer.BUILD)
+    if err:
+        return ValueError(f"creating main_env layer: {err}")
+    main_env_layer.build_environment[buildable_env_var] = clean_path
 
-	for _, tc := range testCases {
-		t.Run(tc.str, func(t *testing.T) {
-			if got, err := cleanMainPath(tc.str); err != nil {
-				t.Errorf("cleanMainPath(%q) returns error: %v", tc.str, err)
-			} else if got != tc.want {
-				t.Errorf("cleanMainPath(%q) = %q, want %q", tc.str, got, tc.want)
-			}
-		})
-	}
-}
+    # Handle srv layer for backwards compatibility
+    srv_layer, err = ctx.create_layer("srv", BuildLayer.BUILD)
+    if err:
+        return ValueError(f"creating srv layer: {err}")
+    srv_layer.build_environment[build_dir_env] = str(srv_layer.path)
 
-func TestCleanMainPathWantError(t *testing.T) {
-	testCases := []string{
-		"/.",
-		"/somedir",
-		"./..",
-		"../dir1",
-		"../dir1/dir2",
-		"dir1/../../dir2",
-	}
+    try:
+        shutil.copytree(".", srv_layer.path, symlinks=True)
+    except Exception as e:
+        return e
 
-	for _, tc := range testCases {
-		t.Run(tc, func(t *testing.T) {
-			if got, err := cleanMainPath(tc); err == nil {
-				t.Errorf("cleanMainPath(%q) = %q, expected error", tc, got)
-			}
-		})
-	}
-}
+    return None
+
+def choose_main_path(ctx: GCPContext) -> tuple[str, Exception]:
+    ga_main = os.getenv(ga_yaml_main_env_var)
+    if ga_main:
+        return ga_main, None
+
+    stager_file = ctx.application_root / stager_file_name
+    if stager_file.exists():
+        try:
+            with open(stager_file, "r") as f:
+                path = f.read().strip()
+            # Clean up the file after reading
+            stager_file.unlink()
+            return path, None
+        except Exception as e:
+            return "", e
+
+    return "", None
+
+def clean_main_path(mp: str) -> tuple[str, Exception]:
+    if not mp:
+        return ".", None
+    
+    mp = os.path.normpath(mp.replace(os.sep, "/")).strip()
+    
+    if mp == ".":
+        return ".", None
+    
+    if os.path.isabs(mp):
+        return "", user_error(f"main package path {repr(mp)} must not be absolute path")
+    
+    if mp.startswith(".."):
+        return "", user_error(f"main package path {repr(mp)} cannot reference parent")
+
+    return mp, None

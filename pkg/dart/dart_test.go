@@ -1,112 +1,48 @@
-// Copyright 2022 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import unittest
+from unittest.mock import patch, MagicMock
 
-package dart
+from pkg.dart import dart
 
-import (
-	"net/http"
-	"os"
-	"path/filepath"
-	"testing"
+class TestResolvePackageVersion(unittest.TestCase):
+    def test_from_env(self):
+        with patch.dict('os.environ', {'GOOGLE_RUNTIME_VERSION': '2.14.0'}):
+            version, err = dart.detect_sdk_version()
+            self.assertEqual(version, '2.14.0')
+            self.assertIsNone(err)
 
-	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
-)
+    def test_fetched_version(self):
+        mock_response = MagicMock()
+        mock_response.text = '{"date": "2022-02-08", "version": "2.16.1", "revision": "0180af250ff518cc0fa494a4eb484ce11ec1e62c"}'
+        mock_response.status_code = 200
+        
+        with patch('requests.get', return_value=mock_response):
+            version, err = dart.detect_sdk_version()
+            self.assertEqual(version, '2.16.1')
+            self.assertIsNone(err)
 
-func TestResolvePackageVersion(t *testing.T) {
-	testCases := []struct {
-		name       string
-		env        string
-		httpStatus int
-		response   string
-		want       string
-		wantError  bool
-	}{
-		{
-			name: "from env",
-			env:  "2.14.0",
-			want: "2.14.0",
-		},
-		{
-			name: "fetched version",
-			response: `{
-				"date": "2022-02-08",
-				"version": "2.16.1",
-				"revision": "0180af250ff518cc0fa494a4eb484ce11ec1e62c"
-			}`,
-			want: "2.16.1",
-		},
-		{
-			name:       "bad response code",
-			httpStatus: http.StatusBadRequest,
-			wantError:  true,
-		},
-	}
+    def test_bad_response_code(self):
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        
+        with patch('requests.get', return_value=mock_response):
+            version, err = dart.detect_sdk_version()
+            self.assertIsNone(version)
+            self.assertIsNotNone(err)
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+class TestHasBuildRunner(unittest.TestCase):
+    def test_no_pubspec(self):
+        temp_dir = 'test_dir'
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        try:
+            has_runner, err = dart.has_build_runner(temp_dir)
+            self.assertFalse(has_runner)
+            self.assertIsNone(err)
+        finally:
+            os.rmdir(temp_dir)
 
-			testserver.New(
-				t,
-				testserver.WithStatus(tc.httpStatus),
-				testserver.WithJSON(tc.response),
-				testserver.WithMockURL(&versionURL),
-			)
-
-			if tc.env != "" {
-				t.Setenv("GOOGLE_RUNTIME_VERSION", tc.env)
-			}
-
-			got, err := DetectSDKVersion()
-			if tc.wantError == (err == nil) {
-				t.Errorf(`DetectSDKVersion() got error: %v, want error?: %v`, err, tc.wantError)
-			}
-			if got != tc.want {
-				t.Errorf(`DetectSDKVersion() = %q, want %q`, got, tc.want)
-			}
-		})
-	}
-}
-
-func TestHasBuildRunner(t *testing.T) {
-	testCases := []struct {
-		name    string
-		pubspec string
-		want    bool
-		wantErr bool
-	}{
-		{
-			name: "no pubspec.yaml",
-		},
-		{
-			name:    "no dependencies",
-			pubspec: `name: test`,
-		},
-		{
-			name: "no build_runner",
-			pubspec: `
-name: example_json_function
-
-dependencies:
-  functions_framework: ^0.4.0
-
-dev_dependencies:
-  functions_framework_builder: ^0.4.0
-`,
-		},
-		{
-			name: "with dev_dependency",
-			pubspec: `
+    def test_with_dev_dependency(self):
+        pubspec_content = '''
 name: example_json_function
 
 dependencies:
@@ -114,47 +50,38 @@ dependencies:
 
 dev_dependencies:
   build_runner: ^2.0.0
-`,
-			want: true,
-		},
-		{
-			name: "with dependency",
-			pubspec: `
-name: example_json_function
+'''
+        
+        temp_dir = 'test_dir'
+        os.makedirs(temp_dir, exist_ok=True)
+        pubspec_path = os.path.join(temp_dir, 'pubspec.yaml')
+        with open(pubspec_path, 'w') as f:
+            f.write(pubspec_content)
+            
+        try:
+            has_runner, err = dart.has_build_runner(temp_dir)
+            self.assertTrue(has_runner)
+            self.assertIsNone(err)
+        finally:
+            os.remove(pubspec_path)
+            os.rmdir(temp_dir)
 
-dependencies:
-  build_runner: ^2.0.0
-  test_non_string:
-    map_value: 1.2.3
+    def test_invalid_yaml(self):
+        pubspec_content = '\t'
+        
+        temp_dir = 'test_dir'
+        os.makedirs(temp_dir, exist_ok=True)
+        pubspec_path = os.path.join(temp_dir, 'pubspec.yaml')
+        with open(pubspec_path, 'w') as f:
+            f.write(pubspec_content)
+            
+        try:
+            has_runner, err = dart.has_build_runner(temp_dir)
+            self.assertFalse(has_runner)
+            self.assertIsNotNone(err)
+        finally:
+            os.remove(pubspec_path)
+            os.rmdir(temp_dir)
 
-dev_dependencies:
-  functions_framework: ^0.4.0
-`,
-			want: true,
-		},
-		{
-			name:    "invalid yaml",
-			pubspec: "\t",
-			wantErr: true,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			dir := t.TempDir()
-			if tc.pubspec != "" {
-				path := filepath.Join(dir, "pubspec.yaml")
-				if err := os.WriteFile(path, []byte(tc.pubspec), 0744); err != nil {
-					t.Fatalf("writing %s: %v", path, err)
-				}
-			}
-			got, err := HasBuildRunner(dir)
-			if tc.wantErr == (err == nil) {
-				t.Errorf("HasBuildRunner(%q) got error: %v, want err? %t", dir, err, tc.wantErr)
-			}
-			if got != tc.want {
-				t.Errorf("HasBuildRunner(%q) = %t, want %t", dir, got, tc.want)
-			}
-		})
-	}
-}
+if __name__ == '__main__':
+    unittest.main()

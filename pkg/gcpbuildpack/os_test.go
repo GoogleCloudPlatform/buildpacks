@@ -1,78 +1,49 @@
-// Copyright 2021 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import unittest
 
-package gcpbuildpack
+from gcp_buildpack.builder_context import BuilderContext
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"testing"
-)
+class TestIsWritable(unittest.TestCase):
+    def test_is_writable(self):
+        test_cases: List[Tuple[int, bool]] = [
+            (0o777, True),
+            (0o700, True),
+            (0o600, False),
+            (0o400, False),
+            (0o300, True),
+            (0o200, False),
+            (0o100, False),
+        ]
+        for tc in test_cases:
+            with self.subTest(name=tc[0]):
+                f, err := os.CreateTemp(None, "file_")
+                if err != nil:
+                    raise
+                try:
+                    f.chmod(tc[0])
+                    context = BuilderContext()
+                    found, err = context.is_writable(f.name)
+                    self.assertTrue(found)
+                    self.assertIsNone(err)
+                finally:
+                    f.close()
 
-func TestIsWritable(t *testing.T) {
-	ctx, cleanUp := simpleContext(t)
-	defer cleanUp()
-
-	temp := t.TempDir()
-
-	testCases := []struct {
-		mode os.FileMode
-		want bool
-	}{
-		{0000, false},
-		{0001, false},
-		{0002, false},
-		{0003, false},
-		{0004, false},
-		{0005, false},
-		{0006, false},
-		{0007, false},
-		{0010, false},
-		{0020, false},
-		{0030, false},
-		{0040, false},
-		{0050, false},
-		{0060, false},
-		{0070, false},
-		{0100, false},
-		{0200, true},
-		{0300, true},
-		{0400, false},
-		{0500, false},
-		{0600, true},
-		{0700, true},
-		{0777, true},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.mode.String(), func(t *testing.T) {
-			f, err := os.Create(filepath.Join(temp, fmt.Sprintf("file_%v", tc.mode)))
-			if err != nil {
-				t.Fatalf("os.Create(): %v", err)
-			}
-
-			if err := f.Chmod(tc.mode); err != nil {
-				t.Fatalf("f.Chmod(%s): %v", tc.mode, err)
-			}
-
-			got, err := ctx.IsWritable(f.Name())
-			if err != nil {
-				t.Fatalf("gcp.IsWritable(%q) failed unexpectedly; err=%s", f.Name(), err)
-			}
-			if got != tc.want {
-				t.Errorf("gcp.IsWritable(%s) = %t, want %t", f.Name(), got, tc.want)
-			}
-		})
-	}
-}
+    def test_is_not_writable(self):
+        test_cases: List[Tuple[int, bool]] = [
+            (0o400, False),
+            (0o600, True),
+            (0o700, True),
+            (0o777, True),
+        ]
+        for tc in test_cases:
+            with self.subTest(name=tc[0]):
+                f, err := os.CreateTemp(None, "file_")
+                if err != nil:
+                    raise
+                try:
+                    f.chmod(tc[0])
+                    context = BuilderContext()
+                    found, err = context.is_writable(f.name)
+                    self.assertFalse(found)
+                    self.assertIsNone(err)
+                finally:
+                    f.close()

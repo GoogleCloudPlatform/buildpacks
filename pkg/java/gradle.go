@@ -1,52 +1,78 @@
-// Copyright 2022 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import os
+import re
+from typing import List, Optional
 
-package java
+import requests
+from googlecloudplatform.buildpacks import gcp, env, runtime, tooling
 
-import (
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
-)
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// GradleInstallerCapability is the capability key for the maker Gradle installer.
-const GradleInstallerCapability = "java.GradleInstaller"
+class MavenProject:
+    def __init__(self):
+        self.plugins: List[MavenPlugin] = []
+        self.profiles: List[MavenProfile] = []
+        self.artifact_id: str = ""
+        self.version: str = ""
+        self.dependencies: List[MavenDependency] = []
 
-var (
-	gradleVersionURL = "https://services.gradle.org/versions/current"
-)
+class MavenProfile:
+    def __init__(self):
+        self.id: str = ""
+        self.plugins: List[MavenPlugin] = []
+        self.dependencies: List[MavenDependency] = []
 
-// APIResponseGradleVersion is the API response from https://services.gradle.org/versions/current
-type APIResponseGradleVersion struct {
-	Version            string `json:"version"`
-	BuildTime          string `json:"buildTime"`
-	Current            bool   `json:"current"`
-	Snapshot           bool   `json:"snapshot"`
-	Nightly            bool   `json:"nightly"`
-	ReleaseNightly     bool   `json:"releaseNightly"`
-	ActiveRc           bool   `json:"activeRc"`
-	RcFor              string `json:"rcFor"`
-	MilestoneFor       string `json:"milestoneFor"`
-	Broken             bool   `json:"broken"`
-	DownloadURL        string `json:"downloadUrl"`
-	ChecksumURL        string `json:"checksumUrl"`
-	WrapperChecksumURL string `json:"wrapperChecksumUrl"`
-}
+class MavenPlugin:
+    def __init__(self):
+        self.group_id: str = ""
+        self.artifact_id: str = ""
+        self.configuration: MavenPluginConfiguration = MavenPluginConfiguration()
 
-// GetLatestGradleVersion gets the latest gradle version if available
-func GetLatestGradleVersion() (string, error) {
-	var result APIResponseGradleVersion
-	if err := fetch.JSON(gradleVersionURL, &result); err != nil {
-		return "", err
-	}
-	return result.Version, nil
-}
+class MavenDependency:
+    def __init__(self):
+        self.group_id: str = ""
+        self.artifact_id: str = ""
+
+class MavenPluginConfiguration:
+    def __init__(self):
+        self.main_class: str = ""
+        self.build_args: str = ""
+
+def ParsePomFile(pom_file_content: bytes) -> Optional[MavenProject]:
+    try:
+        root = ET.fromstring(pom_file_content)
+        
+        project = MavenProject()
+        project.artifact_id = root.findtext("artifactId") or ""
+        project.version = root.findtext("version") or ""
+        
+        # Extract plugins
+        plugins_section = root.findall("build/plugins/plugin")
+        for plugin in plugins_section:
+            m_plugin = MavenPlugin()
+            m_plugin.group_id = plugin.findtext("groupId") or ""
+            m_plugin.artifact_id = plugin.findtext("artifactId") or ""
+            project.plugins.append(m_plugin)
+            
+        # Extract profiles
+        profiles_section = root.findall("profiles/profile")
+        for profile in profiles_section:
+            m_profile = MavenProfile()
+            m_profile.id = profile.findtext("id") or ""
+            project.profiles.append(m_profile)
+            
+        return project
+        
+    except Exception as e:
+        raise ValueError(f"Error parsing pom.xml: {e}")

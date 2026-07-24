@@ -1,331 +1,270 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements Java GraalVM Native Image buildpack.
-// This buildpack installs the GraalVM compiler into a layer and builds a native image of the Java application.
-package lib
+"""Implements Java GraalVM Native Image buildpack."""
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
+import os
+import re
+import subprocess
+from typing import List, Optional, Tuple
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
-	"github.com/buildpacks/libcnb/v2"
-)
+import gcpbuildpack as gcp
+import java_utils
+import libcnb
 
-const (
-	invokerMain = "com.google.cloud.functions.invoker.runner.Invoker"
-)
+INVOKER_MAIN = "com.google.cloud.functions.invoker.runner.Invoker"
 
-var (
-	requiresGraalvm = []libcnb.BuildPlanRequire{{Name: "graalvm"}}
-	planRequires    = libcnb.BuildPlan{Requires: requiresGraalvm}
-)
+REQUIRES_GRAALVM = [libcnb.BuildPlanRequire(name="graalvm")]
+PLAN_REQUIRES = libcnb.BuildPlan(requires=REQUIRES_GRAALVM)
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	return gcp.OptInAlways(gcp.WithBuildPlans(planRequires)), nil
-}
+def detect(context: gcp.Context) -> Tuple[gcp.DetectResult, Exception]:
+    """Detect function for the buildpack."""
+    return gcp.opt_in_always(gcp.with_build_plans(PLAN_REQUIRES)), None
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	entrypoint, err := createImage(ctx)
-	if err != nil {
-		return err
-	}
+def build(context: gcp.Context) -> Exception:
+    """Build function for the buildpack."""
+    entrypoint, err = create_image(context)
+    if err is not None:
+        return err
+    context.add_web_process(entrypoint)
+    return None
 
-	ctx.AddWebProcess(entrypoint)
-	return nil
-}
+def create_image(context: gcp.Context) -> Tuple[List[str], Exception]:
+    """Creates a native image and returns its entrypoint."""
+    pom, err = parse_pom_file(context)
+    if err is not None:
+        return None, Exception(f"parsing pom file: {err}")
+    if pom is None:
+        return build_default(context)
+    
+    function_target = os.getenv("FUNCTION_TARGET")
+    if function_target is not None:
+        return build_functions_framework(context, function_target, pom)
 
-// createImage builds a native-image and returns an image entrypoint. It handles
-// all the logic for which workflow to use (e.g native-image build via command
-// line or maven profile) based on the project setup.
-func createImage(ctx *gcp.Context) ([]string, error) {
-	pom, err := parsePomFile(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("parsing pom file: %w", err)
-	}
-	if pom == nil {
-		return buildDefault(ctx)
-	}
-	if functionTarget, ok := os.LookupEnv(env.FunctionTarget); ok {
-		return buildFunctionsFramework(ctx, functionTarget, pom)
-	}
+    build_profile, found = find_native_build_profile(context, pom)
+    if found:
+        return build_maven(context, build_profile)
+    
+    if spring_boot_plugin_defined(context, pom):
+        entrypoint, err = build_springboot(context)
+        if err is not None:
+            return None, err
+        elif entrypoint is not None:
+            return entrypoint, None
+    
+    return build_default(context)
 
-	if buildProfile, ok := findNativeBuildProfile(ctx, pom); ok {
-		return buildMaven(ctx, buildProfile)
-	}
+def build_default(context: gcp.Context) -> Tuple[List[str], Exception]:
+    """Builds a native image for standard Java apps."""
+    jar_path, err = java_utils.executable_jar(context)
+    if err is not None:
+        return None, Exception(f"finding executable jar: {err}")
+    return build_command_line(context, ["-jar", jar_path])
 
-	// The presence of the `spring-boot-maven-plugin` may not always guarantee that
-	// the project will generate a Spring-Boot fat JAR. In the case where a Spring
-	// Boot fat JAR is not found, we fall through to the default mode of building a
-	// native image for standard Java apps.
-	if springBootPluginDefined(ctx, pom) {
-		if entrypoint, err := buildSpringBoot(ctx); err != nil {
-			return nil, err
-		} else if entrypoint != nil {
-			return entrypoint, nil
-		}
-	}
+def build_command_line(
+    context: gcp.Context,
+    build_args: List[str]
+) -> Tuple[List[str], Exception]:
+    """Builds a native image via command line."""
+    ni_dir = os.path.join(context.temp_dir(), "native-image")
+    temp_image_path = os.path.join(ni_dir, "native-app")
 
-	return buildDefault(ctx)
-}
+    user_args = os.getenv("NATIVE_IMAGE_BUILD_ARGS", "")
+    command = f"native-image --no-fallback --no-server -H:+StaticExecutableWithDynamicLibC {user_args} {' '.join(build_args)} {temp_image_path}"
+    
+    try:
+        subprocess.run(["bash", "-c", command], check=True)
+    except subprocess.CalledProcessError as e:
+        return None, Exception(str(e))
+    
+    native_layer = context.layer("native-image", gcp.LayerType.LAUNCH)
+    final_image = os.path.join(native_layer.path, "bin", "native-app")
+    
+    try:
+        os.makedirs(final_image, exist_ok=True)
+        os.rename(temp_image_path, final_image)
+    except Exception as e:
+        return None, Exception(str(e))
+    
+    return [final_image], None
 
-// buildDefault builds a native-image in the basic and non-specialized way that can work on any normal
-// Java apps and returns the image entrypoint. Currently, only supported is an executable JAR in the context.
-func buildDefault(ctx *gcp.Context) ([]string, error) {
-	jar, err := java.ExecutableJar(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("finding executable jar: %w", err)
-	}
-	return buildCommandLine(ctx, []string{"-jar", jar})
-}
+def build_maven(
+    context: gcp.Context,
+    build_profile: str
+) -> Tuple[List[str], Exception]:
+    """Builds a native image using Maven."""
+    mvn_cmd = java_utils.mvn(context)
+    command = [mvn_cmd, "package", "-DskipTests", "--batch-mode", "-Dhttp.keepAlive=false"]
+    
+    if build_profile:
+        command.append(f"-P{build_profile}")
+    
+    try:
+        subprocess.run(command, check=True)
+    except subprocess.CalledProcessError as e:
+        return None, Exception(str(e))
+    
+    image_path, err = find_native_executable(context)
+    if err is not None:
+        return None, err
+    return [image_path], None
 
-// buildCommandLine runs the native-image build via command line and returns the image entrypoint.
-func buildCommandLine(ctx *gcp.Context, buildArgs []string) ([]string, error) {
-	niDir, err := ctx.TempDir("native-image")
-	if err != nil {
-		return nil, err
-	}
-	tempImagePath := filepath.Join(niDir, "native-app")
+def parse_pom_file(context: gcp.Context) -> Tuple[java_utils.MavenProject, Exception]:
+    """Parses the pom.xml file."""
+    pom_exists, err = context.file_exists("pom.xml")
+    if err is not None:
+        return None, err
+    if not pom_exists:
+        return None, None
+    
+    tmp_dir = os.path.join(context.temp_dir(), "native-image-maven")
+    effective_pom_path = os.path.join(tmp_dir, "project_effective_pom.xml")
+    
+    mvn_cmd = java_utils.mvn(context)
+    try:
+        subprocess.run([
+            mvn_cmd,
+            "help:effective-pom",
+            "--batch-mode",
+            f"-Dhttp.keepAlive=false",
+            f"-Doutput={effective_pom_path}"
+        ], check=True)
+    except subprocess.CalledProcessError as e:
+        return None, Exception(str(e))
+    
+    try:
+        with open(effective_pom_path, "r") as f:
+            pom_content = f.read()
+        project = java_utils.parse_pom(pom_content)
+        return project, None
+    except Exception as e:
+        context.warn(f"A pom.xml was found but unable to be parsed: {e}")
+        return None, None
 
-	// Use a temporary image path because this command may generate extra files
-	// (*.o and *.build_artifacts.txt) alongside the binary in the temp dir.
-	userArgs := os.Getenv(env.NativeImageBuildArgs)
-	command := fmt.Sprintf("native-image --no-fallback --no-server -H:+StaticExecutableWithDynamicLibC %s %s %s",
-		userArgs, strings.Join(buildArgs, " "), tempImagePath)
+def find_native_build_profile(
+    context: gcp.Context,
+    project: java_utils.MavenProject
+) -> Tuple[str, bool]:
+    """Finds the native build profile in the Maven project."""
+    for profile in project.profiles:
+        for plugin in profile.plugins:
+            if plugin.group_id == "org.graalvm.nativeimage" and \
+               plugin.artifact_id == "native-image-maven-plugin":
+                return profile.id, True
+    context.log("Did not find a native-image-plugin defined in the pom.xml")
+    return "", False
 
-	if _, err := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
-		return nil, err
-	}
+def spring_boot_plugin_defined(
+    context: gcp.Context,
+    project: java_utils.MavenProject
+) -> bool:
+    """Checks if the Spring Boot Maven plugin is defined."""
+    for plugin in project.plugins:
+        if plugin.group_id == "org.springframework.boot" and \
+           plugin.artifact_id == "spring-boot-maven-plugin":
+            return True
+    context.log("Did not find a spring-boot-maven-plugin defined in the pom.xml")
+    return False
 
-	nativeLayer, err := ctx.Layer("native-image", gcp.LaunchLayer)
-	if err != nil {
-		return nil, fmt.Errorf("creating layer: %w", err)
-	}
-	finalImage := filepath.Join(nativeLayer.Path, "bin", "native-app")
+def build_springboot(context: gcp.Context) -> Tuple[List[str], Exception]:
+    """Builds a native image for Spring Boot applications."""
+    classpath, main_class, err = classpath_and_main_from_springboot(context)
+    if err is not None:
+        return None, err
+    elif classpath == "" or main_class == "":
+        return None, None
+    return build_command_line(context, ["--class-path", classpath, main_class])
 
-	if err := ctx.MkdirAll(finalImage, 0755); err != nil {
-		return nil, err
-	}
-	if err := ctx.Rename(tempImagePath, finalImage); err != nil {
-		return nil, err
-	}
+def find_native_executable(context: gcp.Context) -> Tuple[str, Exception]:
+    """Finds the native executable in the target directory."""
+    try:
+        files = context.read_dir("target")
+    except Exception as e:
+        return "", Exception(str(e))
+    
+    executables = []
+    for file_info in files:
+        if not os.path.isdir(file_info.name) and \
+           (os.stat(file_info.path).st_mode & 0o111):
+            executables.append(os.path.join("target", file_info.name))
+    
+    if len(executables) != 1:
+        return "", Exception(f"Expected exactly 1 executable in target/, found: {executables}")
+    return executables[0], None
 
-	return []string{finalImage}, nil
-}
+def classpath_and_main_from_springboot(
+    context: gcp.Context
+) -> Tuple[str, str, Exception]:
+    """Extracts classpath and main class from a Spring Boot JAR."""
+    jar_path, err = java_utils.executable_jar(context)
+    if err is not None:
+        context.warn(f"Spring Boot project assumed but no main executable JAR found: {err}")
+        return "", "", None
+    
+    start_class, err = java_utils.find_manifest_value_from_jar(jar_path, "Start-Class")
+    if err is not None:
+        return "", "", Exception(f"Fetching manifest value from JAR: {jar_path}")
+    elif start_class == "":
+        context.warn(f"Spring Boot project assumed but Start-Class undefined in executable JAR: {jar_path}")
+        return "", "", None
+    
+    exploded_jar_dir = os.path.join(context.temp_dir(), "exploded-jar")
+    try:
+        subprocess.run(["unzip", "-q", jar_path, "-d", exploded_jar_dir], check=True)
+    except subprocess.CalledProcessError as e:
+        return "", "", Exception(str(e))
+    
+    classes_dir = os.path.join(exploded_jar_dir, "BOOT-INF", "classes")
+    libs_dir = os.path.join(exploded_jar_dir, "BOOT-INF", "lib", "*")
+    classpath = ":".join([exploded_jar_dir, classes_dir, libs_dir])
+    
+    return classpath, start_class, None
 
-// buildMaven runs the Maven native-image build and returns the image entrypoint.
-func buildMaven(ctx *gcp.Context, buildProfile string) ([]string, error) {
-	mvn, err := java.MvnCmd(ctx)
-	if err != nil {
-		return nil, err
-	}
-	command := []string{mvn, "package", "-DskipTests", "--batch-mode", "-Dhttp.keepAlive=false"}
+def build_functions_framework(
+    context: gcp.Context,
+    function_target: str,
+    project: java_utils.MavenProject
+) -> Tuple[List[str], Exception]:
+    """Builds a native image for the Functions Framework."""
+    classpath, err = create_functions_classpath(context, project)
+    if err is not None:
+        return None, err
+    
+    entrypoint, err = build_command_line(context, ["-cp", classpath, INVOKER_MAIN])
+    if err is not None:
+        return None, err
+    functions_framework_entrypoint = entrypoint + ["--target", function_target]
+    return functions_framework_entrypoint, None
 
-	if buildProfile != "" {
-		command = append(command, "-P"+buildProfile)
-	}
-
-	if _, err := ctx.Exec(command, gcp.WithUserAttribution); err != nil {
-		return nil, err
-	}
-
-	imagePath, err := findNativeExecutable(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return []string{imagePath}, nil
-}
-
-// parsePomFile returns a parsed pom.xml if it exists.
-func parsePomFile(ctx *gcp.Context) (*java.MavenProject, error) {
-	pomExists, err := ctx.FileExists("pom.xml")
-	if err != nil {
-		return nil, err
-	}
-	if !pomExists {
-		return nil, nil
-	}
-
-	tmpDir, err := ctx.TempDir("native-image-maven")
-	if err != nil {
-		return nil, fmt.Errorf("creating temp directory: %w", err)
-	}
-
-	// Write the effective Maven pom.xml to file.
-	effectivePomPath := filepath.Join(tmpDir, "project_effective_pom.xml")
-	mvn, err := java.MvnCmd(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := ctx.Exec([]string{
-		mvn,
-		"help:effective-pom",
-		"--batch-mode",
-		"-Dhttp.keepAlive=false",
-		"-Doutput=" + effectivePomPath}, gcp.WithUserAttribution); err != nil {
-		return nil, err
-	}
-
-	// Parse the effective pom.xml.
-	effectivePom, err := ctx.ReadFile(effectivePomPath)
-	if err != nil {
-		return nil, err
-	}
-	project, err := java.ParsePomFile(effectivePom)
-	if err != nil {
-		ctx.Warnf("A pom.xml was found but unable to be parsed: %v\n", err)
-		return nil, nil
-	}
-	return project, nil
-}
-
-// findNativeBuildProfile returns the profile in which the native-image-plugin is defined
-// and a bool which returns true if the plugin is found, false if not.
-func findNativeBuildProfile(ctx *gcp.Context, project *java.MavenProject) (string, bool) {
-	for _, profile := range project.Profiles {
-		for _, plugin := range profile.Plugins {
-			if plugin.GroupID == "org.graalvm.nativeimage" &&
-				plugin.ArtifactID == "native-image-maven-plugin" {
-				return profile.ID, true
-			}
-		}
-	}
-
-	ctx.Logf("Did not find a native-image-plugin defined in the pom.xml")
-	return "", false
-}
-
-// springBootPluginDefined checks if the spring-boot-maven-plugin is defined.
-func springBootPluginDefined(ctx *gcp.Context, project *java.MavenProject) bool {
-	for _, plugin := range project.Plugins {
-		if plugin.GroupID == "org.springframework.boot" &&
-			plugin.ArtifactID == "spring-boot-maven-plugin" {
-			return true
-		}
-	}
-
-	ctx.Logf("Did not find a spring-boot-maven-plugin defined in the pom.xml")
-	return false
-}
-
-// findNativeExecutable returns the path to the executable from the target/ folder
-// and only succeeds if exactly 1 is found; returns error otherwise.
-func findNativeExecutable(ctx *gcp.Context) (string, error) {
-	var allExecutables []string
-
-	targetDir, err := ctx.ReadDir("target")
-	if err != nil {
-		return "", err
-	}
-
-	for _, info := range targetDir {
-		// If any of the last three bits of the file mode are set, it is executable.
-		if !info.IsDir() && info.Mode()&0111 != 0 {
-			allExecutables = append(allExecutables, filepath.Join("target", info.Name()))
-		}
-	}
-
-	if len(allExecutables) != 1 {
-		return "", gcp.UserErrorf("expected project to produce exactly 1 executable in target/, but found: %v", allExecutables)
-	}
-
-	return allExecutables[0], nil
-}
-
-// buildSpringBoot attempts to build a native image from a Spring Boot fat JAR and returns the image entrypoint.
-// It may return empty if, for example, no Spring Boot fat JAR is found.
-func buildSpringBoot(ctx *gcp.Context) ([]string, error) {
-	classpath, main, err := classpathAndMainFromSpringBoot(ctx)
-	if err != nil {
-		return nil, err
-	} else if classpath == "" || main == "" {
-		return nil, nil
-	}
-	return buildCommandLine(ctx, []string{"--class-path", classpath, main})
-}
-
-// classpathAndMainFromSpringBoot returns classpath and main class of an exploded Spring Boot fat JAR
-// that is suitable for the application exeuction on a JVM. It may return empty strings if, for example,
-// no Spring Boot fat JAR is found.
-func classpathAndMainFromSpringBoot(ctx *gcp.Context) (string, string, error) {
-	jar, err := java.ExecutableJar(ctx)
-	if err != nil {
-		ctx.Warnf("Spring Boot project assumed but no main executable JAR found: %v\n", err)
-		return "", "", nil
-	}
-	startClass, err := java.FindManifestValueFromJar(jar, "Start-Class")
-	if err != nil {
-		return "", "", fmt.Errorf("fetching manifest value from JAR: %q", jar)
-	}
-	if startClass == "" {
-		ctx.Warnf("Spring Boot project assumed but Start-Class undefined in executable JAR: %q", jar)
-		return "", "", nil
-	}
-
-	explodedJarDir, err := ctx.TempDir("exploded-jar")
-	if err != nil {
-		return "", "", fmt.Errorf("creating temp directory: %w", err)
-	}
-	if _, err := ctx.Exec([]string{"unzip", "-q", jar, "-d", explodedJarDir}, gcp.WithUserAttribution); err != nil {
-		return "", "", err
-	}
-
-	classes := filepath.Join(explodedJarDir, "BOOT-INF", "classes")
-	// TODO(chanseok): using '*' gives a different dependency order than the one computed by Maven.
-	// If a Spring Boot fat JAR contain classpath.idx, use it for the exact classpath.
-	// https://docs.spring.io/spring-boot/docs/current/reference/html/deployment.html#deployment.containers
-	libs := filepath.Join(explodedJarDir, "BOOT-INF", "lib", "*")
-	classpath := strings.Join([]string{explodedJarDir, classes, libs}, string(filepath.ListSeparator))
-
-	return classpath, startClass, nil
-}
-
-// buildFunctionsFramework runs the native-image build for the standard GCF workflow and returns the image entrypoint.
-func buildFunctionsFramework(ctx *gcp.Context, functionTarget string, project *java.MavenProject) ([]string, error) {
-	classpath, err := createFunctionsClasspath(ctx, project)
-	if err != nil {
-		return nil, err
-	}
-
-	entrypoint, err := buildCommandLine(ctx, []string{"-cp", classpath, invokerMain})
-	if err != nil {
-		return nil, err
-	}
-	functionsFrameworkEntrypoint := append(entrypoint, "--target", functionTarget)
-	return functionsFrameworkEntrypoint, nil
-}
-
-// createFunctionsClasspath generates the full classpath to be used with native-image command line for GCF workflow
-func createFunctionsClasspath(ctx *gcp.Context, project *java.MavenProject) (string, error) {
-	jarName := fmt.Sprintf("%s-%s.jar", project.ArtifactID, project.Version)
-	applicationJar := filepath.Join("target", jarName)
-	jarExists, err := ctx.FileExists(applicationJar)
-	if err != nil {
-		return "", err
-	}
-	if !jarExists {
-		return "", gcp.UserErrorf("finding application JAR: %s", applicationJar)
-	}
-	dependencies := filepath.Join("target", "dependency", "*")
-	classpath := strings.Join([]string{os.Getenv(java.FFJarPathEnv), applicationJar, dependencies}, string(filepath.ListSeparator))
-
-	return classpath, nil
-}
+def create_functions_classpath(
+    context: gcp.Context,
+    project: java_utils.MavenProject
+) -> Tuple[str, Exception]:
+    """Creates the classpath for the Functions Framework."""
+    jar_name = f"{project.artifact_id}-{project.version}.jar"
+    application_jar = os.path.join("target", jar_name)
+    
+    exists, err = context.file_exists(application_jar)
+    if err is not None:
+        return "", Exception(str(err))
+    elif not exists:
+        return "", Exception(f"Finding application JAR: {application_jar}")
+    
+    dependencies_dir = os.path.join("target", "dependency", "*")
+    classpath = ":".join([
+        os.getenv(" FUNCTIONS_FRAMEWORK_JAR_PATH"),
+        application_jar,
+        dependencies_dir
+    ])
+    return classpath, None

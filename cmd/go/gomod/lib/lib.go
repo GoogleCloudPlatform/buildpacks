@@ -1,100 +1,124 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements go/gomod buildpack.
-// The gomod buildpack downloads modules specified in go.mod.
-package lib
+"""
+Implements go/gomod buildpack.
+The gomod buildpack downloads modules specified in go.mod.
+"""
 
-import (
-	"fmt"
-	"os"
+import os
+from typing import Optional
 
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
-)
+def detect_fn(ctx: dict) -> tuple[Optional[dict], str]:
+    """
+    Detects if the application requires the gomod buildpack by checking for a go.mod file.
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	goModExists, err := ctx.FileExists("go.mod")
-	if err != nil {
-		return nil, err
-	}
-	if goModExists {
-		return gcp.OptInFileFound("go.mod"), nil
-	}
-	return gcp.OptOutFileNotFound("go.mod"), nil
-}
+    Args:
+        ctx: The context dictionary containing environment information.
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	l, err := golang.NewGoWorkspaceLayer(ctx)
-	if err != nil {
-		return fmt.Errorf("creating GOPATH layer: %w", err)
-	}
+    Returns:
+        A tuple where the first element is either None or a dictionary indicating
+        the detect result, and the second element is an error message.
+    """
+    go_mod_path = os.path.join(ctx["application_root"], "go.mod")
+    
+    if os.path.exists(go_mod_path):
+        return {"file_found": "go.mod"}, ""
+    else:
+        return None, ""
 
-	vendorExists, err := ctx.FileExists("vendor")
-	if err != nil {
-		return err
-	}
-	// When there's a vendor folder and go is 1.14+, we shouldn't download the modules
-	// and let go build use the vendored dependencies.
-	if vendorExists {
-		avSupport, err := golang.SupportsAutoVendor(ctx)
-		if err != nil {
-			return fmt.Errorf("checking for auto vendor support: %w", err)
-		}
-		if avSupport {
-			ctx.Logf("Not downloading modules because there's a `vendor` directory")
-			return nil
-		}
+def build_fn(ctx: dict) -> str:
+    """
+    Builds the application by downloading and verifying dependencies using go mod.
 
-		ctx.Warnf(`Ignoring "vendor" directory: To use vendor directory, the Go runtime must be 1.14+ and go.mod must contain a "go 1.14"+ entry. See https://cloud.google.com/appengine/docs/standard/go/specifying-dependencies#vendoring_dependencies.`)
-	}
+    Args:
+        ctx: The context dictionary containing environment information.
 
-	goModIsWriteable, err := ctx.IsWritable("go.mod")
-	if err != nil {
-		return err
-	}
-	if !goModIsWriteable {
-		// Preempt an obscure failure mode: if go.mod is not writable then `go list -m` can fail saying:
-		//     go: updates to go.sum needed, disabled by -mod=readonly
-		return gcp.UserErrorf("go.mod exists but is not writable")
-	}
-	env := []string{"GOPATH=" + l.Path, "GO111MODULE=on"}
+    Returns:
+        An error message if any issues occurred during the build.
+    """
+    # Create a temporary directory for GOPATH
+    gopath_layer = os.path.join(ctx["layers_root"], "gopath")
+    
+    try:
+        # Check for vendor directory
+        vendor_path = os.path.join(ctx["application_root"], "vendor")
+        
+        if os.path.exists(vendor_path):
+            print("Not downloading modules because there's a `vendor` directory.")
+            return ""
+            
+        # Ensure go.mod is writable
+        go_mod_path = os.path.join(ctx["application_root"], "go.mod")
+        
+        if not os.access(go_mod_path, os.W_OK):
+            return "go.mod exists but is not writable"
+            
+        # Check for go.sum and generate it if missing
+        go_sum_path = os.path.join(ctx["application_root"], "go.sum")
+        
+        if not os.path.exists(go_sum_path):
+            print("Generating go.sum using 'go mod tidy'")
+            result = run_command(["go", "mod", "tidy"], ctx)
+            
+            if result["exit_code"] != 0:
+                return f"Running go mod tidy failed: {result['stderr']}"
+                
+        # Download modules
+        print("Downloading modules...")
+        result = run_command(["go", "mod", "download"], ctx)
+        
+        if result["exit_code"] != 0:
+            return f"Running go mod download failed: {result['stderr']}"
+            
+        return ""
+    except Exception as e:
+        return str(e)
 
-	// BuildDirEnv should only be set by App Engine buildpacks.
-	workdir := os.Getenv(golang.BuildDirEnv)
-	if workdir == "" {
-		workdir = ctx.ApplicationRoot()
-	}
+def run_command(command: list[str], ctx: dict) -> dict:
+    """
+    Runs a command with the specified environment context.
 
-	goSumExists, err := ctx.FileExists("go.sum")
-	if err != nil {
-		return err
-	}
-	// Go 1.16+ requires a go.sum file. If one does not exist, generate it.
-	// go build -mod=readonly requires a complete graph of modules which `go mod download` does not produce in all cases (https://golang.org/issue/35832).
-	if !goSumExists {
-		ctx.Logf(`go.sum not found, generating using "go mod tidy"`)
-		if _, err := golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "tidy"}, gcp.WithEnv(env...), gcp.WithWorkDir(workdir), gcp.WithUserAttribution); err != nil {
-			return fmt.Errorf("running go mod tidy: %w", err)
-		}
-	}
+    Args:
+        command: The command to execute.
+        ctx: The context dictionary containing environment information.
 
-	if _, err := golang.ExecWithGoproxyFallback(ctx, []string{"go", "mod", "download"}, gcp.WithEnv(env...), gcp.WithUserAttribution); err != nil {
-		return fmt.Errorf("running go mod download: %w", err)
-	}
-
-	return nil
-}
+    Returns:
+        A dictionary containing the execution result.
+    """
+    env = os.environ.copy()
+    env["GOPATH"] = gopath_layer
+    env["GO111MODULE"] = "on"
+    
+    result = {}
+    
+    try:
+        process = subprocess.run(
+            command,
+            cwd=ctx["application_root"],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        
+        result["exit_code"] = process.returncode
+        result["stdout"] = process.stdout.strip()
+        result["stderr"] = process.stderr.strip()
+    except Exception as e:
+        result["exit_code"] = 1
+        result["stdout"] = ""
+        result["stderr"] = str(e)
+        
+    return result

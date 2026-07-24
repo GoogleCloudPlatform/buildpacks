@@ -1,149 +1,60 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import glob
+import os
+from pathlib import Path
+from typing import Optional, List, Callable, Any, Union
 
-package gcpbuildpack
+class Context:
+    def __init__(self):
+        self.application_root = ""
 
-import (
-	"os"
-	"strings"
+    @property
+    def ApplicationRoot(self) -> str:
+        return self.application_root
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	"github.com/buildpacks/libcnb/v2"
-)
+    def Glob(self, pattern: str) -> Union[List[str], Exception]:
+        matches = []
+        try:
+            matches = glob.glob(os.path.join(self.ApplicationRoot, pattern))
+        except Exception as e:
+            return buildererror.Error(buildererror.Status.Internal, f"globbing {pattern}: {e}")
+        return matches
 
-const (
-	layerMode os.FileMode = 0755
-)
+    def HasAtLeastOne(self, pattern: str) -> Union[bool, Exception]:
+        return self.HasAtLeastOneFiltered(pattern, None)
 
-// LayerOption is an option for configuring a layer.
-type LayerOption func(ctx *Context, l *libcnb.Layer) error
+    def HasAtLeastOneOutsideDependencyDirectories(self, pattern: str) -> Union[bool, Exception]:
+        filter_func = lambda path: not path.endswith("/node_modules")
+        return self.HasAtLeastOneFiltered(pattern, filter_func)
 
-// BuildLayer specifies a Build layer.
-var BuildLayer = func(ctx *Context, l *libcnb.Layer) error {
-	l.Build = true
-	return nil
-}
+    def HasAtLeastOneFiltered(
+        self,
+        pattern: str,
+        filter_func: Optional[Callable[[str], bool]]
+    ) -> Union[bool, Exception]:
+        dir_path = os.path.join(self.ApplicationRoot)
+        matches = glob.glob(os.path.join(dir_path, pattern))
+        if len(matches) > 0:
+            return True
 
-// CacheLayer specifies a Cache layer.
-var CacheLayer = func(ctx *Context, l *libcnb.Layer) error {
-	disableCache, err := env.IsPresentAndTrue(env.NoCache)
-	if err != nil {
-		return buildererror.Errorf(buildererror.StatusInternal, "checking NoCache env var: %v", err.Error())
-	}
-	if !disableCache {
-		l.Cache = true
-	}
-	return nil
-}
+        try:
+            for root, dirs, files in os.walk(dir_path):
+                for name in files + dirs:
+                    full_path = os.path.join(root, name)
+                    if filter_func and not filter_func(full_path):
+                        continue
+                    match = self._match_pattern(name, pattern)
+                    if match:
+                        return True
+        except Exception as e:
+            return buildererror.Error(buildererror.Status.Internal, f"walking through {dir_path}: {e}")
 
-// LaunchLayer specifies a Launch layer.
-var LaunchLayer = func(ctx *Context, l *libcnb.Layer) error {
-	l.Launch = true
-	return nil
-}
+        return False
 
-// LaunchLayerIfDevMode specifies a Launch layer, but only if dev mode is enabled.
-var LaunchLayerIfDevMode = func(ctx *Context, l *libcnb.Layer) error {
-	devMode, err := env.IsDevMode()
-	if err != nil {
-		ctx.Warnf("Dev mode not enabled: %v", err)
-		return nil
-	}
-	if devMode {
-		l.Launch = true
-	}
-	return nil
-}
-
-// LaunchLayerUnlessSkipRuntimeLaunch specifies a Launch layer unless XGoogleSkipRuntimeLaunch is set to "true".
-var LaunchLayerUnlessSkipRuntimeLaunch = func(ctx *Context, l *libcnb.Layer) error {
-	skip, err := env.IsPresentAndTrue(env.XGoogleSkipRuntimeLaunch)
-	if err != nil {
-		return buildererror.Errorf(buildererror.StatusInternal, "checking XGoogleSkipRuntimeLaunch env var: %v", err.Error())
-	}
-	if !skip {
-		l.Launch = true
-	}
-	return nil
-}
-
-// Layer returns a layer, creating its directory.
-func (ctx *Context) Layer(name string, opts ...LayerOption) (*libcnb.Layer, error) {
-	if strings.Contains(name, "/") {
-		return nil, buildererror.Errorf(buildererror.StatusInternal, "%v is an invalid layer name; layer names may not contain '/'", name)
-	}
-	l, err := ctx.buildContext.Layers.Layer(name)
-	if err != nil {
-		return nil, buildererror.Errorf(buildererror.StatusInternal, "creating layer %q: %v", name, err.Error())
-	}
-	if err := ctx.MkdirAll(l.Path, layerMode); err != nil {
-		return nil, buildererror.Errorf(buildererror.StatusInternal, "creating %s: %v", l.Path, err)
-	}
-	for _, o := range opts {
-		if err := o(ctx, &l); err != nil {
-			return nil, err
-		}
-	}
-	if l.Metadata == nil {
-		l.Metadata = make(map[string]interface{})
-	}
-	ctx.layerContributors = append(ctx.layerContributors, layerContributor{l: &l})
-	ctx.buildResult.Layers = append(ctx.buildResult.Layers, l)
-	return &l, nil
-}
-
-type layerContributor struct {
-	l *libcnb.Layer
-}
-
-// Contribute accepts a layer and transforms it, returning a layer.
-func (lc layerContributor) Contribute(layer libcnb.Layer) (libcnb.Layer, error) {
-	return *lc.l, nil
-}
-
-// Name is the name of the layer.
-func (lc layerContributor) Name() string {
-	return lc.l.Name
-}
-
-// ClearLayer erases the existing layer, and re-creates the directory.
-func (ctx *Context) ClearLayer(l *libcnb.Layer) error {
-	if err := ctx.RemoveAll(l.Path); err != nil {
-		return err
-	}
-	if err := ctx.MkdirAll(l.Path, layerMode); err != nil {
-		return err
-	}
-	l.Metadata = make(map[string]interface{})
-	return nil
-}
-
-// SetMetadata sets metadata on the layer.
-func (ctx *Context) SetMetadata(l *libcnb.Layer, key, value string) {
-	l.Metadata[key] = value
-}
-
-// GetMetadata gets metadata from the layer.
-func (ctx *Context) GetMetadata(l *libcnb.Layer, key string) string {
-	v, ok := l.Metadata[key]
-	if !ok {
-		return ""
-	}
-	s, ok := v.(string)
-	if !ok {
-		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "could not cast metadata %v to string", v))
-	}
-	return s
-}
+    def _match_pattern(self, name: str, pattern: str) -> bool:
+        try:
+            return glob.fnmatch.fnmatch(name, pattern)
+        except Exception as e:
+            raise buildererror.Error(
+                buildererror.Status.Internal,
+                f"matching {name} with pattern {pattern}: {e}"
+            )

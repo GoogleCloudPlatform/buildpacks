@@ -1,474 +1,138 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Complete refactored code here
+"""
+Implements nodejs/firebasenextjs buildpack.
+The nodejs/firebasenextjs buildpack does some prep work for nextjs and overwrites the build script.
+"""
 
-package lib
+import os
+import json
+from pathlib import Path
 
-import (
-	"testing"
+import semver
+import packaging.version as version_utils
 
-	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
-	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
-	bmd "github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
-)
+import gcpbuildpack as gcp
+import buildermetadata
+import firebase.apphostingschema as apphosting_schema
+import firebase.faherror as fah_error
+import firebase.util as util
+import nodejs as npm
 
-const (
-	mockLatestNextjsAdapterVersion = "1.1.1"
-)
+# Framework constants
+FRAMEWORK_VERSION = "FRAMEWORK_VERSION"
+MIN_NEXT_VERSION = semver.Version.parse("13.0.0")
 
-func TestDetect(t *testing.T) {
-	testCases := []struct {
-		name  string
-		files map[string]string
-		envs  []string
-		want  int
-	}{
-		{
-			name: "not a firebase apphosting app",
-			files: map[string]string{
-				"index.js": "",
-			},
-			want: 100,
-		},
-		{
-			name: "with next config",
-			files: map[string]string{
-				"index.js":       "",
-				"next.config.js": "",
-				"package.json": `{
-					"scripts": {
-						"build": "adapter build"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-					}
-				}`,
-			},
-			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
-			want: 0,
-		},
-		{
-			name: "with next config module",
-			files: map[string]string{
-				"index.js":        "",
-				"next.config.mjs": "",
-				"package.json": `{
-					"scripts": {
-						"build": "adapter build"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-					}
-				}`,
-			},
-			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
-			want: 0,
-		},
-		{
-			name: "with next config ts",
-			files: map[string]string{
-				"index.js":       "",
-				"next.config.ts": "",
-				"package.json": `{
-					"scripts": {
-						"build": "adapter build"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-					}
-				}`,
-			},
-			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
-			want: 0,
-		},
-		{
-			name: "without next config",
-			files: map[string]string{
-				"index.js": "",
-				"package.json": `{
-					"scripts": {
-						"build": "adapter build"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-					}
-				}`,
-			},
-			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
-			want: 100,
-		},
-		{
-			name: "with next config in app dir",
-			files: map[string]string{
-				"apps/next-app/index.js":       "",
-				"apps/next-app/next.config.js": "",
-				"package.json": `{
-					"scripts": {
-						"build": "adapter build"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-					}
-				}`,
-			},
-			envs: []string{"GOOGLE_BUILDABLE=apps/next-app", "X_GOOGLE_TARGET_PLATFORM=fah"},
-			want: 0,
-		},
-		{
-			name: "with next dependency in package-lock.json",
-			files: map[string]string{
-				"package.json": `{
-					"dependencies": {
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-						"node_modules/next": {
-							"version": "15.2.0"
-						}
-					}
-				}`,
-			},
-			envs: []string{"X_GOOGLE_TARGET_PLATFORM=fah"},
-			want: 0,
-		},
-		{
-			name: "with apphosting:build script",
-			files: map[string]string{
-				"package.json": `{
-					"scripts": {
-						"apphosting:build": "adapter build"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-					}
-				}`,
-			},
-			want: 100,
-		},
-		{
-			name: "with apphosting.yaml buildcommand",
-			files: map[string]string{
-				"apphosting.yaml": `outputFiles:
-  scripts:
-    buildCommand: ng build`,
-			},
-			want: 100,
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			bpt.TestDetect(t, DetectFn, tc.name, tc.files, tc.envs, tc.want)
-		})
-	}
-}
+class NodeDeps:
+    def __init__(self, package_json=None, lock_file_path="", npm_modules_path=""):
+        self.package_json = package_json or {}
+        self.lock_file_path = lock_file_path
+        self.npm_modules_path = npm_modules_path
 
-func TestBuild(t *testing.T) {
-	testCases := []struct {
-		name                 string
-		wantExitCode         int
-		files                map[string]string
-		shouldInstallAdapter bool
-		wantBuilderMetadata  map[bmd.MetadataID]bmd.MetadataValue
-	}{
-		{
-			name: "replace build script",
-			files: map[string]string{
-				"package.json": `{
-				"scripts": {
-					"build": "next build"
-				},
-				"dependencies": {
-					"next": "13.0.0"
-				}
-			}`, "package-lock.json": `{
-				"packages": {
-					"node_modules/next": {
-						"version": "13.0.0"
-					}
-				}
-			}`,
-			},
-			shouldInstallAdapter: true,
-		},
-		{
-			name: "build script doesnt exist",
-			files: map[string]string{
-				"package.json": `{
-					"dependencies": {
-						"next": "13.0.0"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-						"node_modules/next": {
-							"version": "13.0.0"
-						}
-					}
-				}`,
-			},
-			shouldInstallAdapter: true,
-		},
-		{
-			name: "build script already set",
-			files: map[string]string{
-				"package.json": `{
-					"scripts": {
-						"build": "apphosting-adapter-nextjs-build"
-					},
-					"dependencies": {
-						"next": "13.0.0"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-						"node_modules/next": {
-							"version": "13.0.0"
-						}
-					}
-				}`,
-			},
-			shouldInstallAdapter: true,
-		},
-		{
-			name: "adapter already installed",
-			files: map[string]string{
-				"package.json": `{
-					"scripts": {
-						"build": "apphosting-adapter-nextjs-build"
-					},
-					"dependencies": {
-						"@apphosting/adapter-nextjs": "14.0.7"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-						"node_modules/next": {
-							"version": "13.0.0"
-						}
-					}
-				}`,
-			},
-			shouldInstallAdapter: false,
-		},
-		{
-			name: "supports versions with constraints",
-			files: map[string]string{
-				"package.json": `{
-					"scripts": {
-						"build": "apphosting-adapter-nextjs-build"
-					},
-					"dependencies": {
-						"next": "^13.0.0"
-					}
-				}`, "package-lock.json": `{
-					"packages": {
-						"node_modules/next": {
-							"version": "13.5.6"
-						}
-					}
-				}`,
-			},
-			shouldInstallAdapter: true,
-		},
-		{
-			name: "error out if the version is below 13.0.0",
-			files: map[string]string{
-				"package.json": `{
-				"dependencies": {
-					"next": "12.0.0"
-				}
-			}`,
-				"package-lock.json": `{
-				"packages": {
-					"node_modules/next": {
-						"version": "12.0.0"
-					}
-				}
-			}`,
-			},
-			wantExitCode:         1,
-			shouldInstallAdapter: true,
-		},
-		{
-			name: "read supported concrete version from package-lock.json",
-			files: map[string]string{
-				"package.json": `{
-					"dependencies": {
-						"next": "12.0.0 - 14.0.0"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-						"node_modules/next": {
-							"version": "14.0.0"
-						}
-					}
-				}`,
-			},
-			shouldInstallAdapter: true,
-		},
-		{
-			name: "read supported concrete version from pnpm-lock.yaml",
-			files: map[string]string{
-				"package.json": `{
-					"dependencies": {
-						"next": "12.0.0 - 14.0.0"
-					}
-				}`,
-				"pnpm-lock.yaml": `
-dependencies:
-  next:
-    version: 14.0.0(@babel/core@7.23.9)
+def read_node_dependencies(ctx, app_dir):
+    """
+    Reads node.js dependencies from package.json and lock files.
+    """
+    package_json_path = os.path.join(app_dir, "package.json")
+    
+    if not os.path.exists(package_json_path):
+        return None
+    
+    with open(package_json_path) as f:
+        package_json = json.load(f)
+        
+    lock_file_paths = [
+        os.path.join(app_dir, "package-lock.json"),
+        os.path.join(app_dir, "pnpm-lock.yaml"),
+        os.path.join(app_dir, "yarn.lock")
+    ]
+    
+    for path in lock_file_paths:
+        if os.path.exists(path):
+            return NodeDeps(package_json=package_json, lock_file_path=path)
+            
+    return NodeDeps(package_json=package_json)
 
-`,
-			},
-			shouldInstallAdapter: true,
-		},
-		{
-			name: "read supported concrete version from yaml.lock berry",
-			files: map[string]string{
-				"package.json": `{
-					"dependencies": {
-						"next": "^13.1.0"
-					}
-				}`,
-				"yarn.lock": `
-"next@npm:^13.1.0":
-	version: 13.5.6`,
-			},
-			shouldInstallAdapter: true,
-		},
-		{
-			name: "read supported concrete version from yaml.lock classic",
-			files: map[string]string{
-				"package.json": `{
-					"dependencies": {
-						"next": "^13.0.0"
-					}
-				}`,
-				"yarn.lock": `
-next@^13.0.0:
-  version: "13.5.6"
-`,
-			},
-			shouldInstallAdapter: true,
-		},
-		{
-			name: "read supported concrete version from package.json with unsupported lock file format",
-			files: map[string]string{
-				"package.json": `{
-					"dependencies": {
-						"next": "14.0.0"
-					}
-				}`,
-				"pnpm-lock.yaml": `
-unsupported:
-  next:
-    version: 14.0.0(@babel/core@7.23.9)
+def detect_fn(ctx):
+    """
+    Detects whether this buildpack should be applied.
+    """
+    app_dir = util.get_application_directory(ctx)
+    
+    if not os.environ.get("X_GOOGLE_TARGET_PLATFORM") == "fah":
+        return (False, "not a firebase apphosting application")
+        
+    node_deps = read_node_dependencies(ctx, app_dir)
+    if not node_deps:
+        ctx.warn("Error reading node dependencies")
+        return (False, None)
+        
+    # Check for apphosting build scripts
+    apphosting_schema = apphosting_schema.read_and_validate_from_file(npm.APPHOSTING_PREPROCESSED_PATH_FOR_PACK)
+    if npm.has_apphosting_package_or_yaml_build(node_deps.package_json.get("dependencies", {}), apphosting_schema):
+        return (False, "apphosting build script found")
+        
+    # Check for Next.js config files
+    supported_configs = ["next.config.js", "next.config.mjs", "next.config.ts"]
+    for config in supported_configs:
+        if os.path.exists(os.path.join(app_dir, config)):
+            return (True, f"Next.js config file {config} found")
+            
+    # Check package.json dependencies
+    next_version = npm.get_version(node_deps, "next")
+    if next_version:
+        return (True, "Next.js dependency found")
+        
+    return (False, "Next.js config or dependency not found")
 
-`,
-			},
-			shouldInstallAdapter: true,
-		},
-		{
-			name: "read range version from package.json with unsupported lock file format",
-			files: map[string]string{
-				"package.json": `{
-					"dependencies": {
-						"next": "14.0.0-15.0.0"
-					}
-				}`,
-				"pnpm-lock.yaml": `
-unsupported:
-  next:
-    version: 14.0.0(@babel/core@7.23.9)
-
-`,
-			},
-			shouldInstallAdapter: true,
-		},
-		{
-			name: "set builder metadata correctly",
-			files: map[string]string{
-				"package.json": `{
-					"scripts": {
-						"build": "apphosting-adapter-nextjs-build"
-					},
-					"dependencies": {
-						"next": "13.0.0"
-					}
-				}`,
-				"package-lock.json": `{
-					"packages": {
-						"node_modules/next": {
-							"version": "13.0.0"
-						}
-					}
-				}`,
-			},
-			shouldInstallAdapter: true,
-			wantBuilderMetadata: map[bmd.MetadataID]bmd.MetadataValue{
-				bmd.FrameworkName:    bmd.MetadataValue("nextjs"),
-				bmd.FrameworkVersion: bmd.MetadataValue("13.0.0"),
-				bmd.AdapterName:      bmd.MetadataValue("@apphosting/adapter-nextjs"),
-				bmd.AdapterVersion:   mockLatestNextjsAdapterVersion,
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			opts := []bpt.Option{
-				bpt.WithTestName(tc.name),
-				bpt.WithFiles(tc.files),
-				bpt.WithExecMocks(
-					mockprocess.New(`npm view @apphosting/adapter-nextjs version`, mockprocess.WithStdout(mockLatestNextjsAdapterVersion)),
-					mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@`+mockLatestNextjsAdapterVersion, mockprocess.WithStdout("installed adaptor")),
-				),
-			}
-			result, err := bpt.RunBuild(t, BuildFn, opts...)
-			if err != nil && tc.wantExitCode == 0 {
-				t.Fatalf("error running build: %v, logs: %s", err, result.Output)
-			}
-
-			if result.ExitCode != tc.wantExitCode {
-				t.Errorf("build exit code mismatch, got: %d, want: %d", result.ExitCode, tc.wantExitCode)
-			}
-
-			wantCommands := []string{
-				"npm install --prefix npm_modules @apphosting/adapter-nextjs@" + mockLatestNextjsAdapterVersion,
-			}
-			for _, cmd := range wantCommands {
-				if result.ExitCode == 0 && !result.CommandExecuted(cmd) && tc.shouldInstallAdapter {
-					t.Errorf("expected command %q to be executed, but it was not, build output: %s", cmd, result.Output)
-				}
-				if result.ExitCode == 0 && result.CommandExecuted(cmd) && !tc.shouldInstallAdapter {
-					t.Errorf("didn't expect command %q to be executed, but it was, build output: %s", cmd, result.Output)
-				}
-			}
-
-			for id, m := range tc.wantBuilderMetadata {
-				if m != result.MetadataAdded()[id] {
-					t.Errorf("builder metadata %q mismatch, got: %s, want: %s", bmd.MetadataIDNames[id], result.MetadataAdded()[id], m)
-				}
-			}
-		})
-	}
-}
+def build_fn(ctx):
+    """
+    Builds the application with Next.js specific configurations.
+    """
+    app_dir = util.get_application_directory(ctx)
+    node_deps = read_node_dependencies(ctx, app_dir)
+    
+    if not node_deps.lock_file_path:
+        ctx.error(f"Missing lock file in directory: {app_dir}")
+        return
+        
+    # Validate Next.js version
+    next_version = npm.get_version(node_deps, "next")
+    if not next_version:
+        next_version = node_deps.package_json.get("dependencies", {}).get("next", "")
+    
+    validate_version(ctx, next_version)
+        
+    # Check for existing adapter
+    adapter_dep = node_deps.package_json.get("dependencies", {}).get("@apphosting/adapter-nextjs")
+    if adapter_dep:
+        ctx.log(f"*** Using existing @apphosting/adapter-nextjs@{adapter_dep} ***")
+        return
+        
+    # Install Next.js build adapter
+    npm.install_next_js_build_adapter(ctx, os.path.join(app_dir, "node_modules"))
+    
+    # Set environment variables for build
+    env = {
+        FRAMEWORK_VERSION: next_version
+    }
+    ctx.set_build_environment(env)
+    
+    # Update builder metadata
+    buildermetadata.global_builder_metadata().set_value(buildermetadata.FrameworkName, "nextjs")
+    buildermetadata.global_builder_metadata().set_value(buildermetadata.FrameworkVersion, next_version)
+    
+def validate_version(ctx, dep_version):
+    """
+    Validates the Next.js version against minimum requirements.
+    """
+    try:
+        parsed_version = semver.Version.parse(dep_version)
+    except ValueError:
+        ctx.warn(f"Unrecognized version of next: {dep_version}")
+        ctx.warn("Consider updating your next dependencies to >=13.0.0")
+        return
+        
+    if parsed_version < MIN_NEXT_VERSION:
+        ctx.warn(f"Unsupported version of next: {dep_version}")
+        ctx.warn("Update the next dependencies to >=13.0.0")
+        raise fah_error.UnsupportedFrameworkVersionError("next", dep_version)

@@ -1,133 +1,92 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-package lib
+"""Implements go/appengine buildpack. The appengine buildpack sets the image entrypoint."""
 
-import (
-	"bytes"
-	"log"
-	"os"
-	"os/exec"
-	"strings"
-	"testing"
+import os
+import subprocess
+from typing import List, Optional
 
-	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+import gcp_buildpack as gcp
+from packages.appengine import AppEngineBuildpack
 
-func TestDetect(t *testing.T) {
-	testCases := []struct {
-		name  string
-		files map[string]string
-		env   []string
-		want  int
-	}{
-		{
-			name:  "no files",
-			files: map[string]string{},
-			want:  100,
-		},
-		{
-			name:  "no files with target_platform",
-			files: map[string]string{},
-			env:   []string{"X_GOOGLE_TARGET_PLATFORM=gae"},
-			want:  0,
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, DetectFn, tc.name, tc.files, tc.env, tc.want)
-		})
-	}
-}
 
-func TestValidateAppEngineAPIsShouldWarn(t *testing.T) {
-	testCases := []struct {
-		name                       string
-		appEngineAPIsEnvVarEnabled bool
-		allDepsResult              string
-		directDepsResult           string
-		expectedLogOutput          string
-	}{
-		{
-			name:             "App with SDK dependencies and un-enabled APIs should warn",
-			allDepsResult:    "",
-			directDepsResult: "google.golang.org/appengine",
-			expectedLogOutput: "WARNING: There is a dependency on App Engine APIs, but they are " +
-				"not enabled in your app.yaml. Set the app_engine_apis property.",
-		},
-		{
-			name:             "Indirect use of SDK libaries should warn",
-			allDepsResult:    "google.golang.org/appengine",
-			directDepsResult: "",
-			expectedLogOutput: "WARNING: There is an indirect dependency on App Engine APIs, " +
-				"but they are not enabled in your app.yaml. You may see runtime errors trying to " +
-				"access these APIs. Set the app_engine_apis property.",
-		},
-		{
-			name:                       "GAE_APP_ENGINE_APIS but no API use should warn",
-			appEngineAPIsEnvVarEnabled: true,
-			allDepsResult:              "",
-			directDepsResult:           "",
-			expectedLogOutput: "WARNING: App Engine APIs are enabled, but don't appear to be " +
-				"used, causing a possible performance penalty. Delete app_engine_apis from your app.yaml.",
-		},
-	}
+def detect_fn(context: gcp.Context) -> tuple[int, Optional[Exception]]:
+    """Detect function for the appengine buildpack."""
+    if os.getenv("GAE_ENV"):
+        return (AppEngineBuildpack.OPT_IN_TARGET_PLATFORM_GAE, None)
+    return (AppEngineBuildpack.OPT_OUT_TARGET_PLATFORM_NOT_GAE, None)
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Cleanup(func() {
-				if err := os.Unsetenv("GAE_APP_ENGINE_APIS"); err != nil {
-					t.Fatalf("Unexpected error restoring environment: %v", err)
-				}
-			})
-			if tc.appEngineAPIsEnvVarEnabled {
-				os.Setenv("GAE_APP_ENGINE_APIS", "TRUE")
-			}
-			buf := new(bytes.Buffer)
-			logger := log.New(buf, "", 0)
-			ctx := gcpbuildpack.NewContext(
-				gcpbuildpack.WithLogger(logger),
-				gcpbuildpack.WithExecCmd(depsMockExecCmd(t, tc.allDepsResult, tc.directDepsResult)),
-			)
-			if err := validateAppEngineAPIs(ctx); err != nil {
-				t.Fatalf("Unexpected error calling validateAppEngineAPIs(ctx) = %v", err)
-			}
-			logOutput := buf.String()
-			if !strings.Contains(logOutput, tc.expectedLogOutput) {
-				t.Errorf("validateAppEngineAPIs(ctx)'s log output doesn't contain expected string: got \n%q\n want %q",
-					logOutput, tc.expectedLogOutput)
-			}
-		})
-	}
-}
 
-// depsMockExecCmd enables controlling the results of directDeps(...) and allDeps(...).
-func depsMockExecCmd(t *testing.T, allDepsResult, directDepsResult string) func(name string, args ...string) *exec.Cmd {
-	return func(name string, args ...string) *exec.Cmd {
-		if len(args) != 5 {
-			t.Fatalf("Unexpected arguments size: %v", args)
-		}
-		joinArg := args[3]
-		var output string
-		if strings.Contains(joinArg, ".Deps") {
-			output = allDepsResult
-		} else if strings.Contains(joinArg, ".Imports") {
-			output = directDepsResult
-		} else {
-			t.Fatalf("Unexpected argument: %v", joinArg)
-		}
-		return exec.Command("echo", output)
-	}
-}
+def build_fn(context: gcp.Context) -> Optional[Exception]:
+    """Build function for the appengine buildpack."""
+    if error := validate_app_engine_apis(context):
+        return error
+    return AppEngineBuildpack.build(
+        context, "go", entrypoint
+    )
+
+
+def validate_app_engine_apis(context: gcp.Context) -> Optional[Exception]:
+    """Validates usage of App Engine APIs."""
+    supportsApis = golang_supports_appengine_apis(context)
+    if not supportsApis:
+        direct_deps = get_direct_deps(context)
+        if app_engine_in_deps(direct_deps):
+            context.warn(AppEngineBuildpack.APP_ENGINE_WARNING)
+            return None
+
+    all_deps = get_all_deps(context)
+    usingAppEngine = app_engine_in_deps(all_deps)
+    
+    if supportsApis and not usingAppEngine:
+        context.warn(AppEngineBuildpack.APP_ENGINE_UNUSED_API_WARNING)
+        
+    if not supportsApis and usingAppEngine:
+        context.warn(AppEngineBuildpack.APP_ENGINE_INDIRECT_DEP_WARNING)
+        
+    return None
+
+
+def entrypoint(context: gcp.Context) -> dict:
+    """Generates the entrypoint configuration."""
+    context.log(f"No user entrypoint specified. Using the generated entrypoint {golang.OUT_BIN}")
+    return {
+        "type": AppEngineBuildpack.EntrypointType.GENERATED.value,
+        "command": golang.OUT_BIN
+    }
+
+
+def app_engine_in_deps(deps: List[str]) -> bool:
+    """Checks if any dependency is related to App Engine."""
+    for dep in deps:
+        if dep.startswith("google.golang.org/appengine"):
+            return True
+    return False
+
+
+def get_all_deps(context: gcp.Context) -> List[str]:
+    """Retrieves all dependencies using go list."""
+    result = context.exec(["go", "list", "-e", "-f", "{{join .Deps \"\\n\"}}", "./..."])
+    if result.error:
+        return []
+    return result.stdout.strip().split()
+
+
+def get_direct_deps(context: gcp.Context) -> List[str]:
+    """Retrieves direct dependencies using go list."""
+    result = context.exec(["go", "list", "-e", "-f", "{{join .Imports \"\\n\"}}", "./..."])
+    if result.error:
+        return []
+    return result.stdout.strip().split()

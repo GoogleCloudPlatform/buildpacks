@@ -1,141 +1,121 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements go/appengine_gomod buildpack.
-// The appengine_gomod buildpack sets up the path of the package to build for gomod applications.
-package lib
+"""
+Implements go/appengine_gomod buildpack.
+The appengine_gomod buildpack sets up the path of the package to build for gomod applications.
+"""
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
+import os
+import shutil
+from pathlib import Path
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
+from ..pkg.appengine import opt_out_target_platform_not_gae, opt_out_file_not_found, opt_in
+from ..pkg.env import is_gae, buildable_env_var, ga_yaml_main_env_var
+from ..pkg.gcpbuildpack import (
+    DetectResult,
+    BuildLayer,
+    GCPContext,
+    user_error,
+    logf,
 )
+from ..pkg.golang import build_dir_env
 
-const (
-	// stagerFileName is an optional file created by go-app-stager.
-	// This file contains the main package path to build. This value can be overridden using GAE_YAML_MAIN.
-	stagerFileName = "_main-package-path"
-)
+# Constants
+stager_file_name = "_main-package-path"
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !env.IsGAE() {
-		return appengine.OptOutTargetPlatformNotGAE(), nil
-	}
-	goModExists, err := ctx.FileExists("go.mod")
-	if err != nil {
-		return nil, err
-	}
-	if !goModExists {
-		return gcp.OptOutFileNotFound("go.mod"), nil
-	}
+def detect_fn(ctx: GCPContext) -> tuple[DetectResult, Exception]:
+    if not is_gae():
+        return opt_out_target_platform_not_gae(), None
+    
+    go_mod_exists = Path("go.mod").exists()
+    if not go_mod_exists:
+        return opt_out_file_not_found("go.mod"), None
 
-	if path, exists := os.LookupEnv(env.Buildable); exists {
-		return gcp.OptOut(fmt.Sprintf("%s already defined as %q", env.Buildable, path)), nil
-	}
+    buildable_path = os.getenv(buildable_env_var)
+    if buildable_path is not None:
+        return opt_out(f"{buildable_env_var} already defined as {repr(buildable_path)}"), None
 
-	return gcp.OptIn(fmt.Sprintf("found go.mod and %s is not set", env.Buildable)), nil
-}
+    return opt_in(f"found go.mod and {buildable_env_var} is not set"), None
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	mp, err := mainPath(ctx)
-	if err != nil {
-		return fmt.Errorf("choosing main path: %w", err)
-	}
-	buildMainPath, err := cleanMainPath(mp)
-	if err != nil {
-		return fmt.Errorf("cleaning main package path: %w", err)
-	}
+def build_fn(ctx: GCPContext) -> Exception:
+    main_path, err = choose_main_path(ctx)
+    if err:
+        return ValueError(f"choosing main path: {err}")
 
-	if buildMainPath != "." {
-		// If mainPath refers to a file, we prefix it with "./" so that `go build` treats it as such (in a later step).
-		buildMainExists, err := ctx.FileExists(buildMainPath)
-		if err != nil {
-			return err
-		}
-		if buildMainExists {
-			buildMainPath = "." + string(filepath.Separator) + buildMainPath
-		} else {
-			ctx.Logf("Path %q does not exist. Assuming it's a fully qualified package name.", buildMainPath)
-		}
-	}
+    clean_path, err = clean_main_path(main_path)
+    if err:
+        return ValueError(f"cleaning main package path: {err}")
 
-	l, err := ctx.Layer("main_env", gcp.BuildLayer)
-	if err != nil {
-		return fmt.Errorf("creating main_env layer: %w", err)
-	}
-	l.BuildEnvironment.Override(env.Buildable, buildMainPath)
+    # Handle main path
+    if clean_path != ".":
+        build_main_exists = Path(clean_path).exists()
+        if build_main_exists:
+            clean_path = f"./{clean_path}"
+        else:
+            logf("Path %r does not exist. Assuming it's a fully qualified package name.", clean_path)
 
-	// HACK: For backwards compatibility on App Engine Go 1.11:
-	// Copy all files to a layer directory that ends with /srv because the appengine package relies on the name:
-	// https://github.com/golang/appengine/blob/553959209a20f3be281c16dd5be5c740a893978f/delay/delay.go#L136
-	// We change the work directory instead of modifying env.Buildable, because the latter is not necessarily a filesystem path.
-	srvl, err := ctx.Layer("srv", gcp.BuildLayer)
-	if err != nil {
-		return fmt.Errorf("creating srv layer: %w", err)
-	}
-	srvl.BuildEnvironment.Override(golang.BuildDirEnv, srvl.Path)
-	if _, err := ctx.Exec([]string{"cp", "--dereference", "-R", ".", srvl.Path}, gcp.WithUserTimingAttribution); err != nil {
-		return err
-	}
+    # Create main_env layer
+    main_env_layer, err = ctx.create_layer("main_env", BuildLayer.BUILD)
+    if err:
+        return ValueError(f"creating main_env layer: {err}")
+    main_env_layer.build_environment[buildable_env_var] = clean_path
 
-	return nil
-}
+    # Handle srv layer for backwards compatibility
+    srv_layer, err = ctx.create_layer("srv", BuildLayer.BUILD)
+    if err:
+        return ValueError(f"creating srv layer: {err}")
+    srv_layer.build_environment[build_dir_env] = str(srv_layer.path)
 
-// mainPath chooses the main package path from the paths provided by _main-package-path or GAE_YAML_MAIN.
-func mainPath(ctx *gcp.Context) (string, error) {
-	if path := os.Getenv(env.GAEMain); path != "" {
-		return path, nil
-	}
+    try:
+        shutil.copytree(".", srv_layer.path, symlinks=True)
+    except Exception as e:
+        return e
 
-	pathFile := filepath.Join(ctx.ApplicationRoot(), stagerFileName)
-	pathExists, err := ctx.FileExists(pathFile)
-	if err != nil {
-		return "", err
-	}
-	if pathExists {
-		bytes, err := ctx.ReadFile(pathFile)
-		if err != nil {
-			return "", err
-		}
-		path := string(bytes)
-		if err := ctx.RemoveAll(pathFile); err != nil {
-			return "", err
-		}
-		return path, nil
-	}
+    return None
 
-	return "", nil
-}
+def choose_main_path(ctx: GCPContext) -> tuple[str, Exception]:
+    ga_main = os.getenv(ga_yaml_main_env_var)
+    if ga_main:
+        return ga_main, None
 
-func cleanMainPath(mp string) (string, error) {
-	mp = filepath.Clean(filepath.ToSlash(strings.TrimSpace(mp)))
-	if mp == "." {
-		return ".", nil
-	}
-	if filepath.IsAbs(mp) {
-		return "", gcp.UserErrorf("main package path %q must not be absolute path", mp)
-	}
-	if strings.HasPrefix(mp, "..") {
-		return "", gcp.UserErrorf("main package path %q cannot reference parent", mp)
-	}
-	return mp, nil
-}
+    stager_file = ctx.application_root / stager_file_name
+    if stager_file.exists():
+        try:
+            with open(stager_file, "r") as f:
+                path = f.read().strip()
+            # Clean up the file after reading
+            stager_file.unlink()
+            return path, None
+        except Exception as e:
+            return "", e
+
+    return "", None
+
+def clean_main_path(mp: str) -> tuple[str, Exception]:
+    if not mp:
+        return ".", None
+    
+    mp = os.path.normpath(mp.replace(os.sep, "/")).strip()
+    
+    if mp == ".":
+        return ".", None
+    
+    if os.path.isabs(mp):
+        return "", user_error(f"main package path {repr(mp)} must not be absolute path")
+    
+    if mp.startswith(".."):
+        return "", user_error(f"main package path {repr(mp)} cannot reference parent")
+
+    return mp, None

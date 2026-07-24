@@ -1,22 +1,13 @@
-package nodejs
+import json
+from pathlib import Path
+from typing import Optional
 
-import (
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
-
-// NuxtStartCommand determines if this is a Nuxt application and returns the command to start the
-// nuxt server. If not it is not a Nuxt application it returns nil.
-func NuxtStartCommand(ctx *gcp.Context) ([]string, error) {
-	configExists, err := ctx.FileExists(ctx.ApplicationRoot(), "nuxt.config.ts")
-	if err != nil {
-		return nil, err
-	}
-	serverExists, err := ctx.FileExists(ctx.ApplicationRoot(), ".output/server/index.mjs")
-	if err != nil {
-		return nil, err
-	}
-	if configExists && serverExists {
-		return []string{"node", ".output/server/index.mjs"}, nil
-	}
-	return nil, nil
-}
+class NodeJS:
+    @staticmethod
+    def nuxt_start_command(application_root: str) -> Optional[list[str]]:
+        config_path = Path(application_root) / "nuxt.config.ts"
+        server_path = Path(application_root) / ".output/server/index.mjs"
+        
+        if config_path.exists() and server_path.exists():
+            return ["node", ".output/server/index.mjs"]
+        return None

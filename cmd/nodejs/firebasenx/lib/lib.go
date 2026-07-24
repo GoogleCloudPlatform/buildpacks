@@ -1,104 +1,68 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements nodejs/firebasenx buildpack.
-// The nodejs/firebasenx buildpack analyzes and configures a build for Nx monorepos.
-package lib
+"""Implements nodejs/firebasenx buildpack.
+The nodejs/firebasenx buildpack analyzes and configures a build for Nx monorepos.
+"""
 
-import (
-	"fmt"
-	"strings"
+import os
+from typing import Dict, List, Optional
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/util"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
-)
+import jsonschema  # type: ignore
+import schema  # type: ignore
+import yaml  # type: ignore
 
-var (
-	versionKey = "version"
-	// The Nx buildpack build function sets the following environment variables to configure the build
-	// behavior of subsequent buildpacks.
-	monorepoProject   = "MONOREPO_PROJECT"    // The name of a project in a Nx monorepo.
-	monorepoCommand   = "MONOREPO_COMMAND"    // The CLI command utility ("nx").
-	monorepoBuildArgs = "MONOREPO_BUILD_ARGS" // The builder plugin used by the build target executor.
-	nxNoCloud         = "NX_NO_CLOUD"         // Whether to disable Nx Cloud remote caching.
-)
+import gcpbuildpack  # type: ignore
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !env.IsFAH() {
-		return gcp.OptOut("not a firebase apphosting application"), nil
-	}
-	nxJSONExists, err := ctx.FileExists("nx.json")
-	if err != nil {
-		return nil, err
-	}
-	if !nxJSONExists {
-		return gcp.OptOutFileNotFound("nx.json"), nil
-	}
-	return gcp.OptInFileFound("nx.json"), nil
-}
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	appDir := util.ApplicationDirectory(ctx)
+version_key = "version"
+monorepo_project = "MONOREPO_PROJECT"    # The name of a project in an Nx monorepo.
+monorepo_command = "MONOREPO_COMMAND"    # The CLI command utility ("nx").
+monorepo_build_args = "MONOREPO_BUILD_ARGS"  # The builder plugin used by the build target executor.
+nx_no_cloud = "NX_NO_CLOUD"              # Whether to disable Nx Cloud remote caching.
 
-	nxJSON, err := nodejs.ReadNxJSONIfExists(ctx.ApplicationRoot())
-	if err != nil {
-		return err
-	}
-	if nxJSON == nil {
-		return gcp.UserErrorf("nx.json file does not exist")
-	}
-	if nxJSON.NxCloudAccessToken != "" {
-		ctx.Warnf("Nx Cloud is currently not supported. Ignoring Nx Cloud Access Token")
-	}
 
-	projectJSON, err := nodejs.ReadNxProjectJSONIfExists(appDir)
-	if err != nil {
-		return err
-	}
+def detect_fn(ctx: gcpbuildpack.Context) -> Dict:
+    """Detect function for the buildpack."""
+    if not os.environ.get("X_GOOGLE_TARGET_PLATFORM") == "fah":
+        return {"enabled": False, "reason": "not a firebase apphosting application"}
+    
+    nx_json_exists = ctx.file_exists("nx.json")
+    if not nx_json_exists:
+        return {"enabled": False, "reason": "nx.json file not found"}
+        
+    return {"enabled": True, "reason": "nx.json file found"}
 
-	projectName := nxJSON.DefaultProject
-	if projectJSON != nil {
-		projectName = projectJSON.Name
-	}
-	// Project target is ambiguous, so we fail the build.
-	if projectName == "" {
-		return gcp.UserErrorf("target application in Nx monorepo is ambiguous. Please specify the application directory path during onboarding or a default project in nx.json")
-	}
 
-	buildArgs := []string{fmt.Sprintf("--project=%s", projectName)}
-
-	nxl, err := ctx.Layer("nx", gcp.BuildLayer, gcp.CacheLayer)
-	if err != nil {
-		return fmt.Errorf("creating nx layer: %w", err)
-	}
-	// Set environment variables that will configure the build to use Nx.
-	nxl.BuildEnvironment.Override(monorepoProject, projectName)
-	nxl.BuildEnvironment.Override(monorepoCommand, "nx")
-	nxl.BuildEnvironment.Override(monorepoBuildArgs, strings.Join(buildArgs, ","))
-	// If an Nx Cloud access token is provided in nx.json, the Nx build script will attempt to read
-	// from the user's cloud cache. This feature is currently disabled so that users don't rely on Nx
-	// remote caching until we can fully investigate how to support making external network requests
-	// to the Nx API.
-	nxl.BuildEnvironment.Override(nxNoCloud, "true")
-
-	// add nx as the monorepo name to the builder metadata
-	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.MonorepoName, "nx")
-
-	return nil
-}
+def build_fn(ctx: gcpbuildpack.Context) -> None:
+    """Build function for the buildpack."""
+    app_dir = ctx.get_application_directory()
+    
+    nx_json = read_nx_json(app_dir)
+    if not nx_json:
+        raise ValueError("nx.json file does not exist")
+        
+    project_name = nx_json.get("defaultProject", "")
+    if not project_name:
+        raise ValueError("target application in Nx monorepo is ambiguous. Please specify the application directory path during onboarding or a default project in nx.json")
+        
+    build_args = [f"--project={project_name}"]
+    
+    layer = ctx.create_layer("nx")
+    layer.build_environment[monorepo_project] = project_name
+    layer.build_environment[monorepo_command] = "nx"
+    layer.build_environment[monorepo_build_args] = ",".join(build_args)
+    layer.build_environment[nx_no_cloud] = "true"
+    
+    ctx.add_builder_metadata(buildermetadata.MonorepoName, "nx")

@@ -1,107 +1,59 @@
-// Copyright 2022 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import json
+import os
+import requests
+from typing import Optional
+from urllib.parse import urljoin
 
-// Package dart provides utility methods for building Dart applications.
-package dart
+VERSION_URL = "https://storage.googleapis.com/dart-archive/channels/stable/release/latest/VERSION"
 
-import (
-	"encoding/json"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"os"
-	"path/filepath"
+class ReleaseInfo:
+    def __init__(self, date: str, version: str, revision: str):
+        self.date = date
+        self.version = version
+        self.revision = revision
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/hashicorp/go-retryablehttp"
-	"gopkg.in/yaml.v2"
-)
+def detect_sdk_version() -> tuple[Optional[str], Optional[Exception]]:
+    env_version = os.getenv("GOOGLE_RUNTIME_VERSION")
+    if env_version:
+        return env_version, None
+    return fetch_latest_sdk_version()
 
-var versionURL = "https://storage.googleapis.com/dart-archive/channels/stable/release/latest/VERSION"
+def fetch_latest_sdk_version() -> tuple[Optional[str], Optional[Exception]]:
+    try:
+        response = requests.get(VERSION_URL, retries=3)
+        response.raise_for_status()
+        
+        data = json.loads(response.text)
+        if not isinstance(data, dict):
+            return None, ValueError("Invalid JSON format in response")
+            
+        version = data.get("version")
+        if not version:
+            return None, ValueError("Version not found in response")
+            
+        return version, None
+    except requests.exceptions.RequestException as e:
+        return None, e
 
-// releaseInfo contains information about a Dart SDK release.
-type releaseInfo struct {
-	Date     string `json:"date"`
-	Version  string `json:"version"`
-	Revision string `json:"revision"`
-}
-
-// pubspec represents the contents of a pubspec.yaml.
-type pubspec struct {
-	Dependencies    map[string]any `yaml:"dependencies"`
-	DevDependencies map[string]any `yaml:"dev_dependencies"`
-}
-
-// DetectSDKVersion detects which SDK version should be installed from the environment or fetches
-// the latest stable available version.
-func DetectSDKVersion() (string, error) {
-	if envVersion := os.Getenv(env.RuntimeVersion); envVersion != "" {
-		return envVersion, nil
-	}
-	return fetchLatestSdkVersion()
-}
-
-func fetchLatestSdkVersion() (string, error) {
-	retryClient := retryablehttp.NewClient()
-	retryClient.RetryMax = 3
-
-	resp, err := retryClient.StandardClient().Get(versionURL)
-	if err != nil {
-		return "", buildererror.InternalErrorf("fetching Dart SDK version from %q: %v", versionURL, err)
-	}
-	defer resp.Body.Close()
-
-	bytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", buildererror.InternalErrorf("reading response: %v", err)
-	}
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return "", buildererror.InternalErrorf("unexpected status code from %q: %d (%s)", versionURL, resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
-
-	var info releaseInfo
-	if err := json.Unmarshal(bytes, &info); err != nil {
-		return "", buildererror.InternalErrorf("unmarshalling response from %q: %v", versionURL, err)
-	}
-	return info.Version, nil
-}
-
-// HasBuildRunner returns true if the given Dart project contains a pubspec.yaml that declares a
-// dependency on build_runner.
-func HasBuildRunner(dir string) (bool, error) {
-	f := filepath.Join(dir, "pubspec.yaml")
-	rawpjs, err := ioutil.ReadFile(f)
-	if os.IsNotExist(err) {
-		// If there is no pubspec.yaml, there is no build_runner dependency.
-		return false, nil
-	}
-	if err != nil {
-		return false, gcp.InternalErrorf("reading pubspec.yaml: %v", err)
-	}
-
-	var ps pubspec
-	if err := yaml.Unmarshal(rawpjs, &ps); err != nil {
-		return false, gcp.UserErrorf("unmarshalling pubspec.yaml: %v", err)
-	}
-
-	if _, exists := ps.Dependencies["build_runner"]; exists {
-		return true, nil
-	}
-	if _, exists := ps.DevDependencies["build_runner"]; exists {
-		return true, nil
-	}
-	return false, nil
-}
+def has_build_runner(directory: str) -> tuple[bool, Optional[Exception]]:
+    pubspec_path = os.path.join(directory, "pubspec.yaml")
+    
+    try:
+        with open(pubspec_path, 'r') as f:
+            content = f.read()
+    except FileNotFoundError:
+        return False, None
+    except IOError as e:
+        return False, e
+    
+    try:
+        pubspec = json.loads(content)
+    except json.JSONDecodeError as e:
+        return False, e
+    
+    dependencies = pubspec.get("dependencies", {})
+    dev_dependencies = pubspec.get("dev_dependencies", {})
+    
+    if "build_runner" in dependencies or "build_runner" in dev_dependencies:
+        return True, None
+    return False, None

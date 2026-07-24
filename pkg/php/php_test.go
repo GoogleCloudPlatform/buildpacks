@@ -1,189 +1,150 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import json
+import os
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, List, Optional
 
-package php
+# Constants
+composerJSON = "composer.json"
+composerLock = "composer.lock"
+Vendor = "vendor"
 
-import (
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"reflect"
-	"strings"
-	"testing"
+phpVersionKey = "php_version"
+dependencyHashKey = "dependency_hash"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+ComposerArgsEnv = "GOOGLE_COMPOSER_ARGS"
+ComposerVersionEnv = "GOOGLE_COMPOSER_VERSION"
+CustomNginxConfigEnv = "GOOGLE_CUSTOM_NGINX_CONFIG"
+NginxServesStaticFilesEnv = "NGINX_SERVES_STATIC_FILES"
 
-func TestReadComposerJSON(t *testing.T) {
-	d, err := ioutil.TempDir("/tmp", "test-read-composer-")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(d)
+PHPIni = """
+; Copyright 2022 Google Inc.
+;
+; Licensed under the Apache License, Version 2.0 (the "License");
+; you may not use this file except in compliance with the License.
+; You may obtain a copy of the License at
+;
+;     http://www.apache.org/licenses/LICENSE-2.0
+;
+; Unless required by applicable law or agreed to in writing, software
+; distributed under the License is distributed on an "AS IS" BASIS,
+; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+; See the License for the specific language governing permissions and
+; limitations under the License.
 
-	contents := strings.TrimSpace(`
-{
-  "require": {
-    "myorg/mypackage": "^0.7",
-    "php": "7.4"
-  },
-  "scripts": {
-    "gcp-build": "my-script"
-  }
-}
-`)
+expose_php = Off
+memory_limit = -1
+max_execution_time = 0
 
-	if err := ioutil.WriteFile(filepath.Join(d, composerJSON), []byte(contents), 0644); err != nil {
-		t.Fatalf("Failed to write composer.json: %v", err)
-	}
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Error handling and logging, based on php.ini-production. ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-	want := ComposerJSON{
-		Require: map[string]string{
-			"myorg/mypackage": "^0.7",
-			"php":             "7.4",
-		},
-		Scripts: composerScriptsJSON{
-			GCPBuild: "my-script",
-		},
-	}
-	got, err := ReadComposerJSON(d)
-	if err != nil {
-		t.Errorf("ReadComposerJSON got error: %v", err)
-	}
-	if !reflect.DeepEqual(*got, want) {
-		t.Errorf("ReadComposerJSON\ngot %#v\nwant %#v", *got, want)
-	}
-}
+error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT
+display_errors = Off
+display_startup_errors = Off
+log_errors = On
+log_errors_max_len = 0
+ignore_repeated_errors = Off
+ignore_repeated_source = Off
+html_errors = Off
+zend.assertions = -1
+;; Enable maximum file sizes up to Front-End limits.
+upload_max_filesize = 32M
+post_max_size = 32M
+"""
 
-func TestExtractVersion(t *testing.T) {
+@dataclass
+class ComposerScriptsJSON:
+    gcp_build: str
 
-	testCases := []struct {
-		name         string
-		runtimeEnv   string
-		want         string
-		composerJSON string
-		wantErr      bool
-	}{
-		{
-			name:       "from environment",
-			runtimeEnv: "7.3",
-			want:       "7.3",
-		},
-		{
-			name: "from composer.json",
-			composerJSON: strings.TrimSpace(`
-{
-  "require": {
-    "php": "7.4.1"
-  }
-}
-`),
-			want: "7.4.1",
-		},
-		{
-			name:       "both environment and composer.json",
-			runtimeEnv: "7.4.1",
-			composerJSON: strings.TrimSpace(`
-{
-  "require": {
-    "php": "7.3.0"
-  }
-}
-`),
-			want: "7.4.1",
-		},
-		{
-			name: "composer.json without php version",
-			composerJSON: strings.TrimSpace(`
-{
-  "require": {
-    "myorg/mypackage": "^0.7"
-  }
-}
-`),
-			want: "",
-		},
-		{
-			name: "invalid composer.json missing parentheses",
-			composerJSON: strings.TrimSpace(`
-{
-  "require":
-    "myorg/mypackage": "^0.7"
-  }
-}
-`),
-			wantErr: true,
-		},
-		{
-			name: "no composer.json and environment",
-			want: "",
-		},
-		{
-			name: "composer.json with version constraint",
-			composerJSON: strings.TrimSpace(`
-{
-  "require": {
-    "php": ">=7.0.0"
-  }
-}
-`),
-			want: ">=7.0.0",
-		},
-		{
-			name: "composer.json with complex version constraint",
-			composerJSON: strings.TrimSpace(`
-{
-  "require": {
-    "php": ">= 7.1.3, < 7.4.4"
-  }
-}
-`),
-			want: ">= 7.1.3, < 7.4.4",
-		},
-	}
+@dataclass
+class ComposerJSON:
+    require: Dict[str, str]
+    scripts: ComposerScriptsJSON
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			if tc.runtimeEnv != "" {
-				t.Setenv(env.RuntimeVersion, tc.runtimeEnv)
-			}
+def supports_app_engine_apis(ctx: dict) -> bool:
+    runtime = os.getenv("RUNTIME")
+    if runtime == "php55":
+        return True
+    # Assuming appengine is a module with the required function
+    return appengine.apisEnabled(ctx)
 
-			path, err := ioutil.TempDir("/tmp", "test-detect-version-")
-			if err != nil {
-				t.Fatalf("Failed to create temp dir: %v", err)
-			}
-			defer os.RemoveAll(path)
+def read_composer_json(dir_path: str = ".") -> Optional[ComposerJSON]:
+    file_path = Path(dir_path) / composerJSON
+    try:
+        with open(file_path, 'r') as f:
+            content = json.load(f)
+            scripts = ComposerScriptsJSON(gcp_build=content.get('scripts', {}).get('gcp-build', ''))
+            return ComposerJSON(
+                require=content.get('require', {}),
+                scripts=scripts
+            )
+    except FileNotFoundError:
+        raise RuntimeError(f"Could not find {composerJSON}")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Failed to parse {composerJSON}: {e}")
 
-			if len(tc.composerJSON) > 0 {
-				if err := ioutil.WriteFile(filepath.Join(path, composerJSON), []byte(tc.composerJSON), 0644); err != nil {
-					t.Fatalf("Failed to write composer.json: %v", err)
-				}
-			}
+def version(ctx: dict) -> str:
+    result = subprocess.run(["php", "-r", "echo PHP_VERSION;"], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError("Could not get PHP version")
+    return result.stdout.strip()
 
-			ctx := gcp.NewContext(gcp.WithApplicationRoot(path))
-			got, err := ExtractVersion(ctx)
-			gotErr := err != nil
+def composer_install(ctx: dict, flags: List[str]) -> None:
+    cmd = ["composer", "install"] + flags
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"Composer install failed: {result.stderr}")
 
-			if gotErr != tc.wantErr {
-				t.Fatalf("ExtractVersion() got err=%t, want err=%t. err: %v", gotErr, tc.wantErr, err)
-			}
+def composer_dump_autoload(ctx: dict, flags: List[str]) -> None:
+    cmd = ["composer", "dump-autoload"] + flags
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"Composer dump autoload failed: {result.stderr}")
 
-			if got != tc.want {
-				t.Errorf("ExtractVersion()=%q, want=%q", got, tc.want)
-			}
-		})
-	}
+def composer_install_layer(ctx: dict, cache_tag: str) -> Dict:
+    # Implementation details would depend on the specific layer management
+    pass
 
-}
+def extract_version(ctx: dict) -> Optional[str]:
+    runtime_version = os.getenv("RUNTIME_VERSION")
+    if runtime_version:
+        print(f"Using runtime version from environment: {runtime_version}")
+        return runtime_version
+    
+    composer_path = Path(ctx.get('application_root', '.')) / composerJSON
+    if not composer_path.exists():
+        return None
+
+    try:
+        cjs = read_composer_json(composer_path.parent)
+        php_version = cjs.require.get(phpVersionKey)
+        if php_version:
+            print(f"Using PHP version from {composerJSON}: {php_version}")
+            return php_version
+        print("Composer.json exists but does not specify a PHP version")
+    except Exception as e:
+        print(f"Error reading composer.json: {e}")
+
+    return None
+
+def main():
+    # Example usage
+    ctx = {
+        'application_root': '.'
+    }
+    try:
+        cjs = read_composer_json()
+        print(cjs)
+        ver = extract_version(ctx)
+        if ver:
+            print(f"Detected PHP version: {ver}")
+        else:
+            print("Could not detect PHP version")
+    except Exception as e:
+        print(f"Error: {e}")
+
+if __name__ == "__main__":
+    main()

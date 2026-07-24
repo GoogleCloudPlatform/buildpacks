@@ -1,95 +1,95 @@
-// Copyright 2023 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import os
+import subprocess
+from pathlib import Path
+from typing import Optional
 
-package nodejs
+from google.cloud.buildpacks.gcpbuildpack import Context, InternalError, UserError
 
-import (
-	"fmt"
-	"os"
-	"strings"
+class NodeJSBuildPack:
+    BUN_LOCK = "bun.lock"
+    BUN_LOCKB = "bun.lockb"
+    BUN_VERSION_KEY = "version"
 
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpacks/libcnb/v2"
-)
+    @staticmethod
+    def install_bun(ctx: Context, layer: dict, pjs: Optional[dict]) -> None:
+        if ctx.is_disabled("nodejs.BunInstaller"):
+            ctx.log("BunInstaller capability is disabled. Skipping installation.")
+            return
 
-const (
-	// AngularVersionKey is the metadata key used to store the angular build adapter version in the angular layer.
-	AngularVersionKey = "version"
-)
+        if capability := ctx.capability("nodejs.BunInstaller"):
+            if isinstance(capability, NodeJSBuildPack):
+                capability.install_bun(ctx, layer, pjs)
+                return
 
-// InstallAngularBuildAdapter installs the angular build adaptor in the given layer if it is not already cached.
-func InstallAngularBuildAdapter(ctx *gcp.Context, al *libcnb.Layer) error {
-	var version string
-	var err error
-	if adapterVersion, adapterVersionPresent := os.LookupEnv("ANGULAR_ADAPTER_VERSION"); adapterVersionPresent {
-		ctx.Logf("Using ANGULAR_ADAPTER_VERSION: %q", adapterVersion)
-		version = adapterVersion
-	} else {
-		ctx.Logf("Using latest angular adapter version")
-		version, err = angularAdapterVersion(ctx)
-		if err != nil {
-			return gcp.InternalErrorf("failed to resolve latest angular adapter version: %w", err)
-		}
-	}
+        version = NodeJSBuildPack._detect_bun_version(pjs)
+        cached, err = NodeJSBuildPack._install_from_tarball_or_fallback(ctx, version, layer)
+        if not cached and err:
+            raise InternalError(f"Failed to download Bun v{version} tarball: {err}")
 
-	// Check the metadata in the cache layer to determine if version is already installed.
-	metaVersion := ctx.GetMetadata(al, AngularVersionKey)
-	if version == metaVersion {
-		ctx.CacheHit(al.Name)
-		ctx.Logf("angular adaptor cache hit: %q, %q, skipping installation.", version, metaVersion)
-		return nil
-	}
+        install_dir = Path(layer['path']) / "bin"
+        ctx.setenv("PATH", f"{install_dir}:{os.getenv('PATH')}")
+        ctx.set_metadata(layer, NodeJSBuildPack.BUN_VERSION_KEY, version)
+        ctx.set_metadata(layer, "stack", ctx.stack_id())
 
-	ctx.CacheMiss(al.Name)
-	if err := ctx.ClearLayer(al); err != nil {
-		return fmt.Errorf("clearing layer %q: %w", al.Name, err)
-	}
-	ctx.Logf("Installing angular adaptor %s", version)
-	// TODO(b/323280044) account for different versions
-	if _, err := ctx.Exec([]string{"npm", "install", "--prefix", al.Path, "@apphosting/adapter-angular@" + version}); err != nil {
-		return err
-	}
-	// Store layer flags and metadata.
-	ctx.SetMetadata(al, AngularVersionKey, version)
-	return nil
-}
+    @staticmethod
+    def _detect_bun_version(pjs: Optional[dict]) -> str:
+        if pjs is None or (not pjs.get('engines', {}).get('bun') and not pjs.get('packageManager')):
+            return NodeJSBuildPack._latest_package_version("bun")
 
-// angularAdapterVersion determines the latest version of the Angular adapter.
-func angularAdapterVersion(ctx *gcp.Context) (string, error) {
-	// TODO(b/323280044) account for different MAJOR.MINOR versions once development is more stable.
-	version, err := ctx.Exec([]string{"npm", "view", "@apphosting/adapter-angular", "version"})
-	if err != nil {
-		return "", gcp.InternalErrorf("npm view failed: %w", err)
-	}
-	if version.Stdout == "" {
-		return "", gcp.InternalErrorf("npm view returned empty stdout")
-	}
-	return version.Stdout, nil
-}
+        if engines := pjs.get('engines'):
+            bun_version = engines.get('bun')
+            if bun_version:
+                return bun_version
 
-// OverrideAngularBuildScript overrides the build script to be the Angular build script.
-func OverrideAngularBuildScript(njsl *libcnb.Layer) {
-	njsl.BuildEnvironment.Override(AppHostingBuildEnv, fmt.Sprintf("npm exec --prefix %s apphosting-adapter-angular-build", njsl.Path))
-}
+        package_manager = pjs.get('packageManager', "")
+        name, version, err = NodeJSBuildPack.parse_package_manager(package_manager)
+        if err or name != "bun":
+            raise UserError(f"bun was detected but {name} is set in the packageManager field")
 
-// ExtractAngularStartCommand inspects the given package.json file for an idiomatic `serve:ssr:APP_NAME`
-// command. If one exists, its value is returned. If not, return an empty string.
-func ExtractAngularStartCommand(pjs *PackageJSON) string {
-	for k, v := range pjs.Scripts {
-		if strings.HasPrefix(k, "serve:ssr:") {
-			return v
-		}
-	}
-	return ""
-}
+        return version
+
+    @staticmethod
+    def _latest_package_version(package_name: str) -> str:
+        # TODO: Implement npm version lookup
+        return "latest"
+
+    @staticmethod
+    def _install_from_tarball_or_fallback(ctx: Context, version: str, layer: dict) -> tuple[bool, Optional[Exception]]:
+        try:
+            cached = NodeJSBuildPack._install_from_tarball(ctx, version, layer)
+            return cached, None
+        except Exception as e:
+            ctx.log(f"Failed to download Bun v{version} tarball: {e}")
+            if not ctx.clear_layer(layer):
+                raise InternalError(f"clearing bun layer: failed")
+
+            ctx.log(f"Installing Bun v{version} via script")
+            install_cmd = ["bash", "-c", f"curl -fsSL https://bun.sh/install | bash -s bun-v{version} 2>/dev/null"]
+            if not NodeJSBuildPack._exec(ctx, install_cmd, env={"BUN_INSTALL": layer['path']}):
+                raise InternalError(f"installing bun: {e}")
+            
+            ctx.set_metadata(layer, NodeJSBuildPack.BUN_VERSION_KEY, version)
+            ctx.set_metadata(layer, "stack", ctx.stack_id())
+            return False, None
+
+    @staticmethod
+    def _install_from_tarball(ctx: Context, version: str, layer: dict) -> bool:
+        # TODO(b/520284867): Implement tarball installation
+        return False
+
+    @staticmethod
+    def parse_package_manager(package_manager_str: str) -> tuple[str, str, Optional[Exception]]:
+        parts = package_manager_str.split("@")
+        if len(parts) != 2:
+            return ("", "", UserError("invalid packageManager format"))
+        return (parts[0], parts[1], None)
+
+    @staticmethod
+    def _exec(ctx: Context, cmd: list[str], env: Optional[dict] = None) -> bool:
+        try:
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
+            ctx.log(result.stdout.strip())
+            return True
+        except Exception as e:
+            ctx.error(str(e))
+            return False

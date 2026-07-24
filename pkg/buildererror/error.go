@@ -1,83 +1,68 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2020 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Package buildererror provides an interface for builder Errors.
-package buildererror
+import hashlib
+import json
+from dataclasses import dataclass
+from typing import Any
 
-import (
-	"crypto/sha256"
-	"fmt"
-	"io"
-	"strings"
-)
+error_id_length = 8
 
-const (
-	errorIDLength = 8
-)
 
-// ID is a short error code passed to the user for supportability.
-type ID string
+@dataclass
+class Error:
+    BuildpackID: str
+    BuildpackVersion: str
+    Type: "Status"
+    Status: "Status"
+    ID: str
+    Message: str
+    internal_error: Exception
 
-// Error is a gcpbuildpack structured error.
-type Error struct {
-	BuildpackID      string `json:"buildpackId"`
-	BuildpackVersion string `json:"buildpackVersion"`
-	Type             Status `json:"errorType"`
-	Status           Status `json:"canonicalCode"`
-	ID               ID     `json:"errorId"`
-	Message          string `json:"errorMessage"`
-	internalError    error  `json:"-"`
-}
+    def __str__(self) -> str:
+        return f"(error ID: {self.ID}):\n{self.Message}"
 
-func (e *Error) Error() string {
-	return fmt.Sprintf("(error ID: %s):\n%s", e.ID, e.Message)
-}
+    def unwrap(self) -> Exception:
+        return self.internal_error
 
-func (e *Error) Unwrap() error {
-	return e.internalError
-}
 
-// Errorf constructs an Error.
-func Errorf(status Status, format string, args ...any) *Error {
-	err := fmt.Errorf(format, args...)
-	return &Error{
-		Type:          status,
-		Status:        status,
-		ID:            GenerateErrorID(err.Error()),
-		Message:       err.Error(),
-		internalError: err,
-	}
-}
+def errorf(status: "Status", format_str: str, *args: Any) -> Error:
+    message = format_str % args
+    error_id = generate_error_id(message)
+    internal_error = Exception(message)
+    return Error(
+        BuildpackID="",
+        BuildpackVersion="",
+        Type=status,
+        Status=status,
+        ID=error_id,
+        Message=message,
+        internal_error=internal_error,
+    )
 
-// InternalErrorf constructs an Error with status StatusInternal (Google-attributed SLO).
-func InternalErrorf(format string, args ...any) *Error {
-	return Errorf(StatusInternal, format, args...)
-}
 
-// UserErrorf constructs an Error with status StatusUnknown (user-attributed SLO).
-func UserErrorf(format string, args ...any) *Error {
-	return Errorf(StatusUnknown, format, args...)
-}
+def internal_errorf(format_str: str, *args: Any) -> Error:
+    return errorf(Status.INTERNAL, format_str, *args)
 
-// GenerateErrorID creates a short hash from the provided parts.
-func GenerateErrorID(parts ...string) ID {
-	h := sha256.New()
-	for _, p := range parts {
-		io.WriteString(h, p)
-	}
-	result := fmt.Sprintf("%x", h.Sum(nil))
 
-	// Since this is only a reporting aid for support, we truncate the hash to make it more human friendly.
-	return ID(strings.ToLower(result[:errorIDLength]))
-}
+def user_errorf(format_str: str, *args: Any) -> Error:
+    return errorf(Status.UNKNOWN, format_str, *args)
+
+
+def generate_error_id(*parts: str) -> str:
+    h = hashlib.sha256()
+    for part in parts:
+        h.update(part.encode())
+    result = h.hexdigest()[:error_id_length]
+    return result.lower()

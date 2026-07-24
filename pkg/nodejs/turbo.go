@@ -1,60 +1,65 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import pkg.nodejs.gcpbuildpack as gcp
+from typing import List
 
-package nodejs
+vulnerable_nextjs_ranges = [
+    ">= 15.0.0-0, < 15.0.5",
+    ">= 15.1.0-0, < 15.1.9",
+    ">= 15.2.0-0, < 15.2.6",
+    ">= 15.3.0-0, < 15.3.6",
+    ">= 15.4.0-0, < 15.4.8",
+    ">= 15.5.0-0, < 15.5.7",
+    ">= 16.0.0-0, < 16.0.7",
+    ">= 15.6.0-canary.0, < 15.6.0-canary.58",
+    ">= 16.1.0-canary.0, < 16.1.0-canary.12",
+    ">= 14.3.0-canary.77, < 15.0.0",
+]
 
-import (
-	"encoding/json"
-	"os"
-	"path/filepath"
+vulnerable_rsc_ranges = [
+    ">= 19.0.0-0, < 19.0.1",
+    ">= 19.1.0-0, < 19.1.2",
+    ">= 19.2.0-0, < 19.2.1",
+]
 
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+target_react_server_packages = [
+    "react-server-dom-webpack",
+    "react-server-dom-parcel",
+    "react-server-dom-turbopack",
+]
 
-// TurboTasks specifies config options for Turbo tasks.
-type TurboTasks struct {
-	Build TurboBuild `json:"build"`
-}
-
-// TurboBuild specifies configs for the Turbo build task.
-type TurboBuild struct {
-	Outputs []string `json:"outputs,omitempty"` // the list of output files to cache
-	Cache   bool     `json:"cache,omitempty"`   // whether cache is enabled
-}
-
-// TurboJSON represents the contents of a turbo.json file.
-// See https://turborepo.com/docs/reference/configuration for documentation on the configuration file schema.
-type TurboJSON struct {
-	Tasks TurboTasks `json:"tasks"`
-}
-
-// ReadTurboJSONIfExists returns deserialized turbo.json from the given dir. If the provided dir
-// does not contain a turbo.json file it returns nil. Empty dir string uses the current working
-// directory.
-func ReadTurboJSONIfExists(dir string) (*TurboJSON, error) {
-	f := filepath.Join(dir, "turbo.json")
-	raw, err := os.ReadFile(f)
-	if os.IsNotExist(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, gcp.InternalErrorf("reading %s: %v", f, err)
-	}
-
-	var turboJSON TurboJSON
-	if err := json.Unmarshal(raw, &turboJSON); err != nil {
-		return nil, gcp.UserErrorf("unmarshalling %s: %v", f, err)
-	}
-	return &turboJSON, nil
-}
+def check_vulnerabilities(ctx: gcp.Context, node_deps: 'NodeDependencies') -> str:
+    if os.environ.get(env.ALLOW_VULNERABLE_DEPENDENCIES, "").lower() == "true":
+        ctx.warn(f"Skipping vulnerability checks because {env.ALLOW_VULNERABLE_DEPENDENCIES} is enabled.")
+        return ""
+    
+    next_version = get_version(node_deps, "next")
+    if next_version:
+        for range in vulnerable_nextjs_ranges:
+            matches, err = version_matches_semver(ctx, range, next_version)
+            if err:
+                ctx.warn(f"could not check for vulnerable Next.js version: {err}")
+                continue
+            if matches:
+                return gcp.user_error(
+                    f"vulnerable Next.js version {next_version} detected due to CVE-2025-55182. "
+                    "Please upgrade to a patched version (e.g., 15.0.5, 15.1.9, 15.5.7, 16.0.7). "
+                    "See https://github.com/vercel/next.js/security/advisories/GHSA-9qr9-h5gf-34mp for details."
+                )
+    
+    for pkg_name in target_react_server_packages:
+        rsc_version = get_version(node_deps, pkg_name)
+        if not rsc_version:
+            continue
+        
+        for range in vulnerable_rsc_ranges:
+            matches, err = version_matches_semver(ctx, range, rsc_version)
+            if err:
+                ctx.warn(f"could not check for vulnerable {pkg_name} version: {err}")
+                continue
+            if matches:
+                return gcp.user_error(
+                    f"vulnerable {pkg_name} version {rsc_version} detected due to CVE-2025-55182. "
+                    "Please upgrade to a patched version (e.g., 19.0.1, 19.1.2, 19.2.1). "
+                    "See https://react.dev/blog/2025/12/03/critical-security-vulnerability-in-react-server-components for details."
+                )
+    
+    return ""

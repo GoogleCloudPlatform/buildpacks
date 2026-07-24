@@ -1,153 +1,158 @@
-// Copyright 2026 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Package static contains library code for the static runtimes buildpack.
-package static
+import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import List, Optional
 
-import (
-	"os"
-	"text/template"
-)
+@dataclass
+class HeaderConfig:
+    key: str
+    value: str
 
-// TODO(b/514251263): Parameterize the nginx config to allow for custom headers. eg: PORT etc.
-const (
-	// NginxConfFile is the default configuration file name for nginx in static runtimes.
-	NginxConfFile = "nginx.conf"
-	nginxConfTmpl = `
-pid /tmp/nginx.pid;
-error_log /dev/stderr notice;
+@dataclass
+class Header:
+    source: str
+    regex: Optional[str]
+    headers: List[HeaderConfig]
 
-events {
-    worker_connections 1024;
-}
+@dataclass
+class Run:
+    service_id: str
+    region: Optional[str]
 
-http {
-    include {{.MimeTypesPath}};
-    access_log /dev/stdout;
+@dataclass
+class Rewrite:
+    source: str
+    regex: Optional[str]
+    destination: Optional[str]
+    function: Optional[str]
+    run: Optional[Run]
+    dynamic_links: bool
 
-    client_body_temp_path /tmp/nginx_client_body;
-    proxy_temp_path /tmp/nginx_proxy;
-    fastcgi_temp_path /tmp/nginx_fastcgi;
-    uwsgi_temp_path /tmp/nginx_uwsgi;
-    scgi_temp_path /tmp/nginx_scgi;
+@dataclass
+class Redirect:
+    source: str
+    regex: Optional[str]
+    destination: str
+    type_: int  # Using 'type_' to avoid keyword conflict
 
-    server {
-        listen 8080;
-        root {{.RootPath}};
-        index index.html;
+@dataclass
+class HostingConfig:
+    target: Optional[str]
+    site: Optional[str]
+    public: Optional[str]
+    clean_urls: bool
+    trailing_slash: Optional[bool]
+    rewrites: List[Rewrite]
+    redirects: List[Redirect]
+    headers: List[Header]
 
-        {{range .Redirects}}
-        location ~ {{.Pattern}} {
-            return {{.Code}} {{.Target}};
-        }
-        {{end}}
+def parse_firebase_config(path: str) -> List[HostingConfig]:
+    firebase_json_path = Path(path)
+    
+    if not firebase_json_path.exists():
+        return []
+    
+    try:
+        with open(firebase_json_path, 'r') as f:
+            data = json.load(f)
+            
+        hosting_configs = []
+        
+        if isinstance(data.get('hosting'), list):
+            for config in data['hosting']:
+                hosting_config = HostingConfig(
+                    target=config.get('target'),
+                    site=config.get('site'),
+                    public=config.get('public'),
+                    clean_urls=config.get('cleanUrls', False),
+                    trailing_slash=config.get('trailingSlash'),
+                    rewrites=_parse_rewrites(config.get('rewrites', [])),
+                    redirects=_parse_redirects(config.get('redirects', [])),
+                    headers=_parse_headers(config.get('headers', []))
+                )
+                hosting_configs.append(hosting_config)
+        elif isinstance(data.get('hosting'), dict):
+            config = data['hosting']
+            hosting_config = HostingConfig(
+                target=config.get('target'),
+                site=config.get('site'),
+                public=config.get('public'),
+                clean_urls=config.get('cleanUrls', False),
+                trailing_slash=config.get('trailingSlash'),
+                rewrites=_parse_rewrites(config.get('rewrites', [])),
+                redirects=_parse_redirects(config.get('redirects', [])),
+                headers=_parse_headers(config.get('headers', []))
+            )
+            hosting_configs.append(hosting_config)
+            
+        return hosting_configs
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Failed to parse firebase.json: {e}") from e
 
-				{{range .Rewrites}}
-        location ~ {{.Pattern}} {
-            rewrite {{.Pattern}} {{.Target}} break;
-        }
-        {{end}}
+def _parse_rewrites(rewrites_json):
+    rewrites = []
+    for rw in rewrites_json:
+        rewrite = Rewrite(
+            source=rw.get('source'),
+            regex=rw.get('regex'),
+            destination=rw.get('destination'),
+            function=rw.get('function'),
+            run=_parse_run(rw.get('run')),
+            dynamic_links=rw.get('dynamicLinks', False)
+        )
+        rewrites.append(rewrite)
+    return rewrites
 
-        {{range .HeaderBlocks}}
-        location {{.Location}} {
-            {{range .Headers}}
-            add_header "{{.Name}}" "{{.Value}}";
-            {{end}}
-            try_files $uri $uri/ /index.html;
-        }
-        {{end}}
+def _parse_run(run_json):
+    if run_json:
+        return Run(
+            service_id=run_json.get('serviceId'),
+            region=run_json.get('region')
+        )
+    return None
 
-        # Default Fallback
-        location / {
-            try_files $uri $uri/ /index.html;
-        }
+def _parse_redirects(redirects_json):
+    redirects = []
+    for red in redirects_json:
+        redirect = Redirect(
+            source=red.get('source'),
+            regex=red.get('regex'),
+            destination=red.get('destination'),
+            type_=red.get('type')
+        )
+        redirects.append(redirect)
+    return redirects
 
-        absolute_redirect off;
-    }
-}
-`
-	// DefaultStaticNginxVersion is the default Nginx version constraint for runtimes not specified in the map.
-	DefaultStaticNginxVersion = "1.24.x"
-)
+def _parse_headers(headers_json):
+    headers = []
+    for hdr in headers_json:
+        header = Header(
+            source=hdr.get('source'),
+            regex=hdr.get('regex'),
+            headers=_parse_header_configs(hdr.get('headers', []))
+        )
+        headers.append(header)
+    return headers
 
-// NginxConfigParams holds the generic configuration parameters for templating nginx.conf.
-type NginxConfigParams struct {
-	RootPath      string
-	MimeTypesPath string
-	Rewrites      []NginxRewrite
-	Redirects     []NginxRedirect
-	HeaderBlocks  []NginxHeaderBlock
-}
-
-// NginxRewrite represents a single internal rewrite rule.
-type NginxRewrite struct {
-	Pattern string // Regex pattern (e.g., "^/api/(.*)$")
-	Target  string // Destination (e.g., "http://backend/$1")
-}
-
-// NginxRedirect represents an HTTP redirect.
-type NginxRedirect struct {
-	Pattern string // Regex pattern
-	Target  string // Destination URL
-	Code    int    // HTTP Status Code (e.g. 301, 302)
-}
-
-// NginxHeader represents a single key-value HTTP header.
-type NginxHeader struct {
-	Name  string
-	Value string
-}
-
-// NginxHeaderBlock represents a location block containing HTTP headers.
-type NginxHeaderBlock struct {
-	Location string        // Path matching string (e.g., "~* \.(css|js)$")
-	Headers  []NginxHeader // Slice of custom header key-value pairs (ordered)
-}
-
-// WriteNginxConfig compiles the configuration template with parameters and writes it to disk.
-func WriteNginxConfig(dstPath string, params NginxConfigParams) error {
-	tmpl, err := template.New(NginxConfFile).Parse(nginxConfTmpl)
-	if err != nil {
-		return err
-	}
-
-	f, err := os.Create(dstPath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	return tmpl.Execute(f, params)
-}
-
-const (
-	// RuntimeStatic24 is the runtime name for static24 base image.
-	RuntimeStatic24 = "static24"
-)
-
-var (
-	// NginxVersionPerRuntime maps a runtime name to its specific Nginx version constraint.
-	NginxVersionPerRuntime = map[string]string{
-		RuntimeStatic24: "1.24.x",
-	}
-)
-
-// NginxVersionConstraint returns the Nginx version constraint for the specified runtime name.
-// If the runtime name is not found in the map, it returns the default Nginx version constraint.
-func NginxVersionConstraint(runtimeName string) string {
-	if ver, ok := NginxVersionPerRuntime[runtimeName]; ok {
-		return ver
-	}
-	return DefaultStaticNginxVersion
-}
+def _parse_header_configs(headers_config_json):
+    configs = []
+    for config in headers_config_json:
+        configs.append(HeaderConfig(
+            key=config['key'],
+            value=config['value']
+        ))
+    return configs

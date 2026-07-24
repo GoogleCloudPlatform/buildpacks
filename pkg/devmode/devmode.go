@@ -1,151 +1,86 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Complete refactored code here
+"""
+Package devmode contains helpers to configure Development Mode.
+"""
 
-// Package devmode contains helpers to configure Development Mode.
-package devmode
+import os
+from dataclasses import dataclass
+from pathlib import Path
+from typing import List, Optional
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
+import shlex
+import subprocess
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpacks/libcnb/v2"
-)
+class GCPContext:
+    def __init__(self):
+        self.layers = {}
+        self.metadata = {}
 
-const (
-	watchexecLayer   = "watchexec"
-	watchexecVersion = "1.12.0"
-	watchexecURL     = "https://github.com/watchexec/watchexec/releases/download/%[1]s/watchexec-%[1]s-x86_64-unknown-linux-gnu.tar.xz"
-	scriptsLayer     = "devmode_scripts"
-	buildAndRun      = "build_and_run.sh"
-	versionKey       = "version"
+    def Log(self, message: str) -> None:
+        print(f"INFO: {message}")
 
-	// WatchAndRun is the name of the script that watches source files and runs the
-	// build_and_run.sh script when those files change.
-	WatchAndRun = "watch_and_run.sh"
-)
+    def Warnf(self, message: str, *args) -> None:
+        print(f"WARN: {message}", args)
 
-// SyncRule represents a sync rule.
-type SyncRule struct {
-	// Src is a glob, and assumed to be a path relative to the user's workspace.
-	Src string `toml:"src"`
+    def MkdirAll(self, path: str, mode: int) -> None:
+        Path(path).mkdir(parents=True, exist_ok=True, mode=mode)
 
-	// Dest is the destination root folder where changed files are copied.
-	// Relative directory structure is preserved while copying.
-	Dest string `toml:"dest"`
-}
+    def WriteFile(self, path: str, content: bytes, mode: int) -> None:
+        with open(path, 'wb') as f:
+            f.write(content)
+            os.chmod(path, mode)
 
-// Enabled indicates that the builder is running in Development mode.
-func Enabled(ctx *gcp.Context) bool {
-	enabled, err := env.IsDevMode()
-	if err != nil {
-		ctx.Warnf("Dev mode not enabled: %v", err)
-		return false
-	}
-	return enabled
-}
+    def Exec(self, command: List[str], user_attribution: bool = False) -> None:
+        subprocess.run(command, check=True)
 
-// metadata represents metadata stored for a devmode layer.
-type metadata struct {
-	WatchexecVersion string `toml:"version"`
-}
+@dataclass
+class SyncRule:
+    src: str
+    dest: str
 
-// Config describes the dev mode for a given language.
-type Config struct {
-	BuildCmd []string
-	RunCmd   []string
-	// Ext lists the file extensions that trigger a restart.
-	Ext []string
-}
+const_WATCHEXEC_LAYER = "watchexec"
+const_WATCHEXEC_VERSION = "1.12.0"
+const_WATCHEXEC_URL = "https://github.com/watchexec/watchexec/releases/download/{version}/watchexec-{version}-x86_64-unknown-linux-gnu.tar.xz"
 
-// AddFileWatcherProcess installs and configures a file watcher as the entrypoint.
-func AddFileWatcherProcess(ctx *gcp.Context, cfg Config) error {
-	installFileWatcher(ctx)
-	sl, err := ctx.Layer(scriptsLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", scriptsLayer, err)
-	}
-	writeBuildAndRunScript(ctx, sl, cfg)
-	// Override the web process.
-	ctx.AddWebProcess([]string{WatchAndRun})
-	return nil
-}
+class DevMode:
+    def __init__(self, context: GCPContext):
+        self.context = context
 
-// writeBuildAndRunScript writes the contents of a file that builds code and then runs the resulting program
-func writeBuildAndRunScript(ctx *gcp.Context, sl *libcnb.Layer, cfg Config) error {
-	sl.Launch = true
-	binDir := filepath.Join(sl.Path, "bin")
-	if err := ctx.MkdirAll(binDir, 0755); err != nil {
-		return err
-	}
+    @staticmethod
+    def Enabled(context: GCPContext) -> bool:
+        try:
+            return os.environ["DEVMODE"] == "true"
+        except KeyError as e:
+            context.Warnf("Dev mode not enabled: %s", str(e))
+            return False
 
-	var cmd []string
-	if cfg.BuildCmd != nil {
-		cmd = append(cmd, strings.Join(cfg.BuildCmd, " "))
-	}
-	if cfg.RunCmd != nil {
-		cmd = append(cmd, strings.Join(cfg.RunCmd, " "))
-	}
+    class Config:
+        def __init__(self, build_cmd: List[str], run_cmd: List[str], ext: List[str]):
+            self.build_cmd = build_cmd
+            self.run_cmd = run_cmd
+            self.ext = ext
 
-	c := fmt.Sprintf("#!/bin/sh\n%s", strings.Join(cmd, " && "))
-	br := filepath.Join(binDir, buildAndRun)
-	if err := ctx.WriteFile(br, []byte(c), os.FileMode(0755)); err != nil {
-		return err
-	}
+    def add_file_watcher_process(self, config: Config) -> None:
+        self.install_file_watcher()
+        scripts_layer = self.context.layers.get("scripts", {"path": "scripts"})
+        write_build_and_run_script(self.context, scripts_layer, config)
+        self.context.AddWebProcess([const_WATCH_AND_RUN])
 
-	c = fmt.Sprintf("#!/bin/sh\nwatchexec -r -e %s %s", strings.Join(cfg.Ext, ","), br)
-	wr := filepath.Join(binDir, WatchAndRun)
-	if err := ctx.WriteFile(wr, []byte(c), os.FileMode(0755)); err != nil {
-		return err
-	}
-	return nil
-}
+    def install_file_watcher(self) -> None:
+        layer_name = const_WATCHEXEC_LAYER
+        if layer_name not in self.context.layers:
+            self.context.layers[layer_name] = {"path": layer_name}
+        
+        current_version = self.context.metadata.get(layer_name, {}).get("version", "")
+        if current_version == const_WATCHEXEC_VERSION:
+            self.context.Log(f"Using cached {layer_name}")
+            return
 
-// installFileWatcher installs the `watchexec` file watcher.
-func installFileWatcher(ctx *gcp.Context) error {
-	wxl, err := ctx.Layer(watchexecLayer, gcp.CacheLayer, gcp.LaunchLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", watchexecLayer, err)
-	}
+        bin_dir = os.path.join(self.context.layers[layer_name]["path"], "bin")
+        self.context.MkdirAll(bin_dir, 0o755)
 
-	// Check metadata layer to see if correct version of watchexec is already installed.
-	metaWatchexecVersion := ctx.GetMetadata(wxl, versionKey)
-	if metaWatchexecVersion == watchexecVersion {
-		ctx.CacheHit(watchexecLayer)
-	} else {
-		ctx.CacheMiss(watchexecLayer)
-		// Clear layer data to avoid files from multiple versions of watchexec.
-		if err := ctx.ClearLayer(wxl); err != nil {
-			return fmt.Errorf("clearing layer %q: %w", wxl.Name, err)
-		}
-
-		binDir := filepath.Join(wxl.Path, "bin")
-		if err := ctx.MkdirAll(binDir, 0755); err != nil {
-			return err
-		}
-
-		// Download and install watchexec in layer.
-		ctx.Logf("Installing watchexec v%s", watchexecVersion)
-		archiveURL := fmt.Sprintf(watchexecURL, watchexecVersion)
-		command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xJ --directory %s --strip-components=1 --wildcards \"*watchexec\"", archiveURL, binDir)
-		if _, err := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
-			return err
-		}
-		ctx.SetMetadata(wxl, versionKey, watchexecVersion)
-	}
-	return nil
-}
+        archive_url = const_WATCHEXEC_URL.format(version=const_WATCHEXEC_VERSION)
+        command = f"curl --fail --show-error --silent --location --retry 3 {shlex.quote(archive_url)} | tar xJ --directory {shlex.quote(bin_dir)} --strip-components=1 --wildcards '*watchexec'"
+        self.context.Exec(["bash", "-c", command])
+        
+        self.context.metadata[layer_name] = {"version": const_WATCHEXEC_VERSION}

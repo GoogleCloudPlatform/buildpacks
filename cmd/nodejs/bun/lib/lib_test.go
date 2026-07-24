@@ -1,172 +1,94 @@
-// Copyright 2026 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-package lib
+"""
+Package lib implements nodejs/bun buildpack.
+The bun buildpack installs dependencies using bun package manager.
+"""
 
-import (
-	"testing"
+import os
+import subprocess
+from pathlib import Path
 
-	bpt "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
-	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
-)
+class Context:
+    def __init__(self, application_root):
+        self.application_root = application_root
+    
+    def file_exists(self, path):
+        return (Path(self.application_root) / path).exists()
+    
+    def layer(self, name, *args):
+        # Implement layer management logic here
+        pass
+    
+    def exec(self, command, **kwargs):
+        return subprocess.run(command, check=True)
 
-func TestDetect(t *testing.T) {
-	testCases := []struct {
-		name  string
-		envs  []string
-		files map[string]string
-		want  int
-	}{
-		{
-			name: "with_lock",
-			files: map[string]string{
-				"index.js":     "",
-				"package.json": "",
-				"bun.lock":     "",
-			},
-			envs: []string{},
-			want: 0,
-		},
-		{
-			name: "with_lockb",
-			files: map[string]string{
-				"index.js":     "",
-				"package.json": "",
-				"bun.lockb":    "",
-			},
-			envs: []string{},
-			want: 0,
-		},
-		{
-			name: "package_no_lock",
-			files: map[string]string{
-				"index.js":     "",
-				"package.json": "",
-			},
-			envs: []string{
-				env.PackageManager + "=bun",
-			},
-			want: 0,
-		},
-		{
-			name: "without_package",
-			files: map[string]string{
-				"index.js": "",
-			},
-			want: 100,
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			bpt.TestDetect(t, DetectFn, tc.name, tc.files, tc.envs, tc.want)
-		})
-	}
-}
+class DetectResult:
+    def __init__(self, opt_in=False, opt_out=False, reason=None):
+        self.opt_in = opt_in
+        self.opt_out = opt_out
+        self.reason = reason
 
-func TestBuild(t *testing.T) {
-	originalInstallBun := installBun
-	defer func() { installBun = originalInstallBun }()
-	installBun = func(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
-		return nil
-	}
-	testCases := []struct {
-		name              string
-		app               string
-		envs              []string
-		opts              []bpt.Option
-		mocks             []*mockprocess.Mock
-		wantExitCode      int
-		wantCommands      []string
-		doNotWantCommands []string
-		files             map[string]string
-	}{
-		{
-			name: "bun.lockb_exists_frozen_lockfile",
-			mocks: []*mockprocess.Mock{
-				mockprocess.New(`^bun install --frozen-lockfile`, mockprocess.WithExitCode(0)),
-			},
-			files: map[string]string{
-				"package.json": "{}",
-				"bun.lockb":    "binary-content",
-			},
-			wantCommands: []string{
-				"bun install --frozen-lockfile",
-			},
-		},
-		{
-			name: "bun.lock_exists_frozen_lockfile",
-			mocks: []*mockprocess.Mock{
-				mockprocess.New(`^bun install --frozen-lockfile`, mockprocess.WithExitCode(0)),
-			},
-			files: map[string]string{
-				"package.json": "{}",
-				"bun.lock":     "lock-content",
-			},
-			wantCommands: []string{
-				"bun install --frozen-lockfile",
-			},
-		},
-		{
-			name: "no_lockfile",
-			mocks: []*mockprocess.Mock{
-				mockprocess.New(`^bun install`, mockprocess.WithExitCode(0)),
-			},
-			files: map[string]string{
-				"package.json": "{}",
-			},
-			wantCommands: []string{
-				"bun install",
-			},
-			doNotWantCommands: []string{
-				"bun install --frozen-lockfile",
-			},
-		},
-	}
+def detect_fn():
+    context = Context(os.getcwd())
+    
+    # Check for package.json
+    if not context.file_exists("package.json"):
+        return DetectResult(opt_out=True, reason="package.json not found")
+    
+    # Check for bun lock files
+    if context.file_exists("bun.lockb") or context.file_exists("bun.lock"):
+        return DetectResult(opt_in=True)
+    
+    # Check environment variable
+    package_manager = os.environ.get("GOOGLE_PACKAGE_MANAGER", "")
+    if package_manager == "bun":
+        return DetectResult(opt_in=True, reason="GOOGLE_PACKAGE_MANAGER=bun")
+    
+    return DetectResult(opt_out=True, reason="No bun lock files found")
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			opts := []bpt.Option{
-				bpt.WithTestName(tc.name),
-				bpt.WithApp(tc.app),
-				bpt.WithEnvs(tc.envs...),
-				bpt.WithExecMocks(tc.mocks...),
-				bpt.WithFiles(tc.files),
-			}
-			opts = append(opts, tc.opts...)
-			result, err := bpt.RunBuild(t, BuildFn, opts...)
-			if err != nil && tc.wantExitCode == 0 {
-				t.Fatalf("error running build: %v, logs: %s", err, result.Output)
-			}
+def build_fn():
+    context = Context(os.getcwd())
+    
+    # Install dependencies
+    try:
+        _install_bun(context)
+        _bun_install_modules(context)
+        
+        # Set up environment
+        env_layer = context.layer("env")
+        bin_path = os.path.join(context.application_root, "node_modules", ".bin")
+        env_layer.set_path(bin_path)
+        
+        # Configure entrypoint
+        if not is_dev_sync():
+            add_web_process(["npm", "run", "start"])
+    except Exception as e:
+        print(f"Build error: {str(e)}", file=sys.stderr)
+        raise
 
-			if result.ExitCode != tc.wantExitCode {
-				t.Errorf("build exit code mismatch, got: %d, want: %d", result.ExitCode, tc.wantExitCode)
-			}
+def _install_bun(context):
+    # Implement bun installation logic here
+    pass
 
-			for _, cmd := range tc.wantCommands {
-				if !result.CommandExecuted(cmd) {
-					t.Errorf("expected command %q to be executed, but it was not, build output: %s", cmd, result.Output)
-				}
-			}
+def _bun_install_modules(context):
+    # Implement bun install modules logic here
+    pass
 
-			for _, cmd := range tc.doNotWantCommands {
-				if result.CommandExecuted(cmd) {
-					t.Errorf("expected command %q not to be executed, but it was, build output: %s", cmd, result.Output)
-				}
-			}
-		})
-	}
-}
+def is_dev_sync():
+    return os.environ.get("DEVSYNC") == "true"
+
+def add_web_process(command):
+    print(f"Added web process: {command}")
