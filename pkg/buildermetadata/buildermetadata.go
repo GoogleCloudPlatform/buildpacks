@@ -56,6 +56,9 @@ const (
 	FrameworkVersion MetadataID = "4" // The framework version used in the build.
 	AdapterName      MetadataID = "5" // The adapter name used in the build.
 	AdapterVersion   MetadataID = "6" // The adapter version used in the build.
+	MonorepoName     MetadataID = "7" // The monorepo name used in the build.
+	PackageManager   MetadataID = "8" // The package manager used in the build.
+	ConfigFile       MetadataID = "9" // The config file used in the build (requirements.txt, pyproject.toml).
 )
 
 // MetadataIDNames is a lookup map from MetadataID to its name.
@@ -66,6 +69,9 @@ var MetadataIDNames = map[MetadataID]string{
 	FrameworkVersion: "FrameworkVersion",
 	AdapterName:      "AdapterName",
 	AdapterVersion:   "AdapterVersion",
+	MonorepoName:     "MonorepoName",
+	PackageManager:   "PackageManager",
+	ConfigFile:       "ConfigFile",
 }
 
 // GetValue returns the Metadata value with MetadataID id, or creates it if it doesn't exist.

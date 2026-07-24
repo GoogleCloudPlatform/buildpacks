@@ -14,12 +14,18 @@
 package nodejs
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 	"github.com/buildpacks/libcnb/v2"
 )
 
@@ -32,25 +38,25 @@ func TestInstallPNPM(t *testing.T) {
 		wantError   bool
 	}{
 		{
-			name:     "no version constraint",
+			name:     "no_version_constraint",
 			wantFile: "bin/pnpm",
 			npmResponse: `{
 				"name": "pnpm",
 				"dist-tags": {
-					"latest": "8.4.0"
+					"latest": "11.0.0"
 				},
 				"versions": {
-					"8.4.0": {
+					"11.0.0": {
 						"name": "npm",
-						"version": "8.4.0"
+						"version": "11.0.0"
 					}
 				},
-				"modified": "2022-01-27T21:10:55.626Z"
+				"modified": "2026-05-21T21:10:55.626Z"
 			}`,
 			packageJSON: PackageJSON{},
 		},
 		{
-			name:     "valid version constraint",
+			name:     "valid_version_constraint",
 			wantFile: "bin/pnpm",
 			npmResponse: `{
 				"name": "pnpm",
@@ -72,7 +78,7 @@ func TestInstallPNPM(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid version",
+			name: "invalid_version",
 			npmResponse: `{
 				"name": "pnpm",
 				"dist-tags": {
@@ -99,7 +105,15 @@ func TestInstallPNPM(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testserver.New(
 				t,
-				testserver.WithJSON(`pnpm!`),
+				testserver.WithHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if strings.Contains(r.URL.String(), ".tar.gz") {
+						w.WriteHeader(http.StatusOK)
+						w.Write(mockTarballBytes(t))
+					} else {
+						w.WriteHeader(http.StatusOK)
+						w.Write([]byte("pnpm!"))
+					}
+				})),
 				testserver.WithMockURL(&pnpmDownloadURL),
 			)
 			testserver.New(
@@ -132,11 +146,12 @@ func TestDetectPNPMVersion(t *testing.T) {
 		name        string
 		npmResponse string
 		packageJSON PackageJSON
+		stackID     string
 		wantVersion string
 		wantError   bool
 	}{
 		{
-			name:        "no package.json returns latest",
+			name:        "no_package.json_returns_pinned_version_from_tooling_bzl",
 			packageJSON: PackageJSON{},
 			npmResponse: `{
 				"name": "pnpm",
@@ -151,39 +166,63 @@ func TestDetectPNPMVersion(t *testing.T) {
 				},
 				"modified": "2022-01-27T21:10:55.626Z"
 			}`,
-			wantVersion: "10.12.4",
+			stackID:     "ubuntu1804",
+			wantVersion: "10.12.4", // pinned version for ubuntu1804
 		},
 		{
-			name: "only engines version",
+			name:        "no_package.json_returns_latest_version_from_tooling_bzl",
+			packageJSON: PackageJSON{},
+			npmResponse: `{
+				"name": "pnpm",
+				"dist-tags": {
+					"latest": "9.2.0"
+				},
+				"versions": {
+					"9.2.0": {
+						"name": "npm",
+						"version": "9.2.0"
+					}
+				},
+				"modified": "2022-01-27T21:10:55.626Z"
+			}`,
+			stackID:     "ubuntu2204",
+			wantVersion: "10.32.1",
+		},
+		{
+			name: "only_engines_version",
 			packageJSON: PackageJSON{
 				Engines: packageEnginesJSON{
 					PNPM: "8.2.0",
 				},
 			},
+			stackID:     "ubuntu2204",
 			wantVersion: "8.2.0",
 		},
 		{
-			name: "only packageManager version",
+			name: "only_packageManager_version",
 			packageJSON: PackageJSON{
 				PackageManager: "pnpm@8.2.0",
 			},
+			stackID:     "ubuntu2204",
 			wantVersion: "8.2.0",
 		},
 		{
-			name: "both engine and packageManager version",
+			name: "both_engine_and_packageManager_version",
 			packageJSON: PackageJSON{
 				Engines: packageEnginesJSON{
 					PNPM: "8.2.0",
 				},
 				PackageManager: "pnpm@8.1.0",
 			},
+			stackID:     "ubuntu2204",
 			wantVersion: "8.2.0",
 		},
 		{
-			name: "invalid packageManager version",
+			name: "invalid_packageManager_version",
 			packageJSON: PackageJSON{
 				PackageManager: "yarn@8.2.0",
 			},
+			stackID:   "ubuntu2204",
 			wantError: true,
 		},
 	}
@@ -196,7 +235,10 @@ func TestDetectPNPMVersion(t *testing.T) {
 				testserver.WithMockURL(&npmRegistryURL),
 			)
 
-			version, err := detectPNPMVersion(&tc.packageJSON)
+			ctx := gcpbuildpack.NewContext()
+			defer tooling.MockData()()
+
+			version, err := detectPNPMVersion(ctx, &tc.packageJSON, tc.stackID)
 			if version != tc.wantVersion {
 				t.Errorf("detectPNPMVersion() got version: %v, want version: %v", version, tc.wantVersion)
 			}
@@ -205,4 +247,81 @@ func TestDetectPNPMVersion(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestInstallPNPMV11(t *testing.T) {
+	npmResponse := `{
+		"name": "pnpm",
+		"dist-tags": {
+			"latest": "11.0.0"
+		},
+		"versions": {
+			"11.0.0": {
+				"name": "pnpm",
+				"version": "11.0.0"
+			}
+		}
+	}`
+
+	testserver.New(
+		t,
+		testserver.WithHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.String(), ".tar.gz") {
+				w.WriteHeader(http.StatusOK)
+				w.Write(mockTarballBytes(t))
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+			}
+		})),
+		testserver.WithMockURL(&pnpmDownloadURL),
+	)
+
+	testserver.New(
+		t,
+		testserver.WithJSON(npmResponse),
+		testserver.WithMockURL(&npmRegistryURL),
+	)
+
+	layer := &libcnb.Layer{
+		Name:     "pnpm_test",
+		Path:     t.TempDir(),
+		Metadata: map[string]any{},
+	}
+
+	pkgJSON := &PackageJSON{
+		Engines: packageEnginesJSON{
+			PNPM: "11.0.0",
+		},
+	}
+
+	err := InstallPNPM(gcpbuildpack.NewContext(), layer, pkgJSON)
+	if err != nil {
+		t.Fatalf("InstallPNPM(ctx, %v, %+v) got error: %v, want nil", layer, pkgJSON, err)
+	}
+
+	fp := filepath.Join(layer.Path, "bin/pnpm")
+	if _, err := os.Stat(fp); err != nil {
+		t.Errorf("os.Stat(%q) got error: %v, want nil", fp, err)
+	}
+}
+
+func mockTarballBytes(t *testing.T) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+	hdr := &tar.Header{
+		Name: "pnpm",
+		Mode: 0755,
+		Size: int64(len("pnpm!")),
+	}
+	if err := tw.WriteHeader(hdr); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tw.Write([]byte("pnpm!")); err != nil {
+		t.Fatal(err)
+	}
+	tw.Close()
+	gw.Close()
+	return buf.Bytes()
 }

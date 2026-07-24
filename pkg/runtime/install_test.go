@@ -16,6 +16,7 @@ package runtime
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -170,44 +171,44 @@ func TestInstallRuby(t *testing.T) {
 		wantCached   bool
 	}{
 		{
-			name:         "successful install",
+			name:         "successful_install",
 			version:      "2.x.x",
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
 			wantFile:     "lib/foo.txt",
 			wantVersion:  "2.2.2",
 		},
 		{
-			name:         "successful cached install",
+			name:         "successful_cached_install",
 			version:      "2.2.2",
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
 			wantCached:   true,
 		},
 		{
-			name:         "default to highest available verions",
+			name:         "default_to_highest_available_verions",
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
 			wantFile:     "lib/foo.txt",
 			wantVersion:  "3.3.3",
 		},
 		{
-			name:         "invalid version",
+			name:         "invalid_version",
 			version:      ">9.9.9",
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
 			wantError:    true,
 		},
 		{
-			name:       "not found",
+			name:       "not_found",
 			version:    "2.2.2",
 			httpStatus: http.StatusNotFound,
 			wantError:  true,
 		},
 		{
-			name:       "corrupt tar file",
+			name:       "corrupt_tar_file",
 			version:    "2.2.2",
 			httpStatus: http.StatusOK,
 			wantError:  true,
 		},
 		{
-			name:         "successful install - invalid stackID fallback to ubuntu1804",
+			name:         "successful_install-invalid_stackID_fallback_to_ubuntu1804",
 			version:      "2.x.x",
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
 			wantFile:     "lib/foo.txt",
@@ -276,14 +277,20 @@ func TestInstallSource(t *testing.T) {
 		stackID                    string
 		responseFile               string
 		runtimeImageRegion         string
+		buildEnv                   string
 		wantFile                   string
 		wantVersion                string
 		wantError                  bool
 		wantAR                     bool
 		serverlessRuntimesTarballs string
+		fasterTarballExtraction    bool
+		failZstdFetch              bool
+		wantStripComponents        int
+		tpcHostname                string
+		tpcTarballProject          string
 	}{
 		{
-			name:         "install with lorry",
+			name:         "Lorry_when_region_is_not_set",
 			runtime:      Ruby,
 			version:      "2.x.x",
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
@@ -292,7 +299,50 @@ func TestInstallSource(t *testing.T) {
 			wantAR:       false,
 		},
 		{
-			name:               "install with artifact registry",
+			name:               "Lorry_when_GOOGLE_BUILD_ENV_is_dev",
+			runtime:            Ruby,
+			version:            "2.x.x",
+			responseFile:       "testdata/dummy-ruby-runtime.tar.gz",
+			buildEnv:           "dev",
+			runtimeImageRegion: "us-west1",
+			wantFile:           "lib/foo.txt",
+			wantVersion:        "2.2.2",
+			wantAR:             false,
+		},
+		{
+			name:               "Lorry_for_Go_runtime_even_when_region_and_prod_env_are_set",
+			runtime:            Go,
+			version:            "1.24.5",
+			runtimeImageRegion: "us-west1",
+			responseFile:       "testdata/dummy-ruby-runtime.tar.gz",
+			buildEnv:           "prod",
+			wantAR:             false,
+		},
+		{
+			name:               "AR_QA_when_GOOGLE_BUILD_ENV_is_qual",
+			runtime:            Python,
+			version:            "3.10.0",
+			runtimeImageRegion: "us-west1",
+			buildEnv:           "qual",
+			wantAR:             true,
+		},
+		{
+			name:               "AR_Prod_when_GOOGLE_BUILD_ENV_is_prod",
+			runtime:            Nodejs,
+			version:            "16.20.0",
+			runtimeImageRegion: "us-central1",
+			buildEnv:           "prod",
+			wantAR:             true,
+		},
+		{
+			name:               "AR_Prod_when_GOOGLE_BUILD_ENV_is_not_set",
+			runtime:            Nodejs,
+			version:            "16.20.0",
+			runtimeImageRegion: "us-central1",
+			wantAR:             true,
+		},
+		{
+			name:               "install_with_artifact_registry_1",
 			runtime:            Python,
 			version:            "3.10.0",
 			runtimeImageRegion: "us-west1",
@@ -300,7 +350,7 @@ func TestInstallSource(t *testing.T) {
 			wantAR:             true,
 		},
 		{
-			name:                       "install with artifact registry serverless runtimes",
+			name:                       "install_with_artifact_registry_serverless_runtimes",
 			runtime:                    Python,
 			version:                    "3.10.0",
 			runtimeImageRegion:         "us-west1",
@@ -309,7 +359,7 @@ func TestInstallSource(t *testing.T) {
 			serverlessRuntimesTarballs: "true",
 		},
 		{
-			name:               "install from artifact registry",
+			name:               "install_from_artifact_registry_2",
 			runtime:            Nodejs,
 			version:            "16.20.0",
 			responseFile:       "testdata/dummy-ruby-runtime.tar.gz",
@@ -318,16 +368,27 @@ func TestInstallSource(t *testing.T) {
 			wantAR:             true,
 		},
 		{
-			name:               "install from artifact registry",
-			runtime:            OpenJDK,
-			version:            "17.1.0",
-			responseFile:       "testdata/dummy-ruby-runtime.tar.gz",
-			runtimeImageRegion: "us-central1",
-			wantError:          false,
-			wantAR:             true,
+			name:                "install_from_artifact_registry_3",
+			runtime:             OpenJDK,
+			version:             "17.1.0",
+			responseFile:        "testdata/dummy-ruby-runtime.tar.gz",
+			runtimeImageRegion:  "us-central1",
+			wantError:           false,
+			wantAR:              true,
+			wantStripComponents: 1,
 		},
 		{
-			name:               "install from artifact registry for java 21.0",
+			name:                "install_from_artifact_registry_4",
+			runtime:             Jetty,
+			version:             "latest",
+			responseFile:        "testdata/dummy-ruby-runtime.tar.gz",
+			runtimeImageRegion:  "us-central1",
+			wantError:           false,
+			wantAR:              true,
+			wantStripComponents: 1,
+		},
+		{
+			name:               "install_from_artifact_registry_for_java_21.0",
 			runtime:            CanonicalJDK,
 			version:            "21.0",
 			stackID:            "google.gae.22",
@@ -337,12 +398,73 @@ func TestInstallSource(t *testing.T) {
 			wantAR:             true,
 		},
 		{
-			name:         "missing runtimeImageRegion",
+			name:         "missing_runtimeImageRegion",
 			runtime:      Nodejs,
 			version:      "16.20.0",
 			responseFile: "testdata/dummy-ruby-runtime.tar.gz",
 			wantError:    false,
 			wantAR:       false,
+		},
+		{
+			name:                "AR_Prod_for_jdk_version_with_beta_and_stable_present",
+			runtime:             OpenJDK,
+			version:             "25.0.1-beta",
+			runtimeImageRegion:  "us-central1",
+			buildEnv:            "prod",
+			wantAR:              true,
+			wantVersion:         "25.0.1-beta",
+			wantStripComponents: 1,
+		},
+		{
+			name:                "AR_Prod_for_jdk_version_with_beta_exact",
+			runtime:             OpenJDK,
+			version:             "25.0.1_12-beta",
+			runtimeImageRegion:  "us-central1",
+			buildEnv:            "prod",
+			wantAR:              true,
+			wantVersion:         "25.0.1_12-beta",
+			wantStripComponents: 1,
+		},
+		{
+			name:                    "install_from_artifact_registry_zstd",
+			runtime:                 Nodejs,
+			version:                 "24.0.0",
+			responseFile:            "testdata/dummy-ruby-runtime.tar.zstd",
+			runtimeImageRegion:      "us-west1",
+			wantError:               false,
+			wantAR:                  true,
+			fasterTarballExtraction: true,
+		},
+		{
+			name:                    "install_from_artifact_registry_zstd_fallback",
+			runtime:                 Nodejs,
+			version:                 "24.0.0",
+			responseFile:            "testdata/dummy-ruby-runtime.tar.zstd",
+			runtimeImageRegion:      "us-west1",
+			wantError:               false,
+			wantAR:                  true,
+			fasterTarballExtraction: true,
+			failZstdFetch:           true,
+		},
+		{
+			name:                "TPC_for_Go_runtime",
+			runtime:             Go,
+			version:             "1.24.5",
+			runtimeImageRegion:  "us-west1",
+			tpcHostname:         "us-docker.pkg.dev",
+			tpcTarballProject:   "my-tpc-project",
+			wantAR:              true,
+			wantStripComponents: 0,
+		},
+		{
+			name:                "TPC_for_OpenJDK_runtime",
+			runtime:             OpenJDK,
+			version:             "17.1.0",
+			runtimeImageRegion:  "us-west1",
+			tpcHostname:         "us-docker.pkg.dev",
+			tpcTarballProject:   "my-tpc-project",
+			wantAR:              true,
+			wantStripComponents: 1,
 		},
 	}
 
@@ -355,11 +477,17 @@ func TestInstallSource(t *testing.T) {
 				testserver.WithFile(testdata.MustGetPath(tc.responseFile)),
 				testserver.WithMockURL(&googleTarballURL))
 
+			testserver.New(
+				t,
+				testserver.WithStatus(tc.httpStatus),
+				testserver.WithFile(testdata.MustGetPath(tc.responseFile)),
+				testserver.WithMockURL(&goTarballURL))
+
 			// stub the version manifest
 			testserver.New(
 				t,
 				testserver.WithStatus(http.StatusOK),
-				testserver.WithJSON(`["1.1.1","3.3.3","2.2.2","16.20.0"]`),
+				testserver.WithJSON(`["1.1.1","3.3.3","2.2.2","16.20.0","24.0.0"]`),
 				testserver.WithMockURL(&runtimeVersionsURL),
 			)
 			fetchedFromAR := false
@@ -369,6 +497,22 @@ func TestInstallSource(t *testing.T) {
 
 			fetch.ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error {
 				fetchedFromAR = true
+				if stripComponents != tc.wantStripComponents {
+					t.Errorf("fetch.ARImage stripComponents = %d, want %d for test %s", stripComponents, tc.wantStripComponents, tc.name)
+				}
+				if tc.fasterTarballExtraction && !tc.failZstdFetch {
+					if !strings.Contains(url, "zstd") {
+						t.Errorf("For zstd, fetch.ARImage URL %q does not contain expected string \"zstd\"", url)
+					}
+					if !strings.Contains(fallbackURL, "zstd") {
+						t.Errorf("For zstd, fetch.ARImage fallbackURL %q does not contain expected string \"zstd\"", fallbackURL)
+					}
+				}
+				if tc.fasterTarballExtraction && tc.failZstdFetch {
+					if strings.Contains(url, "zstd") {
+						return fmt.Errorf("simulated zstd fetch failure")
+					}
+				}
 				return nil
 			}
 
@@ -377,7 +521,7 @@ func TestInstallSource(t *testing.T) {
 			}(fetch.ARVersions)
 
 			fetch.ARVersions = func(url, fallbackURL string, ctx *gcp.Context) ([]string, error) {
-				return []string{"11.0.21_9-post-Ubuntu-0ubuntu122.04", "17.0.9_9-Ubuntu-122.04", "21.0.1_12-Ubuntu-222.04"}, nil
+				return []string{"11.0.21_9-post-Ubuntu-0ubuntu122.04", "17.0.9_9-Ubuntu-122.04", "21.0.1_12-Ubuntu-222.04", "17.0.1_12-beta", "17.0.1_13"}, nil
 			}
 
 			layer := &libcnb.Layer{
@@ -395,6 +539,19 @@ func TestInstallSource(t *testing.T) {
 			}
 			if tc.serverlessRuntimesTarballs != "" {
 				t.Setenv(env.ServerlessRuntimesTarballs, tc.serverlessRuntimesTarballs)
+			}
+			if tc.buildEnv != "" {
+				t.Setenv(env.BuildEnv, tc.buildEnv)
+			}
+			if tc.fasterTarballExtraction {
+				t.Setenv(env.FasterTarballExtraction, "true")
+				t.Setenv(env.Runtime, "nodejs24")
+			}
+			if tc.tpcHostname != "" {
+				t.Setenv(env.TPCHostname, tc.tpcHostname)
+			}
+			if tc.tpcTarballProject != "" {
+				t.Setenv(env.TPCTarballProject, tc.tpcTarballProject)
 			}
 			_, err := InstallTarballIfNotCached(ctx, tc.runtime, tc.version, layer)
 			if tc.wantError == (err == nil) {
@@ -415,6 +572,103 @@ func TestInstallSource(t *testing.T) {
 				if tc.wantVersion != "" && layer.Metadata["version"] != tc.wantVersion {
 					t.Errorf("Layer Metadata.version = %q, want %q", layer.Metadata["version"], tc.wantVersion)
 				}
+			}
+		})
+	}
+}
+
+func TestFetchZstd(t *testing.T) {
+	testCases := []struct {
+		name                    string
+		fasterTarballExtraction string
+		runtime                 string
+		arImageErr              error
+		clearLayerFail          bool
+		wantFetched             bool
+		wantErr                 bool
+	}{
+		{
+			name:        "faster_tarball_extraction_not_set",
+			wantFetched: false,
+		},
+		{
+			name:                    "faster_tarball_extraction_not_true",
+			fasterTarballExtraction: "false",
+			wantFetched:             false,
+		},
+		{
+			name:                    "unsupported_runtime",
+			fasterTarballExtraction: "true",
+			runtime:                 "nodejs18",
+			wantFetched:             false,
+		},
+		{
+			name:                    "arimage_fetch_success",
+			fasterTarballExtraction: "true",
+			runtime:                 "nodejs24",
+			wantFetched:             true,
+		},
+		{
+			name:                    "arimage_fetch_fail_clearlayer_success",
+			fasterTarballExtraction: "true",
+			runtime:                 "nodejs24",
+			arImageErr:              errors.New("fetching AR image failed"),
+			wantFetched:             false,
+		},
+		{
+			name:                    "arimage_fetch_fail_clearlayer_fail",
+			fasterTarballExtraction: "true",
+			runtime:                 "nodejs24",
+			arImageErr:              errors.New("fetching AR image failed"),
+			clearLayerFail:          true,
+			wantFetched:             false,
+			wantErr:                 true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.fasterTarballExtraction != "" {
+				t.Setenv(env.FasterTarballExtraction, tc.fasterTarballExtraction)
+			} else {
+				t.Setenv(env.FasterTarballExtraction, "")
+			}
+			if tc.runtime != "" {
+				t.Setenv(env.Runtime, tc.runtime)
+			} else {
+				t.Setenv(env.Runtime, "")
+			}
+
+			defer func(fn func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error) {
+				fetch.ARImage = fn
+			}(fetch.ARImage)
+			fetch.ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error {
+				if !strings.Contains(url, "zstd") {
+					t.Errorf("fetch.ARImage URL %q does not contain expected string 'zstd'", url)
+				}
+				return tc.arImageErr
+			}
+
+			ctx := gcp.NewContext()
+			layerDir := t.TempDir()
+			layer := &libcnb.Layer{
+				Path: layerDir,
+			}
+
+			if tc.clearLayerFail {
+				// Make ClearLayer fail by removing write permissions on parent dir.
+				if err := os.Chmod(filepath.Dir(layer.Path), 0555); err != nil {
+					t.Fatalf("Failed to chmod parent dir: %v", err)
+				}
+				defer os.Chmod(filepath.Dir(layer.Path), 0755)
+			}
+
+			fetched, err := fetchZstd(ctx, "hostname", "registry", "osName", Nodejs, "version", layer, 0)
+			if tc.wantErr != (err != nil) {
+				t.Errorf("fetchZstd() got err: %v, want err? %t", err, tc.wantErr)
+			}
+			if fetched != tc.wantFetched {
+				t.Errorf("fetchZstd() got fetched: %t, want fetched? %t", fetched, tc.wantFetched)
 			}
 		})
 	}
@@ -450,6 +704,12 @@ func TestPinGemAndBundlerVersion(t *testing.T) {
 			version:      "3.2.x",
 			wantRubygems: "3.3.15",
 			wantBundler2: "2.1.4",
+		},
+		{
+			name:         "Ruby_4.x__rubygems_4.0.3",
+			version:      "4.x.x",
+			wantRubygems: "4.0.3",
+			wantBundler2: "4.0.3",
 		},
 		{
 			name:    "gem update fails",
@@ -535,53 +795,191 @@ func TestPinGemAndBundlerVersion(t *testing.T) {
 
 func TestRuntimeImageURL(t *testing.T) {
 	testCases := []struct {
-		runtime                    InstallableRuntime
-		osName                     string
-		version                    string
-		region                     string
-		serverlessRuntimesTarballs string
-		want                       string
+		name     string
+		runtime  InstallableRuntime
+		osName   string
+		version  string
+		region   string
+		registry string
+		want     string
 	}{
 		{
-			runtime: "python",
-			osName:  "ubuntu1804",
-			version: "3.7.2",
-			region:  "us",
-			want:    "us-docker.pkg.dev/gae-runtimes/runtimes-ubuntu1804/python:3.7.2",
+			name:     "python_qual",
+			runtime:  "python",
+			osName:   "ubuntu2204",
+			version:  "3.7.2",
+			region:   "us",
+			registry: "serverless-runtimes-qa",
+			want:     "us-docker.pkg.dev/serverless-runtimes-qa/runtimes-ubuntu2204/python:3.7.2",
 		},
 		{
-			runtime: "nodejs",
-			osName:  "ubuntu2204",
-			version: "18.18.1",
-			region:  "eu",
-			want:    "eu-docker.pkg.dev/gae-runtimes/runtimes-ubuntu2204/nodejs:18.18.1",
+			name:     "nodejs_prod_gae",
+			runtime:  "nodejs",
+			osName:   "ubuntu2204",
+			version:  "18.18.1",
+			region:   "eu",
+			registry: "gae-runtimes",
+			want:     "eu-docker.pkg.dev/gae-runtimes/runtimes-ubuntu2204/nodejs:18.18.1",
 		},
 		{
-			runtime: "php",
-			osName:  "ubuntu2204",
-			version: "8.2.0",
-			region:  "us-west1",
-			want:    "us-west1-docker.pkg.dev/gae-runtimes/runtimes-ubuntu2204/php:8.2.0",
-		},
-		{
-			runtime:                    "python",
-			osName:                     "ubuntu1804",
-			version:                    "3.7.2",
-			region:                     "us-west1",
-			serverlessRuntimesTarballs: "true",
-			want:                       "us-west1-docker.pkg.dev/serverless-runtimes/runtimes-ubuntu1804/python:3.7.2",
+			name:     "php_prod_serverless",
+			runtime:  "php",
+			osName:   "ubuntu2204",
+			version:  "8.2.0",
+			region:   "us-west1",
+			registry: "serverless-runtimes",
+			want:     "us-west1-docker.pkg.dev/serverless-runtimes/runtimes-ubuntu2204/php:8.2.0",
 		},
 	}
 
 	for _, tc := range testCases {
-		if tc.serverlessRuntimesTarballs != "" {
-			t.Setenv(env.ServerlessRuntimesTarballs, tc.serverlessRuntimesTarballs)
-		}
-		t.Run(fmt.Sprintf("%s-%s-%s-%s", tc.runtime, tc.osName, tc.version, tc.region), func(t *testing.T) {
-			runtimeImageURL := runtimeImageURL(tc.runtime, tc.osName, tc.version, tc.region)
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext()
+			hostname, err := arHostname(ctx, tc.region)
+			if err != nil {
+				t.Fatalf("arHostname(%q) failed: %v", tc.region, err)
+			}
+			got := runtimeImageURL(hostname, tc.registry, tc.osName, tc.runtime, tc.version)
+			if got != tc.want {
+				t.Errorf("runtimeImageURL() got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
 
-			if runtimeImageURL != tc.want {
-				t.Errorf("runtimeImageURL got %s, want %s", runtimeImageURL, tc.want)
+func TestRuntimeImageURLZstd(t *testing.T) {
+	testCases := []struct {
+		name     string
+		runtime  InstallableRuntime
+		osName   string
+		version  string
+		region   string
+		registry string
+		want     string
+	}{
+		{
+			name:     "nodejs24_zstd",
+			runtime:  "nodejs",
+			osName:   "ubuntu2204",
+			version:  "24.0.0",
+			region:   "us",
+			registry: "serverless-runtimes-qa",
+			want:     "us-docker.pkg.dev/serverless-runtimes-qa/runtimes-ubuntu2204/zstd/nodejs:24.0.0",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext()
+			hostname, err := arHostname(ctx, tc.region)
+			if err != nil {
+				t.Fatalf("arHostname(%q) failed: %v", tc.region, err)
+			}
+			got := runtimeImageURLZstd(hostname, tc.registry, tc.osName, tc.runtime, tc.version)
+			if got != tc.want {
+				t.Errorf("runtimeImageURLZstd() got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestFallbackRuntimeImageURL(t *testing.T) {
+	testCases := []struct {
+		name     string
+		runtime  InstallableRuntime
+		osName   string
+		version  string
+		hostname string
+		registry string
+		isZstd   bool
+		want     string
+	}{
+		{
+			name:     "non-TPC non-zstd",
+			runtime:  Nodejs,
+			osName:   "ubuntu2204",
+			version:  "18.18.1",
+			hostname: "us-central1-docker.pkg.dev",
+			registry: "gae-runtimes",
+			isZstd:   false,
+			want:     "us-docker.pkg.dev/gae-runtimes/runtimes-ubuntu2204/nodejs:18.18.1",
+		},
+		{
+			name:     "non-TPC zstd",
+			runtime:  Nodejs,
+			osName:   "ubuntu2204",
+			version:  "18.18.1",
+			hostname: "us-central1-docker.pkg.dev",
+			registry: "gae-runtimes",
+			isZstd:   true,
+			want:     "us-docker.pkg.dev/gae-runtimes/runtimes-ubuntu2204/zstd/nodejs:18.18.1",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext()
+			got, err := fallbackRuntimeImageURL(ctx, tc.hostname, tc.registry, tc.osName, tc.runtime, tc.version, tc.isZstd)
+			if err != nil {
+				t.Fatalf("fallbackRuntimeImageURL() failed: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("fallbackRuntimeImageURL() got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestGetTarballRegistry(t *testing.T) {
+	testCases := []struct {
+		name                       string
+		buildEnv                   string
+		serverlessRuntimesTarballs string
+		want                       string
+	}{
+		{
+			name:     "dev_env",
+			buildEnv: "dev",
+			want:     tarballRegistryDev,
+		},
+		{
+			name:     "qual_env",
+			buildEnv: "qual",
+			want:     tarballRegistryQual,
+		},
+		{
+			name:     "prod_env_without_serverless_runtimes_flag",
+			buildEnv: "prod",
+			want:     tarballRegistryProdGae,
+		},
+		{
+			name:                       "prod_env_with_serverless_runtimes_flag",
+			buildEnv:                   "prod",
+			serverlessRuntimesTarballs: "true",
+			want:                       tarballRegistryProdServerless,
+		},
+		{
+			name: "unspecified_env_defaults_to_prod",
+			want: tarballRegistryProdGae,
+		},
+		{
+			name:                       "unspecified_env_with_serverless_runtimes_flag",
+			serverlessRuntimesTarballs: "true",
+			want:                       tarballRegistryProdServerless,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.buildEnv != "" {
+				t.Setenv(env.BuildEnv, tc.buildEnv)
+			}
+			if tc.serverlessRuntimesTarballs != "" {
+				t.Setenv(env.ServerlessRuntimesTarballs, tc.serverlessRuntimesTarballs)
+			}
+			got := tarballRegistry()
+			if got != tc.want {
+				t.Errorf("tarballRegistry() = %q, want %q", got, tc.want)
 			}
 		})
 	}
@@ -721,6 +1119,333 @@ func TestRuntimeMatchesInstallableRuntime(t *testing.T) {
 		got := runtimeMatchesInstallableRuntime(tc.installableRuntime)
 		if got != tc.want {
 			t.Errorf("runtimeMatchesInstallableRuntime(%v) = %v, want: %v", tc.installableRuntime, got, tc.want)
+		}
+	}
+}
+
+func TestResolveVersionARFallback(t *testing.T) {
+	testCases := []struct {
+		name               string
+		runtime            InstallableRuntime
+		versionConstraint  string
+		runtimeImageRegion string
+		primaryARVersions  []string
+		primaryARError     error
+		fallbackARVersions []string
+		fallbackARError    error
+		wantVersion        string
+		wantErr            bool
+	}{
+		{
+			name:               "Primary OK, Version Found",
+			runtime:            Nodejs,
+			versionConstraint:  "18.x.x",
+			runtimeImageRegion: "europe-west1",
+			primaryARVersions:  []string{"18.15.0", "18.16.0"},
+			fallbackARVersions: []string{"18.14.0"},
+			wantVersion:        "18.16.0",
+		},
+		{
+			name:               "Primary OK, Version NOT Found, Fallback OK, Version Found",
+			runtime:            Nodejs,
+			versionConstraint:  "18.17.x",
+			runtimeImageRegion: "europe-west1",
+			primaryARVersions:  []string{"18.15.0", "18.16.0"},
+			fallbackARVersions: []string{"18.16.0", "18.17.0"},
+			wantVersion:        "18.17.0",
+		},
+		{
+			name:               "Primary OK, Version NOT Found, Fallback OK, Version NOT Found",
+			runtime:            Nodejs,
+			versionConstraint:  "19.x.x",
+			runtimeImageRegion: "europe-west1",
+			primaryARVersions:  []string{"18.15.0", "18.16.0"},
+			fallbackARVersions: []string{"18.16.0", "18.17.0"},
+			wantErr:            true,
+		},
+		{
+			name:               "Primary ERR, Fallback OK, Version Found",
+			runtime:            Nodejs,
+			versionConstraint:  "18.17.x",
+			runtimeImageRegion: "asia-east1",
+			primaryARError:     errors.New("primary region down"),
+			fallbackARVersions: []string{"18.16.0", "18.17.0"},
+			wantVersion:        "18.17.0",
+		},
+		{
+			name:               "Primary ERR, Fallback OK, Version NOT Found",
+			runtime:            Nodejs,
+			versionConstraint:  "19.x.x",
+			runtimeImageRegion: "asia-east1",
+			primaryARError:     errors.New("primary region down"),
+			fallbackARVersions: []string{"18.16.0", "18.17.0"},
+			wantErr:            true,
+		},
+		{
+			name:               "Primary ERR, Fallback ERR",
+			runtime:            Nodejs,
+			versionConstraint:  "18.x.x",
+			runtimeImageRegion: "australia-southeast1",
+			primaryARError:     errors.New("primary region down"),
+			fallbackARError:    errors.New("fallback region down"),
+			wantErr:            true,
+		},
+		{
+			name:               "Primary OK, Version NOT Found, Fallback ERR",
+			runtime:            Nodejs,
+			versionConstraint:  "18.17.x",
+			runtimeImageRegion: "europe-west2",
+			primaryARVersions:  []string{"18.15.0", "18.16.0"},
+			fallbackARError:    errors.New("fallback region down"),
+			wantErr:            true,
+		},
+		{
+			name:               "OpenJDK Primary OK, Fallback has version",
+			runtime:            OpenJDK,
+			versionConstraint:  "11",
+			runtimeImageRegion: "europe-west3",
+			primaryARVersions:  []string{"8.0.302_8"},
+			fallbackARVersions: []string{"11.0.21_9", "11.0.22_10"},
+			wantVersion:        "11.0.22_10",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv(env.RuntimeImageRegion, tc.runtimeImageRegion)
+			t.Setenv(env.BuildEnv, "prod") // Ensure AR is used
+
+			origARVersions := fetch.ARVersions
+			defer func() {
+				fetch.ARVersions = origARVersions
+			}()
+
+			fetch.ARVersions = func(url, fallbackURL string, ctx *gcp.Context) ([]string, error) {
+				if fallbackURL != "" {
+					return nil, errors.New("fallbackURL should be empty in fetch.ARVersions calls")
+				}
+				if strings.Contains(url, tc.runtimeImageRegion) {
+					return tc.primaryARVersions, tc.primaryARError
+				}
+				if strings.Contains(url, fallbackRegion) {
+					return tc.fallbackARVersions, tc.fallbackARError
+				}
+				return nil, fmt.Errorf("unexpected URL in ARVersions mock: %s", url)
+			}
+
+			ctx := gcp.NewContext(gcp.WithStackID("google.22"))
+			gotVersion, err := ResolveVersion(ctx, tc.runtime, tc.versionConstraint, "ubuntu2204")
+
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("ResolveVersion(%q, %q) succeeded, want error", tc.runtime, tc.versionConstraint)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("ResolveVersion(%q, %q) failed: %v", tc.runtime, tc.versionConstraint, err)
+				}
+				if gotVersion != tc.wantVersion {
+					t.Errorf("ResolveVersion(%q, %q) = %q, want %q", tc.runtime, tc.versionConstraint, gotVersion, tc.wantVersion)
+				}
+			}
+		})
+	}
+}
+
+func TestIsZstdSupportedRuntime(t *testing.T) {
+	testCases := []struct {
+		name       string
+		runtimeEnv string
+		want       bool
+	}{
+		{
+			name:       "nodejs20 is supported",
+			runtimeEnv: "nodejs20",
+			want:       true,
+		},
+		{
+			name:       "nodejs22 is supported",
+			runtimeEnv: "nodejs22",
+			want:       true,
+		},
+		{
+			name:       "nodejs24 is supported",
+			runtimeEnv: "nodejs24",
+			want:       true,
+		},
+		{
+			name:       "nodejs18 is not supported",
+			runtimeEnv: "nodejs18",
+			want:       false,
+		},
+		{
+			name:       "nodejs generic is not supported",
+			runtimeEnv: "nodejs",
+			want:       false,
+		},
+		{
+			name:       "python is not supported",
+			runtimeEnv: "python38",
+			want:       false,
+		},
+		{
+			name:       "empty string is not supported",
+			runtimeEnv: "",
+			want:       false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := isZstdSupportedRuntime(tc.runtimeEnv)
+			if got != tc.want {
+				t.Errorf("isZstdSupportedRuntime(%q) = %v, want %v", tc.runtimeEnv, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCheckLocalRuntimeVersion(t *testing.T) {
+	testCases := []struct {
+		name       string
+		runtime    InstallableRuntime
+		mocks      []*mockprocess.Mock
+		want       string
+		wantErr    bool
+		wantErrStr string
+	}{
+		{
+			name:    "success python3",
+			runtime: Python,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`python3 -c.*`, mockprocess.WithStdout("3.10.1\n")),
+			},
+			want: "3.10.1",
+		},
+		{
+			name:    "fallback to python",
+			runtime: Python,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`python3 -c.*`, mockprocess.WithExitCode(1)),
+				mockprocess.New(`python -c.*`, mockprocess.WithStdout("3.10.1\n")),
+			},
+			want: "3.10.1",
+		},
+		{
+			name:    "empty output handled",
+			runtime: Python,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`python3 -c.*`, mockprocess.WithStdout("")),
+				mockprocess.New(`python -c.*`, mockprocess.WithStdout("")),
+			},
+			wantErr:    true,
+			wantErrStr: "returned empty output",
+		},
+		{
+			name:    "all commands fail",
+			runtime: Python,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`python3 -c.*`, mockprocess.WithExitCode(1), mockprocess.WithStderr("python3 not found")),
+				mockprocess.New(`python -c.*`, mockprocess.WithExitCode(1), mockprocess.WithStderr("python not found")),
+			},
+			wantErr:    true,
+			wantErrStr: "failed to check local python version using any candidate command",
+		},
+		{
+			name:    "success php",
+			runtime: PHP,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`php -r.*`, mockprocess.WithStdout("8.3.12\n")),
+			},
+			want: "8.3.12",
+		},
+		{
+			name:    "fallback to php `--version`",
+			runtime: PHP,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`php -r.*`, mockprocess.WithExitCode(1)),
+				mockprocess.New(`php --version`, mockprocess.WithStdout("PHP 8.3.12 (cli) ...\n")),
+			},
+			want: "8.3.12",
+		},
+		{
+			name:    "success ruby",
+			runtime: Ruby,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`ruby -e.*`, mockprocess.WithStdout("3.3.8\n")),
+			},
+			want: "3.3.8",
+		},
+		{
+			name:    "fallback to ruby `--version`",
+			runtime: Ruby,
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`ruby -e.*`, mockprocess.WithExitCode(1)),
+				mockprocess.New(`ruby --version`, mockprocess.WithStdout("ruby 3.3.8 (2025-04-09 revision b200bad6cd) [x86_64-linux-gnu]\n")),
+			},
+			want: "3.3.8",
+		},
+		{
+			name:    "unsupported runtime",
+			runtime: "unsupported",
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var opts []gcp.ContextOption
+			if len(tc.mocks) > 0 {
+				eCmd, err := mockprocess.NewExecCmd(tc.mocks...)
+				if err != nil {
+					t.Fatalf("creating mock exec command: %v", err)
+				}
+				opts = append(opts, gcp.WithExecCmd(eCmd))
+			}
+			ctx := gcpbuildpack.NewContext(opts...)
+
+			got, err := checkLocalRuntimeVersion(ctx, tc.runtime)
+
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("checkLocalRuntimeVersion() got nil error, want error")
+				}
+				if tc.wantErrStr != "" && !strings.Contains(err.Error(), tc.wantErrStr) {
+					t.Errorf("checkLocalRuntimeVersion() error = %v, want to contain %q", err, tc.wantErrStr)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("checkLocalRuntimeVersion() unexpected error: %v", err)
+				}
+				if got != tc.want {
+					t.Errorf("checkLocalRuntimeVersion() = %q, want %q", got, tc.want)
+				}
+			}
+		})
+	}
+}
+
+func TestCleanVersion(t *testing.T) {
+	testCases := []struct {
+		input string
+		want  string
+	}{
+		{"Python 3.10.12", "3.10.12"},
+		{"v16.20.0", "16.20.0"},
+		{" 3.10.12 \n", "3.10.12"},
+		{"3.10.12", "3.10.12"},
+		{"go version go1.24.5 linux/amd64", "1.24.5"},
+		{"go version go1.25 linux/amd64", "1.25"},
+		{"openjdk version \"25\" 2025-01-20", "25"},
+		{"PHP 8.3.12 (cli) ...", "8.3.12"},
+		{"ruby 3.3.8 (2025-04-09 revision b200bad6cd) [x86_64-linux-gnu]", "3.3.8"},
+		{"", ""},
+		{"6.0.402", "6.0.402"},
+	}
+	for _, tc := range testCases {
+		got := cleanVersion(tc.input)
+		if got != tc.want {
+			t.Errorf("cleanVersion(%q) = %q, want %q", tc.input, got, tc.want)
 		}
 	}
 }

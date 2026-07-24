@@ -67,6 +67,64 @@ func TestWrite(t *testing.T) {
 	}
 }
 
+func TestWriteLifecycle(t *testing.T) {
+	testDir := t.TempDir()
+
+	testCases := []struct {
+		desc        string
+		inputEnvMap map[string]string
+		wantEnvMap  map[string]string
+	}{
+		{
+			desc: "Write custom env file correctly",
+			inputEnvMap: map[string]string{
+				"API_URL":            "api.service.com",
+				"VAR_QUOTED_SPECIAL": "api2.service.com::",
+				"VAR_SPACED":         "api3 - service -  com",
+				"VAR_SINGLE_QUOTES":  "I said, 'I'm learning YAML!'",
+				"VAR_DOUBLE_QUOTES":  "\"api4.service.com\"",
+				"VAR_NUMBER":         "12345",
+				"VAR_JSON":           `{"apiKey":"myApiKey","appId":"myAppId"}`,
+				"MULTILINE_VAR":      "211 Broadway\nApt. 17\nNew York, NY 10019\n",
+			},
+			wantEnvMap: map[string]string{
+				"API_URL":            "api.service.com",
+				"VAR_QUOTED_SPECIAL": "api2.service.com::",
+				"VAR_SPACED":         "api3 - service -  com",
+				"VAR_SINGLE_QUOTES":  "I said, 'I'm learning YAML!'",
+				"VAR_DOUBLE_QUOTES":  "\"api4.service.com\"",
+				"VAR_NUMBER":         "12345",
+				"VAR_JSON":           `{"apiKey":"myApiKey","appId":"myAppId"}`,
+				"MULTILINE_VAR":      "211 Broadway\nApt. 17\nNew York, NY 10019\n",
+			},
+		},
+		{
+			desc:        "No error when writing empty map",
+			wantEnvMap:  map[string]string{},
+			inputEnvMap: map[string]string{},
+		},
+	}
+
+	for i, test := range testCases {
+		outputFileDir := fmt.Sprintf("%s/output%d", testDir, i)
+
+		err := WriteLifecycle(test.inputEnvMap, outputFileDir)
+		if err != nil {
+			t.Errorf("error in test '%v'. Error was %v", test.desc, err)
+		}
+
+		actualMap, err := ReadLifecycle(outputFileDir)
+		if err != nil {
+			t.Errorf("error reading in temp file: %v", err)
+		}
+
+		if diff := cmp.Diff(test.wantEnvMap, actualMap); diff != "" {
+			t.Errorf("unexpected map for test %q, (+got, -want):\n%v", test.desc, diff)
+		}
+
+	}
+}
+
 func TestWriteRawData(t *testing.T) {
 	testDir := t.TempDir()
 
@@ -167,12 +225,12 @@ func TestParseEnvVarsFromString(t *testing.T) {
 			]
 		`,
 			wantEnvVars: []apphostingschema.EnvironmentVariable{
-				{Variable: "SERVER_SIDE_ENV_VAR_NUMBER", Value: "3457934845", Availability: []string{"BUILD", "RUNTIME"}},
-				{Variable: "SERVER_SIDE_ENV_VAR_MULTILINE_FROM_SERVER_SIDE", Value: "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n", Availability: []string{"BUILD"}},
-				{Variable: "SERVER_SIDE_ENV_VAR_QUOTED_SPECIAL", Value: "api_from_server_side.service.com::", Availability: []string{"RUNTIME"}},
-				{Variable: "SERVER_SIDE_ENV_VAR_SPACED", Value: "api979 - service -  com", Availability: []string{"BUILD"}},
-				{Variable: "SERVER_SIDE_ENV_VAR_SINGLE_QUOTES", Value: "I said, 'I'm learning GOLANG!'", Availability: []string{"BUILD"}},
-				{Variable: "SERVER_SIDE_ENV_VAR_DOUBLE_QUOTES", Value: "\"api41.service.com\"", Availability: []string{"BUILD", "RUNTIME"}},
+				{Variable: "SERVER_SIDE_ENV_VAR_NUMBER", Value: "3457934845", Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseConsole},
+				{Variable: "SERVER_SIDE_ENV_VAR_MULTILINE_FROM_SERVER_SIDE", Value: "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n", Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseConsole},
+				{Variable: "SERVER_SIDE_ENV_VAR_QUOTED_SPECIAL", Value: "api_from_server_side.service.com::", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseConsole},
+				{Variable: "SERVER_SIDE_ENV_VAR_SPACED", Value: "api979 - service -  com", Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseConsole},
+				{Variable: "SERVER_SIDE_ENV_VAR_SINGLE_QUOTES", Value: "I said, 'I'm learning GOLANG!'", Availability: []string{"BUILD"}, Source: apphostingschema.SourceFirebaseConsole},
+				{Variable: "SERVER_SIDE_ENV_VAR_DOUBLE_QUOTES", Value: "\"api41.service.com\"", Availability: []string{"BUILD", "RUNTIME"}, Source: apphostingschema.SourceFirebaseConsole},
 			},
 		},
 		{
@@ -180,6 +238,36 @@ func TestParseEnvVarsFromString(t *testing.T) {
 			serverSideEnvVars: "[]",
 			wantEnvVars:       []apphostingschema.EnvironmentVariable{},
 		},
+		{
+			desc: "Parse server side env vars with all secret formats correctly",
+			serverSideEnvVars: `
+			[
+				{
+					"Variable": "SECRET_FORMAT_ONE",
+					"Secret": "secretID"
+				},
+				{
+					"Variable": "SECRET_FORMAT_TWO",
+					"Secret": "secretID@5"
+				},
+				{
+					"Variable": "SECRET_FORMAT_THREE",
+					"Secret": "projects/test-project/secrets/secretID"
+				},
+				{
+					"Variable": "SECRET_FORMAT_FOUR",
+					"Secret": "projects/test-project/secrets/secretID/versions/6"
+				}
+			]
+		`,
+			wantEnvVars: []apphostingschema.EnvironmentVariable{
+				{Variable: "SECRET_FORMAT_ONE", Secret: "secretID", Source: apphostingschema.SourceFirebaseConsole},
+				{Variable: "SECRET_FORMAT_TWO", Secret: "secretID@5", Source: apphostingschema.SourceFirebaseConsole},
+				{Variable: "SECRET_FORMAT_THREE", Secret: "projects/test-project/secrets/secretID", Source: apphostingschema.SourceFirebaseConsole},
+				{Variable: "SECRET_FORMAT_FOUR", Secret: "projects/test-project/secrets/secretID/versions/6", Source: apphostingschema.SourceFirebaseConsole},
+			},
+		},
+
 		{
 			desc:              "Malformed server side env vars string",
 			serverSideEnvVars: "a malformed string",

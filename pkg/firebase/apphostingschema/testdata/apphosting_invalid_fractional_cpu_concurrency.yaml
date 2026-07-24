@@ -1,0 +1,3 @@
+runConfig:
+  cpu: 0.5
+  concurrency: 2

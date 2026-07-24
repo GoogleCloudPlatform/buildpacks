@@ -5,6 +5,7 @@ git
 libcurl4
 libenchant-2-2
 libexpat1
+libffi-dev
 libfreetype6
 libicu74
 libjpeg8

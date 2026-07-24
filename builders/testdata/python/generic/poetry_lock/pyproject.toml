@@ -1,0 +1,9 @@
+[project]
+name = "poetry_app"
+version = "0.1.0"
+description = ""
+requires-python = ">=3.9"
+dependencies = [
+    "flask>=3.1.1",
+    "gunicorn>=23.0.0",
+]

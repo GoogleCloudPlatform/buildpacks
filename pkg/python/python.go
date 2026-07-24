@@ -18,7 +18,10 @@ package python
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
+	"regexp"
+	stdruntime "runtime"
 	"strings"
 	"time"
 
@@ -50,6 +53,9 @@ const (
 	// VendorPipDepsEnv is the envar used to opt using vendored pip dependencies
 	VendorPipDepsEnv = "GOOGLE_VENDOR_PIP_DEPENDENCIES"
 
+	// DefaultPipTargetDir is the default directory to install python dependencies.
+	DefaultPipTargetDir = "lib"
+
 	versionFile = ".python-version"
 	versionKey  = "version"
 	versionEnv  = "GOOGLE_PYTHON_VERSION"
@@ -74,9 +80,27 @@ var (
 	latestPythonVersionPerStack = map[string]string{
 		runtime.Ubuntu1804: "3.9.*",
 		runtime.Ubuntu2204: "3.13.*",
-		runtime.Ubuntu2404: "3.13.*",
+		runtime.Ubuntu2404: "3.14.*",
 	}
+
+	execPrefixRegex = regexp.MustCompile(`exec_prefix\s*=\s*"([^"]+)`)
 )
+
+// SysconfigPatcherCapability is the capability key for the SysconfigPatcher.
+const SysconfigPatcherCapability = "python.SysconfigPatcher"
+
+// sysconfigPatcher is an interface for patching python sysconfig.
+type sysconfigPatcher interface {
+	PatchSysconfig(ctx *gcp.Context, layer *libcnb.Layer) error
+}
+
+// PipInstallerCapability is the capability key for the PipInstaller.
+const PipInstallerCapability = "python.PipInstaller"
+
+// pipInstaller is an interface for installing python dependencies.
+type pipInstaller interface {
+	Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error
+}
 
 // Version returns the installed version of Python.
 func Version(ctx *gcp.Context) (string, error) {
@@ -130,7 +154,7 @@ func SupportsSmartDefaultEntrypoint(ctx *gcp.Context) (bool, error) {
 	// If the version contains a wildcard, we will replace with 0 for the semver comparison.
 	v = strings.ReplaceAll(v, "*", "0")
 
-	return versionMatchesSemver(ctx, ">=3.13.0", v)
+	return versionMatchesSemver(ctx, ">=3.13.0-0", v)
 }
 
 // versionMatchesSemver checks if the provided version matches the given version semver range.
@@ -138,6 +162,13 @@ func SupportsSmartDefaultEntrypoint(ctx *gcp.Context) (bool, error) {
 func versionMatchesSemver(ctx *gcp.Context, versionRange string, version string) (bool, error) {
 	if version == "" {
 		return false, nil
+	}
+	if isSupportedUnstablePythonVersion(version) {
+		// The format of Python pre-release version e.g. 3.14.0rc1 doesn't follow the semver rule
+		// that requires a hyphen before the identifier "rc".
+		if strings.Contains(version, "rc") && !strings.Contains(version, "-rc") {
+			version = strings.Replace(version, "rc", "-rc", 1)
+		}
 	}
 	constraint, err := semver.NewConstraint(versionRange)
 	if err != nil {
@@ -148,7 +179,7 @@ func versionMatchesSemver(ctx *gcp.Context, versionRange string, version string)
 		return false, fmt.Errorf("invalid version %q: %w", version, err)
 	}
 	if !constraint.Check(v) {
-		ctx.Logf("Python version %q does not match the semver constraint %q", version, versionRange)
+		ctx.Debugf("Python version %q does not match the semver constraint %q", version, versionRange)
 		return false, nil
 	}
 	return true, nil
@@ -175,7 +206,7 @@ func versionFromFile(ctx *gcp.Context, dir string) (string, error) {
 	return "", nil
 }
 
-// InstallRequirements installs dependencies from the given requirements files in a virtual env.
+// PIPInstallRequirements installs dependencies from the given requirements files in a virtual env.
 // It will install the files in order in which they are specified, so that dependencies specified
 // in later requirements files can override later ones.
 //
@@ -184,48 +215,25 @@ func versionFromFile(ctx *gcp.Context, dir string) (string, error) {
 // PYTHONPATH. However, this caused issues with some packages as it would allow users to
 // accidentally override some builtin stdlib modules, e.g. typing, enum, etc., and cause both
 // build-time and run-time failures.
-func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
-	// Defensive check, this should not happen in practice.
-	if len(reqs) == 0 {
-		ctx.Debugf("No requirements.txt to install, clearing layer.")
-		if err := ctx.ClearLayer(l); err != nil {
-			return fmt.Errorf("clearing layer %q: %w", l.Name, err)
+func PIPInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
+	if cap := ctx.Capability(PipInstallerCapability); cap != nil {
+		i, ok := cap.(pipInstaller)
+		if !ok {
+			return gcp.InternalErrorf("capability %q does not implement pipInstaller interface", PipInstallerCapability)
 		}
-		return nil
+		return i.Install(ctx, l, reqs...)
 	}
 
-	currentPythonVersion, err := Version(ctx)
+	shouldInstall, err := prepareDependenciesLayer(ctx, l, "pip", reqs...)
 	if err != nil {
 		return err
 	}
-	hash, cached, err := cache.HashAndCheck(ctx, l, dependencyHashKey,
-		cache.WithFiles(reqs...),
-		cache.WithStrings(currentPythonVersion))
-	if err != nil {
-		return err
-	}
-
-	// Check cache expiration to pick up new versions of dependencies that are not pinned.
-	expired := cacheExpired(ctx, l)
-
-	if cached && !expired {
+	if !shouldInstall {
+		ctx.Logf("Application dependencies are up to date, skipping installation.")
 		return nil
-	}
-
-	if expired {
-		ctx.Debugf("Dependencies cache expired, clearing layer.")
-	}
-
-	if err := ctx.ClearLayer(l); err != nil {
-		return fmt.Errorf("clearing layer %q: %w", l.Name, err)
 	}
 
 	ctx.Logf("Installing application dependencies.")
-	cache.Add(ctx, l, dependencyHashKey, hash)
-	// Update the layer metadata.
-	ctx.SetMetadata(l, pythonVersionKey, currentPythonVersion)
-	ctx.SetMetadata(l, expiryTimestampKey, time.Now().Add(expirationTime).Format(dateFormat))
-
 	if err := ar.GeneratePythonConfig(ctx); err != nil {
 		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
@@ -275,23 +283,11 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 	}
 
 	for _, req := range reqs {
-		cmd := []string{
-			"python3", "-m", "pip", "install",
-			"--requirement", req,
-			"--upgrade",
-			"--upgrade-strategy", "only-if-needed",
-			"--no-warn-script-location",   // bin is added at run time by lifecycle.
-			"--no-warn-conflicts",         // Needed for python37 which allowed users to override dependencies. For newer versions, we do a separate `pip check`.
-			"--force-reinstall",           // Some dependencies may be in the build image but not run image. Later requirements.txt should override earlier.
-			"--no-compile",                // Prevent default timestamp-based bytecode compilation. Deterministic pycs are generated in a second step below.
-			"--disable-pip-version-check", // If we were going to upgrade pip, we would have done it already in the runtime buildpack.
-			"--no-cache-dir",              // We used to save this to a layer, but it made builds slower because it includes http caching of pypi requests.
-		}
-		vendorDir, isVendored := os.LookupEnv(VendorPipDepsEnv)
-		if isVendored {
-			cmd = append(cmd, "--no-index", "--find-links", vendorDir)
-			buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.PipVendorDependenciesCounterID).Increment(1)
-		}
+		cmd := basePipInstallArgs(req)
+		cmd = append(cmd,
+			"--no-cache-dir", // We used to save this to a layer, but it made builds slower because it includes http caching of pypi requests.
+		)
+		cmd = appendVendoringFlags(cmd)
 		if !virtualEnv {
 			cmd = append(cmd, "--user") // Install into user site-packages directory.
 		}
@@ -301,16 +297,123 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 		}
 	}
 
+	if err := compileBytecode(ctx, l.Path); err != nil {
+		return err
+	}
+
+	return CheckIncompatibleDependencies(ctx)
+}
+
+// CheckIncompatibleDependencies checks for incompatible dependencies using pip check.
+func CheckIncompatibleDependencies(ctx *gcp.Context) error {
+	ctx.Logf("Checking for incompatible dependencies.")
+	result, err := ctx.Exec([]string{"python3", "-m", "pip", "check"}, gcp.WithUserAttribution)
+	if result == nil {
+		return fmt.Errorf("pip check: %w", err)
+	}
+	if result.ExitCode == 0 {
+		return nil
+	}
+	pyVer, err := Version(ctx)
+	if err != nil {
+		return err
+	}
+	// HACK: For backwards compatibility on App Engine and Cloud Functions Python 3.7 only report a
+	//   warning.
+	if strings.HasPrefix(pyVer, "Python 3.7") {
+		ctx.Warnf("Found incompatible dependencies: %q", result.Stdout)
+		return nil
+	}
+	return gcp.UserErrorf("found incompatible dependencies: %q", result.Stdout)
+}
+
+// MakerPipInstaller implements the PipInstaller interface for the maker tool.
+type MakerPipInstaller struct {
+	TargetPlatform string
+}
+
+// PipTargetDir returns the target directory for installing python dependencies.
+func PipTargetDir() string {
+	targetDir := os.Getenv(env.PipTargetDir)
+	if targetDir == "" {
+		targetDir = DefaultPipTargetDir
+	}
+	return targetDir
+}
+
+// Install installs python dependencies to the target directory specified by GOOGLE_PIP_TARGET_DIR.
+// If GOOGLE_PIP_TARGET_DIR is not set, it defaults to "lib".
+func (i MakerPipInstaller) Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
+	return installDependenciesToTarget(ctx, l, reqs, "pip", i.TargetPlatform, func(req string) []string {
+		cmd := basePipInstallArgs(req)
+		if stdruntime.GOOS == "windows" && len(cmd) > 0 && cmd[0] == "python3" {
+			cmd[0] = "python"
+		}
+		return appendVendoringFlags(cmd)
+	})
+}
+
+// prepareDependenciesLayer is a helper function that handles the common logic for preparing a dependency layer.
+// It checks for empty requirements, manages the cache, and clears the layer if necessary.
+// It returns a boolean indicating whether the installation should proceed.
+func prepareDependenciesLayer(ctx *gcp.Context, l *libcnb.Layer, installerName string, reqs ...string) (bool, error) {
+	// Defensive check
+	if len(reqs) == 0 {
+		ctx.Debugf("No requirements files to install, clearing layer.")
+		if err := ctx.ClearLayer(l); err != nil {
+			return false, fmt.Errorf("clearing layer %q: %w", l.Name, err)
+		}
+		return false, nil
+	}
+
+	// Caching logic
+	currentPythonVersion, err := Version(ctx)
+	if err != nil {
+		return false, err
+	}
+	hash, cached, err := cache.HashAndCheck(ctx, l, dependencyHashKey,
+		cache.WithFiles(reqs...),
+		cache.WithStrings(currentPythonVersion, installerName))
+	if err != nil {
+		return false, err
+	}
+
+	// Check cache expiration to pick up new versions of dependencies that are not pinned.
+	expired := cacheExpired(ctx, l)
+
+	if cached && !expired {
+		ctx.CacheHit(l.Name)
+		return false, nil
+	}
+	ctx.CacheMiss(l.Name)
+
+	if expired {
+		ctx.Debugf("Dependencies cache expired, clearing layer.")
+	}
+	if err := ctx.ClearLayer(l); err != nil {
+		return false, fmt.Errorf("clearing layer %q: %w", l.Name, err)
+	}
+
+	// Update layer metadata for caching
+	cache.Add(ctx, l, dependencyHashKey, hash)
+	ctx.SetMetadata(l, pythonVersionKey, currentPythonVersion)
+	ctx.SetMetadata(l, expiryTimestampKey, time.Now().Add(expirationTime).Format(dateFormat))
+
+	return true, nil
+}
+
+// compileBytecode is a helper that generates deterministic hash-based pyc files for faster startup.
+func compileBytecode(ctx *gcp.Context, path string) error {
 	// Generate deterministic hash-based pycs (https://www.python.org/dev/peps/pep-0552/).
 	// Use the unchecked version to skip hash validation at run time (for faster startup).
-	result, cerr := ctx.Exec([]string{
+	result, err := ctx.Exec([]string{
 		"python3", "-m", "compileall",
 		"--invalidation-mode", "unchecked-hash",
 		"-qq", // Do not print any message (matches `pip install` behavior).
-		l.Path,
-	},
-		gcp.WithUserAttribution)
-	if cerr != nil {
+		path,
+	}, gcp.WithUserAttribution)
+
+	if err != nil {
 		if result != nil {
 			if result.ExitCode == 1 {
 				// Ignore file compilation errors (matches `pip install` behavior).
@@ -318,9 +421,8 @@ func InstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) erro
 			}
 			return fmt.Errorf("compileall: %s", result.Combined)
 		}
-		return fmt.Errorf("compileall: %v", cerr)
+		return fmt.Errorf("compileall: %v", err)
 	}
-
 	return nil
 }
 
@@ -372,5 +474,316 @@ func copySharedLibs(ctx *gcp.Context, l *libcnb.Layer) error {
 			return gcp.InternalErrorf("symlinking shared libs from %v to %v: %w", oldPath, newPath, err)
 		}
 	}
+	return nil
+}
+
+// Checks if the Python version is an unstable supported release candidate.
+func isSupportedUnstablePythonVersion(constraint string) bool {
+	return strings.Count(constraint, ".") == 2 && strings.Count(constraint, "rc") == 1
+}
+
+// isPackageManagerConfigured checks if the environment is configured to use the specified package manager.
+func isPackageManagerConfigured(pm string) bool {
+	pmPreference := os.Getenv(env.PythonPackageManager)
+	return strings.EqualFold(pmPreference, pm) // Case insensitive comparison.
+}
+
+// appendVendoringFlags checks for and appends vendored dependency flags to the command.
+func appendVendoringFlags(cmd []string) []string {
+	if vendorDir, isVendored := os.LookupEnv(VendorPipDepsEnv); isVendored {
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.PipVendorDependenciesCounterID).Increment(1)
+		return append(cmd, "--no-index", "--find-links", vendorDir)
+	}
+	return cmd
+}
+
+func isPackageManagerEmpty() bool {
+	return os.Getenv(env.PythonPackageManager) == ""
+}
+
+func isUVDefaultPackageManagerForRequirements(ctx *gcp.Context) bool {
+	v, err := RuntimeVersion(ctx, ctx.ApplicationRoot())
+	if err != nil {
+		return false
+	}
+	v = strings.ReplaceAll(v, "*", "0")
+	isPythonVersionGreaterThanEqualTo314, err := versionMatchesSemver(ctx, ">=3.14.0-0", v)
+	if err != nil {
+		return false
+	}
+	return isPythonVersionGreaterThanEqualTo314
+}
+
+// isBothPyprojectAndRequirementsPresent checks if both pyproject.toml and requirements.txt are present.
+func isBothPyprojectAndRequirementsPresent(ctx *gcp.Context) bool {
+	pyprojectTomlExists, _ := ctx.FileExists(pyprojectToml)
+	requirementsTxtExists, _ := ctx.FileExists(requirements)
+	return pyprojectTomlExists && requirementsTxtExists
+}
+
+// PatchSysconfig patches the python sysconfig variable prefix.
+func PatchSysconfig(ctx *gcp.Context, layer *libcnb.Layer) error {
+	if cap := ctx.Capability(SysconfigPatcherCapability); cap != nil {
+		p, ok := cap.(sysconfigPatcher)
+		if !ok {
+			return gcp.InternalErrorf("capability %q must implement sysconfigPatcher", SysconfigPatcherCapability)
+		}
+		return p.PatchSysconfig(ctx, layer)
+	}
+	// replace python sysconfig variable prefix from "/opt/python" to "/layers/google.python.runtime/python/" which is the layer.Path
+	// python is installed in /layers/google.python.runtime/python/ for unified builder,
+	// while the python downloaded from debs is installed in "/opt/python".
+	sysconfig, err := ctx.Exec([]string{filepath.Join(layer.Path, "bin/python3"), "-m", "sysconfig"})
+	if err != nil {
+		ctx.Warnf("Getting python sysconfig: %v", err)
+	}
+	execPrefix, err := parseExecPrefix(sysconfig.Stdout)
+	if err != nil {
+		return err
+	}
+	result, err := ctx.Exec([]string{
+		"grep",
+		"-rlI",
+		execPrefix,
+		layer.Path,
+	})
+	if err != nil {
+		ctx.Warnf("Grep failed: %v", err)
+	}
+	paths := strings.Split(result.Stdout, "\n")
+	for _, path := range paths {
+		if _, err := ctx.Exec([]string{
+			"sed",
+			"-i",
+			"s|" + execPrefix + "|" + layer.Path + "|g",
+			path,
+		}); err != nil {
+			ctx.Warnf("Patching file %q: %v", path, err)
+		}
+	}
+	return nil
+}
+
+func parseExecPrefix(sysconfig string) (string, error) {
+	match := execPrefixRegex.FindStringSubmatch(sysconfig)
+	if len(match) < 2 {
+		return "", fmt.Errorf("determining Python exec prefix: %v", match)
+	}
+	return match[1], nil
+}
+
+// MakerSysconfigPatcher implements the sysconfigPatcher interface for the maker tool.
+type MakerSysconfigPatcher struct{}
+
+// PatchSysconfig does nothing, as no patching is required for maker.
+func (p MakerSysconfigPatcher) PatchSysconfig(ctx *gcp.Context, layer *libcnb.Layer) error {
+	return nil
+}
+
+func basePipInstallArgs(req string) []string {
+	return []string{
+		"python3", "-m", "pip", "install",
+		"--requirement", req,
+		"--upgrade",
+		"--upgrade-strategy", "only-if-needed",
+		"--no-warn-script-location",   // bin is added at run time by lifecycle.
+		"--no-warn-conflicts",         // Needed for python37 and maker mode which allowed users to override dependencies. For newer versions, we do a separate `pip check`.
+		"--force-reinstall",           // Some dependencies may be in the build image but not run image. Later requirements.txt should override earlier.
+		"--no-compile",                // Prevent default timestamp-based bytecode compilation. Deterministic pycs are generated in a second step below.
+		"--disable-pip-version-check", // If we were going to upgrade pip, we would have done it already in the runtime buildpack.
+	}
+}
+
+// EntrypointAdapterCapability is the capability key for the EntrypointAdapter.
+const EntrypointAdapterCapability = "python.EntrypointAdapter"
+
+// entrypointAdapter is an interface for rewriting the entrypoint command.
+type entrypointAdapter interface {
+	adapt(cmd []string, scriptCmd []string) ([]string, error)
+}
+
+// AdaptEntrypoint rewrites the entrypoint command if the capability is present.
+func AdaptEntrypoint(ctx *gcp.Context, cmd []string, scriptCmd []string) ([]string, error) {
+	if cap := ctx.Capability(EntrypointAdapterCapability); cap != nil {
+		a, ok := cap.(entrypointAdapter)
+		if !ok {
+			return nil, gcp.InternalErrorf("capability %q does not implement entrypointAdapter interface", EntrypointAdapterCapability)
+		}
+		return a.adapt(cmd, scriptCmd)
+	}
+	return cmd, nil
+}
+
+// MakerEntrypointAdapter implements the entrypointAdapter interface for
+// the maker tool.
+type MakerEntrypointAdapter struct {
+	TargetPlatform string
+}
+
+// adapt modifies the entrypoint command for the maker tool.
+func (a MakerEntrypointAdapter) adapt(cmd []string, scriptCmd []string) ([]string, error) {
+	commandToAdapt := cmd
+	if len(scriptCmd) > 0 {
+		// If scriptCmd is present, it takes precedence over cmd.
+		commandToAdapt = scriptCmd
+	}
+
+	if len(commandToAdapt) == 0 {
+		return commandToAdapt, nil
+	}
+	if commandToAdapt[0] == "python" || commandToAdapt[0] == "python3" {
+		return commandToAdapt, nil
+	}
+
+	targetDir := PipTargetDir()
+
+	pythonCmd := "python3"
+	var binPath string
+	if strings.HasPrefix(a.TargetPlatform, "windows") {
+		pythonCmd = "python"
+		binPath = strings.Join([]string{targetDir, "bin", commandToAdapt[0]}, "\\")
+	} else {
+		binPath = path.Join(targetDir, "bin", commandToAdapt[0])
+	}
+
+	return append([]string{pythonCmd, binPath}, commandToAdapt[1:]...), nil
+}
+
+// UVDependencyInstallerCapability is the capability key for the
+// UVDependenciesInstaller.
+const UVDependencyInstallerCapability = "python.UVDependencyInstaller"
+
+// UVDependenciesInstaller is an interface for installing python dependencies
+// using uv.
+type UVDependenciesInstaller interface {
+	Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error
+}
+
+// CheckUVIncompatibleDependencies checks for incompatible dependencies using
+// uv pip check.
+func CheckUVIncompatibleDependencies(ctx *gcp.Context, venvDir string) error {
+	ctx.Logf("Checking for incompatible dependencies.")
+	result, err := ctx.Exec([]string{"uv", "pip", "check"}, gcp.WithUserAttribution, gcp.WithEnv("VIRTUAL_ENV="+venvDir))
+	if result == nil {
+		return fmt.Errorf("uv pip check: %w", err)
+	}
+	if result.ExitCode == 0 {
+		return nil
+	}
+	return gcp.UserErrorf("found incompatible dependencies: %q", result.Stderr)
+}
+
+// MakerUVDependencyInstaller implements the UVDependenciesInstaller interface
+// for the maker tool.
+type MakerUVDependencyInstaller struct {
+	TargetPlatform string
+}
+
+// Install installs python dependencies locally to the target directory
+// specified by GOOGLE_PIP_TARGET_DIR using uv. This supports the Maker's
+// artifact generation by installing packages into a specific directory
+// unlike the standard buildpack which installs into a virtual environment.
+func (i MakerUVDependencyInstaller) Install(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) error {
+	return installDependenciesToTarget(ctx, l, reqs, "uv", i.TargetPlatform, func(req string) []string {
+		return baseuvPipInstallArgs(req)
+	})
+}
+
+func baseuvPipInstallArgs(req string) []string {
+	cmd := []string{"uv", "pip", "install"}
+	if req == "." {
+		cmd = append(cmd, ".")
+	} else {
+		cmd = append(cmd, "-r", req)
+	}
+	// --reinstall: Reinstall all packages to ensure fresh installation.
+	// --link-mode=copy: Copy files instead of hardlinking to ensure the target
+	// directory is self-contained and portable.
+	cmd = append(cmd, "--reinstall", "--link-mode=copy")
+	return appendVendoringFlags(cmd)
+}
+
+func installDependenciesToTarget(ctx *gcp.Context, l *libcnb.Layer, reqs []string, installerName string, targetPlatform string, cmdBuilder func(string) []string) error {
+	targetDir, targetPath := resolvePipTargetPaths(ctx)
+	ctx.Logf("Installing dependencies to target directory: %s using %s", targetDir, installerName)
+
+	separator := ":"
+	if strings.HasPrefix(targetPlatform, "windows") {
+		separator = ";"
+	}
+
+	// We set PYTHONPATH so that the python interpreter can find the dependencies
+	// in the target directory. We also add the application root to PYTHONPATH so
+	// that the application can import modules from the root.
+	l.LaunchEnvironment.Override("PYTHONPATH", targetDir+separator+".")
+	l.SharedEnvironment.Override("PYTHONPATH", targetPath+string(os.PathListSeparator)+ctx.ApplicationRoot())
+
+	return installRequirementsToTarget(ctx, targetPath, reqs, cmdBuilder)
+}
+
+func resolvePipTargetPaths(ctx *gcp.Context) (string, string) {
+	targetDir := PipTargetDir()
+	var targetPath string
+	if filepath.IsAbs(targetDir) {
+		targetPath = targetDir
+	} else {
+		targetPath = filepath.Join(ctx.ApplicationRoot(), targetDir)
+	}
+	return targetDir, targetPath
+}
+
+// mergeRequirementsFiles reads all files in reqs and appends their contents to dest file.
+func mergeRequirementsFiles(reqs []string, dest string) error {
+	destFile, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open destination file: %w", err)
+	}
+	defer destFile.Close()
+
+	for _, req := range reqs {
+		content, err := os.ReadFile(req)
+		if err != nil {
+			return fmt.Errorf("failed to read requirements file %q: %w", req, err)
+		}
+		if _, err := destFile.Write(content); err != nil {
+			return fmt.Errorf("failed to write to destination file: %w", err)
+		}
+		// Add a newline to ensure files are separated correctly
+		if _, err := destFile.Write([]byte("\n")); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func installRequirementsToTarget(ctx *gcp.Context, targetPath string, reqs []string, cmdBuilder func(string) []string) error {
+	if len(reqs) == 0 {
+		return nil
+	}
+
+	reqFile := reqs[0]
+
+	if len(reqs) > 1 {
+		// Create a temporary file to merge all requirements
+		tmpFile, err := os.CreateTemp("", "merged_requirements_*.txt")
+		if err != nil {
+			return fmt.Errorf("failed to create temp file for requirements: %w", err)
+		}
+		tmpFile.Close()
+		defer os.Remove(tmpFile.Name())
+
+		if err := mergeRequirementsFiles(reqs, tmpFile.Name()); err != nil {
+			return err
+		}
+		reqFile = tmpFile.Name()
+	}
+
+	cmd := cmdBuilder(reqFile)
+	cmd = append(cmd, "--target", targetPath)
+
+	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
+		return fmt.Errorf("installing dependencies: %w", err)
+	}
+
 	return nil
 }

@@ -14,6 +14,7 @@
 package nodejs
 
 import (
+	"os"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
@@ -32,6 +33,7 @@ func TestInstallNextJsBuildAdaptor(t *testing.T) {
 		layerMetadata         map[string]any
 		mocks                 []*mockprocess.Mock
 		expectedLayerMetadata map[string]any
+		nextjsVersionEnvVar   string
 	}{
 		{
 			name:          "adapter download is skipped if version is cached",
@@ -50,10 +52,22 @@ func TestInstallNextJsBuildAdaptor(t *testing.T) {
 			layerMetadata:         map[string]any{},
 			expectedLayerMetadata: map[string]any{"version": mockLatestNextjsAdapterVersion},
 		},
+		{
+			name: "download adapter version from env var",
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-nextjs@`+"1.2.3", mockprocess.WithStdout("installed adaptor")),
+			},
+			layerMetadata:         map[string]any{},
+			expectedLayerMetadata: map[string]any{"version": "1.2.3"},
+			nextjsVersionEnvVar:   "1.2.3",
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.nextjsVersionEnvVar != "" {
+				os.Setenv("NEXTJS_ADAPTER_VERSION", tc.nextjsVersionEnvVar)
+			}
 			ctx := gcp.NewContext(getContextOpts(t, tc.mocks)...)
 			layer := &libcnb.Layer{
 				Name:     "njsl",

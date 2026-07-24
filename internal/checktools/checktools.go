@@ -29,7 +29,7 @@ import (
 var (
 	// LINT.IfChange(minPackVersion)
 	// minPackVersion is the minimum required version of pack.
-	minPackVersion = semver.MustParse("0.36.0")
+	minPackVersion = semver.MustParse("0.38.2")
 	// LINT.ThenChange(//depot/google3/apphosting/g3doc/runtimes/tutorials/buildpack-tests-debug.md)
 )
 

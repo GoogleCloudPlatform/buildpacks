@@ -15,6 +15,7 @@ package nodejs
 
 import (
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
@@ -34,6 +35,7 @@ func TestInstallAngularBuildAdaptor(t *testing.T) {
 		angularVersion        string
 		mocks                 []*mockprocess.Mock
 		expectedLayerMetadata map[string]any
+		angularVersionEnvVar  string
 	}{
 		{
 			name:          "download adaptor not needed since it is cached",
@@ -52,9 +54,21 @@ func TestInstallAngularBuildAdaptor(t *testing.T) {
 			layerMetadata:         map[string]any{},
 			expectedLayerMetadata: map[string]any{"version": mockLatestAngularAdapterVersion},
 		},
+		{
+			name: "download adapter version from env var",
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`npm install --prefix npm_modules @apphosting/adapter-angular@`+"17.2.15", mockprocess.WithStdout("installed adaptor")),
+			},
+			layerMetadata:         map[string]any{},
+			expectedLayerMetadata: map[string]any{"version": "17.2.15"},
+			angularVersionEnvVar:  "17.2.15",
+		},
 	}
 
 	for _, tc := range testCases {
+		if tc.angularVersionEnvVar != "" {
+			os.Setenv("ANGULAR_ADAPTER_VERSION", tc.angularVersionEnvVar)
+		}
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := gcp.NewContext(getContextOpts(t, tc.mocks)...)
 			layer := &libcnb.Layer{

@@ -23,6 +23,7 @@ go_test(
     deps = [
         "//pkg/firebase/apphostingschema",
         "//pkg/testdata",
+        "//third_party/golang/protobuf/v2/proto",
         "@com_github_google_go-cmp//cmp:go_default_library",
     ],
 )

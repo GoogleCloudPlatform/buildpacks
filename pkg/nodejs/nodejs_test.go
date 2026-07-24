@@ -386,30 +386,36 @@ func TestRequestedNodejsVersion(t *testing.T) {
 		nodeEnv     string
 		runtimeEnv  string
 		packageJSON string
+		stackID     string
 		want        string
 		wantErr     bool
 	}{
 		{
-			name: "default is empty",
-			want: defaultVersionConstraint,
+			name: "default_is_empty",
+			want: "24.*.*",
 		},
 		{
-			name:        "package.json without engines",
+			name:        "package.json_without_engines",
 			packageJSON: `{}`,
-			want:        defaultVersionConstraint,
+			want:        "24.*.*",
 		},
 		{
-			name:    "GOOGLE_NODEJS_VERSION is set",
+			name:    "default_on_ubuntu_24_stack",
+			stackID: "google.24.full",
+			want:    "24.*.*",
+		},
+		{
+			name:    "GOOGLE_NODEJS_VERSION_is_set",
 			nodeEnv: "1.2.3",
 			want:    "1.2.3",
 		},
 		{
-			name:       "GOOGLE_RUNTIME_VERSION is set",
+			name:       "GOOGLE_RUNTIME_VERSION_is_set",
 			runtimeEnv: "3.3.3",
 			want:       "3.3.3",
 		},
 		{
-			name:       "GOOGLE_NODEJS_VERSION and GOOGLE_RUNTIME_VERSION set",
+			name:       "GOOGLE_NODEJS_VERSION_and_GOOGLE_RUNTIME_VERSION_set",
 			nodeEnv:    "1.2.3",
 			runtimeEnv: "3.3.3",
 			want:       "1.2.3",
@@ -420,7 +426,7 @@ func TestRequestedNodejsVersion(t *testing.T) {
 			want:        "2.2.2",
 		},
 		{
-			name:        "GOOGLE_RUNTIME_VERSION and engines.nodejs set",
+			name:        "GOOGLE_RUNTIME_VERSION_and_engines.nodejs_set",
 			packageJSON: `{"engines": {"node": "2.2.2"}}`,
 			runtimeEnv:  "3.3.3",
 			want:        "3.3.3",
@@ -445,6 +451,9 @@ func TestRequestedNodejsVersion(t *testing.T) {
 			}
 
 			ctx := gcp.NewContext()
+			if tc.stackID != "" {
+				ctx = gcp.NewContext(gcp.WithStackID(tc.stackID))
+			}
 			got, err := RequestedNodejsVersion(ctx, pjs)
 			if tc.wantErr == (err == nil) {
 				t.Errorf("RequestedNodejsVersion(ctx, %q) got error: %v, want err? %t", dir, err, tc.wantErr)
@@ -576,7 +585,7 @@ func TestVersion(t *testing.T) {
 			nodeDeps: &NodeDependencies{
 				LockfilePath: testdata.MustGetPath("testdata/lock-files/nextjs-package-lock.json"),
 			},
-			wantVersion: "14.1.4",
+			wantVersion: "15.0.0",
 		},
 		{
 			name: "Parses package-lock version angular",
@@ -787,5 +796,57 @@ func setGoogleRuntime(t *testing.T, value string) {
 	})
 	if err := os.Setenv("GOOGLE_RUNTIME", value); err != nil {
 		t.Errorf("Error setting environment variable %q: %v", googleRuntimeEnv, err)
+	}
+}
+
+func TestEntrypoint(t *testing.T) {
+	testCases := []struct {
+		name           string
+		packageManager string
+		capability     bool
+		want           []string
+	}{
+		{
+			name:           "without_capability",
+			packageManager: "yarn",
+			capability:     false,
+			want:           []string{"yarn", "run", "start"},
+		},
+		{
+			name:           "with_capability",
+			packageManager: "yarn",
+			capability:     true,
+			want:           []string{"npm", "run", "start"},
+		},
+		{
+			name:           "pnpm_without_capability",
+			packageManager: "pnpm",
+			capability:     false,
+			want:           []string{"pnpm", "run", "start"},
+		},
+		{
+			name:           "pnpm_with_capability",
+			packageManager: "pnpm",
+			capability:     true,
+			want:           []string{"npm", "run", "start"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var opts []gcp.ContextOption
+			if tc.capability {
+				opts = append(opts, gcp.WithCapability(NPMStartEntrypointCapability, &MakerNPMStartEntrypoint{}))
+			}
+			ctx := gcp.NewContext(opts...)
+
+			got, err := Entrypoint(ctx, tc.packageManager)
+			if err != nil {
+				t.Fatalf("Entrypoint(ctx, %q) returned unexpected error: %v", tc.packageManager, err)
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("Entrypoint(ctx, %q) returned unexpected difference (-want +got):\n%s", tc.packageManager, diff)
+			}
+		})
 	}
 }

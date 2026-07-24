@@ -57,10 +57,90 @@ var (
 
 	// latestGoVersionPerStack is the latest Go version per stack to use if not specified by the user.
 	latestGoVersionPerStack = map[string]string{
-		runtime.Ubuntu2204: "1.23.*",
-		runtime.Ubuntu2404: "1.23.*",
+		runtime.Ubuntu2204: "1.26.*",
+		runtime.Ubuntu2404: "1.26.*",
 	}
 )
+
+// GoBuilderCapability is the capability key for the maker Golang builder.
+const GoBuilderCapability = "golang.GoBuilderCapability"
+
+// GoBuilder is an interface for building Go applications.
+type GoBuilder interface {
+	Build(ctx *gcp.Context, outBin, buildable, workdir, gocache string, flags []string) error
+}
+
+// MakerGolangBuilder implements the GoBuilder interface for the maker tool.
+type MakerGolangBuilder struct{}
+
+// Build runs go build locally with GOOS=linux and GOARCH=amd64.
+func (b MakerGolangBuilder) Build(ctx *gcp.Context, outBin, buildable, workdir, gocache string, flags []string) error {
+	cmd := []string{"go", "build"}
+	cmd = append(cmd, flags...)
+	cmd = append(cmd, "-o", outBin, buildable)
+
+	envs := []string{
+		"GOOS=linux",
+		"GOARCH=amd64",
+	}
+
+	_, err := ctx.Exec(cmd, gcp.WithEnv(envs...), gcp.WithWorkDir(workdir), gcp.WithUserAttribution)
+	return err
+}
+
+const (
+	noGoFileError         = "no Go files in"
+	cannotFindModuleError = "cannot find module"
+)
+
+// PerformBuild consolidates the build logic for Go applications.
+func PerformBuild(ctx *gcp.Context, binLayer *libcnb.Layer, buildable, workdir, gocache string, bldFlags []string) (string, []string, error) {
+	outBin := filepath.Join(binLayer.Path, OutBin)
+
+	bld := []string{"go", "build"}
+	bld = append(bld, bldFlags...)
+	bld = append(bld, "-o", outBin)
+	bld = append(bld, buildable)
+
+	return executeBuild(ctx, binLayer, outBin, buildable, workdir, gocache, bldFlags, bld)
+}
+
+func executeBuild(ctx *gcp.Context, binLayer *libcnb.Layer, outBin string, buildable, workdir, gocache string, bldFlags []string, bld []string) (string, []string, error) {
+	cap := ctx.Capability(GoBuilderCapability)
+	if cap != nil {
+		outBin = "./" + OutBin
+		bld = []string{"go", "build"}
+		bld = append(bld, bldFlags...)
+		bld = append(bld, "-o", outBin)
+		bld = append(bld, buildable)
+
+		b, ok := cap.(GoBuilder)
+		if !ok {
+			return "", nil, gcp.InternalErrorf("capability %q must implement GoBuilder", GoBuilderCapability)
+		}
+		if err := b.Build(ctx, outBin, buildable, workdir, gocache, bldFlags); err != nil {
+			return "", nil, err
+		}
+	} else {
+		binLayer.LaunchEnvironment.Prepend("PATH", string(os.PathListSeparator), binLayer.Path)
+		if _, err := ctx.Exec(bld, gcp.WithEnv("GOCACHE="+gocache), gcp.WithWorkDir(workdir), gcp.WithMessageProducer(printTipsAndKeepStderrTail(ctx)), gcp.WithUserAttribution); err != nil {
+			return "", nil, err
+		}
+	}
+	return outBin, bld, nil
+}
+
+func printTipsAndKeepStderrTail(ctx *gcp.Context) gcp.MessageProducer {
+	return func(result *gcp.ExecResult) string {
+		if result.ExitCode != 0 {
+			if strings.Contains(result.Stderr, noGoFileError) || strings.Contains(result.Stderr, cannotFindModuleError) {
+				ctx.Tipf("Tip: %q env var configures which Go package is built. Default is '.'", env.Buildable)
+			}
+		}
+
+		return gcp.KeepStderrTail(result)
+	}
+}
 
 // goRelease represents an entry on the go.dev downloads page.
 type goRelease struct {
@@ -349,13 +429,20 @@ func RuntimeVersion(ctx *gcp.Context) (string, error) {
 		ctx.Logf("Go version not specified, using latest available Go runtime for the stack %q", os)
 	}
 
+	// In maker mode, we want to use the local Go version.
+	if ctx.Capability(GoBuilderCapability) != nil {
+		localVer, err := GoVersion(ctx)
+		if err == nil {
+			return localVer, nil
+		}
+	}
+
 	resolvedVersion, err := ResolveGoVersion(version)
 	if err != nil {
 		return "", err
 	}
 
 	return resolvedVersion, nil
-
 }
 
 // ResolveGoVersion finds the latest version of Go that matches the provided semver constraint.

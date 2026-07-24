@@ -20,13 +20,18 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 const (
@@ -41,25 +46,348 @@ const (
 	PublishOutputDirName = "bin"
 )
 
+// SkipEnvVariablesAssignmentCapability is the capability key for skipping runtime environment variables assignment.
+const SkipEnvVariablesAssignmentCapability = "dotnet.SkipEnvVariablesAssignmentCapability"
+
+// MakerSkipEnvVariablesAssignment implements the SkipEnvVariablesAssignment interface for the maker tool.
+type MakerSkipEnvVariablesAssignment struct{}
+
+// SkipVariables skips the launch environment variables setup.
+func (m MakerSkipEnvVariablesAssignment) SkipVariables(ctx *gcp.Context, rtl *libcnb.Layer) error {
+	return nil
+}
+
+// SkipEnvVariablesAssignment is an interface for skipping runtime environment variables assignment.
+type SkipEnvVariablesAssignment interface {
+	SkipVariables(ctx *gcp.Context, rtl *libcnb.Layer) error
+}
+
+// PublisherCapability is the capability key for the maker Dotnet publisher.
+const PublisherCapability = "dotnet.PublisherCapability"
+
+// Publisher is an interface for restoring and publishing Dotnet applications in maker mode.
+type Publisher interface {
+	Publish(ctx *gcp.Context, proj, buildArgs string) error
+}
+
+// MakerDotnetPublisher implements the Publisher interface for the maker tool.
+type MakerDotnetPublisher struct{}
+
+// Publish restores, publishes, and determines the runtime entrypoint of the Dotnet application in maker mode.
+func (p MakerDotnetPublisher) Publish(ctx *gcp.Context, proj, buildArgs string) error {
+	return Publish(ctx, proj, buildArgs, false)
+}
+
+const (
+	cacheTag          = "prod dependencies"
+	dependencyHashKey = "dependency_hash"
+	versionKey        = "version"
+)
+
+// Publish restores, publishes, and determines the runtime entrypoint of the Dotnet application.
+// If useLayer is true, it performs the publish steps using GCP layers and devmode setup.
+// If useLayer is false (e.g. MakerMode), it publishes directly to the application root without layers.
+func Publish(ctx *gcp.Context, proj, buildArgs string, useLayer bool) error {
+	var outputDirectory string
+	var pkgLayer *libcnb.Layer
+	var binLayer *libcnb.Layer
+	var err error
+
+	if useLayer {
+		ctx.Logf("Installing application dependencies.")
+		pkgLayer, err = ctx.Layer("packages", gcp.BuildLayer, gcp.CacheLayer)
+		if err != nil {
+			return fmt.Errorf("creating layer: %w", err)
+		}
+
+		cached, err := checkCache(ctx, pkgLayer)
+		if err != nil {
+			return fmt.Errorf("checking cache: %w", err)
+		}
+		if cached {
+			ctx.CacheHit(cacheTag)
+		} else {
+			ctx.CacheMiss(cacheTag)
+		}
+
+		binLayer, err = ctx.Layer(PublishLayerName, gcp.BuildLayer, gcp.LaunchLayer)
+		if err != nil {
+			return fmt.Errorf("creating layer: %w", err)
+		}
+
+		outputDirectory = filepath.Join(binLayer.Path, PublishOutputDirName)
+
+		// The existence of a project file indicates this is not prebuilt. Any uploaded bin folder interferes with publish.
+		deleted, err := deleteFolder(ctx, filepath.Join(ctx.ApplicationRoot(), PublishOutputDirName))
+		if err != nil {
+			return fmt.Errorf("deleting upload bin: %w", err)
+		}
+		if deleted {
+			ctx.Warnf("A project file was uploaded, causing `dotnet publish` to be called, but the output bin folder already existed in application source. Deleting %v.", outputDirectory)
+		}
+	} else {
+		outputDirectory = filepath.Join(ctx.ApplicationRoot(), PublishOutputDirName)
+
+		globalJSON := filepath.Join(ctx.ApplicationRoot(), "global.json")
+		globalJSONBak := filepath.Join(ctx.ApplicationRoot(), "global.json.bak")
+
+		globalJSONExists, err := ctx.FileExists(globalJSON)
+		if err == nil && globalJSONExists {
+			ctx.Logf("Temporarily renaming global.json to global.json.bak to roll forward SDK build.")
+			if err := os.Rename(globalJSON, globalJSONBak); err != nil {
+				return fmt.Errorf("renaming global.json: %w", err)
+			}
+			defer func() {
+				ctx.Logf("Restoring global.json from global.json.bak.")
+				os.Rename(globalJSONBak, globalJSON)
+			}()
+		}
+	}
+
+	// 1. Restore
+	restoreCmd := []string{"dotnet", "restore"}
+	if useLayer {
+		restoreCmd = append(restoreCmd, "--packages", pkgLayer.Path)
+	}
+	restoreCmd = append(restoreCmd, proj)
+
+	if _, err := ctx.Exec(restoreCmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution); err != nil {
+		return err
+	}
+
+	// 2. Publish
+	publishCmd := []string{
+		"dotnet",
+		"publish",
+		"-nologo",
+		"--verbosity", "minimal",
+		"--configuration", "Release",
+		"--output", outputDirectory,
+		"--no-restore",
+	}
+	if useLayer {
+		publishCmd = append(publishCmd, "--packages", pkgLayer.Path)
+	}
+	publishCmd = append(publishCmd, proj)
+
+	if buildArgs != "" {
+		// Use bash to execute the command to avoid having to parse the build arguments.
+		// strings.Fields may be unsafe here in case some arguments have a space.
+		publishCmd = []string{"/bin/bash", "-c", strings.Join(append(publishCmd, buildArgs), " ")}
+	}
+
+	if _, err := ctx.Exec(publishCmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution); err != nil {
+		return err
+	}
+
+	// 3. Runtime Version
+	runtimeVersion, err := GetRuntimeVersion(ctx, outputDirectory)
+	if err != nil {
+		return fmt.Errorf("getting runtime version: %w", err)
+	}
+
+	if useLayer {
+		binLayer.BuildEnvironment.Default(EnvRuntimeVersion, runtimeVersion)
+	} else {
+		os.Setenv(EnvRuntimeVersion, runtimeVersion)
+	}
+
+	// 4. Symlink (only for layers)
+	if useLayer {
+		if err := configureBinSymlink(ctx, outputDirectory); err != nil {
+			return fmt.Errorf("creating symlink: %w", err)
+		}
+	}
+
+	// 5. Entrypoint
+	entrypoint := os.Getenv(env.Entrypoint)
+	if entrypoint != "" {
+		entrypoint = "exec " + entrypoint
+	} else {
+		ep, err := Entrypoint(ctx, outputDirectory, proj)
+		if err != nil {
+			return fmt.Errorf("getting entrypoint: %w", err)
+		}
+		entrypoint = ep
+		if useLayer {
+			binLayer.BuildEnvironment.Default(env.Entrypoint, entrypoint)
+		}
+	}
+
+	if useLayer {
+		binLayer.LaunchEnvironment.Default("DOTNET_RUNNING_IN_CONTAINER", "true")
+
+		// Configure the entrypoint for production.
+		if !devmode.Enabled(ctx) {
+			ctx.AddWebProcess([]string{"/bin/bash", "-c", entrypoint})
+			return nil
+		}
+
+		// Configure the entrypoint and metadata for dev mode.
+		ctx.AddWebProcess([]string{"dotnet", "watch", "--project", proj, "run"})
+		return nil
+	}
+
+	// MakerMode (useLayer == false)
+	ctx.AddWebProcess([]string{"/bin/bash", "-c", entrypoint})
+	return nil
+}
+
+func checkCache(ctx *gcp.Context, l *libcnb.Layer) (bool, error) {
+	projectFiles, err := ProjectFiles(ctx, ".")
+	if err != nil {
+		return false, err
+	}
+	globalJSON := filepath.Join(ctx.ApplicationRoot(), "global.json")
+	globalJSONExists, err := ctx.FileExists(globalJSON)
+	if err != nil {
+		return false, err
+	}
+	if globalJSONExists {
+		projectFiles = append(projectFiles, globalJSON)
+	}
+	result, err := ctx.Exec([]string{"dotnet", "--version"})
+	if err != nil {
+		return false, err
+	}
+	currentVersion := result.Stdout
+
+	hash, cached, err := cache.HashAndCheck(ctx, l, dependencyHashKey,
+		cache.WithStrings(currentVersion),
+		cache.WithFiles(projectFiles...))
+	if err != nil {
+		return false, err
+	}
+
+	if cached {
+		return true, nil
+	}
+
+	cache.Add(ctx, l, dependencyHashKey, hash)
+	ctx.SetMetadata(l, versionKey, currentVersion)
+	return false, nil
+}
+
+// deleteFolder returns whether the folder was deleted
+func deleteFolder(ctx *gcp.Context, folder string) (bool, error) {
+	exists, err := ctx.FileExists(folder)
+	if err != nil {
+		return false, err
+	}
+	if exists {
+		if err := os.RemoveAll(folder); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+func configureBinSymlink(ctx *gcp.Context, binLayerPath string) error {
+	linkTarget := filepath.Join(ctx.ApplicationRoot(), PublishOutputDirName)
+
+	if deleted, err := deleteFolder(ctx, linkTarget); err != nil {
+		return fmt.Errorf("deleting %s: %v", linkTarget, err)
+	} else if deleted {
+		ctx.Warnf("Deleted folder: %v", linkTarget)
+	} else {
+		ctx.Warnf("Not deleting folder: %v", linkTarget)
+	}
+
+	if err := os.Symlink(binLayerPath, linkTarget); err != nil {
+		return fmt.Errorf("linking %s: %v", binLayerPath, err)
+	}
+	return nil
+}
+
+// AssemblyName retrieves the assembly name property from .csproj file.
+func AssemblyName(ctx *gcp.Context, proj string) (string, error) {
+	p, err := ReadProjectFile(ctx, proj)
+	if err != nil {
+		return "", fmt.Errorf("reading project file: %w", err)
+	}
+	var assemblyNames []string
+	for _, pg := range p.PropertyGroups {
+		if pg.AssemblyName != "" {
+			assemblyNames = append(assemblyNames, pg.AssemblyName)
+		}
+	}
+	if len(assemblyNames) != 1 {
+		return "", gcp.UserErrorf("expected exactly one AssemblyName, found %v", assemblyNames)
+	}
+	return assemblyNames[0], nil
+}
+
+// Entrypoint retrieves the appropriate entrypoint command for the direct maker build.
+func Entrypoint(ctx *gcp.Context, bin, proj string) (string, error) {
+	ctx.Logf("Determining entrypoint from output directory %s and project file %s", bin, proj)
+	p := strings.TrimSuffix(filepath.Base(proj), filepath.Ext(proj))
+
+	ep, err := EntrypointCmd(ctx, filepath.Join(bin, p))
+	if err != nil {
+		return "", err
+	}
+	if ep != "" {
+		return ep, nil
+	}
+
+	an, err := AssemblyName(ctx, proj)
+	if err != nil {
+		return "", fmt.Errorf("getting assembly name: %w", err)
+	}
+	ep, err = EntrypointCmd(ctx, filepath.Join(bin, an))
+	if err != nil {
+		return "", err
+	}
+	if ep != "" {
+		return ep, nil
+	}
+
+	return "", gcp.UserErrorf("unable to find executable produced from %s, try setting the AssemblyName property", proj)
+}
+
+// EntrypointCmd constructs direct relative execution string for .dll targets.
+func EntrypointCmd(ctx *gcp.Context, ep string) (string, error) {
+	dll := ep + ".dll"
+	dllExists, err := ctx.FileExists(dll)
+	if err != nil {
+		return "", err
+	}
+	if dllExists {
+		dir := filepath.Dir(dll)
+		if rel, err := filepath.Rel(ctx.ApplicationRoot(), dir); err == nil && !strings.HasPrefix(rel, "..") {
+			return fmt.Sprintf("exec dotnet %s", filepath.Join(rel, filepath.Base(dll))), nil
+		}
+		return fmt.Sprintf("cd %s && exec dotnet %s", dir, filepath.Base(dll)), nil
+	}
+	return "", nil
+}
+
 var (
 	// latestDotnetSDKVersionPerStack is the latest .NET version per stack to use if not specified by the user.
 	latestDotnetSDKVersionPerStack = map[string]string{
 		runtime.Ubuntu2204: "8.*.*",
-		runtime.Ubuntu2404: "8.*.*",
+		runtime.Ubuntu2404: "10.*.*",
 	}
+	projRe = regexp.MustCompile(`(?i)\.(cs|fs|vb)proj$`)
 )
 
 // ProjectFiles finds all project files supported by dotnet.
 func ProjectFiles(ctx *gcp.Context, dir string) ([]string, error) {
-	result, err := ctx.Exec([]string{"find", dir, "-regex", `.*\.\(cs\|fs\|vb\)proj`}, gcp.WithUserTimingAttribution)
+	var files []string
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && projRe.MatchString(d.Name()) {
+			files = append(files, path)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	stdout := strings.TrimSpace(result.Stdout)
-	if stdout == "" {
-		return nil, nil
-	}
-	return strings.Split(stdout, "\n"), nil
+	return files, nil
 }
 
 // Project represents a .NET project file.

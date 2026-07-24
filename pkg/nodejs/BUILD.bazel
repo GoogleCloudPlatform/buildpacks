@@ -2,10 +2,17 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 licenses(["notice"])
 
+alias(
+    name = "extractdeps",
+    actual = "//pkg/nodejs/extractdeps",
+    visibility = ["//visibility:public"],
+)
+
 go_library(
     name = "nodejs",
     srcs = [
         "angular.go",
+        "bun.go",
         "nextjs.go",
         "nodejs.go",
         "npm.go",
@@ -14,13 +21,21 @@ go_library(
         "pnpm.go",
         "registry.go",
         "sveltekit.go",
+        "turbo.go",
+        "vulnerability.go",
         "yarn.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
+        "//pkg/apprunner:__subpackages__",
+        "//pkg/apprunner/nodejs:__subpackages__",
+        "//cmd/firebase/bundle:__subpackages__",
+        "//pkg/firebase/preparer:__subpackages__",
         "//cmd/nodejs:__subpackages__",
+        "//maker:__subpackages__",
         # Ruby on Rails apps require Nodejs and Yarn for precompiling assets
         "//cmd/ruby:__subpackages__",
+        "//pkg/nodejs:__subpackages__",
     ],
     deps = [
         "//pkg/buildermetrics",
@@ -29,6 +44,8 @@ go_library(
         "//pkg/fetch",
         "//pkg/firebase/apphostingschema",
         "//pkg/gcpbuildpack",
+        "//pkg/runtime",
+        "//pkg/tooling",
         "//pkg/version",
         "@com_github_buildpacks_libcnb_v2//:go_default_library",
         "@com_github_hashicorp_go_retryablehttp//:go_default_library",
@@ -38,9 +55,21 @@ go_library(
 )
 
 go_test(
+    name = "nodejs_example_test",
+    srcs = ["example_test.go"],
+    rundir = ".",
+    deps = [
+        ":nodejs",
+        "//pkg/gcpbuildpack",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
+    ],
+)
+
+go_test(
     name = "nodejs_test",
     srcs = [
         "angular_test.go",
+        "bun_test.go",
         "nextjs_test.go",
         "nodejs_test.go",
         "npm_test.go",
@@ -49,9 +78,11 @@ go_test(
         "pnpm_test.go",
         "registry_test.go",
         "sveltekit_test.go",
+        "turbo_test.go",
+        "vulnerability_test.go",
         "yarn_test.go",
     ],
-    data = glob(["testdata/**"]),
+    data = glob(["testdata/**"]) + ["//pkg/tooling:tooling_versions_mock_json"],
     embed = [":nodejs"],
     rundir = ".",
     deps = [
@@ -62,6 +93,7 @@ go_test(
         "//pkg/firebase/apphostingschema",
         "//pkg/gcpbuildpack",
         "//pkg/testdata",
+        "//pkg/tooling",
         "@com_github_buildpacks_libcnb_v2//:go_default_library",
         "@com_github_google_go-cmp//cmp:go_default_library",
     ],

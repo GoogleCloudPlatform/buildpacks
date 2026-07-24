@@ -1,319 +1,130 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 package python
 
 import (
+	"fmt"
 	"testing"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
-func TestContainsGunicorn(t *testing.T) {
+func TestIsUVRequirements(t *testing.T) {
 	testCases := []struct {
-		name string
-		str  string
-		want bool
+		name    string
+		files   map[string]string
+		envVars map[string]string
+		want    bool
+		wantMsg string
 	}{
 		{
-			name: "gunicorn_present",
-			str:  "gunicorn==19.9.0\nflask\n",
-			want: true,
+			name:    "should_be_true_with_requirements.txt_and_uv_env_var",
+			files:   map[string]string{"requirements.txt": "flask"},
+			envVars: map[string]string{env.PythonPackageManager: "uv"},
+			want:    true,
+			wantMsg: fmt.Sprintf("environment variable %s is uv", env.PythonPackageManager),
 		},
 		{
-			name: "gunicorn_present_with_comment",
-			str:  "gunicorn #my-comment\nflask\n",
-			want: true,
+			name:    "should_be_true_with_requirements.txt_and_case-insensitive_UV_env_var",
+			files:   map[string]string{"requirements.txt": "flask"},
+			envVars: map[string]string{env.PythonPackageManager: "Uv"},
+			want:    true,
+			wantMsg: fmt.Sprintf("environment variable %s is uv", env.PythonPackageManager),
 		},
 		{
-			name: "gunicorn_present_second_line",
-			str:  "flask\ngunicorn==19.9.0",
-			want: true,
+			name:    "should_be_true_when_uv_is_set_without_requirements.txt",
+			files:   map[string]string{},
+			envVars: map[string]string{env.PythonPackageManager: "uv"},
+			want:    true,
+			wantMsg: fmt.Sprintf("environment variable %s is uv", env.PythonPackageManager),
 		},
 		{
-			name: "no_gunicorn_present",
-			str:  "gunicorn-logging==0.1.0\nflask\n",
-			want: false,
+			name:    "should_be_false_when_env_var_is_pip",
+			files:   map[string]string{"requirements.txt": "flask"},
+			envVars: map[string]string{env.PythonPackageManager: "pip"},
+			want:    false,
+			wantMsg: fmt.Sprintf("environment variable %s is not uv", env.PythonPackageManager),
 		},
 		{
-			name: "gunicorn_egg_present",
-			str:  "git+git://github.com/gunicorn@master#egg=gunicorn\nflask\n",
-			want: true,
+			name:  "should_be_false_when_env_var_is_not_set_and_py_lt_314",
+			files: map[string]string{"requirements.txt": "flask"},
+			envVars: map[string]string{
+				"GOOGLE_RUNTIME_VERSION": "3.13.9",
+			},
+			want:    false,
+			wantMsg: fmt.Sprintf("environment variable %s is not uv", env.PythonPackageManager),
 		},
 		{
-			name: "gunicorn_egg_not_present",
-			str:  "git+git://github.com/gunicorn-logging@master#egg=gunicorn-logging\nflask\n",
-			want: false,
+			name:  "should_be_true_when_env_var_is_not_set_and_py_eq_314",
+			files: map[string]string{"requirements.txt": "flask"},
+			envVars: map[string]string{
+				"GOOGLE_RUNTIME_VERSION": "3.14.0",
+			},
+			want:    true,
+			wantMsg: fmt.Sprintf("environment variable %s is not set, using uv as default package manager", env.PythonPackageManager),
 		},
 		{
-			name: "uvicorn_present",
-			str:  "uvicorn==3.9.0\nfastapi\n",
-			want: false,
+			name:  "should_be_true_when_env_var_is_not_set_and_py_gt_314",
+			files: map[string]string{"requirements.txt": "flask"},
+			envVars: map[string]string{
+				"GOOGLE_RUNTIME_VERSION": "3.15.1",
+			},
+			want:    true,
+			wantMsg: fmt.Sprintf("environment variable %s is not set, using uv as default package manager", env.PythonPackageManager),
 		},
 		{
-			name: "uvicorn_present_with_comment",
-			str:  "uvicorn #my-comment\nfastapi\n",
-			want: false,
+			name:  "should_be_true_when_env_is_uv_and_py_lt_314",
+			files: map[string]string{"requirements.txt": "flask"},
+			envVars: map[string]string{
+				env.PythonPackageManager: "uv",
+				"GOOGLE_RUNTIME_VERSION": "3.13.9",
+			},
+			want:    true,
+			wantMsg: fmt.Sprintf("environment variable %s is uv", env.PythonPackageManager),
 		},
 		{
-			name: "uvicorn_present_with_standard_version",
-			str:  "uvicorn[standard] #my-comment\nfastapi\n",
-			want: false,
-		},
-		{
-			name: "uvicorn_present_second_line",
-			str:  "fastapi\nuvicorn==3.9.0",
-			want: false,
-		},
-		{
-			name: "no_uvicorn_present",
-			str:  "uvicorn-logging==0.1.0\nfastapi\n",
-			want: false,
-		},
-		{
-			name: "uvicorn_egg_present",
-			str:  "git+git://github.com/uvicorn@master#egg=uvicorn\nfastapi\n",
-			want: false,
-		},
-		{
-			name: "uvicorn_egg_not_present",
-			str:  "git+git://github.com/uvicorn-logging@master#egg=uvicorn-logging\nfastapi\n",
-			want: false,
-		},
-		{
-			name: "uvicorn_and_gunicorn_present",
-			str:  "uvicorn==3.9.0\ngunicorn==19.9.0\nfastapi\n",
-			want: true,
-		},
-		{
-			name: "uvicorn_and_gunicorn_egg_present",
-			str:  "git+git://github.com/uvicorn@master#egg=uvicorn\ngit+git://github.com/gunicorn@master#egg=gunicorn\nfastapi\n",
-			want: true,
-		},
-		{
-			name: "uvicorn_and_gunicorn_egg_not_present",
-			str:  "git+git://github.com/uvicorn-logging@master#egg=uvicorn-logging\ngit+git://github.com/gunicorn-logging@master#egg=gunicorn-logging\nfastapi\n",
-			want: false,
-		},
-		{
-			name: "uvicorn_and_gunicorn_present_second_line",
-			str:  "fastapi\nuvicorn==3.9.0\ngunicorn==19.9.0",
-			want: true,
+			name:  "should_be_false_when_env_is_pip_and_py_gt_314",
+			files: map[string]string{"requirements.txt": "flask"},
+			envVars: map[string]string{
+				env.PythonPackageManager: "pip",
+				"GOOGLE_RUNTIME_VERSION": "3.14.0",
+			},
+			want:    false,
+			wantMsg: fmt.Sprintf("environment variable %s is not uv", env.PythonPackageManager),
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := containsPackage(tc.str, "gunicorn")
-			if got != tc.want {
-				t.Errorf("containsPackage(gunicorn) got %t, want %t", got, tc.want)
+			for key, value := range tc.envVars {
+				t.Setenv(key, value)
 			}
-		})
-	}
-}
 
-func TestContainsUvicorn(t *testing.T) {
-	testCases := []struct {
-		name string
-		str  string
-		want bool
-	}{
-		{
-			name: "gunicorn_present",
-			str:  "gunicorn==19.9.0\nflask\n",
-			want: false,
-		},
-		{
-			name: "gunicorn_present_with_comment",
-			str:  "gunicorn #my-comment\nflask\n",
-			want: false,
-		},
-		{
-			name: "gunicorn_present_second_line",
-			str:  "flask\ngunicorn==19.9.0",
-			want: false,
-		},
-		{
-			name: "no_gunicorn_present",
-			str:  "gunicorn-logging==0.1.0\nflask\n",
-			want: false,
-		},
-		{
-			name: "gunicorn_egg_present",
-			str:  "git+git://github.com/gunicorn@master#egg=gunicorn\nflask\n",
-			want: false,
-		},
-		{
-			name: "gunicorn_egg_not_present",
-			str:  "git+git://github.com/gunicorn-logging@master#egg=gunicorn-logging\nflask\n",
-			want: false,
-		},
-		{
-			name: "uvicorn_present",
-			str:  "uvicorn==3.9.0\nfastapi\n",
-			want: true,
-		},
-		{
-			name: "uvicorn_present_with_comment",
-			str:  "uvicorn #my-comment\nfastapi\n",
-			want: true,
-		},
-		{
-			name: "uvicorn_present_with_standard_version",
-			str:  "uvicorn[standard] #my-comment\nfastapi\n",
-			want: true,
-		},
-		{
-			name: "uvicorn_present_second_line",
-			str:  "fastapi\nuvicorn==3.9.0",
-			want: true,
-		},
-		{
-			name: "no_uvicorn_present",
-			str:  "uvicorn-logging==0.1.0\nfastapi\n",
-			want: false,
-		},
-		{
-			name: "uvicorn_egg_present",
-			str:  "git+git://github.com/uvicorn@master#egg=uvicorn\nfastapi\n",
-			want: true,
-		},
-		{
-			name: "uvicorn_egg_not_present",
-			str:  "git+git://github.com/uvicorn-logging@master#egg=uvicorn-logging\nfastapi\n",
-			want: false,
-		},
-		{
-			name: "uvicorn_and_gunicorn_present",
-			str:  "uvicorn==3.9.0\ngunicorn==19.9.0\nfastapi\n",
-			want: true,
-		},
-		{
-			name: "uvicorn_and_gunicorn_egg_present",
-			str:  "git+git://github.com/uvicorn@master#egg=uvicorn\ngit+git://github.com/gunicorn@master#egg=gunicorn\nfastapi\n",
-			want: true,
-		},
-		{
-			name: "uvicorn_and_gunicorn_egg_not_present",
-			str:  "git+git://github.com/uvicorn-logging@master#egg=uvicorn-logging\ngit+git://github.com/gunicorn-logging@master#egg=gunicorn-logging\nfastapi\n",
-			want: false,
-		},
-		{
-			name: "uvicorn_and_gunicorn_present_second_line",
-			str:  "fastapi\nuvicorn==3.9.0\ngunicorn==19.9.0",
-			want: true,
-		},
-	}
+			appDir := setupTest(t, tc.files)
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := containsPackage(tc.str, "uvicorn")
-			if got != tc.want {
-				t.Errorf("containsPackage(uvicorn) got %t, want %t", got, tc.want)
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
+			isUV, msg, err := IsUVRequirements(ctx)
+
+			if err != nil {
+				t.Fatalf("IsUVRequirements() got an unexpected error: %v", err)
 			}
-		})
-	}
-}
-
-func TestContainsGradio(t *testing.T) {
-	testCases := []struct {
-		name string
-		str  string
-		want bool
-	}{
-		{
-			name: "gradio_present",
-			str:  "gradio==19.9.0\nfastapi\n",
-			want: true,
-		},
-		{
-			name: "gradio_present_with_comment",
-			str:  "gradio #my-comment\nfastapi\n",
-			want: true,
-		},
-		{
-			name: "gradio_present_second_line",
-			str:  "fastapi\ngradio==19.9.0",
-			want: true,
-		},
-		{
-			name: "no_gradio_present",
-			str:  "gradio-logging==0.1.0\nfastapi\n",
-			want: false,
-		},
-		{
-			name: "gradio_egg_present",
-			str:  "git+git://github.com/gradio@master#egg=gradio\nfastapi\n",
-			want: true,
-		},
-		{
-			name: "gradio_egg_not_present",
-			str:  "git+git://github.com/gradio-logging@master#egg=gradio-logging\nfastapi\n",
-			want: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := containsPackage(tc.str, "gradio")
-			if got != tc.want {
-				t.Errorf("containsPackage(gradio) got %t, want %t", got, tc.want)
+			if isUV != tc.want {
+				t.Errorf("IsUVRequirements() = %v, want %v", isUV, tc.want)
 			}
-		})
-	}
-}
-
-func TestContainsStreamlit(t *testing.T) {
-	testCases := []struct {
-		name string
-		str  string
-		want bool
-	}{
-		{
-			name: "streamlit_present",
-			str:  "streamlit==19.9.0\nfastapi\n",
-			want: true,
-		},
-		{
-			name: "streamlit_present_with_comment",
-			str:  "streamlit #my-comment\nfastapi\n",
-			want: true,
-		},
-		{
-			name: "streamlit_present_second_line",
-			str:  "fastapi\nstreamlit==19.9.0",
-			want: true,
-		},
-		{
-			name: "no_streamlit_present",
-			str:  "streamlit-logging==0.1.0\nfastapi\n",
-			want: false,
-		},
-		{
-			name: "streamlit_egg_present",
-			str:  "git+git://github.com/streamlit@master#egg=streamlit\nfastapi\n",
-			want: true,
-		},
-		{
-			name: "streamlit_egg_not_present",
-			str:  "git+git://github.com/streamlit-logging@master#egg=streamlit-logging\nfastapi\n",
-			want: false,
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := containsPackage(tc.str, "streamlit")
-			if got != tc.want {
-				t.Errorf("containsPackage(streamlit) got %t, want %t", got, tc.want)
+			if msg != tc.wantMsg {
+				t.Errorf("IsUVRequirements() message = %q, want %q", msg, tc.wantMsg)
 			}
 		})
 	}

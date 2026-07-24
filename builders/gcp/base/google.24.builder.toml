@@ -89,6 +89,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   uri = "java/runtime.tgz"
 
 [[buildpacks]]
+  id = "google.java.spring-boot"
+  uri = "java/spring_boot.tgz"
+
+[[buildpacks]]
   id = "google.java.clear-source"
   uri = "java/clear_source.tgz"
 
@@ -109,6 +113,34 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   uri = "nodejs/pnpm.tgz"
 
 [[buildpacks]]
+  id = "google.nodejs.bun"
+  uri = "nodejs/bun.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.turborepo"
+  uri = "nodejs/turborepo.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.firebasenx"
+  uri = "nodejs/firebasenx.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.firebasenextjs"
+  uri = "nodejs/firebasenextjs.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.firebaseangular"
+  uri = "nodejs/firebaseangular.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.firebasebundle"
+  uri = "nodejs/firebasebundle.tgz"
+
+[[buildpacks]]
+  id = "google.firebase.firebasebundle"
+  uri = "firebase/firebasebundle_v2.tgz"
+
+[[buildpacks]]
   id = "google.nodejs.functions-framework"
   uri = "nodejs/functions_framework.tgz"
 
@@ -119,6 +151,14 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 [[buildpacks]]
   id = "google.python.pip"
   uri = "python/pip.tgz"
+
+[[buildpacks]]
+  id = "google.python.poetry"
+  uri = "python/poetry.tgz"
+
+[[buildpacks]]
+  id = "google.python.uv"
+  uri = "python/uv.tgz"
 
 [[buildpacks]]
   id = "google.python.functions-framework"
@@ -192,8 +232,21 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   id = "google.utils.nginx"
   uri = "nginx.tgz"
 
+[[buildpacks]]
+  id = "google.static.serve"
+  uri = "serve.tgz"
+
+[[buildpacks]]
+  id = "google.static.firebase"
+  uri = "firebase.tgz"
+
+[[buildpacks]]
+  id = "google.utils.devsync"
+  uri = "devsync.tgz"
+
 ########
 # .NET #
+
 ########
 
 [[order]]
@@ -329,6 +382,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.java.maven"
 
   [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
+
+  [[order.group]]
     id = "google.java.functions-framework"
     optional = true
 
@@ -354,6 +411,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
 
   [[order.group]]
     id = "google.java.functions-framework"
@@ -403,6 +464,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.java.maven"
 
   [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
+
+  [[order.group]]
     id = "google.config.entrypoint"
 
   [[order.group]]
@@ -418,6 +483,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.java.maven"
+
+  [[order.group]]
+    id = "google.java.spring-boot"
+    optional = true
 
   [[order.group]]
     id = "google.java.entrypoint"
@@ -493,6 +562,51 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.utils.label-image"
 
 # Python functions.
+# Poetry order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  [[order.group]]
+    id = "google.python.poetry"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# UV order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.functions-framework"
+
+  [[order.group]]
+    id = "google.python.uv"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Pip order group.
 [[order]]
   [[order.group]]
     id = "google.python.runtime"
@@ -509,9 +623,50 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     optional = true
 
   [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
     id = "google.utils.label-image"
 
 # Python applications with default entrypoint or fail with a message.
+# Poetry order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.poetry"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# UV order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.uv"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Pip order group.
 [[order]]
   [[order.group]]
     id = "google.python.runtime"
@@ -522,6 +677,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
 
   [[order.group]]
     id = "google.utils.label-image"
@@ -617,6 +776,251 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 # web projects and detecting Node.js last will decrease the chance of
 # detection confusion.
 
+# The Firebase apphosting order group for Node.js applications.
+# TODO(b/505981554): Remove the duplicate google.nodejs.firebasebundle order groups once
+# the google.firebase.firebasebundle Mendel experiment prod rampup is complete.
+# TODO: Change the naming convention for firebase apphosting buildpacks
+# since Serverless Runtimes prefers generic buildpack names.
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"
@@ -630,6 +1034,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.devsync"
     optional = true
 
   [[order.group]]
@@ -651,6 +1059,32 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     optional = true
 
   [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.bun"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
     id = "google.utils.label-image"
 
 [[order]]
@@ -666,6 +1100,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.devsync"
     optional = true
 
   [[order.group]]
@@ -688,6 +1126,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     optional = true
 
   [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
     id = "google.utils.label-image"
 
 # Node.js applications without a package.json.
@@ -700,12 +1142,61 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.config.entrypoint"
 
   [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
     id = "google.utils.label-image"
 
 ##############
 # Python 2/2 #
 ##############
 # Python applications with default entrypoint or fail with a message.
+# Poetry order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.poetry"
+
+  [[order.group]]
+    id = "google.python.missing-entrypoint"
+
+  [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# UV order group.
+[[order]]
+  [[order.group]]
+    id = "google.python.runtime"
+
+  [[order.group]]
+    id = "google.python.webserver"
+    optional = true
+
+  [[order.group]]
+    id = "google.python.uv"
+
+  [[order.group]]
+    id = "google.python.missing-entrypoint"
+
+  [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Pip order group.
 [[order]]
   [[order.group]]
     id = "google.python.runtime"
@@ -721,6 +1212,29 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   [[order.group]]
     id = "google.python.missing-entrypoint"
 
+  [[order.group]]
+    id = "google.utils.devsync"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+##########
+# Static Web Applications
+##########
+[[order]]
+  [[order.group]]
+    id = "google.static.firebase"
+  [[order.group]]
+    id = "google.utils.nginx"
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[[order]]
+  [[order.group]]
+    id = "google.static.serve"
+  [[order.group]]
+    id = "google.utils.nginx"
   [[order.group]]
     id = "google.utils.label-image"
 
@@ -738,4 +1252,4 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   run-image = "gcr.io/buildpacks/google-24/run"
 
 [lifecycle]
-  version = "0.20.5"
+  version = "0.21.14"

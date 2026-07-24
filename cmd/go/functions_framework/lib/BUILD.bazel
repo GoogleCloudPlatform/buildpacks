@@ -1,0 +1,43 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+go_library(
+    name = "lib",
+    srcs = [
+        "lib.go",
+        "template_declarative.go",
+        "template_v0.go",
+        "template_v1_1.go",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//:__subpackages__",
+    ],
+    deps = [
+        "//pkg/cloudfunctions",
+        "//pkg/env",
+        "//pkg/fileutil",
+        "//pkg/gcpbuildpack",
+        "//pkg/golang",
+        "@com_github_masterminds_semver//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "lib_test",
+    size = "small",
+    srcs = ["lib_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata/go:functions)",
+    ],
+    data = [
+        "//builders/testdata/go:functions",
+    ],
+    embed = [":lib"],
+    rundir = ".",
+    deps = [
+        "//internal/buildpacktest",
+        "//internal/mockprocess",
+    ],
+)

@@ -22,10 +22,11 @@ func TestReadAndValidateFromFile(t *testing.T) {
 			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_valid.yaml"),
 			wantAppHostingSchema: AppHostingSchema{
 				RunConfig: RunConfig{
-					CPU:          proto.Float32(3),
-					MemoryMiB:    proto.Int32(1024),
-					Concurrency:  proto.Int32(100),
-					MaxInstances: proto.Int32(4),
+					CPU:                proto.Float32(1),
+					CPUAlwaysAllocated: proto.Bool(true),
+					MemoryMiB:          proto.Int32(1024),
+					Concurrency:        proto.Int32(100),
+					MaxInstances:       proto.Int32(4),
 					VpcAccess: &VpcAccess{
 						Egress: "ALL_TRAFFIC",
 						NetworkInterfaces: []NetworkInterface{
@@ -61,7 +62,7 @@ func TestReadAndValidateFromFile(t *testing.T) {
 			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_missingenv.yaml"),
 			wantAppHostingSchema: AppHostingSchema{
 				RunConfig: RunConfig{
-					CPU:          proto.Float32(3),
+					CPU:          proto.Float32(1),
 					MemoryMiB:    proto.Int32(1024),
 					Concurrency:  proto.Int32(100),
 					MaxInstances: proto.Int32(4),
@@ -103,27 +104,66 @@ func TestReadAndValidateFromFile(t *testing.T) {
 			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalidrunconfig.yaml"),
 			wantErr:             true,
 		},
+		{
+			desc:                "Valid CPU and Memory (4 CPU, 2048 MiB)",
+			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_valid_cpu_memory.yaml"),
+			wantAppHostingSchema: AppHostingSchema{
+				RunConfig: RunConfig{
+					CPU:       proto.Float32(4),
+					MemoryMiB: proto.Int32(2048),
+				},
+			},
+		},
+		{
+			desc:                "Valid fractional CPU with concurrency 1",
+			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_valid_fractional_cpu.yaml"),
+			wantAppHostingSchema: AppHostingSchema{
+				RunConfig: RunConfig{
+					CPU:         proto.Float32(0.5),
+					MemoryMiB:   proto.Int32(512),
+					Concurrency: proto.Int32(1),
+				},
+			},
+		},
+		{
+			desc:                "Invalid fractional CPU (concurrency not 1)",
+			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_fractional_cpu_concurrency.yaml"),
+			wantErr:             true,
+		},
+		{
+			desc:                "Invalid CPU vs Memory (4 CPU, 1024 MiB)",
+			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_cpu_vs_memory.yaml"),
+			wantErr:             true,
+		},
+		{
+			desc:                "Invalid Memory vs CPU (1 CPU, 4096 MiB)",
+			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_memory_vs_cpu.yaml"),
+			wantErr:             true,
+		},
+		{
+			desc:                "Invalid CPU value (e.g., 3)",
+			inputAppHostingYAML: testdata.MustGetPath("testdata/apphosting_invalid_cpu_value.yaml"),
+			wantErr:             true,
+		},
 	}
 
 	for _, test := range testCases {
-		s, err := ReadAndValidateFromFile(test.inputAppHostingYAML)
+		t.Run(test.desc, func(t *testing.T) {
+			s, err := ReadAndValidateFromFile(test.inputAppHostingYAML)
 
-		// Happy Path
-		if !test.wantErr {
-			if err != nil {
-				t.Errorf("unexpected error for ReadAndValidateFromFile(%q): %v", test.desc, err)
+			if !test.wantErr {
+				if err != nil {
+					t.Errorf("ReadAndValidateFromFile(): unexpected error: %v", err)
+				}
+				if diff := cmp.Diff(test.wantAppHostingSchema, s); diff != "" {
+					t.Errorf("ReadAndValidateFromFile(): unexpected YAML (-want, +got):\n%v", diff)
+				}
+			} else {
+				if err == nil {
+					t.Errorf("ReadAndValidateFromFile(): got %v, want error", s)
+				}
 			}
-
-			if diff := cmp.Diff(test.wantAppHostingSchema, s); diff != "" {
-				t.Errorf("unexpected YAML for test %q, (-want, +got):\n%v", test.desc, diff)
-			}
-
-			// Error Path
-		} else {
-			if err == nil {
-				t.Errorf("ReadAndValidateFromFile(%q) = %v, want error", test.desc, err)
-			}
-		}
+		})
 	}
 }
 
@@ -140,11 +180,11 @@ func TestSanitize(t *testing.T) {
 					MemoryMiB: proto.Int32(1024),
 				},
 				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					EnvironmentVariable{Variable: "K_SERVICE", Secret: "secretID"},
-					EnvironmentVariable{Variable: "FIREBASE_ID", Value: "firebaseId", Availability: []string{"BUILD"}},
-					EnvironmentVariable{Variable: "X_FIREBASE_RESERVED", Value: "value"},
-					EnvironmentVariable{Variable: "MISSING_AVAILABILITY", Value: "projects/test-project/secrets/secretID"},
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "K_SERVICE", Secret: "secretID", Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "FIREBASE_ID", Value: "firebaseId", Availability: []string{"BUILD"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "X_FIREBASE_RESERVED", Value: "value", Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "MISSING_AVAILABILITY", Value: "projects/test-project/secrets/secretID", Source: SourceAppHostingYAML},
 				},
 			},
 			wantSchema: AppHostingSchema{
@@ -152,9 +192,9 @@ func TestSanitize(t *testing.T) {
 					MemoryMiB: proto.Int32(1024),
 				},
 				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					EnvironmentVariable{Variable: "FIREBASE_ID", Value: "firebaseId", Availability: []string{"BUILD"}},
-					EnvironmentVariable{Variable: "MISSING_AVAILABILITY", Value: "projects/test-project/secrets/secretID", Availability: []string{"BUILD", "RUNTIME"}},
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "FIREBASE_ID", Value: "firebaseId", Availability: []string{"BUILD"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "MISSING_AVAILABILITY", Value: "projects/test-project/secrets/secretID", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
 				},
 			},
 		},
@@ -165,8 +205,8 @@ func TestSanitize(t *testing.T) {
 					MemoryMiB: proto.Int32(1024),
 				},
 				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					EnvironmentVariable{Variable: "ENVIRONMENT", Secret: "staging", Availability: []string{"BUILD", "RUNTIME"}},
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "ENVIRONMENT", Secret: "staging", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
 				},
 			},
 			wantSchema: AppHostingSchema{
@@ -174,8 +214,8 @@ func TestSanitize(t *testing.T) {
 					MemoryMiB: proto.Int32(1024),
 				},
 				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					EnvironmentVariable{Variable: "ENVIRONMENT", Secret: "staging", Availability: []string{"BUILD", "RUNTIME"}},
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "ENVIRONMENT", Secret: "staging", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
 				},
 			},
 		},
@@ -221,9 +261,9 @@ func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
 					Concurrency:  proto.Int32(100),
 				},
 				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI", Source: SourceAppHostingYAML},
 				},
 			},
 			appHostingYAMLPath: testdata.MustGetPath("testdata/apphosting.yaml"),
@@ -240,10 +280,18 @@ func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
 					},
 				},
 				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.staging.service.com", Availability: []string{"BUILD"}},
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
-					EnvironmentVariable{Variable: "DATABASE_URL", Secret: "secretStagingDatabaseURL"},
+					EnvironmentVariable{Variable: "API_URL", Value: "api.staging.service.com", Availability: []string{"BUILD"}, Source: "apphosting.staging.yaml"},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI", Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "DATABASE_URL", Secret: "secretStagingDatabaseURL", Source: "apphosting.staging.yaml"},
+				},
+				OutputFiles: OutputFiles{
+					ServerApp: serverApp{
+						Include: []string{"dist", "node_modules", "package.json"},
+					},
+				},
+				Scripts: Scripts{
+					BuildCommand: "npm run build",
 				},
 			},
 		},
@@ -258,9 +306,9 @@ func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
 					Concurrency:  proto.Int32(100),
 				},
 				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI", Source: SourceAppHostingYAML},
 				},
 			},
 			appHostingYAMLPath: testdata.MustGetPath("testdata/apphosting.yaml"),
@@ -274,9 +322,9 @@ func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
 					Concurrency:  proto.Int32(100),
 				},
 				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI", Source: SourceAppHostingYAML},
 				},
 			},
 		},
@@ -291,9 +339,9 @@ func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
 					Concurrency:  proto.Int32(100),
 				},
 				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI", Source: SourceAppHostingYAML},
 				},
 			},
 			appHostingYAMLPath: testdata.MustGetPath("testdata/apphosting.yaml"),
@@ -307,9 +355,9 @@ func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
 					Concurrency:  proto.Int32(100),
 				},
 				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI", Source: SourceAppHostingYAML},
 				},
 			},
 		},
@@ -324,9 +372,9 @@ func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
 					Concurrency:  proto.Int32(100),
 				},
 				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI", Source: SourceAppHostingYAML},
 				},
 			},
 			appHostingYAMLPath: testdata.MustGetPath("testdata/apphosting.yaml"),
@@ -340,9 +388,9 @@ func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
 					Concurrency:  proto.Int32(100),
 				},
 				Env: []EnvironmentVariable{
-					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}},
-					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI"},
+					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "STORAGE_BUCKET", Value: "mybucket.appspot.com", Availability: []string{"RUNTIME"}, Source: SourceAppHostingYAML},
+					EnvironmentVariable{Variable: "API_KEY", Secret: "secretIDforAPI", Source: SourceAppHostingYAML},
 				},
 			},
 		},
@@ -359,15 +407,16 @@ func TestMergeWithEnvironmentSpecificYAML(t *testing.T) {
 	}
 }
 
-func TestIsKeyUserDefined(t *testing.T) {
+func TestGetEnvVar(t *testing.T) {
 	testCases := []struct {
 		desc             string
 		key              string
 		appHostingSchema AppHostingSchema
-		wantBool         bool
+		wantEnvVar       EnvironmentVariable
+		wantFound        bool
 	}{
 		{
-			desc: "Return true when FIREBASE_CONFIG is user defined",
+			desc: "Return env var when it is present",
 			key:  "FIREBASE_CONFIG",
 			appHostingSchema: AppHostingSchema{
 				Env: []EnvironmentVariable{
@@ -375,25 +424,30 @@ func TestIsKeyUserDefined(t *testing.T) {
 					EnvironmentVariable{Variable: "FIREBASE_CONFIG", Value: fmt.Sprintf(`{"apiKey":%q,"appId":%q}`, "myApiKey", "myAppId")},
 				},
 			},
-			wantBool: true,
+			wantEnvVar: EnvironmentVariable{Variable: "FIREBASE_CONFIG", Value: fmt.Sprintf(`{"apiKey":%q,"appId":%q}`, "myApiKey", "myAppId")},
+			wantFound:  true,
 		},
 		{
-			desc: "Return false when FIREBASE_CONFIG is not user defined",
+			desc: "Return nothing when it is not present",
 			key:  "FIREBASE_CONFIG",
 			appHostingSchema: AppHostingSchema{
 				Env: []EnvironmentVariable{
 					EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
 				},
 			},
-			wantBool: false,
+			wantEnvVar: EnvironmentVariable{},
+			wantFound:  false,
 		},
 	}
 
 	for _, test := range testCases {
-		gotBool := IsKeyUserDefined(&test.appHostingSchema, test.key)
+		gotEnvVar, gotFound := GetEnvVar(&test.appHostingSchema, test.key)
 
-		if gotBool != test.wantBool {
-			t.Errorf("IsKeyUserDefined(%q) = %v, want %v", test.desc, gotBool, test.wantBool)
+		if gotFound != test.wantFound {
+			t.Errorf("GetEnvVar(%q) found = %v, want %v", test.desc, gotFound, test.wantFound)
+		}
+		if diff := cmp.Diff(test.wantEnvVar, gotEnvVar); diff != "" {
+			t.Errorf("GetEnvVar(%q) env var diff (-want +got):\n%s", test.desc, diff)
 		}
 	}
 }
@@ -409,7 +463,7 @@ func TestWriteToFile(t *testing.T) {
 			desc: "Write properly formatted app hosting YAML schema correctly",
 			inputSchema: AppHostingSchema{
 				RunConfig: RunConfig{
-					CPU:       proto.Float32(3),
+					CPU:       proto.Float32(1),
 					MemoryMiB: proto.Int32(1024),
 				},
 				Env: []EnvironmentVariable{
@@ -431,7 +485,7 @@ func TestWriteToFile(t *testing.T) {
 			desc: "Write schema missing Env correctly",
 			inputSchema: AppHostingSchema{
 				RunConfig: RunConfig{
-					CPU:       proto.Float32(3),
+					CPU:       proto.Float32(1),
 					MemoryMiB: proto.Int32(1024),
 				},
 			},
@@ -443,21 +497,23 @@ func TestWriteToFile(t *testing.T) {
 	}
 
 	for i, test := range testCases {
-		outputFilePath := fmt.Sprintf("%s/output%d", testDir, i)
+		t.Run(test.desc, func(t *testing.T) {
+			outputFilePath := fmt.Sprintf("%s/output%d", testDir, i)
 
-		err := test.inputSchema.WriteToFile(outputFilePath)
-		if err != nil {
-			t.Errorf("error in test '%v'. Error was %v", test.desc, err)
-		}
+			err := test.inputSchema.WriteToFile(outputFilePath)
+			if err != nil {
+				t.Errorf("error in test '%v'. Error was %v", test.desc, err)
+			}
 
-		actualSchema, err := ReadAndValidateFromFile(outputFilePath)
-		if err != nil {
-			t.Errorf("error reading in temp file: %v", err)
-		}
+			actualSchema, err := ReadAndValidateFromFile(outputFilePath)
+			if err != nil {
+				t.Errorf("error reading in temp file: %v", err)
+			}
 
-		if diff := cmp.Diff(test.inputSchema, actualSchema); diff != "" {
-			t.Errorf("unexpected schema for test %q, (-want, +got):\n%v", test.desc, diff)
-		}
+			if diff := cmp.Diff(test.inputSchema, actualSchema); diff != "" {
+				t.Errorf("unexpected schema for test %q, (-want, +got):\n%v", test.desc, diff)
+			}
+		})
 	}
 }
 

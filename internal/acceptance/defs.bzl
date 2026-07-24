@@ -36,6 +36,7 @@ def acceptance_test_suite(
         args = None,
         deps = None,
         argsmap = None,
+        use_runtime_name_as_version = False,
         **kwargs):
     """Macro to define an acceptance test.
 
@@ -52,10 +53,10 @@ def acceptance_test_suite(
       **kwargs: this argument captures all additional arguments and forwards them to the generated go_test rule
     """
     deps = _build_deps(deps)
-    _build_tests(name, srcs, args, testdata, builder, structure_test_config, deps, versions, runtime_to_builder_map, argsmap, **kwargs)
+    _build_tests(name, srcs, args, testdata, builder, structure_test_config, deps, versions, runtime_to_builder_map, argsmap, use_runtime_name_as_version, **kwargs)
     _cloudbuild_targets(name, srcs, structure_test_config, builder, args, deps, versions, argsmap, testdata)
 
-def _build_tests(name, srcs, args, testdata, builder, structure_test_config, deps, versions, runtime_to_builder_map, argsmap, **kwargs):
+def _build_tests(name, srcs, args, testdata, builder, structure_test_config, deps, versions, runtime_to_builder_map, argsmap, use_runtime_name_as_version, **kwargs):
     # if there are no versions passed in then create a go_test(...) rule directly without changing
     # the name of the test
     if versions == {}:
@@ -63,11 +64,27 @@ def _build_tests(name, srcs, args, testdata, builder, structure_test_config, dep
         data = _build_data(structure_test_config, builder, testdata)
         _new_go_test_for_single_version(name, srcs, test_args, data, deps, **kwargs)
     else:
-        _new_go_test_for_versions(versions, name, srcs, args, testdata, builder, structure_test_config, runtime_to_builder_map, deps, argsmap, **kwargs)
+        _new_go_test_for_versions(versions, name, srcs, args, testdata, builder, structure_test_config, runtime_to_builder_map, deps, argsmap, use_runtime_name_as_version, **kwargs)
 
-def _new_go_test_for_versions(versions, name, srcs, args, testdata, builder, structure_test_config, runtime_to_builder_map, deps, argsmap, **kwargs):
+def _new_go_test_for_versions(versions, name, srcs, args, testdata, builder, structure_test_config, runtime_to_builder_map, deps, argsmap, use_runtime_name_as_version, **kwargs):
     tests = []
-    if type(versions) == type({}):
+
+    if use_runtime_name_as_version:
+        for _n in versions:
+            selected_builder = _select_builder(builder, runtime_to_builder_map, _n)
+            test_args = _build_args(args, name, testdata, selected_builder, structure_test_config)
+            data = _build_data(structure_test_config, selected_builder, testdata)
+            ver_name = _n + "_" + name
+            tests.append(ver_name)
+            ver_args = list(test_args)
+
+            if argsmap != None and argsmap.get(_n) != None:
+                for ak, av in argsmap[_n].items():
+                    ver_args.append(ak + "=" + av)
+
+            _new_go_test(ver_name, srcs, ver_args, data, deps, **kwargs)
+
+    elif type(versions) == type({}):
         for _n, v in versions.items():
             selected_builder = _select_builder(builder, runtime_to_builder_map, _n)
             test_args = _build_args(args, name, testdata, selected_builder, structure_test_config)
@@ -265,6 +282,7 @@ substitutions:
   _PULL_IMAGES: \"true\"
   _BUILDER_IMAGE: \"\"
   _RUNTIME_LANGUAGE: ${runtime_language}
+  _REMOTE_REPO: \"\"
 timeout: 3600s
 steps:
 - id: fix-permissions
@@ -333,7 +351,8 @@ args:
     -builder-source=builder.tar \\
     -builder-image=$${_BUILDER_IMAGE} \\
     -runtime-name=$${_RUNTIME_LANGUAGE} \\
-    -structure-test-config=config.yaml"""
+    -structure-test-config=config.yaml \\
+    -remote-repo=$${_REMOTE_REPO}"""
 
 def _build_step(name, bin_name, version, args, testdata_label):
     result = _step_template
@@ -350,7 +369,12 @@ def _build_step(name, bin_name, version, args, testdata_label):
         result += " \\\n    " + a
     return result
 
-_default_cloudbuild_bin_targets = ["flex_test_cloudbuild_bin", "gae_test_cloudbuild_bin", "gcf_test_cloudbuild_bin", "gcp_test_cloudbuild_bin"]
+flex_test_cloudbuild_bin = "flex_test_cloudbuild_bin"
+gae_test_cloudbuild_bin = "gae_test_cloudbuild_bin"
+gcf_test_cloudbuild_bin = "gcf_test_cloudbuild_bin"
+gcp_test_cloudbuild_bin = "gcp_test_cloudbuild_bin"
+
+_default_cloudbuild_bin_targets = [flex_test_cloudbuild_bin, gae_test_cloudbuild_bin, gcf_test_cloudbuild_bin, gcp_test_cloudbuild_bin]
 
 _firebase_acceptance_test_cloudbuild_bin_targets = ["nodejs_acceptance_test_cloudbuild_bin"]
 
@@ -386,6 +410,7 @@ def generate_universal_acceptance_test_cloudbuild_bin_targets():
         "php": ["generic"],
         "python": ["generic", "functions"],
         "ruby": ["generic", "functions"],
+        "osonly": ["generic"],
     }
 
     _universal_acceptance_test_cloudbuild_bin_targets = []
@@ -401,7 +426,18 @@ def generate_universal_acceptance_test_cloudbuild_bin_targets():
 
     return _universal_acceptance_test_cloudbuild_bin_targets
 
-def acceptance_test_argo_source(name, testdata, srcs = [], structure_test_config = ":config.yaml", isUniversal = False):
+def acceptance_test_argo_source(name, testdata, srcs = [], structure_test_config = ":config.yaml", isUniversal = False, gcpOnly = False):
+    """Generates a source package for argo acceptance tests.
+
+    Args:
+      name: the name of the test
+      srcs: the test source files
+      testdata: a build target for a directory containing sample test applications
+      structure_test_config: a build target for the structure test config
+      isUniversal: whether the test is for a universal builder
+      gcpOnly: whether the test will use only cloudbuild binary of the gcp test
+    """
+
     # this hack is to conditionally prevent testdata from being zipped in bazel, as
     # _build_testdata_target makes use of Fileset which is not available in bazel.
     if is_bazel_build(testdata):
@@ -409,10 +445,12 @@ def acceptance_test_argo_source(name, testdata, srcs = [], structure_test_config
 
     testdata_fileset_target = _build_argo_source_testdata_fileset_target(name, testdata)
 
-    cloudbuild_bin_targets = _default_cloudbuild_bin_targets
-    if isUniversal:
-        _universal_acceptance_test_cloudbuild_bin_targets = generate_universal_acceptance_test_cloudbuild_bin_targets()
-        cloudbuild_bin_targets = _universal_acceptance_test_cloudbuild_bin_targets
+    if gcpOnly:
+        cloudbuild_bin_targets = [gcp_test_cloudbuild_bin]
+    elif isUniversal:
+        cloudbuild_bin_targets = generate_universal_acceptance_test_cloudbuild_bin_targets()
+    else:
+        cloudbuild_bin_targets = _default_cloudbuild_bin_targets
 
     pkg_zip(
         name = name,
@@ -441,7 +479,7 @@ def acceptance_test_argo_source_firebase(name, testdata, srcs = [], structure_te
         testonly = 1,
     )
 
-def create_acceptance_versions_dict_file(name, file, flex_runtime_versions, gae_runtime_versions, gcf_runtime_versions, gcp_runtime_versions, **kwargs):
+def create_acceptance_versions_dict_file(name, file, flex_runtime_versions, gae_runtime_versions, gcf_runtime_versions, gcp_runtime_versions, fah_runtime_versions = None, **kwargs):
     """Export a file that contains a dictionary of product to a list of strings, each of which can be parsed as {{runtime id}}:{{runtime semver version}}
 
     Takes input dictionaries for each of the products for a single language
@@ -453,6 +491,7 @@ def create_acceptance_versions_dict_file(name, file, flex_runtime_versions, gae_
         gae: [go111:1.11.13, go112:1.12.17, go113:1.13.15, go114:1.14.15, go115:1.15.15, go116:1.16.15, go118:1.18.10, go119:1.19.13, go120:1.20.10, go121:1.21.3],
         gcf: [go113:1.13.15, go116:1.16.15, go118:1.18.10, go119:1.19.13, go120:1.20.10, go121:1.21.3],
         gcp: [go118:1.18.10, go119:1.19.13, go120:1.20.10, go121:1.21.3, go111:1.11.13, go112:1.12.17, go113:1.13.15, go114:1.14.15, go115:1.15.15, go116:1.16.15],
+        fah: [nodejs20:20.19.5, nodejs22:22.20.0, nodejs24:24.9.0],
     }
     ========
 
@@ -468,6 +507,8 @@ def create_acceptance_versions_dict_file(name, file, flex_runtime_versions, gae_
                                 given runtime
         gcp_runtime_versions: bzl/python map of gcp runtimes to exact runtime semvers for the
                                 given runtime
+        fah_runtime_versions: bzl/python map of fah runtimes to exact runtime semvers for the
+                                given runtime
         **kwargs: passed through to the native.genrule.
     """
     d = dict()
@@ -475,6 +516,8 @@ def create_acceptance_versions_dict_file(name, file, flex_runtime_versions, gae_
     d["gae"] = [k + ":" + v for k, v in gae_runtime_versions.items()]
     d["gcf"] = [k + ":" + v for k, v in gcf_runtime_versions.items()]
     d["gcp"] = [k + ":" + v for k, v in gcp_runtime_versions.items()]
+    if fah_runtime_versions != None:
+        d["fah"] = [k + ":" + v for k, v in fah_runtime_versions.items()]
     native.genrule(
         name = name,
         outs = [file],

@@ -1,7 +1,7 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack for adding labels to the final image.
-load("//tools:defs.bzl", "buildpack")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -10,6 +10,16 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "utils",
+    version = "0.0.2",
+    visibility = [
+        "//builders:__subpackages__",
+    ],
+)
+
+buildpack_using_runner(
+    name = "label_image_using_runner",
+    buildpack_id = "google.utils.label-image",
     prefix = "utils",
     version = "0.0.2",
     visibility = [
@@ -26,16 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/env",
+        "//cmd/utils/label/lib",
         "//pkg/gcpbuildpack",
     ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = ["//internal/buildpacktest"],
 )

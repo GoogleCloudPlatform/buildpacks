@@ -8,24 +8,27 @@ gae_runtimes = {
     "ruby26": "2.6.10",
     "ruby27": "2.7.8",
     "ruby30": "3.0.7",
-    "ruby32": "3.2.8",
-    "ruby33": "3.3.8",
-    "ruby34": "3.4.5",
+    "ruby32": "3.2.11",
+    "ruby33": "3.3.11",
+    "ruby34": "3.4.10",
+    "ruby40": "4.0.5",
 }
 
 gcf_runtimes = {
     "ruby26": "2.6.10",
     "ruby27": "2.7.8",
     "ruby30": "3.0.7",
-    "ruby32": "3.2.8",
-    "ruby33": "3.3.8",
-    "ruby34": "3.4.5",
+    "ruby32": "3.2.11",
+    "ruby33": "3.3.11",
+    "ruby34": "3.4.10",
+    "ruby40": "4.0.5",
 }
 
 flex_runtimes = {
-    "ruby32": "3.2.8",
-    "ruby33": "3.3.8",
-    "ruby34": "3.4.5",
+    "ruby32": "3.2.11",
+    "ruby33": "3.3.11",
+    "ruby34": "3.4.10",
+    "ruby40": "4.0.5",
 }
 
 version_to_stack = {
@@ -36,4 +39,5 @@ version_to_stack = {
     "ruby32": "google-22-full",
     "ruby33": "google-22-full",
     "ruby34": "google-22-full",
+    "ruby40": "google-24-full",
 }

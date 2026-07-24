@@ -69,10 +69,14 @@ var (
 // ExecutableJar looks for the jar with a Main-Class manifest. If there is not exactly 1 of these jars, throw an error.
 func ExecutableJar(ctx *gcp.Context) (string, error) {
 	var buildable = os.Getenv(env.Buildable)
+	currentJarPaths := jarPaths
 	if buildable != "" {
-		jarPaths = append([][]string{[]string{buildable, "target"}}, jarPaths...)
+		currentJarPaths = append([][]string{
+			[]string{buildable, "target"},
+			[]string{buildable}},
+			currentJarPaths...)
 	}
-	for i, path := range jarPaths {
+	for i, path := range currentJarPaths {
 		path = append([]string{ctx.ApplicationRoot()}, path...)
 		path = append(path, "*.jar")
 		jars, err := ctx.Glob(filepath.Join(path...))
@@ -86,7 +90,7 @@ func ExecutableJar(ctx *gcp.Context) (string, error) {
 		if len(executables) == 1 {
 			return executables[0], nil
 		} else if len(executables) > 1 {
-			return "", gcp.UserErrorf("found more than one jar with a Main-Class manifest entry in %s: %v, please specify an entrypoint", jarPaths[i], executables)
+			return "", gcp.UserErrorf("found more than one jar with a Main-Class manifest entry in %s: %v, please specify an entrypoint", currentJarPaths[i], executables)
 		}
 	}
 	return "", gcp.UserErrorf("did not find any jar files with a Main-Class manifest entry")

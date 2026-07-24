@@ -78,5 +78,6 @@ commandTests:
     'libzip4',
     'locales',
     'openssl',
+    'runit',
     'tzdata'
   ]

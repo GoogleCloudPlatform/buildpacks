@@ -63,6 +63,11 @@ fileExistenceTests:
   shouldExist: true
   permissions: '-r-xr-xr-x'
   isExecutableBy: 'any'
+- name: 'app-runner'
+  path: '/usr/bin/app-runner'
+  shouldExist: true
+  permissions: '-r-xr-xr-x'
+  isExecutableBy: 'any'
 - name: 'nginx body dir'
   path: '/var/lib/nginx/body'
   shouldExist: true

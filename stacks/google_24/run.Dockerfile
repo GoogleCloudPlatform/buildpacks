@@ -57,6 +57,9 @@ RUN --mount=type=secret,id=pro-attach-config \
   mkdir -p /.google/usr/local/share/licenses/base_runtime/ && \
   touch /.google/usr/local/share/licenses/base_runtime/licenses.yaml
 
+# Install app-runner binary.
+RUN mkdir /usr/lib/app-runner
+
 ARG cnb_uid=33
 ARG cnb_gid=33
 USER ${cnb_uid}:${cnb_gid}

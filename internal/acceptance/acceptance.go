@@ -69,6 +69,9 @@ var (
 	runtimeVersion      string // A runtime version which will be applied to tests that do not explicilty set a version.
 	runtimeName         string // The name of the runtime (aka the language name such as 'go' or 'dotnet'). Used to properly set GOOGLE_RUNTIME.
 	specialChars        = regexp.MustCompile("[^a-zA-Z0-9]+")
+	buildEnv            string     // The build environment (dev, qual, or prod).
+	ContainerEngine     = "docker" // ContainerEngine specifies the container engine to use for running tests (e.g. "docker" or "podman").
+	remoteRepo          string     // Project ID to use for remote AR repository.
 )
 
 type requestType string
@@ -105,7 +108,9 @@ func DefineFlags() {
 	flag.BoolVar(&cloudbuild, "cloudbuild", false, "Use cloudbuild network; required for Cloud Build.")
 	flag.StringVar(&runtimeVersion, "runtime-version", "", "A default runtime version which will be applied to the tests that do not explicitly set a version.")
 	flag.StringVar(&runtimeName, "runtime-name", "", "The name of the runtime (aka the language name such as 'go' or 'dotnet'). Used to properly set GOOGLE_RUNTIME.")
-
+	flag.StringVar(&buildEnv, "build-env", "", "The build environment to use (dev, qual, or prod). Sets GOOGLE_BUILD_ENV.")
+	flag.StringVar(&ContainerEngine, "container-engine", "docker", "The container engine to use for running tests (docker or podman).")
+	flag.StringVar(&remoteRepo, "remote-repo", "", "Project ID to use for remote AR repository.")
 }
 
 // UnarchiveTestData extracts the test-data tgz into a temp dir and returns a cleanup function to be deferred.
@@ -168,6 +173,13 @@ type Test struct {
 	MustNotOutputCached []string
 	// MustRebuildOnChange specifies a file that, when changed in Dev Mode, triggers a rebuild.
 	MustRebuildOnChange string
+	// EnableDevSyncTest run the DevSync E2E test flow instead of the standard flow.
+	EnableDevSyncTest bool
+	// DevSyncUpdateSubdir is the subdirectory under the app's testdata containing the updated files
+	// (e.g. "devsync_update"). These files will be copied into the container during the test.
+	DevSyncUpdateSubdir string
+	// DevSyncExpectedResponse is the expected response body after the rebuild completes.
+	DevSyncExpectedResponse string
 	// MustMatchStatusCode specifies the HTTP status code hitting the function endpoint should return.
 	MustMatchStatusCode int
 	// FlakyBuildAttempts specifies the number of times a failing build should be retried.
@@ -228,6 +240,21 @@ type builderTOML struct {
 	} `toml:"stack"`
 }
 
+func constructImageName(t *testing.T, name, builderName string) string {
+	t.Helper()
+	modifiedName := strings.ToLower(specialChars.ReplaceAllString(name, "-"))
+	// Fix: Trim leading/trailing hyphens to ensure a valid Docker repository name.
+	modifiedName = strings.Trim(modifiedName, "-")
+
+	// Docker tags cannot contain colons. Sanitize builderName which may contain
+	// colons if derived from a versioned builder path (e.g. go:builder_22.tar).
+	tag := strings.ReplaceAll(builderName, ":", "-")
+	if remoteRepo != "" {
+		return fmt.Sprintf("us-docker.pkg.dev/%s/acceptance-tests/%s:%s", remoteRepo, modifiedName, tag)
+	}
+	return fmt.Sprintf("%s:%s", modifiedName, tag)
+}
+
 // TestApp builds and a single application and verifies that it runs and handles requests.
 func TestApp(t *testing.T, imageCtx ImageContext, cfg Test) {
 	t.Helper()
@@ -239,12 +266,15 @@ func TestApp(t *testing.T, imageCtx ImageContext, cfg Test) {
 	}
 
 	// Docker image names may not contain underscores or start with a capital letter.
-	builderName, runName := imageCtx.BuilderImage, imageCtx.RunImage
-	image := fmt.Sprintf("%s-%s", strings.ToLower(specialChars.ReplaceAllString(cfg.Name, "-")), builderName)
+	builderName := imageCtx.BuilderImage
+	runName := imageCtx.RunImage
+	image := constructImageName(t, cfg.Name, builderName)
 
 	// Delete the docker image and volumes created by pack during the build.
 	defer func() {
-		cleanUpVolumes(t, image)
+		if remoteRepo == "" {
+			cleanUpVolumes(t, image)
+		}
 		cleanUpImage(t, image)
 	}()
 
@@ -279,7 +309,7 @@ func testApp(t *testing.T, src, image, builderName, runName string, env map[stri
 	verifyBuildMetadata(t, image, cfg.MustUse, cfg.MustNotUse)
 	verifyLabelValues(t, image, cfg.Labels)
 	verifyStructure(t, image, builderName, cacheEnabled, checks)
-	invokeApp(t, cfg, image, cacheEnabled)
+	invokeApp(t, cfg, image, src, cacheEnabled)
 }
 
 // FailureTest describes a failure test.
@@ -315,11 +345,12 @@ func TestBuildFailure(t *testing.T, imageCtx ImageContext, cfg FailureTest) {
 	if cfg.Name == "" {
 		cfg.Name = cfg.App
 	}
-	builderName, runName := imageCtx.BuilderImage, imageCtx.RunImage
-	image := fmt.Sprintf("%s-%s", strings.ToLower(specialChars.ReplaceAllString(cfg.Name, "-")), builderName)
+	builderName := imageCtx.BuilderImage
+	runName := imageCtx.RunImage
+	image := constructImageName(t, cfg.Name, builderName)
 
 	// Delete the docker volumes created by pack during the build.
-	if !keepArtifacts {
+	if !keepArtifacts && remoteRepo == "" {
 		defer cleanUpVolumes(t, image)
 	}
 
@@ -328,22 +359,21 @@ func TestBuildFailure(t *testing.T, imageCtx ImageContext, cfg FailureTest) {
 		src = setupSource(t, cfg.Setup, builderName, src, cfg.App)
 	}
 
-	outb, errb, cleanup := buildFailingApp(t, src, image, builderName, runName, env)
+	// combinedb is the combined output of the build i.e. it includes stdout and stderr.
+	combinedb, cleanup := buildFailingApp(t, src, image, builderName, runName, env)
 	defer cleanup()
 
 	r, err := regexp.Compile(cfg.MustMatch)
 	if err != nil {
 		t.Fatalf("regexp %q failed to compile: %v", r, err)
 	}
-	if r.Match(outb) {
-		t.Logf("Expected regexp %q found in stdout.", r)
-	} else if r.Match(errb) {
-		t.Logf("Expected regexp %q found in stderr.", r)
+	if r.Match(combinedb) {
+		t.Logf("Expected regex %q found in combined (stdout + stderr).", r)
 	} else {
-		t.Errorf("Expected regexp %q not found in stdout or stderr:\n\nstdout:\n\n%s\n\nstderr:\n\n%s", r, outb, errb)
+		t.Errorf("Expected regex %q not found in combined (stdout + stderr).\n\n--- COMBINED OUTPUT ---\n%s\n--- END OUTPUT ---", r, combinedb)
 	}
 	expectedLog := "Expected pattern included in error output: true"
-	builderOutput := string(errb)
+	builderOutput := string(combinedb)
 	if !cfg.SkipBuilderOutputMatch && !strings.Contains(builderOutput, expectedLog) {
 		t.Errorf("Expected regexp %q not found in BUILDER_OUTPUT", r)
 		t.Logf("BUILDER_OUTPUT: %v", builderOutput)
@@ -351,7 +381,7 @@ func TestBuildFailure(t *testing.T, imageCtx ImageContext, cfg FailureTest) {
 }
 
 // invokeApp performs an HTTP GET or sends a Cloud Event payload to the app.
-func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
+func invokeApp(t *testing.T, cfg Test, image string, srcDir string, cache bool) {
 	t.Helper()
 
 	containerID, host, port, cleanup := startContainer(t, image, cfg.Entrypoint, cfg.RunEnv, cache)
@@ -389,6 +419,11 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 		}
 	}
 
+	if cfg.EnableDevSyncTest {
+		verifyDevSyncReload(t, containerID, host, port, cfg, srcDir)
+		return
+	}
+
 	if cfg.MustRebuildOnChange != "" {
 		start = time.Now()
 		// Modify a source file in the running container.
@@ -397,28 +432,12 @@ func invokeApp(t *testing.T, cfg Test, image string, cache bool) {
 		}
 
 		// Check that the application responds with `UPDATED`.
-		tries := 30
-		for try := tries; try >= 1; try-- {
-			time.Sleep(1 * time.Second)
-
-			body, status, _, err := sendRequestWithTimeout(host, port, cfg.Path, 10*time.Second, reqType)
-			// An app that is rebuilding can be unresponsive.
-			if err != nil {
-				if try == 1 {
-					t.Fatalf("Unable to invoke app after updating source with %d attempts: %v", tries, err)
-				}
-				continue
-			}
-
-			want := "UPDATED"
-			if body == want {
-				t.Logf("Got response: status %v, body %q (in %s)", status, body, time.Since(start))
-				break
-			}
-			if try == 1 {
-				t.Errorf("Wrong body: got %q, want %q", body, want)
-			}
+		want := "UPDATED"
+		body, err := pollEndpoint(host, port, cfg.Path, want, reqType, 30*time.Second)
+		if err != nil {
+			t.Fatalf("Unable to invoke app after updating source: %v", err)
 		}
+		t.Logf("Got response: body %q (in %s)", body, time.Since(start))
 	}
 }
 
@@ -567,10 +586,10 @@ func runCombinedOutput(args ...string) (string, error) {
 	return string(out), nil
 }
 
-// runDockerLogs returns the logs for a container, the lineLimit parameter
-// controls the maximum number of lines read from the log
-func runDockerLogs(containerID string, lineLimit int) (string, error) {
-	return runCombinedOutput("docker", "logs", "--tail", string(lineLimit), containerID)
+// runContainerLogs returns the logs for a container, the lineLimit parameter
+// controls the maximum number of lines read from the log.
+func runContainerLogs(containerID string, lineLimit int) (string, error) {
+	return runCombinedOutput(ContainerEngine, "logs", "--tail", fmt.Sprint(lineLimit), containerID)
 }
 
 // cleanUpImage attempts to delete an image from the Docker daemon.
@@ -580,7 +599,7 @@ func cleanUpImage(t *testing.T, name string) {
 	if keepArtifacts {
 		return
 	}
-	if _, err := runOutput("docker", "rmi", "-f", name); err != nil {
+	if _, err := runOutput(ContainerEngine, "rmi", "-f", name); err != nil {
 		t.Logf("Failed to clean up image: %v", err)
 	}
 }
@@ -610,12 +629,12 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 	if builderImage != "" {
 		t.Logf("Testing existing builder image: %s", builderImage)
 		if pullImages {
-			if _, err := runOutput("docker", "pull", builderImage); err != nil {
+			if _, err := runOutput(ContainerEngine, "pull", builderImage); err != nil {
 				t.Fatalf("Error pulling %s: %v", builderImage, err)
 			}
 		}
 		// Pack cache is based on builder name; retag with a unique name.
-		if _, err := runOutput("docker", "tag", builderImage, builderName); err != nil {
+		if _, err := runOutput(ContainerEngine, "tag", builderImage, builderName); err != nil {
 			t.Fatalf("Error tagging %s as %s: %v", builderImage, builderName, err)
 		}
 		runName, cleanUpRun, err := provisionRunImageFromBuilder(builderName)
@@ -638,7 +657,23 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 	}
 
 	builderLoc, cleanUpBuilder := extractBuilder(t, builderSource)
-	config := filepath.Join(builderLoc, "builder.toml")
+
+	// For language builders, the toml file is named as builder.toml.
+	// For universal builders, the toml file is named like google.24.builder.toml.
+	files, err := os.ReadDir(builderLoc)
+	if err != nil {
+		t.Fatalf("Error reading builder location: %v", err)
+	}
+	var config string
+	for _, f := range files {
+		if strings.HasSuffix(f.Name(), "builder.toml") {
+			config = filepath.Join(builderLoc, f.Name())
+			break
+		}
+	}
+	if config == "" {
+		t.Fatalf("No builder.toml file found in %s", builderLoc)
+	}
 
 	if lifecycle != "" {
 		t.Logf("Using lifecycle location: %s", lifecycle)
@@ -657,7 +692,7 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 	// The images are intentionally not cleaned up to prevent conflicts across different test targets.
 	if pullImages {
 		buildName := builderConfig.Stack.BuildImage
-		if _, err := runOutput("docker", "pull", buildName); err != nil {
+		if _, err := runOutput(ContainerEngine, "pull", buildName); err != nil {
 			t.Fatalf("Error pulling %s: %v", buildName, err)
 		}
 	}
@@ -672,15 +707,20 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 
 	outFile, errFile, cleanup := outFiles(t, builderName, "pack", "create-builder")
 	defer cleanup()
-	var outb, errb bytes.Buffer
-	cmd.Stdout = io.MultiWriter(outFile, &outb) // pack emits some errors to stdout.
-	cmd.Stderr = io.MultiWriter(errFile, &errb) // pack emits buildpack output to stderr.
+	// Newer versions of the CNB lifecycle (v0.20.13+) send the stdout and
+	// stderr of the executing command to the same stream (stdout), while
+	// older versions send them to separate streams.
+	var combinedb bytes.Buffer
+	cmd.Stdout = io.MultiWriter(outFile, &combinedb)
+	cmd.Stderr = io.MultiWriter(errFile, &combinedb)
 
 	start := time.Now()
 	t.Logf("Creating builder (logs %s)", filepath.Dir(outFile.Name()))
+
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("Error creating builder: %v, logs:\nstdout: %s\nstderr:%s", err, outb.String(), errb.String())
+		t.Fatalf("Failed to create builder: %s\nerror: %v\noutput:\n%s", cmd.String(), err, combinedb.String())
 	}
+
 	t.Logf("Successfully created builder: %s (in %s)", builderName, time.Since(start))
 
 	imageCtx := ImageContext{
@@ -702,7 +742,7 @@ func provisionRunImageFromTOML(builderConfig *builderTOML) (string, func(t *test
 		runName = runImageOverride
 	}
 	if pullImages {
-		if _, err := runOutput("docker", "pull", runName); err != nil {
+		if _, err := runOutput(ContainerEngine, "pull", runName); err != nil {
 			return "", nil, fmt.Errorf("pulling %q: %w", runName, err)
 		}
 	}
@@ -724,7 +764,7 @@ func provisionRunImageFromBuilder(builderName string) (string, func(t *testing.T
 		runName = runImageOverride
 	}
 	if pullImages {
-		if _, err := runOutput("docker", "pull", runName); err != nil {
+		if _, err := runOutput(ContainerEngine, "pull", runName); err != nil {
 			return "", nil, fmt.Errorf("pulling %q: %w", runName, err)
 		}
 	}
@@ -766,16 +806,16 @@ func provisionImageWithMatchingStackID(fromImage, stackID string) (string, func(
 }
 
 func getImageStackID(image string) (string, error) {
-	out, err := runOutput("docker", "inspect", `--format={{index .Config.Labels "io.buildpacks.stack.id"}}`, image)
+	out, err := runOutput(ContainerEngine, "inspect", `--format={{index .Config.Labels "io.buildpacks.stack.id"}}`, image)
 	if err != nil {
-		return "", fmt.Errorf("getting stack id from docker inspect: %w", err)
+		return "", fmt.Errorf("getting stack id from %s inspect: %w", ContainerEngine, err)
 	}
 	return out, nil
 }
 
 func newImageWithStackID(fromImage, stackID string) (string, error) {
 	newImage := generateRandomImageName(fromImage)
-	_, err := runCombinedOutput("bash", "-c", fmt.Sprintf(`echo "FROM %s" | docker build --label io.buildpacks.stack.id="%s" -t "%s" -`, fromImage, stackID, newImage))
+	_, err := runCombinedOutput("bash", "-c", fmt.Sprintf(`echo "FROM %s" | %s build --label io.buildpacks.stack.id="%s" -t "%s" -`, fromImage, ContainerEngine, stackID, newImage))
 	if err != nil {
 		return "", fmt.Errorf("changing stack id label on %q: %v", fromImage, err)
 	}
@@ -850,7 +890,7 @@ func updateLifecycle(config, uri string) (string, error) {
 // runImageFromMetadata returns the run image name from the metadata of the given image.
 func runImageFromMetadata(image string) (string, error) {
 	format := "--format={{(index (index .Config.Labels) \"io.buildpacks.builder.metadata\")}}"
-	out, err := runOutput("docker", "inspect", image, format)
+	out, err := runOutput(ContainerEngine, "inspect", image, format)
 	if err != nil {
 		return "", fmt.Errorf("reading builder metadata: %v", err)
 	}
@@ -912,10 +952,15 @@ func readBuilderTOML(path string) (*builderTOML, error) {
 
 func buildCommand(srcDir, image, builderName, runName string, env map[string]string, cache bool) []string {
 	// Pack command to build app.
-	args := strings.Fields(fmt.Sprintf("%s build %s --builder %s --path %s --pull-policy never --verbose --no-color --trust-builder %s", packBin, image, builderName, srcDir, cacheOptions(image)))
+	cmd := fmt.Sprintf("%s build %s --builder %s --path %s --pull-policy never --verbose --no-color --trust-builder %s", packBin, image, builderName, srcDir, cacheOptions(image))
+	if remoteRepo != "" {
+		cmd += " --publish"
+	}
+	args := strings.Fields(cmd)
 	if runName != "" {
 		args = append(args, "--run-image", runName)
-		if hasRuntimePreinstalled(runName) {
+		// TODO(b/493840996): Remove the Ruby34 check once we root cause and fix Ruby 3.4 issues.
+		if hasRuntimePreinstalled(runName) && !isRuby34(runName) {
 			// This skips adding the language runtime downloaded during the build to the final
 			// image as a launch layer. For non-generic run images, the language runtime is already
 			// included in the base image.
@@ -934,11 +979,18 @@ func buildCommand(srcDir, image, builderName, runName string, env map[string]str
 	// not affect other builds running concurrently.
 	args = append(args, "--env", "GOOGLE_RANDOM="+randString(8), "--env", "GOOGLE_DEBUG=true")
 	args = append(args, "--network", "host")
+	args = append(args, "--env", "GOOGLE_RUNTIME_IMAGE_REGION=us")
+	if buildEnv != "" {
+		args = append(args, "--env", fmt.Sprintf("GOOGLE_BUILD_ENV=%s", buildEnv))
+	}
 	log.Printf("Running %v\n", args)
 	return args
 }
 
 func cacheOptions(image string) string {
+	if remoteRepo != "" {
+		return fmt.Sprintf("--cache type=build;format=image;name=%s.build --cache type=launch;format=image;name=%s.launch", image, image)
+	}
 	buildVolume, launchVolume := volumeNames(image)
 	return fmt.Sprintf("--cache type=build;format=volume;name=%s --cache type=launch;format=volume;name=%s", buildVolume, launchVolume)
 }
@@ -955,10 +1007,19 @@ func hasRuntimePreinstalled(runName string) bool {
 	// gcr.io/buildpacks/google-18/run
 	//
 	// Non-generic run image example (should match):
+	// us-docker.pkg.dev/gae-runtimes-private/${stackNamespace}/runtimes/${runtime}:${_CANDIDATE_NAME}
+	if strings.Contains(runName, "/runtimes/") {
+		return true
+	}
 	// gcr.io/gae-runtimes/buildpacks/nodejs14/run
 	// gcr.io/${PROJECT}/buildpacks/${RUNTIME}/run
 	re := regexp.MustCompile(`/buildpacks/(?:go|nodejs|dotnet|java|php|ruby|python)\d+/run`)
 	return re.MatchString(runName)
+}
+
+// isRuby34 returns whether or not the run image is of Ruby 3.4.
+func isRuby34(runName string) bool {
+	return strings.Contains(runName, "ruby34")
 }
 
 // buildApp builds an application image from source.
@@ -971,7 +1032,7 @@ func buildApp(t *testing.T, srcDir, image, builderName, runName string, env map[
 	}
 
 	start := time.Now()
-	var outb, errb bytes.Buffer
+	var combinedb bytes.Buffer
 
 	for attempt := 1; attempt <= attempts; attempt++ {
 
@@ -984,20 +1045,23 @@ func buildApp(t *testing.T, srcDir, image, builderName, runName string, env map[
 
 		bcmd := buildCommand(srcDir, image, builderName, runName, env, cache)
 		cmd := exec.Command(bcmd[0], bcmd[1:]...)
-		cmd.Stdout = io.MultiWriter(outFile, &outb) // pack emits detect output to stdout.
-		cmd.Stderr = io.MultiWriter(errFile, &errb) // pack emits build output to stderr.
+
+		// Newer versions of the CNB lifecycle (v0.20.13+) send the stdout and
+		// stderr of the executing command to the same stream (stdout), while
+		// older versions send them to separate streams.
+		cmd.Stdout = io.MultiWriter(outFile, &combinedb)
+		cmd.Stderr = io.MultiWriter(errFile, &combinedb)
 
 		t.Logf("Building application %s (logs %s)", image, filepath.Dir(outFile.Name()))
 		if err := cmd.Run(); err != nil {
 			if attempt < attempts {
-				t.Logf("Error building application %s, attempt %d of %d: %v, logs:\n%s\n%s", image, attempt, attempts, err, outb.String(), errb.String())
-				outb.Reset()
-				errb.Reset()
+				t.Logf("Error building application %s, attempt %d of %d: %v, logs:\n%s", image, attempt, attempts, err, combinedb.String())
+				combinedb.Reset()
 			} else {
-				t.Fatalf("Error building application %s: %v, logs:\n%s\n%s", image, err, outb.String(), errb.String())
+				t.Fatalf("Error building application %s: %v, logs:\n%s", image, err, combinedb.String())
 			}
 		} else {
-			t.Logf("Successfully built application %s: %v, logs:\n%s\n%s", image, err, outb.String(), errb.String())
+			t.Logf("Successfully built application %s: %v, logs:\n%s", image, err, combinedb.String())
 			break
 		}
 	}
@@ -1011,33 +1075,36 @@ func buildApp(t *testing.T, srcDir, image, builderName, runName string, env map[
 	}
 
 	for _, text := range mustOutput {
-		if !strings.Contains(errb.String(), text) {
-			t.Errorf("Build logs must contain %q:\n%s", text, errb.String())
+		if !strings.Contains(combinedb.String(), text) {
+			t.Errorf("Build logs must contain %q:\n%s", text, combinedb.String())
 		}
 	}
 	for _, text := range mustNotOutput {
-		if strings.Contains(errb.String(), text) {
-			t.Errorf("Build logs must not contain %q:\n%s", text, errb.String())
+		if strings.Contains(combinedb.String(), text) {
+			t.Errorf("Build logs must not contain %q:\n%s", text, combinedb.String())
 		}
 	}
 
 	// Scan for incorrect cache hits/misses.
 	if cache {
-		if strings.Contains(errb.String(), cacheMissMessage) {
-			t.Fatalf("FAIL: Cached build had a cache miss:\n%s", errb.String())
+		if strings.Contains(combinedb.String(), cacheMissMessage) {
+			t.Fatalf("FAIL: Cached build had a cache miss:\n%s", combinedb.String())
 		}
 	} else {
-		if strings.Contains(errb.String(), cacheHitMessage) {
-			t.Fatalf("FAIL: Non-cache build had a cache hit:\n%s", errb.String())
+		if strings.Contains(combinedb.String(), cacheHitMessage) {
+			t.Fatalf("FAIL: Non-cache build had a cache hit:\n%s", combinedb.String())
 		}
 	}
 
 	t.Logf("Successfully built application: %s (in %s)", image, time.Since(start))
 }
 
-// buildFailingApp attempts to build an app and ensures that it failues (non-zero exit code).
-// It returns the build's stdout, stderr and a cleanup function.
-func buildFailingApp(t *testing.T, srcDir, image, builderName, runName string, env map[string]string) ([]byte, []byte, func()) {
+// buildFailingApp attempts to build an app and ensures that it fails (non-zero exit code).
+// It returns the interleaved stdout and stderr (combined chronologically) and a cleanup function.
+// Merging these streams ensures that buildpack error messages are captured regardless of whether
+// they are emitted to stdout or stderr, which is required for compatibility Lifecycle versions
+// v0.20.13+.
+func buildFailingApp(t *testing.T, srcDir, image, builderName, runName string, env map[string]string) ([]byte, func()) {
 	t.Helper()
 
 	bcmd := buildCommand(srcDir, image, builderName, runName, env, false)
@@ -1045,9 +1112,12 @@ func buildFailingApp(t *testing.T, srcDir, image, builderName, runName string, e
 
 	outFile, errFile, cleanup := outFiles(t, builderName, "pack-build-failing", image)
 	defer cleanup()
-	var outb, errb bytes.Buffer
-	cmd.Stdout = io.MultiWriter(outFile, &outb)
-	cmd.Stderr = io.MultiWriter(errFile, &errb)
+	var combinedb bytes.Buffer
+	// Newer versions of the CNB lifecycle (v0.20.13+) send the stdout and
+	// stderr of the executing command to the same stream (stdout), while
+	// older versions send them to separate streams.
+	cmd.Stdout = io.MultiWriter(outFile, &combinedb)
+	cmd.Stderr = io.MultiWriter(errFile, &combinedb)
 
 	t.Logf("Building application expected to fail (logs %s)", filepath.Dir(outFile.Name()))
 	if err := cmd.Run(); err == nil {
@@ -1064,7 +1134,7 @@ func buildFailingApp(t *testing.T, srcDir, image, builderName, runName string, e
 		}
 	}
 
-	return outb.Bytes(), errb.Bytes(), func() {
+	return combinedb.Bytes(), func() {
 		cleanUpImage(t, image)
 	}
 }
@@ -1073,6 +1143,11 @@ func buildFailingApp(t *testing.T, srcDir, image, builderName, runName string, e
 func verifyStructure(t *testing.T, image, builder string, cache bool, checks *StructureTest) {
 	t.Helper()
 
+	if remoteRepo != "" {
+		if _, err := runOutput(ContainerEngine, "pull", image); err != nil {
+			t.Fatalf("Pulling image %q: %v", image, err)
+		}
+	}
 	start := time.Now()
 	configurations := []string{structureTestConfig}
 
@@ -1128,6 +1203,12 @@ func verifyStructure(t *testing.T, image, builder string, cache bool, checks *St
 func verifyLabelValues(t *testing.T, image string, labels map[string]string) {
 	t.Helper()
 
+	if remoteRepo != "" {
+		if _, err := runOutput(ContainerEngine, "pull", image); err != nil {
+			t.Fatalf("Pulling image %q: %v", image, err)
+		}
+	}
+
 	start := time.Now()
 
 	for label, value := range labels {
@@ -1145,6 +1226,12 @@ func verifyLabelValues(t *testing.T, image string, labels map[string]string) {
 // verifyBuildMetadata verifies the image was built with correct buildpacks.
 func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []string) {
 	t.Helper()
+
+	if remoteRepo != "" {
+		if _, err := runOutput(ContainerEngine, "pull", image); err != nil {
+			t.Fatalf("Pulling image %q: %v", image, err)
+		}
+	}
 
 	start := time.Now()
 	out, err := runOutput("docker", "inspect", "--format={{index .Config.Labels \"io.buildpacks.build.metadata\"}}", image)
@@ -1187,8 +1274,14 @@ func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []strin
 func startContainer(t *testing.T, image, entrypoint string, env []string, cache bool) (string, string, int, func()) {
 	t.Helper()
 
+	if remoteRepo != "" {
+		if _, err := runOutput(ContainerEngine, "pull", image); err != nil {
+			t.Fatalf("Pulling image %q: %v", image, err)
+		}
+	}
+
 	containerName := xid.New().String()
-	command := []string{"docker", "run", "--detach", fmt.Sprintf("--name=%s", containerName)}
+	command := []string{ContainerEngine, "run", "--detach", fmt.Sprintf("--name=%s", containerName)}
 	for _, e := range env {
 		command = append(command, "--env", e)
 	}
@@ -1210,28 +1303,28 @@ func startContainer(t *testing.T, image, entrypoint string, env []string, cache 
 
 	host, port := getHostAndPortForApp(t, id, containerName)
 	return id, host, port, func() {
-		if _, err := runOutput("docker", "stop", id); err != nil {
+		if _, err := runOutput(ContainerEngine, "stop", id); err != nil {
 			t.Logf("Failed to stop container: %v", err)
 		}
 		if t.Failed() {
 			// output the container logs when a test failed, this can be useful for debugging failures in the test application
-			outputDockerLogs(t, id)
+			outputContainerLogs(t, id)
 		}
 		if keepArtifacts {
 			return
 		}
-		if _, err := runOutput("docker", "rm", "-f", id); err != nil {
+		if _, err := runOutput(ContainerEngine, "rm", "-f", id); err != nil {
 			t.Logf("Failed to clean up container: %v", err)
 		}
 	}
 }
 
-func outputDockerLogs(t *testing.T, containerID string) {
-	out, err := runDockerLogs(containerID, 1000)
+func outputContainerLogs(t *testing.T, containerID string) {
+	out, err := runContainerLogs(containerID, 1000)
 	if err == nil {
-		t.Logf("docker logs %v:\n%v", containerID, out)
+		t.Logf("%s logs %v:\n%v", ContainerEngine, containerID, out)
 	} else {
-		t.Errorf("error fetching docker logs for container %v: %v", containerID, err)
+		t.Errorf("error fetching %s logs for container %v: %v", ContainerEngine, containerID, err)
 	}
 }
 
@@ -1272,7 +1365,7 @@ func hostPort(t *testing.T, id string) int {
 	t.Helper()
 
 	format := "--format={{(index (index .NetworkSettings.Ports \"8080/tcp\") 0).HostPort}}"
-	portstr, err := runOutput("docker", "inspect", id, format)
+	portstr, err := runOutput(ContainerEngine, "inspect", id, format)
 	if err != nil {
 		t.Fatalf("Error getting port: %v", err)
 	}
@@ -1330,7 +1423,7 @@ func cleanUpVolumes(t *testing.T, image string) {
 	}
 
 	buildVolume, launchVolume := volumeNames(image)
-	if _, err := runOutput("docker", "volume", "rm", "-f", launchVolume, buildVolume); err != nil {
+	if _, err := runOutput(ContainerEngine, "volume", "rm", "-f", launchVolume, buildVolume); err != nil {
 		t.Logf("Failed to clean up cache volumes: %v", err)
 	}
 }
@@ -1428,6 +1521,13 @@ func ShouldTestVersion(t *testing.T, inclusionConstraint string) bool {
 	if strings.Contains(v, "RC") && !strings.Contains(v, "-RC") {
 		v = strings.Replace(v, "RC", "-RC", 1)
 	}
+	// The format of Java candidates such as 23.0.1_11 needs to be converted to valid semver 23.0.1+11
+	if strings.HasPrefix(runtimeName, "java") && strings.Contains(v, "_") {
+		v = strings.Replace(v, "_", "+", 1)
+	}
+
+	re := regexp.MustCompile(`(?i)[-.]?rc.*`)
+	v = re.ReplaceAllString(v, "")
 	rtVer, err := semver.NewVersion(v)
 	if err != nil {
 		t.Fatalf("Unable to use %q as a semver.Version: %v", v, err)
@@ -1470,4 +1570,102 @@ func getNewVersions(runtime string) []string {
 		return nil
 	}
 	return versionMap[runtime]
+}
+
+// readContainerFile reads the content of a file inside a running container.
+func readContainerFile(containerID, path string) (string, error) {
+	out, err := runOutput(ContainerEngine, "exec", containerID, "cat", path)
+	if err != nil {
+		return "", fmt.Errorf("reading file %s from container %s: %w", path, containerID, err)
+	}
+	return strings.TrimSpace(out), nil
+}
+
+// readWebProcessPid retrieves the active PID of the supervised web application.
+func readWebProcessPid(containerID string) (int, error) {
+	const pidPath = "/layers/google.utils.devsync/devsync/service/app/supervise/pid"
+	pidStr, err := readContainerFile(containerID, pidPath)
+	if err != nil {
+		return 0, fmt.Errorf("retrieving web process PID: %w", err)
+	}
+	pid, err := strconv.Atoi(pidStr)
+	if err != nil {
+		return 0, fmt.Errorf("parsing web process PID %q: %w", pidStr, err)
+	}
+	return pid, nil
+}
+
+// copyToContainer copies files from the host path to the specified destination inside the container.
+func copyToContainer(hostPath, containerID, containerPath string) error {
+	// Append "/." to copy the contents of the directory if it's a directory
+	src := hostPath
+	if fi, err := os.Stat(hostPath); err == nil && fi.IsDir() {
+		src = hostPath + "/."
+	}
+	dest := fmt.Sprintf("%s:%s", containerID, containerPath)
+	if _, err := runOutput(ContainerEngine, "cp", src, dest); err != nil {
+		return fmt.Errorf("copying %s to %s: %w", src, dest, err)
+	}
+	return nil
+}
+
+// pollEndpoint polls the endpoint until the response body contains the expected string or times out.
+func pollEndpoint(host string, port int, path string, expectedResponse string, reqType requestType, timeout time.Duration) (string, error) {
+	start := time.Now()
+	interval := 1 * time.Second
+	deadline := start.Add(timeout)
+
+	for time.Now().Before(deadline) {
+		body, _, _, err := sendRequestWithTimeout(host, port, path, 2*time.Second, reqType)
+		if err == nil && strings.Contains(body, expectedResponse) {
+			return body, nil
+		}
+		time.Sleep(interval)
+	}
+	return "", fmt.Errorf("timed out after %s waiting for response containing %q", timeout, expectedResponse)
+}
+
+// verifyDevSyncReload orchestrates the DevSync E2E hot-rebuild and reload verification on a running container.
+func verifyDevSyncReload(t *testing.T, containerID, host string, port int, cfg Test, srcDir string) {
+	t.Helper()
+
+	// 1. Read initial web process PID (the container has already successfully booted and passed initial probing in invokeApp)
+	initialPid, err := readWebProcessPid(containerID)
+	if err != nil {
+		t.Fatalf("Failed to read initial PID: %v", err)
+	}
+	t.Logf("Initial web process PID: %d", initialPid)
+
+	// 2. Copy updated files (code + manifest) to the container to trigger DevSync hot-reload
+	updateSrcDir := filepath.Join(srcDir, cfg.DevSyncUpdateSubdir)
+	t.Logf("Triggering DevSync: copying updated files from %s", updateSrcDir)
+	if err := copyToContainer(updateSrcDir, containerID, "/workspace/"); err != nil {
+		t.Fatalf("Failed to copy updated files: %v", err)
+	}
+
+	// 3. Poll the endpoint and wait for the rebuild/restart to complete
+	t.Logf("Waiting for rebuild and reload to complete...")
+	reqType := HTTPType
+	if cfg.RequestType != "" {
+		reqType = cfg.RequestType
+	}
+	finalBody, err := pollEndpoint(host, port, cfg.Path, cfg.DevSyncExpectedResponse, reqType, 60*time.Second)
+	if err != nil {
+		outputContainerLogs(t, containerID)
+		t.Fatalf("Rebuild verification failed: %v", err)
+	}
+	t.Logf("Rebuild succeeded! Updated response: %q", finalBody)
+
+	// 4. Verify that the web process was physically restarted (PID changed)
+	newPid, err := readWebProcessPid(containerID)
+	if err != nil {
+		t.Fatalf("Failed to read post-rebuild PID: %v", err)
+	}
+	t.Logf("Post-rebuild web process PID: %d", newPid)
+
+	if newPid == initialPid {
+		t.Errorf("FAIL: Web process PID did not change (%d == %d). A physical process restart did not occur!", initialPid, newPid)
+	} else {
+		t.Logf("SUCCESS: DevSync reload verified. Process restarted successfully (PID changed from %d to %d)", initialPid, newPid)
+	}
 }

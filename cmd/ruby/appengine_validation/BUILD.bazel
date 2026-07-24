@@ -1,7 +1,7 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack to validate Ruby app for App Engine.
-load("//tools:defs.bzl", "buildpack")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -20,6 +20,19 @@ buildpack(
     ],
 )
 
+buildpack_using_runner(
+    name = "appengine_validation_using_runner",
+    srcs = [
+        "scripts/check_gemfile_version.rb",
+    ],
+    buildpack_id = "google.ruby.appengine-validation",
+    prefix = "ruby",
+    version = "0.9.0",
+    visibility = [
+        "//builders:ruby_builders",
+    ],
+)
+
 go_binary(
     name = "main",
     srcs = ["main.go"],
@@ -28,14 +41,8 @@ go_binary(
         "-s",
         "-w",
     ],
-    deps = ["//pkg/gcpbuildpack"],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = ["//internal/buildpacktest"],
+    deps = [
+        "//cmd/ruby/appengine_validation/lib",
+        "//pkg/gcpbuildpack",
+    ],
 )

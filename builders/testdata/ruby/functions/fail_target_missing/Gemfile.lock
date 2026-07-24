@@ -7,7 +7,9 @@ GEM
       cloud_events (>= 0.7.0, < 2.a)
       puma (>= 4.3.0, < 6.a)
       rack (~> 2.1)
+    logger (1.7.0)
     nio4r (2.5.9)
+    ostruct (0.6.3)
     puma (5.6.2)
       nio4r (~> 2.0)
     rack (2.2.3)
@@ -19,6 +21,8 @@ PLATFORMS
 DEPENDENCIES
   base64 (~> 0.2)
   functions_framework (~> 1.1)
+  logger
+  ostruct (~> 0.6)
   webrick (~> 1.7)
 
 BUNDLED WITH

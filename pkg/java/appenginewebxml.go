@@ -22,11 +22,18 @@ import (
 
 // AppEngineWebXMLApp represents the appengine-web.xml file.
 type AppEngineWebXMLApp struct {
-	XMLName         xml.Name `xml:"appengine-web-app"`
-	Entrypoint      string   `xml:"entrypoint"`
-	AppEngineAPIs   bool     `xml:"app-engine-apis"`
-	Runtime         string   `xml:"runtime"`
-	SessionsEnabled bool     `xml:"sessions-enabled"`
+	XMLName          xml.Name   `xml:"appengine-web-app"`
+	Entrypoint       string     `xml:"entrypoint"`
+	AppEngineAPIs    bool       `xml:"app-engine-apis"`
+	Runtime          string     `xml:"runtime"`
+	SessionsEnabled  bool       `xml:"sessions-enabled"`
+	SystemProperties []Property `xml:"system-properties>property"`
+}
+
+// Property represents the property in the system-properties section of the appengine-web.xml file.
+type Property struct {
+	Name  string `xml:"name,attr"`
+	Value string `xml:"value,attr"`
 }
 
 // ParseAppEngineWebXML unmarshals the provided appengine-web.xml into a AppEngineWebXMLApp.

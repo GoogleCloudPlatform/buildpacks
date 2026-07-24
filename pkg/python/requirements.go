@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,45 +15,68 @@
 package python
 
 import (
-	"regexp"
+	"fmt"
+	"path/filepath"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/buildpacks/libcnb/v2"
 )
 
-var packageRegex = map[string]*regexp.Regexp{
-	"gunicorn":  regexp.MustCompile(`(?m)^gunicorn\b([^-]|$)`),
-	"uvicorn":   regexp.MustCompile(`(?m)^uvicorn\b([^-]|$)`),
-	"gradio":    regexp.MustCompile(`(?m)^gradio\b([^-]|$)`),
-	"streamlit": regexp.MustCompile(`(?m)^streamlit\b([^-]|$)`),
-}
-var eggRegex = map[string]*regexp.Regexp{
-	"gunicorn":  regexp.MustCompile(`(?m)#egg=gunicorn$`),
-	"uvicorn":   regexp.MustCompile(`(?m)#egg=uvicorn$`),
-	"gradio":    regexp.MustCompile(`(?m)#egg=gradio$`),
-	"streamlit": regexp.MustCompile(`(?m)#egg=streamlit$`),
+// IsUVRequirements checks if the application is a UV requirements.txt application.
+func IsUVRequirements(ctx *gcp.Context) (bool, string, error) {
+	if isPackageManagerConfigured(uv) {
+		return true, fmt.Sprintf("environment variable %s is uv", env.PythonPackageManager), nil
+	}
+	if isPackageManagerEmpty() && isUVDefaultPackageManagerForRequirements(ctx) {
+		return true, fmt.Sprintf("environment variable %s is not set, using uv as default package manager", env.PythonPackageManager), nil
+	}
+	return false, fmt.Sprintf("environment variable %s is not uv", env.PythonPackageManager), nil
 }
 
-// PackagePresent checks if a given package is present in the requirements file.
-func PackagePresent(ctx *gcpbuildpack.Context, path, name string) (bool, error) {
-	requirementsExists, err := ctx.FileExists(path)
-	if err != nil || !requirementsExists {
-		return false, err
+// UVInstallRequirements installs dependencies from requirements.txt using 'uv pip install' and returns the path to the venv.
+func UVInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) (string, error) {
+	if cap := ctx.Capability(UVDependencyInstallerCapability); cap != nil {
+		i, ok := cap.(UVDependenciesInstaller)
+		if !ok {
+			return "", gcp.InternalErrorf("capability %q does not implement UVDependenciesInstaller interface", UVDependencyInstallerCapability)
+		}
+		return "", i.Install(ctx, l, reqs...)
 	}
-	content, err := ctx.ReadFile(path)
+
+	shouldInstall, err := prepareDependenciesLayer(ctx, l, "uv", reqs...)
+	venvDir := filepath.Join(l.Path, ".venv")
 	if err != nil {
-		return false, err
+		return "", fmt.Errorf("failed to prepare uv dependencies layer: %w", err)
 	}
-	return containsPackage(string(content), name), nil
-}
+	if !shouldInstall {
+		ctx.Logf("Dependencies are up to date, skipping installation.")
+		return venvDir, nil
+	}
+	ctx.Logf("Installing application dependencies with uv.")
 
-func containsPackage(s, name string) bool {
-	re, ok := packageRegex[name]
-	if !ok {
-		return false // Or handle error
+	if err := ensureUVVenv(ctx, venvDir, ""); err != nil {
+		return "", err
 	}
-	eggRe, ok := eggRegex[name]
-	if !ok {
-		return false // Or handle error
+
+	for _, req := range reqs {
+		ctx.Logf("Installing dependencies from %s...", req)
+		installCmd := baseuvPipInstallArgs(req)
+		installCmd = append(installCmd, "--no-cache")
+		if _, err := ctx.Exec(installCmd, gcp.WithUserAttribution, gcp.WithEnv("VIRTUAL_ENV="+venvDir)); err != nil {
+			return "", fmt.Errorf("failed to install dependencies from %s with uv: %w", req, err)
+		}
 	}
-	return re.MatchString(s) || eggRe.MatchString(s)
+	ctx.Logf("Dependencies from requirements.txt installed to virtual environment at %s", venvDir)
+
+	if err := compileBytecode(ctx, venvDir); err != nil {
+		return "", fmt.Errorf("failed to compile bytecode: %w", err)
+	}
+	ctx.Logf("Finished compiling bytecode.")
+
+	l.SharedEnvironment.Prepend("PATH", string(filepath.ListSeparator), filepath.Join(venvDir, "bin"))
+	if err := CheckUVIncompatibleDependencies(ctx, venvDir); err != nil {
+		return "", err
+	}
+	return venvDir, nil
 }

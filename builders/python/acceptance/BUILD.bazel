@@ -81,6 +81,10 @@ acceptance_test_suite(
 
 acceptance_test_argo_source(
     name = "argo_source",
+    srcs = [
+        "//cmd/apprunner:app-runner",
+        "//cmd/apprunner:functional_test",
+    ],
     testdata = "//builders/testdata/python:all_files",
 )
 

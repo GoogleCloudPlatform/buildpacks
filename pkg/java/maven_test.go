@@ -54,6 +54,20 @@ func TestParseValidPom(t *testing.T) {
 				},
 				ArtifactID: "firestore-sample",
 				Version:    "",
+				Dependencies: []MavenDependency{
+					{
+						GroupID:    "com.google.cloud",
+						ArtifactID: "google-cloud-graalvm-support",
+					},
+					{
+						GroupID:    "com.google.cloud",
+						ArtifactID: "google-cloud-core",
+					},
+					{
+						GroupID:    "com.google.cloud",
+						ArtifactID: "google-cloud-firestore",
+					},
+				},
 			},
 		},
 		{

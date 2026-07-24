@@ -1,5 +1,5 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
-load("//tools:defs.bzl", "buildpack")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -8,6 +8,16 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "java",
+    version = "0.9.0",
+    visibility = [
+        "//builders:java_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "clear_source_using_runner",
+    buildpack_id = "google.java.clear-source",
     prefix = "java",
     version = "0.9.0",
     visibility = [
@@ -25,16 +35,7 @@ go_binary(
     ],
     visibility = ["//visibility:private"],
     deps = [
-        "//pkg/clearsource",
+        "//cmd/java/clear_source/lib",
         "//pkg/gcpbuildpack",
     ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = ["//internal/buildpacktest"],
 )

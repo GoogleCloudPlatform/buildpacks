@@ -32,24 +32,47 @@ func TestAcceptance(t *testing.T) {
 			App: "no_requirements_txt",
 		},
 		{
-			App:             "requirements_txt",
-			MustNotOutput:   []string{`WARNING: You are using pip version`},
-			EnableCacheTest: true,
+			App:                        "requirements_txt",
+			MustNotOutput:              []string{`WARNING: You are using pip version`},
+			EnableCacheTest:            true,
+			VersionInclusionConstraint: "< 3.8.0",
+		},
+		{
+			App:                        "requirements_txt_new",
+			MustNotOutput:              []string{`WARNING: You are using pip version`},
+			EnableCacheTest:            true,
+			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
 			App: "requirements_bin_conflict",
 			// TODO(harisam): Remove this constraint once spacy support is added for python 3.13.
-			VersionInclusionConstraint: "< 3.13.0",
+			VersionInclusionConstraint: ">= 3.8.0 < 3.13.0",
 		},
 		{
-			App: "requirements_builtin_conflict",
+			App:                        "requirements_builtin_conflict",
+			VersionInclusionConstraint: "< 3.8.0",
 		},
 		{
-			App:             "pip_dependency",
-			EnableCacheTest: true,
+			App:                        "requirements_builtin_conflict_new",
+			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
-			App: "gunicorn_present",
+			App:                        "pip_dependency",
+			EnableCacheTest:            true,
+			VersionInclusionConstraint: "< 3.8.0",
+		},
+		{
+			App:                        "pip_dependency_new",
+			EnableCacheTest:            true,
+			VersionInclusionConstraint: ">= 3.8.0",
+		},
+		{
+			App:                        "gunicorn_present",
+			VersionInclusionConstraint: "< 3.8.0",
+		},
+		{
+			App:                        "gunicorn_present_new",
+			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
 			App: "gunicorn_outdated",
@@ -63,9 +86,16 @@ func TestAcceptance(t *testing.T) {
 			VersionInclusionConstraint: "< 3.10.0",
 		},
 		{
-			Name: "custom gunicorn entrypoint",
-			App:  "gunicorn_present",
-			Env:  []string{"GOOGLE_ENTRYPOINT=gunicorn main:app"},
+			Name:                       "custom gunicorn entrypoint",
+			App:                        "gunicorn_present",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=gunicorn main:app"},
+			VersionInclusionConstraint: "< 3.8.0",
+		},
+		{
+			Name:                       "custom gunicorn entrypoint upgraded",
+			App:                        "gunicorn_present_new",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=gunicorn main:app"},
+			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		// Test that we get a warning when GAE_APP_ENGINE_APIS is set but no lib is used.
 		{
@@ -76,16 +106,24 @@ func TestAcceptance(t *testing.T) {
 		},
 		// Test that we get a warning using SDK libraries without setting flag.
 		{
-			Name:       "appengine_sdk dependencies without flag",
-			App:        "appengine_sdk",
-			MustOutput: []string{"There is a dependency on App Engine APIs, but they are not enabled in your app.yaml. Set the app_engine_apis property."},
+			Name:                       "appengine_sdk dependencies without flag",
+			App:                        "appengine_sdk",
+			MustOutput:                 []string{"There is a dependency on App Engine APIs, but they are not enabled in your app.yaml. Set the app_engine_apis property."},
+			VersionInclusionConstraint: "< 3.8.0",
+		},
+		{
+			Name:                       "appengine_sdk dependencies without flag upgraded",
+			App:                        "appengine_sdk_new",
+			MustOutput:                 []string{"There is a dependency on App Engine APIs, but they are not enabled in your app.yaml. Set the app_engine_apis property."},
+			VersionInclusionConstraint: ">= 3.8.0",
 		},
 	}
 
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := applyStaticTestOptions(tc)
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			acceptance.TestApp(t, imageCtx, tc)
 		})
@@ -116,7 +154,9 @@ func TestFailures(t *testing.T) {
 	for _, tc := range testCases {
 		tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gae")
 		t.Run(tc.App, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
+
 			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}

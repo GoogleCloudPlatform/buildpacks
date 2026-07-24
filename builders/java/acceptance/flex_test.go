@@ -45,7 +45,7 @@ func TestAcceptance(t *testing.T) {
 			// Test application has been updated to use Java 17.
 			// Flex applications will not be able to build Java 11 applications. We can remove this
 			// constraint once Java 11 is deprecated.
-			VersionInclusionConstraint: ">11",
+			VersionInclusionConstraint: ">11 <25.0.0",
 			Name:                       "gradle project",
 			App:                        "gradle_quarkus",
 			Env:                        []string{"GAE_APPLICATION_YAML_PATH=app.yaml"},
@@ -56,7 +56,9 @@ func TestAcceptance(t *testing.T) {
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
+
 			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}

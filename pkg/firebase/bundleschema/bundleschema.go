@@ -50,6 +50,7 @@ type RunConfig struct {
 	MaxInstances         *int32                      `yaml:"maxInstances"`
 	MinInstances         *int32                      `yaml:"minInstances"`
 	VpcAccess            *apphostingschema.VpcAccess `yaml:"vpcAccess"`
+	CPUAlwaysAllocated   *bool                       `yaml:"cpuAlwaysAllocated"`
 }
 
 // Metadata is the struct representation of the metadata from bundle.yaml.
@@ -118,6 +119,13 @@ func ReadAndValidateFromFile(filePath string) (BundleSchema, error) {
 
 	if err = yaml.Unmarshal(bundleBuffer, &b); err != nil {
 		return b, fmt.Errorf("unmarshalling apphosting config as YAML: %w", err)
+	}
+
+	// For cases where the adapters set an env var
+	for i := range b.RunConfig.EnvironmentVariables {
+		if b.RunConfig.EnvironmentVariables[i].Source == "" {
+			b.RunConfig.EnvironmentVariables[i].Source = apphostingschema.SourceFirebaseSystem
+		}
 	}
 
 	return b, nil

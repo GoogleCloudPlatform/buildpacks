@@ -1,0 +1,32 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+go_library(
+    name = "lib",
+    srcs = ["lib.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//:__subpackages__",
+    ],
+    deps = [
+        "//pkg/appyaml",
+        "//pkg/flex",
+        "//pkg/gcpbuildpack",
+        "//pkg/nginx",
+        "//pkg/webconfig",
+    ],
+)
+
+go_test(
+    name = "lib_test",
+    size = "small",
+    srcs = ["lib_test.go"],
+    embed = [":lib"],
+    rundir = ".",
+    deps = [
+        "//pkg/nginx",
+        "//pkg/webconfig",
+        "@com_github_google_go-cmp//cmp:go_default_library",
+    ],
+)

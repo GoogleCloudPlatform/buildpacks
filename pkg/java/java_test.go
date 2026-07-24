@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb/v2"
 )
@@ -279,7 +280,132 @@ func setupTestManifest(t *testing.T, mfContent []byte) string {
 	return mfPath
 }
 
-func setupTestJar(t *testing.T, mfContent []byte) string {
+func TestExecutableJar(t *testing.T) {
+	execManifest := []byte("Main-Class: com.example.Main")
+	plainManifest := []byte("Color: blue")
+	testCases := []struct {
+		name      string
+		buildable string
+		jars      map[string][]byte // map[rel_path]manifest_content
+		want      string
+		wantErr   bool
+	}{
+		{
+			name:    "no_jars",
+			wantErr: true,
+		},
+		{
+			name: "one_exec_jar_target",
+			jars: map[string][]byte{
+				"target/exec.jar": execManifest,
+			},
+			want: "target/exec.jar",
+		},
+		{
+			name: "one_exec_jar_build_libs",
+			jars: map[string][]byte{
+				"build/libs/exec.jar": execManifest,
+			},
+			want: "build/libs/exec.jar",
+		},
+		{
+			name: "two_exec_jar_target",
+			jars: map[string][]byte{
+				"target/exec1.jar": execManifest,
+				"target/exec2.jar": execManifest,
+			},
+			wantErr: true,
+		},
+		{
+			name:      "buildable_jar_in_buildable_target",
+			buildable: "app",
+			jars: map[string][]byte{
+				"app/target/exec.jar": execManifest,
+			},
+			want: "app/target/exec.jar",
+		},
+		{
+			name:      "buildable_jar_in_buildable",
+			buildable: "app",
+			jars: map[string][]byte{
+				"app/exec.jar": execManifest,
+			},
+			want: "app/exec.jar",
+		},
+		{
+			name:      "buildable_jar_in_target",
+			buildable: "app",
+			jars: map[string][]byte{
+				"target/exec.jar": execManifest,
+			},
+			want: "target/exec.jar",
+		},
+		{
+			name: "multiple_jars_one_exec",
+			jars: map[string][]byte{
+				"target/a.jar": plainManifest,
+				"target/b.jar": execManifest,
+			},
+			want: "target/b.jar",
+		},
+		{
+			name:      "buildable_multiple_jars_one_exec",
+			buildable: "app",
+			jars: map[string][]byte{
+				"app/target/a.jar": plainManifest,
+				"app/target/b.jar": execManifest,
+			},
+			want: "app/target/b.jar",
+		},
+		{
+			name:      "buildable_and_root_exec_jars",
+			buildable: "app",
+			jars: map[string][]byte{
+				"app/target/exec1.jar": execManifest,
+				"target/exec2.jar":     execManifest,
+			},
+			want: "app/target/exec1.jar",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			appDir := t.TempDir()
+			for path, manifest := range tc.jars {
+				fullPath := filepath.Join(appDir, path)
+				if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+					t.Fatalf("Failed to create dir for jar: %v", err)
+				}
+				if err := ioutil.WriteFile(fullPath, jarContent(t, manifest), 0644); err != nil {
+					t.Fatalf("Failed to write jar file: %v", err)
+				}
+			}
+
+			if tc.buildable != "" {
+				t.Setenv(env.Buildable, tc.buildable)
+			}
+
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
+			got, err := ExecutableJar(ctx)
+
+			if tc.wantErr && err == nil {
+				t.Errorf("ExecutableJar() succeeded, want error")
+			}
+			if !tc.wantErr && err != nil {
+				t.Errorf("ExecutableJar() failed with %v, want success", err)
+			}
+
+			if !tc.wantErr && err == nil {
+				want := filepath.Join(appDir, tc.want)
+				if got != want {
+					t.Errorf("ExecutableJar()=%q, want %q", got, want)
+				}
+			}
+		})
+	}
+}
+
+func jarContent(t *testing.T, mfContent []byte) []byte {
 	t.Helper()
 	var buff bytes.Buffer
 	w := zip.NewWriter(&buff)
@@ -298,9 +424,13 @@ func setupTestJar(t *testing.T, mfContent []byte) string {
 	if err := w.Close(); err != nil {
 		t.Fatalf("closing zip writer: %v", err)
 	}
+	return buff.Bytes()
+}
 
+func setupTestJar(t *testing.T, mfContent []byte) string {
+	t.Helper()
 	jarPath := filepath.Join(t.TempDir(), "test.jar")
-	if err := ioutil.WriteFile(jarPath, buff.Bytes(), 0644); err != nil {
+	if err := ioutil.WriteFile(jarPath, jarContent(t, mfContent), 0644); err != nil {
 		t.Fatalf("writing to file %s: %v", jarPath, err)
 	}
 	return jarPath

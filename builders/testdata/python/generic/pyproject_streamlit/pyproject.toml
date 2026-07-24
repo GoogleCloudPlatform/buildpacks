@@ -1,0 +1,8 @@
+[project]
+name = "pyproject-streamlit"
+version = "0.1.0"
+description = ""
+requires-python = ">=3.9"
+dependencies = [
+    "streamlit",
+]

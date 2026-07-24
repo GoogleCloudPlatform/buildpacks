@@ -89,7 +89,8 @@ func TestAcceptanceDotNet(t *testing.T) {
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
@@ -104,14 +105,15 @@ func TestFailuresDotNet(t *testing.T) {
 			Name:      "bad runtime version",
 			App:       "simple",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
-			MustMatch: "invalid .NET SDK version specified: improper constraint: BAD_NEWS_BEARS",
+			MustMatch: "invalid .NET SDK version specified: improper constraint: \"BAD_NEWS_BEARS\"",
 		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})

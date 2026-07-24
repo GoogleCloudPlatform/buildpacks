@@ -161,3 +161,14 @@ acceptance_test_suite(
     rundir = ".",
     testdata = "//builders/testdata/ruby:functions",
 )
+
+acceptance_test_suite(
+    name = "osonly_acceptance_test",
+    srcs = [
+        "//builders/osonly/acceptance:common_test.go",
+        "//builders/osonly/acceptance:gcp_test.go",
+    ],
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/osonly:generic",
+)

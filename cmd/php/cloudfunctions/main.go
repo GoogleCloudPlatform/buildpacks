@@ -1,4 +1,4 @@
-// Copyright 2021 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,32 +17,10 @@
 package main
 
 import (
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/cloudfunctions"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/php/cloudfunctions/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
-const (
-	// routerScript is the path to the functions framework invoker script.
-	routerScript = "vendor/google/cloud-functions-framework/router.php"
-)
-
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	// Always opt in.
-	return gcp.OptInAlways(), nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	return cloudfunctions.Build(ctx, "php", entrypoint)
-}
-
-func entrypoint(*gcp.Context) (*appstart.Entrypoint, error) {
-	return &appstart.Entrypoint{
-		Type:    appstart.EntrypointGenerated.String(),
-		Command: "serve -enable-dynamic-workers -workers=1024 " + routerScript,
-	}, nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

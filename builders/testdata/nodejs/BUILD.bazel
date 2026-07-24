@@ -2,7 +2,10 @@
 
 licenses(["notice"])
 
-package(default_visibility = ["//builders:__subpackages__"])
+package(default_visibility = [
+    "//builders:__subpackages__",
+    "//cmd:__subpackages__",
+])
 
 exports_files(
     [
@@ -10,6 +13,7 @@ exports_files(
         "functions",
         "generic",
         "flex",
+        "apphosting",
     ],
 )
 
@@ -38,4 +42,9 @@ filegroup(
 filegroup(
     name = "generic_files",
     srcs = glob(["generic/**"]),
+)
+
+filegroup(
+    name = "apphosting_files",
+    srcs = glob(["apphosting/**"]),
 )

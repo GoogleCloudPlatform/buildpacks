@@ -147,10 +147,35 @@ func composerInstall(ctx *gcp.Context, flags []string) error {
 	return nil
 }
 
+// composerDumpAutoload runs `composer dump-autoload` with the given flags.
+func composerDumpAutoload(ctx *gcp.Context, flags []string) error {
+	cmd := append([]string{"composer", "dump-autoload"}, flags...)
+	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
+		return err
+	}
+	return nil
+}
+
 // ComposerInstall runs `composer install`, using the cache iff a lock file is present.
 // It creates a layer, so it returns the layer so that the caller may further modify it
 // if they desire.
 func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
+	l, err := ctx.Layer("composer", gcp.CacheLayer)
+	if err != nil {
+		return nil, fmt.Errorf("creating layer: %w", err)
+	}
+
+	if cap := ctx.Capability(ComposerInstallerCapability); cap != nil {
+		i, ok := cap.(ComposerInstaller)
+		if !ok {
+			return nil, gcp.InternalErrorf("capability %q must implement ComposerInstaller", ComposerInstallerCapability)
+		}
+		if err := i.Install(ctx, l, ""); err != nil {
+			return nil, err
+		}
+		return l, nil
+	}
+
 	var flags []string
 	if composerArgs := os.Getenv(ComposerArgsEnv); composerArgs != "" {
 		flags = strings.Split(composerArgs, " ")
@@ -165,10 +190,6 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 
 	if err := ctx.RemoveAll(Vendor); err != nil {
 		return nil, err
-	}
-	l, err := ctx.Layer("composer", gcp.CacheLayer)
-	if err != nil {
-		return nil, fmt.Errorf("creating layer: %w", err)
 	}
 	layerVendor := filepath.Join(l.Path, Vendor)
 
@@ -199,6 +220,12 @@ func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
 	if cached {
 		// PHP expects the vendor/ directory to be in the application directory.
 		if _, err := ctx.Exec([]string{"cp", "--archive", layerVendor, Vendor}, gcp.WithUserTimingAttribution); err != nil {
+			return nil, err
+		}
+		// Why re-generate the autoload files? Since these autoload files include list of all PSR auto-loaded files (including local workspace files)
+		// This will cause issues for files added/removed since the last cache as these won't be within the classmap
+		ctx.Logf("Re-generating autoload files.")
+		if err := composerDumpAutoload(ctx, []string{"--optimize"}); err != nil {
 			return nil, err
 		}
 	} else {
@@ -286,4 +313,38 @@ func composerFileVersion(ctx *gcp.Context) (string, error) {
 	}
 
 	return v, nil
+}
+
+// ComposerInstallerCapability is the capability key for the maker Composer installer.
+const ComposerInstallerCapability = "php.ComposerInstaller"
+
+// ComposerInstaller is an interface for installing Composer.
+type ComposerInstaller interface {
+	Install(ctx *gcp.Context, l *libcnb.Layer, version string) error
+}
+
+// MakerComposerInstaller implements the ComposerInstaller interface for the maker tool.
+type MakerComposerInstaller struct{}
+
+// Install does nothing, assuming Composer is already present in the environment.
+func (i MakerComposerInstaller) Install(ctx *gcp.Context, l *libcnb.Layer, version string) error {
+	ctx.Logf("Composer is assumed to be installed by the user. Skipping installation.")
+	return nil
+}
+
+// WebConfigCapability is the capability key for the maker Webconfig configurator.
+const WebConfigCapability = "php.WebConfigCapability"
+
+// WebConfigurator is an interface for configuring PHP web processes.
+type WebConfigurator interface {
+	Configure(ctx *gcp.Context) error
+}
+
+// MakerWebConfigurator implements the WebConfigurator interface for the maker tool.
+type MakerWebConfigurator struct{}
+
+// Configure adds a clean default built-in server process for PHP.
+func (c MakerWebConfigurator) Configure(ctx *gcp.Context) error {
+	ctx.AddWebProcess([]string{"bash", "-c", "php -S 0.0.0.0:8080 index.php"})
+	return nil
 }

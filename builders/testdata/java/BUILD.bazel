@@ -43,6 +43,8 @@ pkg_tar(
     files = {
         "//builders/testdata/java/appengine/custom_entrypoint:Main.java": "custom_entrypoint/Main.java",
         "//builders/testdata/java/appengine/custom_entrypoint:runnablejar": "single_jar/fatjar.jar",
+        "//builders/testdata/java/appengine/custom_entrypoint_appengine_web_xml:Main.java": "custom_entrypoint_appengine_web_xml/Main.java",
+        "//builders/testdata/java/appengine/custom_entrypoint_appengine_web_xml:appengine-web.xml": "custom_entrypoint_appengine_web_xml/WEB-INF/appengine-web.xml",
         "//builders/testdata/java/appengine/java11_compat_webapp:appengine-web.xml": "java11_compat_webapp/WEB-INF/appengine-web.xml",
         "//builders/testdata/java/appengine/java11_compat_webapp:web.xml": "java11_compat_webapp/WEB-INF/web.xml",
         "//builders/testdata/java/appengine/java11_compat_webapp:compiledjar": "java11_compat_webapp/WEB-INF/lib/helloservlet.jar",

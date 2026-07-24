@@ -37,6 +37,16 @@ func TestBuildCommand(t *testing.T) {
 				"--env X_GOOGLE_SKIP_RUNTIME_LAUNCH=true",
 			},
 		},
+		{
+			name:        "ruby 3.4 run images skip adding runtime as launch layer",
+			srcDir:      "some/src/dir",
+			image:       "my-image",
+			builderName: "gcr.io/my-builder",
+			runName:     "gcr.io/gae-runtimes/buildpacks/google-gae-22/ruby34/run",
+			mustNotContainArgs: []string{
+				"--env X_GOOGLE_SKIP_RUNTIME_LAUNCH=true",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -93,6 +103,11 @@ func TestHasRuntimePreinstalled(t *testing.T) {
 			name:                   "someCustomImage",
 			image:                  "us.gcr.io/some-random/custom/image:latest",
 			hasRuntimePreinstalled: false,
+		},
+		{
+			name:                   "imageWithRuntimeInName",
+			image:                  "us-docker.pkg.dev/gae-runtimes-private/google-22-full/runtimes/python313:latest",
+			hasRuntimePreinstalled: true,
 		},
 	}
 

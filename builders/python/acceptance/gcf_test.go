@@ -19,6 +19,15 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
+const (
+	entrypoint    = "google.config.entrypoint"
+	pythonFF      = "google.python.functions-framework"
+	pythonPIP     = "google.python.pip"
+	pythonRuntime = "google.python.runtime"
+	pythonPoetry  = "google.python.poetry"
+	pythonUV      = "google.python.uv"
+)
+
 func init() {
 	acceptance.DefineFlags()
 }
@@ -29,60 +38,156 @@ func TestAcceptance(t *testing.T) {
 
 	testCases := []acceptance.Test{
 		{
-			Name:                       "function without framework",
+			Name:                       "function_without_framework",
+			App:                        "without_framework",
+			MustUse:                    []string{pythonRuntime, pythonPIP, pythonFF},
+			MustNotOutput:              []string{`WARNING: You are using pip version`},
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "function_without_framework_default_uv",
+			App:                        "without_framework",
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
+			VersionInclusionConstraint: ">= 3.14.0",
+		},
+		{
+			Name:                       "function_without_framework_uv",
 			App:                        "without_framework",
 			MustNotOutput:              []string{`WARNING: You are using pip version`},
+			Env:                        []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
 			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
-			Name:                       "function without framework and allow injection",
+			Name:                       "function_without_framework_and_allow_injection",
 			App:                        "without_framework",
 			Env:                        []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=False"},
 			MustNotOutput:              []string{`WARNING: You are using pip version`},
 			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
-			Name:                       "function with dependencies",
+			Name:                       "function_without_framework_and_allow_injection_uv",
+			App:                        "without_framework",
+			Env:                        []string{"GOOGLE_SKIP_FRAMEWORK_INJECTION=False", "GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
+			MustNotOutput:              []string{`WARNING: You are using pip version`},
+			VersionInclusionConstraint: ">= 3.8.0",
+		},
+		{
+			Name:                       "function_with_dependencies",
 			App:                        "with_dependencies",
 			EnableCacheTest:            true,
+			MustUse:                    []string{pythonRuntime, pythonPIP, pythonFF},
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "function_with_dependencies_default_uv",
+			App:                        "with_dependencies",
+			EnableCacheTest:            true,
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
+			VersionInclusionConstraint: ">= 3.14.0",
+		},
+		{
+			Name:                       "function_with_dependencies_uv",
+			App:                        "with_dependencies",
+			EnableCacheTest:            true,
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
+			Env:                        []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
 			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
-			Name:                       "function with framework",
+			Name:                       "function_with_framework",
 			App:                        "with_framework",
+			MustUse:                    []string{pythonRuntime, pythonPIP, pythonFF},
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "function_with_framework_default_uv",
+			App:                        "with_framework",
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
+			VersionInclusionConstraint: ">= 3.14.0",
+		},
+		{
+			Name:                       "function_with_framework_uv",
+			App:                        "with_framework",
+			Env:                        []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
 			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
-			Name:                       "function using http declarative function signatures",
+			Name:                       "function_using_http_declarative_function_signatures",
 			App:                        "use_declarative",
 			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
-			Name:                       "function using CloudEvent declarative function signatures",
+			Name:                       "function_using_CloudEvent_declarative_function_signatures",
 			App:                        "use_cloud_event_declarative",
 			MustMatch:                  "OK",
 			RequestType:                acceptance.CloudEventType,
 			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
-			Name: "function with framework and dependency bin",
+			Name: "function_with_framework_and_dependency_bin",
 			App:  "with_framework_bin_conflict",
 			// TODO(harisam): Remove this constraint once spacy support is added for python 3.13.
 			VersionInclusionConstraint: ">= 3.8.0 < 3.13.0",
 		},
 		{
-			Name:                       "function with runtime env var",
+			Name:                       "function_with_runtime_env_var",
 			App:                        "with_env_var",
 			RunEnv:                     []string{"FOO=foo"},
+			MustUse:                    []string{pythonRuntime, pythonPIP, pythonFF},
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			Name:                       "function_with_runtime_env_var_default_uv",
+			App:                        "with_env_var",
+			RunEnv:                     []string{"FOO=foo"},
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
+			VersionInclusionConstraint: ">= 3.14.0",
+		},
+		{
+			Name:                       "function_with_runtime_env_var_uv",
+			App:                        "with_env_var",
+			RunEnv:                     []string{"FOO=foo"},
+			Env:                        []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
 			VersionInclusionConstraint: ">= 3.8.0",
 		},
 		{
-			Name: "function has right number of dependencies",
-			App:  "list_dependencies",
-			// The list_dependencies app has a dependency on the libexpat OS package which isn't installed
-			// in the min run image.
-			SkipStacks:                 []string{"google.min.22"},
-			VersionInclusionConstraint: ">= 3.8.0",
+			Name:                       "poetry",
+			App:                        "poetry",
+			Env:                        []string{},
+			VersionInclusionConstraint: ">=3.9.0",
+			MustUse:                    []string{pythonRuntime, pythonPoetry, pythonFF},
+		},
+		{
+			Name:                       "pyproject",
+			App:                        "pyproject",
+			Env:                        []string{},
+			VersionInclusionConstraint: ">=3.9.0",
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
+		},
+		{
+			Name:                       "pyproject_pip",
+			App:                        "pyproject",
+			Env:                        []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=pip"},
+			VersionInclusionConstraint: ">=3.9.0",
+			MustUse:                    []string{pythonRuntime, pythonPIP, pythonFF},
+		},
+		{
+			Name:                       "pyproject_uv",
+			App:                        "pyproject",
+			Env:                        []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
+			VersionInclusionConstraint: ">=3.9.0",
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
+		},
+		{
+			Name:                       "uv",
+			App:                        "uv",
+			Env:                        []string{},
+			VersionInclusionConstraint: ">=3.9.0",
+			MustUse:                    []string{pythonRuntime, pythonUV, pythonFF},
 		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
@@ -121,7 +226,12 @@ func TestFailures(t *testing.T) {
 			App:       "fail_broken_dependencies",
 			MustMatch: `functions-framework .* has requirement flask.*,>=.*, but you have flask 0\.12\.5`,
 			// this is only a warning in python37
-			VersionInclusionConstraint: ">= 3.8.0",
+			VersionInclusionConstraint: ">= 3.8.0 < 3.14.0",
+		},
+		{
+			App:                        "fail_broken_dependencies",
+			MustMatch:                  "\".*The package \\`functions-framework\\` requires \\`flask>=.*,.*\\`.*, but \\`0.12.5\\` is installed.*\"",
+			VersionInclusionConstraint: ">= 3.14.0", // For python 3.14+, the default package manager is uv.
 		},
 		{
 			Name:      "function without dependencies or injection",
@@ -134,6 +244,12 @@ func TestFailures(t *testing.T) {
 			App:       "without_framework",
 			Env:       []string{"GOOGLE_VENDOR_PIP_DEPENDENCIES=vendor"},
 			MustMatch: "Vendored dependencies detected, please add functions-framework to requirements.txt and download it using pip",
+		},
+		{
+			Name:      "fail_pyproject_without_framework",
+			App:       "fail_pyproject_without_framework",
+			Env:       []string{},
+			MustMatch: "This project is using pyproject.toml but you have not included the Functions Framework in your dependencies. Please add it to your pyproject.toml.",
 		},
 	}
 

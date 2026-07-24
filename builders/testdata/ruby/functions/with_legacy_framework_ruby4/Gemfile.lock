@@ -1,0 +1,41 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    base64 (0.3.0)
+    cloud_events (0.8.3)
+    functions_framework (0.5.2)
+      cloud_events (~> 0.1)
+      puma (~> 4.3)
+      rack (~> 2.1)
+    logger (1.7.0)
+    nio4r (2.7.5)
+    ostruct (0.6.3)
+    puma (4.3.12)
+      nio4r (~> 2.0)
+    rack (2.2.21)
+    webrick (1.9.2)
+
+PLATFORMS
+  ruby
+  x86_64-linux
+
+DEPENDENCIES
+  base64 (~> 0.2)
+  functions_framework (~> 0.5.2)
+  logger
+  ostruct (~> 0.6)
+  webrick (~> 1.7)
+
+CHECKSUMS
+  base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
+  cloud_events (0.8.3) sha256=47da75bf4dd69c61203b9744f40e6737c0c93106516e343bcfc681408f4f1d35
+  functions_framework (0.5.2) sha256=352c40f622841502315631123e2a2d00359541085a2d6dd8b741684a52c8d336
+  logger (1.7.0) sha256=196edec7cc44b66cfb40f9755ce11b392f21f7967696af15d274dde7edff0203
+  nio4r (2.7.5) sha256=6c90168e48fb5f8e768419c93abb94ba2b892a1d0602cb06eef16d8b7df1dca1
+  ostruct (0.6.3) sha256=95a2ed4a4bd1d190784e666b47b2d3f078e4a9efda2fccf18f84ddc6538ed912
+  puma (4.3.12) sha256=7e2e78b5d42cfdc60099d9c5e790eacae7b5d76ff14197369a9436c1ec5cc935
+  rack (2.2.21) sha256=14e2f72f0765455fe424ff601588ac5ce84e95784f59e99251ffe1527152f739
+  webrick (1.9.2) sha256=beb4a15fc474defed24a3bda4ffd88a490d517c9e4e6118c3edce59e45864131
+
+BUNDLED WITH
+  4.0.3

@@ -1,7 +1,7 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
 
 # Buildpack for the Java runtime.
-load("//tools:defs.bzl", "buildpack")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
@@ -10,6 +10,16 @@ buildpack(
     executables = [
         ":main",
     ],
+    prefix = "java",
+    version = "0.9.2",
+    visibility = [
+        "//builders:java_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "runtime_using_runner",
+    buildpack_id = "google.java.runtime",
     prefix = "java",
     version = "0.9.2",
     visibility = [
@@ -26,17 +36,7 @@ go_binary(
         "-w",
     ],
     deps = [
-        "//pkg/env",
+        "//cmd/java/runtime/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/runtime",
     ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = ["//internal/buildpacktest"],
 )

@@ -86,7 +86,7 @@ LABEL io.buildpacks.stack.distro.version="22.04"
 LABEL io.buildpacks.stack.maintainer="Google"
 LABEL io.buildpacks.stack.mixins="[]"
 LABEL io.buildpacks.stack.homepage \ 
-  "https://github.com/GoogleCloudPlatform/buildpacks/stacks/google-22"
+  "https://github.com/GoogleCloudPlatform/buildpacks/tree/main/stacks/google_22"
 
 # Set $PORT to 8080 by default
 ENV PORT 8080

@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,85 +18,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/python/link_runtime/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/Masterminds/semver"
 )
-
-const (
-	// layerDir is the file path the python/runtime buildpack installs into.
-	layerDir = "/layers/google.python.runtime/python"
-)
-
-// linkDirs is the set of directories that should be symlinked to the base image Python.
-var linkDirs = []string{
-	"bin",
-	"include",
-	"lib",
-	"share",
-}
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	skip, err := env.IsPresentAndTrue(env.XGoogleSkipRuntimeLaunch)
-	if err != nil {
-		return nil, err
-	}
-	if !skip {
-		return gcp.OptOut(fmt.Sprintf("%s is not 'true'", env.XGoogleSkipRuntimeLaunch)), nil
-	}
-	if result := runtime.CheckOverride("python"); result != nil {
-		return result, nil
-	}
-	return gcp.OptOut("GOOGLE_RUNTIME env var not a python runtime"), nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	pythonPath, err := pythonSystemDir(ctx)
-	if err != nil {
-		return err
-	}
-	for _, file := range linkDirs {
-		p := filepath.Join(layerDir, file)
-		if err := os.RemoveAll(p); err != nil {
-			return gcp.InternalErrorf("removing %q: %w", p, err)
-		}
-		link := filepath.Join(pythonPath, file)
-		if err := os.Symlink(link, p); err != nil {
-			return gcp.InternalErrorf("creating symlink %s to %s: %w", link, p, err)
-		}
-	}
-	return nil
-}
-
-// pythonSystemDir returns the file path that python is installed to in the GAE base images.
-func pythonSystemDir(ctx *gcp.Context) (string, error) {
-	ver, err := python.Version(ctx)
-	if err != nil {
-		return "", gcp.InternalErrorf("getting python version: %w", err)
-	}
-	trimmedVer := versionWithoutRCSuffix(strings.TrimPrefix(ver, "Python "))
-	semver, err := semver.NewVersion(trimmedVer)
-	if err != nil {
-		return "", gcp.InternalErrorf("parsing python version %q: %w", ver, err)
-	}
-	return filepath.Join("/opt", fmt.Sprintf("python%d.%d", semver.Major(), semver.Minor())), nil
-}
-
-// Supporting RC candidate as an interim for Alpha release until final release is out.
-// Example RC Candidate - 3.12.0rc1
-func versionWithoutRCSuffix(version string) string {
-	m := regexp.MustCompile("rc(.*)")
-	return m.ReplaceAllString(version, "")
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

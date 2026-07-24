@@ -30,9 +30,10 @@ func TestAcceptanceDotNetFn(t *testing.T) {
 	testCases := []acceptance.Test{
 		// When there is only one target, we don't need to set FUNCTION_TARGET.
 		{
+			// .NET 3.1 is not supported on Ubuntu 22.04.
 			Name:       "cs single target",
 			App:        "cs_single_target",
-			SkipStacks: []string{"google.24.full", "google.24"},
+			SkipStacks: []string{"google.24.full", "google.24", "google.22", "google.gae.22"},
 			Path:       "/function",
 			MustUse:    []string{dotnetRuntime, dotnetPublish},
 			MustNotUse: []string{entrypoint},
@@ -66,7 +67,8 @@ func TestAcceptanceDotNetFn(t *testing.T) {
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			acceptance.TestApp(t, imageCtx, tc)
 		})

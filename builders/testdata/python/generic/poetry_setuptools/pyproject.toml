@@ -1,0 +1,14 @@
+[project]
+name = "poetry_setuptools"
+version = "0.1.0"
+description = ""
+requires-python = ">=3.9"
+dependencies = [
+    "pendulum (>=3.1.0,<4.0.0)",
+    "flask (>=3.1.1,<4.0.0)",
+    "gunicorn (>=20.1.0)"
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"

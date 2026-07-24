@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/buildpacks/libcnb/v2"
 	"github.com/Masterminds/semver"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -115,6 +116,11 @@ func IsRuby25(ctx *gcp.Context) bool {
 	return strings.HasPrefix(os.Getenv(RubyVersionKey), "2.5")
 }
 
+// IsRuby4 returns true if the build environment has Ruby 4.x.y installed.
+func IsRuby4(ctx *gcp.Context) bool {
+	return strings.HasPrefix(os.Getenv(RubyVersionKey), "4.")
+}
+
 // SupportsBundler1 returns true if the installed Ruby version is compatible with Bundler 1.
 // Bundler 1 breaks with Ruby 3.2. This functions returns true for all versions older than 3.2.
 func SupportsBundler1(ctx *gcp.Context) (bool, error) {
@@ -186,4 +192,149 @@ func getVersionFromRubyVersion(ctx *gcp.Context) (string, error) {
 		return string(version), nil
 	}
 	return "", nil
+}
+
+// GemsInstallerCapability is the capability key for the maker RubyGems installer.
+const GemsInstallerCapability = "ruby.GemsInstaller"
+
+// GemsInstaller is an interface for installing RubyGems.
+type GemsInstaller interface {
+	Install(ctx *gcp.Context, l *libcnb.Layer) error
+}
+
+// BundleLockerCapability is the capability key for the maker Bundle locker.
+const BundleLockerCapability = "ruby.BundleLocker"
+
+// BundleLocker is an interface for preparing the lockfile.
+type BundleLocker interface {
+	Lock(ctx *gcp.Context) error
+}
+
+// MakerBundleLocker implements the BundleLocker interface for the maker tool.
+type MakerBundleLocker struct{}
+
+// Lock prepares the lockfile locally for Maker.
+func (l MakerBundleLocker) Lock(ctx *gcp.Context) error {
+	localGemsDir := filepath.Join(".bundle", "gems")
+	return PrepareLockfile(ctx, localGemsDir, "development test", []string{"x86_64-linux", "ruby"})
+}
+
+// BundleInstallerCapability is the capability key for the maker Bundle installer.
+const BundleInstallerCapability = "ruby.BundleInstaller"
+
+// BundleInstaller is an interface for installing dependencies using bundle.
+type BundleInstaller interface {
+	Install(ctx *gcp.Context) error
+}
+
+// MakerBundleInstaller implements the BundleInstaller interface for the maker tool.
+type MakerBundleInstaller struct{}
+
+// Install installs dependencies locally into .bundle/gems.
+func (i MakerBundleInstaller) Install(ctx *gcp.Context) error {
+	localGemsDir := filepath.Join(".bundle", "gems")
+	localBinDir := filepath.Join(".bundle", "bin")
+
+	bCfg := BundleConfig{
+		ForceRubyPlatform: true,
+	}
+	env := []string{"NOKOGIRI_USE_SYSTEM_LIBRARIES=1", "MALLOC_ARENA_MAX=2", "LANG=C.utf8"}
+	return InstallAndSymlink(ctx, localGemsDir, localBinDir, "development test", bCfg, env)
+}
+
+// BundleConfig holds override configuration options for bundle installation.
+type BundleConfig struct {
+	ForceRubyPlatform bool
+	Deployment        bool
+	Frozen            bool
+}
+
+// PrepareLockfile configures bundler and ensures the target platforms are present in the lockfile.
+func PrepareLockfile(ctx *gcp.Context, gemsDir string, without string, platforms []string) error {
+	if without != "" {
+		if _, err := ctx.Exec([]string{"bundle", "config", "--local", "without", without}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+	}
+	if gemsDir != "" {
+		if _, err := ctx.Exec([]string{"bundle", "config", "--local", "path", gemsDir}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+	}
+	for _, platform := range platforms {
+		if _, err := ctx.Exec([]string{"bundle", "lock", "--add-platform", platform}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// InstallAndSymlink configures bundler, runs 'bundle install', and creates relative symlinks for gem binaries.
+func InstallAndSymlink(ctx *gcp.Context, gemsDir, binDir string, without string, cfg BundleConfig, env []string) error {
+	// 1. Configure
+	if without != "" {
+		if _, err := ctx.Exec([]string{"bundle", "config", "--local", "without", without}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+	}
+	if gemsDir != "" {
+		if _, err := ctx.Exec([]string{"bundle", "config", "--local", "path", gemsDir}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+	}
+	if cfg.ForceRubyPlatform {
+		if _, err := ctx.Exec([]string{"bundle", "config", "--local", "force_ruby_platform", "true"}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+	}
+	if cfg.Deployment {
+		if _, err := ctx.Exec([]string{"bundle", "config", "--local", "deployment", "true"}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+	}
+	if cfg.Frozen {
+		if _, err := ctx.Exec([]string{"bundle", "config", "--local", "frozen", "true"}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+	}
+
+	// 2. Run bundle install
+	installCmd := []string{"bundle", "install"}
+	var execOpts []gcp.ExecOption
+	if len(env) > 0 {
+		execOpts = append(execOpts, gcp.WithEnv(env...))
+	}
+	execOpts = append(execOpts, gcp.WithUserAttribution)
+	if _, err := ctx.Exec(installCmd, execOpts...); err != nil {
+		return err
+	}
+
+	// 3. Symlink bin dirs
+	return SymlinkBin(ctx, gemsDir, binDir)
+}
+
+// SymlinkBin finds any gem-installed binary directory under gemsDir and creates
+// a relative symlink at binDir pointing to it.
+func SymlinkBin(ctx *gcp.Context, gemsDir string, binDir string) error {
+	globPattern := filepath.Join(gemsDir, "ruby", "*", "bin")
+	foundBinDirs, err := ctx.Glob(globPattern)
+	if err != nil {
+		return fmt.Errorf("finding bin dirs: %w", err)
+	}
+
+	if len(foundBinDirs) > 1 {
+		return fmt.Errorf("unexpected multiple gem bin dirs: %v", foundBinDirs)
+	} else if len(foundBinDirs) == 1 {
+		if err := ctx.RemoveAll(binDir); err != nil {
+			return err
+		}
+		relTarget, err := filepath.Rel(filepath.Dir(binDir), foundBinDirs[0])
+		if err != nil {
+			return fmt.Errorf("calculating relative path from %s to %s: %w", filepath.Dir(binDir), foundBinDirs[0], err)
+		}
+		if err := ctx.Symlink(relTarget, binDir); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -69,11 +69,52 @@ func TestAcceptancePythonFn(t *testing.T) {
 			MustUse:    []string{pythonRuntime, pythonFF, pythonPIP},
 			MustNotUse: []string{entrypoint},
 		},
+		{
+			Name:       "function_with_uv",
+			App:        "uv",
+			Path:       "/testFunction",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
+			MustUse:    []string{pythonRuntime, pythonUV, pythonFF},
+			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:       "function_with_poetry",
+			App:        "poetry",
+			Path:       "/testFunction",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
+			MustUse:    []string{pythonRuntime, pythonPoetry, pythonFF},
+			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:       "pyproject",
+			App:        "pyproject",
+			Path:       "/testFunction",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
+			MustUse:    []string{pythonRuntime, pythonUV, pythonFF},
+			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:       "pyproject_pip",
+			App:        "pyproject",
+			Path:       "/testFunction",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0", "GOOGLE_PYTHON_PACKAGE_MANAGER=pip"},
+			MustUse:    []string{pythonRuntime, pythonPIP, pythonFF},
+			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:       "pyproject_uv",
+			App:        "pyproject",
+			Path:       "/testFunction",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0", "GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
+			MustUse:    []string{pythonRuntime, pythonUV, pythonFF},
+			MustNotUse: []string{entrypoint},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			acceptance.TestApp(t, imageCtx, tc)
 		})
@@ -97,12 +138,19 @@ func TestFailuresPythonFn(t *testing.T) {
 			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
 			MustMatch: "missing main.py and GOOGLE_FUNCTION_SOURCE not specified. Either create the function in main.py or specify GOOGLE_FUNCTION_SOURCE to point to the file that contains the function",
 		},
+		{
+			Name:      "missing_framework_pyproject",
+			App:       "fail_pyproject_without_framework",
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
+			MustMatch: "This project is using pyproject.toml but you have not included the Functions Framework in your dependencies. Please add it to your pyproject.toml.",
+		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})

@@ -80,25 +80,32 @@ func TestAcceptance(t *testing.T) {
 	// In a few cases that is hard and we omit the check.
 	testCases := []acceptance.Test{
 		{
-			Name:          "custom entrypoint",
+			Name:          "custom_entrypoint",
 			App:           "custom_entrypoint",
 			Env:           []string{"GOOGLE_ENTRYPOINT=java Main.java"},
 			MustNotOutput: []string{"WARNING"},
 		},
 		{
-			Name:          "single jar",
+			Name:                       "custom_entrypoint_with_appengine_web_xml",
+			VersionInclusionConstraint: ">=25.0.0",
+			App:                        "custom_entrypoint_appengine_web_xml",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=java Main.java"},
+			MustNotOutput:              []string{"WARNING"},
+		},
+		{
+			Name:          "single_jar",
 			App:           "single_jar",
 			MustNotOutput: []string{"WARNING"},
 		},
 		{
 			VersionInclusionConstraint: ">=11.0.0 <12.0.0",
-			Name:                       "Java11 compat web app",
+			Name:                       "Java11_compat_web_app",
 			App:                        "java11_compat_webapp",
 			MustNotOutput:              []string{"WARNING"},
 		},
 		{
 			VersionInclusionConstraint: ">=17.0.0 <18.0.0",
-			Name:                       "Java17 compat web app",
+			Name:                       "Java17_compat_web_app",
 			App:                        "java17_compat_webapp",
 		},
 		{
@@ -106,64 +113,67 @@ func TestAcceptance(t *testing.T) {
 			App:  "hello_quarkus_maven",
 		},
 		{
-			Name:          "hello springboot maven",
+			Name:          "hello_springboot_maven",
 			App:           "springboot-helloworld",
 			MustNotOutput: []string{"ERROR"},
 		},
 		{
-			Name:            "hello sparkjava maven",
+			Name:            "hello_sparkjava_maven",
 			App:             "sparkjava-helloworld",
 			MustNotOutput:   []string{"ERROR"},
 			EnableCacheTest: true,
 		},
 		{
-			Name: "hello micronaut maven",
+			Name: "hello_micronaut_maven",
 			App:  "micronaut-helloworld",
 			// We don't check for WARNING, because we get a bunch of them from maven-shade-plugin that would be hard to eliminate.
 		},
 		{
-			Name:          "hello vertx maven",
+			Name:          "hello_vertx_maven",
 			App:           "vertx-helloworld",
 			MustNotOutput: []string{"ERROR"},
 		},
 		{
-			Name:            "http server",
+			Name:            "http_server",
 			App:             "http-server",
+			MustNotUse:      []string{"google.java.spring-boot"},
 			MustNotOutput:   []string{"ERROR"},
 			EnableCacheTest: true,
 		},
 		{
-			Name: "Ktor Kotlin maven mwnw",
-			App:  "ktordemo",
-			Env:  []string{"GOOGLE_ENTRYPOINT=java -jar target/ktor-0.0.1-jar-with-dependencies.jar"},
+			Name:                       "Ktor_Kotlin_maven_mwnw",
+			App:                        "ktordemo",
+			VersionInclusionConstraint: "<25.0.0",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=java -jar target/ktor-0.0.1-jar-with-dependencies.jar"},
 			// We don't check for WARNING, because our project-artifact-generated code produces several of them.
 		},
 		{
-			Name:              "hello quarkus maven with source clearing",
+			Name:              "hello_quarkus_maven_with_source_clearing",
 			App:               "hello_quarkus_maven",
 			Env:               []string{"GOOGLE_CLEAR_SOURCE=true"},
 			FilesMustNotExist: []string{"/workspace/src/main/java/hello/Hello.java", "/workspace/pom.xml"},
 		},
 		{
-			Name:            "gradle micronaut",
-			App:             "gradle_micronaut",
-			MustNotOutput:   []string{"WARNING"},
-			EnableCacheTest: true,
-			Setup:           updateGradleVersions,
-		},
-		{
-			Name:          "gradlew micronaut",
-			App:           "gradlew_micronaut",
+			Name:          "gradle_micronaut",
+			App:           "gradle_micronaut",
 			MustNotOutput: []string{"WARNING"},
 			Setup:         updateGradleVersions,
 		},
 		{
-			Name:  "gradle kotlin",
-			App:   "gradle-kotlin",
-			Setup: updateGradleVersions,
+			Name:                       "gradlew_micronaut",
+			App:                        "gradlew_micronaut",
+			VersionInclusionConstraint: "<25.0.0",
+			MustNotOutput:              []string{"WARNING"},
+			Setup:                      updateGradleVersions,
 		},
 		{
-			Name:              "Gradle with source clearing",
+			Name:                       "gradle_kotlin",
+			App:                        "gradle-kotlin",
+			VersionInclusionConstraint: "<25.0.0",
+			Setup:                      updateGradleVersions,
+		},
+		{
+			Name:              "Gradle_with_source_clearing",
 			App:               "gradle_micronaut",
 			Env:               []string{"GOOGLE_CLEAR_SOURCE=true", "GOOGLE_ENTRYPOINT=java -jar build/libs/helloworld-0.1-all.jar"},
 			MustNotOutput:     []string{"WARNING"},
@@ -171,10 +181,26 @@ func TestAcceptance(t *testing.T) {
 			Setup:             updateGradleVersions,
 		},
 		{
-			Name:          "Java gradle quarkus",
-			App:           "gradle_quarkus",
-			MustNotOutput: []string{"WARNING"},
-			Setup:         updateGradleVersions,
+			Name:                       "Java_gradle_quarkus",
+			App:                        "gradle_quarkus",
+			VersionInclusionConstraint: "<25.0.0",
+			MustNotOutput:              []string{"WARNING"},
+			Setup:                      updateGradleVersions,
+		},
+		// Spring boot app, spring-boot-buildpack must opt in for all java versions >=Java17
+		{
+			Name:                       "hello_springboot_maven_for_java_17_and_above",
+			App:                        "springboot-helloworld",
+			VersionInclusionConstraint: ">=17.0.0",
+			MustUse:                    []string{"google.java.spring-boot"},
+			MustNotOutput:              []string{"ERROR"},
+		},
+		{
+			Name:                       "hello_springboot_maven_for_java_11",
+			App:                        "springboot-helloworld",
+			VersionInclusionConstraint: "<17.0.0",
+			MustNotUse:                 []string{"google.java.spring-boot"},
+			MustNotOutput:              []string{"ERROR"},
 		},
 	}
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
@@ -182,7 +208,8 @@ func TestAcceptance(t *testing.T) {
 		tc.FlakyBuildAttempts = 3
 
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
 			tc.Env = append(tc.Env, "X_GOOGLE_TARGET_PLATFORM=gae")
 

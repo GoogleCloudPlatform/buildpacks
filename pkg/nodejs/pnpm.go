@@ -5,10 +5,22 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 	"github.com/buildpacks/libcnb/v2"
+	"github.com/Masterminds/semver"
 )
+
+// PNPMInstallerCapability is the capability key for the PNPMInstaller.
+const PNPMInstallerCapability = "nodejs.PnpmInstaller"
+
+// PNPMInstaller is an interface for installing pnpm.
+type PNPMInstaller interface {
+	InstallPNPM(ctx *gcp.Context, pnpmLayer *libcnb.Layer, pjs *PackageJSON) error
+}
 
 var (
 	// PNPMLock is the name of the pnpm lock file.
@@ -17,13 +29,37 @@ var (
 	pnpmDownloadURL = "https://github.com/pnpm/pnpm/releases/download/v%s/pnpm-linux-x64"
 	// pnpmVersionKey is the metadata key used to store the pnpm version in the pnpn layer.
 	pnpmVersionKey = "version"
+	// pnpmV11Constraint is the semver constraint for pnpm versions >= 11.0.0.
+	pnpmV11Constraint *semver.Constraints
 )
+
+func init() {
+	var err error
+	pnpmV11Constraint, err = semver.NewConstraint(">= 11.0.0")
+	if err != nil {
+		panic(fmt.Sprintf("parsing hardcoded pnpm v11 constraint: %v", err))
+	}
+}
 
 // InstallPNPM installs pnpm in the given layer if it is not already cached.
 func InstallPNPM(ctx *gcp.Context, pnpmLayer *libcnb.Layer, pjs *PackageJSON) error {
+	if ctx.IsDisabled(PNPMInstallerCapability) {
+		ctx.Logf("PNPMInstaller capability is disabled. Skipping installation.")
+		return nil
+	}
+
+	if cap := ctx.Capability(PNPMInstallerCapability); cap != nil {
+		i, ok := cap.(PNPMInstaller)
+		if !ok {
+			return gcp.InternalErrorf("capability %q must implement PNPMInstaller", PNPMInstallerCapability)
+		}
+		return i.InstallPNPM(ctx, pnpmLayer, pjs)
+	}
+
 	layerName := pnpmLayer.Name
 	installDir := filepath.Join(pnpmLayer.Path, "bin")
-	version, err := detectPNPMVersion(pjs)
+	stackID := runtime.OSForStack(ctx)
+	version, err := detectPNPMVersion(ctx, pjs, stackID)
 	if err != nil {
 		return err
 	}
@@ -49,7 +85,7 @@ func InstallPNPM(ctx *gcp.Context, pnpmLayer *libcnb.Layer, pjs *PackageJSON) er
 	}
 
 	// Store layer flags and metadata.
-	ctx.SetMetadata(pnpmLayer, versionKey, version)
+	ctx.SetMetadata(pnpmLayer, pnpmVersionKey, version)
 	// We need to update the path here to ensure the version we just installed take precedence over
 	// anything pre-installed in the base image.
 	if err := ctx.Setenv("PATH", installDir+":"+os.Getenv("PATH")); err != nil {
@@ -65,6 +101,39 @@ func downloadPNPM(ctx *gcp.Context, dir, version string) error {
 	}
 	fp := filepath.Join(dir, "pnpm")
 	url := fmt.Sprintf(pnpmDownloadURL, version)
+
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return gcp.InternalErrorf("parsing pnpm version %q: %w", version, err)
+	}
+
+	// Starting from v11, pnpm is distributed as a .tar.gz archive containing the executable,
+	// rather than a naked binary. We check the version to determine the appropriate download format.
+	if pnpmV11Constraint.Check(v) {
+		ctx.Logf("pnpm v%s detected (>= 11.0.0), downloading tarball.", version)
+		tarURL := url + ".tar.gz"
+		// pnpm v11+ tarballs are flat and contain the "pnpm" executable at the root.
+		// Thus, we set stripComponents to 0.
+		if err := fetch.Tarball(tarURL, dir, 0); err != nil {
+			return gcp.InternalErrorf("downloading pnpm tarball: %w", err)
+		}
+
+		// The extracted file is expected to be named "pnpm" directly in the tarball,
+		// so it will be extracted to `dir/pnpm` (which is `fp`).
+		if _, statErr := os.Stat(fp); os.IsNotExist(statErr) {
+			return gcp.InternalErrorf("expected extracted file %s not found after tarball extraction", fp)
+		}
+
+		// Replace native compiled binary with pure JS shell wrapper to avoid runtime dynamic linker (libatomic) dependencies on minimal run images.
+		wrapperContent := "#!/usr/bin/env bash\nexec node \"$(dirname \"$0\")/dist/pnpm.mjs\" \"$@\"\n"
+		if err := os.WriteFile(fp, []byte(wrapperContent), 0777); err != nil {
+			return gcp.InternalErrorf("writing pnpm shell wrapper: %w", err)
+		}
+		return nil
+	}
+
+	// Legacy behavior for v10 and older (naked binary).
+	ctx.Logf("pnpm v%s detected (< 11.0.0), downloading naked binary.", version)
 	return fetch.File(url, fp)
 }
 
@@ -75,15 +144,19 @@ func downloadPNPM(ctx *gcp.Context, dir, version string) error {
 // returns the latest stable version available.
 // TODO(b/338411091) create a shared packagejson util library and refactor out a generic detect
 // package manager version function.
-func detectPNPMVersion(pjs *PackageJSON) (string, error) {
+func detectPNPMVersion(ctx *gcp.Context, pjs *PackageJSON, stackID string) (string, error) {
 	if pjs == nil || (pjs.Engines.PNPM == "" && pjs.PackageManager == "") {
-		// version, err := latestPackageVersion("pnpm")
-		// if err != nil {
-		// 	return "", gcp.InternalErrorf("fetching available pnpm versions: %w", err)
-		// }
+		version, err := tooling.ResolveToolVersion("nodejs", "pnpm", os.Getenv(env.RuntimeVersion), stackID)
+		if err == nil && version != "" {
+			return version, nil
+		}
+		ctx.Warnf("Could not resolve pinned pnpm version, falling back to latest: %v", err)
 
-		// TODO - Remove this once the pnpm fix is released.
-		return "10.12.4", nil
+		version, err = latestPackageVersion("pnpm")
+		if err != nil {
+			return "", gcp.InternalErrorf("fetching available pnpm versions: %w", err)
+		}
+		return version, nil
 	}
 	var requestedVersion string
 	if pjs.Engines.PNPM != "" {

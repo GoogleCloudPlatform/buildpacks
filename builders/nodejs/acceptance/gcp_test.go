@@ -26,6 +26,7 @@ const (
 	nodeRuntime = "google.nodejs.runtime"
 	nodeYarn    = "google.nodejs.yarn"
 	nodePNPM    = "google.nodejs.pnpm"
+	nodeBun     = "google.nodejs.bun"
 )
 
 func init() {
@@ -94,8 +95,8 @@ func TestAcceptance(t *testing.T) {
 			// Test installs a specific version of node and only needs to be run with a single version
 			VersionInclusionConstraint: "12",
 			App:                        "simple",
-			Path:                       "/version?want=16.9.1",
-			Env:                        []string{"GOOGLE_RUNTIME_VERSION=16.9.1"},
+			Path:                       "/version?want=16.16.0",
+			Env:                        []string{"GOOGLE_RUNTIME_VERSION=16.16.0"},
 			MustUse:                    []string{nodeRuntime, nodeNPM},
 		},
 		{
@@ -104,6 +105,14 @@ func TestAcceptance(t *testing.T) {
 			Env:        []string{"GOOGLE_ENTRYPOINT=node server.js"},
 			MustUse:    []string{nodeRuntime},
 			MustNotUse: []string{nodeNPM, nodeYarn},
+		},
+		{
+			Name:                       "without_package.json_ts",
+			App:                        "no_package_ts",
+			VersionInclusionConstraint: ">= 24.0.0",
+			Env:                        []string{"GOOGLE_ENTRYPOINT=node server.ts"},
+			MustUse:                    []string{nodeRuntime},
+			MustNotUse:                 []string{nodeNPM, nodeYarn},
 		},
 		{
 			Name: "NPM version specified",
@@ -130,12 +139,65 @@ func TestAcceptance(t *testing.T) {
 			MustUse:                []string{nodeRuntime, nodeNPM, entrypoint},
 			SkipStacks:             []string{"google.min.22"},
 		},
+		{
+			Name:                       "nextjs",
+			App:                        "nextjs",
+			MustUse:                    []string{nodeRuntime, nodeNPM},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "bun_lock",
+			App:                        "bun_lock",
+			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "bun_engine",
+			App:                        "bun_engine",
+			Env:                        []string{"X_GOOGLE_RELEASE_TRACK=BETA", "GOOGLE_PACKAGE_MANAGER=bun"},
+			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "bun_lockb",
+			App:                        "bun_lockb",
+			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "simple_no_lock_bun",
+			App:                        "simple_no_lock",
+			Env:                        []string{"GOOGLE_PACKAGE_MANAGER=bun"},
+			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "simple_no_lock_pnpm",
+			App:                        "simple_no_lock",
+			Env:                        []string{"GOOGLE_PACKAGE_MANAGER=pnpm"},
+			MustUse:                    []string{nodePNPM},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "simple_no_lock_yarn",
+			App:                        "simple_no_lock",
+			Env:                        []string{"GOOGLE_PACKAGE_MANAGER=yarn"},
+			MustUse:                    []string{nodeYarn},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "simple_no_lock_default_npm",
+			App:                        "simple_no_lock",
+			MustUse:                    []string{nodeNPM},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
 	}
 
 	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
@@ -159,7 +221,8 @@ func TestFailures(t *testing.T) {
 	for _, tc := range acceptance.FilterFailureTests(t, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}
