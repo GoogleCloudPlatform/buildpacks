@@ -1,26 +1,23 @@
-// Copyright 2026 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements utils/devsync buildpack.
-// The devsync buildpack installs the universal_maker binary into a launch layer.
-package main
+"""Implements utils/devsync buildpack.
+The devsync buildpack installs the universal_maker binary into a launch layer.
+"""
 
-import (
-	"github.com/GoogleCloudPlatform/buildpacks/cmd/utils/devsync/lib"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+from lib import detect_fn, build_fn
+from gcpbuildpack import main
 
-func main() {
-	gcp.Main(lib.DetectFn, lib.BuildFn)
-}
+if __name__ == '__main__':
+    main(detect_fn, build_fn)
