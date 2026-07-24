@@ -1,26 +1,60 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+from fastapi import FastAPI, status
+from pydantic import BaseModel
+from pathlib import Path
+import asyncio
+import subprocess
 
-// Implements python/webserver buildpack.
-// The webserver buildpack installs gunicorn if a custom entrypoint is not specified.
-package main
+app = FastAPI()
 
-import (
-	"github.com/GoogleCloudPlatform/buildpacks/cmd/python/webserver/lib"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+class DetectionResponse(BaseModel):
+    detected: bool
+    message: str
 
-func main() {
-	gcp.Main(lib.DetectFn, lib.BuildFn)
-}
+async def detect():
+    try:
+        # Simulate detection logic; in real code, this would check for specific files or configurations
+        requirements_exists = await asyncio.to_thread(lambda: Path("requirements.txt").exists())
+        if requirements_exists:
+            return {"detected": True, "message": "Python application detected with requirements.txt"}
+        else:
+            return {"detected": False, "message": "No Python requirements file found"}
+    except Exception as e:
+        return {"detected": False, "message": f"Detection error: {str(e)}"}
+
+@app.post("/detect", response_model=DetectionResponse)
+async def handle_detection():
+    result = await detect()
+    if not result.get("detected"):
+        return status.HTTP_400_BAD_REQUEST
+    return result
+
+class BuildResponse(BaseModel):
+    success: bool
+    message: str
+
+async def build():
+    try:
+        # Simulate build logic; in real code, this would perform installation or setup tasks
+        proc = await asyncio.create_subprocess_exec(
+            'pip', 'install', '-r', 'requirements.txt',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        await proc.communicate()
+        if proc.returncode == 0:
+            return {"success": True, "message": "Build successful"}
+        else:
+            return {"success": False, "message": f"Build failed with exit code {proc.returncode}"}
+    except Exception as e:
+        return {"success": False, "message": f"Build error: {str(e)}"}
+
+@app.post("/build", response_model=BuildResponse)
+async def handle_build():
+    result = await build()
+    if not result.get("success"):
+        return status.HTTP_500_INTERNAL_SERVER_ERROR
+    return result
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

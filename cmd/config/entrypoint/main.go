@@ -1,26 +1,30 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+from fastapi import FastAPI
+from pydantic import BaseModel
+import asyncio
+from typing import Optional, Dict, Any
 
-// Implements config/entrypoint buildpack.
-// The entrypoint buildpack sets the image entrypoint based on an environment variable or Procfile.
-package main
+# Pydantic model definitions
+class ProcfileModel(BaseModel):
+    web: str
+    other_processes: Optional[Dict[str, str]] = None
 
-import (
-	"github.com/GoogleCloudPlatform/buildpacks/cmd/config/entrypoint/lib"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+class EntrypointResponse(BaseModel):
+    entrypoint: str
+    args: Optional[list] = None
 
-func main() {
-	gcp.Main(lib.DetectFn, lib.BuildFn)
-}
+app = FastAPI()
+
+@app.get("/detect")
+async def detect_buildpack() -> bool:
+    # Implement detection logic here
+    return True
+
+@app.post("/build")
+async def build_entrypoint(procfile: ProcfileModel) -> EntrypointResponse:
+    # Implement build logic here
+    entrypoint = procfile.web.split()[0]
+    args = procfile.web.split()[1:] if len(procfile.web.split()) > 1 else None
+    return EntrypointResponse(entrypoint=entrypoint, args=args)
+
+if __name__ == "__main__":
+    asyncio.run(app.run())

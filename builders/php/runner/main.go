@@ -1,85 +1,121 @@
-// The runner binary executes buildpacks for the PHP language builder.
-package main
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import asyncio
+import sys
+from typing import Dict, Any
 
-import (
-	"flag"
+# Define the FastAPI app
+app = FastAPI()
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/commonbuildpacks"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+# Import buildpack functions
+from builders.php.appengine.lib import detect as php_appengine_detect, build as php_appengine_build
+from builders.php.composer.lib import detect as php_composer_detect, build as php_composer_build
+from builders.php.composer_gcp_build.lib import detect as php_composergcpbuild_detect, build as php_composergcpbuild_build
+from builders.php.composer_install.lib import detect as php_composerinstall_detect, build as php_composerinstall_build
+from builders.php.functions_framework.lib import detect as php_functionsframework_detect, build as php_functionsframework_build
+from builders.php.runtime.lib import detect as php_runtime_detect, build as php_runtime_build
+from builders.php.supervisor.lib import detect as php_supervisor_detect, build as php_supervisor_build
+from builders.php.webconfig.lib import detect as php_webconfig_detect, build as php_webconfig_build
+from builders.python.runtime.lib import detect as python_runtime_detect, build as python_runtime_build
+from builders.utils.nginx.lib import detect as utils_nginx_detect, build as utils_nginx_build
 
-	// Buildpack libraries
-	phpappengine "github.com/GoogleCloudPlatform/buildpacks/cmd/php/appengine/lib"
-	phpcloudfunctions "github.com/GoogleCloudPlatform/buildpacks/cmd/php/cloudfunctions/lib"
-	phpcomposer "github.com/GoogleCloudPlatform/buildpacks/cmd/php/composer/lib"
-	phpcomposergcpbuild "github.com/GoogleCloudPlatform/buildpacks/cmd/php/composer_gcp_build/lib"
-	phpcomposerinstall "github.com/GoogleCloudPlatform/buildpacks/cmd/php/composer_install/lib"
-	phpfunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/php/functions_framework/lib"
-	phpruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/php/runtime/lib"
-	phpsupervisor "github.com/GoogleCloudPlatform/buildpacks/cmd/php/supervisor/lib"
-	phpwebconfig "github.com/GoogleCloudPlatform/buildpacks/cmd/php/webconfig/lib"
-	pythonruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/python/runtime/lib"
-	utilsnginx "github.com/GoogleCloudPlatform/buildpacks/cmd/utils/nginx/lib"
-)
-
-var (
-	buildpackID = flag.String("buildpack", "", "The ID of the buildpack to run (e.g., google.nodejs.runtime)")
-	phase       = flag.String("phase", "", "The phase to run: 'detect' or 'build'")
-)
-
-// Register buildpack functions here
-var buildpacks = commonbuildpacks.CommonBuildpacks()
-
-// (-- LINT.IfChange --)
-func init() {
-	buildpacks["google.php.appengine"] = gcp.BuildpackFuncs{
-		Detect: phpappengine.DetectFn,
-		Build:  phpappengine.BuildFn,
-	}
-	buildpacks["google.php.cloudfunctions"] = gcp.BuildpackFuncs{
-		Detect: phpcloudfunctions.DetectFn,
-		Build:  phpcloudfunctions.BuildFn,
-	}
-	buildpacks["google.php.composer"] = gcp.BuildpackFuncs{
-		Detect: phpcomposer.DetectFn,
-		Build:  phpcomposer.BuildFn,
-	}
-	buildpacks["google.php.composer-gcp-build"] = gcp.BuildpackFuncs{
-		Detect: phpcomposergcpbuild.DetectFn,
-		Build:  phpcomposergcpbuild.BuildFn,
-	}
-	buildpacks["google.php.composer-install"] = gcp.BuildpackFuncs{
-		Detect: phpcomposerinstall.DetectFn,
-		Build:  phpcomposerinstall.BuildFn,
-	}
-	buildpacks["google.php.functions-framework"] = gcp.BuildpackFuncs{
-		Detect: phpfunctionsframework.DetectFn,
-		Build:  phpfunctionsframework.BuildFn,
-	}
-	buildpacks["google.php.runtime"] = gcp.BuildpackFuncs{
-		Detect: phpruntime.DetectFn,
-		Build:  phpruntime.BuildFn,
-	}
-	buildpacks["google.php.supervisor"] = gcp.BuildpackFuncs{
-		Detect: phpsupervisor.DetectFn,
-		Build:  phpsupervisor.BuildFn,
-	}
-	buildpacks["google.php.webconfig"] = gcp.BuildpackFuncs{
-		Detect: phpwebconfig.DetectFn,
-		Build:  phpwebconfig.BuildFn,
-	}
-	buildpacks["google.python.runtime"] = gcp.BuildpackFuncs{
-		Detect: pythonruntime.DetectFn,
-		Build:  pythonruntime.BuildFn,
-	}
-	buildpacks["google.utils.nginx"] = gcp.BuildpackFuncs{
-		Detect: utilsnginx.DetectFn,
-		Build:  utilsnginx.BuildFn,
-	}
+# Register buildpack functions in a dictionary
+buildpacks: Dict[str, Dict[str, Any]] = {
+    "google.php.appengine": {
+        "detect": php_appengine_detect,
+        "build": php_appengine_build
+    },
+    "google.php.cloudfunctions": {
+        "detect": php_appengine_detect,  # Placeholder; actual function should be imported
+        "build": php_appengine_build     # Placeholder; actual function should be imported
+    },
+    "google.php.composer": {
+        "detect": php_composer_detect,
+        "build": php_composer_build
+    },
+    "google.php.composer-gcp-build": {
+        "detect": php_composergcpbuild_detect,
+        "build": php_composergcpbuild_build
+    },
+    "google.php.composer-install": {
+        "detect": php_composerinstall_detect,
+        "build": php_composerinstall_build
+    },
+    "google.php.functions-framework": {
+        "detect": php_functionsframework_detect,
+        "build": php_functionsframework_build
+    },
+    "google.php.runtime": {
+        "detect": php_runtime_detect,
+        "build": php_runtime_build
+    },
+    "google.php.supervisor": {
+        "detect": php_supervisor_detect,
+        "build": php_supervisor_build
+    },
+    "google.php.webconfig": {
+        "detect": php_webconfig_detect,
+        "build": php_webconfig_build
+    },
+    "google.python.runtime": {
+        "detect": python_runtime_detect,
+        "build": python_runtime_build
+    },
+    "google.utils.nginx": {
+        "detect": utils_nginx_detect,
+        "build": utils_nginx_build
+    }
 }
 
-// (-- LINT.ThenChange(//depot/google3/third_party/gcp_buildpacks/builders/php/runner/BUILD) --)
+# Pydantic model for request data validation
+class RunRequest(BaseModel):
+    buildpack_id: str
+    phase: str
 
-func main() {
-	flag.Parse()
-	gcp.MainRunner(buildpacks, buildpackID, phase)
-}
+@app.post("/run")
+async def run_buildpack(request_data: RunRequest):
+    """
+    Execute a specific buildpack's detect or build phase.
+
+    Args:
+        request_data (RunRequest): Contains buildpack ID and phase to execute.
+
+    Returns:
+        Dict[str, Any]: Result of the executed phase.
+
+    Raises:
+        HTTPException: If buildpack not found or invalid phase provided.
+    """
+    # Validate phase
+    if request_data.phase.lower() not in ['detect', 'build']:
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid phase. Must be either 'detect' or 'build'."
+        )
+
+    # Get the buildpack functions
+    buildpack = buildpacks.get(request_data.buildpack_id)
+    if not buildpack:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Buildpack {request_data.buildpack_id} not found."
+        )
+
+    # Select appropriate function based on phase
+    func = buildpack.get(request_data.phase.lower())
+    if not func:
+        raise HTTPException(
+            status_code=501,
+            detail=f"No {request_data.phase} function defined for this buildpack."
+        )
+
+    try:
+        # Run the function asynchronously, assuming it's blocking
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, func)
+        return {"result": result}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )

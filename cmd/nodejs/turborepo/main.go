@@ -1,26 +1,23 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+from fastapi import FastAPI, Body
+import asyncio
+from lib import detect, build  # Assuming these are async functions
 
-// Implements nodejs/turborepo buildpack.
-// The nodejs/turborepo buildpack analyzes and configures a build for monorepos using Turborepo.
-package main
+app = FastAPI()
 
-import (
-	"github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/turborepo/lib"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+@app.post("/detect")
+async def detect_endpoint(data: dict = Body(...)):
+    return await detect.detect_fn(data)
 
-func main() {
-	gcp.Main(lib.DetectFn, lib.BuildFn)
-}
+@app.post("/build")
+async def build_endpoint(data: dict = Body(...)):
+    return await build.build_fn(data)
+
+async def main():
+    # Run the server using uvicorn with asyncio
+    import uvicorn
+    config = uvicorn.Config(app, host="0.0.0.0", port=8000)
+    server = uvicorn.Server(config=config)
+    await server.serve()
+
+if __name__ == "__main__":
+    asyncio.run(main())

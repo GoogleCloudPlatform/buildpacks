@@ -1,26 +1,76 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import asyncio
+import json
+import logging
+import os
 
-// Implements nodejs/npm buildpack.
-// The npm buildpack installs dependencies using npm.
-package main
+app = FastAPI()
 
-import (
-	"github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/npm/lib"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+class Buildpack(BaseModel):
+    project_id: str
+    service_account: str
+    runtime: str
+    environment: dict
+    files: dict
 
-func main() {
-	gcp.Main(lib.DetectFn, lib.BuildFn)
-}
+async def detect() -> bool:
+    """Detect if npm is required based on presence of package.json."""
+    try:
+        # Asynchronous file check using asyncio's loop.run_in_executor
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, os.path.isfile, 'package.json')
+        return result
+    except Exception as e:
+        logging.error(f"Error detecting npm: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def build(buildpack_data: Buildpack) -> dict:
+    """Install npm dependencies asynchronously."""
+    try:
+        # Asynchronous command execution using asyncio's subprocess
+        proc = await asyncio.create_subprocess_exec(
+            'npm', 'install',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE)
+
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            raise HTTPException(status_code=400, detail=f"Error installing npm packages: {stderr.decode()}")
+
+        return {"status": "success", "message": "Dependencies installed successfully"}
+    except Exception as e:
+        logging.error(f"Error building npm dependencies: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/build")
+async def handle_build(buildpack_data: Buildpack) -> dict:
+    """Handle the build request."""
+    try:
+        # Simulate detection and build process
+        needs_npm = await detect()
+        if not needs_npm:
+            return {"status": "success", "message": "No npm dependencies required"}
+
+        result = await build(buildpack_data)
+        return result
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def main():
+    """Main entry point for the FastAPI application."""
+    try:
+        # Run the FastAPI server using asyncio's event loop
+        config = uvicorn.Config(app, host="0.0.0.0", port=8000)
+        server = uvicorn.Server(config)
+        await server.serve()
+    except Exception as e:
+        logging.error(f"Error starting server: {e}")
+        raise
+
+if __name__ == "__main__":
+    asyncio.run(main())

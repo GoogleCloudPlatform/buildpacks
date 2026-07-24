@@ -1,26 +1,32 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+from fastapi import FastAPI, status
+from pydantic import BaseModel
+import logging
 
-// Implements ruby/bundle buildpack.
-// The bundle buildpack installs dependencies using bundle.
-package main
+# Initialize FastAPI app
+app = FastAPI()
 
-import (
-	"github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/bundle/lib"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+class BuildpackState(BaseModel):
+    enabled: bool = True
 
-func main() {
-	gcp.Main(lib.DetectFn, lib.BuildFn)
-}
+async def get_state():
+    return BuildpackState(enabled=True)
+
+@app.post("/build")
+async def build(state: BuildpackState = Depends(get_state)):
+    if not state.enabled:
+        return {"status": status.HTTP_204_NO_CONTENT, "message": "Buildpack disabled"}
+
+    try:
+        detected = await detect.detect()
+        if not detected:
+            return {"status": status.HTTP_404_NOT_FOUND, "message": "No Ruby files found"}
+
+        build_result = await build.build_dependencies()
+        return {"status": status.HTTP_200_OK, "result": build_result}
+    except Exception as e:
+        logging.error(f"Buildpack error: {str(e)}")
+        raise
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
