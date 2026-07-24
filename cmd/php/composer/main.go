@@ -1,26 +1,36 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements php/composer buildpack.
-// The composer buildpack installs dependencies using composer.
-package main
+"""
+Implements php/composer buildpack.
+The composer buildpack installs dependencies using composer.
+"""
 
-import (
-	"github.com/GoogleCloudPlatform/buildpacks/cmd/php/composer/lib"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+import sys
+from .lib import detect_fn as lib_detect_fn, build_fn as lib_build_fn
+from ..pkg.gcpbuildpack import main as gcp_main
 
-func main() {
-	gcp.Main(lib.DetectFn, lib.BuildFn)
-}
+def main():
+    """
+    Main function to execute the buildpack process.
+    It calls the Google Cloud Platform buildpack main function with detection and building functions.
+    """
+    try:
+        gcp_main(lib_detect_fn, lib_build_fn)
+    except Exception as e:
+        print(f"Error occurred during buildpack execution: {str(e)}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

@@ -1,67 +1,28 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import sys
+import os
+import shutil
+import importlib.util
 
-// This script is used to generate bytecode cache for a Node.js application.
-// It is intended to be run by the Node.js functions-framework buildpack.
-//
-// The script takes the absolute path to the user's entrypoint as an argument.
-// It then enables bytecode caching, requires the entrypoint, and flushes the
-// cache to disk.
-//
-// The script is designed to be run in a Node.js environment with the
-// functions-framework installed. Any dependencies of the entrypoint must be
-// installed in the Node.js environment.
+if len(sys.argv) < 3:
+    print("Internal error: Missing arguments.")
+    sys.exit(1)
 
-const { enableCompileCache, flushCompileCache } = require('node:module');
-const path = require('node:path');
-const fs = require('node:fs');
+entrypoint = sys.argv[1]
+cache_dir = sys.argv[2]
 
-// The buildpack passes the absolute path to the user's entrypoint as the first argument.
-const entrypoint = process.argv[2];
-if (!entrypoint) {
-  console.error('Internal error: Application entrypoint not provided to cache generator.');
-  process.exit(1);
-}
+print("Starting bytecode cache generation...")
 
-// The buildpack passes the cache directory name as the second argument.
-const cacheDirName = process.argv[3];
-if (!cacheDirName) {
-  console.error('Internal error: Cache directory name not provided to cache generator.');
-  process.exit(1);
-}
+try:
+    if os.path.exists(cache_dir):
+        shutil.rmtree(cache_dir, ignore_errors=True)
+    os.makedirs(cache_dir, exist_ok=False)
 
+    spec = importlib.util.spec_from_file_location("entry_module", entrypoint)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["entry_module"] = module
+    if spec.loader is not None:
+        spec.loader.exec_module(module)
 
-console.log('--- Starting bytecode cache generation ---');
-
-try {
-  const cachePath = path.join(process.cwd(), cacheDirName);
-
-  if (fs.existsSync(cachePath)) {
-    fs.rmSync(cachePath, { recursive: true, force: true });
-  }
-  fs.mkdirSync(cachePath);
-
-  enableCompileCache(cachePath);
-
-  console.log('Requiring application entrypoint to trigger compilation...');
-  require(entrypoint);
-
-  console.log('Flushing compile cache to disk...');
-  flushCompileCache();
-
-  console.log('--- Cache generation complete. ---');
-} catch (error) {
-  console.error(' Warning: Error during cache generation, build will continue without it.', error);
-  process.exit(1);
-}
+except Exception as e:
+    print(f"Error during cache generation: {e}")
+    sys.exit(1)

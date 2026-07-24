@@ -1,65 +1,68 @@
-// The runner binary executes buildpacks for the .NET language builder.
-package main
+# The runner executes buildpacks for the .NET language builder.
 
-import (
-	"flag"
+import argparse
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/commonbuildpacks"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+# Import buildpack functions
+from builders.dotnet.runner.appengine.lib import DetectFn as dotnetappengine_detect_fn, BuildFn as dotnetappengine_build_fn
+from builders.dotnet.runner.appengine_main.lib import DetectFn as dotnetappenginemain_detect_fn, BuildFn as dotnetappenginemain_build_fn
+from builders.dotnet.runner.flex.lib import DetectFn as dotnetflex_detect_fn, BuildFn as dotnetflex_build_fn
+from builders.dotnet.runner.functions_framework.lib import DetectFn as dotnetfunctionsframework_detect_fn, BuildFn as dotnetfunctionsframework_build_fn
+from builders.dotnet.runner.publish.lib import DetectFn as dotnetpublish_detect_fn, BuildFn as dotnetpublish_build_fn
+from builders.dotnet.runner.runtime.lib import DetectFn as dotnetruntime_detect_fn, BuildFn as dotnetruntime_build_fn
+from builders.dotnet.runner.sdk.lib import DetectFn as dotnetsdk_detect_fn, BuildFn as dotnetsdk_build_fn
 
-	// Buildpack libraries
-	dotnetappengine "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/appengine/lib"
-	dotnetappenginemain "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/appengine_main/lib"
-	dotnetflex "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/flex/lib"
-	dotnetfunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/functions_framework/lib"
-	dotnetpublish "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/publish/lib"
-	dotnetruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/runtime/lib"
-	dotnetsdk "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/sdk/lib"
-)
-
-var (
-	buildpackID = flag.String("buildpack", "", "The ID of the buildpack to run (e.g., google.nodejs.runtime)")
-	phase       = flag.String("phase", "", "The phase to run: 'detect' or 'build'")
-)
-
-// Register buildpack functions here
-var buildpacks = commonbuildpacks.CommonBuildpacks()
-
-// (-- LINT.IfChange --)
-func init() {
-	buildpacks["google.dotnet.appengine"] = gcp.BuildpackFuncs{
-		Detect: dotnetappengine.DetectFn,
-		Build:  dotnetappengine.BuildFn,
-	}
-	buildpacks["google.dotnet.appengine-main"] = gcp.BuildpackFuncs{
-		Detect: dotnetappenginemain.DetectFn,
-		Build:  dotnetappenginemain.BuildFn,
-	}
-	buildpacks["google.dotnet.flex"] = gcp.BuildpackFuncs{
-		Detect: dotnetflex.DetectFn,
-		Build:  dotnetflex.BuildFn,
-	}
-	buildpacks["google.dotnet.runtime"] = gcp.BuildpackFuncs{
-		Detect: dotnetruntime.DetectFn,
-		Build:  dotnetruntime.BuildFn,
-	}
-	buildpacks["google.dotnet.sdk"] = gcp.BuildpackFuncs{
-		Detect: dotnetsdk.DetectFn,
-		Build:  dotnetsdk.BuildFn,
-	}
-	buildpacks["google.dotnet.publish"] = gcp.BuildpackFuncs{
-		Detect: dotnetpublish.DetectFn,
-		Build:  dotnetpublish.BuildFn,
-	}
-	buildpacks["google.dotnet.functions-framework"] = gcp.BuildpackFuncs{
-		Detect: dotnetfunctionsframework.DetectFn,
-		Build:  dotnetfunctionsframework.BuildFn,
-	}
+# Register buildpack functions
+buildpacks = {
+    "google.dotnet.appengine": {
+        "detect": dotnetappengine_detect_fn,
+        "build": dotnetappengine_build_fn
+    },
+    "google.dotnet.appengine-main": {
+        "detect": dotnetappenginemain_detect_fn,
+        "build": dotnetappenginemain_build_fn
+    },
+    "google.dotnet.flex": {
+        "detect": dotnetflex_detect_fn,
+        "build": dotnetflex_build_fn
+    },
+    "google.dotnet.runtime": {
+        "detect": dotnetruntime_detect_fn,
+        "build": dotnetruntime_build_fn
+    },
+    "google.dotnet.sdk": {
+        "detect": dotnetsdk_detect_fn,
+        "build": dotnetsdk_build_fn
+    },
+    "google.dotnet.publish": {
+        "detect": dotnetpublish_detect_fn,
+        "build": dotnetpublish_build_fn
+    },
+    "google.dotnet.functions-framework": {
+        "detect": dotnetfunctionsframework_detect_fn,
+        "build": dotnetfunctionsframework_build_fn
+    }
 }
 
-// (-- LINT.ThenChange(//depot/google3/third_party/gcp_buildpacks/builders/dotnet/runner/BUILD) --)
+def main():
+    parser = argparse.ArgumentParser(description='Run .NET buildpacks.')
+    parser.add_argument('--buildpack', type=str, required=True)
+    parser.add_argument('--phase', type=str, required=True)
 
-func main() {
-	flag.Parse()
-	gcp.MainRunner(buildpacks, buildpackID, phase)
-}
+    args = parser.parse_args()
+
+    if args.buildpack not in buildpacks:
+        print(f"Buildpack {args.buildpack} not found.")
+        return 1
+
+    bp = buildpacks[args.buildpack]
+
+    if args.phase == 'detect':
+        bp['detect']()
+    elif args.phase == 'build':
+        bp['build']()
+    else:
+        print("Invalid phase. Must be 'detect' or 'build'.")
+        return 1
+
+if __name__ == "__main__":
+    main()

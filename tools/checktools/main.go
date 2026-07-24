@@ -1,33 +1,29 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import logging
+import sys
 
-// The main binary verifies that all tools are correctly installed.
-package main
+from checktools import installed, pack_version
 
-import (
-	"log"
-
-	"github.com/GoogleCloudPlatform/buildpacks/internal/checktools"
+# Configure logging to match Go's default behavior
+logging.basicConfig(
+    format='%(asctime)s - %(message)s',
+    level=logging.INFO,
+    datefmt='%H:%M:%S'
 )
 
-func main() {
-	log.Printf("Checking tools")
-	if err := checktools.Installed(); err != nil {
-		log.Fatalf("Error: %v", err)
-	}
-	log.Printf("Checking pack version")
-	if err := checktools.PackVersion(); err != nil {
-		log.Fatalf("Error: %v", err)
-	}
-}
+def main():
+    logging.info("Checking tools")
+    try:
+        installed()
+    except Exception as e:
+        logging.critical(f"Error: {e}")
+        sys.exit(1)
+
+    logging.info("Checking pack version")
+    try:
+        pack_version()
+    except Exception as e:
+        logging.critical(f"Error: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

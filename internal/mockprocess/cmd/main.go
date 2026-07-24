@@ -1,49 +1,46 @@
-// Package main is a mock process thats behavior can be configured by
-// by setting certain environment variables.
-package main
+import json
+import os
+import re
+import sys
 
-import (
-	"fmt"
-	"log"
-	"os"
-	"regexp"
-	"strings"
 
-	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess/mockprocessutil"
-)
+def main():
+    mock_process_map_env = "MOCKPROCESSUTIL_ENV_HELPER_MOCKPROCESSMAP"
+    mocks_json = os.getenv(mock_process_map_env)
+    if not mocks_json:
+        print(f"Environment variable {mock_process_map_env} must be set.", file=sys.stderr)
+        sys.exit(1)
 
-func main() {
-	mocksJSON := os.Getenv(mockprocessutil.EnvHelperMockProcessMap)
-	if mocksJSON == "" {
-		log.Fatalf("%q env var must be set", mockprocessutil.EnvHelperMockProcessMap)
-	}
-	mockProcesses, err := mockprocessutil.UnmarshalMockProcessMap(mocksJSON)
-	if err != nil {
-		log.Fatalf("unable to unmarshal mock process map from JSON '%s': %v", mocksJSON, err)
-	}
+    try:
+        mocks = json.loads(mocks_json)
+    except json.JSONDecodeError as e:
+        print(f"Failed to parse JSON from environment variable: {e}", file=sys.stderr)
+        sys.exit(1)
 
-	fullCommand := strings.Join(os.Args[1:], " ")
-	var mockMatch *mockprocessutil.MockProcessConfig = nil
-	for commandRegex, mock := range mockProcesses {
-		re := regexp.MustCompile(commandRegex)
-		if re.MatchString(fullCommand) {
-			mockMatch = mock
-			break
-		}
-	}
-	if mockMatch == nil {
-		// To avoid needing to mock every call to Exec, assume
-		// the process should pass if it wasn't specified by the test.
-		os.Exit(0)
-	}
+    full_command = ' '.join(sys.argv[1:])
+    mock_match = None
 
-	if mockMatch.Stdout != "" {
-		fmt.Fprint(os.Stdout, mockMatch.Stdout)
-	}
+    for pattern, config in mocks.items():
+        compiled_pattern = re.compile(pattern)
+        if compiled_pattern.search(full_command):
+            mock_match = config
+            break
 
-	if mockMatch.Stderr != "" {
-		fmt.Fprint(os.Stderr, mockMatch.Stderr)
-	}
+    if not mock_match:
+        sys.exit(0)
 
-	os.Exit(mockMatch.ExitCode)
-}
+    stdout = mock_match.get("stdout", "")
+    stderr = mock_match.get("stderr", "")
+    exit_code = mock_match.get("exit_code", 0)
+
+    if stdout:
+        print(stdout, file=sys.stdout)
+
+    if stderr:
+        print(stderr, file=sys.stderr)
+
+    sys.exit(exit_code)
+
+
+if __name__ == "__main__":
+    main()

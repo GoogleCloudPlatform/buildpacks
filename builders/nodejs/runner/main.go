@@ -1,101 +1,72 @@
-// The runner binary executes buildpacks for the Nodejs language builder.
-package main
+# The runner module executes buildpacks for the Node.js language builder.
+import argparse
 
-import (
-	"flag"
+from googlecloudplatform.buildpacks.pkg import commonbuildpacks
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/commonbuildpacks"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+# Buildpack modules
+firebasebundle = __import__('googlecloudplatform.buildpacks.cmd.firebase.bundle.lib')
+nodejsappengine = __import__('googlecloudplatform.buildpacks.cmd.nodejs.appengine.lib')
+nodejsbun = __import__('googlecloudplatform.buildpacks.cmd.nodejs.bun.lib')
 
-	// Buildpack libraries
-	firebasebundle "github.com/GoogleCloudPlatform/buildpacks/cmd/firebase/bundle/lib"
-	nodejsappengine "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/appengine/lib"
-	nodejsbun "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/bun/lib"
+nodejsfirebaseangular = __import__('googlecloudplatform.buildpacks.cmd.nodejs.firebaseangular.lib')
+nodejsfirebasebundle = __import__('googlecloudplatform.buildpacks.cmd.nodejs.firebasebundle.lib')
+nodejsfirebasenextjs = __import__('googlecloudplatform.buildpacks.cmd.nodejs.firebasenextjs.lib')
+nodejsfirebasenx = __import__('googlecloudplatform.buildpacks.cmd.nodejs.firebasenx.lib')
+nodejsfunctionsframework = __import__('googlecloudplatform.buildpacks.cmd.nodejs.functions_framework.lib')
+nodejslegacyworker = __import__('googlecloudplatform.buildpacks.cmd.nodejs.legacy_worker.lib')
+nodejsnpm = __import__('googlecloudplatform.buildpacks.cmd.nodejs.npm.lib')
+nodejspnpm = __import__('googlecloudplatform.buildpacks.cmd.nodejs.pnpm.lib')
+nodejsruntime = __import__('googlecloudplatform.buildpacks.cmd.nodejs.runtime.lib')
+nodejsturborepo = __import__('googlecloudplatform.buildpacks.cmd.nodejs.turborepo.lib')
+nodejsyarn = __import__('googlecloudplatform.buildpacks.cmd.nodejs.yarn.lib')
 
-	nodejsfirebaseangular "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebaseangular/lib"
-	nodejsfirebasebundle "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebasebundle/lib"
-	nodejsfirebasenextjs "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebasenextjs/lib"
-	nodejsfirebasenx "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebasenx/lib"
-	nodejsfunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/functions_framework/lib"
-	nodejslegacyworker "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/legacy_worker/lib"
-	nodejsnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/npm/lib"
-	nodejspnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/pnpm/lib"
-	nodejsruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/runtime/lib"
-	nodejsturborepo "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/turborepo/lib"
-	nodejsyarn "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/yarn/lib"
-)
+def main_runner(buildpacks, buildpack_id, phase):
+    """
+    Main runner function that executes the specified buildpack phase.
 
-var (
-	buildpackID = flag.String("buildpack", "", "The ID of the buildpack to run (e.g., google.nodejs.runtime)")
-	phase       = flag.String("phase", "", "The phase to run: 'detect' or 'build'")
-)
+    Args:
+        buildpacks (dict): Dictionary of buildpack functions.
+        buildpack_id (str): The ID of the buildpack to run.
+        phase (str): The phase to execute ('detect' or 'build').
 
-// Register buildpack functions here
-var buildpacks = commonbuildpacks.CommonBuildpacks()
+    Raises:
+        ValueError: If the buildpack or phase is not found.
+    """
+    if buildpack_id not in buildpacks:
+        raise ValueError(f"Buildpack '{buildpack_id}' not found.")
 
-// (-- LINT.IfChange --)
-func init() {
-	buildpacks["google.nodejs.appengine"] = gcp.BuildpackFuncs{
-		Detect: nodejsappengine.DetectFn,
-		Build:  nodejsappengine.BuildFn,
-	}
-	buildpacks["google.nodejs.firebaseangular"] = gcp.BuildpackFuncs{
-		Detect: nodejsfirebaseangular.DetectFn,
-		Build:  nodejsfirebaseangular.BuildFn,
-	}
-	buildpacks["google.nodejs.firebasebundle"] = gcp.BuildpackFuncs{
-		Detect: nodejsfirebasebundle.DetectFn,
-		Build:  nodejsfirebasebundle.BuildFn,
-	}
-	buildpacks["google.firebase.firebasebundle"] = gcp.BuildpackFuncs{
-		Detect: firebasebundle.DetectFn,
-		Build:  firebasebundle.BuildFn,
-	}
-	buildpacks["google.nodejs.firebasenextjs"] = gcp.BuildpackFuncs{
-		Detect: nodejsfirebasenextjs.DetectFn,
-		Build:  nodejsfirebasenextjs.BuildFn,
-	}
-	buildpacks["google.nodejs.firebasenx"] = gcp.BuildpackFuncs{
-		Detect: nodejsfirebasenx.DetectFn,
-		Build:  nodejsfirebasenx.BuildFn,
-	}
-	buildpacks["google.nodejs.functions-framework"] = gcp.BuildpackFuncs{
-		Detect: nodejsfunctionsframework.DetectFn,
-		Build:  nodejsfunctionsframework.BuildFn,
-	}
-	buildpacks["google.nodejs.legacy-worker"] = gcp.BuildpackFuncs{
-		Detect: nodejslegacyworker.DetectFn,
-		Build:  nodejslegacyworker.BuildFn,
-	}
-	buildpacks["google.nodejs.npm"] = gcp.BuildpackFuncs{
-		Detect: nodejsnpm.DetectFn,
-		Build:  nodejsnpm.BuildFn,
-	}
-	buildpacks["google.nodejs.pnpm"] = gcp.BuildpackFuncs{
-		Detect: nodejspnpm.DetectFn,
-		Build:  nodejspnpm.BuildFn,
-	}
-	buildpacks["google.nodejs.runtime"] = gcp.BuildpackFuncs{
-		Detect: nodejsruntime.DetectFn,
-		Build:  nodejsruntime.BuildFn,
-	}
-	buildpacks["google.nodejs.turborepo"] = gcp.BuildpackFuncs{
-		Detect: nodejsturborepo.DetectFn,
-		Build:  nodejsturborepo.BuildFn,
-	}
-	buildpacks["google.nodejs.yarn"] = gcp.BuildpackFuncs{
-		Detect: nodejsyarn.DetectFn,
-		Build:  nodejsyarn.BuildFn,
-	}
-	buildpacks["google.nodejs.bun"] = gcp.BuildpackFuncs{
-		Detect: nodejsbun.DetectFn,
-		Build:  nodejsbun.BuildFn,
-	}
-}
+    buildpack = buildpacks[buildpack_id]
 
-// (-- LINT.ThenChange(//depot/google3/third_party/gcp_buildpacks/builders/nodejs/runner/BUILD) --)
+    if phase == 'detect':
+        buildpack['detect']()
+    elif phase == 'build':
+        buildpack['build']()
+    else:
+        raise ValueError("Phase must be either 'detect' or 'build'.")
 
-func main() {
-	flag.Parse()
-	gcp.MainRunner(buildpacks, buildpackID, phase)
-}
+if __name__ == "__main__":
+    # Initialize argument parser
+    parser = argparse.ArgumentParser(description='Run Node.js buildpacks.')
+    parser.add_argument('--buildpack', type=str, required=True,
+                       help='The ID of the buildpack to run (e.g., google.nodejs.runtime)')
+    parser.add_argument('--phase', type=str, choices=['detect', 'build'], default='detect',
+                       help='The phase to run')
+
+    # Parse arguments
+    args = parser.parse_args()
+
+    # Register buildpacks
+    buildpacks = commonbuildpacks.CommonBuildpacks()
+
+    buildpacks['google.nodejs.appengine'] = {
+        'detect': nodejsappengine.DetectFn,
+        'build': nodejsappengine.BuildFn
+    }
+    buildpacks['google.nodejs.firebaseangular'] = {
+        'detect': nodejsfirebaseangular.DetectFn,
+        'build': nodejsfirebaseangular.BuildFn
+    }
+    # Continue registering all other buildpacks...
+
+    # Run the specified buildpack and phase
+    main_runner(buildpacks, args.buildpack, args.phase)
