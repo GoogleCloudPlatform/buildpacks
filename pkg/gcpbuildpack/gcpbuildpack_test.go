@@ -104,6 +104,51 @@ func TestNewContextWithBuildContext(t *testing.T) {
 	}
 }
 
+func TestEnv(t *testing.T) {
+	testCases := []struct {
+		name          string
+		platformEnv   map[string]string
+		osEnv         map[string]string
+		key           string
+		want          string
+	}{
+		{
+			name:        "platform_env_takes_precedence",
+			platformEnv: map[string]string{"GOOGLE_BUILDABLE": "apps/web"},
+			osEnv:       map[string]string{"GOOGLE_BUILDABLE": "apps/other"},
+			key:         "GOOGLE_BUILDABLE",
+			want:        "apps/web",
+		},
+		{
+			name:        "falls_back_to_os_env",
+			osEnv:       map[string]string{"GOOGLE_BUILDABLE": "apps/other"},
+			key:         "GOOGLE_BUILDABLE",
+			want:        "apps/other",
+		},
+		{
+			name:        "missing_env_returns_empty",
+			key:         "GOOGLE_BUILDABLE",
+			want:        "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			for k, v := range tc.osEnv {
+				os.Setenv(k, v)
+				defer os.Unsetenv(k)
+			}
+			ctx := NewContext(WithBuildContext(libcnb.BuildContext{
+				Platform: libcnb.Platform{Environment: tc.platformEnv},
+			}))
+			got := ctx.Env(tc.key)
+			if got != tc.want {
+				t.Errorf("ctx.Env(%q) = %q, want %q", tc.key, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestDetectContextInitialized(t *testing.T) {
 	setUpDetectEnvironment(t)
 
