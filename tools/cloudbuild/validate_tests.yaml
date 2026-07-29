@@ -85,7 +85,7 @@ steps:
 
   - id: google-24-run-image
     name: gcr.io/cloud-builders/docker
-    dir: stacks/google_24
+    dir: stacks/google_24_full
     env:
       - 'DOCKER_BUILDKIT=1'
     args:
