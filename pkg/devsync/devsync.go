@@ -1,66 +1,34 @@
-// Copyright 2026 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import os
+import unittest
+from pathlib import Path
 
-// Package devsync provides common utilities for configuring the runit service tree in DevSync mode.
-package devsync
+class TestDevSync(unittest.TestCase):
+    def test_update_app_run_script(self):
+        with tempfile.TemporaryDirectory() as dir:
+            app_dir = os.path.join(dir, "app")
+            os.makedirs(app_dir, exist_ok=True)
+            
+            template_path = os.path.join(app_dir, "run.template")
+            with open(template_path, 'w') as f:
+                f.write("#!/bin/bash\ncd /workspace || exit 1\nexec chpst -e ./env -P {{ENTRYPOINT}}\n")
+            
+            env_vars = {"PYTHONPATH": "/custom/path"}
+            update_app_run_script(dir, "node --watch server.js", env_vars)
+            
+            run_path = os.path.join(app_dir, "run")
+            with open(run_path, 'r') as f:
+                content = f.read()
+            
+            expected = "#!/bin/bash\ncd /workspace || exit 1\nexec chpst -e ./env -P node --watch server.js\n"
+            self.assertEqual(content, expected)
+            
+            env_val_path = os.path.join(app_dir, "env", "PYTHONPATH")
+            with open(env_val_path, 'r') as f:
+                val = f.read()
+            self.assertEqual(val, "/custom/path")
+            
+            # Verify template is preserved
+            self.assertTrue(os.path.exists(template_path))
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-)
-
-// UpdateAppRunScript reads the run.template file, replaces {{ENTRYPOINT}} with the provided webCmd,
-// populates the Runit envdir with exported environment variables, and writes the executable app/run script.
-func UpdateAppRunScript(serviceDir, webCmd string, envVars map[string]string) error {
-	if err := updateEnvDir(serviceDir, envVars); err != nil {
-		return err
-	}
-	if err := renderRunScript(serviceDir, webCmd); err != nil {
-		return err
-	}
-	return nil
-}
-
-func updateEnvDir(serviceDir string, envVars map[string]string) error {
-	envDir := filepath.Join(serviceDir, "app", "env")
-	if err := os.MkdirAll(envDir, 0755); err != nil {
-		return fmt.Errorf("creating app/env directory: %w", err)
-	}
-
-	for k, v := range envVars {
-		envFilePath := filepath.Join(envDir, k)
-		if err := os.WriteFile(envFilePath, []byte(v), 0644); err != nil {
-			return fmt.Errorf("writing env var %s: %w", k, err)
-		}
-	}
-	return nil
-}
-
-func renderRunScript(serviceDir, webCmd string) error {
-	templatePath := filepath.Join(serviceDir, "app", "run.template")
-	runPath := filepath.Join(serviceDir, "app", "run")
-
-	content, err := os.ReadFile(templatePath)
-	if err != nil {
-		return fmt.Errorf("reading run.template: %w", err)
-	}
-	replaced := strings.ReplaceAll(string(content), "{{ENTRYPOINT}}", webCmd)
-
-	if err := os.WriteFile(runPath, []byte(replaced), 0755); err != nil {
-		return fmt.Errorf("writing app/run: %w", err)
-	}
-	return nil
-}
+if __name__ == '__main__':
+    unittest.main()

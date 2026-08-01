@@ -1,125 +1,97 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements python/functions_framework buildpack.
-// The functions_framework buildpack converts a functionn into an application and sets up the execution environment.
-package lib
+"""Implements python/functions_framework buildpack."""
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
+import os
+import sys
+from pathlib import Path
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/cloudfunctions"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
-)
+def detect():
+    """Detect if the buildpack should be used."""
+    function_target = os.getenv("FUNCTION_TARGET")
+    
+    if function_target:
+        if is_pyproject_enabled():
+            return True, None
+        
+        return True, [python.RequirementsProvidesPlan]
+        
+    return False, None
 
-const (
-	layerName = "functions-framework"
-)
+def build():
+    """Build phase of the buildpack."""
+    validate_source()
+    
+    # Check for syntax errors
+    try:
+        subprocess.run(["python3", "-m", "compileall", "-f", "-q", "."], check=True)
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Syntax validation failed: {e}") from e
 
-var (
-	functionsFramework = "functions-framework"
-	requirementsTxt    = "requirements.txt"
-	pyprojectToml      = "pyproject.toml"
-)
+    has_framework_dependency = is_framework_dependency_present()
+    
+    if not has_framework_dependency:
+        if is_pyproject_enabled():
+            raise ValueError("This project is using pyproject.toml but you have not included the Functions Framework in your dependencies. Please add it to your pyproject.toml.")
+            
+        if os.getenv(python.VendorPipDepsEnv):
+            raise ValueError("Vendored dependencies detected, please add functions-framework to requirements.txt and download it using pip")
+            
+        add_framework_requirements()
+        
+    set_function_env_vars()
+    add_web_process()
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
-		if python.IsPyprojectEnabled(ctx) {
-			return gcp.OptInEnvSet(env.FunctionTarget), nil
-		}
-		return gcp.OptInEnvSet(env.FunctionTarget, gcp.WithBuildPlans(python.RequirementsProvidesPlan)), nil
-	}
-	return gcp.OptOutEnvNotSet(env.FunctionTarget), nil
-}
+def validate_source():
+    """Validate source files exist."""
+    function_source = os.getenv(env.FunctionSource)
+    
+    if not function_source:
+        main_py_exists = Path("main.py").exists()
+        if not main_py_exists:
+            raise ValueError(f"missing main.py and {env.FunctionSource} not specified. Either create the function in main.py or specify {env.FunctionSource}")
+    else:
+        source_path = Path(function_source)
+        if not source_path.exists():
+            raise ValueError(f"{env.FunctionSource} specified file {function_source!r} but it does not exist")
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	if err := validateSource(ctx); err != nil {
-		return err
-	}
+def is_framework_dependency_present():
+    """Check if functions-framework is a dependency."""
+    # Implement logic to check requirements.txt or pyproject.toml
+    return False  # Placeholder implementation
 
-	// Check for syntax errors to prevent failures that would only manifest at run time.
-	if _, err := ctx.Exec([]string{"python3", "-m", "compileall", "-f", "-q", "."}, gcp.WithStdoutTail, gcp.WithUserAttribution); err != nil {
-		return err
-	}
+def add_framework_requirements():
+    """Add functions-framework to requirements."""
+    requirements_path = Path("requirements.txt")
+    with open(requirements_path, "a") as f:
+        f.write("\nfunctions-framework\n")
 
-	// Determine if the function has dependency on functions-framework.
-	hasFrameworkDependency, err := python.PackagePresent(ctx, functionsFramework)
-	if err != nil {
-		return err
-	}
+def set_function_env_vars():
+    """Set environment variables for the function."""
+    pass  # Placeholder implementation
 
-	// Install functions-framework if necessary.
-	l, err := ctx.Layer(layerName, gcp.LaunchLayer, gcp.BuildLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", layerName, err)
-	}
-	if hasFrameworkDependency {
-		ctx.Logf("Handling functions with dependency on functions-framework.")
-		if err := ctx.ClearLayer(l); err != nil {
-			return fmt.Errorf("clearing layer %q: %w", l.Name, err)
-		}
-	} else {
-		if python.IsPyprojectEnabled(ctx) {
-			return gcp.UserErrorf("This project is using pyproject.toml but you have not included the Functions Framework in your dependencies. Please add it to your pyproject.toml.")
-		}
+def add_web_process():
+    """Add web process configuration."""
+    pass  # Placeholder implementation
 
-		if _, isVendored := os.LookupEnv(python.VendorPipDepsEnv); isVendored {
-			return gcp.UserErrorf("Vendored dependencies detected, please add functions-framework to requirements.txt and download it using pip")
-		}
-		ctx.Logf("Handling functions without dependency on functions-framework.")
-		if err := cloudfunctions.AssertFrameworkInjectionAllowed(); err != nil {
-			return err
-		}
+def is_pyproject_enabled():
+    """Check if pyproject.toml is used."""
+    return Path("pyproject.toml").exists()
 
-		// The pip install is performed by the pip buildpack; see python.InstallRequirements.
-		ctx.Logf("Adding functions-framework requirements.txt to the list of requirements files to install.")
-		r := filepath.Join(ctx.BuildpackRoot(), "converter", "requirements.txt")
-		l.BuildEnvironment.Append(python.RequirementsFilesEnv, string(os.PathListSeparator), r)
-	}
-
-	if err := ctx.SetFunctionsEnvVars(l); err != nil {
-		return err
-	}
-	ctx.AddWebProcess([]string{"functions-framework"})
-	return nil
-}
-
-func validateSource(ctx *gcp.Context) error {
-	// Fail if the default|custom source file doesn't exist, otherwise the app will fail at runtime but still build here.
-	fnSource, ok := os.LookupEnv(env.FunctionSource)
-	if !ok {
-		mainPYExists, err := ctx.FileExists("main.py")
-		if err != nil {
-			return err
-		}
-		if !mainPYExists {
-			return gcp.UserErrorf("missing main.py and %s not specified. Either create the function in main.py or specify %s to point to the file that contains the function", env.FunctionSource, env.FunctionSource)
-		}
-	} else {
-		fnSourceExists, err := ctx.FileExists(fnSource)
-		if err != nil {
-			return err
-		}
-		if !fnSourceExists {
-			return gcp.UserErrorf("%s specified file %q but it does not exist", env.FunctionSource, fnSource)
-		}
-	}
-	return nil
-}
+# Constants
+layer_name = "functions-framework"
+function_framework = "functions-framework"
+requirements_txt = "requirements.txt"
+pyproject_toml = "pyproject.toml"

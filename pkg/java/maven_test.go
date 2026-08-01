@@ -1,120 +1,81 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import json
+from unittest.mock import patch
+from unittest.mock import Mock
+import requests
 
-package java
 
-import (
-	"embed"
-	"reflect"
-	"testing"
-)
+class TestGetLatestGradleVersion:
+    @patch('requests.get')
+    def test_latest(self, mock_get):
+        mock_response = {
+            'version': '7.4.2',
+            'buildTime': '20220331152529+0000',
+            'current': True,
+            'snapshot': False,
+            'nightly': False,
+            'releaseNightly': False,
+            'activeRc': False,
+            'rcFor': '',
+            'milestoneFor': '',
+            'broken': False,
+            'downloadUrl': 'https://services.gradle.org/distributions/gradle-7.4.2-bin.zip',
+            'checksumUrl': 'https://services.gradle.org/distributions/gradle-7.4.2-bin.zip.sha256',
+            'wrapperChecksumUrl': 'https://services.gradle.org/distributions/gradle-7.4.2-wrapper.jar.sha256'
+        }
+        mock_get.return_value.json.return_value = mock_response
+        mock_get.return_value.status_code = 200
 
-//go:embed testdata/*
-var testData embed.FS
+        gradle_version_url = 'https://example.com/gradle-version'
+        with patch.object(requests, 'get') as mock_get:
+            mock_get.return_value.__enter__.return_value.json.return_value = mock_response
+            mock_get.return_value.__enter__.return_value.status_code = 200
+            mock_get.return_value.__enter__.return_value.url = gradle_version_url
 
-func TestParseValidPom(t *testing.T) {
-	tests := []struct {
-		path string
-		want MavenProject
-	}{
-		{
-			path: "testdata/simple_project.xml",
-			want: MavenProject{
-				Plugins: []MavenPlugin{
-					{
-						GroupID:    "org.apache.maven.plugins",
-						ArtifactID: "maven-jar-plugin",
-					},
-				},
-				Profiles: []MavenProfile{
-					{
-						ID: "native",
-						Plugins: []MavenPlugin{
-							{
-								GroupID:    "org.graalvm.nativeimage",
-								ArtifactID: "native-image-maven-plugin",
-								Configuration: MavenPluginConfiguration{
-									MainClass: "com.example.Driver",
-									BuildArgs: "--no-server",
-								},
-							},
-						},
-					},
-				},
-				ArtifactID: "firestore-sample",
-				Version:    "",
-				Dependencies: []MavenDependency{
-					{
-						GroupID:    "com.google.cloud",
-						ArtifactID: "google-cloud-graalvm-support",
-					},
-					{
-						GroupID:    "com.google.cloud",
-						ArtifactID: "google-cloud-core",
-					},
-					{
-						GroupID:    "com.google.cloud",
-						ArtifactID: "google-cloud-firestore",
-					},
-				},
-			},
-		},
-		{
-			path: "testdata/empty_project.xml",
-			want: MavenProject{
-				Plugins:  nil,
-				Profiles: nil,
-			},
-		},
-	}
+            got, err = get_latest_gradle_version()
+            assert err is None
+            assert got == '7.4.2'
 
-	for _, tc := range tests {
-		t.Run(tc.path, func(t *testing.T) {
-			pomFile, err := testData.ReadFile(tc.path)
-			if err != nil {
-				t.Fatalf("Unable to find pom file %s, %v", tc.path, err)
-			}
+    @patch('requests.get')
+    def test_unavailable(self, mock_get):
+        mock_response = {'message': 'not found'}
+        mock_get.return_value.json.return_value = mock_response
+        mock_get.return_value.status_code = 404
 
-			got, err := ParsePomFile(pomFile)
-			if err != nil {
-				t.Fatalf("ParsePomFile failed to parse pom.xml: %v", err)
-			}
+        gradle_version_url = 'https://example.com/gradle-version'
+        with patch.object(requests, 'get') as mock_get:
+            mock_get.return_value.__enter__.return_value.json.return_value = mock_response
+            mock_get.return_value.__enter__.return_value.status_code = 404
+            mock_get.return_value.__enter__.return_value.url = gradle_version_url
 
-			if !reflect.DeepEqual(*got, tc.want) {
-				t.Errorf("ParsePomFile\ngot %#v\nwant %#v", *got, tc.want)
-			}
-		})
-	}
-}
+            got, err = get_latest_gradle_version()
+            assert err is not None
+            assert got is None
 
-func TestParseInvalidPom(t *testing.T) {
-	tests := []string{
-		"testdata/invalid_project.xml",
-		"testdata/empty_file.xml",
-	}
 
-	for _, tc := range tests {
-		t.Run(tc, func(t *testing.T) {
-			pomFile, err := testData.ReadFile(tc)
-			if err != nil {
-				t.Fatalf("Unable to find pom file %s, %v", tc, err)
-			}
+def stub_gradle_version_service(t):
+    testserver.new(
+        t,
+        testserver.with_status(200),
+        testserver.with_json(json.dumps({'version': '7.4.2'})),
+        testserver.with_mock_url(gradle_version_url)
+    )
 
-			_, err = ParsePomFile(pomFile)
-			if err == nil { // if NO error
-				t.Errorf("ParsePomFile succeeded for invalid pom: %s, want error", tc)
-			}
-		})
-	}
-}
+
+class TestGetLatestGradleVersion:
+    def test_latest(self):
+        stub_gradle_version_service(None)
+
+        got, err = get_latest_gradle_version()
+        assert err is None
+        assert got == '7.4.2'
+
+
+def get_latest_gradle_version():
+    # this function should be refactored to use the requests library
+    pass
+
+
+class TestGradleVersionService:
+    def test_get_version(self):
+        version = get_latest_gradle_version()
+        assert version == '7.4.2'

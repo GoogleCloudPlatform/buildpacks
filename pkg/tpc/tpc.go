@@ -1,32 +1,27 @@
-// Package tpc provides utilities for Trusted Partner Cloud environments.
-package tpc
+import os
+from pkg.env import TPCTarballProject, TPCHostname
 
-import (
-	"os"
+def is_tpc() -> bool:
+    """
+    Returns true if the build universe is set and is not GDU.
+    """
+    _, present = get_tarball_project()
+    return present
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-)
+def get_tarball_project() -> tuple[str, bool]:
+    """
+    Returns the Artifact Registry project for the TPC tarball.
+    """
+    project = os.getenv(TPCTarballProject)
+    if project:
+        return project, True
+    return "", False
 
-// IsTPC returns true if the build universe is set and is not GDU.
-func IsTPC() bool {
-	_, present := GetTarballProject()
-	return present
-}
-
-// GetTarballProject returns the Artifact Registry project for the TPC tarball.
-func GetTarballProject() (string, bool) {
-	project := os.Getenv(env.TPCTarballProject)
-	if project != "" {
-		return project, true
-	}
-	return "", false
-}
-
-// GetHostname returns the hostname for the TPC build.
-func GetHostname() (string, bool) {
-	hostname := os.Getenv(env.TPCHostname)
-	if hostname != "" {
-		return hostname, true
-	}
-	return "", false
-}
+def get_hostname() -> tuple[str, bool]:
+    """
+    Returns the hostname for the TPC build.
+    """
+    hostname = os.getenv(TPCHostname)
+    if hostname:
+        return hostname, True
+    return "", False

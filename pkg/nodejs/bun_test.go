@@ -1,100 +1,65 @@
-// Copyright 2023 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//	http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-package nodejs
+import pkg.nodejs.gcpbuildpack as gcp
+from typing import List
 
-import (
-	"testing"
+vulnerable_nextjs_ranges = [
+    ">= 15.0.0-0, < 15.0.5",
+    ">= 15.1.0-0, < 15.1.9",
+    ">= 15.2.0-0, < 15.2.6",
+    ">= 15.3.0-0, < 15.3.6",
+    ">= 15.4.0-0, < 15.4.8",
+    ">= 15.5.0-0, < 15.5.7",
+    ">= 16.0.0-0, < 16.0.7",
+    ">= 15.6.0-canary.0, < 15.6.0-canary.58",
+    ">= 16.1.0-canary.0, < 16.1.0-canary.12",
+    ">= 14.3.0-canary.77, < 15.0.0",
+]
 
-	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
-)
+vulnerable_rsc_ranges = [
+    ">= 19.0.0-0, < 19.0.1",
+    ">= 19.1.0-0, < 19.1.2",
+    ">= 19.2.0-0, < 19.2.1",
+]
 
-func TestDetectBunVersion(t *testing.T) {
-	testCases := []struct {
-		name        string
-		npmResponse string
-		packageJSON PackageJSON
-		wantVersion string
-		wantError   bool
-	}{
-		{
-			name:        "no_package.json_returns_latest",
-			packageJSON: PackageJSON{},
-			npmResponse: `{
-        "name": "bun",
-        "dist-tags": {
-          "latest": "1.0.0"
-        },
-        "versions": {
-          "1.0.0": {
-            "name": "bun",
-            "version": "1.0.0"
-          }
-        },
-        "modified": "2022-01-27T21:10:55.626Z"
-      }`,
-			wantVersion: "1.0.0",
-		},
-		{
-			name: "only_engines_version",
-			packageJSON: PackageJSON{
-				Engines: packageEnginesJSON{
-					Bun: "1.0.0",
-				},
-			},
-			wantVersion: "1.0.0",
-		},
-		{
-			name: "only_packageManager_version",
-			packageJSON: PackageJSON{
-				PackageManager: "bun@1.0.0",
-			},
-			wantVersion: "1.0.0",
-		},
-		{
-			name: "both_engine_and_packageManager_version",
-			packageJSON: PackageJSON{
-				Engines: packageEnginesJSON{
-					Bun: "1.0.0",
-				},
-				PackageManager: "bun@0.9.0",
-			},
-			wantVersion: "1.0.0",
-		},
-		{
-			name: "invalid_packageManager_version",
-			packageJSON: PackageJSON{
-				PackageManager: "yarn@1.0.0",
-			},
-			wantError: true,
-		},
-	}
+target_react_server_packages = [
+    "react-server-dom-webpack",
+    "react-server-dom-parcel",
+    "react-server-dom-turbopack",
+]
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			testserver.New(
-				t,
-				testserver.WithJSON(tc.npmResponse),
-				testserver.WithMockURL(&npmRegistryURL),
-			)
-
-			version, err := detectBunVersion(&tc.packageJSON)
-			if version != tc.wantVersion {
-				t.Errorf("detectBunVersion() got version: %v, want version: %v", version, tc.wantVersion)
-			}
-			if tc.wantError == (err == nil) {
-				t.Fatalf("detectBunVersion() got error: %v, want error? %v", err, tc.wantError)
-			}
-		})
-	}
-}
+def check_vulnerabilities(ctx: gcp.Context, node_deps: 'NodeDependencies') -> str:
+    if os.environ.get(env.ALLOW_VULNERABLE_DEPENDENCIES, "").lower() == "true":
+        ctx.warn(f"Skipping vulnerability checks because {env.ALLOW_VULNERABLE_DEPENDENCIES} is enabled.")
+        return ""
+    
+    next_version = get_version(node_deps, "next")
+    if next_version:
+        for range in vulnerable_nextjs_ranges:
+            matches, err = version_matches_semver(ctx, range, next_version)
+            if err:
+                ctx.warn(f"could not check for vulnerable Next.js version: {err}")
+                continue
+            if matches:
+                return gcp.user_error(
+                    f"vulnerable Next.js version {next_version} detected due to CVE-2025-55182. "
+                    "Please upgrade to a patched version (e.g., 15.0.5, 15.1.9, 15.5.7, 16.0.7). "
+                    "See https://github.com/vercel/next.js/security/advisories/GHSA-9qr9-h5gf-34mp for details."
+                )
+    
+    for pkg_name in target_react_server_packages:
+        rsc_version = get_version(node_deps, pkg_name)
+        if not rsc_version:
+            continue
+        
+        for range in vulnerable_rsc_ranges:
+            matches, err = version_matches_semver(ctx, range, rsc_version)
+            if err:
+                ctx.warn(f"could not check for vulnerable {pkg_name} version: {err}")
+                continue
+            if matches:
+                return gcp.user_error(
+                    f"vulnerable {pkg_name} version {rsc_version} detected due to CVE-2025-55182. "
+                    "Please upgrade to a patched version (e.g., 19.0.1, 19.1.2, 19.2.1). "
+                    "See https://react.dev/blog/2025/12/03/critical-security-vulnerability-in-react-server-components for details."
+                )
+    
+    return ""

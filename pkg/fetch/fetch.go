@@ -1,353 +1,103 @@
-// Copyright 2022 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import os
+import io
+import json
+import tarfile
+import logging
+from typing import Optional, Any
+from urllib.parse import urlparse
+from pathlib import Path
+import requests
+import zstandard as zstd
+import gzip
+from google.cloud.artifactregistry_v1beta2 import ArtifactRegistryClient
 
-// Package fetch contains functions for downloading various content types via HTTP.
-package fetch
+logger = logging.getLogger(__name__)
 
-import (
-	"archive/tar"
-	"compress/gzip"
-	"encoding/json"
-	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
+class FetchError(Exception):
+    pass
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	tpc "github.com/GoogleCloudPlatform/buildpacks/pkg/tpc"
-	"github.com/google/go-containerregistry/pkg/crane"
-	"github.com/hashicorp/go-retryablehttp"
-	"github.com/klauspost/compress/zstd"
-	"github.com/klauspost/pgzip"
-)
+def tarball(url: str, dir_path: str, strip_components: int) -> None:
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+    
+    if "/zstd/" in url:
+        with zstd.ZstdDecompressor().stream_reader(response.raw) as reader:
+            _untar(reader, dir_path, strip_components)
+    else:
+        with gzip.open(response.raw, 'rb') as gzreader:
+            _untar(gzreader, dir_path, strip_components)
 
-// gcpUserAgent is required for the Ruby runtime, but used for others for simplicity.
-const gcpUserAgent = "GCPBuildpacks"
+def ar_versions(url: str, fallback_url: str, ctx: Any) -> list[str]:
+    try:
+        return ArtifactRegistryClient().list_tags(url)
+    except Exception as e:
+        logger.warning(f"Failed to list versions from {url}: {e}")
+        logger.info(f"Falling back to {fallback_url}")
+        return ArtifactRegistryClient().list_tags(fallback_url)
 
-// Tarball downloads a tarball from a URL and extracts it into the provided directory.
-func Tarball(url, dir string, stripComponents int) error {
-	response, err := doGet(url)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	return untar(dir, response.Body, stripComponents, url)
-}
+def ar_image(url: str, fallback_url: str, dir_path: str, strip_components: int) -> None:
+    try:
+        image = requests.get(url, stream=True)
+        if image.status_code != 200:
+            raise FetchError(f"Failed to download image from {url}")
+        
+        with tarfile.open(fileobj=image.raw, mode='r|*') as tar:
+            _extract_tar(tar, dir_path, strip_components)
+    except Exception as e:
+        logger.warning(f"Failed to download image from {url}: {e}")
+        ar_image(fallback_url, "", dir_path, strip_components)
 
-// ARVersions downloads list of versions from artifact registry.
-var ARVersions = func(url, fallbackURL string, ctx *gcp.Context) ([]string, error) {
-	versions, err := crane.ListTags(url)
-	if err != nil || len(versions) == 0 {
-		ctx.Logf("Failed to list versions from %s. Size of versions is %d. Error is: %v", url, len(versions), err)
-		ctx.Logf("Attempting to list versions from %s as a fallback", fallbackURL)
-		versions, err = crane.ListTags(fallbackURL)
-	}
-	return versions, err
-}
+def arg_generic_binary(binary_name: str, version: str, out_path: str) -> None:
+    url = _build_arg_url(binary_name, version)
+    
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+    
+    with open(out_path, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            f.write(chunk)
+    os.chmod(out_path, 0o755)
 
-// ARImage downloads tarball from images in artifact registry.
-var ARImage = func(url, fallbackURL, dir string, stripComponents int, ctx *gcp.Context) error {
-	image, err := crane.Pull(url)
-	if err != nil {
-		ctx.Logf("Failed to download runtime from %s: %v", url, err)
-		ctx.Logf("Attempting to download from %s as a fallback", fallbackURL)
-		image, err = crane.Pull(fallbackURL)
-		if err != nil {
-			return err
-		}
-		ctx.Logf("Runtime successfully downloaded from %s", fallbackURL)
-	} else {
-		ctx.Logf("Runtime successfully downloaded from %s", url)
-	}
-	layers, err := image.Layers()
-	if err != nil {
-		return err
-	}
-	if len(layers) < 1 {
-		return gcp.InternalErrorf("runtime image has no layer")
-	}
-	l := layers[0]
-	rc, err := l.Compressed()
-	if err != nil {
-		return err
-	}
-	defer rc.Close()
-	result := untar(dir, rc, stripComponents, url)
-	return result
-}
+def file_download(url: str, out_path: str) -> None:
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+    
+    with open(out_path, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            f.write(chunk)
 
-const (
-	defaultGDUDownloadHost = "artifactregistry.googleapis.com"
-	defaultGDUProject      = "serverless-runtimes"
-	qaGDUProject           = "serverless-runtimes-qa"
-	defaultGDURegion       = "us-central1"
-	defaultRepo            = "universal-maker"
-	defaultArch            = "x86-64"
-	arGenericDownloadPath  = "/download/v1/projects/%s/locations/%s/repositories/%s/files/%s%%3A%s%%3A%s:download?alt=media"
-)
+def json_fetch(url: str) -> dict:
+    response = requests.get(url)
+    response.raise_for_status()
+    return response.json()
 
-// ARGenericBinary downloads a pre-compiled binary from an Artifact Registry generic repository.
-var ARGenericBinary = func(ctx *gcp.Context, binaryName, version, outPath string) error {
-	downloadHost := defaultGDUDownloadHost
-	project := defaultGDUProject
-	region := defaultGDURegion
-	repo := defaultRepo
-	arch := defaultArch
+def get_url(url: str, writer: io.TextIOBase) -> None:
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+    
+    for chunk in response.iter_content(chunk_size=8192):
+        writer.write(chunk.decode('utf-8'))
 
-	if os.Getenv(env.BuildEnv) == "qual" {
-		project = qaGDUProject
-	}
+def _untar(reader: io.RawIOBase, dir_path: str, strip_components: int) -> None:
+    with tarfile.open(fileobj=reader, mode='r|*') as tar:
+        _extract_tar(tar, dir_path, strip_components)
 
-	if tpc.IsTPC() {
-		if h, present := tpc.GetHostname(); present {
-			downloadHost = h
-		} else {
-			return gcp.InternalErrorf("failed to get hostname for TPC build")
-		}
-		if p, present := tpc.GetTarballProject(); present {
-			project = p
-		} else {
-			return gcp.InternalErrorf("failed to get tarball project for TPC build")
-		}
-	}
+def _extract_tar(tar: tarfile.TarFile, dir_path: str, strip_components: int) -> None:
+    for member in tar:
+        if member.isdir():
+            os.makedirs(os.path.join(dir_path, member.name), exist_ok=True)
+        elif member.isfile():
+            fpath = os.path.join(dir_path, member.name)
+            os.makedirs(os.path.dirname(fpath), exist_ok=True)
+            with open(fpath, 'wb') as f:
+                f.write(tar.extractfile(member).read())
 
-	urlPath := fmt.Sprintf(arGenericDownloadPath, project, region, repo, arch, version, binaryName)
-	url := fmt.Sprintf("https://%s%s", downloadHost, urlPath)
-
-	ctx.Logf("Downloading %s binary from Artifact Registry generic repository...", binaryName)
-	if err := File(url, outPath); err != nil {
-		return fmt.Errorf("downloading %s binary: %w", binaryName, err)
-	}
-	if _, err := ctx.Exec([]string{"chmod", "+x", outPath}); err != nil {
-		return fmt.Errorf("chmoding %s binary: %w", binaryName, err)
-	}
-	return nil
-}
-
-// File downloads a file from a URL and writes it to the provided path.
-func File(url, outPath string) error {
-	out, err := os.Create(outPath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	response, err := doGet(url)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	_, err = io.Copy(out, response.Body)
-	return err
-}
-
-// JSON fetches a JSON payload from a URL and unmarshals it into the value pointed to by v.
-func JSON(url string, v interface{}) error {
-	response, err := doGet(url)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return gcp.InternalErrorf("reading response body from %q: %v", url, err)
-	}
-	if err := json.Unmarshal(body, v); err != nil {
-		return gcp.InternalErrorf("decoding response from %q: %v", url, err)
-	}
-	return nil
-}
-
-// GetURL makes an HTTP GET request to given URL and writes the body to the provided writer.
-func GetURL(url string, f io.Writer) error {
-	response, err := doGet(url)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-
-	if _, err = io.Copy(f, response.Body); err != nil {
-		return gcp.InternalErrorf("copying response body: %v", err)
-	}
-
-	return nil
-}
-
-// untar extracts a tarball from a reader and writes it to the given directory.
-func untar(dir string, r io.Reader, stripComponents int, url string) error {
-	var dr io.Reader
-	var err error
-	if strings.Contains(url, "/zstd/") {
-		zr, err := zstd.NewReader(r)
-		if err != nil {
-			return err
-		}
-		defer zr.Close()
-		dr = zr
-	} else {
-		var gzr io.ReadCloser
-		if v, _ := env.IsPresentAndTrue(env.FasterLanguageTarballInstallation); v {
-			gzr, err = pgzip.NewReader(r)
-		} else {
-			gzr, err = gzip.NewReader(r)
-		}
-		if err != nil {
-			return err
-		}
-		defer gzr.Close()
-		dr = gzr
-	}
-
-	return untarWithReader(dir, dr, stripComponents)
-}
-
-func untarWithReader(dir string, gzr io.Reader, stripComponents int) error {
-
-	madeDir := map[string]bool{}
-	tr := tar.NewReader(gzr)
-
-	buffer := make([]byte, 32*1024)
-
-	for {
-		header, err := tr.Next()
-
-		switch {
-		case err == io.EOF:
-			return nil
-		case err != nil:
-			return gcp.InternalErrorf("untaring file: %v", err)
-		case header == nil:
-			continue
-		}
-
-		target, err := tarDestination(header.Name, dir, header.Typeflag, stripComponents)
-		if err != nil {
-			return err
-		}
-
-		switch header.Typeflag {
-		case tar.TypeDir:
-			if _, err := os.Stat(target); err != nil {
-				if err := os.Mkdir(target, os.FileMode(header.Mode)); err != nil {
-					return gcp.InternalErrorf("creating directory %q: %v", target, err)
-				}
-				madeDir[target] = true
-			}
-		case tar.TypeReg, tar.TypeRegA:
-			// Make the directory. This is redundant because it should
-			// already be made by a directory entry in the tar
-			// beforehand. Thus, don't check for errors; the next
-			// write will fail with the same error.
-			dir := filepath.Dir(target)
-			if !madeDir[dir] {
-				if err := os.MkdirAll(dir, 0755); err != nil {
-					return gcp.InternalErrorf("creating directory %q: %v", target, err)
-				}
-				madeDir[dir] = true
-			}
-
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-			if err != nil {
-				return gcp.InternalErrorf("opening file %q: %v", target, err)
-			}
-			if _, err := io.CopyBuffer(f, tr, buffer); err != nil {
-				f.Close() // Close the file on error
-				return gcp.InternalErrorf("copying file %q: %v", target, err)
-			}
-			if err := f.Close(); err != nil {
-				return gcp.InternalErrorf("closing file %q: %v", target, err)
-			}
-		case tar.TypeSymlink:
-			targetPath := filepath.Join(filepath.Dir(target), header.Linkname)
-			if !isValidTarDestination(targetPath, dir, header.Typeflag) {
-				return gcp.InternalErrorf("symlink %q -> %q traverses out of root", target, header.Linkname)
-			}
-			if err := os.Symlink(header.Linkname, target); err != nil {
-				return gcp.InternalErrorf("symlinking %q to %q: %v", target, header.Linkname, err)
-			}
-		case tar.TypeLink:
-			link, err := tarDestination(header.Linkname, dir, header.Typeflag, stripComponents)
-			if err != nil {
-				return err
-			}
-			if err := os.Link(link, target); err != nil {
-				return gcp.InternalErrorf("linking %q to %q: %v", target, link, err)
-			}
-		default:
-			return gcp.InternalErrorf("invalid tar entry %v", header)
-		}
-	}
-}
-
-// tarDestination returns the filepath that a tar entry should be written to when extracted.
-func tarDestination(tarPath, rootDir string, tarType byte, stripComponents int) (string, error) {
-	rootDir = filepath.Clean(rootDir)
-	path := filepath.Join(rootDir, filepath.Clean(tarPath))
-
-	if stripComponents > 0 {
-		drop := strings.Count(rootDir, string(filepath.Separator)) + stripComponents + 1
-		parts := strings.Split(path, string(filepath.Separator))
-		if drop >= len(parts) && tarType == tar.TypeDir {
-			// This is a stripped away directory, returning rootDir makes this a no-op.
-			return rootDir, nil
-		}
-		if drop >= len(parts) {
-			// This is a file that would have been dropped if stripped it.
-			return "", gcp.InternalErrorf("stripped too many components (%v)", stripComponents)
-		}
-		path = filepath.Join(rootDir, filepath.Join(parts[drop:]...))
-	}
-
-	// Only allow extraction either directly into the root, or within a subdirectory from the root.
-	if isValidTarDestination(path, rootDir, tarType) {
-		return path, nil
-	}
-	return "", gcp.InternalErrorf("tar entry %q traverses out of root", tarPath)
-}
-
-// isValidTarDestination protects against a path traversal vulnerability by ensuring the final path
-// is within the target directory.
-func isValidTarDestination(dest, rootDir string, tarType byte) bool {
-	destDir := dest
-	if tarType != tar.TypeDir {
-		destDir = filepath.Dir(dest)
-	}
-	return destDir == rootDir ||
-		strings.HasPrefix(destDir, rootDir+string(filepath.Separator))
-}
-
-// doGet performs an HTTP GET request for a URL.
-func doGet(url string) (*http.Response, error) {
-	retryClient := retryablehttp.NewClient()
-	retryClient.RetryMax = 3
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, gcp.UserErrorf("fetching %s: %v", url, err)
-	}
-
-	req.Header.Set("User-Agent", gcpUserAgent)
-
-	response, err := retryClient.StandardClient().Do(req)
-	if err != nil {
-		return nil, gcp.UserErrorf("requesting %s: %v", url, err)
-	}
-	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		defer response.Body.Close()
-		return nil, gcp.UserErrorf("fetching %s returned HTTP status: %d", url, response.StatusCode)
-	}
-	return response, err
-}
+def _build_arg_url(binary_name: str, version: str) -> str:
+    host = "artifactregistry.googleapis.com"
+    project = "serverless-runtimes"
+    
+    if os.getenv('BUILD_ENV') == 'qual':
+        project = "serverless-runtimes-qa"
+        
+    path = f"/download/v1/projects/{project}/locations/us-central1/repositories/universal-maker/files/x86-64:{version}:{binary_name}:download?alt=media"
+    return f"https://{host}{path}"

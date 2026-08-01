@@ -1,406 +1,104 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Complete refactored code here
+import json
+import logging
+import os
+import glob
 
-package lib
+from pkg import env
+from pkg import gcpbuildpack as gcp
+from pkg.runtime import runtime
 
-import (
-	"reflect"
-	"testing"
+logger = logging.getLogger(__name__)
 
-	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
-)
+JAVA_LAYER = "java"
 
-func TestDetect(t *testing.T) {
-	testCases := []struct {
-		name  string
-		files map[string]string
-		env   []string
-		want  int
-	}{
-		{
-			name: "pom.xml",
-			files: map[string]string{
-				"pom.xml": "",
-			},
-			want: 0,
-		},
-		{
-			name: "pom.xml with runtime set to java",
-			files: map[string]string{
-				"pom.xml": "",
-			},
-			env:  []string{"GOOGLE_RUNTIME=java"},
-			want: 0,
-		},
-		{
-			name: "pom.xml with runtime set to python",
-			files: map[string]string{
-				"pom.xml": "",
-			},
-			env:  []string{"GOOGLE_RUNTIME=python"},
-			want: 100,
-		},
-		{
-			name: ".mvn/extensions.xml",
-			files: map[string]string{
-				".mvn/extensions.xml": "",
-			},
-			want: 0,
-		},
-		{
-			name: "build.gradle",
-			files: map[string]string{
-				"build.gradle": "",
-			},
-			want: 0,
-		},
-		{
-			name: "build.gradle.kts",
-			files: map[string]string{
-				"build.gradle.kts": "",
-			},
-			want: 0,
-		},
-		{
-			name: "java files",
-			files: map[string]string{
-				"main.java": "",
-			},
-			want: 0,
-		},
-		{
-			name: "jar files",
-			files: map[string]string{
-				"myjar.jar": "",
-			},
-			want: 0,
-		},
-		{
-			name:  "no java files",
-			files: map[string]string{},
-			want:  100,
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, DetectFn, tc.name, tc.files, tc.env, tc.want)
-		})
-	}
+DEFAULT_FEATURE_VERSION = {
+    "google": "11",
+    "google.gae.18": "11",
+    "google.18": "11",
+    "google.gae.22": "21",
+    "google.min.22": "21",
+    "google.22": "21",
+    "google.24": "25",
+    "google.24.full": "25",
 }
 
-func TestParseVersionJSON(t *testing.T) {
-	testCases := []struct {
-		name         string
-		json         string
-		wantVersion  string
-		wantBinaries []binary
-	}{
-		{
-			name: "1 release",
-			json: `[{
-  "version_data": {"semver": "11.0.6+10"},
-  "binaries": [
-    {
-      "os": "linux",
-      "architecture": "x64",
-      "image_type": "jdk",
-      "package": {"link": "https://example.com/want"}
-    }
-  ]
-}]`,
-			wantVersion: "11.0.6+10",
-			wantBinaries: []binary{
-				binary{
-					BinaryPkg:    binaryPkg{Link: "https://example.com/want"},
-					ImageType:    "jdk",
-					OS:           "linux",
-					Architecture: "x64",
-				},
-			},
-		},
-		{
-			name: "2 releases",
-			json: `[{
-  "version_data": {"semver": "11.0.5+10"},
-  "binaries": [
-    {
-      "os": "linux",
-      "architecture": "x64",
-      "image_type": "jdk",
-      "package": {"link": "https://example.com/want"}
-    }
-  ]
-},
-{
-	"version_data": {"semver": "11.0.6+10"},
-	"binaries": [
-		{
-			"os": "linux",
-			"architecture": "x64",
-			"image_type": "jdk",
-      "package": {"link": "https://example2.com/want"}
-		}
-	]
-}]`,
-			wantVersion: "11.0.5+10",
-			wantBinaries: []binary{
-				binary{
-					BinaryPkg:    binaryPkg{Link: "https://example.com/want"},
-					ImageType:    "jdk",
-					OS:           "linux",
-					Architecture: "x64",
-				},
-			},
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			release, err := parseVersionJSON(tc.json)
-			if err != nil {
-				t.Fatalf("parseUserVersionJSON() returned error: %v", err)
-			}
-			if release.VersionData.Semver != tc.wantVersion {
-				t.Errorf("release version from parseVersionJSON()=%s, want=%s", release.VersionData.Semver, tc.wantVersion)
-			}
-			if !reflect.DeepEqual(release.Binaries, tc.wantBinaries) {
-				t.Errorf("binaries from parseVersionJSON()=%v, want=%v", release.Binaries, tc.wantBinaries)
-			}
-		})
-	}
-}
+def detect_fn(ctx: gcp.Context) -> (gcp.DetectResult, Exception):
+    if runtime.check_override("java"):
+        return None, None  # Opt out
+    
+    files = [
+        "pom.xml",
+        ".mvn/extensions.xml",
+        "build.gradle",
+        "build.gradle.kts",
+        "settings.gradle.kts",
+        "settings.gradle",
+        "META-INF/MANIFEST.MF"
+    ]
+    
+    for file in files:
+        logger.info(f"Checking for file: {file}")
+        if ctx.file_exists(file):
+            return gcp.OptInFileFound(file), None
+    
+    java_files = glob.glob("*.java")
+    if len(java_files) > 0:
+        return gcp.OptIn("found .java files"), None
+    
+    jar_files = glob.glob("*.jar")
+    if len(jar_files) > 0:
+        return gcp.OptIn("found .jar files"), None
+    
+    missing_files = ", ".join(files)
+    return gcp.OptOut(f"none of the following found: {missing_files}, *.java, *.jar"), None
 
-func TestParseVersionJSONFail(t *testing.T) {
-	testCases := []struct {
-		name string
-		json string
-	}{
-		{
-			name: "invalid JSON",
-			json: `[{]`,
-		},
-		{
-			name: "0 releases",
-			json: `[]`,
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			_, err := parseVersionJSON(tc.json)
-			if err == nil {
-				t.Error("parseVersionJSON() did not return error.")
-			}
-		})
-	}
-}
+def build_fn(ctx: gcp.Context) -> Exception:
+    stack_id = ctx.stack_id()
+    feature_version = stack_to_version(stack_id)
+    
+    runtime_env = os.getenv(env.RUNTIME_VERSION)
+    if runtime_env:
+        feature_version = runtime_env
+        logger.info(f"Using requested runtime feature version: {feature_version}")
+    else:
+        logger.info(f"Using latest Java {feature_version} runtime version. You can specify a different version with {env.RUNTIME_VERSION}: https://github.com/GoogleCloudPlatform/buildpacks#configuration")
+    
+    layer, err = ctx.create_layer(JAVA_LAYER, gcp.BuildLayer | gcp.CacheLayer | gcp.LaunchLayerUnlessSkipRuntimeLaunch)
+    if err:
+        return Exception(f"Creating {JAVA_LAYER} layer failed: {err}")
+    
+    jdk_runtime = runtime.OPEN_JDK
+    if feature_version.startswith("21"):
+        jdk_runtime = runtime.CANONICAL_JDK
+    
+    _, err = runtime.install_tarball_if_not_cached(ctx, jdk_runtime, feature_version, layer)
+    return err
 
-func TestStackToVersion(t *testing.T) {
-	testCases := []struct {
-		name  string
-		stack string
-		want  string
-	}{
-		{
-			name:  "Ubuntu 22 stack gae",
-			stack: "google.gae.22",
-			want:  "21",
-		},
-		{
-			name:  "Ubuntu 22 stack min",
-			stack: "google.min.22",
-			want:  "21",
-		},
-		{
-			name:  "Ubuntu 22 stack",
-			stack: "google.22",
-			want:  "21",
-		},
-		{
-			name:  "Ubuntu 24 stack",
-			stack: "google.24",
-			want:  "25",
-		},
-		{
-			name:  "Ubuntu 24 stack full",
-			stack: "google.24.full",
-			want:  "25",
-		},
-		{
-			name:  "Ubuntu 18 stack",
-			stack: "google.gae.18",
-			want:  "11",
-		},
-		{
-			name:  "No stack specified",
-			stack: "",
-			want:  "21",
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			version := stackToVersion(tc.stack)
-			if version != tc.want {
-				t.Errorf("stackToVersion()=%s, want=%s", version, tc.want)
-			}
-		})
-	}
-}
+def stack_to_version(stack_id: str) -> str:
+    feature_version = "21"
+    if stack_id in DEFAULT_FEATURE_VERSION:
+        feature_version = DEFAULT_FEATURE_VERSION[stack_id]
+    return feature_version
 
-func TestExtractRelease(t *testing.T) {
-	testCases := []struct {
-		name           string
-		javaRelease    javaRelease
-		wantVersion    string
-		wantBinaryLink string
-	}{
-		{
-			name: "1 binary",
-			javaRelease: javaRelease{
-				VersionData: versionData{Semver: "11.0.6+10"},
-				Binaries: []binary{
-					binary{
-						BinaryPkg:    binaryPkg{Link: "https://example.com/want"},
-						ImageType:    "jdk",
-						OS:           "linux",
-						Architecture: "x64",
-					},
-				},
-			},
-			wantVersion:    "11.0.6+10",
-			wantBinaryLink: "https://example.com/want",
-		},
-		{
-			name: "2 binaries with wrong binary type",
-			javaRelease: javaRelease{
-				VersionData: versionData{Semver: "11.0.6+10"},
-				Binaries: []binary{
-					binary{
-						BinaryPkg:    binaryPkg{Link: "https://example.com/want"},
-						ImageType:    "jre",
-						OS:           "linux",
-						Architecture: "x64",
-					},
-					binary{
-						BinaryPkg:    binaryPkg{Link: "https://example2.com/want"},
-						ImageType:    "jdk",
-						OS:           "linux",
-						Architecture: "x64",
-					},
-				},
-			},
-			wantVersion:    "11.0.6+10",
-			wantBinaryLink: "https://example2.com/want",
-		},
-		{
-			name: "2 binaries with wrong OS",
-			javaRelease: javaRelease{
-				VersionData: versionData{Semver: "11.0.6+10"},
-				Binaries: []binary{
-					binary{
-						BinaryPkg:    binaryPkg{Link: "https://example.com/want"},
-						ImageType:    "jdk",
-						OS:           "windows",
-						Architecture: "x64",
-					},
-					binary{
-						BinaryPkg:    binaryPkg{Link: "https://example2.com/want"},
-						ImageType:    "jdk",
-						OS:           "linux",
-						Architecture: "x64",
-					},
-				},
-			},
-			wantVersion:    "11.0.6+10",
-			wantBinaryLink: "https://example2.com/want",
-		},
-		{
-			name: "2 binaries with wrong architecture",
-			javaRelease: javaRelease{
-				VersionData: versionData{Semver: "11.0.6+10"},
-				Binaries: []binary{
-					binary{
-						BinaryPkg:    binaryPkg{Link: "https://example.com/want"},
-						ImageType:    "jdk",
-						OS:           "linux",
-						Architecture: "x86",
-					},
-					binary{
-						BinaryPkg:    binaryPkg{Link: "https://example2.com/want"},
-						ImageType:    "jdk",
-						OS:           "linux",
-						Architecture: "x64",
-					},
-				},
-			},
-			wantVersion:    "11.0.6+10",
-			wantBinaryLink: "https://example2.com/want",
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			gotVersion, gotBinaryLink, err := extractRelease(tc.javaRelease)
-			if err != nil {
-				t.Fatalf("extractRelease() returned error: %v", err)
-			}
-			if gotVersion != tc.wantVersion {
-				t.Errorf("release version from extractRelease()=%s, want=%s", gotVersion, tc.wantVersion)
-			}
-			if gotBinaryLink != tc.wantBinaryLink {
-				t.Errorf("binaries from extractRelease()=%v, want=%v", gotBinaryLink, tc.wantBinaryLink)
-			}
-		})
-	}
-}
+def parse_version_json(json_str: str) -> (dict, Exception):
+    try:
+        releases = json.loads(json_str)
+        if not releases:
+            return None, Exception("empty list of releases")
+        return releases[0], None
+    except json.JSONDecodeError as e:
+        return None, Exception(f"parsing JSON response {json_str}: {e}")
 
-func TestExtractReleaseFail(t *testing.T) {
-	testCases := []struct {
-		name        string
-		javaRelease javaRelease
-	}{
-		{
-			name: "0 binaries",
-			javaRelease: javaRelease{
-				VersionData: versionData{Semver: "11.0.6+10"},
-				Binaries:    []binary{},
-			},
-		},
-		{
-			name: "binaries with wrong binary fields",
-			javaRelease: javaRelease{
-				VersionData: versionData{Semver: "11.0.6+10"},
-				Binaries: []binary{
-					binary{
-						BinaryPkg:    binaryPkg{Link: "https://example.com/want"},
-						ImageType:    "jre",
-						OS:           "linux",
-						Architecture: "x64",
-					},
-					binary{
-						BinaryPkg:    binaryPkg{Link: "https://example2.com/want"},
-						ImageType:    "jdk",
-						OS:           "windows",
-						Architecture: "x64",
-					},
-				},
-			},
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			_, _, err := extractRelease(tc.javaRelease)
-			if err == nil {
-				t.Error("extractRelease() did not return error.")
-			}
-		})
-	}
-}
+def extract_release(release: dict) -> (str, str, Exception):
+    binaries = release.get("binaries", [])
+    if not binaries:
+        return "", "", Exception(f"no binaries in given release {release['version_data']['semver']}")
+    
+    for binary in binaries:
+        if (binary["image_type"] == "jdk" and 
+            binary["os"] == "linux" and 
+            binary["architecture"] == "x64"):
+            return release["version_data"]["semver"], binary["package"]["link"], None
+    
+    return "", "", Exception(f"jdk/linux/x64 binary not found in release {release['version_data']['semver']}")

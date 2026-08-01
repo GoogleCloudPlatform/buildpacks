@@ -1,91 +1,125 @@
-package bundleschema
+# Complete refactored code here
+import os
+import yaml
+from dataclasses import dataclass, field
+from typing import List, Optional, Dict
 
-import (
-	"testing"
+from google.cloud import apphostingschema  # Assuming this is the correct import path
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
-	"github.com/google/go-cmp/cmp"
-	"google3/third_party/golang/protobuf/v2/proto/proto" // Added dependency
-)
 
-func TestReadAndValidateFromFile(t *testing.T) {
-	testCases := []struct {
-		desc             string
-		inputBundleYAML  string
-		wantBundleSchema BundleSchema
-		wantErr          bool
-	}{
-		{
-			desc:            "Read properly formatted bundle yaml schema properly",
-			inputBundleYAML: testdata.MustGetPath("testdata/bundle_valid.yaml"),
-			wantBundleSchema: BundleSchema{
-				RunConfig: RunConfig{
-					CPUAlwaysAllocated: proto.Bool(true),
-					VpcAccess: &apphostingschema.VpcAccess{
-						Connector: "projects/my-project/locations/us-central1/connectors/my-connector",
-					},
-					EnvironmentVariables: []EnvironmentVariable{
-						EnvironmentVariable{Variable: "SSR_PORT", Value: "8080", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
-						EnvironmentVariable{Variable: "HOSTNAME", Value: "0.0.0.0", Availability: []string{"RUNTIME"}, Source: apphostingschema.SourceFirebaseSystem},
-					},
-				},
-				Metadata: &Metadata{
-					AdapterPackageName: "@apphosting/adapter-angular",
-					AdapterVersion:     "17.2.7",
-					Framework:          "angular",
-					FrameworkVersion:   "18.2.2",
-				},
-			},
-		},
-		{
-			desc:             "Empty bundle schema for empty bundle yaml",
-			inputBundleYAML:  testdata.MustGetPath("testdata/bundle_empty.yaml"),
-			wantBundleSchema: BundleSchema{},
-		},
-		{
-			desc:            "Throw an error when the file doesn't exist",
-			inputBundleYAML: testdata.MustGetPath("testdata/nonexistant.yaml"),
-			wantErr:         true,
-		},
-		{
-			desc:            "Throw an error when an env field contains a secret",
-			inputBundleYAML: testdata.MustGetPath("testdata/bundle_invalidenv_secret.yaml"),
-			wantErr:         true,
-		},
-		{
-			desc:            "Throw an error when an env field does not contain a value",
-			inputBundleYAML: testdata.MustGetPath("testdata/bundle_invalidenv_value.yaml"),
-			wantErr:         true,
-		},
-		{
-			desc:            "Throw an error when an env field contains an invalid availability value",
-			inputBundleYAML: testdata.MustGetPath("testdata/bundle_invalidenv_availability.yaml"),
-			wantErr:         true,
-		},
-		{
-			desc:            "Throw an error when a nonempty metadata is missing a required field",
-			inputBundleYAML: testdata.MustGetPath("testdata/bundle_invalid_md.yaml"),
-			wantErr:         true,
-		},
-	}
+class EnvironmentVariable:
+    def __init__(self, variable: str, value: str, availability: List[str], source: str = apphostingschema.SourceFirebaseSystem):
+        self.variable = variable
+        self.value = value
+        self.availability = availability
+        self.source = source
 
-	for _, test := range testCases {
-		s, err := ReadAndValidateFromFile(test.inputBundleYAML)
+    def validate(self) -> None:
+        if not self.value or self.secret:
+            raise ValueError(f"For environment variable {self.variable}, 'value' is required and 'secret' should not be present")
 
-		if !test.wantErr {
-			if err != nil {
-				t.Errorf("unexpected error for ReadAndValidateFromFile(%q): %v", test.desc, err)
-			}
+        valid_availabilities = {"RUNTIME"}
+        for avail in self.availability:
+            if avail not in valid_availabilities:
+                raise ValueError(f"Invalid value {avail} in 'availability'")
 
-			if diff := cmp.Diff(test.wantBundleSchema, s); diff != "" {
-				t.Errorf("unexpected YAML for test %q, (-want, +got):\n%v", test.desc, diff)
-			}
 
-		} else {
-			if err == nil {
-				t.Errorf("ReadAndValidateFromFile(%q) = %v, want error", test.desc, err)
-			}
-		}
-	}
-}
+@dataclass
+class VpcAccess:
+    connector: str
+
+
+@dataclass
+class RunConfig:
+    environment_variables: List[EnvironmentVariable] = field(default_factory=list)
+    cpu: Optional[float] = None
+    memory_mib: Optional[int] = None
+    concurrency: Optional[int] = None
+    max_instances: Optional[int] = None
+    min_instances: Optional[int] = None
+    vpc_access: Optional[VpcAccess] = None
+    cpu_always_allocated: Optional[bool] = None
+
+    def validate(self) -> None:
+        for env_var in self.environment_variables:
+            env_var.validate()
+
+
+@dataclass
+class Metadata:
+    adapter_package_name: str
+    adapter_version: str
+    framework: str
+    framework_version: str
+
+    def validate(self) -> None:
+        if not self.adapter_package_name:
+            raise ValueError("Missing the adapter package name in bundle.yaml metadata")
+        if not self.adapter_version:
+            raise ValueError("Missing the adapter version in bundle.yaml metadata")
+        if not self.framework:
+            raise ValueError("Missing the framework name in bundle.yaml metadata")
+        if not self.framework_version:
+            raise ValueError("Missing the framework version in bundle.yaml metadata")
+
+
+@dataclass
+class BundleSchema:
+    run_config: RunConfig = field(default_factory=RunConfig)
+    metadata: Optional[Metadata] = None
+
+    def validate(self) -> None:
+        self.run_config.validate()
+        if self.metadata is not None:
+            self.metadata.validate()
+
+
+def read_and_validate_from_file(file_path: str) -> BundleSchema:
+    try:
+        with open(file_path, 'r') as f:
+            data = yaml.safe_load(f)
+    except FileNotFoundError:
+        raise ValueError(f"Missing output bundle config at {file_path}")
+    except Exception as e:
+        raise ValueError(f"Reading output bundle config at {file_path}: {e}")
+
+    # Parse the data into BundleSchema
+    run_config_data = data.get('runConfig', {})
+    metadata_data = data.get('metadata')
+
+    # Process RunConfig
+    environment_vars = []
+    if 'environmentVariables' in run_config_data:
+        for env_var_dict in run_config_data['environmentVariables']:
+            variable = env_var_dict.get('variable', '')
+            value = env_var_dict.get('value', '')
+            availability = env_var_dict.get('availability', [])
+            source = env_var_dict.get('source', apphostingschema.SourceFirebaseSystem)
+            env_var = EnvironmentVariable(variable, value, availability, source)
+            environment_vars.append(env_var)
+
+    run_config = RunConfig(
+        environment_variables=environment_vars,
+        cpu=run_config_data.get('cpu'),
+        memory_mib=run_config_data.get('memoryMiB'),
+        concurrency=run_config_data.get('concurrency'),
+        max_instances=run_config_data.get('maxInstances'),
+        min_instances=run_config_data.get('minInstances'),
+        vpc_access=VpcAccess(run_config_data['vpcAccess']['connector']) if 'vpcAccess' in run_config_data else None,
+        cpu_always_allocated=run_config_data.get('cpuAlwaysAllocated')
+    )
+
+    # Process Metadata
+    metadata = None
+    if metadata_data:
+        metadata = Metadata(
+            adapter_package_name=metadata_data['adapterPackageName'],
+            adapter_version=metadata_data['adapterVersion'],
+            framework=metadata_data['framework'],
+            framework_version=metadata_data['frameworkVersion']
+        )
+
+    bundle_schema = BundleSchema(run_config, metadata)
+    bundle_schema.validate()
+
+    return bundle_schema

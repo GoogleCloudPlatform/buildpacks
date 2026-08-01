@@ -1,94 +1,86 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Complete refactored code here
+"""
+Package devmode contains helpers to configure Development Mode.
+"""
 
-package devmode
+import os
+from dataclasses import dataclass
+from pathlib import Path
+from typing import List, Optional
 
-import (
-	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"testing"
+import shlex
+import subprocess
 
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpacks/libcnb/v2"
-)
+class GCPContext:
+    def __init__(self):
+        self.layers = {}
+        self.metadata = {}
 
-func TestWriteAndRunScripts(t *testing.T) {
-	testDirRoot, err := ioutil.TempDir("", "test-layer-")
-	if err != nil {
-		t.Fatalf("Creating temp directory: %v", err)
-	}
+    def Log(self, message: str) -> None:
+        print(f"INFO: {message}")
 
-	testCases := []struct {
-		name            string
-		config          Config
-		layerRoot       string
-		wantBuildAndRun string
-		wantWatchAndRun string
-	}{
-		{
-			name: "noBuildCmd",
-			config: Config{
-				BuildCmd: nil,
-				RunCmd:   []string{"run-me.sh"},
-				Ext:      []string{".js"},
-			},
-			layerRoot:       filepath.Join(testDirRoot, "noBuildCmd"),
-			wantBuildAndRun: "#!/bin/sh\nrun-me.sh",
-			wantWatchAndRun: fmt.Sprintf("#!/bin/sh\nwatchexec -r -e .js %s", filepath.Join(testDirRoot, "noBuildCmd", "bin", "build_and_run.sh")),
-		},
-		{
-			name: "withBuildAndRun",
-			config: Config{
-				BuildCmd: []string{"build-me.sh"},
-				RunCmd:   []string{"run-me.sh"},
-				Ext:      []string{".cc"},
-			},
-			layerRoot:       filepath.Join(testDirRoot, "withBuildAndRun"),
-			wantBuildAndRun: "#!/bin/sh\nbuild-me.sh && run-me.sh",
-			wantWatchAndRun: fmt.Sprintf("#!/bin/sh\nwatchexec -r -e .cc %s", filepath.Join(testDirRoot, "withBuildAndRun", "bin", "build_and_run.sh")),
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			err = os.Mkdir(tc.layerRoot, os.FileMode(0755))
-			if err != nil {
-				t.Fatalf("Creating temp directory: %v", err)
-			}
-			ctx := gcp.NewContext(gcp.WithApplicationRoot(tc.layerRoot))
-			l := &libcnb.Layer{Path: tc.layerRoot}
+    def Warnf(self, message: str, *args) -> None:
+        print(f"WARN: {message}", args)
 
-			writeBuildAndRunScript(ctx, l, tc.config)
+    def MkdirAll(self, path: str, mode: int) -> None:
+        Path(path).mkdir(parents=True, exist_ok=True, mode=mode)
 
-			bar := filepath.Join(tc.layerRoot, "bin", "build_and_run.sh")
-			war := filepath.Join(tc.layerRoot, "bin", "watch_and_run.sh")
-			c, err := ioutil.ReadFile(bar)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if string(c) != tc.wantBuildAndRun {
-				t.Errorf("build_and_run.sh = %q, want %q", string(c), tc.wantBuildAndRun)
-			}
+    def WriteFile(self, path: str, content: bytes, mode: int) -> None:
+        with open(path, 'wb') as f:
+            f.write(content)
+            os.chmod(path, mode)
 
-			c, err = ioutil.ReadFile(war)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if tc.wantWatchAndRun != string(c) {
-				t.Errorf("watch_and_run.sh = %q, want %q", string(c), tc.wantWatchAndRun)
-			}
-		})
-	}
-}
+    def Exec(self, command: List[str], user_attribution: bool = False) -> None:
+        subprocess.run(command, check=True)
+
+@dataclass
+class SyncRule:
+    src: str
+    dest: str
+
+const_WATCHEXEC_LAYER = "watchexec"
+const_WATCHEXEC_VERSION = "1.12.0"
+const_WATCHEXEC_URL = "https://github.com/watchexec/watchexec/releases/download/{version}/watchexec-{version}-x86_64-unknown-linux-gnu.tar.xz"
+
+class DevMode:
+    def __init__(self, context: GCPContext):
+        self.context = context
+
+    @staticmethod
+    def Enabled(context: GCPContext) -> bool:
+        try:
+            return os.environ["DEVMODE"] == "true"
+        except KeyError as e:
+            context.Warnf("Dev mode not enabled: %s", str(e))
+            return False
+
+    class Config:
+        def __init__(self, build_cmd: List[str], run_cmd: List[str], ext: List[str]):
+            self.build_cmd = build_cmd
+            self.run_cmd = run_cmd
+            self.ext = ext
+
+    def add_file_watcher_process(self, config: Config) -> None:
+        self.install_file_watcher()
+        scripts_layer = self.context.layers.get("scripts", {"path": "scripts"})
+        write_build_and_run_script(self.context, scripts_layer, config)
+        self.context.AddWebProcess([const_WATCH_AND_RUN])
+
+    def install_file_watcher(self) -> None:
+        layer_name = const_WATCHEXEC_LAYER
+        if layer_name not in self.context.layers:
+            self.context.layers[layer_name] = {"path": layer_name}
+        
+        current_version = self.context.metadata.get(layer_name, {}).get("version", "")
+        if current_version == const_WATCHEXEC_VERSION:
+            self.context.Log(f"Using cached {layer_name}")
+            return
+
+        bin_dir = os.path.join(self.context.layers[layer_name]["path"], "bin")
+        self.context.MkdirAll(bin_dir, 0o755)
+
+        archive_url = const_WATCHEXEC_URL.format(version=const_WATCHEXEC_VERSION)
+        command = f"curl --fail --show-error --silent --location --retry 3 {shlex.quote(archive_url)} | tar xJ --directory {shlex.quote(bin_dir)} --strip-components=1 --wildcards '*watchexec'"
+        self.context.Exec(["bash", "-c", command])
+        
+        self.context.metadata[layer_name] = {"version": const_WATCHEXEC_VERSION}

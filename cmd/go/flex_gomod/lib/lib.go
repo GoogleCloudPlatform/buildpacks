@@ -1,123 +1,98 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements go/flex-gomod buildpack.
-// The flex-gomod buildpack sets up the path of the package to build for gomod applications.
-// It is heavily based on the appengine_gomod buildpack but without GAE Standard constraints.
-package lib
+import os
+import re
+import sys
+from pathlib import Path
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+from cmd.go.flex_gomod.gcpbuildpack import (
+    BuildLayer,
+    Context,
+    DetectResult,
+    UserError,
+)
+from cmd.go.flex_gomod.env import (
+    BUILDABLE_ENV_VAR,
+    FLEX_ENV_VAR,
 )
 
-const (
-	// stagerFileName is an optional file created by go-app-stager.
-	// This file contains the main package path to build.
-	stagerFileName = "_main-package-path"
-)
+STAGER_FILE_NAME = "_main-package-path"
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !env.IsFlex() {
-		return gcp.OptOut("Not a GAE Flex app."), nil
-	}
-	goModExists, err := ctx.FileExists("go.mod")
-	if err != nil {
-		return nil, err
-	}
-	if !goModExists {
-		return gcp.OptOutFileNotFound("go.mod"), nil
-	}
+def detect_fn(ctx: Context) -> tuple[DetectResult, Exception | None]:
+    if not is_flex_env():
+        return (DetectResult.OptOut("Not a GAE Flex app."), None)
+    
+    go_mod_exists = ctx.file_exists("go.mod")
+    if not go_mod_exists:
+        return (DetectResult.FileNotFound("go.mod"), None)
+    
+    buildable_path = os.getenv(BUILDABLE_ENV_VAR)
+    if buildable_path is not None:
+        return (DetectResult.OptOut(f"{BUILDABLE_ENV_VAR} already defined as {buildable_path}"), None)
+    
+    return (DetectResult.OptIn(f"found go.mod and {BUILDABLE_ENV_VAR} is not set"), None)
 
-	if path, exists := os.LookupEnv(env.Buildable); exists {
-		return gcp.OptOut(fmt.Sprintf("%s already defined as %q", env.Buildable, path)), nil
-	}
+def build_fn(ctx: Context) -> Exception | None:
+    main_path, error = get_main_path(ctx)
+    if error:
+        return error
+    
+    cleaned_path, error = clean_main_path(main_path)
+    if error:
+        return error
+    
+    if cleaned_path != ".":
+        file_exists = ctx.file_exists(cleaned_path)
+        if not file_exists:
+            ctx.log(f"Path {cleaned_path} does not exist. Assuming it's a fully qualified package name.")
+    
+    layer, error = ctx.create_layer("main_env", BuildLayer())
+    if error:
+        return error
+    
+    layer.build_environment[BUILDABLE_ENV_VAR] = cleaned_path
+    return None
 
-	return gcp.OptIn(fmt.Sprintf("found go.mod and %s is not set", env.Buildable)), nil
-}
+def get_main_path(ctx: Context) -> tuple[str, Exception | None]:
+    stager_file_path = ctx.application_root / STAGER_FILE_NAME
+    if not stager_file_path.exists():
+        return ("", None)
+    
+    try:
+        with open(stager_file_path, "r") as f:
+            path = f.read().strip()
+        
+        stager_file_path.unlink()
+        return (path, None)
+    except Exception as e:
+        return ("", e)
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	mp, err := mainPath(ctx)
-	if err != nil {
-		return fmt.Errorf("choosing main path: %w", err)
-	}
-	buildMainPath, err := cleanMainPath(mp)
-	if err != nil {
-		return fmt.Errorf("cleaning main package path: %w", err)
-	}
+def clean_main_path(path: str) -> tuple[str, Exception | None]:
+    normalized_path = os.path.normpath(path)
+    
+    if normalized_path == ".":
+        return (".", None)
+    
+    if os.path.isabs(normalized_path):
+        return ("", UserError(f"main package path {path} must not be absolute"))
+    
+    if re.match(r'^\.\.[/\\]', normalized_path):
+        return ("", UserError(f"main package path {path} cannot reference parent"))
+    
+    return (normalized_path.replace(os.sep, '/'), None)
 
-	if buildMainPath != "." {
-		// If mainPath refers to a file, we prefix it with "./" so that `go build` treats it as such (in a later step).
-		buildMainExists, err := ctx.FileExists(buildMainPath)
-		if err != nil {
-			return err
-		}
-		if buildMainExists {
-			buildMainPath = "." + string(filepath.Separator) + buildMainPath
-		} else {
-			ctx.Logf("Path %q does not exist. Assuming it's a fully qualified package name.", buildMainPath)
-		}
-	}
-
-	l, err := ctx.Layer("main_env", gcp.BuildLayer)
-	if err != nil {
-		return fmt.Errorf("creating main_env layer: %w", err)
-	}
-	l.BuildEnvironment.Override(env.Buildable, buildMainPath)
-
-	return nil
-}
-
-// mainPath chooses the main package path from the paths provided by the stager file.
-func mainPath(ctx *gcp.Context) (string, error) {
-	pathFile := filepath.Join(ctx.ApplicationRoot(), stagerFileName)
-	pathExists, err := ctx.FileExists(pathFile)
-	if err != nil {
-		return "", err
-	}
-	if pathExists {
-		bytes, err := ctx.ReadFile(pathFile)
-		if err != nil {
-			return "", err
-		}
-		path := string(bytes)
-		if err := ctx.RemoveAll(pathFile); err != nil {
-			return "", err
-		}
-		return path, nil
-	}
-
-	return "", nil
-}
-
-func cleanMainPath(mp string) (string, error) {
-	mp = filepath.Clean(filepath.ToSlash(strings.TrimSpace(mp)))
-	if mp == "." {
-		return ".", nil
-	}
-	if filepath.IsAbs(mp) {
-		return "", gcp.UserErrorf("main package path %q must not be absolute path", mp)
-	}
-	if strings.HasPrefix(mp, "..") {
-		return "", gcp.UserErrorf("main package path %q cannot reference parent", mp)
-	}
-	return mp, nil
-}
+def is_flex_env() -> bool:
+    flex_env = os.getenv(FLEX_ENV_VAR)
+    return flex_env and flex_env.lower() == "flex"

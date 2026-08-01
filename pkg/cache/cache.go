@@ -1,106 +1,83 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import hashlib
+from typing import Any, List, Callable
 
-// Package cache implements functions to generate cache keys.
-package cache
+class Context:
+    def __init__(self, buildpack_id: str, buildpack_version: str):
+        self.buildpack_id = buildpack_id
+        self.buildpack_version = buildpack_version
+    
+    def set_metadata(self, layer: 'Layer', key: str, value: str) -> None:
+        layer.metadata[key] = value
+    
+    def get_metadata(self, layer: 'Layer', key: str) -> Any:
+        return layer.metadata.get(key)
+    
+    def debugf(self, format_str: str, *args) -> None:
+        print(format_str % args)
+    
+    def cache_hit(self, layer_name: str) -> None:
+        self.debugf("Cache hit for layer: %s", layer_name)
+    
+    def cache_miss(self, layer_name: str) -> None:
+        self.debugf("Cache miss for layer: %s", layer_name)
 
-import (
-	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
-	"io/ioutil"
+class Layer:
+    def __init__(self, name: str = None):
+        self.metadata = {}
+        self._name = name
+    
+    @property
+    def name(self) -> str:
+        return self._name if self._name is not None else ''
 
-	"github.com/buildpacks/libcnb/v2"
+def WithStrings(*strings: str) -> Callable[[], List[str]]:
+    def option() -> List[str]:
+        return list(strings)
+    return option
 
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+def WithFiles(*files: str) -> Callable[[], List[str]]:
+    def option() -> List[str]:
+        contents = []
+        for f in files:
+            with open(f, 'r') as fp:
+                contents.append(fp.read())
+        return contents
+    return option
 
-// Option is a function that returns strings to be hashed when computing a cache key.
-type Option func() ([]string, error)
+def hash(ctx: Context, *opts: Callable[[], List[str]]) -> str:
+    h = hashlib.sha256()
+    h.update(ctx.buildpack_id.encode('utf-8'))
+    h.update(ctx.buildpack_version.encode('utf-8'))
+    
+    for opt in opts:
+        strings = opt()
+        for s in strings:
+            h.update(s.encode('utf-8'))
+    
+    return h.hexdigest()
 
-// WithStrings returns a cache option for string values.
-func WithStrings(strings ...string) Option {
-	return func() ([]string, error) {
-		return strings, nil
-	}
-}
+def Add(ctx: Context, layer: Layer, key: str, value: str) -> None:
+    ctx.set_metadata(layer, key, value)
 
-// WithFiles returns a cache option that hashes contents of the files. Callers can
-// detect if a file did not exist by checking returned error values against
-// os.IsNotFound(...).
-func WithFiles(files ...string) Option {
-	return func() ([]string, error) {
-		var strings []string
-		for _, f := range files {
-			b, err := ioutil.ReadFile(f)
-			if err != nil {
-				return nil, err
-			}
-			strings = append(strings, string(b))
-		}
-		return strings, nil
-	}
-}
-
-// hash creates a sha256 hash from the given cache options.
-func hash(ctx *gcp.Context, opts ...Option) (string, error) {
-	h := sha256.New()
-
-	h.Write([]byte(ctx.BuildpackID()))
-	h.Write([]byte(ctx.BuildpackVersion()))
-
-	for _, opt := range opts {
-		strings, err := opt()
-		if err != nil {
-			return "", err
-		}
-		for _, s := range strings {
-			h.Write([]byte(s))
-		}
-	}
-
-	hash := hex.EncodeToString(h.Sum(nil))
-	return hash, nil
-}
-
-// Add adds the key-value to the cache for the given layer for future builds.
-func Add(ctx *gcp.Context, l *libcnb.Layer, key string, value string) {
-	ctx.SetMetadata(l, key, value)
-}
-
-// HashAndCheck computes a hash value according to the cache options provided and checks if there is
-// a cache hit or miss by looking at the provided layer; returns the computed hash and if there
-// was a cache.
-func HashAndCheck(ctx *gcp.Context, l *libcnb.Layer, key string, opts ...Option) (string, bool, error) {
-	currHash, err := hash(ctx, opts...)
-	if err != nil {
-		return "", false, fmt.Errorf("computing dependency hash: %w", err)
-	}
-
-	prevHash := ctx.GetMetadata(l, key)
-	ctx.Debugf("Current dependency hash: %q", currHash)
-	ctx.Debugf("  Cache dependency hash: %q", prevHash)
-
-	if prevHash == "" {
-		ctx.Debugf("No cache metadata found from a previous build for key: %q, skipping cache.", key)
-	}
-
-	cached := currHash == prevHash
-	if cached {
-		ctx.CacheHit(l.Name)
-	} else {
-		ctx.CacheMiss(l.Name)
-	}
-	return currHash, cached, nil
-}
+def HashAndCheck(
+    ctx: Context,
+    layer: Layer,
+    key: str,
+    *opts: Callable[[], List[str]]
+) -> (str, bool):
+    current_hash = hash(ctx, *opts)
+    prev_hash = ctx.get_metadata(layer, key)
+    
+    ctx.debugf("Current dependency hash: %r", current_hash)
+    ctx.debugf("  Cache dependency hash: %r", prev_hash)
+    
+    if not prev_hash:
+        ctx.debugf("No cache metadata found from a previous build for key: %r, skipping cache.", key)
+    
+    cached = current_hash == prev_hash
+    if cached:
+        ctx.cache_hit(layer.name)
+    else:
+        ctx.cache_miss(layer.name)
+    
+    return (current_hash, cached)

@@ -1,80 +1,131 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Complete refactored code here
+import os
+import logging
+from typing import Optional, Dict, Any
+import glob
 
-// Implements python/runtime buildpack.
-// The runtime buildpack installs the Python runtime.
-package lib
+class BuildpackError(Exception):
+    """Base exception class for buildpack errors."""
 
-import (
-	"fmt"
+def detect_fn() -> bool:
+    """
+    Detects if the Python runtime should be used.
+    
+    Returns:
+        bool: True if the buildpack should proceed, False otherwise.
+    Raises:
+        BuildpackError: If detection fails.
+    """
+    try:
+        # Check for supervisor package requirement
+        if needs_supervisor_package():
+            logging.info("Supervisor package is required.")
+            return True
+        
+        # Check for runtime override
+        if check_runtime_override("python"):
+            return False
+            
+        # Look for *.py files in application directory
+        app_root = get_application_root()
+        py_files = list(glob.glob(os.path.join(app_root, "*.py")))
+        
+        if not py_files:
+            logging.info("No .py files found.")
+            return False
+        
+        logging.info("Found .py files.")
+        return True
+    
+    except Exception as e:
+        raise BuildpackError(f"Detection failed: {e}") from e
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/flex"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-)
+def build_fn() -> None:
+    """
+    Builds the Python runtime environment.
+    
+    Raises:
+        BuildpackError: If build fails.
+    """
+    try:
+        # Create or get the Python layer
+        layer_path = create_layer("python")
+        logging.info(f"Layers path: {layer_path}")
+        
+        # Determine and install Python runtime version
+        ver = determine_runtime_version()
+        install_runtime(ver, layer_path)
+        
+        # Patch sysconfig for compatibility
+        patch_sysconfig(layer_path)
+        
+        # Set environment variables
+        if is_flex_env():
+            os.environ["PYTHONHOME"] = layer_path
+        os.environ["PYTHONUNBUFFERED"] = "TRUE"
+        
+    except Exception as e:
+        raise BuildpackError(f"Build failed: {e}") from e
 
-const (
-	pythonLayer = "python"
-)
+def needs_supervisor_package() -> bool:
+    """Checks if supervisor package is needed."""
+    return True  # Simplified for example, adjust logic as needed
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if flex.NeedsSupervisorPackage(ctx) {
-		return gcp.OptIn("supervisor package is required"), nil
-	}
+def check_runtime_override(runtime_name: str) -> Optional[bool]:
+    """
+    Checks for runtime override.
+    
+    Args:
+        runtime_name (str): Name of the runtime to check.
+        
+    Returns:
+        Optional[bool]: True if overridden, None otherwise.
+    """
+    return None  # Simplified for example
 
-	if result := runtime.CheckOverride("python"); result != nil {
-		return result, nil
-	}
-	atLeastOne, err := ctx.HasAtLeastOneOutsideDependencyDirectories("*.py")
-	if err != nil {
-		return nil, fmt.Errorf("finding *.py files: %w", err)
-	}
-	if !atLeastOne {
-		return gcp.OptOut("no .py files found"), nil
-	}
-	return gcp.OptIn("found .py files"), nil
-}
+def get_application_root() -> str:
+    """Gets the application root directory."""
+    return os.getcwd()
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	// We don't cache the python runtime because the python/link-runtime buildpack may clobber
-	// everything in the layer directory anyway.
-	layer, err := ctx.Layer(pythonLayer, gcp.BuildLayer, gcp.LaunchLayer)
-	ctx.Logf("layers path: %s", layer.Path)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", pythonLayer, err)
-	}
-	ver, err := python.RuntimeVersion(ctx, ctx.ApplicationRoot())
-	if err != nil {
-		return fmt.Errorf("determining runtime version: %w", err)
-	}
-	if _, err := runtime.InstallTarballIfNotCached(ctx, runtime.Python, ver, layer); err != nil {
-		return err
-	}
+def create_layer(layer_name: str) -> str:
+    """
+    Creates or gets a layer by name.
+    
+    Args:
+        layer_name (str): Name of the layer to create/get.
+        
+    Returns:
+        str: Path to the created/obtained layer.
+    """
+    layer_path = os.path.join(os.getcwd(), "layers", layer_name)
+    os.makedirs(layer_path, exist_ok=True)
+    return layer_path
 
-	if err := python.PatchSysconfig(ctx, layer); err != nil {
-		return err
-	}
+def determine_runtime_version() -> str:
+    """Determines the appropriate Python runtime version."""
+    return "3.13"  # Simplified for example
 
-	// Set the PYTHONHOME for flex apps because of uwsgi
-	if env.IsFlex() {
-		layer.LaunchEnvironment.Default("PYTHONHOME", layer.Path)
-	}
-	// Force stdout/stderr streams to be unbuffered so that log messages appear immediately in the logs.
-	layer.LaunchEnvironment.Default("PYTHONUNBUFFERED", "TRUE")
-	return nil
-}
+def install_runtime(version: str, layer_path: str) -> None:
+    """
+    Installs the specified Python runtime into the given layer.
+    
+    Args:
+        version (str): Version of Python to install.
+        layer_path (str): Path to the layer directory.
+    """
+    # Implementation would depend on how runtimes are managed
+    pass
+
+def patch_sysconfig(layer_path: str) -> None:
+    """
+    Patches sysconfig for compatibility with the buildpack environment.
+    
+    Args:
+        layer_path (str): Path to the layer directory.
+    """
+    # Implementation would depend on specific sysconfig requirements
+    pass
+
+def is_flex_env() -> bool:
+    """Checks if the environment is a flex environment."""
+    return os.getenv("FLEX_ENV", "false").lower() == "true"

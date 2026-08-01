@@ -1,142 +1,212 @@
-// Copyright 2024 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import os
+import tempfile
+from pathlib import Path
 
-// Package envvars handles the writing of .env-esque files to disk for use in subsequent
-// Cloud Build steps.
-package envvars
+import pytest
 
-import (
-	"bufio"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"sort"
-	"strconv"
-	"strings"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
+from pkg.firebase.envvars import (
+    write, write_lifecycle, read_lifecycle, read, marshal,
+    parse_env_vars_from_string
 )
+from pkg.firebase.apphostingschema import EnvironmentVariable
 
-// Write produces a file where each line has the format KEY=VALUE. We aren't using the
-// godotenv library as its output isn't compatible with the `pack build --env-file` command.
-func Write(env map[string]string, fileName string) error {
-	content, err := marshal(env)
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(fileName, []byte(content+"\n"), 0644)
-	if err != nil {
-		return err
-	}
-	return nil
-}
+def test_write():
+    test_dir = tempfile.mkdtemp()
+    
+    test_cases = [
+        {
+            'desc': "Write custom env file correctly",
+            'input_env_map': {
+                "API_URL": "api.service.com",
+                "VAR_QUOTED_SPECIAL": "api2.service.com::",
+                "VAR_SPACED": "api3 - service -  com",
+                "VAR_SINGLE_QUOTES": "I said, 'I'm learning YAML!'",
+                "VAR_DOUBLE_QUOTES": "\"api4.service.com\"",
+                "VAR_NUMBER": "12345",
+                "VAR_JSON": `{"apiKey":"myApiKey","appId":"myAppId"}`,
+                "MULTILINE_VAR": "211 Broadway\nApt. 17\nNew York, NY 10019\n"
+            },
+            'want_env_map': {
+                "API_URL": "api.service.com",
+                "VAR_QUOTED_SPECIAL": "api2.service.com::",
+                "VAR_SPACED": "api3 - service -  com",
+                "VAR_SINGLE_QUOTES": "I said, 'I'm learning YAML!'",
+                "VAR_DOUBLE_QUOTES": "\"api4.service.com\"",
+                "VAR_NUMBER": "12345",
+                "VAR_JSON": `{"apiKey":"myApiKey","appId":"myAppId"}`,
+                "MULTILINE_VAR": "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n"
+            }
+        },
+        {
+            'desc': "Writes file even with an empty map",
+            'input_env_map': {},
+            'want_env_map': {}
+        }
+    ]
 
-// WriteLifecycle writes the env vars to the given directory in a way that is compatible
-// with the lifecycle build process.
-func WriteLifecycle(env map[string]string, dir string) error {
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
-	}
-	for k, v := range env {
-		if err := ioutil.WriteFile(filepath.Join(dir, k), []byte(v), 0644); err != nil {
-			return fmt.Errorf("failed to write env var %s: %w", k, err)
-		}
-	}
-	return nil
-}
+    for i, test in enumerate(test_cases):
+        output_file = os.path.join(test_dir, f'output{i}')
+        
+        write(test['input_env_map'], output_file)
+        
+        actual_map = read(output_file)
+        assert actual_map == test['want_env_map']
 
-// ReadLifecycle reads the env vars from the given directory in a way that is compatible
-// with the lifecycle build process.
-func ReadLifecycle(dir string) (map[string]string, error) {
-	envMap := make(map[string]string)
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		return nil, err
-	}
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		content, err := os.ReadFile(filepath.Join(dir, file.Name()))
-		if err != nil {
-			return nil, err
-		}
-		envMap[file.Name()] = string(content)
-	}
-	return envMap, nil
-}
+def test_write_lifecycle():
+    test_dir = tempfile.mkdtemp()
+    
+    test_cases = [
+        {
+            'desc': "Write custom env file correctly",
+            'input_env_map': {
+                "API_URL": "api.service.com",
+                "VAR_QUOTED_SPECIAL": "api2.service.com::",
+                "VAR_SPACED": "api3 - service -  com",
+                "VAR_SINGLE_QUOTES": "I said, 'I'm learning YAML!'",
+                "VAR_DOUBLE_QUOTES": "\"api4.service.com\"",
+                "VAR_NUMBER": "12345",
+                "VAR_JSON": `{"apiKey":"myApiKey","appId":"myAppId"}`,
+                "MULTILINE_VAR": "211 Broadway\nApt. 17\nNew York, NY 10019\n"
+            },
+            'want_env_map': {
+                "API_URL": "api.service.com",
+                "VAR_QUOTED_SPECIAL": "api2.service.com::",
+                "VAR_SPACED": "api3 - service -  com",
+                "VAR_SINGLE_QUOTES": "I said, 'I'm learning YAML!'",
+                "VAR_DOUBLE_QUOTES": "\"api4.service.com\"",
+                "VAR_NUMBER": "12345",
+                "VAR_JSON": `{"apiKey":"myApiKey","appId":"myAppId"}`,
+                "MULTILINE_VAR": "211 Broadway\nApt. 17\nNew York, NY 10019\n"
+            }
+        },
+        {
+            'desc': "No error when writing empty map",
+            'input_env_map': {},
+            'want_env_map': {}
+        }
+    ]
 
-// Read reads in the custom env file to a map. This is a very dumb function that
-// just splits each line with the format KEY=VALUE and adds it to the output map.
-func Read(filename string) (map[string]string, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
+    for i, test in enumerate(test_cases):
+        output_dir = os.path.join(test_dir, f'output{i}')
+        
+        write_lifecycle(test['input_env_map'], output_dir)
+        
+        actual_map = read_lifecycle(output_dir)
+        assert actual_map == test['want_env_map']
 
-	envMap := make(map[string]string)
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if equalSignIndex := strings.Index(line, "="); equalSignIndex != -1 {
-			key := line[:equalSignIndex]
-			value := line[equalSignIndex+1:]
-			envMap[key] = value
-		} else if line != "" {
-			return nil, faherror.UserErrorf("invalid line format: %s", line)
-		}
-	}
+def test_write_raw_data():
+    test_dir = tempfile.mkdtemp()
+    
+    test_cases = [
+        {
+            'desc': "Write custom env file correctly and verify against raw data",
+            'input_env_map': {
+                "API_URL": "api.service.com",
+                "VAR_QUOTED_SPECIAL": "api2.service.com::",
+                "VAR_SPACED": "api3 - service -  com",
+                "VAR_SINGLE_QUOTES": "I said, 'I'm learning YAML!'",
+                "VAR_DOUBLE_QUOTES": "\"api4.service.com\"",
+                "VAR_NUMBER": "12345",
+                "MULTILINE_VAR": "211 Broadway\nApt. 17\nNew York, NY 10019\n",
+                "VAR_JSON": `{"apiKey":"myApiKey","appId":"myAppId"}`
+            },
+            'want_raw_string': (
+                "API_URL=api.service.com\n"
+                "MULTILINE_VAR=211 Broadway\\nApt. 17\\nNew York, NY 10019\\n\n"
+                "VAR_DOUBLE_QUOTES=\"api4.service.com\"\n"
+                "VAR_JSON={\"apiKey\":\"myApiKey\",\"appId\":\"myAppId\"}\n"
+                "VAR_NUMBER=12345\n"
+                "VAR_QUOTED_SPECIAL=api2.service.com::\n"
+                "VAR_SINGLE_QUOTES=I said, 'I'm learning YAML!'\n"
+                "VAR_SPACED=api3 - service -  com\n"
+            )
+        },
+        {
+            'desc': "Writes raw file properly even with an empty map",
+            'input_env_map': {},
+            'want_raw_string': "\n"
+        }
+    ]
 
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
+    for i, test in enumerate(test_cases):
+        output_file = os.path.join(test_dir, f'output{i}')
+        
+        write(test['input_env_map'], output_file)
+        
+        with open(output_file, 'r') as f:
+            data = f.read()
+        assert data == test['want_raw_string']
 
-	return envMap, nil
-}
+def test_parse_env_vars_from_string():
+    test_cases = [
+        {
+            'desc': "Parse server side env vars correctly",
+            'server_side_env_vars': '''
+                [
+                    {
+                        "Variable": "SERVER_SIDE_ENV_VAR_NUMBER",
+                        "Value": "3457934845",
+                        "Availability": ["BUILD", "RUNTIME"]
+                    },
+                    {
+                        "Variable": "SERVER_SIDE_ENV_VAR_MULTILINE_FROM_SERVER_SIDE",
+                        "Value": "211 Broadway\\nApt. 17\\nNew York, NY 10019\\n",
+                        "Availability": ["BUILD"]
+                    },
+                    {
+                        "Variable": "SERVER_SIDE_ENV_VAR_QUOTED_SPECIAL",
+                        "Value": "api_from_server_side.service.com::",
+                        "Availability": ["RUNTIME"]
+                    },
+                    {
+                        "Variable": "SERVER_SIDE_ENV_VAR_SPACED",
+                        "Value": "api979 - service -  com",
+                        "Availability": ["BUILD"]
+                    },
+                    {
+                        "Variable": "SERVER_SIDE_ENV_VAR_SINGLE_QUOTES",
+                        "Value": "I said, 'I'm learning GOLANG!'",
+                        "Availability": ["BUILD"]
+                    },
+                    {
+                        "Variable": "SERVER_SIDE_ENV_VAR_DOUBLE_QUOTES",
+                        "Value": "\"api41.service.com\"",
+                        "Availability": ["BUILD", "RUNTIME"]
+                    }
+                ]
+            ''',
+            'want_env_vars': [
+                EnvironmentVariable(
+                    variable="SERVER_SIDE_ENV_VAR_NUMBER",
+                    value="3457934845",
+                    availability=["BUILD", "RUNTIME"],
+                    source='firebase-console'
+                ),
+                # ... other variables similarly defined
+            ]
+        },
+        {
+            'desc': "Empty list of server side env vars",
+            'server_side_env_vars': "[]",
+            'want_env_vars': []
+        },
+        {
+            'desc': "Malformed server side env vars string",
+            'server_side_env_vars': "a malformed string",
+            'want_env_vars': None,
+            'want_err': True
+        }
+    ]
 
-func marshal(envMap map[string]string) (string, error) {
-	var lines []string
-	for k, v := range envMap {
-		if d, err := strconv.Atoi(v); err == nil {
-			lines = append(lines, fmt.Sprintf(`%s=%d`, k, d))
-		} else {
-			// String replacement is needed to properly escape the newline character
-			lines = append(lines, fmt.Sprintf(`%s=%s`, k, strings.ReplaceAll(v, "\n", "\\n")))
-		}
-	}
-	// Sorting as the iteration order of a map is not guaranteed to be the same every time.
-	// Needed for some test assertions.
-	sort.Strings(lines)
-	return strings.Join(lines, "\n"), nil
-}
-
-// ParseEnvVarsFromString parses the server side environment variables from a string to a list of EnvironmentVariables.
-func ParseEnvVarsFromString(serverSideEnvVars string) ([]apphostingschema.EnvironmentVariable, error) {
-	var parsedServerSideEnvVars []apphostingschema.EnvironmentVariable
-
-	err := json.Unmarshal([]byte(serverSideEnvVars), &parsedServerSideEnvVars)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshalling server side env var %v: %w", serverSideEnvVars, err)
-	}
-
-	for i := range parsedServerSideEnvVars {
-		parsedServerSideEnvVars[i].Source = apphostingschema.SourceFirebaseConsole
-	}
-
-	return parsedServerSideEnvVars, nil
-}
+    for test in test_cases:
+        if test.get('want_err'):
+            with pytest.raises(ValueError):
+                parse_env_vars_from_string(test['server_side_env_vars'])
+        else:
+            result = parse_env_vars_from_string(test['server_side_env_vars'])
+            assert len(result) == len(test['want_env_vars'])
+            for got, want in zip(result, test['want_env_vars']):
+                assert got.variable == want.variable
+                assert got.value == want.value
+                assert got.availability == want.availability
+                assert got.source == 'firebase-console'

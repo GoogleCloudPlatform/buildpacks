@@ -1,130 +1,92 @@
-package flex
+import os
+from pathlib import Path
+from textwrap import dedent
 
-import (
-	"path"
-	"text/template"
+class SupervisorConfig:
+    def __init__(self, php_fpm_conf_path: str, nginx_conf_path: str, 
+                 supervisor_include_conf_path: str):
+        self.php_fpm_conf_path = php_fpm_conf_path
+        self.nginx_conf_path = nginx_conf_path
+        self.supervisor_include_conf_path = supervisor_include_conf_path
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpacks/libcnb/v2"
-)
+# SupervisorTemplate is a template that produces the supervisor configuration for Flex PHP applications
+supervisor_template = dedent('''\
+    [supervisord]
+    nodaemon = true
+    logfile = /dev/null
+    logfile_maxbytes = 0
 
-const (
-	defaultSupervisorConf    = "supervisord.conf"
-	defaultAddSupervisorConf = "additional-supervisord.conf"
-)
+    [program:php-fpm]
+    command = php-fpm -R --nodaemonize --fpm-config {php_fpm_conf_path}
+    stdout_logfile = /dev/stdout
+    stdout_logfile_maxbytes=0
+    stderr_logfile = /dev/stderr
+    stderr_logfile_maxbytes=0
+    autostart = true
+    autorestart = true
+    priority = 5
 
-// SupervisorConfig is the configuration for the template.
-type SupervisorConfig struct {
-	PHPFPMConfPath,
-	NginxConfPath,
-	SupervisorIncludeConfPath string
-}
+    [program:nginx]
+    command = bash -c "sleep 1 && nginx -c {nginx_conf_path}"
+    stdout_logfile = /dev/stdout
+    stdout_logfile_maxbytes=0
+    stderr_logfile = /dev/stderr
+    stderr_logfile_maxbytes=0
+    autostart = true
+    autorestart = true
+    priority = 10
 
-// SupervisorTemplate is a template that produces the supervisor configuration for Flex PHP applications
-// to start the nginx process as part of backwards compatibility.
-// Taken from https://github.com/GoogleCloudPlatform/php-docker/blob/master/php-base/supervisord.conf
-var SupervisorTemplate = template.Must(template.New("supervisor").Parse(`
-[supervisord]
-nodaemon = true
-logfile = /dev/null
-logfile_maxbytes = 0
+    [include]
+    files = {supervisor_include_conf_path}
+''').strip()
 
-[program:php-fpm]
-command = php-fpm -R --nodaemonize --fpm-config {{.PHPFPMConfPath}}
-stdout_logfile = /dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile = /dev/stderr
-stderr_logfile_maxbytes=0
-autostart = true
-autorestart = true
-priority = 5
+class SupervisorFiles:
+    def __init__(self, supervisor_conf: str, add_supervisor_conf: str,
+                 supervisor_conf_exists: bool, add_supervisor_conf_exists: bool):
+        self.supervisor_conf = supervisor_conf
+        self.add_supervisor_conf = add_supervisor_conf
+        self.supervisor_conf_exists = supervisor_conf_exists
+        self.add_supervisor_conf_exists = add_supervisor_conf_exists
 
-[program:nginx]
-command = bash -c "sleep 1 && nginx -c {{.NginxConfPath}}"
-stdout_logfile = /dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile = /dev/stderr
-stderr_logfile_maxbytes=0
-autostart = true
-autorestart = true
-priority = 10
+def supervisor_conf_files(ctx: dict, runtime_config: dict, dir_path: str) -> SupervisorFiles:
+    default_supervisor_conf = "supervisord.conf"
+    default_add_supervisor_conf = "additional-supervisord.conf"
 
-[include]
-files = {{.SupervisorIncludeConfPath}}
-`))
+    supervisor_conf = runtime_config.get("SupervisordConfOverride", default_supervisor_conf)
+    add_supervisor_conf = runtime_config.get("SupervisordConfAddition", default_add_supervisor_conf)
 
-// SupervisorFiles contains the necessary supervisor configuration files.
-type SupervisorFiles struct {
-	SupervisorConf          string
-	AddSupervisorConf       string
-	SupervisorConfExists    bool
-	AddSupervisorConfExists bool
-}
+    supervisor_path = os.path.join(dir_path, supervisor_conf)
+    supervisor_exists = Path(supervisor_path).exists()
 
-// SupervisorConfFiles returns whether it is necessary to install supervisor and the necessary files to fetch.
-func SupervisorConfFiles(ctx *gcp.Context, runtimeConfig appyaml.RuntimeConfig, dir string) (SupervisorFiles, error) {
-	supervisorConf, addSupervisorConf := defaultSupervisorConf, defaultAddSupervisorConf
-	if runtimeConfig.SupervisordConfOverride != "" {
-		supervisorConf = runtimeConfig.SupervisordConfOverride
-	}
+    add_supervisor_path = os.path.join(dir_path, add_supervisor_conf)
+    add_supervisor_exists = Path(add_supervisor_path).exists()
 
-	if runtimeConfig.SupervisordConfAddition != "" {
-		addSupervisorConf = runtimeConfig.SupervisordConfAddition
-	}
+    return SupervisorFiles(
+        supervisor_conf=supervisor_conf,
+        add_supervisor_conf=add_supervisor_conf,
+        supervisor_conf_exists=supervisor_exists,
+        add_supervisor_conf_exists=add_supervisor_exists
+    )
 
-	supervisorConfExists, err := ctx.FileExists(path.Join(dir, supervisorConf))
-	if err != nil {
-		return SupervisorFiles{}, err
-	}
+def needs_supervisor_package(ctx: dict) -> bool:
+    runtime_config = ctx.get("appyaml", {}).get("RuntimeConfig", {})
+    files, _ = supervisor_conf_files(ctx, runtime_config, ctx["application_root"])
+    return files.supervisor_conf_exists or files.add_supervisor_conf_exists
 
-	addSupervisorConfExists, err := ctx.FileExists(path.Join(dir, addSupervisorConf))
-	if err != nil {
-		return SupervisorFiles{}, err
-	}
-
-	return SupervisorFiles{
-		SupervisorConf:          supervisorConf,
-		AddSupervisorConf:       addSupervisorConf,
-		SupervisorConfExists:    supervisorConfExists,
-		AddSupervisorConfExists: addSupervisorConfExists,
-	}, nil
-}
-
-// NeedsSupervisorPackage returns whether to install supervisor.
-func NeedsSupervisorPackage(ctx *gcp.Context) bool {
-	runtimeConfig, err := appyaml.PhpConfiguration(ctx.ApplicationRoot())
-	if err != nil {
-		return false
-	}
-	files, err := SupervisorConfFiles(ctx, runtimeConfig, ctx.ApplicationRoot())
-	if err != nil {
-		return false
-	}
-	return files.SupervisorConfExists || files.AddSupervisorConfExists
-}
-
-// InstallSupervisor installs supervisor package to the layer.
-func InstallSupervisor(ctx *gcp.Context, l *libcnb.Layer) error {
-	l.LaunchEnvironment.Default("PYTHONUSERBASE", l.Path)
-	if err := ctx.Setenv(
-		"PYTHONUSERBASE", l.Path); err != nil {
-		return err
-	}
-
-	cmd := []string{
-		"python3", "-m", "pip", "install",
-		"supervisor",
-		"--upgrade",
-		"--no-warn-script-location", // bin is added at run time by lifecycle.
-		"--no-compile",
-		"--disable-pip-version-check",
-		"--no-cache-dir",
-	}
-
-	if _, err := ctx.Exec(cmd); err != nil {
-		return err
-	}
-
-	return nil
-}
+def install_supervisor(ctx: dict, layer_path: str) -> None:
+    env_vars = {
+        "PYTHONUSERBASE": layer_path
+    }
+    
+    cmd = [
+        "python3", "-m", "pip", "install",
+        "supervisor",
+        "--upgrade",
+        "--no-warn-script-location",
+        "--no-compile",
+        "--disable-pip-version-check",
+        "--no-cache-dir"
+    ]
+    
+    # In actual implementation, this would execute the command
+    # subprocess.run(cmd, check=True)

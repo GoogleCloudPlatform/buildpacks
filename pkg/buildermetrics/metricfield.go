@@ -1,109 +1,54 @@
-// Copyright 2023 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any
 
-package buildermetrics
+class LabelType(Enum):
+    Bool = 0
+    Int = 1
+    String = 2
 
-// Label defines the name and type of an additional field to be added to metrics.
-type Label struct {
-	Name      string    `json:"n,omitempty"`
-	LabelType labelType `json:"l,omitempty"`
-}
+@dataclass(frozen=True)
+class Label:
+    name: str
+    label_type: LabelType
 
-// labelType is used to indicate which type a Label carries.
-type labelType int
+@dataclass
+class Field:
+    label: Label
+    value: Any
 
-const (
-	// Bool indicates the type of a Label is a bool.
-	Bool labelType = iota
-	// Int indicates the type of a Label is an int.
-	Int
-	// String indicates the type of a Label is a string.
-	String
-)
+def labels_match(ll1: list[Label], ll2: list[Label]) -> bool:
+    if len(ll1) != len(ll2):
+        return False
+    count1 = {}
+    count2 = {}
+    for l in ll1:
+        key = (l.name, l.label_type)
+        count1[key] = count1.get(key, 0) + 1
+    for l in ll2:
+        key = (l.name, l.label_type)
+        count2[key] = count2.get(key, 0) + 1
+    return count1 == count2
 
-var (
-	supportedLabelTypes = []labelType{Bool, Int, String}
-)
+def types_match(label: Label, field: Field) -> bool:
+    if isinstance(field.value, bool):
+        return label.label_type == LabelType.Bool
+    elif isinstance(field.value, int):
+        return label.label_type == LabelType.Int
+    elif isinstance(field.value, str):
+        return label.label_type == LabelType.String
+    else:
+        return False
 
-func labelListsMatch(ll1, ll2 []Label) bool {
-	if len(ll1) != len(ll2) {
-		return false
-	}
-	seen1 := make(map[Label]int)
-	seen2 := make(map[Label]int)
-	for _, l1 := range ll1 {
-		seen1[l1]++
-	}
-	for _, l2 := range ll2 {
-		seen2[l2]++
-	}
-
-	if len(seen1) != len(seen2) {
-		return false
-	}
-
-	for s1k, s1v := range seen1 {
-		s2v, found := seen2[s1k]
-		if !found || s1v != s2v {
-			return false
-		}
-	}
-	return true
-}
-
-// Field defines an additional field to be attached to a metric.
-type Field struct {
-	Label Label `json:"l,omitempty"`
-	Value any   `json:"v,omitempty"`
-}
-
-func typesMatch(label Label, field Field) bool {
-	switch field.Value.(type) {
-	case bool:
-		return label.LabelType == Bool
-	case int64:
-		return label.LabelType == Int
-	case string:
-		return label.LabelType == String
-	default:
-		return false
-	}
-}
-
-func fieldListsMatch(fl1 []Field, fl2 []Field) bool {
-	if len(fl1) != len(fl2) {
-		return false
-	}
-
-	seen1 := make(map[Field]int)
-	seen2 := make(map[Field]int)
-	for _, f1 := range fl1 {
-		seen1[f1]++
-	}
-	for _, f2 := range fl2 {
-		seen2[f2]++
-	}
-
-	if len(seen1) != len(seen2) {
-		return false
-	}
-
-	for s1k, s1v := range seen1 {
-		s2v, found := seen2[s1k]
-		if !found || s1v != s2v {
-			return false
-		}
-	}
-	return true
-}
+def fields_match(fl1: list[Field], fl2: list[Field]) -> bool:
+    if len(fl1) != len(fl2):
+        return False
+    count1 = {}
+    count2 = {}
+    for f in fl1:
+        key = (f.label.name, f.label.label_type, type(f.value))
+        count1[key] = count1.get(key, 0) + 1
+    for f in fl2:
+        key = (f.label.name, f.label.label_type, type(f.value))
+        count2[key] = count2.get(key, 0) + 1
+    return count1 == count2

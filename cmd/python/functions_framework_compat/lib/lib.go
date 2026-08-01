@@ -1,63 +1,81 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements python/functions_framework_compat buildpack.
-// The functions_framework buildpack installs dependencies that were included with the python37 runtime.
-package lib
+"""
+Implements python/functions_framework_compat buildpack.
+The functions_framework buildpack installs dependencies that were included with the python37 runtime.
+"""
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
+import os
+import logging
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
+from google.cloud.functions import BuildContext
+from ...pkg.env import (
+    env,
+    is_gcf,
+)
+from ...pkg.gcpbuildpack import (
+    OptInResult,
+    OptOutResult,
+    DetectResult,
+    BuildPlan,
 )
 
-const (
-	layerName = "functions-framework-compat"
-)
+const_layer_name = "functions-framework-compat"
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if !env.IsGCF() {
-		return gcp.OptOut("Deployment environment is not GCF."), nil
-	}
-	if runtime := os.Getenv(env.Runtime); runtime != "python37" {
-		return gcp.OptOut(fmt.Sprintf("env var %s is not set to python37", env.Runtime)), nil
-	}
-	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
-		return gcp.OptInEnvSet(env.FunctionTarget, gcp.WithBuildPlans(python.RequirementsProvidesPlan)), nil
-	}
-	return gcp.OptOutEnvNotSet(env.FunctionTarget), nil
-}
+def detect_fn(context: BuildContext) -> tuple[DetectResult, Exception]:
+    """
+    Detection function for the buildpack.
+    Checks if the environment is GCF and runtime is python37.
+    Returns OptIn or OptOut results based on conditions.
+    """
+    if not is_gcf():
+        return OptOutResult("Deployment environment is not GCF."), None
+    
+    runtime = os.getenv(env.Runtime)
+    if runtime != "python37":
+        return OptOutResult(f"env var {env.Runtime} is not set to python37"), None
+    
+    function_target = os.getenv(env.FunctionTarget)
+    if function_target:
+        plan = BuildPlan()
+        plan.add_requirement("python.RequirementsProvidesPlan")
+        return OptInResult([plan]), None
+    else:
+        return OptOutResult(f"env var {env.FunctionTarget} not set"), None
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	l, err := ctx.Layer(layerName, gcp.LaunchLayer, gcp.BuildLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", layerName, err)
-	}
 
-	// The pip install is performed by the pip buildpack; see python.InstallRequirements.
-	ctx.Debugf("Adding functions-framework requirements.txt to the list of requirements files to install.")
-	r := filepath.Join(ctx.BuildpackRoot(), "converter", "requirements.txt")
-	l.BuildEnvironment.Append(python.RequirementsFilesEnv, string(os.PathListSeparator), r)
-
-	// Set additional Python 3.7 env var for backwards compatibility.
-	l.LaunchEnvironment.Default("ENTRY_POINT", os.Getenv(env.FunctionTarget))
-
-	return nil
-}
+def build_fn(context: BuildContext) -> Exception:
+    """
+    Build function for the buildpack.
+    Creates layers and sets up environment variables.
+    """
+    # Create layer
+    layer = context.create_layer(const_layer_name, is_launch=True)
+    
+    # Add requirements file
+    req_file_path = os.path.join(
+        context.buildpack_root,
+        "converter",
+        "requirements.txt"
+    )
+    logging.debug("Adding functions-framework requirements.txt to the list of requirements files to install.")
+    layer.add_to_build_env(python.RequirementsFilesEnv, req_file_path)
+    
+    # Set entry point
+    function_target = os.getenv(env.FunctionTarget)
+    if function_target:
+        layer.set_launch_env("ENTRY_POINT", function_target)
+    
+    return None

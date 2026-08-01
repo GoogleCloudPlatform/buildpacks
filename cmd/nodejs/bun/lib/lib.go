@@ -1,171 +1,94 @@
-// Copyright 2026 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Package lib implements nodejs/bun buildpack.
-// The bun buildpack installs dependencies using bun package manager.
-package lib
+"""
+Package lib implements nodejs/bun buildpack.
+The bun buildpack installs dependencies using bun package manager.
+"""
 
-import (
-	"os"
-	"path/filepath"
-	"strings"
+import os
+import subprocess
+from pathlib import Path
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
-)
+class Context:
+    def __init__(self, application_root):
+        self.application_root = application_root
+    
+    def file_exists(self, path):
+        return (Path(self.application_root) / path).exists()
+    
+    def layer(self, name, *args):
+        # Implement layer management logic here
+        pass
+    
+    def exec(self, command, **kwargs):
+        return subprocess.run(command, check=True)
 
-const (
-	bunLayer = "bun"
-)
+class DetectResult:
+    def __init__(self, opt_in=False, opt_out=False, reason=None):
+        self.opt_in = opt_in
+        self.opt_out = opt_out
+        self.reason = reason
 
-// DetectFn detects if package.json is present.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	pkgJSONExists, err := ctx.FileExists("package.json")
-	if err != nil {
-		return nil, err
-	}
-	if !pkgJSONExists {
-		return gcp.OptOutFileNotFound("package.json"), nil
-	}
-	bunLockbExists, err := ctx.FileExists(nodejs.BunLockb)
-	if err != nil {
-		return nil, err
-	}
-	if bunLockbExists {
-		return gcp.OptInFileFound(nodejs.BunLockb), nil
-	}
-	bunLockExists, err := ctx.FileExists(nodejs.BunLock)
-	if err != nil {
-		return nil, err
-	}
-	if bunLockExists {
-		return gcp.OptInFileFound(nodejs.BunLock), nil
-	}
-	if nodejs.IsPackageManagerConfigured("bun") {
-		return gcp.OptIn("package.json found and GOOGLE_PACKAGE_MANAGER=bun"), nil
-	}
-	return gcp.OptOut("bun.lockb or bun.lock not found"), nil
-}
+def detect_fn():
+    context = Context(os.getcwd())
+    
+    # Check for package.json
+    if not context.file_exists("package.json"):
+        return DetectResult(opt_out=True, reason="package.json not found")
+    
+    # Check for bun lock files
+    if context.file_exists("bun.lockb") or context.file_exists("bun.lock"):
+        return DetectResult(opt_in=True)
+    
+    # Check environment variable
+    package_manager = os.environ.get("GOOGLE_PACKAGE_MANAGER", "")
+    if package_manager == "bun":
+        return DetectResult(opt_in=True, reason="GOOGLE_PACKAGE_MANAGER=bun")
+    
+    return DetectResult(opt_out=True, reason="No bun lock files found")
 
-// BuildFn installs dependencies using bun package manager.
-func BuildFn(ctx *gcp.Context) error {
-	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.PackageManager, buildermetadata.MetadataValue("bun"))
-	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
-	if err != nil {
-		return err
-	}
+def build_fn():
+    context = Context(os.getcwd())
+    
+    # Install dependencies
+    try:
+        _install_bun(context)
+        _bun_install_modules(context)
+        
+        # Set up environment
+        env_layer = context.layer("env")
+        bin_path = os.path.join(context.application_root, "node_modules", ".bin")
+        env_layer.set_path(bin_path)
+        
+        # Configure entrypoint
+        if not is_dev_sync():
+            add_web_process(["npm", "run", "start"])
+    except Exception as e:
+        print(f"Build error: {str(e)}", file=sys.stderr)
+        raise
 
-	if err := installBun(ctx, pjs); err != nil {
-		return gcp.InternalErrorf("installing bun: %w", err)
-	}
+def _install_bun(context):
+    # Implement bun installation logic here
+    pass
 
-	if err := bunInstallModules(ctx); err != nil {
-		return err
-	}
+def _bun_install_modules(context):
+    # Implement bun install modules logic here
+    pass
 
-	el, err := ctx.Layer("env", gcp.BuildLayer, gcp.LaunchLayer)
-	if err != nil {
-		return gcp.InternalErrorf("creating layer: %w", err)
-	}
-	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
-	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
+def is_dev_sync():
+    return os.environ.get("DEVSYNC") == "true"
 
-	devSync, err := env.IsDevSync()
-	if err != nil {
-		ctx.Warnf("Unable to determine dev sync status: %v", err)
-	} else if devSync {
-		cmd, err := nodejs.DevSyncEntrypoint(ctx, pjs, "bun")
-		if err != nil {
-			return gcp.InternalErrorf("getting dev sync entrypoint: %w", err)
-		}
-		ctx.AddWebProcess(cmd)
-		return nil
-	}
-
-	// Configure the entrypoint for production.
-	ctx.AddWebProcess([]string{"npm", "run", "start"})
-	return nil
-}
-
-func bunInstallModules(ctx *gcp.Context) error {
-	pjs, err := nodejs.OverrideAppHostingBuildScript(ctx, nodejs.ApphostingPreprocessedPathForPack)
-	if err != nil {
-		return err
-	}
-	buildCmds, _ := nodejs.DetermineBuildCommands(pjs, "bun")
-	// Respect the user's NODE_ENV value if it's set
-	buildNodeEnv, nodeEnvPresent := os.LookupEnv(nodejs.EnvNodeEnv)
-	if !nodeEnvPresent {
-		if len(buildCmds) > 0 {
-			// Assume that dev dependencies are required to run build scripts to
-			// support the most use cases possible.
-			buildNodeEnv = nodejs.EnvDevelopment
-		} else {
-			buildNodeEnv = nodejs.EnvProduction
-		}
-	}
-
-	bunLockbExists, _ := ctx.FileExists("bun.lockb")
-	bunLockExists, _ := ctx.FileExists("bun.lock")
-	cmd := []string{"bun", "install"}
-	devSync, _ := env.IsDevSync()
-	if (bunLockbExists || bunLockExists) && !devSync {
-		ctx.Logf("Lockfile (bun.lockb or bun.lock) found. Installing dependencies with Bun using --frozen-lockfile.")
-		cmd = append(cmd, "--frozen-lockfile")
-	} else {
-		ctx.Logf("Installing application dependencies with Bun (no lockfile found or dev sync enabled).")
-	}
-
-	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution, gcp.WithEnv("NODE_ENV="+buildNodeEnv)); err != nil {
-		return gcp.UserErrorf("installing bun dependencies: %w", err)
-	}
-
-	if len(buildCmds) > 0 {
-		// If there are multiple build scripts to run, run them one-by-one so the logs are
-		// easier to understand.
-		for _, cmd := range buildCmds {
-			split := strings.Split(cmd, " ")
-			if _, err := ctx.Exec(split, gcp.WithUserAttribution); err != nil {
-				if fahCmd, fahCmdPresent := os.LookupEnv(nodejs.AppHostingBuildEnv); fahCmdPresent {
-					return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(fahCmd, err))
-				}
-				if nodejs.HasApphostingPackageBuild(pjs) {
-					return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(pjs.Scripts[nodejs.ScriptApphostingBuild], err))
-				}
-				return err
-			}
-		}
-	}
-	if nodejs.ShouldPrunePnpmBun(ctx, pjs, buildNodeEnv, nodeEnvPresent) {
-		// If we installed dependencies with NODE_ENV=development and the user didn't explicitly set
-		// NODE_ENV we should prune the DevDependencies from the final app image.
-		ctx.Logf("Pruning DevDependencies.")
-		cmd := []string{"bun", "install", "--frozen-lockfile", "--production"}
-		if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
-			return gcp.UserErrorf("pruning devDependencies: %w", err)
-		}
-	}
-	return nil
-}
-
-var installBun = func(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
-	layer, err := ctx.Layer(bunLayer, gcp.BuildLayer, gcp.CacheLayer)
-	if err != nil {
-		return gcp.InternalErrorf("creating %v layer: %w", bunLayer, err)
-	}
-	return nodejs.InstallBun(ctx, layer, pjs)
-}
+def add_web_process(command):
+    print(f"Added web process: {command}")

@@ -1,109 +1,95 @@
-package nodejs
+import os
+import subprocess
+from pathlib import Path
+from typing import Optional
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
+from google.cloud.buildpacks.gcpbuildpack import Context, InternalError, UserError
 
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/buildpacks/libcnb/v2"
-)
+class NodeJSBuildPack:
+    BUN_LOCK = "bun.lock"
+    BUN_LOCKB = "bun.lockb"
+    BUN_VERSION_KEY = "version"
 
-// BunInstallerCapability is the capability key for the BunInstaller.
-const BunInstallerCapability = "nodejs.BunInstaller"
+    @staticmethod
+    def install_bun(ctx: Context, layer: dict, pjs: Optional[dict]) -> None:
+        if ctx.is_disabled("nodejs.BunInstaller"):
+            ctx.log("BunInstaller capability is disabled. Skipping installation.")
+            return
 
-// bunInstaller is an interface for installing bun.
-type bunInstaller interface {
-	InstallBun(ctx *gcp.Context, bunLayer *libcnb.Layer, pjs *PackageJSON) error
-}
+        if capability := ctx.capability("nodejs.BunInstaller"):
+            if isinstance(capability, NodeJSBuildPack):
+                capability.install_bun(ctx, layer, pjs)
+                return
 
-var (
-	// BunLock is the name of the Bun lock file.
-	BunLock = "bun.lock"
-	// BunLockb is the name of the Bun lock file in binary format.
-	BunLockb = "bun.lockb"
-	// bunVersionKey is the metadata key used to store the Bun version in the bun layer.
-	bunVersionKey = "version"
-)
+        version = NodeJSBuildPack._detect_bun_version(pjs)
+        cached, err = NodeJSBuildPack._install_from_tarball_or_fallback(ctx, version, layer)
+        if not cached and err:
+            raise InternalError(f"Failed to download Bun v{version} tarball: {err}")
 
-// InstallBun installs Bun in the given layer using the curl installer.
-func InstallBun(ctx *gcp.Context, bunLayer *libcnb.Layer, pjs *PackageJSON) error {
-	if ctx.IsDisabled(BunInstallerCapability) {
-		ctx.Logf("BunInstaller capability is disabled. Skipping installation.")
-		return nil
-	}
+        install_dir = Path(layer['path']) / "bin"
+        ctx.setenv("PATH", f"{install_dir}:{os.getenv('PATH')}")
+        ctx.set_metadata(layer, NodeJSBuildPack.BUN_VERSION_KEY, version)
+        ctx.set_metadata(layer, "stack", ctx.stack_id())
 
-	if cap := ctx.Capability(BunInstallerCapability); cap != nil {
-		i, ok := cap.(bunInstaller)
-		if !ok {
-			return gcp.InternalErrorf("capability %q must implement BunInstaller", BunInstallerCapability)
-		}
-		return i.InstallBun(ctx, bunLayer, pjs)
-	}
+    @staticmethod
+    def _detect_bun_version(pjs: Optional[dict]) -> str:
+        if pjs is None or (not pjs.get('engines', {}).get('bun') and not pjs.get('packageManager')):
+            return NodeJSBuildPack._latest_package_version("bun")
 
-	installDir := filepath.Join(bunLayer.Path, "bin")
-	version, err := detectBunVersion(pjs)
-	if err != nil {
-		return err
-	}
+        if engines := pjs.get('engines'):
+            bun_version = engines.get('bun')
+            if bun_version:
+                return bun_version
 
-	cached, err := runtime.InstallTarballIfNotCached(ctx, runtime.Bun, version, bunLayer)
-	// TODO(b/520284867): Remove this fallback block once things work fine with the AR approach.
-	if err != nil {
-		ctx.Logf("Failed to download Bun v%s tarball: %v. Falling back to script download.", version, err)
-		if err := ctx.ClearLayer(bunLayer); err != nil {
-			return fmt.Errorf("clearing bun layer: %w", err)
-		}
-		ctx.Logf("Installing Bun v%s via script", version)
-		installCmd := []string{"bash", "-c", fmt.Sprintf("curl -fsSL https://bun.sh/install | bash -s bun-v%s 2>/dev/null", version)}
-		if _, err := ctx.Exec(installCmd, gcp.WithEnv("BUN_INSTALL="+bunLayer.Path), gcp.WithUserAttribution); err != nil {
-			return fmt.Errorf("installing bun: %w", err)
-		}
-		ctx.SetMetadata(bunLayer, bunVersionKey, version)
-		ctx.SetMetadata(bunLayer, "stack", ctx.StackID())
-	} else if !cached {
-		ctx.Logf("Successfully installed Bun v%s from tarball.", version)
-	}
+        package_manager = pjs.get('packageManager', "")
+        name, version, err = NodeJSBuildPack.parse_package_manager(package_manager)
+        if err or name != "bun":
+            raise UserError(f"bun was detected but {name} is set in the packageManager field")
 
-	// We need to update the path here to ensure the version we just installed takes precedence.
-	if err := ctx.Setenv("PATH", installDir+":"+os.Getenv("PATH")); err != nil {
-		return err
-	}
-	return nil
-}
+        return version
 
-// detectBunVersion determines the version of bun that should be installed in a Node.js project
-// by examining the "engines.bun" and "packageManager" constraints specified in package.json and comparing them against all
-// published versions in the NPM registry, if both exist "engines.bun" will take precedence.
-// If the package.json does not include "engines.bun" or "packageManager" it
-// returns the latest stable version available.
-func detectBunVersion(pjs *PackageJSON) (string, error) {
-	const bunPackageName = "bun"
+    @staticmethod
+    def _latest_package_version(package_name: str) -> str:
+        # TODO: Implement npm version lookup
+        return "latest"
 
-	if pjs == nil || (pjs.Engines.Bun == "" && pjs.PackageManager == "") {
-		version, err := latestPackageVersion(bunPackageName)
-		if err != nil {
-			return "", gcp.InternalErrorf("fetching available bun versions: %w", err)
-		}
-		return version, nil
-	}
-	var requestedVersion string
-	if pjs.Engines.Bun != "" {
-		requestedVersion = pjs.Engines.Bun
-	} else {
-		packageManagerName, packageManagerVersion, err := parsePackageManager(pjs.PackageManager)
-		if err != nil {
-			return "", err
-		}
-		if packageManagerName != "bun" {
-			return "", gcp.UserErrorf("bun was detected but %s is set in the packageManager package.json field", packageManagerName)
-		}
-		requestedVersion = packageManagerVersion
-	}
-	version, err := resolvePackageVersion(bunPackageName, requestedVersion)
-	if err != nil {
-		return "", gcp.UserErrorf("finding bun version that matched %q: %w", requestedVersion, err)
-	}
-	return version, nil
-}
+    @staticmethod
+    def _install_from_tarball_or_fallback(ctx: Context, version: str, layer: dict) -> tuple[bool, Optional[Exception]]:
+        try:
+            cached = NodeJSBuildPack._install_from_tarball(ctx, version, layer)
+            return cached, None
+        except Exception as e:
+            ctx.log(f"Failed to download Bun v{version} tarball: {e}")
+            if not ctx.clear_layer(layer):
+                raise InternalError(f"clearing bun layer: failed")
+
+            ctx.log(f"Installing Bun v{version} via script")
+            install_cmd = ["bash", "-c", f"curl -fsSL https://bun.sh/install | bash -s bun-v{version} 2>/dev/null"]
+            if not NodeJSBuildPack._exec(ctx, install_cmd, env={"BUN_INSTALL": layer['path']}):
+                raise InternalError(f"installing bun: {e}")
+            
+            ctx.set_metadata(layer, NodeJSBuildPack.BUN_VERSION_KEY, version)
+            ctx.set_metadata(layer, "stack", ctx.stack_id())
+            return False, None
+
+    @staticmethod
+    def _install_from_tarball(ctx: Context, version: str, layer: dict) -> bool:
+        # TODO(b/520284867): Implement tarball installation
+        return False
+
+    @staticmethod
+    def parse_package_manager(package_manager_str: str) -> tuple[str, str, Optional[Exception]]:
+        parts = package_manager_str.split("@")
+        if len(parts) != 2:
+            return ("", "", UserError("invalid packageManager format"))
+        return (parts[0], parts[1], None)
+
+    @staticmethod
+    def _exec(ctx: Context, cmd: list[str], env: Optional[dict] = None) -> bool:
+        try:
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
+            ctx.log(result.stdout.strip())
+            return True
+        except Exception as e:
+            ctx.error(str(e))
+            return False

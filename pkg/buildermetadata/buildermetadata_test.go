@@ -1,104 +1,98 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-package buildermetadata
+import json
+from threading import Lock
 
-import (
-	"bytes"
-	"encoding/json"
-	"testing"
+class MetadataID(str):
+    """The unique identifier for each metadata value."""
+    pass
 
-	"github.com/google/go-cmp/cmp"
-)
+class MetadataValue(str):
+    """The metadata value corresponding to the MetadataID."""
+    pass
 
-func TestBuilderMetadataUnmarshalJSON(t *testing.T) {
-	testCases := []struct {
-		name  string
-		input []byte
-		want  BuilderMetadata
-	}{
-		{
-			name:  "empty",
-			input: []byte(`{}`),
-			want: BuilderMetadata{
-				map[MetadataID]MetadataValue{},
-			},
-		},
-		{
-			name:  "basic metadata",
-			input: []byte(`{"m":{"1":"true","2":"false","3":"angular","4":"17.0.0","5":"@apphosting/adapter-angular","6":"17.2.3","7":"nx"}}`),
-			want: BuilderMetadata{
-				map[MetadataID]MetadataValue{"1": "true", "2": "false", "3": "angular", "4": "17.0.0", "5": "@apphosting/adapter-angular", "6": "17.2.3", "7": "nx"},
-			},
-		},
-		{
-			name:  "metadata_with_PackageManager_and_ConfigFile",
-			input: []byte(`{"m":{"8":"pip","9":"requirements.txt"}}`),
-			want: BuilderMetadata{
-				map[MetadataID]MetadataValue{"8": "pip", "9": "requirements.txt"},
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			var got BuilderMetadata
-			err := json.Unmarshal(tc.input, &got)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if diff := cmp.Diff(got, tc.want, cmp.AllowUnexported(BuilderMetadata{})); diff != "" {
-				t.Errorf("BuilderMetadata json.Unmarshal() mismatch (-want +got):\n%s", diff)
-			}
-		})
-	}
+MetadataIDNames = {
+    "1": "IsUsingGenkit",
+    "2": "IsUsingGenAI", 
+    "3": "FrameworkName",
+    "4": "FrameworkVersion",
+    "5": "AdapterName",
+    "6": "AdapterVersion",
+    "7": "MonorepoName",
+    "8": "PackageManager",
+    "9": "ConfigFile"
 }
 
-func TestBuilderMetadataMarshalJSON(t *testing.T) {
-	testCases := []struct {
-		name  string
-		input BuilderMetadata
-		want  []byte
-	}{
-		{
-			name:  "empty",
-			input: BuilderMetadata{map[MetadataID]MetadataValue{}},
-			want:  []byte(`{}`),
-		},
-		{
-			name:  "basic metadata",
-			input: BuilderMetadata{map[MetadataID]MetadataValue{"1": "true", "2": "false", "3": "angular", "4": "17.0.0", "5": "@apphosting/adapter-angular", "6": "17.2.3", "7": "nx"}},
-			want:  []byte(`{"m":{"1":"true","2":"false","3":"angular","4":"17.0.0","5":"@apphosting/adapter-angular","6":"17.2.3","7":"nx"}}`),
-		},
-		{
-			name:  "metadata_with_PackageManager_and_ConfigFile",
-			input: BuilderMetadata{map[MetadataID]MetadataValue{"8": "pip", "9": "requirements.txt"}},
-			want:  []byte(`{"m":{"8":"pip","9":"requirements.txt"}}`),
-		},
-	}
+class BuilderMetadata:
+    """Contains the builder metadata to be reported to RCS via BuilderOutput."""
+    
+    def __init__(self):
+        self.metadata = {}
+        
+    def get_value(self, id: MetadataID) -> MetadataValue:
+        """Returns the Metadata value with given ID, initializes if not present."""
+        if id not in self.metadata:
+            self.metadata[id] = "false"
+        return self.metadata[id]
+    
+    def is_empty(self) -> bool:
+        """Checks if the BuilderMetadata is empty."""
+        return len(self.metadata) == 0
+    
+    def set_value(self, id: MetadataID, value: MetadataValue):
+        """Sets the Metadata value with given ID."""
+        self.metadata[id] = value
+        
+    def for_each_value(self, func):
+        """Iterates over all values in the BuilderMetadata."""
+        for id, value in self.metadata.items():
+            func(id, value)
+            
+    def to_json(self) -> str:
+        """Converts BuilderMetadata to JSON string."""
+        return json.dumps({"m": self.metadata}, indent=2)
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			j, err := json.Marshal(&tc.input)
+    @classmethod
+    def from_json(cls, json_str: str) -> 'BuilderMetadata':
+        """Creates BuilderMetadata instance from JSON string."""
+        data = json.loads(json_str)
+        metadata = cls()
+        if "m" in data:
+            metadata.metadata = data["m"]
+        else:
+            metadata.metadata = {}
+        return metadata
 
-			if err != nil {
-				t.Fatalf("MarshalJSON test name: %v, %v: %v", tc.name, tc.input, err)
-			}
-			if !bytes.Equal(tc.want, j) {
-				t.Errorf("test name: %v got %v, want %v", tc.name, string(j), string(tc.want))
-			}
-		})
-	}
-}
+# Singleton implementation with thread safety
+class _SingletonHolder:
+    _instance = None
+    _lock = Lock()
+
+    @classmethod
+    def get_instance(cls) -> BuilderMetadata:
+        if not cls._instance:
+            with cls._lock:
+                if not cls._instance:
+                    cls._instance = BuilderMetadata()
+        return cls._instance
+
+def GlobalBuilderMetadata() -> BuilderMetadata:
+    """Returns the global singleton instance of BuilderMetadata."""
+    return _SingletonHolder.get_instance()
+
+def Reset():
+    """Resets the global BuilderMetadata instance (for testing)."""
+    with _SingletonHolder._lock:
+        _SingletonHolder._instance = BuilderMetadata()

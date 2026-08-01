@@ -1,89 +1,93 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-package clearsource
+import os
+import time
+from typing import List, Optional
+import logging
+import fnmatch
 
-import (
-	"io/ioutil"
-	"path/filepath"
-	"reflect"
-	"testing"
-
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+from buildpack.gcpbuildpack import (
+    DetectResult,
+    OptOut,
+    OptOutEnvNotSet,
+    UserErrorf,
 )
+from buildpack.env import ClearSource as env_ClearSource
+from buildpack.devmode import Enabled as devmode_Enabled
+from buildpack.appstart import ConfigDir
 
-func TestPathsToRemove(t *testing.T) {
-	testCases := []struct {
-		name       string
-		files      []string
-		exclusions []string
-		want       []string
-	}{
-		{
-			name:       "Empty files",
-			files:      []string{},
-			exclusions: []string{"foo"},
-			want:       []string{},
-		},
-		{
-			name:       "Empty exclusions",
-			files:      []string{"foo"},
-			exclusions: []string{},
-			want:       []string{"foo"},
-		},
-		{
-			name:       "Exclusion does not overlap",
-			files:      []string{"foo"},
-			exclusions: []string{"bar"},
-			want:       []string{"foo"},
-		},
-		{
-			name:       "Exclusion overlap",
-			files:      []string{"foo", "bar"},
-			exclusions: []string{"bar"},
-			want:       []string{"foo"},
-		},
-		{
-			name:       "Multiple exclusions overlap",
-			files:      []string{"foo", "bar", "baz"},
-			exclusions: []string{"foo", "baz"},
-			want:       []string{"bar"},
-		},
-		{
-			name:       "Files with partial matching",
-			files:      []string{"foo.bar", "foo", "bar"},
-			exclusions: []string{"foo", "bar"},
-			want:       []string{"foo.bar"},
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			tDir := t.TempDir()
-			for _, file := range tc.files {
-				path := filepath.Join(tDir, file)
-				if err := ioutil.WriteFile(path, []byte{}, 0644); err != nil {
-					t.Fatalf("writing to file %s: %v", path, err)
-				}
-			}
-			ctx := gcp.NewContext()
+default_exclusions = [ConfigDir]
 
-			got, err := pathsToRemove(ctx, tDir, tc.exclusions)
-			if err != nil {
-				t.Errorf("pathsToRemove() returned error: %v", err)
-			}
-			if reflect.DeepEqual(got, tc.want) {
-				t.Errorf("pathsToRemove() returned %s want %s", got, tc.want)
-			}
-		})
-	}
-}
+def DetectFn(ctx: dict) -> tuple[Optional[DetectResult], Optional[str]]:
+    """
+    Determines if clear source buildpacks should opt out.
+    Returns a detection result or nil if it shouldn't opt out.
+    """
+    if devmode_Enabled(ctx):
+        return OptOut("development mode enabled"), None
+
+    clear_source = os.getenv(env_ClearSource)
+    if clear_source is not None:
+        try:
+            clear = bool(clear_source)
+            if clear:
+                return None, None
+        except ValueError as e:
+            return None, str(UserErrorf(f"parsing {env_ClearSource!r}: {e}"))
+    
+    return OptOutEnvNotSet(env_ClearSource), None
+
+def BuildFn(ctx: dict, exclusions: List[str]) -> Optional[str]:
+    """
+    Clears the workspace while leaving exclusion patterns untouched.
+    Exclusions are relative to the application directory.
+    Returns an error if any occurs during clearing.
+    """
+    logging.info("Clearing source")
+    
+    start_time = time.time()
+    try:
+        # Perform the clear operation
+        exclusions += default_exclusions
+        paths, err = paths_to_remove(ctx, ctx["ApplicationRoot"](), exclusions)
+        if err is not None:
+            return f"Filtering paths: {err}"
+        
+        for path in paths:
+            if os.path.exists(path):
+                if os.path.isdir(path):
+                    os.rmdir(path)
+                else:
+                    os.remove(path)
+    finally:
+        # Log the duration of the clear operation
+        elapsed = time.time() - start_time
+        logging.info(f"Clear source completed in {elapsed:.2f}s")
+    
+    return None
+
+def paths_to_remove(ctx: dict, directory: str, exclusions: List[str]) -> tuple[List[str], Optional[str]]:
+    """
+    Returns a list of paths to remove, excluding those that match any pattern.
+    Exclusions are relative to the given directory.
+    Returns an error if any occurs during globbing.
+    """
+    try:
+        # Get all items in the directory
+        with os.scandir(directory) as entries:
+            paths = [os.path.join(directory, entry.name) for entry in entries]
+    except OSError as e:
+        return [], str(e)
+    
+    filtered_paths = []
+    for path in paths:
+        remove = True
+        for exclusion in exclusions:
+            pattern = os.path.join(directory, exclusion)
+            # Check if the current path matches any exclusion pattern
+            if fnmatch.fnmatch(path, pattern):
+                remove = False
+                break
+        
+        if remove:
+            filtered_paths.append(path)
+    
+    return filtered_paths, None

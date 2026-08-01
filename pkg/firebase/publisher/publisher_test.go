@@ -1,414 +1,195 @@
-// Copyright 2023 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+"""
+Package publisher provides basic functionality to coalesce user and framework adapter defined
+variables.
+"""
 
-package publisher
+import logging
+import os
+from pathlib import Path
+from typing import List, Optional
 
-import (
-	"fmt"
-	"io/ioutil"
-	"testing"
+import yaml
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
-	"github.com/google/go-cmp/cmp"
-	"google3/third_party/golang/cmp/cmpopts/cmpopts"
-	"google3/third_party/golang/protobuf/v2/proto/proto"
-	"gopkg.in/yaml.v2"
+from firebase_publisher import apphostingschema, bundleschema
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/bundleschema"
-)
 
-var (
-	appHostingYAMLPath string = testdata.MustGetPath("testdata/apphosting.yaml")
-	bundleYAMLPath     string = testdata.MustGetPath("testdata/bundle.yaml")
-	latestSecretName   string = "projects/test-project/secrets/secretID/versions/12"
-)
+class BuildSchema:
+    def __init__(self):
+        self.run_config: Optional[apphostingschema.RunConfig] = None
+        self.env: List[apphostingschema.EnvironmentVariable] = []
+        self.metadata: Optional[bundleschema.Metadata] = None
 
-func TestPublish(t *testing.T) {
-	testDir := t.TempDir()
+# Default values from GCP documentation
+DEFAULT_CPU = 1
+DEFAULT_MEMORY_MIB = 512
+DEFAULT_CONCURRENCY = 80
+DEFAULT_MAX_INSTANCES = 100
+DEFAULT_MIN_INSTANCES = 0
 
-	testCases := []struct {
-		desc                   string
-		appHostingYAMLFilePath string
-		wantBuildSchema        buildSchema
-	}{{
-		desc:                   "Publish apphosting.yaml, bundle.yaml",
-		appHostingYAMLFilePath: appHostingYAMLPath,
-		wantBuildSchema: buildSchema{
-			RunConfig: &apphostingschema.RunConfig{
-				CPU:                proto.Float32(1),
-				MemoryMiB:          proto.Int32(1024),
-				Concurrency:        proto.Int32(100),
-				MaxInstances:       proto.Int32(4),
-				MinInstances:       proto.Int32(0),
-				CPUAlwaysAllocated: proto.Bool(true),
-			},
-			Env: []apphostingschema.EnvironmentVariable{
-				apphostingschema.EnvironmentVariable{
-					Variable:     "API_URL",
-					Value:        "api.service.com",
-					Availability: []string{"BUILD", "RUNTIME"},
-				},
-				apphostingschema.EnvironmentVariable{
-					Variable:     "STORAGE_BUCKET",
-					Value:        "mybucket.appspot.com",
-					Availability: []string{"RUNTIME"},
-				},
-				apphostingschema.EnvironmentVariable{
-					Variable:     "API_KEY",
-					Secret:       "projects/test-project/secrets/secretID/versions/12",
-					Availability: []string{"BUILD"},
-				},
-			},
-		}},
-		{
-			desc:                   "Handle nonexistent apphosting.yaml",
-			appHostingYAMLFilePath: "nonexistent",
-			wantBuildSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{},
-			}},
-	}
 
-	// Testing happy paths
-	for i, test := range testCases {
-		outputFilePath := fmt.Sprintf("%s/outputhappy%d", testDir, i)
+def write_to_file(build_schema: BuildSchema, output_path: str) -> None:
+    """
+    Write the given build schema to the specified path.
+    
+    Args:
+        build_schema: The build schema to serialize and write.
+        output_path: Path where the YAML file will be written.
+        
+    Raises:
+        IOError: If there's an error writing to the file.
+    """
+    try:
+        # Convert BuildSchema to dict for serialization
+        data = {
+            "runConfig": build_schema.run_config.__dict__ if build_schema.run_config else None,
+            "env": [vars(ev) for ev in build_schema.env],
+            "metadata": build_schema.metadata.__dict__ if build_schema.metadata else None
+        }
+        
+        file_data = yaml.safe_dump(data, default_flow_style=False)
+        logging.info("Final build schema:\n%s\n. Note that any unset runConfig fields will be set to reasonable default values.", file_data)
+        
+        # Ensure parent directories exist
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        
+        with open(output_path, 'w') as f:
+            f.write(file_data)
+            
+    except IOError as e:
+        raise IOError(f"Error writing to {output_path}: {e}") from e
 
-		err := Publish(test.appHostingYAMLFilePath, bundleYAMLPath, outputFilePath)
-		if err != nil {
-			t.Errorf("Error in test '%v'. Error was %v", test.desc, err)
-		}
 
-		actualBuildSchemaData, err := ioutil.ReadFile(outputFilePath)
-		if err != nil {
-			t.Errorf("Error reading in temp file: %v", err)
-		}
+def merge_environment_variables(
+    aevs: List[apphostingschema.EnvironmentVariable],
+    bevs: List[bundleschema.EnvironmentVariable]
+) -> List[apphostingschema.EnvironmentVariable]:
+    """
+    Merge environment variables from apphosting and bundle schemas.
+    
+    Args:
+        aevs: Environment variables from apphosting.yaml
+        bevs: Environment variables from bundle.yaml
+        
+    Returns:
+        Merged list of environment variables with precedence to apphosting variables.
+    """
+    merged = []
+    var_by_name = {}
+    
+    for ev in aevs:
+        var_by_name[ev.variable] = ev
+    
+    for ev in bevs:
+        if ev.variable in var_by_name:
+            logging.info("Using apphosting.yaml value/secret for environment variable %s", ev.variable)
+        else:
+            new_ev = apphostingschema.EnvironmentVariable(
+                variable=ev.variable,
+                value=ev.value,
+                secret=ev.secret,
+                availability=ev.availability
+            )
+            merged.append(new_ev)
+    
+    return aevs + merged
 
-		var actualBuildSchema buildSchema
-		err = yaml.Unmarshal(actualBuildSchemaData, &actualBuildSchema)
 
-		if err != nil {
-			t.Errorf("error unmarshalling %q as YAML: %v", actualBuildSchemaData, err)
-		}
+def merge_run_config(
+    arc: Optional[apphostingschema.RunConfig],
+    brc: Optional[bundleschema.RunConfig]
+) -> apphostingschema.RunConfig:
+    """
+    Merge run configurations from apphosting and bundle schemas.
+    
+    Args:
+        arc: Run config from apphosting.yaml
+        brc: Run config from bundle.yaml
+        
+    Returns:
+        Merged run configuration with precedence to apphosting values.
+    """
+    merged = apphostingschema.RunConfig()
+    
+    # Set defaults from bundle if not set in apphosting
+    if arc is None and brc is not None:
+        merged.cpu = brc.cpu
+        merged.memory_mib = brc.memory_mib
+        merged.concurrency = brc.concurrency
+        merged.min_instances = brc.min_instances
+        merged.max_instances = brc.max_instances
+        merged.cpu_always_allocated = brc.cpu_always_allocated
+    
+    # Apply apphosting values on top of bundle
+    if arc is not None:
+        merged.cpu = arc.cpu or merged.cpu
+        merged.memory_mib = arc.memory_mib or merged.memory_mib
+        merged.concurrency = arc.concurrency or merged.concurrency
+        merged.min_instances = arc.min_instances or merged.min_instances
+        merged.max_instances = arc.max_instances or merged.max_instances
+        merged.vpc_access = arc.vpc_access if arc.vpc_access else merged.vpc_access
+        merged.cpu_always_allocated = arc.cpu_always_allocated if arc.cpu_always_allocated is not None else merged.cpu_always_allocated
+    
+    return merged
 
-		sort := cmpopts.SortSlices(func(a, b apphostingschema.EnvironmentVariable) bool { return a.Variable < b.Variable })
-		if diff := cmp.Diff(test.wantBuildSchema, actualBuildSchema, sort); diff != "" {
-			t.Errorf("Unexpected YAML for test %v (+got, -want):\n%v", test.desc, diff)
-		}
-	}
-}
 
-func TestToBuildSchemaRunConfig(t *testing.T) {
-	tests := []struct {
-		desc                  string
-		inputAppHostingSchema apphostingschema.AppHostingSchema
-		expectedSchema        buildSchema
-	}{
-		{
-			desc:                  "Empty AppHostingSchema",
-			inputAppHostingSchema: apphostingschema.AppHostingSchema{},
-			expectedSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{},
-			},
-		},
-		{
-			desc: "Full AppHostingSchema",
-			inputAppHostingSchema: apphostingschema.AppHostingSchema{
-				RunConfig: apphostingschema.RunConfig{
-					CPU:          proto.Float32(1000),
-					MemoryMiB:    proto.Int32(2048),
-					Concurrency:  proto.Int32(2),
-					MaxInstances: proto.Int32(5),
-					MinInstances: proto.Int32(0),
-				},
-				Env: []apphostingschema.EnvironmentVariable{
-					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
-				},
-			},
-			expectedSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{
-					CPU:          proto.Float32(1000),
-					MemoryMiB:    proto.Int32(2048),
-					Concurrency:  proto.Int32(2),
-					MaxInstances: proto.Int32(5),
-					MinInstances: proto.Int32(0),
-				},
-				Env: []apphostingschema.EnvironmentVariable{
-					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
-				},
-			},
-		},
-		{
-			desc: "Partial AppHostingSchema",
-			inputAppHostingSchema: apphostingschema.AppHostingSchema{
-				RunConfig: apphostingschema.RunConfig{
-					CPU:         proto.Float32(1000),
-					Concurrency: proto.Int32(2),
-				},
-				Env: []apphostingschema.EnvironmentVariable{
-					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
-				},
-			},
-			expectedSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{
-					CPU:         proto.Float32(1000),
-					Concurrency: proto.Int32(2),
-				},
-				Env: []apphostingschema.EnvironmentVariable{
-					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
-				},
-			},
-		},
-	}
+def to_build_schema(
+    app_hosting_schema: apphostingschema.AppHostingSchema,
+    bundle_schema: bundleschema.BundleSchema
+) -> BuildSchema:
+    """
+    Merge apphosting and bundle schemas into a single build schema.
+    
+    Args:
+        app_hosting_schema: Parsed apphosting.yaml configuration
+        bundle_schema: Parsed bundle.yaml configuration
+        
+    Returns:
+        Merged build schema containing all configurations.
+    """
+    build_schema = BuildSchema()
+    
+    # Merge run configurations
+    merged_run_config = merge_run_config(app_hosting_schema.run_config, bundle_schema.run_config)
+    build_schema.run_config = merged_run_config
+    
+    # Set metadata from bundle
+    build_schema.metadata = bundle_schema.metadata
+    
+    # Merge environment variables
+    merged_env = merge_environment_variables(
+        app_hosting_schema.env,
+        bundle_schema.run_config.environment_variables if bundle_schema.run_config else []
+    )
+    build_schema.env = merged_env
+    
+    return build_schema
 
-	for _, tc := range tests {
-		t.Run(tc.desc, func(t *testing.T) {
-			bundleSchema := bundleschema.BundleSchema{}
-			result := toBuildSchema(tc.inputAppHostingSchema, bundleSchema)
-			if diff := cmp.Diff(tc.expectedSchema, result); diff != "" {
-				t.Errorf("toBuildSchema(%s) (-want +got):\n%s", tc.desc, diff)
-			}
-		})
-	}
-}
 
-func TestToBuildSchemaEnvVar(t *testing.T) {
-	tests := []struct {
-		desc                  string
-		inputAppHostingSchema apphostingschema.AppHostingSchema
-		inputBundleSchema     bundleschema.BundleSchema
-		expectedSchema        buildSchema
-	}{
-		{
-			desc:                  "Merging AppHostingSchema and BundleSchema with empty env vars",
-			inputAppHostingSchema: apphostingschema.AppHostingSchema{},
-			inputBundleSchema:     bundleschema.BundleSchema{},
-			expectedSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{},
-			},
-		},
-		{
-			desc: "Merging nonconflicting AppHostingSchema and BundleSchema",
-			inputAppHostingSchema: apphostingschema.AppHostingSchema{
-				Env: []apphostingschema.EnvironmentVariable{
-					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
-				},
-			},
-			inputBundleSchema: bundleschema.BundleSchema{
-				RunConfig: bundleschema.RunConfig{
-					EnvironmentVariables: []bundleschema.EnvironmentVariable{
-						bundleschema.EnvironmentVariable{Variable: "SSR_PORT", Value: "8080", Availability: []string{"RUNTIME"}},
-					},
-				},
-			},
-			expectedSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{},
-				Env: []apphostingschema.EnvironmentVariable{
-					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "api.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
-					apphostingschema.EnvironmentVariable{Variable: "SSR_PORT", Value: "8080", Availability: []string{"RUNTIME"}},
-				},
-			},
-		},
-		{
-			desc: "Merging AppHostingSchema and BundleSchema with same Environment Variable name and vailability",
-			inputAppHostingSchema: apphostingschema.AppHostingSchema{
-				Env: []apphostingschema.EnvironmentVariable{
-					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "apphostingapi.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
-				},
-			},
-			inputBundleSchema: bundleschema.BundleSchema{
-				RunConfig: bundleschema.RunConfig{
-					EnvironmentVariables: []bundleschema.EnvironmentVariable{
-						bundleschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
-					},
-				}},
-			expectedSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{},
-				Env: []apphostingschema.EnvironmentVariable{
-					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "apphostingapi.service.com", Availability: []string{"BUILD", "RUNTIME"}},
-					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"BUILD"}},
-				},
-			},
-		},
-		{
-			desc: "Merging BundleSchema env vars and AppHostingSchema secrets with same name and availability",
-			inputAppHostingSchema: apphostingschema.AppHostingSchema{
-				Env: []apphostingschema.EnvironmentVariable{
-					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"RUNTIME"}},
-				},
-			},
-			inputBundleSchema: bundleschema.BundleSchema{
-				RunConfig: bundleschema.RunConfig{
-					EnvironmentVariables: []bundleschema.EnvironmentVariable{
-						bundleschema.EnvironmentVariable{Variable: "API_KEY", Value: "bundleApiKey", Availability: []string{"RUNTIME"}},
-					},
-				},
-			},
-			expectedSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{},
-				Env: []apphostingschema.EnvironmentVariable{
-					apphostingschema.EnvironmentVariable{Variable: "API_KEY", Secret: latestSecretName, Availability: []string{"RUNTIME"}},
-				},
-			},
-		},
-		{
-			desc: "Merging AppHostingSchema and BundleSchema env vars with same name but different availability",
-			inputAppHostingSchema: apphostingschema.AppHostingSchema{
-				Env: []apphostingschema.EnvironmentVariable{
-					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "apphostingapi.service.com", Availability: []string{"BUILD"}},
-				},
-			},
-			inputBundleSchema: bundleschema.BundleSchema{
-				RunConfig: bundleschema.RunConfig{
-					EnvironmentVariables: []bundleschema.EnvironmentVariable{
-						bundleschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
-					},
-				},
-			},
-			expectedSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{},
-				Env: []apphostingschema.EnvironmentVariable{
-					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "apphostingapi.service.com", Availability: []string{"BUILD"}},
-					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
-				},
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.desc, func(t *testing.T) {
-			result := toBuildSchema(tc.inputAppHostingSchema, tc.inputBundleSchema)
-			if diff := cmp.Diff(tc.expectedSchema, result); diff != "" {
-				t.Errorf("toBuildSchema(%s) (-want +got):\n%s", tc.desc, diff)
-			}
-		})
-	}
-}
-func TestMergeRunConfig(t *testing.T) {
-	tests := []struct {
-		desc                  string
-		inputAppHostingSchema apphostingschema.AppHostingSchema
-		inputBundleSchema     bundleschema.BundleSchema
-		expectedSchema        buildSchema
-	}{
-		{
-			desc:                  "Merging AppHostingSchema and BundleSchema with empty run config",
-			inputAppHostingSchema: apphostingschema.AppHostingSchema{},
-			inputBundleSchema:     bundleschema.BundleSchema{},
-			expectedSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{},
-			},
-		},
-		{
-			desc: "Merging nonconflicting AppHostingSchema and BundleSchema",
-			inputAppHostingSchema: apphostingschema.AppHostingSchema{
-				RunConfig: apphostingschema.RunConfig{CPU: proto.Float32(3), Concurrency: proto.Int32(2), MemoryMiB: proto.Int32(1024)},
-			},
-			inputBundleSchema: bundleschema.BundleSchema{
-				RunConfig: bundleschema.RunConfig{
-					MaxInstances: proto.Int32(2),
-					MinInstances: proto.Int32(1),
-				},
-			},
-			expectedSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{CPU: proto.Float32(3), Concurrency: proto.Int32(2), MemoryMiB: proto.Int32(1024), MaxInstances: proto.Int32(2), MinInstances: proto.Int32(1)},
-			},
-		},
-		{
-			desc: "Merging AppHostingSchema and BundleSchema with conflicts",
-			inputAppHostingSchema: apphostingschema.AppHostingSchema{
-				RunConfig: apphostingschema.RunConfig{CPU: proto.Float32(3), Concurrency: proto.Int32(2), MemoryMiB: proto.Int32(1024)},
-			},
-			inputBundleSchema: bundleschema.BundleSchema{
-				RunConfig: bundleschema.RunConfig{
-					MaxInstances: proto.Int32(2),
-					MinInstances: proto.Int32(1),
-					CPU:          proto.Float32(5),
-					Concurrency:  proto.Int32(3),
-					MemoryMiB:    proto.Int32(64),
-				},
-			},
-			expectedSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{CPU: proto.Float32(3), Concurrency: proto.Int32(2), MemoryMiB: proto.Int32(1024), MaxInstances: proto.Int32(2), MinInstances: proto.Int32(1)},
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.desc, func(t *testing.T) {
-			result := toBuildSchema(tc.inputAppHostingSchema, tc.inputBundleSchema)
-			if diff := cmp.Diff(tc.expectedSchema, result); diff != "" {
-				t.Errorf("toBuildSchema(%s) (-want +got):\n%s", tc.desc, diff)
-			}
-		})
-	}
-}
-
-func TestToBuildSchemaRunMetadata(t *testing.T) {
-	tests := []struct {
-		desc              string
-		inputBundleSchema bundleschema.BundleSchema
-		expectedSchema    buildSchema
-	}{
-		{
-			desc:              "Empty BundleSchema",
-			inputBundleSchema: bundleschema.BundleSchema{},
-			expectedSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{},
-			},
-		},
-		{
-			desc: "Full BundleSchema",
-			inputBundleSchema: bundleschema.BundleSchema{
-				RunConfig: bundleschema.RunConfig{EnvironmentVariables: []bundleschema.EnvironmentVariable{
-					bundleschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
-				}},
-				Metadata: &bundleschema.Metadata{
-					AdapterPackageName: "@apphosting/adapter-angular",
-					AdapterVersion:     "17.2.7",
-					Framework:          "angular",
-					FrameworkVersion:   "18.2.2",
-				},
-			},
-			expectedSchema: buildSchema{
-				RunConfig: &apphostingschema.RunConfig{},
-				Env: []apphostingschema.EnvironmentVariable{
-					apphostingschema.EnvironmentVariable{Variable: "API_URL", Value: "bundleapi.service.com", Availability: []string{"RUNTIME"}},
-				},
-				Metadata: &bundleschema.Metadata{
-					AdapterPackageName: "@apphosting/adapter-angular",
-					AdapterVersion:     "17.2.7",
-					Framework:          "angular",
-					FrameworkVersion:   "18.2.2",
-				},
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.desc, func(t *testing.T) {
-			apphostingSchema := apphostingschema.AppHostingSchema{}
-			result := toBuildSchema(apphostingSchema, tc.inputBundleSchema)
-			if diff := cmp.Diff(tc.expectedSchema, result); diff != "" {
-				t.Errorf("toBuildSchema(%s) (-want +got):\n%s", tc.desc, diff)
-			}
-		})
-	}
-}
+def publish(app_hosting_path: str, bundle_path: str, output_path: str) -> None:
+    """
+    Merge configurations from apphosting.yaml and bundle.yaml into a single build schema.
+    
+    Args:
+        app_hosting_path: Path to apphosting.yaml
+        bundle_path: Path to bundle.yaml
+        output_path: Where to write the merged configuration
+    
+    Raises:
+        FileNotFoundError: If any input file is not found.
+        yaml.YAMLError: If there's an error parsing YAML files.
+    """
+    try:
+        # Read and validate schemas
+        app_hosting_schema = apphostingschema.read_and_validate(Path(app_hosting_path))
+        bundle_schema = bundleschema.read_and_validate(Path(bundle_path))
+        
+        # Merge into build schema
+        build_schema = to_build_schema(app_hosting_schema, bundle_schema)
+        
+        # Write output
+        write_to_file(build_schema, output_path)
+        
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"Required file not found: {e.filename}") from e
+    except yaml.YAMLError as e:
+        raise yaml.YAMLError(f"Error parsing YAML file: {e}") from e

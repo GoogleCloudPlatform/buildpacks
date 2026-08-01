@@ -1,64 +1,60 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import glob
+import os
+from pathlib import Path
+from typing import Optional, List, Callable, Any, Union
 
-package gcpbuildpack
+class Context:
+    def __init__(self):
+        self.application_root = ""
 
-import (
-	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
+    @property
+    def ApplicationRoot(self) -> str:
+        return self.application_root
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
-)
+    def Glob(self, pattern: str) -> Union[List[str], Exception]:
+        matches = []
+        try:
+            matches = glob.glob(os.path.join(self.ApplicationRoot, pattern))
+        except Exception as e:
+            return buildererror.Error(buildererror.Status.Internal, f"globbing {pattern}: {e}")
+        return matches
 
-// TempDir creates a directory with the provided name in the buildpack temp layer and returns its path
-func (ctx *Context) TempDir(name string) (string, error) {
-	tmpLayer, err := ctx.Layer("gcpbuildpack-tmp")
-	if err != nil {
-		return "", fmt.Errorf("creating layer: %w", err)
-	}
-	directory := filepath.Join(tmpLayer.Path, name)
-	if err := ctx.MkdirAll(directory, 0755); err != nil {
-		return "", err
-	}
-	return directory, nil
-}
+    def HasAtLeastOne(self, pattern: str) -> Union[bool, Exception]:
+        return self.HasAtLeastOneFiltered(pattern, None)
 
-// WriteFile is a pass through for ioutil.WriteFile(...) and returns any error with proper user / system attribution
-func (ctx *Context) WriteFile(filename string, data []byte, perm os.FileMode) error {
-	if err := ioutil.WriteFile(filename, data, perm); err != nil {
-		return buildererror.Errorf(buildererror.StatusInternal, "writing file %q: %v", filename, err)
-	}
-	return nil
-}
+    def HasAtLeastOneOutsideDependencyDirectories(self, pattern: str) -> Union[bool, Exception]:
+        filter_func = lambda path: not path.endswith("/node_modules")
+        return self.HasAtLeastOneFiltered(pattern, filter_func)
 
-// ReadFile is a pass through for ioutil.ReadFile(...) and returns any error with proper user / system attribution
-func (ctx *Context) ReadFile(filename string) ([]byte, error) {
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, buildererror.Errorf(buildererror.StatusInternal, "reading file %q: %v", filename, err)
-	}
-	return data, nil
-}
+    def HasAtLeastOneFiltered(
+        self,
+        pattern: str,
+        filter_func: Optional[Callable[[str], bool]]
+    ) -> Union[bool, Exception]:
+        dir_path = os.path.join(self.ApplicationRoot)
+        matches = glob.glob(os.path.join(dir_path, pattern))
+        if len(matches) > 0:
+            return True
 
-// ReadDir is a pass through for ioutil.ReadDir(...) and returns any error with proper user / system attribution
-func (ctx *Context) ReadDir(elem ...string) ([]os.FileInfo, error) {
-	n := filepath.Join(elem...)
-	files, err := ioutil.ReadDir(n)
-	if err != nil {
-		return nil, buildererror.Errorf(buildererror.StatusInternal, "reading directory %q: %v", n, err)
-	}
-	return files, nil
-}
+        try:
+            for root, dirs, files in os.walk(dir_path):
+                for name in files + dirs:
+                    full_path = os.path.join(root, name)
+                    if filter_func and not filter_func(full_path):
+                        continue
+                    match = self._match_pattern(name, pattern)
+                    if match:
+                        return True
+        except Exception as e:
+            return buildererror.Error(buildererror.Status.Internal, f"walking through {dir_path}: {e}")
+
+        return False
+
+    def _match_pattern(self, name: str, pattern: str) -> bool:
+        try:
+            return glob.fnmatch.fnmatch(name, pattern)
+        except Exception as e:
+            raise buildererror.Error(
+                buildererror.Status.Internal,
+                f"matching {name} with pattern {pattern}: {e}"
+            )

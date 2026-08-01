@@ -1,96 +1,95 @@
-// Copyright 2021 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import argparse
+import json
+import os
+import re
+from pathlib import Path
 
-// Script to extract Go package from a given source directory.
-package main
+def parse_go_file(file_path):
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+    
+    package_name = None
+    imports = set()
+    in_import_block = False
+    current_imports = []
+    
+    for line in lines:
+        stripped_line = line.strip()
+        
+        # Check if it's a package statement
+        if not in_import_block and re.match(r'^package\s+\w+', stripped_line):
+            match = re.match(r'package (\w+)', stripped_line)
+            if match:
+                pkg_name = match.group(1)
+                if package_name is None:
+                    package_name = pkg_name
+                elif package_name != pkg_name:
+                    raise ValueError(f"Package name mismatch: {pkg_name} vs {package_name}")
+        
+        # Check for import statements
+        if stripped_line.startswith('import'):
+            if '(' in stripped_line:
+                # Multi-line import block starting with (
+                in_import_block = True
+                parts = re.findall(r'"[^"]*"', stripped_line)
+                for part in parts:
+                    current_imports.append(part.strip('"'))
+            else:
+                # Single-line import like import "path"
+                parts = re.findall(r'"[^"]*"', stripped_line)
+                for part in parts:
+                    imports.add(part.strip('"'))
+        
+        elif in_import_block:
+            if stripped_line.endswith(')'):
+                # End of import block
+                in_import_block = False
+                for imp in current_imports:
+                    imports.add(imp)
+                current_imports.clear()
+            else:
+                # Inside import block, collect all quoted strings
+                parts = re.findall(r'"[^"]*"', line)
+                for part in parts:
+                    current_imports.append(part.strip('"'))
+    
+    return package_name, imports
 
-import (
-	"encoding/json"
-	"flag"
-	"fmt"
-	"go/parser"
-	"go/token"
-	"log"
-	"strings"
-)
+def main():
+    parser = argparse.ArgumentParser(description='Extract Go package and imports from a directory.')
+    parser.add_argument('--dir', type=str, required=True,
+                       help='Directory containing .go files')
+    args = parser.parse_args()
+    
+    dir_path = Path(args.dir)
+    if not dir_path.is_dir():
+        raise FileNotFoundError(f"Directory {args.dir} does not exist.")
+    
+    package_name = None
+    all_imports = set()
+    
+    for go_file in dir_path.glob("*.go"):
+        try:
+            pkg, imp = parse_go_file(go_file)
+            if package_name is None:
+                package_name = pkg
+            elif pkg != package_name:
+                raise ValueError(f"Package name mismatch: {pkg} vs {package_name}")
+            
+            all_imports.update(imp)
+        except Exception as e:
+            print(f"Error parsing file {go_file}: {e}")
+            exit(1)
+    
+    if package_name is None:
+        raise ValueError("No package found in any .go files.")
+    
+    result = {
+        'name': package_name,
+        'imports': list(all_imports)
+    }
+    
+    print(json.dumps(result, indent=2))
 
-var (
-	dir = flag.String("dir", "", "Directory containing *.go files from which to extract a package name.")
-)
-
-// parsedPackage represents a parsed package.
-type parsedPackage struct {
-	Name    string              `json:"name"`
-	Imports map[string]struct{} `json:"imports"`
-}
-
-// extract extracts the name of the package in the specified directory.
-// Expects that the specified directory contains one and only one Go package.
-func extract(source string) (*parsedPackage, error) {
-	fset := token.NewFileSet() // positions are relative to fset
-
-	// Parse all .go files in dir but stop after processing the package.
-	pkgs, err := parser.ParseDir(fset, source, nil, parser.ImportsOnly)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse source in %s: %v", source, err)
-	}
-
-	// Check if all files belong to the same package
-	packageName := ""
-	for k := range pkgs {
-		if packageName == "" {
-			packageName = k
-			continue
-		}
-
-		if k != packageName {
-			return nil, fmt.Errorf("multiple packages in user code directory: %s != %s", packageName, k)
-		}
-	}
-
-	if packageName == "" {
-		return nil, fmt.Errorf("unable to find Go package in %s", source)
-	}
-
-	packageImports := map[string]struct{}{}
-	for _, fi := range pkgs[packageName].Files {
-		for _, im := range fi.Imports {
-			packageImports[strings.Trim(im.Path.Value, `"`)] = struct{}{}
-		}
-	}
-
-	return &parsedPackage{
-		Name:    packageName,
-		Imports: packageImports,
-	}, nil
-}
-
-func main() {
-	flag.Parse()
-
-	if *dir == "" {
-		log.Fatalf("No directory specified.")
-	}
-
-	pkg, err := extract(*dir)
-	if err != nil {
-		log.Fatalf("Unable to extract package name and imports: %v.", err)
-	}
-
-	b, err := json.Marshal(pkg)
-	if err != nil {
-		log.Fatalf("Unable to marshal extracted package name and imports: %v.", err)
-	}
-	fmt.Print(string(b))
-}
+if __name__ == '__main__':
+    main()

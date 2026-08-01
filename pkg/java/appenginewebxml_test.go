@@ -1,93 +1,78 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import os
+import re
+from typing import List, Optional
 
-package java
+import requests
+from googlecloudplatform.buildpacks import gcp, env, runtime, tooling
 
-import (
-	"embed"
-	"encoding/xml"
-	"testing"
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-	"github.com/google/go-cmp/cmp"
-)
+class MavenProject:
+    def __init__(self):
+        self.plugins: List[MavenPlugin] = []
+        self.profiles: List[MavenProfile] = []
+        self.artifact_id: str = ""
+        self.version: str = ""
+        self.dependencies: List[MavenDependency] = []
 
-//go:embed testdata/*
-var testDataWebXML embed.FS
+class MavenProfile:
+    def __init__(self):
+        self.id: str = ""
+        self.plugins: List[MavenPlugin] = []
+        self.dependencies: List[MavenDependency] = []
 
-func TestParseValidAppEngineWebXML(t *testing.T) {
-	tests := []struct {
-		path string
-		want AppEngineWebXMLApp
-	}{
-		{
-			path: "testdata/appengine-web.xml",
-			want: AppEngineWebXMLApp{
-				XMLName:         xml.Name{Space: "http://appengine.google.com/ns/1.0", Local: "appengine-web-app"},
-				Entrypoint:      "java -cp myapp.jar com.example.MyMain",
-				AppEngineAPIs:   true,
-				Runtime:         "java17",
-				SessionsEnabled: true,
-			},
-		},
-		{
-			path: "testdata/minimal_appengine-web.xml",
-			want: AppEngineWebXMLApp{
-				XMLName:         xml.Name{Space: "http://appengine.google.com/ns/1.0", Local: "appengine-web-app"},
-				Runtime:         "java21",
-				AppEngineAPIs:   true,
-				SessionsEnabled: false,
-			},
-		},
-		{
-			path: "testdata/extra_config_appengine-web.xml",
-			want: AppEngineWebXMLApp{
-				XMLName:         xml.Name{Space: "http://appengine.google.com/ns/1.0", Local: "appengine-web-app"},
-				Runtime:         "java11",
-				SessionsEnabled: true,
-				SystemProperties: []Property{
-					{Name: "java.util.logging.config.file", Value: "WEB-INF/logging.properties"},
-				},
-			},
-		},
-		{
-			path: "testdata/jetty_property_appengine-web.xml",
-			want: AppEngineWebXMLApp{
-				XMLName:         xml.Name{Space: "http://appengine.google.com/ns/1.0", Local: "appengine-web-app"},
-				Runtime:         "java25",
-				SessionsEnabled: true,
-				SystemProperties: []Property{
-					{Name: "appengine.use.EE8", Value: "true"},
-				},
-			},
-		},
-	}
+class MavenPlugin:
+    def __init__(self):
+        self.group_id: str = ""
+        self.artifact_id: str = ""
+        self.configuration: MavenPluginConfiguration = MavenPluginConfiguration()
 
-	for _, tc := range tests {
-		t.Run(tc.path, func(t *testing.T) {
-			xmlFile, err := testData.ReadFile(tc.path)
-			if err != nil {
-				t.Fatalf("Unable to find appengine-web.xml file %s, %v", tc.path, err)
-			}
+class MavenDependency:
+    def __init__(self):
+        self.group_id: str = ""
+        self.artifact_id: str = ""
 
-			got, err := ParseAppEngineWebXML(xmlFile)
-			if err != nil {
-				t.Fatalf("ParseAppEngineWebXML failed to parse appengine-web.xml: %v", err)
-			}
+class MavenPluginConfiguration:
+    def __init__(self):
+        self.main_class: str = ""
+        self.build_args: str = ""
 
-			if !cmp.Equal(*got, tc.want) {
-				t.Errorf("ParseAppEngineWebXML\ngot %#v\nwant %#v", *got, tc.want)
-			}
-		})
-	}
-}
+def ParsePomFile(pom_file_content: bytes) -> Optional[MavenProject]:
+    try:
+        root = ET.fromstring(pom_file_content)
+        
+        project = MavenProject()
+        project.artifact_id = root.findtext("artifactId") or ""
+        project.version = root.findtext("version") or ""
+        
+        # Extract plugins
+        plugins_section = root.findall("build/plugins/plugin")
+        for plugin in plugins_section:
+            m_plugin = MavenPlugin()
+            m_plugin.group_id = plugin.findtext("groupId") or ""
+            m_plugin.artifact_id = plugin.findtext("artifactId") or ""
+            project.plugins.append(m_plugin)
+            
+        # Extract profiles
+        profiles_section = root.findall("profiles/profile")
+        for profile in profiles_section:
+            m_profile = MavenProfile()
+            m_profile.id = profile.findtext("id") or ""
+            project.profiles.append(m_profile)
+            
+        return project
+        
+    except Exception as e:
+        raise ValueError(f"Error parsing pom.xml: {e}")

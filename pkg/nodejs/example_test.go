@@ -1,52 +1,47 @@
-// Copyright 2021 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+from typing import Any
 
-package nodejs_test
+class NodeJSExample:
+    def __init__(self):
+        self.ctx = None
+        self.yarn_layer = None
+        self.pjs = None
 
-import (
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
-	"github.com/buildpacks/libcnb/v2"
-)
+    def example_maker_yarn_installer(self) -> None:
+        """
+        Example of installing Yarn using the MakerYarnInstaller capability.
+        """
+        if self.ctx is not None and hasattr(self.ctx, 'Capability'):
+            cap = self.ctx.Capability('yarn-installer')
+            if isinstance(cap, NodeJSYarnInstaller):
+                cap.InstallYarn(self.ctx, self.yarn_layer, self.pjs)
 
-func ExampleMakerYarnInstaller() {
-	ctx := gcpbuildpack.NewContext()
-	var yarnLayer *libcnb.Layer
-	var pjs *nodejs.PackageJSON
+    def example_maker_yarn1_module_installer(self) -> None:
+        """
+        Example of installing Yarn 1 modules using the MakerYarn1ModuleInstaller capability.
+        """
+        if self.ctx is not None and hasattr(self.ctx, 'Capability'):
+            cap = self.ctx.Capability('yarn1-module-installer')
+            if isinstance(cap, NodeJSYarn1ModuleInstaller):
+                cap.InstallModules(self.ctx, self.pjs)
 
-	type yarnInstaller interface {
-		InstallYarn(ctx *gcpbuildpack.Context, yarnLayer *libcnb.Layer, pjs *nodejs.PackageJSON) error
-	}
 
-	if cap := ctx.Capability(nodejs.YarnInstallerCapability); cap != nil {
-		_ = cap.(yarnInstaller).InstallYarn(ctx, yarnLayer, pjs)
-	}
+class NodeJSYarnInstaller:
+    def __init__(self, ctx: Any) -> None:
+        """
+        Yarn installer capability.
+        """
+        self.ctx = ctx
 
-	// Output:
-}
+    def InstallYarn(self, ctx: Any, yarn_layer: Any, pjs: Any) -> None:
+        pass
 
-func ExampleMakerYarn1ModuleInstaller() {
-	ctx := gcpbuildpack.NewContext()
-	var pjs *nodejs.PackageJSON
 
-	type moduleInstaller interface {
-		InstallModules(ctx *gcpbuildpack.Context, pjs *nodejs.PackageJSON) error
-	}
+class NodeJSYarn1ModuleInstaller:
+    def __init__(self, ctx: Any) -> None:
+        """
+        Yarn 1 module installer capability.
+        """
+        self.ctx = ctx
 
-	if cap := ctx.Capability(nodejs.Yarn1ModuleInstallerCapability); cap != nil {
-		_ = cap.(moduleInstaller).InstallModules(ctx, pjs)
-	}
-
-	// Output:
-}
+    def InstallModules(self, ctx: Any, pjs: Any) -> None:
+        pass

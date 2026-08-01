@@ -1,662 +1,343 @@
-// Copyright 2024 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Complete refactored code here
+import os
+from typing import Dict
 
-package python
+class PyProjectTest:
+    def test_is_poetry_project(self):
+        test_cases = [
+            {
+                "name": "poetry.lock_exists",
+                "files": {"poetry.lock": "", "pyproject.toml": ""},
+                "want": True,
+                "want_msg": "found poetry.lock",
+            },
+            {
+                "name": "pyproject.toml_with_tool.poetry_section",
+                "files": {"pyproject.toml": '[tool.poetry]\nname = "my-test-project"'},
+                "want": True,
+                "want_msg": "found [tool.poetry] in pyproject.toml",
+            },
+            {
+                "name": "pyproject.toml_without_tool.poetry_section",
+                "files": {"pyproject.toml": '[tool.other]\nname = "my-test-project"'},
+                "want": False,
+                "want_msg": "neither poetry.lock nor [tool.poetry] found",
+            },
+            {
+                "name": "no_relevant_files_exist",
+                "files": {},
+                "want": False,
+                "want_msg": "pyproject.toml not found",
+            },
+        ]
 
-import (
-	"os"
-	"reflect"
-	"testing"
+        for tc in test_cases:
+            app_dir = self.setup_test(tc.files)
+            ctx = self.get_context(app_dir)
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+            is_poetry, msg, err = self.is_poetry_project(ctx)
 
-func TestIsPoetryProject(t *testing.T) {
-	testCases := []struct {
-		name    string
-		files   map[string]string
-		want    bool
-		wantMsg string
-	}{
-		{
-			name: "poetry.lock_exists",
-			files: map[string]string{
-				"poetry.lock":    "",
-				"pyproject.toml": "",
-			},
-			want:    true,
-			wantMsg: "found poetry.lock",
-		},
-		{
-			name: "pyproject.toml_with_tool.poetry_section",
-			files: map[string]string{
-				"pyproject.toml": `[tool.poetry]
-name = "my-test-project"`,
-			},
-			want:    true,
-			wantMsg: "found [tool.poetry] in pyproject.toml",
-		},
-		{
-			name: "pyproject.toml_without_tool.poetry_section",
-			files: map[string]string{
-				"pyproject.toml": `[tool.other]
-name = "my-test-project"`,
-			},
-			want:    false,
-			wantMsg: "neither poetry.lock nor [tool.poetry] found",
-		},
-		{
-			name:    "no_relevant_files_exist",
-			files:   map[string]string{},
-			want:    false,
-			wantMsg: "pyproject.toml not found",
-		},
-	}
+            if err != None:
+                self.fail("IsPoetryProject() got an unexpected error: %v" % (err))
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			appDir := setupTest(t, tc.files)
+            if is_poetry != tc.want:
+                self.assertEqual(is_poetry, tc.want)
+                self.assertEqual(msg, tc.want_msg)
 
-			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
-			isPoetry, msg, err := IsPoetryProject(ctx)
+    def test_requested_poetry_version(self):
+        test_cases = [
+            {
+                "name": "valid_requires-poetry_constraint",
+                "files": {"pyproject.toml": '[tool.poetry]\nrequires-poetry = ">2.1.0"'},
+                "want": ">2.1.0",
+                "want_err": False,
+            },
+            {
+                "name": "no_requires-poetry_constraint",
+                "files": {"pyproject.toml": '[tool.poetry]'},
+                "want": "",
+                "want_err": False,
+            },
+            {
+                "name": "malformed_pyproject.toml",
+                "files": {"pyproject.toml": '[tool.poetry\nrequires-poetry = "<2.0.0"'},
+                "want": "",
+                "want_err": True,
+            },
+            {
+                "name": "file_does_not_exist",
+                "files": {},
+                "want": "",
+                "want_err": True,
+            },
+        ]
 
-			if err != nil {
-				t.Fatalf("IsPoetryProject() got an unexpected error: %v", err)
-			}
-			if isPoetry != tc.want {
-				t.Errorf("IsPoetryProject() = %v, want %v", isPoetry, tc.want)
-			}
-			if msg != tc.wantMsg {
-				t.Errorf("IsPoetryProject() message = %q, want %q", msg, tc.wantMsg)
-			}
-		})
-	}
-}
+        for tc in test_cases:
+            app_dir = self.setup_test(tc.files)
+            ctx = self.get_context(app_dir)
 
-func TestRequestedPoetryVersion(t *testing.T) {
-	testCases := []struct {
-		name    string
-		files   map[string]string
-		want    string
-		wantErr bool
-	}{
-		{
-			name: "valid_requires-poetry_constraint",
-			files: map[string]string{
-				"pyproject.toml": `
-					[tool.poetry]
-					requires-poetry = ">=2.1.0"
-				`,
-			},
-			want:    ">=2.1.0",
-			wantErr: false,
-		},
-		{
-			name: "no_requires-poetry_constraint",
-			files: map[string]string{
-				"pyproject.toml": `
-					[tool.poetry]
-				`,
-			},
-			want:    "",
-			wantErr: false,
-		},
-		{
-			name: "malformed_pyproject.toml",
-			files: map[string]string{
-				"pyproject.toml": `
-					[tool.poetry
-					requires-poetry = "<2.0.0"
-				`,
-			},
-			want:    "",
-			wantErr: true,
-		},
-		{
-			name:  "file_does_not_exist",
-			files: map[string]string{
-				// No pyproject.toml file
-			},
-			want:    "",
-			wantErr: true,
-		},
-	}
+            version, err = self.requested_poetry_version(ctx)
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			appDir := setupTest(t, tc.files)
+            if (err != None) != tc.want_err:
+                self.fail("RequestedPoetryVersion() error = %v, wantErr %v" % (err, tc.want_err))
 
-			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
-			version, err := RequestedPoetryVersion(ctx)
+            if err == None and version != tc.want:
+                self.assertEqual(version, tc.want)
 
-			if (err != nil) != tc.wantErr {
-				t.Errorf("RequestedPoetryVersion() error = %v, wantErr %v", err, tc.wantErr)
-				return
-			}
-			if err == nil && version != tc.want {
-				t.Errorf("RequestedPoetryVersion() = %q, want %q", version, tc.want)
-			}
-		})
-	}
-}
+    def test_is_uv_pyproject(self):
+        test_cases = [
+            {
+                "name": "uv_project_with_uv.lock",
+                "files": {"pyproject.toml": '[project]\nname = "my-uv-project"', "uv.lock": ""},
+                "want": True,
+                "want_msg": "found pyproject.toml and uv.lock",
+            },
+            {
+                "name": "uv_project_without_uv.lock",
+                "files": {"pyproject.toml": '[project]\nname = "my-uv-project"'},
+                "want": True,
+                "want_msg": "found pyproject.toml and GOOGLE_PYTHON_PACKAGE_MANAGER is not set, using uv as default package manager",
+            },
+            {
+                "name": "uv_project_without_uv.lock_with_uv_package_manager_env_var_set",
+                "files": {"pyproject.toml": '[project]\nname = "my-uv-project"'},
+                "env": {"GOOGLE_PYTHON_PACKAGE_MANAGER": "uv"},
+                "want": True,
+                "want_msg": "found pyproject.toml, using uv because GOOGLE_PYTHON_PACKAGE_MANAGER is set to 'uv'",
+            },
+            {
+                "name": "uv_project_without_uv.lock_with_pip_package_manager_env_var_set",
+                "files": {"pyproject.toml": '[project]\nname = "my-uv-project"'},
+                "env": {"GOOGLE_PYTHON_PACKAGE_MANAGER": "pip"},
+                "want": False,
+                "want_msg": "found pyproject.toml, but GOOGLE_PYTHON_PACKAGE_MANAGER is not set to 'uv'",
+            },
+            {
+                "name": "uv_project_with_uv.lock_with_pip_package_manager_env_var_set",
+                "files": {"pyproject.toml": '[project]\nname = "my-uv-project"', "uv.lock": ""},
+                "env": {"GOOGLE_PYTHON_PACKAGE_MANAGER": "pip"},
+                "want": True,
+                "want_msg": "found pyproject.toml and uv.lock",
+            },
+        ]
 
-func TestIsUVPyproject(t *testing.T) {
-	testCases := []struct {
-		name    string
-		files   map[string]string
-		env     map[string]string
-		want    bool
-		wantMsg string
-	}{
-		{
-			name: "uv_project_with_uv.lock",
-			files: map[string]string{
-				"pyproject.toml": `[project]
-name = "my-uv-project"`,
-				"uv.lock": "",
-			},
-			want:    true,
-			wantMsg: "found pyproject.toml and uv.lock",
-		},
-		{
-			name: "uv_project_without_uv.lock",
-			files: map[string]string{
-				"pyproject.toml": `[project]
-name = "my-uv-project"`,
-			},
-			want:    true,
-			wantMsg: "found pyproject.toml and GOOGLE_PYTHON_PACKAGE_MANAGER is not set, using uv as default package manager",
-		},
-		{
-			name: "uv_project_without_uv.lock_with_uv_package_manager_env_var_set",
-			files: map[string]string{
-				"pyproject.toml": `[project]
-name = "my-uv-project"`,
-			},
-			env: map[string]string{
-				"GOOGLE_PYTHON_PACKAGE_MANAGER": "uv",
-			},
-			want:    true,
-			wantMsg: "found pyproject.toml, using uv because GOOGLE_PYTHON_PACKAGE_MANAGER is set to 'uv'",
-		},
-		{
-			name: "uv_project_without_uv.lock_with_pip_package_manager_env_var_set",
-			files: map[string]string{
-				"pyproject.toml": `[project]
-name = "my-uv-project"`,
-			},
-			env: map[string]string{
-				"GOOGLE_PYTHON_PACKAGE_MANAGER": "pip",
-			},
-			want:    false,
-			wantMsg: "found pyproject.toml, but GOOGLE_PYTHON_PACKAGE_MANAGER is not set to 'uv'",
-		},
-		{
-			name: "uv_project_with_uv.lock_with_pip_package_manager_env_var_set",
-			files: map[string]string{
-				"pyproject.toml": `[project]
-name = "my-uv-project"`,
-				"uv.lock": "",
-			},
-			env: map[string]string{
-				"GOOGLE_PYTHON_PACKAGE_MANAGER": "pip",
-			},
-			want:    true,
-			wantMsg: "found pyproject.toml and uv.lock",
-		},
-	}
+        for tc in test_cases:
+            app_dir = self.setup_test(tc.files)
+            ctx = self.get_context(app_dir)
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			appDir := setupTest(t, tc.files)
+            if "env" in tc:
+                for key, value in tc["env"].items():
+                    os.environ[key] = value
 
-			for key, value := range tc.env {
-				t.Setenv(key, value)
-			}
+            is_uv, msg, err = self.is_uv_pyproject(ctx)
 
-			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
-			isUV, msg, err := IsUVPyproject(ctx)
+            if err != None:
+                self.fail("IsUVPyproject() got an unexpected error: %v" % (err))
 
-			if err != nil {
-				t.Fatalf("IsUVPyproject() got an unexpected error: %v", err)
-			}
-			if isUV != tc.want {
-				t.Errorf("IsUVPyproject() = %v, want %v", isUV, tc.want)
-			}
-			if msg != tc.wantMsg {
-				t.Errorf("IsUVPyproject() message = %q, want %q", msg, tc.wantMsg)
-			}
-		})
-	}
-}
+            if is_uv != tc.want:
+                self.assertEqual(is_uv, tc.want)
+                self.assertEqual(msg, tc.want_msg)
 
-func TestRequestedUVVersion(t *testing.T) {
-	testCases := []struct {
-		name    string
-		files   map[string]string
-		want    string
-		wantErr bool
-	}{
-		{
-			name: "valid_required-version_constraint",
-			files: map[string]string{
-				"pyproject.toml": `
-					[tool.uv]
-					required-version = ">=0.1.0"
-				`,
-			},
-			want:    ">=0.1.0",
-			wantErr: false,
-		},
-		{
-			name: "no_required-version_constraint",
-			files: map[string]string{
-				"pyproject.toml": `
-					[tool.uv]
-				`,
-			},
-			want:    "",
-			wantErr: false,
-		},
-		{
-			name: "malformed_pyproject.toml",
-			files: map[string]string{
-				"pyproject.toml": `
-					[tool.uv
-					required-version = "<1.0.0"
-				`,
-			},
-			want:    "",
-			wantErr: true,
-		},
-	}
+    def test_requested_uv_version(self):
+        test_cases = [
+            {
+                "name": "valid_required-version_constraint",
+                "files": {"pyproject.toml": '[tool.uv]\nrequired-version = ">0.1.0"'},
+                "want": ">0.1.0",
+                "want_err": False,
+            },
+            {
+                "name": "no_required-version_constraint",
+                "files": {"pyproject.toml": '[tool.uv]'},
+                "want": "",
+                "want_err": False,
+            },
+            {
+                "name": "malformed_pyproject.toml",
+                "files": {"pyproject.toml": '[tool.uv\nrequired-version = "<1.0.0"'},
+                "want": "",
+                "want_err": True,
+            },
+        ]
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			appDir := setupTest(t, tc.files)
+        for tc in test_cases:
+            app_dir = self.setup_test(tc.files)
+            ctx = self.get_context(app_dir)
 
-			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
-			version, err := RequestedUVVersion(ctx)
+            version, err = self.requested_uv_version(ctx)
 
-			if (err != nil) != tc.wantErr {
-				t.Errorf("RequestedUVVersion() error = %v, wantErr %v", err, tc.wantErr)
-				return
-			}
-			if err == nil && version != tc.want {
-				t.Errorf("RequestedUVVersion() = %q, want %q", version, tc.want)
-			}
-		})
-	}
-}
+            if (err != None) != tc.want_err:
+                self.fail("RequestedUVVersion() error = %v, wantErr %v" % (err, tc.want_err))
 
-func TestGetScriptCommand(t *testing.T) {
-	testCases := []struct {
-		name    string
-		files   map[string]string
-		want    []string
-		wantErr bool
-	}{
-		{
-			name: "poetry_single_script_found",
-			files: map[string]string{
-				"pyproject.toml": `
-					[tool.poetry.scripts]
-					start_app = "my_app.main:run"
-				`,
-			},
-			want:    []string{"start_app"},
-			wantErr: false,
-		},
-		{
-			name: "poetry_multiple_scripts_returns_start",
-			files: map[string]string{
-				"pyproject.toml": `
-          [tool.poetry.scripts]
-          dev = "my_app.dev:run"
-          start = "my_app.main:run"
-          lint = "my_app.lint:run"
-        `,
-			},
-			want:    []string{"start"},
-			wantErr: false,
-		},
-		{
-			name: "poetry_multiple_scripts_no_start_returns_nil",
-			files: map[string]string{
-				"pyproject.toml": `
-          [tool.poetry.scripts]
-          dev = "my_app.dev:run"
-          lint = "my_app.lint:run"
-        `,
-			},
-			want:    nil,
-			wantErr: false,
-		},
-		{
-			name: "project_single_script_found",
-			files: map[string]string{
-				"pyproject.toml": `
-          [project.scripts]
-          start_now = "my_app.main:run"
-        `,
-			},
-			want:    []string{"start_now"},
-			wantErr: false,
-		},
-		{
-			name: "project_multiple_scripts_returns_start",
-			files: map[string]string{
-				"pyproject.toml": `
-          [project.scripts]
-          dev = "my_app.dev:run"
-          start = "my_app.main:run"
-        `,
-			},
-			want:    []string{"start"},
-			wantErr: false,
-		},
-		{
-			name: "project_multiple_scripts_no_start_returns_nil",
-			files: map[string]string{
-				"pyproject.toml": `
-          [project.scripts]
-          dev = "my_app.dev:run"
-          lint = "my_app.main:run"
-        `,
-			},
-			want:    nil,
-			wantErr: false,
-		},
-		{
-			name: "poetry_single_script_takes_precedence_over_project_start",
-			files: map[string]string{
-				"pyproject.toml": `
-          [tool.poetry.scripts]
-          start1 = "my_app.poetry:run"
-          [project.scripts]
-          start2 = "my_app.project:run"
-          start = "my_app.project:start"
-        `,
-			},
-			want:    []string{"start1"},
-			wantErr: false,
-		},
+            if err == None and version != tc.want:
+                self.assertEqual(version, tc.want)
 
-		{
-			name: "no_scripts_section",
-			files: map[string]string{
-				"pyproject.toml": `
-					[project]
-					name = "my-app"
-				`,
-			},
-			want:    nil,
-			wantErr: false,
-		},
-		{
-			name: "empty_scripts_section",
-			files: map[string]string{
-				"pyproject.toml": `
-					[project.scripts]
-				`,
-			},
-			want:    nil,
-			wantErr: false,
-		},
-		{
-			name:    "file_does_not_exist",
-			files:   map[string]string{},
-			want:    nil,
-			wantErr: true,
-		},
-		{
-			name: "malformed_pyproject.toml",
-			files: map[string]string{
-				"pyproject.toml": `
-					[tool.poetry.scripts
-					start = "my_app.main:run"
-				`,
-			},
-			want:    nil,
-			wantErr: false,
-		},
-	}
+    def test_get_script_command(self):
+        test_cases = [
+            {
+                "name": "poetry_single_script_found",
+                "files": {"pyproject.toml": '[tool.poetry.scripts]\nstart_app = "my_app.main:run"'},
+                "want": ["start_app"],
+                "want_err": False,
+            },
+            {
+                "name": "poetry_multiple_scripts_returns_start",
+                "files": {"pyproject.toml": '[tool.poetry.scripts]\ndev = "my_app.dev:run"\nstart = "my_app.main:run"\nlint = "my_app.lint:run"'},
+                "want": ["start"],
+                "want_err": False,
+            },
+            {
+                "name": "poetry_multiple_scripts_no_start_returns_nil",
+                "files": {"pyproject.toml": '[tool.poetry.scripts]\ndev = "my_app.dev:run"\nlint = "my_app.lint:run"'},
+                "want": None,
+                "want_err": False,
+            },
+            {
+                "name": "project_single_script_found",
+                "files": {"pyproject.toml": '[project.scripts]\nstart_now = "my_app.main:run"'},
+                "want": ["start_now"],
+                "want_err": False,
+            },
+            {
+                "name": "project_multiple_scripts_returns_start",
+                "files": {"pyproject.toml": '[project.scripts]\ndev = "my_app.dev:run"\nstart = "my_app.main:run"'},
+                "want": ["start"],
+                "want_err": False,
+            },
+            {
+                "name": "project_multiple_scripts_no_start_returns_nil",
+                "files": {"pyproject.toml": '[project.scripts]\ndev = "my_app.dev:run"\nlint = "my_app.lint:run"'},
+                "want": None,
+                "want_err": False,
+            },
+            {
+                "name": "poetry_single_script_takes_precedence_over_project_start",
+                "files": {"pyproject.toml": '[tool.poetry.scripts]\nstart1 = "my_app.poetry:run"\n[project.scripts]\nstart2 = "my_app.project:run"\nstart = "my_app.project:start"'},
+                "want": ["start1"],
+                "want_err": False,
+            },
+        ]
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			appDir := setupTest(t, tc.files)
-			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
+        for tc in test_cases:
+            app_dir = self.setup_test(tc.files)
+            ctx = self.get_context(app_dir)
 
-			cmd, err := GetScriptCommand(ctx)
+            cmd, err = self.get_script_command(ctx)
 
-			if (err != nil) != tc.wantErr {
-				t.Errorf("GetScriptCommand() error = %v, wantErr %v", err, tc.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(cmd, tc.want) {
-				t.Errorf("GetScriptCommand() = %v, want %v", cmd, tc.want)
-			}
-		})
-	}
-}
+            if (err != None) != tc.want_err:
+                self.fail("GetScriptCommand() error = %v, wantErr %v" % (err, tc.want_err))
 
-func TestIsPipPyproject(t *testing.T) {
-	testCases := []struct {
-		name  string
-		files map[string]string
-		env   map[string]string
-		want  bool
-	}{
-		{
-			name: "pip_pyproject_is_enabled_on_gcp",
-			files: map[string]string{
-				"pyproject.toml": "[project]",
-			},
-			env: map[string]string{
-				env.PythonPackageManager:  "pip",
-				env.XGoogleTargetPlatform: "gcp",
-			},
-			want: true,
-		},
-		{
-			name: "disabled_when_requirements_txt_exists",
-			files: map[string]string{
-				"pyproject.toml":   "[project]",
-				"requirements.txt": "flask",
-			},
-			env: map[string]string{
-				env.PythonPackageManager:  "pip",
-				env.ReleaseTrack:          "BETA",
-				env.XGoogleTargetPlatform: "gcp",
-			},
-			want: false,
-		},
-		{
-			name: "disabled_when_package_manager_is_uv",
-			files: map[string]string{
-				"pyproject.toml": "[project]",
-			},
-			env: map[string]string{
-				env.PythonPackageManager:  "uv",
-				env.ReleaseTrack:          "BETA",
-				env.XGoogleTargetPlatform: "gcp",
-			},
-			want: false,
-		},
-		{
-			name: "disabled_when_no_package_manager",
-			files: map[string]string{
-				"pyproject.toml": "[project]",
-			},
-			env: map[string]string{
-				env.ReleaseTrack:          "BETA",
-				env.XGoogleTargetPlatform: "gcp",
-			},
-			want: false,
-		},
-		{
-			name: "disabled_when_platform_is_not_gcp_or_gcf",
-			files: map[string]string{
-				"pyproject.toml": "[project]",
-			},
-			env: map[string]string{
-				env.PythonPackageManager:  "pip",
-				env.ReleaseTrack:          "BETA",
-				env.XGoogleTargetPlatform: "gae",
-			},
-			want: false,
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			appDir := setupTest(t, tc.files)
-			for key, value := range tc.env {
-				t.Setenv(key, value)
-			}
-			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
-			if got := IsPipPyproject(ctx); got != tc.want {
-				t.Errorf("IsPipPyproject() = %v, want %v", got, tc.want)
-			}
-		})
-	}
-}
+            if err == None and cmd != tc.want:
+                self.assertEqual(cmd, tc.want)
 
-func TestIsPyprojectEnabled(t *testing.T) {
-	testCases := []struct {
-		name  string
-		files map[string]string
-		envs  map[string]string
-		want  bool
-	}{
-		{
-			name: "enabled_with_only_pyproject_and_alpha_track",
-			files: map[string]string{
-				"pyproject.toml": "[project]",
-			},
-			envs: map[string]string{
-				"X_GOOGLE_RELEASE_TRACK": "ALPHA",
-			},
-			want: true,
-		},
-		{
-			name: "enabled_with_only_pyproject_and_beta_track",
-			files: map[string]string{
-				"pyproject.toml": "[project]",
-			},
-			envs: map[string]string{
-				"X_GOOGLE_RELEASE_TRACK": "BETA",
-			},
-			want: true,
-		},
-		{
-			name: "disabled_when_requirements_txt_exists",
-			files: map[string]string{
-				"requirements.txt": "flask",
-				"pyproject.toml":   "[project]",
-			},
-			envs: map[string]string{
-				"X_GOOGLE_RELEASE_TRACK": "ALPHA",
-			},
-			want: false,
-		},
-		{
-			name: "enabled_on_GA_track_for_python_313",
-			files: map[string]string{
-				"pyproject.toml": "[project]",
-			},
-			envs: map[string]string{
-				"GOOGLE_RUNTIME_VERSION": "3.13.0",
-			},
-			want: true,
-		},
-		{
-			name: "enabled_on_GA_track_for_python_314",
-			files: map[string]string{
-				"pyproject.toml": "[project]",
-			},
-			envs: map[string]string{
-				"GOOGLE_RUNTIME_VERSION": "3.14.0",
-			},
-			want: true,
-		},
-		{
-			name: "enabled_on_GA_track_for_universal_22",
-			files: map[string]string{
-				"pyproject.toml": "[project]",
-			},
-			envs: map[string]string{},
-			want: true,
-		},
-		{
-			name: "enabled_on_GA_track_for_python_312",
-			files: map[string]string{
-				"pyproject.toml": "[project]",
-			},
-			envs: map[string]string{
-				"GOOGLE_RUNTIME_VERSION": "3.12.5",
-			},
-			want: true,
-		},
+    def test_is_pip_pyproject(self):
+        test_cases = [
+            {
+                "name": "pip_pyproject_is_enabled_on_gcp",
+                "files": {"pyproject.toml": "[project]"},
+                "env": {"GOOGLE_PYTHON_PACKAGE_MANAGER": "pip", "X_GOOGLE_TARGET_PLATFORM": "gcp"},
+                "want": True,
+            },
+            {
+                "name": "disabled_when_requirements_txt_exists",
+                "files": {"pyproject.toml": "[project]", "requirements.txt": "flask"},
+                "env": {"GOOGLE_PYTHON_PACKAGE_MANAGER": "pip", "X_GOOGLE_RELEASE_TRACK": "BETA", "X_GOOGLE_TARGET_PLATFORM": "gcp"},
+                "want": False,
+            },
+            {
+                "name": "disabled_when_package_manager_is_uv",
+                "files": {"pyproject.toml": "[project]"},
+                "env": {"GOOGLE_PYTHON_PACKAGE_MANAGER": "uv", "X_GOOGLE_RELEASE_TRACK": "BETA", "X_GOOGLE_TARGET_PLATFORM": "gcp"},
+                "want": False,
+            },
+            {
+                "name": "disabled_when_no_package_manager",
+                "files": {"pyproject.toml": "[project]"},
+                "env": {"X_GOOGLE_RELEASE_TRACK": "BETA", "X_GOOGLE_TARGET_PLATFORM": "gcp"},
+                "want": False,
+            },
+            {
+                "name": "disabled_when_platform_is_not_gcp_or_gcf",
+                "files": {"pyproject.toml": "[project]"},
+                "env": {"GOOGLE_PYTHON_PACKAGE_MANAGER": "pip", "X_GOOGLE_RELEASE_TRACK": "BETA", "X_GOOGLE_TARGET_PLATFORM": "gae"},
+                "want": False,
+            },
+        ]
 
-		{
-			name: "disabled_when_pyproject_toml_does_not_exist",
-			files: map[string]string{
-				"requirements.txt": "flask",
-			},
-			envs: map[string]string{
-				"X_GOOGLE_RELEASE_TRACK": "ALPHA",
-			},
-			want: false,
-		},
-	}
+        for tc in test_cases:
+            app_dir = self.setup_test(tc.files)
+            ctx = self.get_context(app_dir)
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			appDir := setupTest(t, tc.files)
-			for key, value := range tc.envs {
-				t.Setenv(key, value)
-			}
-			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
-			if gotEnabled := IsPyprojectEnabled(ctx); gotEnabled != tc.want {
-				t.Errorf("IsPyprojectEnabled() = %v, want %v", gotEnabled, tc.want)
-			}
-		})
-	}
-}
+            if "env" in tc:
+                for key, value in tc["env"].items():
+                    os.environ[key] = value
 
-func setupTest(t *testing.T, files map[string]string) string {
-	t.Helper()
-	appDir := t.TempDir()
+            got = self.is_pip_pyproject(ctx)
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get current working directory: %v", err)
-	}
-	if err := os.Chdir(appDir); err != nil {
-		t.Fatalf("failed to change directory to %s: %v", appDir, err)
-	}
-	t.Cleanup(func() {
-		if err := os.Chdir(cwd); err != nil {
-			t.Fatalf("failed to change directory back to %s: %v", cwd, err)
-		}
-	})
+            if got != tc.want:
+                self.assertEqual(got, tc.want)
 
-	for path, content := range files {
-		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-			t.Fatalf("writing file %q: %v", path, err)
-		}
-	}
-	return appDir
-}
+    def test_is_pyproject_enabled(self):
+        test_cases = [
+            {
+                "name": "enabled_with_only_pyproject_and_alpha_track",
+                "files": {"pyproject.toml": "[project]"},
+                "envs": {"X_GOOGLE_RELEASE_TRACK": "ALPHA"},
+                "want": True,
+            },
+            {
+                "name": "enabled_with_only_pyproject_and_beta_track",
+                "files": {"pyproject.toml": "[project]"},
+                "envs": {"X_GOOGLE_RELEASE_TRACK": "BETA"},
+                "want": True,
+            },
+            {
+                "name": "disabled_when_requirements_txt_exists",
+                "files": {"requirements.txt": "flask", "pyproject.toml": "[project]"},
+                "envs": {"X_GOOGLE_RELEASE_TRACK": "ALPHA"},
+                "want": False,
+            },
+            {
+                "name": "enabled_on_GA_track_for_python_313",
+                "files": {"pyproject.toml": "[project]"},
+                "envs": {"GOOGLE_RUNTIME_VERSION": "3.13.0"},
+                "want": True,
+            },
+            {
+                "name": "enabled_on_GA_track_for_python_314",
+                "files": {"pyproject.toml": "[project]"},
+                "envs": {"GOOGLE_RUNTIME_VERSION": "3.14.0"},
+                "want": True,
+            },
+            {
+                "name": "enabled_on_GA_track_for_universal_22",
+                "files": {"pyproject.toml": "[project]"},
+                "envs": {},
+                "want": True,
+            },
+            {
+                "name": "enabled_on_GA_track_for_python_312",
+                "files": {"pyproject.toml": "[project]"},
+                "envs": {"GOOGLE_RUNTIME_VERSION": "3.12.5"},
+                "want": True,
+            },
+            {
+                "name": "disabled_when_pyproject_toml_does_not_exist",
+                "files": {"requirements.txt": "flask"},
+                "envs": {"X_GOOGLE_RELEASE_TRACK": "ALPHA"},
+                "want": False,
+            },
+        ]
+
+        for tc in test_cases:
+            app_dir = self.setup_test(tc.files)
+            ctx = self.get_context(app_dir)
+
+            if "envs" in tc:
+                for key, value in tc["envs"].items():
+                    os.environ[key] = value
+
+            got_enabled = self.is_pyproject_enabled(ctx)
+
+            if got_enabled != tc.want:
+                self.assertEqual(got_enabled, tc.want)

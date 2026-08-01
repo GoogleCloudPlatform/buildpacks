@@ -1,196 +1,179 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements ruby/bundle buildpack.
-// The bundle buildpack installs dependencies using bundle.
-package lib
+"""Implements ruby/bundle buildpack."""
 
-import (
-	"fmt"
-	"path/filepath"
+import os
+from typing import Dict, Optional
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/ruby"
-	"github.com/buildpacks/libcnb/v2"
+import gcpbuildpack as gcp  # type: ignore
+from buildererror import BuilderErrorStatus  # type: ignore
+from cache import CacheOptions  # type: ignore
+from libcnb import Layer  # type: ignore
+from ruby import (  # type: ignore
+    BundleConfig,
+    BundleLocker,
+    BundleInstaller,
+    RubyVersionKey,
+    BundleLockerCapability,
+    BundleInstallerCapability,
+    PrepareLockfile,
+    InstallAndSymlink,
 )
+import subprocess
 
-const (
-	layerName         = "gems"
-	dependencyHashKey = "dependency_hash"
-	rubyVersionKey    = "ruby_version"
-)
+LayerName = "gems"
+DependencyHashKey = "dependency_hash"
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	gemfileExists, err := ctx.FileExists("Gemfile")
-	if err != nil {
-		return nil, err
-	}
-	if gemfileExists {
-		return gcp.OptInFileFound("Gemfile"), nil
-	}
-	gemsRbExists, err := ctx.FileExists("gems.rb")
-	if err != nil {
-		return nil, err
-	}
-	if gemsRbExists {
-		return gcp.OptInFileFound("gems.rb"), nil
-	}
-	return gcp.OptOut("no Gemfile or gems.rb found"), nil
-}
+def detect_fn(ctx: gcp.Context) -> tuple[Optional[gcp.DetectResult], Optional[str]]:
+    """Detect function for the buildpack."""
+    gemfile_exists = os.path.exists("Gemfile")
+    if gemfile_exists:
+        return gcp.OptInFileFound("Gemfile"), None
+    gems_rb_exists = os.path.exists("gems.rb")
+    if gems_rb_exists:
+        return gcp.OptInFileFound("gems.rb"), None
+    return gcp.OptOut("no Gemfile or gems.rb found"), None
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	var lockFile string
-	hasGemfile, err := ctx.FileExists("Gemfile")
-	if err != nil {
-		return err
-	}
-	hasGemsRB, err := ctx.FileExists("gems.rb")
-	if err != nil {
-		return err
-	}
-	if hasGemfile {
-		if hasGemsRB {
-			ctx.Warnf("Gemfile and gems.rb both exist. Using Gemfile.")
-		}
-		gemfileLockExists, err := ctx.FileExists("Gemfile.lock")
-		if err != nil {
-			return err
-		}
-		if !gemfileLockExists {
-			return buildererror.Errorf(buildererror.StatusFailedPrecondition, "Could not find Gemfile.lock file in your app. Please make sure your bundle is up to date before deploying.")
-		}
-		lockFile = "Gemfile.lock"
-	} else if hasGemsRB {
-		gemsLockedExists, err := ctx.FileExists("gems.locked")
-		if err != nil {
-			return err
-		}
-		if !gemsLockedExists {
-			return buildererror.Errorf(buildererror.StatusFailedPrecondition, "Could not find gems.locked file in your app. Please make sure your bundle is up to date before deploying.")
-		}
-		lockFile = "gems.locked"
-	}
+def build_fn(ctx: gcp.Context) -> Optional[str]:
+    """Build function for the buildpack."""
+    lock_file = ""
+    has_gemfile = os.path.exists("Gemfile")
+    has_gems_rb = os.path.exists("gems.rb")
 
-	// Remove any user-provided local bundle config and cache that can interfere with the build process.
-	if err := ctx.RemoveAll(".bundle"); err != nil {
-		return err
-	}
+    if has_gemfile:
+        if has_gems_rb:
+            ctx.Warn("Gemfile and gems.rb both exist. Using Gemfile.")
+        gemfile_lock_exists = os.path.exists("Gemfile.lock")
+        if not gemfile_lock_exists:
+            return BuilderErrorStatus.FailedPrecondition(
+                "Could not find Gemfile.lock file in your app. Please make sure your bundle is up to date before deploying."
+            )
+        lock_file = "Gemfile.lock"
+    elif has_gems_rb:
+        gems_locked_exists = os.path.exists("gems.locked")
+        if not gems_locked_exists:
+            return BuilderErrorStatus.FailedPrecondition(
+                "Could not find gems.locked file in your app. Please make sure your bundle is up to date before deploying."
+            )
+        lock_file = "gems.locked"
 
-	localGemsDir := filepath.Join(".bundle", "gems")
-	localBinDir := filepath.Join(".bundle", "bin")
+    if os.path.exists(".bundle"):
+        try:
+            os.remove(".bundle")
+        except Exception as e:
+            return str(e)
 
-	// 1. LOCK PHASE (with Maker override)
-	if cap := ctx.Capability(ruby.BundleLockerCapability); cap != nil {
-		l, ok := cap.(ruby.BundleLocker)
-		if !ok {
-			return gcp.InternalErrorf("capability %q must implement BundleLocker", ruby.BundleLockerCapability)
-		}
-		if err := l.Lock(ctx); err != nil {
-			return err
-		}
-	} else {
-		// Default Lockfile preparation
-		if err := ruby.PrepareLockfile(ctx, localGemsDir, "development test", []string{"x86_64-linux", "ruby"}); err != nil {
-			return err
-		}
-		// Buildpack clears the config after locking to avoid cache hash pollution
-		if err := ctx.RemoveAll(".bundle"); err != nil {
-			return err
-		}
-	}
+    local_gems_dir = os.path.join(".bundle", "gems")
+    local_bin_dir = os.path.join(".bundle", "bin")
 
-	// 2. MAKER SHORTCUT EXIT
-	// If in Maker mode, run the custom local installation and exit immediately, bypassing layers/caching.
-	if cap := ctx.Capability(ruby.BundleInstallerCapability); cap != nil {
-		i, ok := cap.(ruby.BundleInstaller)
-		if !ok {
-			return gcp.InternalErrorf("capability %q must implement BundleInstaller", ruby.BundleInstallerCapability)
-		}
-		return i.Install(ctx)
-	}
+    cap = ctx.Capability(ruby.BundleLockerCapability)
+    if cap:
+        locker = cap  # type: BundleLocker
+        if not isinstance(locker, BundleLocker):
+            return gcp.InternalError(
+                f"capability {ruby.BundleLockerCapability} must implement BundleLocker"
+            )
+        try:
+            locker.Lock(ctx)
+        except Exception as e:
+            return str(e)
+    else:
+        try:
+            PrepareLockfile(ctx, local_gems_dir, "development test", ["x86_64-linux", "ruby"])
+            if os.path.exists(".bundle"):
+                os.remove(".bundle")
+        except Exception as e:
+            return str(e)
 
-	// 3. STANDARD BUILDPACK FLOW (Layers & Caching)
-	deps, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", layerName, err)
-	}
+    cap = ctx.Capability(ruby.BundleInstallerCapability)
+    if cap:
+        installer = cap  # type: BundleInstaller
+        if not isinstance(installer, BundleInstaller):
+            return gcp.InternalError(
+                f"capability {ruby.BundleInstallerCapability} must implement BundleInstaller"
+            )
+        try:
+            return installer.Install(ctx)
+        except Exception as e:
+            return str(e)
 
-	bundleOutput := filepath.Join(deps.Path, ".bundle")
+    try:
+        deps = ctx.Layer(LayerName, gcp.BuildLayer | gcp.CacheLayer | gcp.LaunchLayer)
+    except Exception as e:
+        return f"creating {LayerName} layer: {e}"
 
-	cached, err := checkCache(ctx, deps, cache.WithFiles(lockFile))
-	if err != nil {
-		return fmt.Errorf("checking cache: %w", err)
-	}
+    bundle_output = os.path.join(deps.Path, ".bundle")
+    cached, err = check_cache(ctx, deps, CacheOptions.Files(lock_file))
+    if err:
+        return f"checking cache: {err}"
 
-	if cached {
-		ctx.CacheHit(layerName)
-	} else {
-		ctx.CacheMiss(layerName)
+    if cached:
+        ctx.CacheHit(LayerName)
+    else:
+        ctx.CacheMiss(LayerName)
 
-		// Install the bundle locally into .bundle/gems
-		bCfg := ruby.BundleConfig{
-			Deployment: true,
-			Frozen:     true,
-		}
-		env := []string{"NOKOGIRI_USE_SYSTEM_LIBRARIES=1", "MALLOC_ARENA_MAX=2", "LANG=C.utf8"}
-		if err := ruby.InstallAndSymlink(ctx, localGemsDir, localBinDir, "development test", bCfg, env); err != nil {
-			return err
-		}
+        b_cfg = BundleConfig(Deployment=True, Frozen=True)
+        env = ["NOKOGIRI_USE_SYSTEM_LIBRARIES=1", "MALLOC_ARENA_MAX=2", "LANG=C.utf8"]
+        try:
+            InstallAndSymlink(
+                ctx,
+                local_gems_dir,
+                local_bin_dir,
+                "development test",
+                b_cfg,
+                env
+            )
+            if os.path.exists(bundle_output):
+                os.remove(bundle_output)
+            subprocess.run(["mv", ".bundle", bundle_output], check=True)
+        except Exception as e:
+            return str(e)
 
-		// Move the built .bundle directory into the layer
-		if err := ctx.RemoveAll(bundleOutput); err != nil {
-			return err
-		}
-		if _, err := ctx.Exec([]string{"mv", ".bundle", bundleOutput}, gcp.WithUserTimingAttribution); err != nil {
-			return err
-		}
-	}
+    try:
+        os.symlink(bundle_output, ".bundle")
+    except Exception as e:
+        return str(e)
 
-	// Always link local .bundle directory to the actual installation stored in the layer.
-	if err := ctx.Symlink(bundleOutput, ".bundle"); err != nil {
-		return err
-	}
+    return None
 
-	return nil
-}
+def gcp_main(detect: callable, build: callable):
+    """Main entrypoint for GCP buildpack."""
+    gcp.Main(detect, build)
 
-// checkCache checks whether cached dependencies exist and match.
-func checkCache(ctx *gcp.Context, l *libcnb.Layer, opts ...cache.Option) (bool, error) {
-	result, err := ctx.Exec([]string{"ruby", "-v"})
-	if err != nil {
-		return false, err
-	}
-	currentRubyVersion := result.Stdout
-	opts = append(opts, cache.WithStrings(currentRubyVersion))
+def check_cache(
+    ctx: gcp.Context,
+    layer: Layer,
+    opts: CacheOptions
+) -> tuple[bool, Optional[str]]:
+    """Check if cached dependencies exist and match."""
+    try:
+        result = subprocess.run(["ruby", "-v"], capture_output=True, text=True, check=True)
+        current_ruby_version = result.stdout
+        opts.Strings.append(current_ruby_version)
 
-	hash, cached, err := cache.HashAndCheck(ctx, l, dependencyHashKey, opts...)
-	if err != nil {
-		return false, err
-	}
+        hash_val, cached, err = cache.HashAndCheck(ctx, layer, DependencyHashKey, **opts)
+        if err:
+            return False, err
 
-	if cached {
-		return true, nil
-	}
+        if cached:
+            return True, None
 
-	ctx.Logf("Installing application dependencies.")
-	cache.Add(ctx, l, dependencyHashKey, hash)
-	// Update the layer metadata.
-	ctx.SetMetadata(l, rubyVersionKey, currentRubyVersion)
+        ctx.Log("Installing application dependencies.")
+        cache.Add(ctx, layer, DependencyHashKey, hash_val)
+        ctx.SetMetadata(layer, RubyVersionKey, current_ruby_version)
 
-	return false, nil
-}
+        return False, None
+    except Exception as e:
+        return False, str(e)

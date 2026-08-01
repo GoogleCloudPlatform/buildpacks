@@ -1,184 +1,190 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//	 http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+#!/usr/bin/env python3.13
 
-// Implements nodejs/pnpm buildpack.
-// The pnpm buildpack installs dependencies using pnpm and installs pnpm itself if not present.
-package lib
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-import (
-	"os"
-	"path/filepath"
-	"strings"
+"""Implements nodejs/pnpm buildpack. Installs dependencies using pnpm."""
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/nodejs"
-)
+import os
+import subprocess
+from pathlib import Path
 
-const (
-	cacheTag  = "prod dependencies"
-	pnpmLayer = "pnpm_engine"
-)
+import buildermetadata
+import env as gcp_env
+import faherror
+import gcpbuildpack as gcp
+import nodejs
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	pkgJSONExists, err := ctx.FileExists("package.json")
-	if err != nil {
-		return nil, err
-	}
-	if !pkgJSONExists {
-		return gcp.OptOutFileNotFound("package.json"), nil
-	}
 
-	pnpmLockExists, err := ctx.FileExists(nodejs.PNPMLock)
-	if err != nil {
-		return nil, err
-	}
-	if pnpmLockExists {
-		return gcp.OptIn("found pnpm-lock.yaml and package.json"), nil
-	}
+def detect(ctx: gcp.Context) -> tuple[gcp.DetectResult, Exception]:
+    """Detects if the buildpack should be applied."""
+    try:
+        package_json_exists = ctx.file_exists("package.json")
+    except Exception as err:
+        return None, err
 
-	if nodejs.IsPackageManagerConfigured("pnpm") {
-		return gcp.OptIn("package.json found and GOOGLE_PACKAGE_MANAGER=pnpm"), nil
-	}
+    if not package_json_exists:
+        return gcp.OptOutFileNotFound("package.json"), None
 
-	return gcp.OptOut("pnpm-lock.yaml not found and GOOGLE_PACKAGE_MANAGER is not set to pnpm"), nil
-}
+    try:
+        pnpm_lock_exists = ctx.file_exists(nodejs.PNPM_LOCK)
+    except Exception as err:
+        return None, err
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.PackageManager, buildermetadata.MetadataValue("pnpm"))
-	if err := ctx.Setenv("PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN", "false"); err != nil {
-		return err
-	}
+    if pnpm_lock_exists:
+        return gcp.OptIn("found pnpm-lock.yaml and package.json"), None
 
-	pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
-	if err != nil {
-		return err
-	}
+    if nodejs.is_package_manager_configured("pnpm"):
+        return gcp.OptIn("package.json found and GOOGLE_PACKAGE_MANAGER=pnpm"), None
 
-	if err := installPNPM(ctx, pjs); err != nil {
-		return gcp.InternalErrorf("installing pnpm: %w", err)
-	}
+    return gcp.OptOut(
+        "pnpm-lock.yaml not found and GOOGLE_PACKAGE_MANAGER is not set to pnpm"
+    ), None
 
-	if err := pnpmInstallModules(ctx, pjs); err != nil {
-		return err
-	}
 
-	el, err := ctx.Layer("env", gcp.BuildLayer, gcp.LaunchLayer)
-	if err != nil {
-		return gcp.InternalErrorf("creating layer: %w", err)
-	}
-	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
-	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
-	el.SharedEnvironment.Default("PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN", "false")
+def build(ctx: gcp.Context) -> Exception:
+    """Builds the application using pnpm."""
+    try:
+        buildermetadata.GlobalBuilderMetadata().set_value(
+            buildermetadata.PackageManager, "pnpm"
+        )
+    except Exception as err:
+        return err
 
-	// Check for React2Shell vulnerability in the lockfile.
-	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, ctx.ApplicationRoot())
-	if err != nil {
-		ctx.Warnf("Failed to read node dependencies: %v", err)
-	} else {
-		if err := nodejs.CheckVulnerabilities(ctx, nodeDeps); err != nil {
-			return err
-		}
-	}
+    ctx.setenv("PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN", "false")
 
-	// Configure the entrypoint for production.
-	entrypoint, err := nodejs.Entrypoint(ctx, "pnpm")
-	if err != nil {
-		return err
-	}
+    try:
+        pjs = nodejs.read_package_json_if_exists(ctx.application_root())
+    except Exception as err:
+        return err
 
-	devSync, err := env.IsDevSync()
-	if err != nil {
-		ctx.Warnf("Unable to determine dev sync status: %v", err)
-	} else if devSync {
-		entrypoint, err = nodejs.DevSyncEntrypoint(ctx, pjs, "pnpm")
-		if err != nil {
-			return gcp.InternalErrorf("getting dev sync entrypoint: %w", err)
-		}
-		ctx.AddWebProcess(entrypoint)
-		return nil
-	}
+    if install_pnpm(ctx, pjs):
+        return None
 
-	ctx.AddWebProcess(entrypoint)
-	return nil
-}
+    if pnpm_install_modules(ctx, pjs):
+        return None
 
-func pnpmInstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
-	pjs, err := nodejs.OverrideAppHostingBuildScript(ctx, nodejs.ApphostingPreprocessedPathForPack)
-	if err != nil {
-		return err
-	}
-	buildCmds, _ := nodejs.DetermineBuildCommands(pjs, "pnpm")
-	// Respect the user's NODE_ENV value if it's set
-	buildNodeEnv, nodeEnvPresent := os.LookupEnv(nodejs.EnvNodeEnv)
-	if !nodeEnvPresent {
-		if len(buildCmds) > 0 {
-			// Assume that dev dependencies are required to run build scripts to
-			// support the most use cases possible.
-			buildNodeEnv = nodejs.EnvDevelopment
-		} else {
-			buildNodeEnv = nodejs.EnvProduction
-		}
-	}
-	cmd := []string{"pnpm", "install"}
-	if buildNodeEnv == nodejs.EnvProduction {
-		// pnpm v10 removed the implicit behavior of skipping devDependencies when
-		// NODE_ENV=production (https://github.com/pnpm/pnpm/issues/8827). Pass --prod
-		// explicitly so devDependencies are skipped on pnpm v9 and v10+.
-		cmd = append(cmd, "--prod")
-	}
-	if devSync, _ := env.IsDevSync(); devSync {
-		cmd = append(cmd, "--no-frozen-lockfile")
-	}
-	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution, gcp.WithEnv("CI=true"), gcp.WithEnv("NODE_ENV="+buildNodeEnv)); err != nil {
-		return gcp.UserErrorf("installing pnpm dependencies: %w", err)
-	}
-	if len(buildCmds) > 0 {
-		// If there are multiple build scripts to run, run them one-by-one so the logs are
-		// easier to understand.
-		for _, cmd := range buildCmds {
-			split := strings.Split(cmd, " ")
-			if _, err := ctx.Exec(split, gcp.WithUserAttribution); err != nil {
-				if fahCmd, fahCmdPresent := os.LookupEnv(nodejs.AppHostingBuildEnv); fahCmdPresent {
-					return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(fahCmd, err))
-				}
-				if nodejs.HasApphostingPackageBuild(pjs) {
-					return gcp.UserErrorf("%w", faherror.FailedFrameworkBuildError(pjs.Scripts[nodejs.ScriptApphostingBuild], err))
-				}
-				return err
-			}
-		}
-	}
-	if nodejs.ShouldPrunePnpmBun(ctx, pjs, buildNodeEnv, nodeEnvPresent) {
-		// If we installed dependencies with NODE_ENV=development and the user didn't explicitly set
-		// NODE_ENV we should prune the devDependencies from the final app image.
-		cmd := []string{"pnpm", "prune", "--prod"}
-		if _, err := ctx.Exec(cmd, gcp.WithUserAttribution, gcp.WithEnv("CI=true")); err != nil {
-			return gcp.UserErrorf("pruning devDependencies: %w", err)
-		}
-	}
-	return nil
-}
+    try:
+        el = ctx.layer("env", gcp.BuildLayer, gcp.LaunchLayer)
+    except Exception as err:
+        return gcp.InternalError(f"creating layer: {err}")
 
-func installPNPM(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
-	layer, err := ctx.Layer(pnpmLayer, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
-	if err != nil {
-		return gcp.InternalErrorf("creating %v layer: %w", pnpmLayer, err)
-	}
-	return nodejs.InstallPNPM(ctx, layer, pjs)
-}
+    bin_path = os.path.join(
+        ctx.application_root(), "node_modules", ".bin"
+    )
+    el.shared_environment.prepend("PATH", os.pathsep, bin_path)
+    el.shared_environment.default("NODE_ENV", nodejs.node_env())
+    el.shared_environment.default("PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN", "false")
+
+    try:
+        node_deps = nodejs.read_node_dependencies(ctx, ctx.application_root())
+    except Exception as err:
+        ctx.warn(f"Failed to read node dependencies: {err}")
+    else:
+        if check_vulnerabilities(ctx, node_deps):
+            return None
+
+    entrypoint = nodejs.entrypoint(ctx, "pnpm")
+    if not entrypoint:
+        return gcp.InternalError("failed to determine entrypoint")
+
+    dev_sync = gcp_env.is_dev_sync()
+    if dev_sync is None:
+        ctx.warn("Unable to determine dev sync status")
+    elif dev_sync:
+        entrypoint = nodejs.dev_sync_entrypoint(ctx, pjs, "pnpm")
+        if not entrypoint:
+            return gcp.InternalError(
+                "failed to get dev sync entrypoint"
+            )
+        ctx.add_web_process(entrypoint)
+        return None
+
+    ctx.add_web_process(entrypoint)
+    return None
+
+
+def install_pnpm(ctx: gcp.Context, pjs: nodejs.PackageJSON) -> Exception:
+    """Installs pnpm if needed."""
+    try:
+        layer = ctx.layer(nodejs.PNPM_LAYER, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
+    except Exception as err:
+        return gcp.InternalError(f"creating {nodejs.PNPM_LAYER} layer: {err}")
+
+    return nodejs.install_pnpm(ctx, layer, pjs)
+
+
+def pnpm_install_modules(ctx: gcp.Context, pjs: nodejs.PackageJSON) -> Exception:
+    """Installs pnpm modules."""
+    try:
+        pjs = nodejs.override_app_hosting_build_script(
+            ctx, nodejs.ApphostingPreprocessedPathForPack
+        )
+    except Exception as err:
+        return err
+
+    build_cmds, _ = nodejs.determine_build_commands(pjs, "pnpm")
+    build_node_env = os.getenv(nodejs.EnvNodeEnv)
+    if not build_node_env:
+        if len(build_cmds) > 0:
+            build_node_env = nodejs.EnvDevelopment
+        else:
+            build_node_env = nodejs.EnvProduction
+
+    cmd = ["pnpm", "install"]
+    if build_node_env == nodejs.EnvProduction:
+        cmd.append("--prod")
+
+    dev_sync, _ = gcp_env.is_dev_sync()
+    if dev_sync:
+        cmd.append("--no-frozen-lockfile")
+
+    try:
+        ctx.exec(cmd, with_user_attribution=True, env={"CI": "true", "NODE_ENV": build_node_env})
+    except Exception as err:
+        return gcp.UserError(f"installing pnpm dependencies: {err}")
+
+    if len(build_cmds) > 0:
+        for cmd in build_cmds:
+            split_cmd = cmd.split()
+            try:
+                ctx.exec(split_cmd, with_user_attribution=True)
+            except Exception as err:
+                fah_cmd = os.getenv(nodejs.AppHostingBuildEnv)
+                if fah_cmd:
+                    return gcp.UserError(f"Failed framework build: {err}")
+                if nodejs.has_app_hosting_package_build(pjs):
+                    return gcp.UserError(
+                        f"Failed framework build with script {pjs.scripts[nodejs.ScriptApphostingBuild]}: {err}"
+                    )
+                return err
+
+    if should_prune_pnpm_bun(ctx, pjs, build_node_env, bool(build_node_env)):
+        cmd = ["pnpm", "prune", "--prod"]
+        try:
+            ctx.exec(cmd, with_user_attribution=True, env={"CI": "true"})
+        except Exception as err:
+            return gcp.UserError(f"pruning devDependencies: {err}")
+
+    return None
+
+
+def should_prune_pnpm_bun(
+    ctx: gcp.Context,
+    pjs: nodejs.PackageJSON,
+    build_node_env: str,
+    node_env_present: bool
+) -> bool:
+    """Determines if dev dependencies should be pruned."""
+    return nodejs.should_prune_pnpm_bun(ctx, pjs, build_node_env, node_env_present)

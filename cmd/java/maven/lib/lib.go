@@ -1,202 +1,208 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Complete refactored code here
+"""
+Implements java/maven buildpack.
+The maven buildpack builds Maven applications.
+"""
 
-// Implements java/maven buildpack.
-// The maven buildpack builds Maven applications.
-package lib
+import os
+import shutil
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-import (
-	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
+import googlecloudplatform.buildpacks.pkg.devmode as devmode
+import googlecloudplatform.buildpacks.pkg.env as env
+import googlecloudplatform.buildpacks(pkg.fileutil as fileutil)
+import googlecloudplatform.buildpacks.pkg.gcpbuildpack as gcp
+import googlecloudplatform.buildpacks.pkg.java as java
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	java "github.com/GoogleCloudPlatform/buildpacks/pkg/java"
-)
+m2_layer = "m2"
 
-const (
-	m2Layer = "m2"
-)
+def detect_fn(ctx: gcp.Context) -> Dict[str, Any]:
+    """
+    Detect function for Maven buildpack.
+    
+    Args:
+        ctx: The build context containing environment and file information.
+        
+    Returns:
+        A dictionary indicating whether the buildpack should be used.
+    """
+    pom_path = _find_pom_file(ctx)
+    if pom_path is not None:
+        return {"result": "OptInFileFound", "file": "pom.xml"}
+    
+    ext_xml_exists = ctx.file_exists(".mvn/extensions.xml")
+    if ext_xml_exists:
+        return {"result": "OptInFileFound", "file": ".mvn/extensions.xml"}
+        
+    return {"result": "OptOut", 
+            "reason": "none of the following found: pom.xml or .mvn/extensions.xml."}
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	pomPath, err := pomFilePath(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if pomPath != "" {
-		return gcp.OptInFileFound("pom.xml"), nil
-	}
-	extXMLExists, err := ctx.FileExists(".mvn/extensions.xml")
-	if err != nil {
-		return nil, err
-	}
-	if extXMLExists {
-		return gcp.OptInFileFound(".mvn/extensions.xml"), nil
-	}
-	return gcp.OptOut("none of the following found: pom.xml or .mvn/extensions.xml."), nil
-}
+def build_fn(ctx: gcp.Context) -> None:
+    """
+    Build function for Maven buildpack.
+    
+    Args:
+        ctx: The build context containing environment and file information.
+    """
+    m2_cached_repo = _create_m2_layer(ctx)
+    _validate_cache(ctx, m2_cached_repo)
+    
+    home_m2 = os.path.join(ctx.home_dir(), ".m2")
+    if os.path.exists(home_m2):
+        shutil.rmtree(home_m2)
+        
+    os.symlink(m2_cached_repo.path, home_m2)
+    
+    _add_jvm_config(ctx)
+    mvn_path = _provision_or_detect_maven(ctx)
+    
+    command = [mvn_path, "clean", "package", "--batch-mode", "-DskipTests", "-Dhttp.keepAlive=false"]
+    pom_path = _find_pom_file(ctx)
+    if pom_path:
+        command.append(f"-f={pom_path}")
+        
+    build_args = os.getenv(env.build_args)
+    if build_args:
+        if "maven.repo.local" in build_args:
+            ctx.warn("Detected maven.repo.local property set in GOOGLE_BUILD_ARGS. Maven caching may not work properly.")
+        command.extend(build_args.split())
+    
+    mvn_build_args = os.getenv(java.maven_build_args)
+    if mvn_build_args:
+        command = [mvn_path] + mvn_build_args.split()
+        
+    if not ctx.debug() and not devmode.enabled(ctx):
+        command.append("--quiet")
+        
+    _execute_command(ctx, command)
+    
+    if devmode.enabled(ctx):
+        devmode.write_build_script(ctx, m2_cached_repo.path, "~/.m2", command)
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	m2CachedRepo, err := ctx.Layer(m2Layer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", m2Layer, err)
-	}
-	if err := java.CheckCacheExpiration(ctx, m2CachedRepo); err != nil {
-		return fmt.Errorf("validating the cache: %w", err)
-	}
+def _create_m2_layer(ctx: gcp.Context) -> Any:
+    """Creates the Maven repository layer."""
+    return ctx.layer(m2_layer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
 
-	homeM2 := filepath.Join(ctx.HomeDir(), ".m2")
-	// Symlink the m2 layer into ~/.m2. If ~/.m2 already exists, delete it first.
-	// If it exists as a symlink, RemoveAll will remove the link, not anything it's linked to.
-	// We can't just use `-Dmaven.repo.local`. It does set the path to `m2/repo` but it fails
-	// to set the path to `m2/wrapper` which is used by mvnw to download Maven.
-	if err := ctx.RemoveAll(homeM2); err != nil {
-		return err
-	}
-	if err := ctx.Symlink(m2CachedRepo.Path, homeM2); err != nil {
-		return err
-	}
+def _validate_cache(ctx: gcp.Context, m2_cached_repo: Any) -> None:
+    """Validates the cache expiration."""
+    if not java.check_cache_expiration(ctx, m2_cached_repo):
+        raise ValueError("validating the cache failed")
 
-	if err := addJvmConfig(ctx); err != nil {
-		return err
-	}
+def _add_jvm_config(ctx: gcp.Context) -> None:
+    """
+    Workaround for Guice reflection warnings.
+    
+    Args:
+        ctx: The build context containing environment and file information.
+    """
+    version = os.getenv(env.runtime_version)
+    if version == "8" or version.startswith("8."):
+        return
+        
+    config_file = ".mvn/jvm.config"
+    if not os.path.exists(config_file):
+        os.makedirs(".mvn", exist_ok=True, mode=0o755)
+        
+        try:
+            with open(config_file, "w") as f:
+                f.write("--add-opens java.base/java.lang=ALL-UNNAMED")
+        except Exception as e:
+            ctx.log(f"Could not create {config_file}, reflection warnings may not be disabled: {e}")
 
-	mvn, err := provisionOrDetectMaven(ctx)
-	if err != nil {
-		return err
-	}
+def _provision_or_detect_maven(ctx: gcp.Context) -> str:
+    """
+    Detects or provisions Maven.
+    
+    Args:
+        ctx: The build context containing environment and file information.
+        
+    Returns:
+        Path to the Maven executable.
+        
+    Raises:
+        ValueError: If Maven could not be detected or provisioned.
+    """
+    if os.path.exists("mvnw"):
+        _ensure_unix_line_endings("mvnw")
+        return "./mvnw"
+        
+    if _is_maven_installed(ctx):
+        return "mvn"
+        
+    if ctx.is_disabled(java.maven_installer_capability):
+        ctx.log("MavenInstaller capability is disabled. Skipping installation of Maven.")
+        return ""
+        
+    mvn_path = java.install_maven(ctx)
+    if not mvn_path:
+        raise ValueError("installing Maven failed")
+    return mvn_path
 
-	command := []string{mvn, "clean", "package", "--batch-mode", "-DskipTests", "-Dhttp.keepAlive=false"}
+def _ensure_unix_line_endings(file_path: str) -> None:
+    """
+    Ensures the file has Unix line endings.
+    
+    Args:
+        file_path: Path to the file to fix.
+        
+    Raises:
+        ValueError: If fixing line endings failed.
+    """
+    try:
+        fileutil.ensure_unix_line_endings(file_path)
+    except Exception as e:
+        raise ValueError(f"ensuring unix newline characters failed: {e}")
 
-	pomPath, err := pomFilePath(ctx)
-	if err != nil {
-		return err
-	}
-	if pomPath != "" {
-		command = append(command, fmt.Sprintf("-f=%s", pomPath))
-	}
+def _is_maven_installed(ctx: gcp.Context) -> bool:
+    """
+    Checks if Maven is installed.
+    
+    Args:
+        ctx: The build context containing environment and file information.
+        
+    Returns:
+        True if Maven is installed, False otherwise.
+    """
+    try:
+        result = ctx.exec(["bash", "-c", "command -v mvn || true"])
+        return bool(result.stdout.strip())
+    except Exception as e:
+        raise ValueError(f"checking Maven installation failed: {e}")
 
-	if buildArgs := os.Getenv(env.BuildArgs); buildArgs != "" {
-		if strings.Contains(buildArgs, "maven.repo.local") {
-			ctx.Warnf("Detected maven.repo.local property set in GOOGLE_BUILD_ARGS. Maven caching may not work properly.")
-		}
-		command = append(command, strings.Fields(buildArgs)...)
-	}
+def _find_pom_file(ctx: gcp.Context) -> Optional[str]:
+    """
+    Finds the pom.xml file.
+    
+    Args:
+        ctx: The build context containing environment and file information.
+        
+    Returns:
+        Path to the pom.xml file if found, None otherwise.
+    """
+    buildable = os.getenv(env.buildable)
+    if not buildable:
+        return None
+        
+    pom_path = os.path.join(buildable, "pom.xml")
+    if ctx.file_exists(pom_path):
+        return pom_path
+    return None
 
-	if mvnBuildArgs := os.Getenv(java.MavenBuildArgs); mvnBuildArgs != "" {
-		command = append([]string{mvn}, strings.Fields(mvnBuildArgs)...)
-	}
-
-	if !ctx.Debug() && !devmode.Enabled(ctx) {
-		command = append(command, "--quiet")
-	}
-
-	if _, err := ctx.Exec(command, gcp.WithStdoutTail, gcp.WithUserAttribution); err != nil {
-		return err
-	}
-
-	// Store the build steps in a script to be run on each file change.
-	if devmode.Enabled(ctx) {
-		devmode.WriteBuildScript(ctx, m2CachedRepo.Path, "~/.m2", command)
-	}
-
-	return nil
-}
-
-func provisionOrDetectMaven(ctx *gcp.Context) (string, error) {
-	mvnwExists, err := ctx.FileExists("mvnw")
-	if err != nil {
-		return "", err
-	}
-	if mvnwExists {
-		// With CRLF endings, the "\r" gets seen as part of the shebang target, which doesn't exist.
-		if err := fileutil.EnsureUnixLineEndings("mvnw"); err != nil {
-			return "", fmt.Errorf("ensuring unix newline characters: %w", err)
-		}
-		return "./mvnw", nil
-	}
-	mvnInstalled, err := mvnInstalled(ctx)
-	if err != nil {
-		return "", err
-	}
-	if mvnInstalled {
-		return "mvn", nil
-	}
-	if ctx.IsDisabled(java.MavenInstallerCapability) {
-		ctx.Logf("MavenInstaller capability is disabled. Skipping installation of Maven.")
-		return "", nil
-	}
-	mvn, err := java.InstallMaven(ctx)
-	if err != nil {
-		return "", fmt.Errorf("installing Maven: %w", err)
-	}
-	return mvn, nil
-}
-
-// addJvmConfig is a workaround for https://github.com/google/guice/issues/1133, an "illegal reflective access" warning.
-// When that bug has been fixed in a version of mvn we can use, we can remove this workaround.
-// Write a JVM flag to .mvn/jvm.config in the project being built to suppress the warning.
-// Don't do anything if there already is a .mvn/jvm.config.
-func addJvmConfig(ctx *gcp.Context) error {
-	version := os.Getenv(env.RuntimeVersion)
-	if version == "8" || strings.HasPrefix(version, "8.") {
-		// We don't need this workaround on Java 8, and in fact it fails there because there's no --add-opens option.
-		return nil
-	}
-	configFile := ".mvn/jvm.config"
-	configFileExists, err := ctx.FileExists(configFile)
-	if err != nil {
-		return err
-	}
-	if configFileExists {
-		return nil
-	}
-	if err := os.MkdirAll(".mvn", 0755); err != nil {
-		ctx.Logf("Could not create .mvn, reflection warnings may not be disabled: %v", err)
-		return nil
-	}
-	jvmOptions := "--add-opens java.base/java.lang=ALL-UNNAMED"
-	if err := ioutil.WriteFile(configFile, []byte(jvmOptions), 0644); err != nil {
-		ctx.Logf("Could not create %s, reflection warnings may not be disabled: %v", configFile, err)
-	}
-	return nil
-}
-
-func mvnInstalled(ctx *gcp.Context) (bool, error) {
-	result, err := ctx.Exec([]string{"bash", "-c", "command -v mvn || true"})
-	if err != nil {
-		return false, err
-	}
-	return result.Stdout != "", nil
-}
-
-func pomFilePath(ctx *gcp.Context) (string, error) {
-	buildable := os.Getenv(env.Buildable)
-	pomPath := filepath.Join(buildable, "pom.xml")
-	pomExists, err := ctx.FileExists(pomPath)
-	if err != nil {
-		return "", err
-	}
-	if pomExists {
-		return pomPath, nil
-	}
-	return "", nil
-}
+def _execute_command(ctx: gcp.Context, command: List[str]) -> None:
+    """
+    Executes the Maven command.
+    
+    Args:
+        ctx: The build context containing environment and file information.
+        command: The command to execute.
+        
+    Raises:
+        ValueError: If command execution failed.
+    """
+    try:
+        result = ctx.exec(command, gcp.WithStdoutTail, gcp.WithUserAttribution)
+        if result.exit_code != 0:
+            raise ValueError(f"command execution failed with exit code {result.exit_code}")
+    except Exception as e:
+        raise ValueError(f"error executing command: {e}")

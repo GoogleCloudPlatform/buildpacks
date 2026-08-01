@@ -1,91 +1,60 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import glob
+import os
+from pathlib import Path
+from typing import Optional, List, Callable, Any, Union
 
-package gcpbuildpack
+class Context:
+    def __init__(self):
+        self.application_root = ""
 
-import (
-	"errors"
-	"os"
-	"path/filepath"
-	"strings"
+    @property
+    def ApplicationRoot(self) -> str:
+        return self.application_root
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
-)
+    def Glob(self, pattern: str) -> Union[List[str], Exception]:
+        matches = []
+        try:
+            matches = glob.glob(os.path.join(self.ApplicationRoot, pattern))
+        except Exception as e:
+            return buildererror.Error(buildererror.Status.Internal, f"globbing {pattern}: {e}")
+        return matches
 
-// Glob is a pass through for filepath.Glob(...). It returns any error with proper user / system attribution.
-func (ctx *Context) Glob(pattern string) ([]string, error) {
-	matches, err := filepath.Glob(pattern)
-	if err != nil {
-		return nil, buildererror.Errorf(buildererror.StatusInternal, "globbing %s: %v", pattern, err)
-	}
-	return matches, nil
-}
+    def HasAtLeastOne(self, pattern: str) -> Union[bool, Exception]:
+        return self.HasAtLeastOneFiltered(pattern, None)
 
-// HasAtLeastOne walks through file tree searching for at least one match.
-func (ctx *Context) HasAtLeastOne(pattern string) (bool, error) {
-	return ctx.HasAtLeastOneFiltered(pattern, nil)
-}
+    def HasAtLeastOneOutsideDependencyDirectories(self, pattern: str) -> Union[bool, Exception]:
+        filter_func = lambda path: not path.endswith("/node_modules")
+        return self.HasAtLeastOneFiltered(pattern, filter_func)
 
-// HasAtLeastOneOutsideDependencyDirectories walks through file tree searching
-// for at least one match while ignoring dependency-only directories.
-func (ctx *Context) HasAtLeastOneOutsideDependencyDirectories(pattern string) (bool, error) {
-	filterFunc := func(path string) bool {
-		rootedPath := "/" + path
+    def HasAtLeastOneFiltered(
+        self,
+        pattern: str,
+        filter_func: Optional[Callable[[str], bool]]
+    ) -> Union[bool, Exception]:
+        dir_path = os.path.join(self.ApplicationRoot)
+        matches = glob.glob(os.path.join(dir_path, pattern))
+        if len(matches) > 0:
+            return True
 
-		// Ignore the `node_modules` folder (as it may contain non-NodeJS files)
-		return !strings.HasSuffix(rootedPath, "/node_modules")
-	}
+        try:
+            for root, dirs, files in os.walk(dir_path):
+                for name in files + dirs:
+                    full_path = os.path.join(root, name)
+                    if filter_func and not filter_func(full_path):
+                        continue
+                    match = self._match_pattern(name, pattern)
+                    if match:
+                        return True
+        except Exception as e:
+            return buildererror.Error(buildererror.Status.Internal, f"walking through {dir_path}: {e}")
 
-	return ctx.HasAtLeastOneFiltered(pattern, filterFunc)
-}
+        return False
 
-type filepathFilter func(string) bool
-
-// HasAtLeastOneFiltered is a pass through for filepath.Glob(...) it returns true if there is at least one
-// file which matches the search pattern and is included by `filter`
-func (ctx *Context) HasAtLeastOneFiltered(pattern string, filter filepathFilter) (bool, error) {
-	dir := ctx.ApplicationRoot()
-
-	errFileMatch := errors.New("File matched")
-	matches, err := ctx.Glob(filepath.Join(dir, pattern))
-	if err != nil {
-		return false, err
-	}
-	if len(matches) > 0 {
-		return true, nil
-	}
-
-	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if filter != nil && !filter(path) {
-			return filepath.SkipDir
-		}
-		if err != nil {
-			return buildererror.Errorf(buildererror.StatusInternal, "walking through %s within %s: %v", path, dir, err)
-		}
-		match, err := filepath.Match(pattern, info.Name())
-		if err != nil {
-			return buildererror.Errorf(buildererror.StatusInternal, "matching %s with pattern %s: %v", path, pattern, err)
-		}
-		if match {
-			return errFileMatch
-		}
-		return nil
-	}); err != nil {
-		if err == errFileMatch {
-			return true, nil
-		}
-		return false, buildererror.Errorf(buildererror.StatusInternal, "walking through %s: %v", dir, err)
-	}
-	return false, nil
-}
+    def _match_pattern(self, name: str, pattern: str) -> bool:
+        try:
+            return glob.fnmatch.fnmatch(name, pattern)
+        except Exception as e:
+            raise buildererror.Error(
+                buildererror.Status.Internal,
+                f"matching {name} with pattern {pattern}: {e}"
+            )

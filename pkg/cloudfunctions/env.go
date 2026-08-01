@@ -1,26 +1,64 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import os
+import logging
+from pathlib import Path
+from typing import Optional
 
-package cloudfunctions
+from pkg.appstart import Config as AppStartConfig, EntrypointGenerator
+from pkg.gcpbuildpack import Context, Layer, LaunchLayer
 
-import "github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 
-// SkipFrameworkInjection is used to allow opting out of Functions Framework auto-injection
-// when it hasn't been explicitly declared as a dependency.
-const SkipFrameworkInjection = "GOOGLE_SKIP_FRAMEWORK_INJECTION"
+def get_config(ctx: Context, runtime: str, eg: EntrypointGenerator) -> tuple[AppStartConfig, Optional[Exception]]:
+    config = AppStartConfig()
+    
+    if os.getenv(env.runtime):
+        ctx.log(f"Using {env.runtime}: {os.getenv(env.runtime)}")
+        config.runtime = os.getenv(env.runtime)
+    else:
+        ctx.log(f"Using runtime: {runtime}")
+        config.runtime = runtime
 
-// IsSkipFrameworkInjectionEnabled returns true if skipping Functions Framework injection is enabled.
-func IsSkipFrameworkInjectionEnabled() (bool, error) {
-	return env.IsPresentAndTrue(SkipFrameworkInjection)
-}
+    entrypoint, err = eg(ctx)
+    if err:
+        return None, Exception(f"getting entrypoint: {err}")
+
+    config.entrypoint = entrypoint
+    ctx.log(f"Using config {config}")
+    return config, None
+
+
+def assert_framework_injection_allowed() -> Optional[Exception]:
+    should_skip, err = is_skip_framework_injection_enabled()
+    if err:
+        return err
+
+    if should_skip:
+        return Exception("Functions Framework must be set as a dependency when skipping automatic framework injection has been enabled via GOOGLE_SKIP_FRAMEWORK_INJECTION")
+
+    return None
+
+
+def build(ctx: Context, runtime: str, eg: EntrypointGenerator) -> Optional[Exception]:
+    layer, err = ctx.create_layer("serve", LaunchLayer())
+    if err:
+        return Exception(f"creating layer: {err}")
+
+    bin_dir = Path(layer.path) / "bin"
+    try:
+        bin_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        return e
+
+    try:
+        os.symlink("/usr/bin/serve2", str(bin_dir / "serve"))
+    except OSError as e:
+        return e
+
+    config, err = get_config(ctx, runtime, eg)
+    if err:
+        return Exception(f"building config: {err}")
+
+    if not config.write(ctx):
+        return Exception("writing config failed")
+
+    ctx.add_web_process(["pid1"])
+    return None

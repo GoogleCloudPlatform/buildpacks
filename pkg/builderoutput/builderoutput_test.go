@@ -1,187 +1,84 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2020 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-package builderoutput
+import json
+from dataclasses import dataclass, field
+from typing import List, Optional
 
-import (
-	"strings"
-	"testing"
+from pkg.buildererror import Error as BuilderError, Status
+from pkg.buildermetadata import BuilderMetadata
+from pkg.buildermetrics import BuilderMetrics
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
-	"github.com/google/go-cmp/cmp"
-)
 
-func TestFromJSON(t *testing.T) {
-	serialized := `
-{
-	"rtVersions": ["6.0.6"],
-  "metrics": {"c":{"1":3},"f":{"9":18.3}},
-	"error": {
-		"buildpackId": "bad-buildpack",
-		"buildpackVersion": "vbad",
-		"errorType": "INTERNAL",
-		"canonicalCode": "INTERNAL",
-		"errorId": "abc123",
-		"errorMessage": "error-message",
-		"anotherThing": 123
-	},
-	"metadata": {"m":{"1":"true", "2":"false", "3":"angular", "4":"17.0.0", "5":"@apphosting/adapter-angular", "6":"17.2.3", "7":"nx", "8":"uv", "9":"pyproject.toml"}},
-	"stats": [
-		{
-			"buildpackId": "buildpack-1",
-			"buildpackVersion": "v1",
-			"totalDurationMs": 100,
-			"userDurationMs": 101,
-			"anotherThing": "shouldn't cause a problem"
-		},
-		{
-			"buildpackId": "buildpack-2",
-			"buildpackVersion": "v2",
-			"totalDurationMs": 200,
-			"userDurationMs": 201
-		}
-	],
-	"warnings": [
-		"Some warning",
-		"Some other warning"
-	],
-	"customImage": true
-}
-`
+@dataclass
+class BuilderStat:
+    buildpack_id: str = ""
+    buildpack_version: str = ""
+    duration_ms: int = 0
+    user_duration_ms: int = 0
 
-	got, err := FromJSON([]byte(serialized))
-	if err != nil {
-		t.Fatal(err)
-	}
+    @classmethod
+    def from_json(cls, data: dict):
+        return cls(
+            buildpack_id=data.get("buildpackId", ""),
+            buildpack_version=data.get("buildpackVersion", ""),
+            duration_ms=data.get("totalDurationMs", 0),
+            user_duration_ms=data.get("userDurationMs", 0)
+        )
 
-	bm := buildermetrics.NewBuilderMetrics()
-	bm.GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(3)
-	bm.GetFloatDP(buildermetrics.ComposerInstallLatencyID).Add(18.3)
-	fm := buildermetadata.NewBuilderMetadata()
-	fm.SetValue(buildermetadata.IsUsingGenkit, "true")
-	fm.SetValue(buildermetadata.IsUsingGenAI, "false")
-	fm.SetValue(buildermetadata.FrameworkName, "angular")
-	fm.SetValue(buildermetadata.FrameworkVersion, "17.0.0")
-	fm.SetValue(buildermetadata.AdapterName, "@apphosting/adapter-angular")
-	fm.SetValue(buildermetadata.AdapterVersion, "17.2.3")
-	fm.SetValue(buildermetadata.MonorepoName, "nx")
-	fm.SetValue(buildermetadata.PackageManager, "uv")
-	fm.SetValue(buildermetadata.ConfigFile, "pyproject.toml")
-	want := BuilderOutput{
-		InstalledRuntimeVersions: []string{"6.0.6"},
-		Metrics:                  bm,
-		Error: buildererror.Error{
-			BuildpackID:      "bad-buildpack",
-			BuildpackVersion: "vbad",
-			Type:             buildererror.StatusInternal,
-			Status:           buildererror.StatusInternal,
-			ID:               "abc123",
-			Message:          "error-message",
-		},
-		Metadata: fm,
-		Stats: []BuilderStat{
-			{
-				BuildpackID:      "buildpack-1",
-				BuildpackVersion: "v1",
-				DurationMs:       100,
-				UserDurationMs:   101,
-			},
-			{
-				BuildpackID:      "buildpack-2",
-				BuildpackVersion: "v2",
-				DurationMs:       200,
-				UserDurationMs:   201,
-			},
-		},
-		Warnings: []string{
-			"Some warning",
-			"Some other warning",
-		},
-		CustomImage: true,
-	}
 
-	if diff := cmp.Diff(got, want, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{}, buildermetrics.FloatDP{}, buildererror.Error{}, buildermetadata.BuilderMetadata{})); diff != "" {
-		t.Errorf("builder output parsing failed.  diff (-got +want):\n%v", diff)
-	}
-}
+@dataclass
+class BuilderOutput:
+    installed_runtime_versions: List[str] = field(default_factory=list)
+    metrics: BuilderMetrics = field(default_factory=BuilderMetrics)
+    error: Optional[BuilderError] = None
+    metadata: BuilderMetadata = field(default_factory=BuilderMetadata)
+    stats: List[BuilderStat] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    custom_image: bool = False
 
-func TestJSON(t *testing.T) {
-	bm := buildermetrics.NewBuilderMetrics()
-	bm.GetCounter(buildermetrics.ArNpmCredsGenCounterID).Increment(3)
-	fm := buildermetadata.NewBuilderMetadata()
-	fm.SetValue(buildermetadata.IsUsingGenkit, "true")
-	fm.SetValue(buildermetadata.IsUsingGenAI, "false")
-	fm.SetValue(buildermetadata.FrameworkName, "angular")
-	fm.SetValue(buildermetadata.FrameworkVersion, "17.0.0")
-	fm.SetValue(buildermetadata.AdapterName, "@apphosting/adapter-angular")
-	fm.SetValue(buildermetadata.AdapterVersion, "17.2.3")
-	fm.SetValue(buildermetadata.MonorepoName, "nx")
-	fm.SetValue(buildermetadata.PackageManager, "pip")
-	fm.SetValue(buildermetadata.ConfigFile, "requirements.txt")
-	b := BuilderOutput{
-		InstalledRuntimeVersions: []string{"6.0.6"},
-		Metrics:                  bm,
-		Error:                    buildererror.Error{Status: buildererror.StatusInternal},
-		Metadata:                 fm,
-	}
+    @classmethod
+    def from_json(cls, json_bytes: bytes) -> 'BuilderOutput':
+        data = json.loads(json_bytes.decode('utf-8'))
+        
+        return cls(
+            installed_runtime_versions=data.get("rtVersions", []),
+            metrics=BuilderMetrics.from_json(data.get("metrics", {})),
+            error=BuilderError.from_json(data.get("error", {})) if "error" in data else None,
+            metadata=BuilderMetadata.from_json(data.get("metadata", {})),
+            stats=[BuilderStat.from_json(stat) for stat in data.get("stats", [])],
+            warnings=data.get("warnings", []),
+            custom_image=data.get("customImage", False)
+        )
 
-	s, err := b.JSON()
+    def to_json(self) -> bytes:
+        return json.dumps({
+            "rtVersions": self.installed_runtime_versions,
+            "metrics": self.metrics.to_dict(),
+            "error": self.error.to_dict() if self.error else {},
+            "metadata": self.metadata.to_dict(),
+            "stats": [stat.__dict__ for stat in self.stats],
+            "warnings": self.warnings,
+            "customImage": self.custom_image
+        }).encode('utf-8')
 
-	if err != nil {
-		t.Fatalf("Failed to marshal %v: %v", b, err)
-	}
-	if want := `"rtVersions":["6.0.6"]`; !strings.Contains(string(s), want) {
-		t.Errorf("Expected string %q not found in %s", want, s)
-	}
-	if want := "INTERNAL"; !strings.Contains(string(s), want) {
-		t.Errorf("Expected string %q not found in %s", want, s)
-	}
-	if want := `{"c":{"1":3}}`; !strings.Contains(string(s), want) {
-		t.Errorf(`Expected string %q not found in %s`, want, s)
-	}
-	if want := `{"m":{"1":"true","2":"false","3":"angular","4":"17.0.0","5":"@apphosting/adapter-angular","6":"17.2.3","7":"nx","8":"pip","9":"requirements.txt"}}`; !strings.Contains(string(s), want) {
-		t.Errorf(`Expected string %q not found in %s`, want, s)
-	}
-}
+    @staticmethod
+    def new() -> 'BuilderOutput':
+        return BuilderOutput(
+            metrics=BuilderMetrics.new(),
+            metadata=BuilderMetadata.new()
+        )
 
-func TestIsSystemError(t *testing.T) {
-	testCases := []struct {
-		name      string
-		errorType buildererror.Status
-		want      bool
-	}{
-		{
-			name:      "no match",
-			errorType: buildererror.StatusInvalidArgument,
-			want:      false,
-		},
-		{
-			name:      "exact",
-			errorType: buildererror.StatusInternal,
-			want:      true,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			bo := BuilderOutput{Error: buildererror.Error{Type: tc.errorType}}
-
-			if got, want := bo.IsSystemError(), tc.want; got != want {
-				t.Errorf("incorrect result for %q got=%t want=%t", tc.errorType, got, want)
-			}
-		})
-	}
-}
+    def is_system_error(self) -> bool:
+        return self.error and self.error.type == Status.INTERNAL

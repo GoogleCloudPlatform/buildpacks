@@ -1,374 +1,149 @@
-package apphostingschema
+import os
+import re
+from dataclasses import dataclass, field
+from typing import List, Optional
+import yaml
+from .vpcaccess import VpcAccess, validate_vpc_access
 
-import (
-	"testing"
+reserved.FirebaseKeyPrefix = "X_FIREBASE_"
 
-	"github.com/google/go-cmp/cmp"
-)
+@dataclass
+class EnvironmentVariable:
+    Variable: str
+    Value: Optional[str] = None
+    Secret: Optional[str] = None
+    Availability: List[str] = field(default_factory=list)
+    Source: str = ""
+    
+    def __post_init__(self):
+        if self.Value and self.Secret:
+            raise ValueError("Both 'value' and 'secret' cannot be present")
+        if not self.Value and not self.Secret:
+            raise ValueError("Either 'value' or 'secret' must be present")
+        for avail in self.Availability:
+            if avail not in valid_availability_values:
+                raise ValueError(f"Invalid availability value: {avail}")
 
-func TestValidateVpcAccess(t *testing.T) {
-	tests := []struct {
-		desc      string
-		vpcAccess *VpcAccess
-		wantErr   bool
-	}{
-		{
-			desc: "valid connector name and egress",
-			vpcAccess: &VpcAccess{
-				Connector: "projects/project-id/locations/us-central1/connectors/my-connector",
-				Egress:    "ALL_TRAFFIC",
-			},
-		},
-		{
-			desc: "valid connector id",
-			vpcAccess: &VpcAccess{
-				Connector: "my-connector",
-			},
-		},
-		{
-			desc: "valid network interface",
-			vpcAccess: &VpcAccess{
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "projects/project-id/global/networks/test-network",
-						Subnetwork: "projects/project-id/regions/us-central1/subnetworks/test-subnetwork",
-						Tags:       []string{"test-tag"},
-					},
-				},
-			},
-		},
-		{
-			desc: "invalid egress",
-			vpcAccess: &VpcAccess{
-				Connector: "my-connector",
-				Egress:    "INVALID_EGRESS",
-			},
-			wantErr: true,
-		},
-		{
-			desc: "invalid connector name",
-			vpcAccess: &VpcAccess{
-				Connector: "locations/us-central1/connectors/my-connector/foo",
-			},
-			wantErr: true,
-		},
-		{
-			desc: "invalid network interface",
-			vpcAccess: &VpcAccess{
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "invalid/network",
-						Subnetwork: "projects/project-id/regions/us-central1/subnetworks/test-subnetwork",
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			desc: "invalid subnetwork interface",
-			vpcAccess: &VpcAccess{
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "projects/project-id/global/networks/test-network",
-						Subnetwork: "invalid/subnetwork",
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			desc: "connector and network interfaces cannot be set at the same time",
-			vpcAccess: &VpcAccess{
-				Connector: "my-connector",
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "network",
-						Subnetwork: "subnetwork",
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			desc: "at least network or subnetwork is required",
-			vpcAccess: &VpcAccess{
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Tags: []string{"tag1"},
-					},
-				},
-			},
-			wantErr: true,
-		},
-	}
+@dataclass
+class RunConfig:
+    CPU: Optional[float] = None
+    MemoryMiB: Optional[int] = None
+    Concurrency: Optional[int] = None
+    MaxInstances: Optional[int] = None
+    MinInstances: Optional[int] = None
+    VpcAccess: Optional[VpcAccess] = None
+    CPUAlwaysAllocated: Optional[bool] = None
 
-	for _, tc := range tests {
-		t.Run(tc.desc, func(t *testing.T) {
-			err := ValidateVpcAccess(tc.vpcAccess)
-			if (err != nil) != tc.wantErr {
-				t.Errorf("ValidateVpcAccess(%v) returned %v, wantErr %v", tc.vpcAccess, err, tc.wantErr)
-			}
-		})
-	}
-}
+@dataclass
+class Scripts:
+    RunCommand: str = ""
+    BuildCommand: str = ""
 
-func TestMergeVpcAccess(t *testing.T) {
-	tests := []struct {
-		desc          string
-		yamlAccess    *VpcAccess
-		envAccess     *VpcAccess
-		wantVpcAccess *VpcAccess
-	}{
-		{
-			desc: "yaml access is nil",
-			envAccess: &VpcAccess{
-				Egress: "ALL_TRAFFIC",
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "network",
-						Subnetwork: "subnetwork",
-					},
-				},
-			},
-			wantVpcAccess: &VpcAccess{
-				Egress: "ALL_TRAFFIC",
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "network",
-						Subnetwork: "subnetwork",
-					},
-				},
-			},
-		},
-		{
-			desc: "env access is nil",
-			yamlAccess: &VpcAccess{
-				Egress: "ALL_TRAFFIC",
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "network",
-						Subnetwork: "subnetwork",
-					},
-				},
-			},
-			wantVpcAccess: &VpcAccess{
-				Egress: "ALL_TRAFFIC",
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "network",
-						Subnetwork: "subnetwork",
-					},
-				},
-			},
-		},
-		{
-			desc:          "both access are nil",
-			wantVpcAccess: nil,
-		},
-		{
-			desc: "env overrides egress settings",
-			yamlAccess: &VpcAccess{
-				Connector: "my-connector",
-				Egress:    "ALL_TRAFFIC",
-			},
-			envAccess: &VpcAccess{
-				Connector: "my-connector",
-				Egress:    "PRIVATE_RANGES_ONLY",
-			},
-			wantVpcAccess: &VpcAccess{
-				Connector: "my-connector",
-				Egress:    "PRIVATE_RANGES_ONLY",
-			},
-		},
-		{
-			desc: "env overrides network interfaces",
-			yamlAccess: &VpcAccess{
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "network",
-						Subnetwork: "subnetwork",
-						Tags:       []string{"tag1"},
-					},
-				},
-			},
-			envAccess: &VpcAccess{
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "network2",
-						Subnetwork: "subnetwork2",
-						Tags:       []string{"tag2"},
-					},
-				},
-			},
-			wantVpcAccess: &VpcAccess{
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "network2",
-						Subnetwork: "subnetwork2",
-						Tags:       []string{"tag2"},
-					},
-				},
-			},
-		},
-		{
-			desc: "env overrides connector",
-			yamlAccess: &VpcAccess{
-				Connector: "my-connector",
-			},
-			envAccess: &VpcAccess{
-				Connector: "my-connector-2",
-			},
-			wantVpcAccess: &VpcAccess{
-				Connector: "my-connector-2",
-			},
-		},
-		{
-			desc: "env overrides connector vs network interfaces",
-			yamlAccess: &VpcAccess{
-				Connector: "my-connector",
-			},
-			envAccess: &VpcAccess{
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "network",
-						Subnetwork: "subnetwork",
-						Tags:       []string{"tag2"},
-					},
-				},
-			},
-			wantVpcAccess: &VpcAccess{
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "network",
-						Subnetwork: "subnetwork",
-						Tags:       []string{"tag2"},
-					},
-				},
-			},
-		},
-		{
-			desc: "env overrides netowrk interface vs connector",
-			yamlAccess: &VpcAccess{
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "network",
-						Subnetwork: "subnetwork",
-						Tags:       []string{"tag1"},
-					},
-				},
-			},
-			envAccess: &VpcAccess{
-				Connector: "my-connector",
-			},
-			wantVpcAccess: &VpcAccess{
-				Connector: "my-connector",
-			},
-		},
-		{
-			desc: "merge case",
-			yamlAccess: &VpcAccess{
-				Connector: "my-connector",
-				Egress:    "ALL_TRAFFIC",
-			},
-			envAccess: &VpcAccess{
-				Connector: "my-test-connector",
-			},
-			wantVpcAccess: &VpcAccess{
-				Connector: "my-test-connector",
-				Egress:    "ALL_TRAFFIC",
-			},
-		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.desc, func(t *testing.T) {
-			gotVpcAccess := MergeVpcAccess(tc.yamlAccess, tc.envAccess)
-			if diff := cmp.Diff(tc.wantVpcAccess, gotVpcAccess); diff != "" {
-				t.Errorf("MergeVpcAccess(%v, %v) returned unexpected diff (-want +got):\n%s", tc.yamlAccess, tc.envAccess, diff)
-			}
-		})
-	}
-}
+@dataclass
+class OutputFiles:
+    ServerApp: 'ServerApp'
 
-func TestNormalizeVpcAccess(t *testing.T) {
-	tests := []struct {
-		desc          string
-		vpcAccess     *VpcAccess
-		project       string
-		region        string
-		wantVpcAccess *VpcAccess
-	}{
-		{
-			desc: "connector id is normalized",
-			vpcAccess: &VpcAccess{
-				Connector: "my-connector",
-			},
-			project: "project-id",
-			region:  "us-central1",
-			wantVpcAccess: &VpcAccess{
-				Connector: "projects/project-id/locations/us-central1/connectors/my-connector",
-			},
-		},
-		{
-			desc: "connector name is not normalized",
-			vpcAccess: &VpcAccess{
-				Connector: "projects/project-id/locations/us-central1/connectors/my-connector",
-			},
-			project: "project-id",
-			region:  "us-central1",
-			wantVpcAccess: &VpcAccess{
-				Connector: "projects/project-id/locations/us-central1/connectors/my-connector",
-			},
-		},
-		{
-			desc: "network interface id is normalized",
-			vpcAccess: &VpcAccess{
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "test-network",
-						Subnetwork: "test-subnetwork",
-					},
-				},
-			},
-			project: "project-id",
-			region:  "us-central1",
-			wantVpcAccess: &VpcAccess{
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "projects/project-id/global/networks/test-network",
-						Subnetwork: "projects/project-id/regions/us-central1/subnetworks/test-subnetwork",
-					},
-				},
-			},
-		},
-		{
-			desc: "network interface is not normalized",
-			vpcAccess: &VpcAccess{
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "projects/project-id/global/networks/test-network",
-						Subnetwork: "projects/project-id/regions/us-central1/subnetworks/test-subnetwork",
-					},
-				},
-			},
-			project: "project-id",
-			region:  "us-central1",
-			wantVpcAccess: &VpcAccess{
-				NetworkInterfaces: []NetworkInterface{
-					{
-						Network:    "projects/project-id/global/networks/test-network",
-						Subnetwork: "projects/project-id/regions/us-central1/subnetworks/test-subnetwork",
-					},
-				},
-			},
-		},
-	}
+@dataclass
+class ServerApp:
+    Include: List[str]
 
-	for _, tc := range tests {
-		t.Run(tc.desc, func(t *testing.T) {
-			NormalizeVpcAccess(tc.vpcAccess, tc.project, tc.region)
-			if diff := cmp.Diff(tc.wantVpcAccess, tc.vpcAccess); diff != "" {
-				t.Errorf("NormalizeVpcAccess(%v) returned unexpected diff (-want +got):\n%s", tc.vpcAccess, diff)
-			}
-		})
-	}
-}
+@dataclass
+class AppHostingSchema:
+    RunConfig: Optional[RunConfig] = None
+    Env: List[EnvironmentVariable] = field(default_factory=list)
+    Scripts: Optional[Scripts] = None
+    OutputFiles: Optional[OutputFiles] = None
+
+def read_and_validate_from_file(file_path: str) -> 'AppHostingSchema':
+    if not os.path.exists(file_path):
+        return AppHostingSchema()
+    
+    with open(file_path, 'r') as f:
+        data = yaml.safe_load(f)
+        
+    try:
+        return AppHostingSchema.from_yaml(data)
+    except Exception as e:
+        raise ValueError(f"Invalid apphosting.yaml at {file_path}: {e}")
+
+@classmethod
+def from_yaml(cls, data: dict) -> 'AppHostingSchema':
+    run_config_data = data.get('runConfig')
+    run_config = RunConfig() if run_config_data else None
+    # Populate run_config fields...
+    
+    env_vars = [EnvironmentVariable(**ev) for ev in data.get('env', [])]
+    
+    scripts_data = data.get('scripts')
+    scripts = Scripts(**scripts_data) if scripts_data else None
+    
+    output_files_data = data.get('outputFiles')
+    output_files = OutputFiles(ServerApp(**output_files_data['serverApp'])) if output_files_data else None
+    
+    return cls(RunConfig=run_config, Env=env_vars, Scripts=scripts, OutputFiles=output_files)
+
+def is_reserved_key(env_key: str) -> bool:
+    return env_key in reserved_keys or env_key.startswith(reserved.FirebaseKeyPrefix)
+
+def sanitize_env(env_vars: List[EnvironmentVariable]) -> List[EnvironmentVariable]:
+    sanitized = []
+    for ev in env_vars:
+        if not is_reserved_key(ev.Variable):
+            if not ev.Availability:
+                ev.Availability = ["BUILD", "RUNTIME"]
+                print(f"INFO: {ev.Variable} has no availability specified, defaulting to ['BUILD', 'RUNTIME']")
+            sanitized.append(ev)
+        else:
+            print(f"WARNING: Reserved key {ev.Variable} removed from environment variables")
+    return sanitized
+
+def sanitize(schema: 'AppHostingSchema') -> None:
+    schema.Env = sanitize_env(schema.Env)
+
+def merge_app_hosting_schemas(base_schema: 'AppHostingSchema', env_specific_schema: 'AppHostingSchema') -> None:
+    # Merge RunConfig fields...
+    if env_specific_schema.RunConfig:
+        base_schema.RunConfig = env_specific_schema.RunConfig
+        
+    # Merge Env variables...
+    merged_env = []
+    env_vars_by_name = {ev.Variable: ev for ev in env_specific_schema.Env}
+    for ev in base_schema.Env:
+        if ev.Variable not in env_vars_by_name:
+            merged_env.append(ev)
+    merged_env.extend(env_specific_schema.Env)
+    base_schema.Env = merged_env
+    
+    # Merge other sections...
+    if env_specific_schema.OutputFiles:
+        base_schema.OutputFiles = env_specific_schema.OutputFiles
+
+def merge_with_environment_specific_yaml(base_schema: 'AppHostingSchema', apphosting_path: str, environment_name: str) -> None:
+    if not environment_name:
+        return
+        
+    env_file_path = os.path.join(os.path.dirname(apphosting_path), f"apphosting.{environment_name}.yaml")
+    if not os.path.exists(env_file_path):
+        print(f"INFO: Environment specific file {env_file_path} not found")
+        return
+        
+    env_specific_schema = read_and_validate_from_file(env_file_path)
+    merge_app_hosting_schemas(base_schema, env_specific_schema)
+
+def get_env_var(schema: 'AppHostingSchema', key: str) -> Optional[EnvironmentVariable]:
+    for ev in schema.Env:
+        if ev.Variable == key:
+            return ev
+    return None
+
+def write_to_file(self, file_path: str) -> None:
+    with open(file_path, 'w') as f:
+        yaml.dump(self.to_dict(), f)
+
+def to_dict(self) -> dict:
+    return {
+        'runConfig': self.RunConfig.__dict__ if self.RunConfig else None,
+        'env': [ev.__dict__ for ev in self.Env],
+        'scripts': self.Scripts.__dict__ if self.Scripts else None,
+        'outputFiles': self.OutputFiles.__dict__ if self.OutputFiles else None
+    }

@@ -1,80 +1,76 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements python/webserver buildpack.
-// The webserver buildpack installs gunicorn if a custom entrypoint is not specified.
-package lib
+"""Implements python/webserver buildpack."""
 
-import (
-	_ "embed"
-	"fmt"
-	"os"
-	"path/filepath"
+import os
+from pathlib import Path
+import subprocess
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
-)
+import gcpbuildpack
+import python_buildpack_utils as python_utils
 
-//go:embed requirements.txt
-var requirementsContent string
+layer_name = "gunicorn"
+gunicorn_package = "gunicorn"
 
-const (
-	layerName = "gunicorn"
-)
+requirements_content = """\
+gunicorn==20.1.0
+"""
 
-var (
-	gunicorn = "gunicorn"
-)
+def detect_fn(ctx: gcpbuildpack.Context) -> tuple[gcpbuildpack.DetectResult, Exception]:
+    if os.getenv("Entrypoint") is not None:
+        return gcpbuildpack.OptOut("custom entrypoint present"), None
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if os.Getenv(env.Entrypoint) != "" {
-		return gcp.OptOut("custom entrypoint present"), nil
-	}
-	requirementsExists, err := ctx.FileExists("requirements.txt")
-	if err != nil {
-		return nil, err
-	}
-	if requirementsExists {
-		present, err := python.RequirementsPackagePresent(ctx, gunicorn)
-		if err != nil {
-			return nil, fmt.Errorf("error detecting gunicorn: %w", err)
-		}
-		if present {
-			return gcp.OptOut("gunicorn present in requirements.txt"), nil
-		}
-		return gcp.OptIn("gunicorn missing from requirements.txt", gcp.WithBuildPlans(python.RequirementsProvidesPlan)), nil
-	}
-	return gcp.OptIn("requirements.txt with gunicorn not found", gcp.WithBuildPlans(python.RequirementsProvidesPlan)), nil
-}
+    requirements_path = Path(ctx.work_dir) / "requirements.txt"
+    if requirements_path.exists():
+        try:
+            result = subprocess.run(
+                [ctx.python_interpreter, "-m", "pip", "list", "--format=freeze"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            packages = {line.split("==")[0] for line in result.stdout.splitlines()}
+            
+            if gunicorn_package in packages:
+                return gcpbuildpack.OptOut("gunicorn present in requirements.txt"), None
+            else:
+                return gcpbuildpack.OptIn(
+                    "gunicorn missing from requirements.txt",
+                    build_plan=python_utils.RequirementsProvidesPlan()
+                ), None
+        except subprocess.CalledProcessError as e:
+            return None, Exception(f"Error detecting gunicorn: {e}")
+    else:
+        return gcpbuildpack.OptIn(
+            "requirements.txt with gunicorn not found", 
+            build_plan=python_utils.RequirementsProvidesPlan()
+        ), None
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	l, err := ctx.Layer(layerName, gcp.BuildLayer)
-	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", layerName, err)
-	}
-
-	// The pip install is performed by the pip buildpack; see python.InstallRequirements.
-	ctx.Debugf("Adding webserver requirements.txt to the list of requirements files to install.")
-
-	r := filepath.Join(l.Path, "requirements.txt")
-	if err := os.WriteFile(r, []byte(requirementsContent), 0644); err != nil {
-		return fmt.Errorf("writing requirements.txt to layer: %w", err)
-	}
-
-	l.BuildEnvironment.Append(python.RequirementsFilesEnv, string(os.PathListSeparator), r)
-	return nil
-}
+def build_fn(ctx: gcpbuildpack.Context) -> Exception:
+    try:
+        layer = ctx.create_layer(layer_name, gcpbuildpack.LayerType.BUILD)
+        
+        requirements_file = layer.path / "requirements.txt"
+        with open(requirements_file, "w") as f:
+            f.write(requirements_content)
+            
+        ctx.set_build_env_var(
+            python_utils.RequirementsFilesEnv,
+            str(requirements_file),
+            append=True
+        )
+        return None
+    except Exception as e:
+        return Exception(f"Error creating {layer_name} layer: {e}")

@@ -1,74 +1,67 @@
-// Copyright 2023 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Complete refactored code here
+import argparse
+import logging
+import os
+import sys
+from pathlib import Path
 
-// The main binary will in the future run AppHosting publisher logic.
-package main
+import publisher  # type: ignore
 
-// This file is going to be replaced by apphosting_publisher in apphosting directory.
-// Be sure to mirror all changes to that file.
-// (-- LINT.IfChange --)
-import (
-	"flag"
-	"log"
-	"os"
-	"path/filepath"
+def main():
+    parser = argparse.ArgumentParser(description='Firebase publisher tool')
+    parser.add_argument(
+        '--apphostingyaml_filepath',
+        required=True,
+        help='File path to user defined apphosting.yaml'
+    )
+    parser.add_argument(
+        '--output_bundle_dir',
+        required=True,
+        help='File path to root directory of build artifacts aka Output Bundle (including bundle.yaml)'
+    )
+    parser.add_argument(
+        '--output_filepath',
+        default='',
+        help='File path to write publisher output data to'
+    )
 
-	publisher "github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/publisher"
-)
+    args = parser.parse_args()
 
-var (
-	apphostingYAMLFilePath = flag.String("apphostingyaml_filepath", "", "File path to user defined apphosting.yaml")
-	outputBundleDir        = flag.String("output_bundle_dir", "", "File path to root directory of build artifacts aka Output Bundle (including bundle.yaml)")
-	outputFilePath         = flag.String("output_filepath", "", "File path to write publisher output data to")
-)
+    # Log any remaining arguments after flag parsing
+    remaining_args = sys.argv[1:]
+    if len(remaining_args) > 0:
+        logging.warning(f"Ignored command-line arguments: {remaining_args}")
 
-func main() {
+    # Validate required flags
+    if not args.apphostingyaml_filepath:
+        logging.error("--apphostingyaml_filepath flag not specified.")
+        sys.exit(1)
+    
+    if not args.output_bundle_dir:
+        logging.error("--output_bundle_dir flag not specified.")
+        sys.exit(1)
 
-	// Flag parsing, ensuring that unknown flags are ignored and logged.
-	flag.CommandLine.Init(flag.CommandLine.Name(), flag.ContinueOnError)
-	if err := flag.CommandLine.Parse(os.Args[1:]); err != nil {
-		log.Printf("Flag parsing error: %v.", err)
-	}
+    # Handle output_filepath default value from environment variable
+    if not args.output_filepath:
+        builder_output = os.getenv("BUILDER_OUTPUT")
+        if builder_output:
+            args.output_filepath = str(Path(builder_output) / "output")
+        else:
+            logging.error("--output_filepath flag not specified.")
+            sys.exit(1)
 
-	// Get any remaining arguments after flag parsing
-	remainingArgs := flag.Args()
-	if len(remainingArgs) > 0 {
-		log.Printf("Ignored command-line arguments: %v", remainingArgs)
-	}
+    # Construct the bundle.yaml path
+    bundle_path = os.path.join(args.output_bundle_dir, "bundle.yaml")
 
-	// Validate flag values are what we expect.
-	if *apphostingYAMLFilePath == "" {
-		log.Fatal("--apphostingyaml_filepath flag not specified.")
-	}
-	if *outputBundleDir == "" {
-		log.Fatal("--output_bundle_dir flag not specified.")
-	}
-	if *outputFilePath == "" {
-		if builderOutput := os.Getenv("BUILDER_OUTPUT"); builderOutput != "" {
-			*outputFilePath = builderOutput + "/output"
-		} else {
-			log.Fatal("--output_filepath flag not specified.")
-		}
-	}
+    try:
+        publisher.publish(
+            apphosting_yaml_path=args.apphostingyaml_filepath,
+            bundle_path=bundle_path,
+            output_path=args.output_filepath
+        )
+    except Exception as e:
+        logging.error(f"Error during publishing: {e}")
+        sys.exit(1)
 
-	err := publisher.Publish(
-		*apphostingYAMLFilePath, filepath.Join(*outputBundleDir, "bundle.yaml"), *outputFilePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-// (--
-// LINT.ThenChange(//depot/google3/apphosting/runtime/titanium/tools/apphosting_publisher/main.go)
-// --)
+if __name__ == "__main__":
+    main()

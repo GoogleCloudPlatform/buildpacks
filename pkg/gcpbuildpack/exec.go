@@ -1,276 +1,90 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Complete refactored code here
+import os
+import json
+import time
+import random
+import logging
+from typing import Optional, Dict, Any
+from pathlib import Path
 
-package gcpbuildpack
+import buildererror
+import buildermetadata
+import buildermetrics
+import builderoutput
 
-import (
-	"bytes"
-	"fmt"
-	"io"
-	"os"
-	"os/exec"
-	"strings"
-	"sync"
-	"time"
+logger = logging.getLogger(__name__)
 
-	"errors"
+class Context:
+    def __init__(self):
+        self.buildpack_id = ""
+        self.buildpack_version = ""
+        self.warnings = []
+        self.installed_runtime_versions = []
+        self.stats = {
+            "user": 0.0,
+            "total": 0.0
+        }
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
-)
+def save_error_output(ctx: Context, err: Exception):
+    be = buildererror.Error.from_exception(err)
+    output_dir = os.getenv(builderoutput.BUILDER_OUTPUT_ENV)
+    if not output_dir:
+        return
 
-var (
-	divider = strings.Repeat("-", 80)
-)
+    max_message_bytes = 49000
+    if len(be.message) > max_message_bytes:
+        be.message = keep_tail(be.message, max_message_bytes)
 
-// ExecResult bundles exec results.
-type ExecResult struct {
-	ExitCode int
-	Stdout   string
-	Stderr   string
-	Combined string
-}
+    be.buildpack_id = ctx.buildpack_id
+    be.buildpack_version = ctx.buildpack_version
 
-type execParams struct {
-	cmd []string
-	dir string
-	env []string
+    bo = builderoutput.BuilderOutput()
+    bo.error = be
+    bo.metrics = buildermetrics.global_metrics().to_dict()
+    bo.metadata = buildermetadata.global_metadata().to_dict()
 
-	userAttribution    bool
-	userTiming         bool
-	messageProducer    MessageProducer
-	logCommandOverride *bool
-	logOutputOverride  *bool
-}
+    try:
+        data = json.dumps(bo.to_dict())
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        temp_path = Path(output_dir) / f"{builderoutput.BUILDER_OUTPUT_FILENAME}-{random.randint(0, 1000)}"
+        with open(temp_path, 'w') as f:
+            f.write(data)
+        final_path = Path(output_dir) / builderoutput.BUILDER_OUTPUT_FILENAME
+        temp_path.rename(final_path)
 
-// ExecOption configures Exec functions.
-type ExecOption func(o *execParams)
+    except Exception as e:
+        logger.warning(f"Failed to save error output: {e}")
 
-// WithEnv sets environment variables (of the form "KEY=value").
-func WithEnv(env ...string) ExecOption {
-	return func(o *execParams) {
-		o.env = append(o.env, env...)
-	}
-}
+def keep_tail(message: str, max_length: int) -> str:
+    if len(message) <= max_length:
+        return message
+    return f"...{message[-(max_length - 3):]}"
 
-// WithWorkDir sets a specific working directory.
-func WithWorkDir(dir string) ExecOption {
-	return func(o *execParams) {
-		o.dir = dir
-	}
-}
+def keep_head(message: str, max_length: int) -> str:
+    if len(message) <= max_length:
+        return message
+    return f"{message[:max_length-3]}..."
 
-// WithUserAttribution indicates that failure and timing both are attributed to the user.
-var WithUserAttribution = func(o *execParams) {
-	o.userAttribution = true
-	o.userTiming = true
-}
+def save_success_output(ctx: Context, duration: float):
+    output_dir = os.getenv(builderoutput.BUILDER_OUTPUT_ENV)
+    if not output_dir:
+        return
 
-// WithUserTimingAttribution indicates that only timing is attributed to the user.
-var WithUserTimingAttribution = func(o *execParams) {
-	o.userTiming = true
-}
-
-// WithMessageProducer sets a custom MessageProducer to produce the error message.
-func WithMessageProducer(mp MessageProducer) ExecOption {
-	return func(o *execParams) {
-		o.messageProducer = mp
-	}
-}
-
-// WithLogCommand logs or silences the shell command itself from being printed. This takes
-// precedence over any other options.
-func WithLogCommand(shouldLog bool) ExecOption {
-	return func(o *execParams) {
-		o.logCommandOverride = &shouldLog
-	}
-}
-
-// WithLogOutput logs or silences the shell command's output from being printed. This takes
-// precedence over any other options.
-func WithLogOutput(shouldLog bool) ExecOption {
-	return func(o *execParams) {
-		o.logOutputOverride = &shouldLog
-	}
-}
-
-// WithCombinedTail keeps the tail of the combined stdout/stderr for the error message.
-var WithCombinedTail = WithMessageProducer(KeepCombinedTail)
-
-// WithCombinedHead keeps the head of the combined stdout/stderr for the error message.
-var WithCombinedHead = WithMessageProducer(KeepCombinedHead)
-
-// WithStderrTail keeps the tail of stderr for the error message.
-var WithStderrTail = WithMessageProducer(KeepStderrTail)
-
-// WithStderrHead keeps the head of stderr for the error message.
-var WithStderrHead = WithMessageProducer(KeepStderrHead)
-
-// WithStdoutTail keeps the tail of stdout for the error message.
-var WithStdoutTail = WithMessageProducer(KeepStdoutTail)
-
-// WithStdoutHead keeps the head of stdout for the error message.
-var WithStdoutHead = WithMessageProducer(KeepStdoutHead)
-
-// Exec runs the given command (with args) under the default configuration, allowing the caller to handle the error.
-func (ctx *Context) Exec(cmd []string, opts ...ExecOption) (*ExecResult, error) {
-	params := execParams{cmd: cmd, messageProducer: KeepCombinedTail}
-	for _, o := range opts {
-		o(&params)
-	}
-
-	start := time.Now()
-
-	result, err := ctx.configuredExec(params)
-
-	if params.userTiming {
-		ctx.stats.user += time.Since(start)
-	}
-
-	if err == nil {
-		return result, nil
-	}
-
-	message := err.Error()
-	if result != nil {
-		message = params.messageProducer(result)
-	}
-
-	var be *buildererror.Error
-	if params.userAttribution {
-		be = UserErrorf(message)
-	} else {
-		be = buildererror.Errorf(buildererror.StatusInternal, message)
-	}
-
-	be.ID = buildererror.GenerateErrorID(params.cmd...)
-	return result, be
-}
-
-func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
-	if len(params.cmd) < 1 {
-		return nil, fmt.Errorf("no command provided")
-	}
-	if params.cmd[0] == "" {
-		return nil, fmt.Errorf("empty command provided")
-	}
-
-	defaultShouldLog := true
-	if !params.userAttribution && !ctx.debug {
-		// For "system" commands, we will only log if the debug flag is present.
-		defaultShouldLog = false
-	}
-
-	readableCmd := strings.Join(params.cmd, " ")
-	if len(params.env) > 0 {
-		env := strings.Join(params.env, " ")
-		readableCmd = fmt.Sprintf("%s (%s)", readableCmd, env)
-	}
-
-	logCmd := defaultShouldLog
-	if params.logCommandOverride != nil {
-		logCmd = *params.logCommandOverride
-	}
-	if logCmd {
-		ctx.Logf(divider)
-		ctx.Logf("Running %q", readableCmd)
-	}
-
-	status := buildererror.StatusInternal
-	defer func(start time.Time) {
-		truncated := readableCmd
-		if len(truncated) > 60 {
-			truncated = truncated[:60] + "..."
-		}
-
-		if logCmd {
-			ctx.Logf("Done %q (%v)", truncated, time.Since(start))
-		}
-		ctx.Span(ctx.createSpanName(params.cmd), start, status)
-	}(time.Now())
-
-	exitCode := 0
-	ecmd := ctx.execCmd(params.cmd[0], params.cmd[1:]...)
-
-	if params.dir != "" {
-		ecmd.Dir = params.dir
-	}
-
-	if len(params.env) > 0 {
-		ecmd.Env = append(append(ecmd.Env, os.Environ()...), params.env...)
-	}
-
-	logOutput := defaultShouldLog
-	if params.logOutputOverride != nil {
-		logOutput = *params.logOutputOverride
-	}
-	var outb, errb bytes.Buffer
-	combinedb := lockingBuffer{ctx: ctx, log: logOutput}
-	ecmd.Stdout = io.MultiWriter(&outb, &combinedb)
-	ecmd.Stderr = io.MultiWriter(&errb, &combinedb)
-
-	if err := ecmd.Run(); err != nil {
-		if ee, ok := err.(*exec.ExitError); ok {
-			// The command returned a non-zero result.
-			exitCode = ee.ExitCode()
-		} else if pe, ok := err.(*os.PathError); ok && errors.Is(pe.Err, os.ErrNotExist) {
-			// ENOENT normally occurs if the command cannot
-			// be found, but also occurs with scripts using
-			// CR-LF line endings.  Unix uses LF as its line
-			// ending, so a script with a shebang using CR-LF
-			// will result in the kernel attempting to
-			// resolve an executable name with the trailing
-			// CR. This search will almost certainly fail and
-			// otherwise results in an confusing ENOENT.
-			return nil, fmt.Errorf("executing command %q: %v: if %q is a script, ensure that it has Unix-style LF line endings", readableCmd, err, params.cmd[0])
-		} else {
-			return nil, fmt.Errorf("executing command %q: %v", readableCmd, err)
-		}
-	}
-
-	result := &ExecResult{
-		ExitCode: exitCode,
-		Stdout:   strings.TrimSpace(string(outb.Bytes())),
-		Stderr:   strings.TrimSpace(string(errb.Bytes())),
-		Combined: strings.TrimSpace(string(combinedb.Bytes())),
-	}
-
-	if exitCode != 0 {
-		return result, fmt.Errorf("executing command %q: exit code %d", readableCmd, exitCode)
-	}
-
-	status = buildererror.StatusOk
-	return result, nil
-}
-
-type lockingBuffer struct {
-	buf bytes.Buffer
-	sync.Mutex
-
-	// log tells the buffer to also log the output to stderr.
-	log bool
-	ctx *Context
-}
-
-func (lb *lockingBuffer) Write(p []byte) (int, error) {
-	lb.Lock()
-	defer lb.Unlock()
-	if lb.log {
-		lb.ctx.Logf(string(p))
-	}
-	return lb.buf.Write(p)
-}
-
-func (lb *lockingBuffer) Bytes() []byte {
-	return lb.buf.Bytes()
-}
+    bo = builderoutput.BuilderOutput()
+    bo.installed_runtime_versions.extend(ctx.installed_runtime_versions)
+    
+    stats = {
+        "buildpack_id": ctx.buildpack_id,
+        "buildpack_version": ctx.buildpack_version,
+        "duration_ms": duration * 1000,
+        "user_duration_ms": ctx.stats["user"] * 1000
+    }
+    bo.stats.append(stats)
+    
+    try:
+        data = json.dumps(bo.to_dict())
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        with open(Path(output_dir) / builderoutput.BUILDER_OUTPUT_FILENAME, 'w') as f:
+            f.write(data)
+    except Exception as e:
+        logger.warning(f"Failed to save success output: {e}")

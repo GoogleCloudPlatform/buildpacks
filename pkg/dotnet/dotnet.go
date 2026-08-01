@@ -1,635 +1,576 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import json
+import os
+import re
+import shutil
+from pathlib import Path
+from typing import Optional, Tuple, List, Dict, Any
+import xml.etree.ElementTree as ET
 
-// Package dotnet contains .NET buildpack library code.
-package dotnet
+import cache  # Assuming cache is in the same directory or imported correctly
+import devmode
+import env
+import gcpbuildpack as gcp
+import runtime
+import libcnb
 
-import (
-	"encoding/json"
-	"encoding/xml"
-	"errors"
-	"fmt"
-	"io/fs"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
+# Constants
+asp_dotnet_core = "Microsoft.AspNetCore.App"
+env_sdk_version = "GOOGLE_DOTNET_SDK_VERSION"
+google_min_22 = "google.min.22"
+EnvRuntimeVersion = "GOOGLE_ASP_NET_CORE_VERSION"
+PublishLayerName = "publish"
+PublishOutputDirName = "bin"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-	"github.com/buildpacks/libcnb/v2"
-)
+SkipEnvVariablesAssignmentCapability = "dotnet.SkipEnvVariablesAssignmentCapability"
 
-const (
-	aspDotnetCore = "Microsoft.AspNetCore.App"
-	envSdkVersion = "GOOGLE_DOTNET_SDK_VERSION"
-	googleMin22   = "google.min.22"
-	// EnvRuntimeVersion is the environment variable key for storing the target dotnet runtime version.
-	EnvRuntimeVersion = "GOOGLE_ASP_NET_CORE_VERSION"
-	// PublishLayerName is the name of the directory containing the publish layer
-	PublishLayerName = "publish"
-	// PublishOutputDirName is passed as the output directory for `dotnet publish`.
-	PublishOutputDirName = "bin"
-)
 
-// SkipEnvVariablesAssignmentCapability is the capability key for skipping runtime environment variables assignment.
-const SkipEnvVariablesAssignmentCapability = "dotnet.SkipEnvVariablesAssignmentCapability"
+class MakerSkipEnvVariablesAssignment:
+    def SkipVariables(self, ctx: gcp.Context, rtl: libcnb.Layer) -> None:
+        pass
 
-// MakerSkipEnvVariablesAssignment implements the SkipEnvVariablesAssignment interface for the maker tool.
-type MakerSkipEnvVariablesAssignment struct{}
 
-// SkipVariables skips the launch environment variables setup.
-func (m MakerSkipEnvVariablesAssignment) SkipVariables(ctx *gcp.Context, rtl *libcnb.Layer) error {
-	return nil
+PublisherCapability = "dotnet.PublisherCapability"
+
+
+class Publisher:
+    def Publish(self, ctx: gcp.Context, proj: str, build_args: str) -> None:
+        raise NotImplementedError()
+
+
+class MakerDotnetPublisher:
+    def Publish(self, ctx: gcp.Context, proj: str, build_args: str) -> None:
+        Publish(ctx, proj, build_args, False)
+
+
+cache_tag = "prod dependencies"
+dependency_hash_key = "dependency_hash"
+version_key = "version"
+
+
+def Publish(
+    ctx: gcp.Context,
+    proj: str,
+    build_args: str,
+    use_layer: bool
+) -> None:
+    output_directory = ""
+    pkg_layer: Optional[libcnb.Layer] = None
+    bin_layer: Optional[libcnb.Layer] = None
+
+    if use_layer:
+        ctx.Log("Installing application dependencies.")
+        pkg_layer, err = ctx.Layer("packages", gcp.BuildLayer, gcp.CacheLayer)
+        if err is not None:
+            raise RuntimeError(f"Creating layer failed: {err}")
+
+        cached, err = CheckCache(ctx, pkg_layer)
+        if err is not None:
+            raise RuntimeError(f"Checking cache failed: {err}")
+        if cached:
+            ctx.CacheHit(cache_tag)
+        else:
+            ctx.CacheMiss(cache_tag)
+
+        bin_layer, err = ctx.Layer(PublishLayerName, gcp.BuildLayer, gcp.LaunchLayer)
+        if err is not None:
+            raise RuntimeError(f"Creating layer failed: {err}")
+
+        output_directory = str(Path(bin_layer.Path) / PublishOutputDirName)
+
+        proj_path = Path(ctx.ApplicationRoot()) / proj
+        if not proj_path.is_file():
+            ctx.Warn("No project file found; skipping publish.")
+            return
+
+        deleted, err = DeleteFolder(ctx, Path(ctx.ApplicationRoot()) / PublishOutputDirName)
+        if err is not None:
+            raise RuntimeError(f"Deleting upload bin failed: {err}")
+        if deleted:
+            ctx.Warn(f"A project file was uploaded, causing `dotnet publish` to be called, but the output bin folder already existed in application source. Deleting {output_directory}.")
+
+    else:
+        output_directory = str(Path(ctx.ApplicationRoot()) / PublishOutputDirName)
+
+        global_json = Path(ctx.ApplicationRoot()) / "global.json"
+        if global_json.exists():
+            ctx.Log("Temporarily renaming global.json to global.json.bak to roll forward SDK build.")
+            global_json.rename(global_json.with_suffix(".json.bak"))
+            ctx.AddCleanup(lambda: global_json.with_suffix(".json.bak").rename(global_json))
+
+    # Restore
+    restore_cmd = ["dotnet", "restore"]
+    if use_layer:
+        restore_cmd.extend(["--packages", pkg_layer.Path])
+    restore_cmd.append(proj)
+
+    _, err = ctx.Exec(restore_cmd, env={"DOTNET_CLI_TELEMETRY_OPTOUT": "true"}, user_attribution=True)
+    if err is not None:
+        raise RuntimeError(f"Restore command failed: {err}")
+
+    # Publish
+    publish_cmd = [
+        "dotnet",
+        "publish",
+        "-nologo",
+        "--verbosity", "minimal",
+        "--configuration", "Release",
+        "--output", output_directory,
+        "--no-restore"
+    ]
+    if use_layer:
+        publish_cmd.extend(["--packages", pkg_layer.Path])
+    publish_cmd.append(proj)
+
+    if build_args:
+        publish_cmd = ["/bin/bash", "-c"] + [" ".join(publish_cmd + build_args.split())]
+
+    _, err = ctx.Exec(publish_cmd, env={"DOTNET_CLI_TELEMETRY_OPTOUT": "true"}, user_attribution=True)
+    if err is not None:
+        raise RuntimeError(f"Publish command failed: {err}")
+
+    # Runtime Version
+    runtime_version, err = GetRuntimeVersion(ctx, output_directory)
+    if err is not None:
+        raise RuntimeError(f"Getting runtime version failed: {err}")
+
+    if use_layer:
+        bin_layer.BuildEnvironment.Default(EnvRuntimeVersion, runtime_version)
+    else:
+        os.environ[EnvRuntimeVersion] = runtime_version
+
+    # Symlink
+    if use_layer:
+        ConfigureBinSymlink(ctx, output_directory)
+
+    # Entrypoint
+    entrypoint = os.getenv(env.Entrypoint)
+    if entrypoint:
+        entrypoint = f"exec {entrypoint}"
+    else:
+        ep, err = Entrypoint(ctx, output_directory, proj)
+        if err is not None:
+            raise RuntimeError(f"Getting entrypoint failed: {err}")
+        entrypoint = ep
+        if use_layer:
+            bin_layer.BuildEnvironment.Default(env.Entrypoint, entrypoint)
+
+    if use_layer:
+        bin_layer.LaunchEnvironment.Default("DOTNET_RUNNING_IN_CONTAINER", "true")
+
+        if not devmode.Enabled(ctx):
+            ctx.AddWebProcess(["/bin/bash", "-c", entrypoint])
+            return
+
+        ctx.AddWebProcess(["dotnet", "watch", "--project", proj, "run"])
+        return
+
+    # MakerMode
+    ctx.AddWebProcess(["/bin/bash", "-c", entrypoint])
+
+
+def CheckCache(
+    ctx: gcp.Context,
+    layer: libcnb.Layer
+) -> Tuple[bool, Optional[Exception]]:
+    project_files, err = ProjectFiles(ctx, ".")
+    if err is not None:
+        return False, err
+
+    global_json_path = Path(ctx.ApplicationRoot()) / "global.json"
+    if global_json_path.exists():
+        project_files.append(str(global_json_path))
+
+    result, err = ctx.Exec(["dotnet", "--version"])
+    if err is not None:
+        return False, err
+    current_version = result.Stdout
+
+    hash_value, cached, err = cache.HashAndCheck(
+        ctx,
+        layer,
+        dependency_hash_key,
+        strings=[current_version],
+        files=project_files
+    )
+    if err is not None:
+        return False, err
+
+    if cached:
+        return True, None
+
+    cache.Add(ctx, layer, dependency_hash_key, hash_value)
+    ctx.SetMetadata(layer, version_key, current_version)
+    return False, None
+
+
+def DeleteFolder(
+    ctx: gcp.Context,
+    folder_path: Path
+) -> Tuple[bool, Optional[Exception]]:
+    if not folder_path.exists():
+        return False, None
+
+    try:
+        shutil.rmtree(folder_path)
+        return True, None
+    except Exception as e:
+        return False, e
+
+
+def ConfigureBinSymlink(
+    ctx: gcp.Context,
+    bin_layer_path: str
+) -> Optional[Exception]:
+    link_target = Path(ctx.ApplicationRoot()) / PublishOutputDirName
+
+    deleted, err = DeleteFolder(ctx, link_target)
+    if err is not None:
+        return f"Deleting {link_target}: {err}"
+    if deleted:
+        ctx.Warn(f"Deleted folder: {link_target}")
+    else:
+        ctx.Warn(f"Not deleting folder: {link_target}")
+
+    try:
+        os.symlink(bin_layer_path, link_target)
+    except Exception as e:
+        return f"Linking {bin_layer_path}: {e}"
+    return None
+
+
+def AssemblyName(ctx: gcp.Context, proj: str) -> Tuple[str, Optional[Exception]]:
+    project_content, err = ReadProjectFile(ctx, proj)
+    if err is not None:
+        return "", RuntimeError(f"Reading project file failed: {err}")
+
+    assembly_names = []
+    for pg in project_content.PropertyGroups:
+        if pg.AssemblyName:
+            assembly_names.append(pg.AssemblyName)
+
+    if len(assembly_names) != 1:
+        return "", gcp.UserError(f"Expected exactly one AssemblyName, found {assembly_names}")
+    
+    return assembly_names[0], None
+
+
+def Entrypoint(
+    ctx: gcp.Context,
+    bin_dir: str,
+    proj: str
+) -> Tuple[str, Optional[Exception]]:
+    ctx.Log(f"Determining entrypoint from output directory {bin_dir} and project file {proj}")
+    p = Path(proj).stem
+
+    ep, err = EntrypointCmd(ctx, os.path.join(bin_dir, p))
+    if err is not None:
+        return "", RuntimeError(f"Getting entrypoint command failed: {err}")
+
+    if ep:
+        return ep, None
+
+    an, err = AssemblyName(ctx, proj)
+    if err is not None:
+        return "", RuntimeError(f"Getting assembly name failed: {err}")
+
+    ep, err = EntrypointCmd(ctx, os.path.join(bin_dir, an))
+    if err is not None or not ep:
+        return "", gcp.UserError("Unable to find executable produced from {proj}, try setting the AssemblyName property".format(proj=proj))
+    
+    return ep, None
+
+
+def EntrypointCmd(
+    ctx: gcp.Context,
+    exe_path: str
+) -> Tuple[str, Optional[Exception]]:
+    dll_path = exe_path + ".dll"
+    if not Path(dll_path).exists():
+        return "", None
+
+    dir_path = os.path.dirname(dll_path)
+    try:
+        rel_dir = os.path.relpath(dir_path, ctx.ApplicationRoot())
+        if not rel_dir.startswith(".."):
+            return f"exec dotnet {os.path.join(rel_dir, os.path.basename(dll_path))}", None
+        else:
+            return f"cd {dir_path} && exec dotnet {os.path.basename(dll_path)}", None
+    except Exception as e:
+        return "", RuntimeError(f"Constructing entrypoint command failed: {e}")
+
+
+latest_dotnet_sdk_version_per_stack = {
+    runtime.Ubuntu2204: "8.*.*",
+    runtime.Ubuntu2404: "10.*.*",
 }
 
-// SkipEnvVariablesAssignment is an interface for skipping runtime environment variables assignment.
-type SkipEnvVariablesAssignment interface {
-	SkipVariables(ctx *gcp.Context, rtl *libcnb.Layer) error
-}
-
-// PublisherCapability is the capability key for the maker Dotnet publisher.
-const PublisherCapability = "dotnet.PublisherCapability"
-
-// Publisher is an interface for restoring and publishing Dotnet applications in maker mode.
-type Publisher interface {
-	Publish(ctx *gcp.Context, proj, buildArgs string) error
-}
-
-// MakerDotnetPublisher implements the Publisher interface for the maker tool.
-type MakerDotnetPublisher struct{}
-
-// Publish restores, publishes, and determines the runtime entrypoint of the Dotnet application in maker mode.
-func (p MakerDotnetPublisher) Publish(ctx *gcp.Context, proj, buildArgs string) error {
-	return Publish(ctx, proj, buildArgs, false)
-}
-
-const (
-	cacheTag          = "prod dependencies"
-	dependencyHashKey = "dependency_hash"
-	versionKey        = "version"
-)
-
-// Publish restores, publishes, and determines the runtime entrypoint of the Dotnet application.
-// If useLayer is true, it performs the publish steps using GCP layers and devmode setup.
-// If useLayer is false (e.g. MakerMode), it publishes directly to the application root without layers.
-func Publish(ctx *gcp.Context, proj, buildArgs string, useLayer bool) error {
-	var outputDirectory string
-	var pkgLayer *libcnb.Layer
-	var binLayer *libcnb.Layer
-	var err error
-
-	if useLayer {
-		ctx.Logf("Installing application dependencies.")
-		pkgLayer, err = ctx.Layer("packages", gcp.BuildLayer, gcp.CacheLayer)
-		if err != nil {
-			return fmt.Errorf("creating layer: %w", err)
-		}
-
-		cached, err := checkCache(ctx, pkgLayer)
-		if err != nil {
-			return fmt.Errorf("checking cache: %w", err)
-		}
-		if cached {
-			ctx.CacheHit(cacheTag)
-		} else {
-			ctx.CacheMiss(cacheTag)
-		}
-
-		binLayer, err = ctx.Layer(PublishLayerName, gcp.BuildLayer, gcp.LaunchLayer)
-		if err != nil {
-			return fmt.Errorf("creating layer: %w", err)
-		}
-
-		outputDirectory = filepath.Join(binLayer.Path, PublishOutputDirName)
-
-		// The existence of a project file indicates this is not prebuilt. Any uploaded bin folder interferes with publish.
-		deleted, err := deleteFolder(ctx, filepath.Join(ctx.ApplicationRoot(), PublishOutputDirName))
-		if err != nil {
-			return fmt.Errorf("deleting upload bin: %w", err)
-		}
-		if deleted {
-			ctx.Warnf("A project file was uploaded, causing `dotnet publish` to be called, but the output bin folder already existed in application source. Deleting %v.", outputDirectory)
-		}
-	} else {
-		outputDirectory = filepath.Join(ctx.ApplicationRoot(), PublishOutputDirName)
-
-		globalJSON := filepath.Join(ctx.ApplicationRoot(), "global.json")
-		globalJSONBak := filepath.Join(ctx.ApplicationRoot(), "global.json.bak")
-
-		globalJSONExists, err := ctx.FileExists(globalJSON)
-		if err == nil && globalJSONExists {
-			ctx.Logf("Temporarily renaming global.json to global.json.bak to roll forward SDK build.")
-			if err := os.Rename(globalJSON, globalJSONBak); err != nil {
-				return fmt.Errorf("renaming global.json: %w", err)
-			}
-			defer func() {
-				ctx.Logf("Restoring global.json from global.json.bak.")
-				os.Rename(globalJSONBak, globalJSON)
-			}()
-		}
-	}
-
-	// 1. Restore
-	restoreCmd := []string{"dotnet", "restore"}
-	if useLayer {
-		restoreCmd = append(restoreCmd, "--packages", pkgLayer.Path)
-	}
-	restoreCmd = append(restoreCmd, proj)
-
-	if _, err := ctx.Exec(restoreCmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution); err != nil {
-		return err
-	}
-
-	// 2. Publish
-	publishCmd := []string{
-		"dotnet",
-		"publish",
-		"-nologo",
-		"--verbosity", "minimal",
-		"--configuration", "Release",
-		"--output", outputDirectory,
-		"--no-restore",
-	}
-	if useLayer {
-		publishCmd = append(publishCmd, "--packages", pkgLayer.Path)
-	}
-	publishCmd = append(publishCmd, proj)
-
-	if buildArgs != "" {
-		// Use bash to execute the command to avoid having to parse the build arguments.
-		// strings.Fields may be unsafe here in case some arguments have a space.
-		publishCmd = []string{"/bin/bash", "-c", strings.Join(append(publishCmd, buildArgs), " ")}
-	}
-
-	if _, err := ctx.Exec(publishCmd, gcp.WithEnv("DOTNET_CLI_TELEMETRY_OPTOUT=true"), gcp.WithUserAttribution); err != nil {
-		return err
-	}
-
-	// 3. Runtime Version
-	runtimeVersion, err := GetRuntimeVersion(ctx, outputDirectory)
-	if err != nil {
-		return fmt.Errorf("getting runtime version: %w", err)
-	}
-
-	if useLayer {
-		binLayer.BuildEnvironment.Default(EnvRuntimeVersion, runtimeVersion)
-	} else {
-		os.Setenv(EnvRuntimeVersion, runtimeVersion)
-	}
-
-	// 4. Symlink (only for layers)
-	if useLayer {
-		if err := configureBinSymlink(ctx, outputDirectory); err != nil {
-			return fmt.Errorf("creating symlink: %w", err)
-		}
-	}
-
-	// 5. Entrypoint
-	entrypoint := os.Getenv(env.Entrypoint)
-	if entrypoint != "" {
-		entrypoint = "exec " + entrypoint
-	} else {
-		ep, err := Entrypoint(ctx, outputDirectory, proj)
-		if err != nil {
-			return fmt.Errorf("getting entrypoint: %w", err)
-		}
-		entrypoint = ep
-		if useLayer {
-			binLayer.BuildEnvironment.Default(env.Entrypoint, entrypoint)
-		}
-	}
-
-	if useLayer {
-		binLayer.LaunchEnvironment.Default("DOTNET_RUNNING_IN_CONTAINER", "true")
-
-		// Configure the entrypoint for production.
-		if !devmode.Enabled(ctx) {
-			ctx.AddWebProcess([]string{"/bin/bash", "-c", entrypoint})
-			return nil
-		}
-
-		// Configure the entrypoint and metadata for dev mode.
-		ctx.AddWebProcess([]string{"dotnet", "watch", "--project", proj, "run"})
-		return nil
-	}
-
-	// MakerMode (useLayer == false)
-	ctx.AddWebProcess([]string{"/bin/bash", "-c", entrypoint})
-	return nil
-}
-
-func checkCache(ctx *gcp.Context, l *libcnb.Layer) (bool, error) {
-	projectFiles, err := ProjectFiles(ctx, ".")
-	if err != nil {
-		return false, err
-	}
-	globalJSON := filepath.Join(ctx.ApplicationRoot(), "global.json")
-	globalJSONExists, err := ctx.FileExists(globalJSON)
-	if err != nil {
-		return false, err
-	}
-	if globalJSONExists {
-		projectFiles = append(projectFiles, globalJSON)
-	}
-	result, err := ctx.Exec([]string{"dotnet", "--version"})
-	if err != nil {
-		return false, err
-	}
-	currentVersion := result.Stdout
-
-	hash, cached, err := cache.HashAndCheck(ctx, l, dependencyHashKey,
-		cache.WithStrings(currentVersion),
-		cache.WithFiles(projectFiles...))
-	if err != nil {
-		return false, err
-	}
-
-	if cached {
-		return true, nil
-	}
-
-	cache.Add(ctx, l, dependencyHashKey, hash)
-	ctx.SetMetadata(l, versionKey, currentVersion)
-	return false, nil
-}
-
-// deleteFolder returns whether the folder was deleted
-func deleteFolder(ctx *gcp.Context, folder string) (bool, error) {
-	exists, err := ctx.FileExists(folder)
-	if err != nil {
-		return false, err
-	}
-	if exists {
-		if err := os.RemoveAll(folder); err != nil {
-			return false, err
-		}
-		return true, nil
-	}
-	return false, nil
-}
-
-func configureBinSymlink(ctx *gcp.Context, binLayerPath string) error {
-	linkTarget := filepath.Join(ctx.ApplicationRoot(), PublishOutputDirName)
-
-	if deleted, err := deleteFolder(ctx, linkTarget); err != nil {
-		return fmt.Errorf("deleting %s: %v", linkTarget, err)
-	} else if deleted {
-		ctx.Warnf("Deleted folder: %v", linkTarget)
-	} else {
-		ctx.Warnf("Not deleting folder: %v", linkTarget)
-	}
-
-	if err := os.Symlink(binLayerPath, linkTarget); err != nil {
-		return fmt.Errorf("linking %s: %v", binLayerPath, err)
-	}
-	return nil
-}
-
-// AssemblyName retrieves the assembly name property from .csproj file.
-func AssemblyName(ctx *gcp.Context, proj string) (string, error) {
-	p, err := ReadProjectFile(ctx, proj)
-	if err != nil {
-		return "", fmt.Errorf("reading project file: %w", err)
-	}
-	var assemblyNames []string
-	for _, pg := range p.PropertyGroups {
-		if pg.AssemblyName != "" {
-			assemblyNames = append(assemblyNames, pg.AssemblyName)
-		}
-	}
-	if len(assemblyNames) != 1 {
-		return "", gcp.UserErrorf("expected exactly one AssemblyName, found %v", assemblyNames)
-	}
-	return assemblyNames[0], nil
-}
-
-// Entrypoint retrieves the appropriate entrypoint command for the direct maker build.
-func Entrypoint(ctx *gcp.Context, bin, proj string) (string, error) {
-	ctx.Logf("Determining entrypoint from output directory %s and project file %s", bin, proj)
-	p := strings.TrimSuffix(filepath.Base(proj), filepath.Ext(proj))
-
-	ep, err := EntrypointCmd(ctx, filepath.Join(bin, p))
-	if err != nil {
-		return "", err
-	}
-	if ep != "" {
-		return ep, nil
-	}
-
-	an, err := AssemblyName(ctx, proj)
-	if err != nil {
-		return "", fmt.Errorf("getting assembly name: %w", err)
-	}
-	ep, err = EntrypointCmd(ctx, filepath.Join(bin, an))
-	if err != nil {
-		return "", err
-	}
-	if ep != "" {
-		return ep, nil
-	}
-
-	return "", gcp.UserErrorf("unable to find executable produced from %s, try setting the AssemblyName property", proj)
-}
-
-// EntrypointCmd constructs direct relative execution string for .dll targets.
-func EntrypointCmd(ctx *gcp.Context, ep string) (string, error) {
-	dll := ep + ".dll"
-	dllExists, err := ctx.FileExists(dll)
-	if err != nil {
-		return "", err
-	}
-	if dllExists {
-		dir := filepath.Dir(dll)
-		if rel, err := filepath.Rel(ctx.ApplicationRoot(), dir); err == nil && !strings.HasPrefix(rel, "..") {
-			return fmt.Sprintf("exec dotnet %s", filepath.Join(rel, filepath.Base(dll))), nil
-		}
-		return fmt.Sprintf("cd %s && exec dotnet %s", dir, filepath.Base(dll)), nil
-	}
-	return "", nil
-}
-
-var (
-	// latestDotnetSDKVersionPerStack is the latest .NET version per stack to use if not specified by the user.
-	latestDotnetSDKVersionPerStack = map[string]string{
-		runtime.Ubuntu2204: "8.*.*",
-		runtime.Ubuntu2404: "10.*.*",
-	}
-	projRe = regexp.MustCompile(`(?i)\.(cs|fs|vb)proj$`)
-)
-
-// ProjectFiles finds all project files supported by dotnet.
-func ProjectFiles(ctx *gcp.Context, dir string) ([]string, error) {
-	var files []string
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !d.IsDir() && projRe.MatchString(d.Name()) {
-			files = append(files, path)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return files, nil
-}
-
-// Project represents a .NET project file.
-type Project struct {
-	XMLName        xml.Name        `xml:"Project"`
-	PropertyGroups []PropertyGroup `xml:"PropertyGroup"`
-	ItemGroups     []ItemGroup     `xml:"ItemGroup"`
-}
-
-// PropertyGroup contains information about a project build.
-type PropertyGroup struct {
-	AssemblyName     string `xml:"AssemblyName"`
-	TargetFramework  string `xml:"TargetFramework"`
-	TargetFrameworks string `xml:"TargetFrameworks"`
-}
-
-// ItemGroup contains information about a project item group.
-type ItemGroup struct {
-	PackageReferences []PackageReference `xml:"PackageReference"`
-}
-
-// PackageReference contains information about a package reference.
-type PackageReference struct {
-	Include string `xml:"Include,attr"`
-	Version string `xml:"Version,attr"`
-}
-
-// ReadProjectFile returns a .NET Project object.
-func ReadProjectFile(ctx *gcp.Context, proj string) (Project, error) {
-	data, err := ctx.ReadFile(proj)
-	if err != nil {
-		return Project{}, err
-	}
-	return readProjectFile(data, proj)
-}
-
-// readProjectFile returns a .NET Project object.
-func readProjectFile(data []byte, proj string) (Project, error) {
-	var p Project
-	if err := xml.Unmarshal(data, &p); err != nil {
-		return p, gcp.UserErrorf("unmarshalling %s: %v", proj, err)
-	}
-	return p, nil
-}
-
-// BuildableDir returns the directory of the provided GOOGLE_BUILDABLE env var.
-// Buildable is in the form of app, app/app.csproj, or app/app.vbproj.
-func BuildableDir() string {
-	buildable := os.Getenv(env.Buildable)
-	if strings.Contains(filepath.Ext(buildable), "proj") {
-		return filepath.Dir(buildable)
-	}
-	return buildable
-}
-
-// RuntimeConfigJSONFiles returns all runtimeconfig.json files in 'path'.
-// The runtimeconfig.json file is present for compiled .NET assemblies.
-func RuntimeConfigJSONFiles(path string) ([]string, error) {
-	files, err := filepath.Glob(filepath.Join(path, "*runtimeconfig.json"))
-	if err != nil {
-		return nil, err
-	}
-	if files == nil {
-		return []string{}, nil
-	}
-	return files, nil
-}
-
-// RuntimeConfigJSON matches the structure of a runtimeconfig.json file.
-type RuntimeConfigJSON struct {
-	RuntimeOptions runtimeOptions `json:"runtimeOptions"`
-}
-
-type framework struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-}
-
-type configProperties struct {
-	SystemGCServer bool `json:"System.GC.Server"`
-}
-
-type runtimeOptions struct {
-	TFM              string           `json:"tfm"`
-	Framework        framework        `json:"framework"`
-	Frameworks       []framework      `json:"frameworks"`
-	ConfigProperties configProperties `json:"configProperties"`
-}
-
-// ReadRuntimeConfigJSON reads a given runtimeconfig.json file and returns a struct
-// representation of the contents.
-func ReadRuntimeConfigJSON(path string) (*RuntimeConfigJSON, error) {
-	bytes, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("reading %q: %w", path, err)
-	}
-	var runCfg RuntimeConfigJSON
-	if err := json.Unmarshal(bytes, &runCfg); err != nil {
-		return nil, fmt.Errorf("unmarshalling %q to RuntimeConfig: %v", path, err)
-	}
-	return &runCfg, nil
-}
-
-// globalJSON represents the contents of a global.json file.
-type globalJSON struct {
-	Sdk struct {
-		Version string `json:"version"`
-	} `json:"sdk"`
-}
-
-// GetSDKVersion returns the appropriate .NET SDK version to use, with the following heuristic:
-//  1. Return value of env variable GOOGLE_DOTNET_SDK_VERSION if present.
-//  2. Return value of env variable GOOGLE_RUNTIME_VERSION if present.
-//  3. Return SDK.Version from the .NET global.json file if present.
-//  4. If none of above are present, return the the latest SDK version available for the stack being used.
-func GetSDKVersion(ctx *gcp.Context) (string, error) {
-	if version := os.Getenv(envSdkVersion); version != "" {
-		ctx.Logf("Using .NET Core SDK version from %s: %s", envSdkVersion, version)
-		return version, nil
-	}
-	if version := os.Getenv(env.RuntimeVersion); version != "" {
-		ctx.Logf("Using .NET Core SDK version from %s: %s", env.RuntimeVersion, version)
-		return version, nil
-	}
-	ctx.Logf("Looking for global.json in %v", ctx.ApplicationRoot())
-	gjs, err := getGlobalJSONOrNil(ctx.ApplicationRoot())
-	if err != nil {
-		return "", err
-	}
-	if gjs != nil && gjs.Sdk.Version != "" {
-		ctx.Logf("Using .NET Core SDK version from global.json: %s", gjs.Sdk.Version)
-		return gjs.Sdk.Version, nil
-	}
-
-	os := runtime.OSForStack(ctx)
-
-	version, ok := latestDotnetSDKVersionPerStack[os]
-	if !ok {
-		return "", gcp.UserErrorf("invalid stack for .NET runtime: %q. Please use a supported stack", os)
-	}
-
-	ctx.Logf(".NET SDK version not specified, using the latest available .NET SDK for the stack %q", os)
-	return version, nil
-}
-
-func getGlobalJSONOrNil(applicationRoot string) (*globalJSON, error) {
-	bytes, err := os.ReadFile(filepath.Join(applicationRoot, "global.json"))
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("reading global.json: %w", err)
-	}
-	var gjs globalJSON
-	if err := json.Unmarshal(bytes, &gjs); err != nil {
-		return nil, gcp.UserErrorf("unmarshalling global.json: %v", err)
-	}
-	return &gjs, nil
-}
-
-// FindProjectFile finds the csproj file using the 'GOOGLE_BUILDABLE' env var and falling back with a search of the current directory.
-func FindProjectFile(ctx *gcp.Context) (string, error) {
-	proj := os.Getenv(env.Buildable)
-	if proj == "" {
-		proj = "."
-	}
-	// Find the project file if proj is a directory.
-	if fi, err := os.Stat(proj); os.IsNotExist(err) {
-		return "", gcp.UserErrorf("%s does not exist", proj)
-	} else if err != nil {
-		return "", fmt.Errorf("stating %s: %v", proj, err)
-	} else if fi.IsDir() {
-		projFiles, err := ProjectFiles(ctx, proj)
-		if err != nil {
-			return "", err
-		}
-		if len(projFiles) != 1 {
-			return "", gcp.UserErrorf("expected to find exactly one project file in directory %s, found %v", proj, projFiles)
-		}
-		proj = projFiles[0]
-	}
-	return proj, nil
-}
-
-// GetRuntimeVersion returns the value in GOOGLE_ASP_NET_CORE_VERSION, and if not set, returns
-// Microsoft.AspNetCore.App version in the runtimeconfig.json file found in dir.
-func GetRuntimeVersion(ctx *gcp.Context, dir string) (string, error) {
-	envVarVersion := os.Getenv(EnvRuntimeVersion)
-	if envVarVersion != "" {
-		ctx.Logf("Determined runtime version from %v: %v", EnvRuntimeVersion, envVarVersion)
-		return envVarVersion, nil
-	}
-
-	rtCfgVersion, rtCfgFile, rtCfgErr := getRuntimeVersionFromRtCfgDir(ctx, dir)
-	if rtCfgErr != nil {
-		return "", fmt.Errorf("%v was not set; when %v absent, getting version from runtimeconfig.json failed: %w", EnvRuntimeVersion, EnvRuntimeVersion, rtCfgErr)
-	}
-	ctx.Logf("Determined runtime version from %v: %v", rtCfgFile, rtCfgVersion)
-	return rtCfgVersion, nil
-}
-
-func getRuntimeVersionFromRtCfgDir(ctx *gcp.Context, dir string) (string, string, error) {
-	rtCfgFiles, err := RuntimeConfigJSONFiles(dir)
-	if err != nil {
-		return "", "", gcp.InternalErrorf("finding runtimeconfig.json: %v", err)
-	}
-	if len(rtCfgFiles) > 1 {
-		return "", "", fmt.Errorf("more than one runtimeconfig.json file found: %v", rtCfgFiles)
-	}
-
-	if len(rtCfgFiles) < 1 {
-		return "", "", fmt.Errorf("no runtimeconfig.json file was found")
-	}
-	ctx.Logf("Found runtimeconfig file %q", rtCfgFiles[0])
-
-	version := ""
-	rtCfg, err := ReadRuntimeConfigJSON(rtCfgFiles[0])
-	if err != nil {
-		return "", rtCfgFiles[0], fmt.Errorf("reading runtimeconfig.json: %w", err)
-	}
-
-	if rtCfg.RuntimeOptions.Framework.Name == aspDotnetCore {
-		version = rtCfg.RuntimeOptions.Framework.Version
-	} else {
-		for _, fw := range rtCfg.RuntimeOptions.Frameworks {
-			if fw.Name == aspDotnetCore {
-				version = fw.Version
-				break
-			}
-		}
-	}
-
-	if version == "" {
-		return "", rtCfgFiles[0], fmt.Errorf("couldn't find runtime version for framework %s from "+
-			"runtimeconfig.json: %#v", aspDotnetCore, rtCfg)
-	}
-
-	return version, rtCfgFiles[0], nil
-}
-
-// RequiresGlobalizationInvariant returns true if the system lacks the OS packages necessary to
-// support .NET globalization.
-func RequiresGlobalizationInvariant(ctx *gcp.Context) bool {
-	return ctx.StackID() == googleMin22
-}
+proj_re = re.compile(r'(?i)\.(cs|fs|vb)proj$')
+
+
+def ProjectFiles(
+    ctx: gcp.Context,
+    dir_path: str
+) -> Tuple[List[str], Optional[Exception]]:
+    project_files = []
+    
+    try:
+        for root, dirs, files in os.walk(dir_path):
+            for file in files:
+                if proj_re.search(file):
+                    project_files.append(os.path.join(root, file))
+        return project_files, None
+    except Exception as e:
+        return [], RuntimeError(f"Finding project files failed: {e}")
+
+
+class Project:
+    def __init__(self):
+        self.PropertyGroups = []
+        self.ItemGroups = []
+
+class PropertyGroup:
+    def __init__(self):
+        self.AssemblyName = ""
+        self.TargetFramework = ""
+        self.TargetFrameworks = ""
+
+class ItemGroup:
+    def __init__(self):
+        self.PackageReferences = []
+
+class PackageReference:
+    def __init__(self):
+        self.Include = ""
+        self.Version = ""
+
+
+def ReadProjectFile(
+    ctx: gcp.Context,
+    proj_path: str
+) -> Tuple[Project, Optional[Exception]]:
+    try:
+        with open(proj_path, 'r') as f:
+            content = f.read()
+        return read_project_file(content, proj_path)
+    except Exception as e:
+        return Project(), RuntimeError(f"Reading project file failed: {e}")
+
+
+def read_project_file(
+    xml_content: str,
+    proj_path: str
+) -> Tuple[Project, Optional[Exception]]:
+    try:
+        root = ET.fromstring(xml_content)
+        project = Project()
+        
+        for pg_elem in root.findall('PropertyGroup'):
+            pg = PropertyGroup()
+            pg.AssemblyName = pg_elem.findtext('AssemblyName', '')
+            pg.TargetFramework = pg_elem.findtext('TargetFramework', '')
+            pg.TargetFrameworks = pg_elem.findtext('TargetFrameworks', '')
+            project.PropertyGroups.append(pg)
+            
+        for ig_elem in root.findall('ItemGroup'):
+            ig = ItemGroup()
+            for pr_elem in ig_elem.findall('PackageReference'):
+                pr = PackageReference()
+                pr.Include = pr_elem.get('Include', '')
+                pr.Version = pr_elem.get('Version', '')
+                ig.PackageReferences.append(pr)
+            project.ItemGroups.append(ig)
+            
+        return project, None
+    except Exception as e:
+        return Project(), gcp.UserError(f"Unmarshalling {proj_path}: {e}")
+
+
+def BuildableDir() -> str:
+    buildable = os.getenv(env.Buildable)
+    if not buildable:
+        return "."
+    
+    if Path(buildable).suffix.lower() in ('.csproj', '.fsproj', '.vbproj'):
+        return os.path.dirname(buildable)
+    return buildable
+
+
+def RuntimeConfigJSONFiles(path_dir: str) -> Tuple[List[str], Optional[Exception]]:
+    try:
+        pattern = os.path.join(path_dir, "*runtimeconfig.json")
+        return glob.glob(pattern), None
+    except Exception as e:
+        return [], RuntimeError(f"Finding runtime config files failed: {e}")
+
+
+class RuntimeConfigJSON:
+    def __init__(self):
+        self.RuntimeOptions = runtimeOptions()
+
+class runtimeOptions:
+    def __init__(self):
+        self.TFM = ""
+        self.Framework = framework()
+        self.Frameworks = []
+        self.ConfigProperties = configProperties()
+
+class framework:
+    def __init__(self):
+        self.Name = ""
+        self.Version = ""
+
+class configProperties:
+    def __init__(self):
+        self.SystemGCServer = False
+
+
+def ReadRuntimeConfigJSON(path_file: str) -> Tuple[Optional[RuntimeConfigJSON], Optional[Exception]]:
+    try:
+        with open(path_file, 'r') as f:
+            data = json.load(f)
+        runtime_cfg = RuntimeConfigJSON()
+        runtime_cfg.RuntimeOptions.TFM = data.get('runtimeOptions', {}).get('tfm', '')
+        
+        if 'framework' in data['runtimeOptions']:
+            fw = framework()
+            fw.Name = data['runtimeOptions']['framework'].get('name', '')
+            fw.Version = data['runtimeOptions']['framework'].get('version', '')
+            runtime_cfg.RuntimeOptions.Framework = fw
+        
+        for fwm in data['runtimeOptions'].get('frameworks', []):
+            fw = framework()
+            fw.Name = fwm.get('name', '')
+            fw.Version = fwm.get('version', '')
+            runtime_cfg.RuntimeOptions.Frameworks.append(fw)
+            
+        cp = configProperties()
+        cp.SystemGCServer = data['runtimeOptions']['configProperties'].get('System.GC.Server', False)
+        runtime_cfg.RuntimeOptions.ConfigProperties = cp
+        
+        return runtime_cfg, None
+    except Exception as e:
+        return None, RuntimeError(f"Reading {path_file} failed: {e}")
+
+
+def GetSDKVersion(ctx: gcp.Context) -> Tuple[str, Optional[Exception]]:
+    version = os.getenv(env_sdk_version)
+    if version:
+        ctx.Log(f"Using .NET Core SDK version from {env_sdk_version}: {version}")
+        return version, None
+
+    version = os.getenv(env.RuntimeVersion)
+    if version:
+        ctx.Log(f"Using .NET Core SDK version from {env.RuntimeVersion}: {version}")
+        return version, None
+
+    global_json = GetGlobalJSON(ctx.ApplicationRoot())
+    if global_json and global_json.Sdk.Version:
+        ctx.Log(f"Using .NET Core SDK version from global.json: {global_json.Sdk.Version}")
+        return global_json.Sdk.Version, None
+
+    os_name = runtime.OSForStack(ctx)
+    version = latest_dotnet_sdk_version_per_stack.get(os_name)
+    if not version:
+        return "", gcp.UserError(f"Invalid stack for .NET runtime: {os_name}. Please use a supported stack")
+    
+    ctx.Log(f".NET SDK version not specified, using the latest available .NET SDK for the stack {os_name}")
+    return version, None
+
+
+def GetGlobalJSON(application_root: str) -> Optional[globalJSON]:
+    global_json_path = os.path.join(application_root, "global.json")
+    if not os.path.exists(global_json_path):
+        return None
+    
+    try:
+        with open(global_json_path, 'r') as f:
+            data = json.load(f)
+        sdk_version = data.get('sdk', {}).get('version', '')
+        return globalJSON(Sdk=SDKVersion(version=sdk_version)) if sdk_version else None
+    except Exception as e:
+        return None
+
+
+class SDKVersion:
+    def __init__(self, version: str):
+        self.Version = version
+
+class globalJSON:
+    def __init__(self, Sdk: SDKVersion):
+        self.Sdk = Sdk
+
+
+def FindProjectFile(ctx: gcp.Context) -> Tuple[str, Optional[Exception]]:
+    proj = os.getenv(env.Buildable)
+    if not proj:
+        proj = "."
+    
+    try:
+        if os.path.isdir(proj):
+            project_files, err = ProjectFiles(ctx, proj)
+            if err is not None:
+                return "", RuntimeError(f"Finding project files failed: {err}")
+            
+            if len(project_files) != 1:
+                return "", gcp.UserError(f"Expected exactly one project file in directory {proj}, found {project_files}")
+                
+            proj = project_files[0]
+        return proj, None
+    except Exception as e:
+        return "", RuntimeError(f"Finding project file failed: {e}")
+
+
+def GetRuntimeVersion(
+    ctx: gcp.Context,
+    dir_path: str
+) -> Tuple[str, Optional[Exception]]:
+    env_version = os.getenv(EnvRuntimeVersion)
+    if env_version:
+        ctx.Log(f"Determined runtime version from {EnvRuntimeVersion}: {env_version}")
+        return env_version, None
+
+    rt_cfg_version, rt_cfg_file, err = GetRuntimeVersionFromRtCfgDir(ctx, dir_path)
+    if err is not None:
+        return "", RuntimeError(f"{EnvRuntimeVersion} was not set; getting version from runtimeconfig.json failed: {err}")
+    
+    ctx.Log(f"Determined runtime version from {rt_cfg_file}: {rt_cfg_version}")
+    return rt_cfg_version, None
+
+
+def GetRuntimeVersionFromRtCfgDir(
+    ctx: gcp.Context,
+    dir_path: str
+) -> Tuple[str, str, Optional[Exception]]:
+    rt_cfg_files, err = RuntimeConfigJSONFiles(dir_path)
+    if err is not None:
+        return "", "", RuntimeError(f"Finding runtimeconfig.json failed: {err}")
+    
+    if len(rt_cfg_files) > 1:
+        return "", "", RuntimeError(f"More than one runtimeconfig.json file found: {rt_cfg_files}")
+    
+    if not rt_cfg_files:
+        return "", "", RuntimeError("No runtimeconfig.json file was found")
+    
+    ctx.Log(f"Found runtimeconfig file {rt_cfg_files[0]}")
+
+    runtime_cfg, err = ReadRuntimeConfigJSON(rt_cfg_files[0])
+    if err is not None:
+        return "", rt_cfg_files[0], RuntimeError(f"Reading runtimeconfig.json failed: {err}")
+
+    version = ""
+    if runtime_cfg.RuntimeOptions.Framework.Name == asp_dotnet_core:
+        version = runtime_cfg.RuntimeOptions.Framework.Version
+    else:
+        for fw in runtime_cfg.RuntimeOptions.Frameworks:
+            if fw.Name == asp_dotnet_core:
+                version = fw.Version
+                break
+    
+    if not version:
+        return "", rt_cfg_files[0], RuntimeError(f"Couldn't find runtime version for framework {asp_dotnet_core} from runtimeconfig.json")
+    
+    return version, rt_cfg_files[0], None
+
+
+def RequiresGlobalizationInvariant(ctx: gcp.Context) -> bool:
+    return ctx.StackID() == google_min_22

@@ -1,184 +1,195 @@
-// Copyright 2023 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+"""
+Package publisher provides basic functionality to coalesce user and framework adapter defined
+variables.
+"""
 
-// Package publisher provides basic functionality to coalesce user and framework adapter defined
-// variables.
-package publisher
+import logging
+import os
+from pathlib import Path
+from typing import List, Optional
 
-import (
-	"fmt"
-	"log"
-	"os"
-	"path/filepath"
+import yaml
 
-	"gopkg.in/yaml.v2"
+from firebase_publisher import apphostingschema, bundleschema
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/bundleschema"
-)
 
-// buildSchema is the internal Publisher representation of the final build settings that will
-// ultimately be converted into an updateBuildRequest.
-type buildSchema struct {
-	RunConfig *apphostingschema.RunConfig            `yaml:"runConfig,omitempty"`
-	Env       []apphostingschema.EnvironmentVariable `yaml:"env,omitempty"`
-	Metadata  *bundleschema.Metadata                 `yaml:"metadata,omitempty"`
-}
+class BuildSchema:
+    def __init__(self):
+        self.run_config: Optional[apphostingschema.RunConfig] = None
+        self.env: List[apphostingschema.EnvironmentVariable] = []
+        self.metadata: Optional[bundleschema.Metadata] = None
 
-var (
-	defaultCPU          int32 = 1   // From https://cloud.google.com/run/docs/configuring/services/cpu.
-	defaultMemory       int32 = 512 // From https://cloud.google.com/run/docs/configuring/services/memory-limits.
-	defaultConcurrency  int32 = 80  // From https://cloud.google.com/run/docs/about-concurrency.
-	defaultMaxInstances int32 = 100 // From https://cloud.google.com/run/docs/configuring/max-instances.
-	defaultMinInstances int32 = 0   // From https://cloud.google.com/run/docs/configuring/min-instances.
-)
+# Default values from GCP documentation
+DEFAULT_CPU = 1
+DEFAULT_MEMORY_MIB = 512
+DEFAULT_CONCURRENCY = 80
+DEFAULT_MAX_INSTANCES = 100
+DEFAULT_MIN_INSTANCES = 0
 
-// Write the given build schema to the specified path, used to output the final arguments to BuildStepOutputs[]
-func writeToFile(buildSchema buildSchema, outputFilePath string) error {
-	fileData, err := yaml.Marshal(&buildSchema)
-	if err != nil {
-		return fmt.Errorf("converting struct to YAML: %w", err)
-	}
-	log.Printf("Final build schema:\n%v\n. Note that any unset runConfig fields will be set to reasonable default values.", string(fileData))
 
-	err = os.MkdirAll(filepath.Dir(outputFilePath), os.ModeDir)
-	if err != nil {
-		return fmt.Errorf("creating parent directory %q: %w", outputFilePath, err)
-	}
+def write_to_file(build_schema: BuildSchema, output_path: str) -> None:
+    """
+    Write the given build schema to the specified path.
+    
+    Args:
+        build_schema: The build schema to serialize and write.
+        output_path: Path where the YAML file will be written.
+        
+    Raises:
+        IOError: If there's an error writing to the file.
+    """
+    try:
+        # Convert BuildSchema to dict for serialization
+        data = {
+            "runConfig": build_schema.run_config.__dict__ if build_schema.run_config else None,
+            "env": [vars(ev) for ev in build_schema.env],
+            "metadata": build_schema.metadata.__dict__ if build_schema.metadata else None
+        }
+        
+        file_data = yaml.safe_dump(data, default_flow_style=False)
+        logging.info("Final build schema:\n%s\n. Note that any unset runConfig fields will be set to reasonable default values.", file_data)
+        
+        # Ensure parent directories exist
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        
+        with open(output_path, 'w') as f:
+            f.write(file_data)
+            
+    except IOError as e:
+        raise IOError(f"Error writing to {output_path}: {e}") from e
 
-	file, err := os.Create(outputFilePath)
-	if err != nil {
-		return fmt.Errorf("creating build schema file: %w", err)
-	}
-	defer file.Close()
 
-	_, err = file.Write(fileData)
-	if err != nil {
-		return fmt.Errorf("writing build schema data to file: %w", err)
-	}
+def merge_environment_variables(
+    aevs: List[apphostingschema.EnvironmentVariable],
+    bevs: List[bundleschema.EnvironmentVariable]
+) -> List[apphostingschema.EnvironmentVariable]:
+    """
+    Merge environment variables from apphosting and bundle schemas.
+    
+    Args:
+        aevs: Environment variables from apphosting.yaml
+        bevs: Environment variables from bundle.yaml
+        
+    Returns:
+        Merged list of environment variables with precedence to apphosting variables.
+    """
+    merged = []
+    var_by_name = {}
+    
+    for ev in aevs:
+        var_by_name[ev.variable] = ev
+    
+    for ev in bevs:
+        if ev.variable in var_by_name:
+            logging.info("Using apphosting.yaml value/secret for environment variable %s", ev.variable)
+        else:
+            new_ev = apphostingschema.EnvironmentVariable(
+                variable=ev.variable,
+                value=ev.value,
+                secret=ev.secret,
+                availability=ev.availability
+            )
+            merged.append(new_ev)
+    
+    return aevs + merged
 
-	return nil
-}
 
-func toBuildSchema(appHostingSchema apphostingschema.AppHostingSchema, bundleSchema bundleschema.BundleSchema) buildSchema {
-	buildSchema := buildSchema{}
+def merge_run_config(
+    arc: Optional[apphostingschema.RunConfig],
+    brc: Optional[bundleschema.RunConfig]
+) -> apphostingschema.RunConfig:
+    """
+    Merge run configurations from apphosting and bundle schemas.
+    
+    Args:
+        arc: Run config from apphosting.yaml
+        brc: Run config from bundle.yaml
+        
+    Returns:
+        Merged run configuration with precedence to apphosting values.
+    """
+    merged = apphostingschema.RunConfig()
+    
+    # Set defaults from bundle if not set in apphosting
+    if arc is None and brc is not None:
+        merged.cpu = brc.cpu
+        merged.memory_mib = brc.memory_mib
+        merged.concurrency = brc.concurrency
+        merged.min_instances = brc.min_instances
+        merged.max_instances = brc.max_instances
+        merged.cpu_always_allocated = brc.cpu_always_allocated
+    
+    # Apply apphosting values on top of bundle
+    if arc is not None:
+        merged.cpu = arc.cpu or merged.cpu
+        merged.memory_mib = arc.memory_mib or merged.memory_mib
+        merged.concurrency = arc.concurrency or merged.concurrency
+        merged.min_instances = arc.min_instances or merged.min_instances
+        merged.max_instances = arc.max_instances or merged.max_instances
+        merged.vpc_access = arc.vpc_access if arc.vpc_access else merged.vpc_access
+        merged.cpu_always_allocated = arc.cpu_always_allocated if arc.cpu_always_allocated is not None else merged.cpu_always_allocated
+    
+    return merged
 
-	// Merge RunConfig fields from apphosting.yaml and bundle.yaml, Control Plane will set defaults for any unset fields.
-	buildSchema.RunConfig = mergeRunConfig(appHostingSchema.RunConfig, bundleSchema.RunConfig)
 
-	// Copy Metadata fields from bundle.yaml.
-	buildSchema.Metadata = bundleSchema.Metadata
+def to_build_schema(
+    app_hosting_schema: apphostingschema.AppHostingSchema,
+    bundle_schema: bundleschema.BundleSchema
+) -> BuildSchema:
+    """
+    Merge apphosting and bundle schemas into a single build schema.
+    
+    Args:
+        app_hosting_schema: Parsed apphosting.yaml configuration
+        bundle_schema: Parsed bundle.yaml configuration
+        
+    Returns:
+        Merged build schema containing all configurations.
+    """
+    build_schema = BuildSchema()
+    
+    # Merge run configurations
+    merged_run_config = merge_run_config(app_hosting_schema.run_config, bundle_schema.run_config)
+    build_schema.run_config = merged_run_config
+    
+    # Set metadata from bundle
+    build_schema.metadata = bundle_schema.metadata
+    
+    # Merge environment variables
+    merged_env = merge_environment_variables(
+        app_hosting_schema.env,
+        bundle_schema.run_config.environment_variables if bundle_schema.run_config else []
+    )
+    build_schema.env = merged_env
+    
+    return build_schema
 
-	// Merge Env fields from bundle.yaml and apphosting.yaml together.
-	buildSchema.Env = mergeEnvironmentVariables(appHostingSchema.Env, bundleSchema.RunConfig.EnvironmentVariables)
 
-	return buildSchema
-}
-
-// mergeEnvironmentVariables merges the environment variables from apphosting.yaml and bundle.yaml.
-// If there is a conflict between the environment variables, use the value/secret from apphosting.yaml.
-func mergeEnvironmentVariables(aevs []apphostingschema.EnvironmentVariable, bevs []bundleschema.EnvironmentVariable) []apphostingschema.EnvironmentVariable {
-	merged := aevs
-	varByName := make(map[string]apphostingschema.EnvironmentVariable)
-	for _, apphostingEv := range aevs {
-		varByName[apphostingEv.Variable] = apphostingEv
-	}
-
-	for _, bundleEv := range bevs {
-		apphostingEv, found := varByName[bundleEv.Variable]
-		if found && isEnvAvailabilityOverlap(apphostingEv.Availability, bundleEv.Availability) {
-			log.Printf("Apphosting.yaml environment variable %v conflicts with bundle.yaml environment variable\n", bundleEv.Variable)
-			log.Printf("Using an environment variable value or secret from apphosting.yaml\n")
-		} else {
-			var ev apphostingschema.EnvironmentVariable = apphostingschema.EnvironmentVariable(bundleEv)
-			log.Printf("Adding environment variable %v from bundle.yaml\n", bundleEv.Variable)
-			// merge bundleEv in if no conflict
-			merged = append(merged, ev)
-		}
-	}
-	return merged
-}
-
-// mergeRunConfig merges the RunConfig from apphosting.yaml and bundle.yaml.
-// If there is a conflict between the fields, use the value from apphosting.yaml.
-func mergeRunConfig(arc apphostingschema.RunConfig, brc bundleschema.RunConfig) *apphostingschema.RunConfig {
-	merged := &apphostingschema.RunConfig{
-		CPU:                brc.CPU,
-		MemoryMiB:          brc.MemoryMiB,
-		Concurrency:        brc.Concurrency,
-		MinInstances:       brc.MinInstances,
-		MaxInstances:       brc.MaxInstances,
-		CPUAlwaysAllocated: brc.CPUAlwaysAllocated,
-	}
-	if arc.CPU != nil {
-		merged.CPU = arc.CPU
-	}
-	if arc.MemoryMiB != nil {
-		merged.MemoryMiB = arc.MemoryMiB
-	}
-	if arc.Concurrency != nil {
-		merged.Concurrency = arc.Concurrency
-	}
-	if arc.MinInstances != nil {
-		merged.MinInstances = arc.MinInstances
-	}
-	if arc.MaxInstances != nil {
-		merged.MaxInstances = arc.MaxInstances
-	}
-	if arc.VpcAccess != nil {
-		merged.VpcAccess = arc.VpcAccess
-	}
-	if arc.CPUAlwaysAllocated != nil {
-		merged.CPUAlwaysAllocated = arc.CPUAlwaysAllocated
-	}
-
-	return merged
-}
-
-func isEnvAvailabilityOverlap(appHostingAvailability, bundleAvailability []string) bool {
-	availabilityByName := make(map[string]bool)
-	for _, av := range appHostingAvailability {
-		availabilityByName[av] = true
-	}
-	for _, av := range bundleAvailability {
-		if availabilityByName[av] {
-			return true
-		}
-	}
-	return false
-}
-
-// Publish takes in the path to various required files such as apphosting.yaml, bundle.yaml, and
-// other files (tbd) and merges them into one output that describes the desired Backend Service
-// configuration before pushing this information to the control plane.
-func Publish(appHostingYAMLPath string, bundleYAMLPath string, outputFilePath string) error {
-	appHostingSchema, err := apphostingschema.ReadAndValidateFromFile(appHostingYAMLPath)
-	if err != nil {
-		return err
-	}
-
-	bundleSchema, err := bundleschema.ReadAndValidateFromFile(bundleYAMLPath)
-	if err != nil {
-		return err
-	}
-
-	buildSchema := toBuildSchema(appHostingSchema, bundleSchema)
-
-	err = writeToFile(buildSchema, outputFilePath)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+def publish(app_hosting_path: str, bundle_path: str, output_path: str) -> None:
+    """
+    Merge configurations from apphosting.yaml and bundle.yaml into a single build schema.
+    
+    Args:
+        app_hosting_path: Path to apphosting.yaml
+        bundle_path: Path to bundle.yaml
+        output_path: Where to write the merged configuration
+    
+    Raises:
+        FileNotFoundError: If any input file is not found.
+        yaml.YAMLError: If there's an error parsing YAML files.
+    """
+    try:
+        # Read and validate schemas
+        app_hosting_schema = apphostingschema.read_and_validate(Path(app_hosting_path))
+        bundle_schema = bundleschema.read_and_validate(Path(bundle_path))
+        
+        # Merge into build schema
+        build_schema = to_build_schema(app_hosting_schema, bundle_schema)
+        
+        # Write output
+        write_to_file(build_schema, output_path)
+        
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"Required file not found: {e.filename}") from e
+    except yaml.YAMLError as e:
+        raise yaml.YAMLError(f"Error parsing YAML file: {e}") from e

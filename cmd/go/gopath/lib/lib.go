@@ -1,78 +1,78 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements go/gopath buildpack.
-// The gopath buildpack downloads dependencies with `go get`.
-package lib
+"""
+Implements go/gopath buildpack.
+The gopath buildpack downloads dependencies with `go get`.
+"""
 
-import (
-	"fmt"
-	"path/filepath"
+import os
+import shutil
+from pathlib import Path
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
-)
+import pkg.gcpbuildpack as gcp
+from pkg.fileutil import maybe_copy_path_contents
+from pkg.golang import supports_go_get
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	goModExists, err := ctx.FileExists("go.mod")
-	if err != nil {
-		return nil, err
-	}
-	if goModExists {
-		return gcp.OptOut("go.mod found"), nil
-	}
-	return gcp.OptIn("go.mod file not found, assuming GOPATH build"), nil
-}
+def detect_fn(context: gcp.Context) -> tuple[gcp.DetectResult, Exception | None]:
+    """
+    Detects if the buildpack should be used based on presence of go.mod file.
+    
+    Args:
+        context: The build context containing filesystem operations.
+        
+    Returns:
+        A tuple where first element is DetectResult and second is error or None.
+    """
+    try:
+        go_mod_exists = os.path.exists(os.path.join(context.application_root, "go.mod"))
+        if go_mod_exists:
+            return gcp.OptOut("go.mod found"), None
+        return gcp.OptIn("go.mod file not found, assuming GOPATH build"), None
+    except Exception as e:
+        return None, e
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	l, err := ctx.Layer("gopath", gcp.BuildLayer, gcp.LaunchLayerIfDevMode)
-	if err != nil {
-		return fmt.Errorf("creating GOPATH layer: %w", err)
-	}
-	l.SharedEnvironment.Override("GOPATH", l.Path)
-	l.SharedEnvironment.Override("GO111MODULE", "off")
+def build_fn(context: gcp.Context) -> Exception | None:
+    """
+    Builds the application using GOPATH mode.
+    
+    Args:
+        context: The build context containing filesystem operations.
+        
+    Returns:
+        Error or None if successful.
+    """
+    try:
+        layer = context.create_layer("gopath", [gcp.LayerType.BUILD], gcp.LayerType.LAUNCH if context.is_dev_mode else None)
+        os.environ["GOPATH"] = layer.path
+        os.environ["GO111MODULE"] = "off"
 
-	// TODO(b/145604612): Investigate caching the modules layer.
+        # Skip 'go get' for Go versions >= 1.22
+        if not supports_go_get(context):
+            context.log("Skipping go get as it's no longer supported outside of a module in GOPATH mode for Go 1.22+")
+            
+            vendor_path = os.path.join(context.application_root, "vendor")
+            if os.path.exists(vendor_path):
+                src_path = os.path.join(layer.path, "src")
+                maybe_copy_path_contents(src_path, vendor_path)
+            return None
 
-	// Skip 'go get' for Go versions >= 1.22 due to changes in module behavior
-	if supportsGoGet, err := golang.SupportsGoGet(ctx); err != nil {
-		return err
-	} else if !supportsGoGet {
-		ctx.Logf("\"go get\" has been skipped as go get is no longer supported outside of a module in the legacy GOPATH mode for go122+")
-
-		goPath := l.Path
-		goPathSrc := filepath.Join(goPath, "src")
-		vendorPath := filepath.Join(ctx.ApplicationRoot(), "vendor")
-
-		vendorPathExists, err := ctx.FileExists(vendorPath)
-		if err != nil {
-			return err
-		}
-
-		if vendorPathExists {
-
-			err := fileutil.MaybeCopyPathContents(goPathSrc, vendorPath, fileutil.AllPaths)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	_, err = ctx.Exec([]string{"go", "get", "-d"}, gcp.WithEnv("GOPATH="+l.Path, "GO111MODULE=off"), gcp.WithUserAttribution)
-	return err
-}
+        # Run go get
+        result = context.run_command(["go", "get", "-d"], env={"GOPATH": layer.path, "GO111MODULE": "off"})
+        if result.returncode != 0:
+            raise Exception(f"go get failed with exit code {result.returncode}")
+        return None
+        
+    except Exception as e:
+        return e

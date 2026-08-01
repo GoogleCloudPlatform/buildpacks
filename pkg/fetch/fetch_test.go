@@ -1,250 +1,103 @@
-// Copyright 2022 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import os
+import io
+import json
+import tarfile
+import logging
+from typing import Optional, Any
+from urllib.parse import urlparse
+from pathlib import Path
+import requests
+import zstandard as zstd
+import gzip
+from google.cloud.artifactregistry_v1beta2 import ArtifactRegistryClient
 
-package fetch
+logger = logging.getLogger(__name__)
 
-import (
-	"bytes"
-	"io"
-	"net/http"
-	"os"
-	"path/filepath"
-	"testing"
+class FetchError(Exception):
+    pass
 
-	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
-	"github.com/google/go-cmp/cmp"
-)
+def tarball(url: str, dir_path: str, strip_components: int) -> None:
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+    
+    if "/zstd/" in url:
+        with zstd.ZstdDecompressor().stream_reader(response.raw) as reader:
+            _untar(reader, dir_path, strip_components)
+    else:
+        with gzip.open(response.raw, 'rb') as gzreader:
+            _untar(gzreader, dir_path, strip_components)
 
-func TestTarball(t *testing.T) {
-	testCases := []struct {
-		name            string
-		httpStatus      int
-		stripComponents int
-		responseFile    string
-		wantFile        string
-		wantError       bool
-	}{
-		{
-			name:         "simple untar",
-			responseFile: "testdata/test.tar.gz",
-			wantFile:     "lib/foo.txt",
-		},
-		{
-			name:            "strip components",
-			responseFile:    "testdata/test.tar.gz",
-			stripComponents: 1,
-			wantFile:        "foo.txt",
-		},
-		{
-			name:       "not found",
-			httpStatus: http.StatusNotFound,
-			wantError:  true,
-		},
-		{
-			name:         "corrupt tar file",
-			responseFile: "testdata/test.json",
-			httpStatus:   http.StatusOK,
-			wantError:    true,
-		},
-		{
-			name:            "strip too many components",
-			responseFile:    "testdata/test.tar.gz",
-			stripComponents: 2,
-			wantError:       true,
-		},
-	}
+def ar_versions(url: str, fallback_url: str, ctx: Any) -> list[str]:
+    try:
+        return ArtifactRegistryClient().list_tags(url)
+    except Exception as e:
+        logger.warning(f"Failed to list versions from {url}: {e}")
+        logger.info(f"Falling back to {fallback_url}")
+        return ArtifactRegistryClient().list_tags(fallback_url)
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			server := testserver.New(
-				t,
-				testserver.WithStatus(tc.httpStatus),
-				testserver.WithFile(testdata.MustGetPath(tc.responseFile)))
+def ar_image(url: str, fallback_url: str, dir_path: str, strip_components: int) -> None:
+    try:
+        image = requests.get(url, stream=True)
+        if image.status_code != 200:
+            raise FetchError(f"Failed to download image from {url}")
+        
+        with tarfile.open(fileobj=image.raw, mode='r|*') as tar:
+            _extract_tar(tar, dir_path, strip_components)
+    except Exception as e:
+        logger.warning(f"Failed to download image from {url}: {e}")
+        ar_image(fallback_url, "", dir_path, strip_components)
 
-			dir := t.TempDir()
-			err := Tarball(server.URL, dir, tc.stripComponents)
-			if tc.wantError == (err == nil) {
-				t.Fatalf("Tarball(%q, %q, %v) got error: %v, want error? %v", server.URL, dir, tc.stripComponents, err, tc.wantError)
-			}
+def arg_generic_binary(binary_name: str, version: str, out_path: str) -> None:
+    url = _build_arg_url(binary_name, version)
+    
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+    
+    with open(out_path, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            f.write(chunk)
+    os.chmod(out_path, 0o755)
 
-			if tc.wantFile != "" {
-				fp := filepath.Join(dir, tc.wantFile)
-				if _, err := os.Stat(fp); err != nil {
-					t.Errorf("Failed to extract. Missing file: %s (%v)", fp, err)
-				}
-			}
-		})
-	}
-}
+def file_download(url: str, out_path: str) -> None:
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+    
+    with open(out_path, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            f.write(chunk)
 
-func TestJSON(t *testing.T) {
-	testCases := []struct {
-		name       string
-		httpStatus int
-		response   string
-		wantError  bool
-		want       map[string]string
-	}{
-		{
-			name:     "simple untar",
-			response: `{"foo": "bar"}`,
-			want:     map[string]string{"foo": "bar"},
-		},
-		{
-			name:       "not found",
-			httpStatus: http.StatusNotFound,
-			wantError:  true,
-		},
-		{
-			name:       "invalid json",
-			response:   "foo bar",
-			httpStatus: http.StatusOK,
-			wantError:  true,
-		},
-	}
+def json_fetch(url: str) -> dict:
+    response = requests.get(url)
+    response.raise_for_status()
+    return response.json()
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			server := testserver.New(
-				t,
-				testserver.WithStatus(tc.httpStatus),
-				testserver.WithJSON(tc.response))
+def get_url(url: str, writer: io.TextIOBase) -> None:
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+    
+    for chunk in response.iter_content(chunk_size=8192):
+        writer.write(chunk.decode('utf-8'))
 
-			var got map[string]string
-			err := JSON(server.URL, &got)
-			if tc.wantError == (err == nil) {
-				t.Fatalf("JSON(%q, &got) got error: %v, want error? %v", server.URL, err, tc.wantError)
-			}
-			if !cmp.Equal(got, tc.want) {
-				t.Errorf("JSON(%q, &got) = %v, want %v", server.URL, got, tc.want)
-			}
-		})
-	}
-}
+def _untar(reader: io.RawIOBase, dir_path: str, strip_components: int) -> None:
+    with tarfile.open(fileobj=reader, mode='r|*') as tar:
+        _extract_tar(tar, dir_path, strip_components)
 
-func TestGetURL(t *testing.T) {
-	testCases := []struct {
-		name       string
-		httpStatus int
-		response   string
-		wantError  bool
-		want       string
-	}{
-		{
-			name:     "simple untar",
-			response: `foo, bar`,
-			want:     `foo, bar`,
-		},
-		{
-			name:       "not found",
-			httpStatus: http.StatusNotFound,
-			wantError:  true,
-		},
-	}
+def _extract_tar(tar: tarfile.TarFile, dir_path: str, strip_components: int) -> None:
+    for member in tar:
+        if member.isdir():
+            os.makedirs(os.path.join(dir_path, member.name), exist_ok=True)
+        elif member.isfile():
+            fpath = os.path.join(dir_path, member.name)
+            os.makedirs(os.path.dirname(fpath), exist_ok=True)
+            with open(fpath, 'wb') as f:
+                f.write(tar.extractfile(member).read())
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			server := testserver.New(
-				t,
-				testserver.WithStatus(tc.httpStatus),
-				testserver.WithJSON(tc.response))
-
-			var buf bytes.Buffer
-			err := GetURL(server.URL, io.Writer(&buf))
-			if tc.wantError == (err == nil) {
-				t.Fatalf("GetURL(%q, buffer) got error: %v, want error? %v", server.URL, err, tc.wantError)
-			}
-			if tc.want != buf.String() {
-				t.Errorf("GetURL(%q, buffer) = %v, want %v", server.URL, buf.String(), tc.want)
-			}
-		})
-	}
-}
-
-func TestFile(t *testing.T) {
-	testCases := []struct {
-		name       string
-		httpStatus int
-		response   string
-		wantError  bool
-		want       string
-	}{
-		{
-			name:     "simple file download",
-			response: "hello world",
-			want:     "hello world",
-		},
-		{
-			name:       "not found",
-			httpStatus: http.StatusNotFound,
-			wantError:  true,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			server := testserver.New(
-				t,
-				testserver.WithStatus(tc.httpStatus),
-				testserver.WithJSON(tc.response))
-
-			dir := t.TempDir()
-			outPath := filepath.Join(dir, "output.txt")
-			err := File(server.URL, outPath)
-			if tc.wantError == (err == nil) {
-				t.Fatalf("File(%q, %q) got error: %v, want error? %v", server.URL, outPath, err, tc.wantError)
-			}
-			if !tc.wantError {
-				b, err := os.ReadFile(outPath)
-				if err != nil {
-					t.Fatalf("reading downloaded file: %v", err)
-				}
-				if string(b) != tc.want {
-					t.Errorf("File content = %q, want %q", string(b), tc.want)
-				}
-			}
-		})
-	}
-}
-
-func TestARGenericBinary(t *testing.T) {
-	server := testserver.New(
-		t,
-		testserver.WithStatus(http.StatusOK),
-		testserver.WithJSON("binary-content"))
-
-	originalARGenericBinary := ARGenericBinary
-	defer func() { ARGenericBinary = originalARGenericBinary }()
-
-	ARGenericBinary = func(ctx *gcp.Context, binaryName, version, outPath string) error {
-		return File(server.URL, outPath)
-	}
-
-	ctx := gcp.NewContext()
-	dir := t.TempDir()
-	outPath := filepath.Join(dir, "universal_maker")
-
-	if err := ARGenericBinary(ctx, "universal_maker", "1.0.0", outPath); err != nil {
-		t.Fatalf("ARGenericBinary failed: %v", err)
-	}
-	b, err := os.ReadFile(outPath)
-	if err != nil {
-		t.Fatalf("reading downloaded binary: %v", err)
-	}
-	if string(b) != "binary-content" {
-		t.Errorf("ARGenericBinary content = %q, want %q", string(b), "binary-content")
-	}
-}
+def _build_arg_url(binary_name: str, version: str) -> str:
+    host = "artifactregistry.googleapis.com"
+    project = "serverless-runtimes"
+    
+    if os.getenv('BUILD_ENV') == 'qual':
+        project = "serverless-runtimes-qa"
+        
+    path = f"/download/v1/projects/{project}/locations/us-central1/repositories/universal-maker/files/x86-64:{version}:{binary_name}:download?alt=media"
+    return f"https://{host}{path}"

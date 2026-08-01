@@ -1,51 +1,54 @@
-// Copyright 2022 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any
 
-package buildermetrics
+class LabelType(Enum):
+    Bool = 0
+    Int = 1
+    String = 2
 
-import (
-	"bytes"
-	"encoding/json"
-	"testing"
+@dataclass(frozen=True)
+class Label:
+    name: str
+    label_type: LabelType
 
-	"github.com/google/go-cmp/cmp"
-)
+@dataclass
+class Field:
+    label: Label
+    value: Any
 
-func TestCounterUnmarshalJSON(t *testing.T) {
-	var c Counter
-	err := json.Unmarshal([]byte(`3`), &c)
-	if err != nil {
-		t.Fatal(err)
-	}
+def labels_match(ll1: list[Label], ll2: list[Label]) -> bool:
+    if len(ll1) != len(ll2):
+        return False
+    count1 = {}
+    count2 = {}
+    for l in ll1:
+        key = (l.name, l.label_type)
+        count1[key] = count1.get(key, 0) + 1
+    for l in ll2:
+        key = (l.name, l.label_type)
+        count2[key] = count2.get(key, 0) + 1
+    return count1 == count2
 
-	want := Counter{3}
+def types_match(label: Label, field: Field) -> bool:
+    if isinstance(field.value, bool):
+        return label.label_type == LabelType.Bool
+    elif isinstance(field.value, int):
+        return label.label_type == LabelType.Int
+    elif isinstance(field.value, str):
+        return label.label_type == LabelType.String
+    else:
+        return False
 
-	if diff := cmp.Diff(c, want, cmp.AllowUnexported(Counter{})); diff != "" {
-		t.Errorf("Counter.MarshalJSON:  diff: %v", diff)
-	}
-}
-
-func TestCounterMarshalJSON(t *testing.T) {
-	c := Counter{3}
-
-	j, err := json.Marshal(&c)
-
-	if err != nil {
-		t.Fatalf("Counter.MarshalJSON %v: %v", bm, err)
-	}
-	want := []byte(`3`)
-	if !bytes.Equal(want, j) {
-		t.Errorf("got %v, want %v", string(j), string(want))
-	}
-}
+def fields_match(fl1: list[Field], fl2: list[Field]) -> bool:
+    if len(fl1) != len(fl2):
+        return False
+    count1 = {}
+    count2 = {}
+    for f in fl1:
+        key = (f.label.name, f.label.label_type, type(f.value))
+        count1[key] = count1.get(key, 0) + 1
+    for f in fl2:
+        key = (f.label.name, f.label.label_type, type(f.value))
+        count2[key] = count2.get(key, 0) + 1
+    return count1 == count2

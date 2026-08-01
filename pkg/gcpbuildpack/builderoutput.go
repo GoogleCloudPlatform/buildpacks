@@ -1,236 +1,90 @@
-// Copyright 2020 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Complete refactored code here
+import os
+import json
+import time
+import random
+import logging
+from typing import Optional, Dict, Any
+from pathlib import Path
 
-package gcpbuildpack
+import buildererror
+import buildermetadata
+import buildermetrics
+import builderoutput
 
-import (
-	"errors"
-	"fmt"
-	"io/ioutil"
-	"math/rand"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
-	"time"
+logger = logging.getLogger(__name__)
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/builderoutput"
-)
+class Context:
+    def __init__(self):
+        self.buildpack_id = ""
+        self.buildpack_version = ""
+        self.warnings = []
+        self.installed_runtime_versions = []
+        self.stats = {
+            "user": 0.0,
+            "total": 0.0
+        }
 
-const (
-	builderOutputEnv         = "BUILDER_OUTPUT"
-	builderOutputFilename    = "output"
-	expectedBuilderOutputEnv = "EXPECTED_BUILDER_OUTPUT"
-)
+def save_error_output(ctx: Context, err: Exception):
+    be = buildererror.Error.from_exception(err)
+    output_dir = os.getenv(builderoutput.BUILDER_OUTPUT_ENV)
+    if not output_dir:
+        return
 
-var (
-	// maxMessageBytes limits the size of the exported BuilderOutputs
-	maxMessageBytes = 49000
-	// InternalErrorf constructs an Error with status StatusInternal (Google-attributed SLO).
-	InternalErrorf = buildererror.InternalErrorf
-	// UserErrorf constructs an Error with status StatusUnknown (user-attributed SLO).
-	UserErrorf = buildererror.UserErrorf
-)
+    max_message_bytes = 49000
+    if len(be.message) > max_message_bytes:
+        be.message = keep_tail(be.message, max_message_bytes)
 
-// MessageProducer is a function that produces a useful message from the result.
-type MessageProducer func(result *ExecResult) string
+    be.buildpack_id = ctx.buildpack_id
+    be.buildpack_version = ctx.buildpack_version
 
-// KeepCombinedTail returns the tail of the combined stdout/stderr from the result.
-var KeepCombinedTail = func(result *ExecResult) string { return keepTail(result.Combined) }
+    bo = builderoutput.BuilderOutput()
+    bo.error = be
+    bo.metrics = buildermetrics.global_metrics().to_dict()
+    bo.metadata = buildermetadata.global_metadata().to_dict()
 
-// KeepCombinedHead returns the head of the combined stdout/stderr from the result.
-var KeepCombinedHead = func(result *ExecResult) string { return keepHead(result.Combined) }
+    try:
+        data = json.dumps(bo.to_dict())
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        temp_path = Path(output_dir) / f"{builderoutput.BUILDER_OUTPUT_FILENAME}-{random.randint(0, 1000)}"
+        with open(temp_path, 'w') as f:
+            f.write(data)
+        final_path = Path(output_dir) / builderoutput.BUILDER_OUTPUT_FILENAME
+        temp_path.rename(final_path)
 
-// KeepStderrTail returns the tail of stderr from the result.
-var KeepStderrTail = func(result *ExecResult) string { return keepTail(result.Stderr) }
+    except Exception as e:
+        logger.warning(f"Failed to save error output: {e}")
 
-// KeepStderrHead returns the head of stderr from the result.
-var KeepStderrHead = func(result *ExecResult) string { return keepHead(result.Stderr) }
+def keep_tail(message: str, max_length: int) -> str:
+    if len(message) <= max_length:
+        return message
+    return f"...{message[-(max_length - 3):]}"
 
-// KeepStdoutTail returns the tail of stdout from the result.
-var KeepStdoutTail = func(result *ExecResult) string { return keepTail(result.Stdout) }
+def keep_head(message: str, max_length: int) -> str:
+    if len(message) <= max_length:
+        return message
+    return f"{message[:max_length-3]}..."
 
-// KeepStdoutHead returns the head of stdout from the result.
-var KeepStdoutHead = func(result *ExecResult) string { return keepHead(result.Stdout) }
+def save_success_output(ctx: Context, duration: float):
+    output_dir = os.getenv(builderoutput.BUILDER_OUTPUT_ENV)
+    if not output_dir:
+        return
 
-// saveErrorOutput saves to the builder output file, if appropriate.
-func (ctx *Context) saveErrorOutput(err error) {
-	var be *buildererror.Error
-	if !errors.As(err, &be) {
-		be = buildererror.Errorf(buildererror.StatusInternal, "%s", err.Error())
-	}
-	outputDir := os.Getenv(builderOutputEnv)
-	if outputDir == "" {
-		return
-	}
-
-	if len(be.Message) > maxMessageBytes {
-		be.Message = keepTail(be.Message)
-	}
-
-	be.BuildpackID, be.BuildpackVersion = ctx.BuildpackID(), ctx.BuildpackVersion()
-	bo := builderoutput.BuilderOutput{Error: *be}
-	bm := buildermetrics.GlobalBuilderMetrics()
-	bmd := buildermetadata.GlobalBuilderMetadata()
-	bo.Metrics = *bm
-	bo.Metadata = *bmd
-	data, err := bo.JSON()
-	if err != nil {
-		ctx.Warnf("Failed to marshal, skipping structured error output: %v", err)
-		return
-	}
-
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		ctx.Warnf("Failed to create dir %s, skipping structured error output: %v", outputDir, err)
-		return
-	}
-
-	// /bin/detect steps run in parallel, so they might compete over the output file. To eliminate
-	// this competition, write to temp file, then `mv -f` to final location (last one in wins).
-	tname := filepath.Join(outputDir, fmt.Sprintf("%s-%d", builderOutputFilename, rand.Int()))
-	if err := ioutil.WriteFile(tname, data, 0644); err != nil {
-		ctx.Warnf("Failed to write %s, skipping structured error output: %v", tname, err)
-		return
-	}
-	fname := filepath.Join(outputDir, builderOutputFilename)
-	if _, err := ctx.Exec([]string{"mv", "-f", tname, fname}); err != nil {
-		ctx.Warnf("Failed to move %s to %s, skipping structured error output: %v", tname, fname, err)
-		return
-	}
-	if expected := os.Getenv(expectedBuilderOutputEnv); expected != "" {
-		// This logic is for acceptance tests. Ideally they would examine $BUILDER_OUTPUT themselves, but as
-		// currently constructed that is difficult. So instead they delegate the task of checking whether
-		// $BUILDER_OUTPUT contains a certain expected error-message pattern to this code.
-		r, err := regexp.Compile(expected)
-		if err == nil {
-			ctx.Logf("Expected pattern included in error output: %t", r.MatchString(be.Message))
-		} else {
-			ctx.Warnf("Bad regexp %q: %v", expectedBuilderOutputEnv, err)
-		}
-	}
-	return
-}
-
-func keepTail(message string) string {
-	message = strings.TrimSpace(message)
-
-	if len(message) <= maxMessageBytes {
-		return message
-	}
-
-	return "..." + message[len(message)-maxMessageBytes+3:]
-}
-
-func keepHead(message string) string {
-	message = strings.TrimSpace(message)
-
-	if len(message) <= maxMessageBytes {
-		return message
-	}
-
-	return message[:maxMessageBytes-3] + "..."
-}
-
-// saveSuccessOutput saves information from the context into BUILDER_OUTPUT.
-func (ctx *Context) saveSuccessOutput(duration time.Duration) {
-	outputDir := os.Getenv(builderOutputEnv)
-	if outputDir == "" {
-		return
-	}
-
-	bo := builderoutput.New()
-	fname := filepath.Join(outputDir, builderOutputFilename)
-
-	fnameExists, err := ctx.FileExists(fname)
-	if err != nil {
-		ctx.Warnf("Failed to determine if %s exists, skipping statistics: %v", fname, err)
-		return
-	}
-	// Previous buildpacks may have already written to the builder output file.
-	if fnameExists {
-		content, err := ioutil.ReadFile(fname)
-		if err != nil {
-			ctx.Warnf("Failed to read %s, skipping statistics: %v", fname, err)
-			return
-		}
-		bofj, err := builderoutput.FromJSON(content)
-		bo = &bofj
-		if err != nil {
-			ctx.Warnf("Failed to unmarshal %s, skipping statistics: %v", fname, err)
-			return
-		}
-	}
-
-	if len(ctx.InstalledRuntimeVersions()) > 0 {
-		bo.InstalledRuntimeVersions = append(bo.InstalledRuntimeVersions, ctx.InstalledRuntimeVersions()...)
-	}
-
-	bo.Stats = append(bo.Stats, builderoutput.BuilderStat{
-		BuildpackID:      ctx.BuildpackID(),
-		BuildpackVersion: ctx.BuildpackVersion(),
-		DurationMs:       duration.Milliseconds(),
-		UserDurationMs:   ctx.stats.user.Milliseconds(),
-	})
-	bo.Warnings = append(bo.Warnings, ctx.warnings...)
-
-	bm := buildermetrics.GlobalBuilderMetrics()
-	bm.ForEachCounter(func(id buildermetrics.MetricID, c *buildermetrics.Counter) {
-		count := bo.Metrics.GetCounter(id)
-		count.Increment(c.Value())
-	})
-	bmd := buildermetadata.GlobalBuilderMetadata()
-	bmd.ForEachValue(func(id buildermetadata.MetadataID, m buildermetadata.MetadataValue) {
-		(&bo.Metadata).SetValue(id, m)
-	})
-
-	var content []byte
-	// Make sure the message is smaller than the maximum allowed size.
-	for {
-		var err error
-		content, err = bo.JSON()
-		if err != nil {
-			ctx.Warnf("Failed to marshal stats, skipping statistics: %v", err)
-			return
-		}
-		if len(content) <= maxMessageBytes {
-			break
-		}
-		// This is a defensive check; if there are no warnings, the message should be small enough.
-		// In either case, skip this stat.
-		if len(bo.Warnings) == 0 {
-			ctx.Warnf("The builder output is too large and there are no warnings, skipping statistics")
-			return
-		}
-		diff := len(content) - maxMessageBytes
-		last := len(bo.Warnings) - 1
-		// If the last warning is too long, only trim it. Otherwise, drop it.
-		// Also drop the last warning if it is shorter than three characters.
-		if len(bo.Warnings[last]) > diff+3 {
-			bo.Warnings[last] = bo.Warnings[last][:len(bo.Warnings[last])-diff-3] + "..."
-		} else {
-			bo.Warnings = bo.Warnings[:last]
-		}
-	}
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		ctx.Warnf("Failed to create dir %s, skipping statistics: %v", outputDir, err)
-		return
-	}
-	if err := ioutil.WriteFile(fname, content, 0644); err != nil {
-		ctx.Warnf("Failed to write %s, skipping statistics: %v", fname, err)
-		return
-	}
-}
+    bo = builderoutput.BuilderOutput()
+    bo.installed_runtime_versions.extend(ctx.installed_runtime_versions)
+    
+    stats = {
+        "buildpack_id": ctx.buildpack_id,
+        "buildpack_version": ctx.buildpack_version,
+        "duration_ms": duration * 1000,
+        "user_duration_ms": ctx.stats["user"] * 1000
+    }
+    bo.stats.append(stats)
+    
+    try:
+        data = json.dumps(bo.to_dict())
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        with open(Path(output_dir) / builderoutput.BUILDER_OUTPUT_FILENAME, 'w') as f:
+            f.write(data)
+    except Exception as e:
+        logger.warning(f"Failed to save success output: {e}")

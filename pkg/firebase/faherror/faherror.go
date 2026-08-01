@@ -1,147 +1,167 @@
-// Package faherror provides a standardized way to define and handle errors that occur during the
-// Firebase App Hosting build process.
-package faherror
+import json
+from typing import Any
 
-import (
-	"encoding/json"
-	"fmt"
-)
 
-// FahError is a wrapper around an error that provides additional metadata to help the user
-// understand and resolve the error.
-type FahError struct {
-	Reason            string `json:"reason"`            // ex. 'Misconfigured Secret'
-	Code              string `json:"code"`              // ex. 'fah/misconfigured-secret'
-	UserFacingMessage string `json:"userFacingMessage"` // ex. 'Secret ... troubleshoot.'
-	RawLog            string `json:"rawLog"`            // ex. 'calling out to secret manager...'
-	IsUserAttributed  bool   `json:"isUserAttributed"`
-}
+class FahError(Exception):
+    """
+    A standardized way to define and handle errors during Firebase App Hosting builds.
+    """
 
-func (e *FahError) Error() string {
-	b, err := json.Marshal(e)
-	if err != nil {
-		// Fallback if marshaling fails (extremely unlikely for this struct)
-		return fmt.Sprintf(`{"reason":"%v","code":"%v","userFacingMessage":"%v","rawLog":"%v","isUserAttributed":%t}`, e.Reason, e.Code, e.UserFacingMessage, e.RawLog, e.IsUserAttributed)
-	}
-	return string(b)
-}
+    def __init__(
+        self,
+        reason: str,
+        code: str,
+        user_facing_message: str,
+        raw_log: str = "",
+        is_user_attributed: bool = False
+    ):
+        super().__init__()
+        self.reason = reason
+        self.code = code
+        self.user_facing_message = user_facing_message
+        self.raw_log = raw_log
+        self.is_user_attributed = is_user_attributed
 
-// ExitCode returns the exit code that the preparer/publisher should exit with.
-func (e *FahError) ExitCode() int {
-	if e.IsUserAttributed {
-		return 100
-	}
-	return 1
-}
+    def __str__(self) -> str:
+        error_dict = {
+            "reason": self.reason,
+            "code": self.code,
+            "userFacingMessage": self.user_facing_message,
+            "rawLog": self.raw_log,
+            "isUserAttributed": self.is_user_attributed
+        }
+        return json.dumps(error_dict)
 
-// InternalErrorf covers internal Google-attributed errors.
-func InternalErrorf(format string, args ...any) *FahError {
-	err := fmt.Errorf(format, args...)
-	return &FahError{
-		Reason:            "Other Reason",
-		Code:              "fah/other",
-		UserFacingMessage: "Your build failed. Please check the raw log and build logs for more context about your build error.",
-		RawLog:            err.Error(),
-		IsUserAttributed:  false,
-	}
-}
+    def exit_code(self) -> int:
+        """
+        Returns the appropriate exit code based on whether the error is user-attributed.
+        """
+        return 100 if self.is_user_attributed else 1
 
-// UserErrorf covers all other user-attributed errors that don't fit into the other known error types.
-func UserErrorf(format string, args ...any) *FahError {
-	err := fmt.Errorf(format, args...)
-	return &FahError{
-		Reason:            "Other Reason",
-		Code:              "fah/other",
-		UserFacingMessage: "Your build failed due to a misconfiguration. Please check the raw log and build logs for more context about your build error.",
-		RawLog:            err.Error(),
-		IsUserAttributed:  true,
-	}
-}
 
-// MissingLockFileError creates a FahError with metadata about a missing lock file for the user's
-// package manager (npm, yarn, or pnpm).
-func MissingLockFileError(path string) *FahError {
-	return &FahError{
-		Reason:            "Missing Lock File",
-		Code:              "fah/missing-lock-file",
-		UserFacingMessage: fmt.Sprintf("Missing dependency lock file at path '%v'. Please run your package manager's install command and redeploy.", path),
-		// We are generating the error source, so there's no raw log to include.
-		RawLog:           "",
-		IsUserAttributed: true,
-	}
-}
+def internal_errorf(format_str: str, *args: Any) -> FahError:
+    message = format_str % args
+    return FahError(
+        reason="Other Reason",
+        code="fah/other",
+        user_facing_message=(
+            "Your build failed. Please check the raw log and build logs for more "
+            "context about your build error."
+        ),
+        raw_log=message,
+        is_user_attributed=False
+    )
 
-// MisconfiguredSecretError creates a FahError belonging to a class of errors that occur when a
-// secret is either not found or permissions are not properly configured.
-func MisconfiguredSecretError(secret string, rawLog error) *FahError {
-	return &FahError{
-		Reason: "Misconfigured Secret",
-		Code:   "fah/misconfigured-secret",
-		UserFacingMessage: fmt.Sprintf(
-			"Error resolving secret version with name=%v. Please ensure the secret exists in your project and that your App Hosting backend has access to it. If the secret already exists in your project, please grant your App Hosting backend access to it with the CLI command 'firebase apphosting:secrets:grantaccess'. See https://firebase.google.com/docs/app-hosting/configure#secret-parameters for more information.",
-			secret),
-		RawLog:           rawLog.Error(),
-		IsUserAttributed: true,
-	}
-}
 
-// InvalidRootDirectoryError creates a FahError with metadata about a missing or invalid root
-// directory that caused the build to fail.
-func InvalidRootDirectoryError(rootDir string, rawLog error) *FahError {
-	return &FahError{
-		Reason:            "Invalid Root Directory",
-		Code:              "fah/invalid-root-directory",
-		UserFacingMessage: fmt.Sprintf("Invalid root directory specified. No buildable app found rooted at '%v'. Please go to your backend settings page and, in the Deployment tab, configure your root directory to point to the root of the target application.", rootDir),
-		RawLog:            rawLog.Error(),
-		IsUserAttributed:  true,
-	}
-}
+def user_errorf(format_str: str, *args: Any) -> FahError:
+    message = format_str % args
+    return FahError(
+        reason="Other Reason",
+        code="fah/other",
+        user_facing_message=(
+            "Your build failed due to a misconfiguration. Please check the raw log and "
+            "build logs for more context about your build error."
+        ),
+        raw_log=message,
+        is_user_attributed=True
+    )
 
-// UnsupportedFrameworkVersionError creates a FahError with metadata about the unsupported framework
-// version that caused the build to fail.
-func UnsupportedFrameworkVersionError(framework string, version string) *FahError {
-	return &FahError{
-		Reason:            "Unsupported Framework Version",
-		Code:              "fah/unsupported-framework-version",
-		UserFacingMessage: fmt.Sprintf("Unsupported version for framework version %v@%v. Please see https://firebase.google.com/docs/app-hosting/about-app-hosting#frameworks for more information about which versions are supported by App Hosting.", framework, version),
-		// We are generating the error source, so there's no raw log to include.
-		RawLog:           "",
-		IsUserAttributed: true,
-	}
-}
 
-// FailedFrameworkBuildError creates a FahError belonging to the class of errors that occur when the
-// framework build command fails.
-func FailedFrameworkBuildError(buildCommand string, rawLog error) *FahError {
-	return &FahError{
-		Reason:            "Failed Framework Build",
-		Code:              "fah/failed-framework-build",
-		UserFacingMessage: fmt.Sprintf("Your application failed to run the framework build command '%v' successfully. Please check the raw log to address the error and confirm that your application builds locally before redeploying.", buildCommand),
-		RawLog:            rawLog.Error(),
-		IsUserAttributed:  true,
-	}
-}
+def missing_lock_file_error(path: str) -> FahError:
+    return FahError(
+        reason="Missing Lock File",
+        code="fah/missing-lock-file",
+        user_facing_message=(
+            f"Missing dependency lock file at path '{path}'. Please run your package "
+            "manager's install command and redeploy."
+        ),
+        raw_log="",
+        is_user_attributed=True
+    )
 
-// ImproperSecretFormatError creates a FahError with metadata about an improperly formatted secret
-// in the user's apphosting.yaml that caused the build to fail.
-func ImproperSecretFormatError(secret string) *FahError {
-	return &FahError{
-		Reason:            "Improper Secret Format",
-		Code:              "fah/improper-secret-format",
-		UserFacingMessage: fmt.Sprintf("Your secret '%s' is not formatted properly. Please see https://firebase.google.com/docs/app-hosting/configure#secret-parameters for guidance on how to format your secret.", secret),
-		RawLog:            "",
-		IsUserAttributed:  true,
-	}
-}
 
-// InvalidAppHostingYamlError creates a FahError with metadata about an invalid apphosting.yaml
-// file that caused the build to fail.
-func InvalidAppHostingYamlError(filepath string, rawLog error) *FahError {
-	return &FahError{
-		Reason:            "Invalid apphosting.yaml",
-		Code:              "fah/invalid-apphosting-yaml",
-		UserFacingMessage: fmt.Sprintf("Your apphosting.yaml file at path '%v' is not formatted properly. Please see https://firebase.google.com/docs/app-hosting/configure#apphosting-yaml for guidance on how to format your apphosting.yaml file.", filepath),
-		RawLog:            rawLog.Error(),
-		IsUserAttributed:  true,
-	}
-}
+def misconfigured_secret_error(secret: str, raw_log: str) -> FahError:
+    return FahError(
+        reason="Misconfigured Secret",
+        code="fah/misconfigured-secret",
+        user_facing_message=(
+            f"Error resolving secret version with name={secret}. Please ensure the "
+            "secret exists in your project and that your App Hosting backend has access "
+            "to it. If the secret already exists in your project, please grant your App "
+            "Hosting backend access to it with the CLI command 'firebase apphosting:"
+            "secrets:grantaccess'. See https://firebase.google.com/docs/app-hosting/"
+            "configure#secret-parameters for more information."
+        ),
+        raw_log=raw_log,
+        is_user_attributed=True
+    )
+
+
+def invalid_root_directory_error(root_dir: str, raw_log: str) -> FahError:
+    return FahError(
+        reason="Invalid Root Directory",
+        code="fah/invalid-root-directory",
+        user_facing_message=(
+            f"Invalid root directory specified. No buildable app found rooted at '{root_dir}'. "
+            "Please go to your backend settings page and, in the Deployment tab, configure your "
+            "root directory to point to the root of the target application."
+        ),
+        raw_log=raw_log,
+        is_user_attributed=True
+    )
+
+
+def unsupported_framework_version_error(framework: str, version: str) -> FahError:
+    return FahError(
+        reason="Unsupported Framework Version",
+        code="fah/unsupported-framework-version",
+        user_facing_message=(
+            f"Unsupported version for framework {framework}@{version}. Please see "
+            "https://firebase.google.com/docs/app-hosting/about-app-hosting#frameworks for more "
+            "information about which versions are supported by App Hosting."
+        ),
+        raw_log="",
+        is_user_attributed=True
+    )
+
+
+def failed_framework_build_error(build_command: str, raw_log: str) -> FahError:
+    return FahError(
+        reason="Failed Framework Build",
+        code="fah/failed-framework-build",
+        user_facing_message=(
+            f"Your application failed to run the framework build command '{build_command}' "
+            "successfully. Please check the raw log to address the error and confirm that your "
+            "application builds locally before redeploying."
+        ),
+        raw_log=raw_log,
+        is_user_attributed=True
+    )
+
+
+def improper_secret_format_error(secret: str) -> FahError:
+    return FahError(
+        reason="Improper Secret Format",
+        code="fah/improper-secret-format",
+        user_facing_message=(
+            f"Your secret '{secret}' is not formatted properly. Please see "
+            "https://firebase.google.com/docs/app-hosting/configure#secret-parameters for guidance "
+            "on how to format your secret."
+        ),
+        raw_log="",
+        is_user_attributed=True
+    )
+
+
+def invalid_apphosting_yaml_error(filepath: str, raw_log: str) -> FahError:
+    return FahError(
+        reason="Invalid apphosting.yaml",
+        code="fah/invalid-apphosting-yaml",
+        user_facing_message=(
+            f"Your apphosting.yaml file at path '{filepath}' is not formatted properly. Please see "
+            "https://firebase.google.com/docs/app-hosting/configure#apphosting-yaml for guidance on how "
+            "to format your apphosting.yaml file."
+        ),
+        raw_log=raw_log,
+        is_user_attributed=True
+    )

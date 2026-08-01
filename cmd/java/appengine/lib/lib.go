@@ -1,245 +1,188 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Complete refactored code here
+"""
+Implements java/appengine buildpack.
+The appengine buildpack sets the image entrypoint.
 
-// Implements java/appengine buildpack.
-// The appengine buildpack sets the image entrypoint.
-package lib
+Copyright 2025 Google LLC Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+"""
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"slices"
-	"strings"
+import os
+import logging
+from typing import Any, Dict, List, Optional
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
-)
+import google.cloud.buildpacks as gcp
+import google.cloud.buildpacks.appengine as appengine
+import google.cloud.buildpacks.appstart as appstart
+import google.cloud.buildpacks.buildermetrics as buildermetrics
+import google.cloud.buildpacks.env as env
+import google.cloud.buildpacks.java as java
+import google.cloud.buildpacks.runtime as runtime
 
-const (
-	java25Runtime = "java25"
-)
+class EEConfig:
+    def __init__(self, ee8_deletions: List[str], ee10_deletions: List[str], 
+                 ee11_deletions: List[str], default_ee_version: str):
+        self.ee8_deletions = ee8_deletions
+        self.ee10_deletions = ee10_deletions
+        self.ee11_deletions = ee11_deletions
+        self.default_ee_version = default_ee_version
 
-var (
-	supportedJettyBuildTimeVersions = []string{
-		java25Runtime,
-	}
-)
-
-// EEConfig contains the files to delete from the Jetty distribution for a given runtime.
-type EEConfig struct {
-	EE8Deletions     []string
-	EE10Deletions    []string
-	EE11Deletions    []string
-	defaultEEVersion string
+JETTY_FILES_TO_DELETE: Dict[str, EEConfig] = {
+    "java25": EEConfig(
+        ee8_deletions=["runtime-shared-jetty121-ee11.jar"],
+        ee10_deletions=[],
+        ee11_deletions=["runtime-shared-jetty121-ee8.jar"],
+        default_ee_version="EE11"
+    )
 }
 
-var jettyFilesToDelete = map[string]EEConfig{
-	java25Runtime: {
-		// This is based on the behavior defined in ClassPathUtils.
-		// See for reference:
-		// http://google3/third_party/java_src/appengine_standard/runtime/util/src/main/java/com/google/apphosting/runtime/ClassPathUtils.java;l=111
-		EE8Deletions:     []string{"runtime-shared-jetty121-ee11.jar"},
-		EE10Deletions:    []string{},
-		EE11Deletions:    []string{"runtime-shared-jetty121-ee8.jar"},
-		defaultEEVersion: "EE11",
-	},
-}
+def detect_fn(context: gcp.Context) -> Optional[gcp.DetectResult]:
+    if env.is_gae():
+        return appengine.opt_in_target_platform_gae()
+    return appengine.opt_out_target_platform_not_gae()
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if env.IsGAE() {
-		return appengine.OptInTargetPlatformGAE(), nil
-	}
-	return appengine.OptOutTargetPlatformNotGAE(), nil
-}
+def build_fn(context: gcp.Context) -> None:
+    jetty_entrypoint = _get_jetty_entrypoint(context)
+    entrypoint_generator = (
+        lambda ctx: (jetty_entrypoint, None) if jetty_entrypoint 
+        else _get_custom_entrypoint(ctx)
+    )
+    appengine.build(context, "java", entrypoint_generator)
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	jettyEntrypoint, err := jettyEntrypoint(ctx)
-	if err != nil {
-		return err
-	}
-	eg := func(*gcp.Context) (*appstart.Entrypoint, error) {
-		if jettyEntrypoint != nil {
-			return jettyEntrypoint, nil
-		}
-		// Putting this line within this closure defers it to a later point and thereby ensures that it
-		// is called only when it is not an appengine-web.xml deployment.
-		return customEntrypoint(ctx)
-	}
-	return appengine.Build(ctx, "java", eg)
-}
+def _get_jetty_entrypoint(context: gcp.Context) -> Optional[appstart.Entrypoint]:
+    web_xml_exists = context.file_exists("WEB-INF", "appengine-web.xml")
+    if not web_xml_exists:
+        return None
 
-func jettyEntrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
-	webXMLExists, err := ctx.FileExists("WEB-INF", "appengine-web.xml")
-	if err != nil {
-		return nil, err
-	}
-	if webXMLExists {
-		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.JavaGAEWebXMLConfigUsageCounterID).Increment(1)
-		jettyLayer, err := processAppEngineWebXML(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("Error processing appengine-web.xml: %w", err)
-		}
-		if jettyLayer != "" {
-			ctx.Logf("WAR packaging detected and injecting the embedded web-server dependencies at build time")
-			return &appstart.Entrypoint{
-				Type:    appstart.EntrypointGenerated.String(),
-				Command: "serve WEB-INF/appengine-web.xml " + jettyLayer,
-			}, nil
-		}
-		return &appstart.Entrypoint{
-			Type:    appstart.EntrypointGenerated.String(),
-			Command: "serve WEB-INF/appengine-web.xml",
-		}, nil
-	}
-	return nil, nil
-}
+    metrics = buildermetrics.GlobalBuilderMetrics()
+    metrics.get_counter(buildermetrics.JavaGAEWebXMLConfigUsageCounterID).increment(1)
 
-func customEntrypoint(ctx *gcp.Context) (*appstart.Entrypoint, error) {
-	executable, err := java.ExecutableJar(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("finding executable jar: %w", err)
-	}
+    jetty_layer, err = _process_app_engine_web_xml(context)
+    if err:
+        raise ValueError(f"Error processing appengine-web.xml: {err}")
 
-	return &appstart.Entrypoint{
-		Type:    appstart.EntrypointGenerated.String(),
-		Command: "serve " + executable,
-	}, nil
-}
+    if jetty_layer:
+        context.log.info("WAR packaging detected and injecting the embedded web-server dependencies at build time")
+        return appstart.Entrypoint(
+            type=appstart.EntrypointGenerated,
+            command=f"serve WEB-INF/appengine-web.xml {jetty_layer}"
+        )
+    
+    return appstart.Entrypoint(
+        type=appstart.EntrypointGenerated,
+        command="serve WEB-INF/appengine-web.xml"
+    )
 
-func processAppEngineWebXML(ctx *gcp.Context) (string, error) {
-	fullPath := filepath.Join(ctx.ApplicationRoot(), "WEB-INF/appengine-web.xml")
-	appEngineWebXML, err := ctx.ReadFile(fullPath)
-	if err != nil {
-		return "", fmt.Errorf("Error reading appengine-web.xml: %v", err)
-	}
+def _get_custom_entrypoint(context: gcp.Context) -> appstart.Entrypoint:
+    executable, err = java.executable_jar(context)
+    if err:
+        raise ValueError(f"Finding executable jar: {err}")
 
-	appEngineWebXMLApp, err := java.ParseAppEngineWebXML(appEngineWebXML)
-	if err != nil {
-		return "", fmt.Errorf("Error parsing appengine-web.xml: %w", err)
-	}
+    return appstart.Entrypoint(
+        type=appstart.EntrypointGenerated,
+        command=f"serve {executable}"
+    )
 
-	if appEngineWebXMLApp.SessionsEnabled {
-		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.JavaGAESessionsEnabledCounterID).Increment(1)
-	}
+def _process_app_engine_web_xml(context: gcp.Context) -> (str, bool):
+    full_path = os.path.join(context.application_root(), "WEB-INF/appengine-web.xml")
+    appengine_web_xml, err = context.read_file(full_path)
+    if err:
+        raise ValueError(f"Error reading appengine-web.xml: {err}")
 
-	if slices.Contains(supportedJettyBuildTimeVersions, appEngineWebXMLApp.Runtime) {
-		return addJettyAtBuildTime(ctx, appEngineWebXMLApp)
-	}
+    parsed_app, err = java.parse_app_engine_web_xml(appengine_web_xml)
+    if err:
+        raise ValueError(f"Error parsing appengine-web.xml: {err}")
 
-	return "", nil
-}
+    if parsed_app.sessions_enabled:
+        metrics = buildermetrics.GlobalBuilderMetrics()
+        metrics.get_counter(buildermetrics.JavaGAESessionsEnabledCounterID).increment(1)
 
-func addJettyAtBuildTime(ctx *gcp.Context, appEngineWebXMLApp *java.AppEngineWebXMLApp) (string, error) {
-	jettyLayer, err := ctx.Layer("java_runtime", gcp.LaunchLayer)
-	repoPath := appEngineWebXMLApp.Runtime
-	if err != nil {
-		return "", fmt.Errorf("creating layer: %w", err)
-	}
-	_, err = runtime.InstallTarballIfNotCached(ctx, runtime.Jetty, "", jettyLayer)
-	if err != nil {
-		return "", fmt.Errorf("Error installing jetty artifacts: %w", err)
-	}
-	ctx.Logf("Successfully installed Jetty for %s at build time from AR.", repoPath)
+    if parsed_app.runtime in supported_jetty_build_time_versions():
+        return _add_jetty_at_build_time(context, parsed_app), True
+    
+    return "", False
 
-	err = handleRuntimeJettyFiles(ctx, appEngineWebXMLApp, jettyLayer.Path)
-	if err != nil {
-		return "", err
-	}
-	return jettyLayer.Path, nil
-}
+def supported_jetty_build_time_versions() -> List[str]:
+    return ["java25"]
 
-// handleRuntimeJettyFiles tailors the installed Jetty distribution based on runtime configuration.
-func handleRuntimeJettyFiles(ctx *gcp.Context, appEngineWebXMLApp *java.AppEngineWebXMLApp, jettyRoot string) error {
-	config, exists := jettyFilesToDelete[appEngineWebXMLApp.Runtime]
-	if !exists {
-		return nil
-	}
+def _add_jetty_at_build_time(context: gcp.Context, 
+                            appengine_web_xml_app: java.AppEngineWebXMLApp) -> str:
+    jetty_layer, err = context.layer("java_runtime", gcp.LayerType.LAUNCH)
+    if err:
+        raise ValueError(f"Creating layer: {err}")
 
-	eeVersion, err := extractEEVersion(appEngineWebXMLApp, config.defaultEEVersion, ctx)
-	if err != nil {
-		return err
-	}
+    repo_path = appengine_web_xml_app.runtime
+    _, err = runtime.install_tarball_if_not_cached(
+        context, runtime.Jetty, "", jetty_layer.path
+    )
+    if err:
+        raise ValueError(f"Error installing jetty artifacts: {err}")
 
-	var fileNamesToDelete []string
-	switch eeVersion {
-	case "EE8":
-		fileNamesToDelete = config.EE8Deletions
-	case "EE11":
-		fileNamesToDelete = config.EE11Deletions
-	}
+    context.log.info(f"Successfully installed Jetty for {repo_path} at build time from AR.")
 
-	if len(fileNamesToDelete) == 0 {
-		return nil
-	}
+    _handle_runtime_jetty_files(context, appengine_web_xml_app, jetty_layer.path)
+    return jetty_layer.path
 
-	err = filepath.Walk(jettyRoot, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-		fileName := info.Name()
-		if slices.Contains(fileNamesToDelete, fileName) || !strings.HasSuffix(fileName, ".jar") {
-			if rmErr := os.Remove(path); rmErr != nil {
-				ctx.Logf("Warning: Failed to delete file %s: %v", path, rmErr)
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	return nil
-}
+def _handle_runtime_jetty_files(context: gcp.Context,
+                                appengine_web_xml_app: java.AppEngineWebXMLApp,
+                                jetty_root: str) -> None:
+    config = JETTY_FILES_TO_DELETE.get(appengine_web_xml_app.runtime)
+    if not config:
+        return
 
-func extractEEVersion(appEngineWebXMLApp *java.AppEngineWebXMLApp, defaultEEVersion string, ctx *gcp.Context) (string, error) {
-	var trueCount int = 0
-	var eeVersion string
-	var err error = nil
-	// First return an error when more than one appengine.use.* properties are true.
-	// If that is not the case, return an error when appengine.use.EE10 is true.
-	// Otherwise, return the value of the last true property.
-	for _, prop := range appEngineWebXMLApp.SystemProperties {
-		// case insensitive comparison for value of the system property
-		// "appengine.use.EE11" can be "true" or "True", for e.g.
-		if prop.Name == "appengine.use.EE11" && strings.ToLower(prop.Value) == "true" {
-			trueCount++
-			eeVersion = "EE11"
-		} else if prop.Name == "appengine.use.EE8" && strings.ToLower(prop.Value) == "true" {
-			trueCount++
-			eeVersion = "EE8"
-		} else if prop.Name == "appengine.use.EE10" && strings.ToLower(prop.Value) == "true" {
-			trueCount++
-			eeVersion = "EE10"
-			err = fmt.Errorf("appengine.use.EE10 is not supported in Jetty121")
-		}
-		if trueCount > 1 {
-			return "", fmt.Errorf("only one of appengine.use.EE8, appengine.use.EE10, or appengine.use.EE11 can be true")
-		}
-	}
-	if trueCount == 0 {
-		eeVersion = defaultEEVersion
-		ctx.Logf("No appengine.use.* property found in appengine-web.xml, using default EE version: %s", eeVersion)
-	}
-	return eeVersion, err
-}
+    ee_version, err = _extract_ee_version(
+        appengine_web_xml_app, config.default_ee_version, context
+    )
+    if err:
+        raise ValueError(err)
+
+    files_to_delete = []
+    if ee_version == "EE8":
+        files_to_delete = config.ee8_deletions
+    elif ee_version == "EE11":
+        files_to_delete = config.ee11_deletions
+
+    if not files_to_delete:
+        return
+
+    for root, _, files in os.walk(jetty_root):
+        for file_name in files:
+            full_path = os.path.join(root, file_name)
+            if (file_name in files_to_delete or 
+                not file_name.endswith(".jar")):
+                try:
+                    os.remove(full_path)
+                except Exception as e:
+                    context.log.warning(
+                        f"Failed to delete file {full_path}: {e}"
+                    )
+
+def _extract_ee_version(appengine_web_xml_app: java.AppEngineWebXMLApp,
+                       default_ee_version: str, 
+                       context: gcp.Context) -> (str, Optional[str]):
+    true_count = 0
+    ee_version = ""
+    error = None
+
+    for prop in appengine_web_xml_app.system_properties:
+        if prop.name == "appengine.use.EE11" and prop.value.lower() == "true":
+            true_count += 1
+            ee_version = "EE11"
+        elif prop.name == "appengine.use.EE8" and prop.value.lower() == "true":
+            true_count += 1
+            ee_version = "EE8"
+        elif prop.name == "appengine.use.EE10" and prop.value.lower() == "true":
+            true_count += 1
+            ee_version = "EE10"
+            error = "appengine.use.EE10 is not supported in Jetty121"
+
+        if true_count > 1:
+            return "", "Only one of appengine.use.EE8, appengine.use.EE10, or appengine.use.EE11 can be true"
+
+    if true_count == 0:
+        ee_version = default_ee_version
+        context.log.info(
+            f"No appengine.use.* property found in appengine-web.xml, "
+            f"using default EE version: {ee_version}"
+        )
+
+    return ee_version, error

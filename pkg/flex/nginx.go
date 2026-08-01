@@ -1,67 +1,92 @@
-// Package flex contains functions to configure Flex applications.
-package flex
+import os
+from pathlib import Path
+from textwrap import dedent
 
-import (
-	"text/template"
-)
+class SupervisorConfig:
+    def __init__(self, php_fpm_conf_path: str, nginx_conf_path: str, 
+                 supervisor_include_conf_path: str):
+        self.php_fpm_conf_path = php_fpm_conf_path
+        self.nginx_conf_path = nginx_conf_path
+        self.supervisor_include_conf_path = supervisor_include_conf_path
 
-// NginxConfig is the config for the Flex nginx template.
-type NginxConfig struct {
-	MimeTypesPath,
-	NginxServerConfPath,
-	NginxConfHTTPInclude string
-}
+# SupervisorTemplate is a template that produces the supervisor configuration for Flex PHP applications
+supervisor_template = dedent('''\
+    [supervisord]
+    nodaemon = true
+    logfile = /dev/null
+    logfile_maxbytes = 0
 
-// NginxConfTemplate is template for Flex Nginx config.
-var NginxConfTemplate = template.Must(template.New("nginx").Parse(`
-daemon off;
-worker_processes auto;
-error_log /dev/stderr info;
+    [program:php-fpm]
+    command = php-fpm -R --nodaemonize --fpm-config {php_fpm_conf_path}
+    stdout_logfile = /dev/stdout
+    stdout_logfile_maxbytes=0
+    stderr_logfile = /dev/stderr
+    stderr_logfile_maxbytes=0
+    autostart = true
+    autorestart = true
+    priority = 5
 
-events {
-        worker_connections 1024;
-        use epoll;
-}
+    [program:nginx]
+    command = bash -c "sleep 1 && nginx -c {nginx_conf_path}"
+    stdout_logfile = /dev/stdout
+    stdout_logfile_maxbytes=0
+    stderr_logfile = /dev/stderr
+    stderr_logfile_maxbytes=0
+    autostart = true
+    autorestart = true
+    priority = 10
 
-http {
-        tcp_nopush on;
-        tcp_nodelay on;
-        keepalive_timeout 24h;
-        types_hash_max_size 2048;
-        server_tokens off;
-        client_max_body_size 32m;
+    [include]
+    files = {supervisor_include_conf_path}
+''').strip()
 
-        # Set connect timeout to max to correspond with long request timeout.
-        proxy_connect_timeout 75s;
-        proxy_read_timeout 24h;
-        proxy_request_buffering off;
-        proxy_buffering off;
-        proxy_buffer_size 8k;
+class SupervisorFiles:
+    def __init__(self, supervisor_conf: str, add_supervisor_conf: str,
+                 supervisor_conf_exists: bool, add_supervisor_conf_exists: bool):
+        self.supervisor_conf = supervisor_conf
+        self.add_supervisor_conf = add_supervisor_conf
+        self.supervisor_conf_exists = supervisor_conf_exists
+        self.add_supervisor_conf_exists = add_supervisor_conf_exists
 
-        default_type application/octet-stream;
-        access_log /dev/null;
+def supervisor_conf_files(ctx: dict, runtime_config: dict, dir_path: str) -> SupervisorFiles:
+    default_supervisor_conf = "supervisord.conf"
+    default_add_supervisor_conf = "additional-supervisord.conf"
 
-        gzip on;
-        gzip_vary on;
-        gzip_comp_level 1;
-        gzip_proxied any;
-        gzip_types
-                text/plain
-                text/css
-                application/json
-                application/javascript
-                application/x-javascript
-                application/wasm
-                text/xml
-                application/xml
-                application/xml+rss
-                text/javascript;
+    supervisor_conf = runtime_config.get("SupervisordConfOverride", default_supervisor_conf)
+    add_supervisor_conf = runtime_config.get("SupervisordConfAddition", default_add_supervisor_conf)
 
-        include {{.MimeTypesPath}};
+    supervisor_path = os.path.join(dir_path, supervisor_conf)
+    supervisor_exists = Path(supervisor_path).exists()
 
-        include {{.NginxServerConfPath}};
+    add_supervisor_path = os.path.join(dir_path, add_supervisor_conf)
+    add_supervisor_exists = Path(add_supervisor_path).exists()
 
-        {{if .NginxConfHTTPInclude}}
-        include {{.NginxConfHTTPInclude}};
-        {{end}}
-}`))
+    return SupervisorFiles(
+        supervisor_conf=supervisor_conf,
+        add_supervisor_conf=add_supervisor_conf,
+        supervisor_conf_exists=supervisor_exists,
+        add_supervisor_conf_exists=add_supervisor_exists
+    )
+
+def needs_supervisor_package(ctx: dict) -> bool:
+    runtime_config = ctx.get("appyaml", {}).get("RuntimeConfig", {})
+    files, _ = supervisor_conf_files(ctx, runtime_config, ctx["application_root"])
+    return files.supervisor_conf_exists or files.add_supervisor_conf_exists
+
+def install_supervisor(ctx: dict, layer_path: str) -> None:
+    env_vars = {
+        "PYTHONUSERBASE": layer_path
+    }
+    
+    cmd = [
+        "python3", "-m", "pip", "install",
+        "supervisor",
+        "--upgrade",
+        "--no-warn-script-location",
+        "--no-compile",
+        "--disable-pip-version-check",
+        "--no-cache-dir"
+    ]
+    
+    # In actual implementation, this would execute the command
+    # subprocess.run(cmd, check=True)

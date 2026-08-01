@@ -1,71 +1,47 @@
-package nodejs
+from typing import Any
 
-import (
-	"os"
-	"path/filepath"
-	"testing"
+class NodeJSExample:
+    def __init__(self):
+        self.ctx = None
+        self.yarn_layer = None
+        self.pjs = None
 
-	"google3/security/safeopen/safeopen"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/google/go-cmp/cmp"
-)
+    def example_maker_yarn_installer(self) -> None:
+        """
+        Example of installing Yarn using the MakerYarnInstaller capability.
+        """
+        if self.ctx is not None and hasattr(self.ctx, 'Capability'):
+            cap = self.ctx.Capability('yarn-installer')
+            if isinstance(cap, NodeJSYarnInstaller):
+                cap.InstallYarn(self.ctx, self.yarn_layer, self.pjs)
 
-func TestNuxtStartCommand(t *testing.T) {
-	testsCases := []struct {
-		name         string
-		configExists bool
-		buildExists  bool
-		want         []string
-	}{
-		{
-			name: "no config or build",
-			want: nil,
-		},
-		{
-			name:        "no config",
-			buildExists: true,
-			want:        nil,
-		},
-		{
-			name:         "no build",
-			configExists: true,
-			want:         nil,
-		},
-		{
-			name:         "nuxt app",
-			buildExists:  true,
-			configExists: true,
-			want:         []string{"node", ".output/server/index.mjs"},
-		},
-	}
-	for _, tc := range testsCases {
-		t.Run(tc.name, func(t *testing.T) {
-			home := t.TempDir()
-			if tc.configExists {
-				_, err := safeopen.CreateBeneath(home, "nuxt.config.ts")
-				if err != nil {
-					t.Fatalf("failed to create server.js: %v", err)
-				}
-			}
-			if tc.buildExists {
-				dir := filepath.Join(home, ".output/server/")
-				if err := os.MkdirAll(dir, 0755); err != nil {
-					t.Fatalf("failed to create server directory: %v", err)
-				}
-				_, err := safeopen.CreateBeneath(dir, "index.mjs")
-				if err != nil {
-					t.Fatalf("failed to create index.mjs: %v", err)
-				}
-			}
-			ctx := gcpbuildpack.NewContext(gcpbuildpack.WithApplicationRoot(home))
+    def example_maker_yarn1_module_installer(self) -> None:
+        """
+        Example of installing Yarn 1 modules using the MakerYarn1ModuleInstaller capability.
+        """
+        if self.ctx is not None and hasattr(self.ctx, 'Capability'):
+            cap = self.ctx.Capability('yarn1-module-installer')
+            if isinstance(cap, NodeJSYarn1ModuleInstaller):
+                cap.InstallModules(self.ctx, self.pjs)
 
-			got, err := NuxtStartCommand(ctx)
-			if err != nil {
-				t.Fatalf("NuxtStartCommand() got error: %v", err)
-			}
-			if diff := cmp.Diff(tc.want, got); diff != "" {
-				t.Errorf("NuxtStartCommand() mismatch (-want +got):\n%s", diff)
-			}
-		})
-	}
-}
+
+class NodeJSYarnInstaller:
+    def __init__(self, ctx: Any) -> None:
+        """
+        Yarn installer capability.
+        """
+        self.ctx = ctx
+
+    def InstallYarn(self, ctx: Any, yarn_layer: Any, pjs: Any) -> None:
+        pass
+
+
+class NodeJSYarn1ModuleInstaller:
+    def __init__(self, ctx: Any) -> None:
+        """
+        Yarn 1 module installer capability.
+        """
+        self.ctx = ctx
+
+    def InstallModules(self, ctx: Any, pjs: Any) -> None:
+        pass

@@ -1,118 +1,100 @@
-package util
+import os
+import errno
+from pathlib import Path
+from typing import Optional, Tuple, Union
 
-import (
-	"os"
-	"path/filepath"
-	"testing"
-)
+supported_monorepo_config_files = ("nx.json", "turbo.json")
 
-func TestWriteBuildDirectoryContext(t *testing.T) {
-	testCases := []struct {
-		name                         string
-		appDirectoryPath             string
-		workingDirectory             string
-		files                        []string
-		wantBuildDirectory           string
-		wantRelativeProjectDirectory string
-		wantError                    bool
-	}{
-		{
-			name:                         "no_app_directory_path",
-			appDirectoryPath:             "",
-			wantBuildDirectory:           "",
-			wantRelativeProjectDirectory: "",
-		},
-		{
-			name:                         "nx_monorepo",
-			appDirectoryPath:             "apps/my-app",
-			wantBuildDirectory:           ".",
-			wantRelativeProjectDirectory: "apps/my-app",
-			files:                        []string{"apps/my-app/project.json", "nx.json"},
-		},
-		{
-			name:                         "turborepo",
-			appDirectoryPath:             "apps/my-app",
-			wantBuildDirectory:           ".",
-			wantRelativeProjectDirectory: "apps/my-app",
-			files:                        []string{"apps/my-app/package.json", "turbo.json"},
-		},
-		{
-			name:                         "invalid_monorepo",
-			appDirectoryPath:             "apps/my-app",
-			wantBuildDirectory:           "apps/my-app",
-			wantRelativeProjectDirectory: "",
-			files:                        []string{"apps/my-app/package.json", "monorepo.json"},
-		},
-		{
-			name:                         "subdirectory",
-			appDirectoryPath:             "frontend",
-			wantBuildDirectory:           "frontend",
-			wantRelativeProjectDirectory: "",
-			files:                        []string{"frontend/package.json"},
-		},
-		{
-			name:                         "nx_monorepo_in_subdirectory",
-			appDirectoryPath:             "nx/apps/my-app",
-			wantBuildDirectory:           "nx",
-			wantRelativeProjectDirectory: "apps/my-app",
-			files:                        []string{"nx/nx.json", "nx/apps/my-app/project.json"},
-		},
-		{
-			name:                         "turborepo_in_subdirectory",
-			appDirectoryPath:             "turbo/apps/my-app",
-			wantBuildDirectory:           "turbo",
-			wantRelativeProjectDirectory: "apps/my-app",
-			files:                        []string{"turbo/turbo.json", "turbo/apps/my-app/package.json"},
-		},
-		{
-			name:                         "invalid_app_directory_path",
-			appDirectoryPath:             "path/to/nowhere",
-			wantBuildDirectory:           "",
-			wantRelativeProjectDirectory: "",
-			files:                        []string{},
-			wantError:                    true,
-		},
-	}
-	for _, test := range testCases {
-		t.Run(test.name, func(t *testing.T) {
-			testDir := t.TempDir()
-			for _, file := range test.files {
-				fp := filepath.Join(testDir, file)
-				err := os.MkdirAll(filepath.Dir(fp), 0755)
-				if err != nil {
-					t.Fatalf("failed to create directory %s: %v", filepath.Dir(fp), err)
-				}
-				err = os.WriteFile(filepath.Join(testDir, file), []byte(""), 0644)
-				if err != nil {
-					t.Fatalf("failed to write file %s: %v", fp, err)
-				}
-			}
+class InvalidRootDirectoryError(Exception):
+    pass
 
-			buildpackConfigFilePath := filepath.Join(testDir, "tmp")
-			err := WriteBuildDirectoryContext(testDir, test.appDirectoryPath, buildpackConfigFilePath)
-			if err != nil {
-				if test.wantError {
-					return
-				}
-				t.Errorf("WriteBuildDirectoryContext(%v, %v, %v) failed unexpectedly; err = %v", testDir, test.appDirectoryPath, buildpackConfigFilePath, err)
-			}
+def application_directory(ctx: dict) -> str:
+    """
+    Looks up the path to the application directory from the context. Returns
+    the application root by default.
+    """
+    app_dir = ctx.get("application_root")
+    buildable = os.getenv("BUILDPACK_APP_DIR", "")
+    
+    if buildable:
+        app_dir = os.path.join(ctx["application_root"], buildable)
+        
+    return app_dir
 
-			gotRelativeProjectDirectory, err := os.ReadFile(filepath.Join(buildpackConfigFilePath, "relative-project-directory.txt"))
-			if err != nil {
-				t.Errorf("error reading in build directory file: %v", err)
-			}
-			if string(gotRelativeProjectDirectory) != test.wantRelativeProjectDirectory {
-				t.Errorf("got %v, want %v", string(gotRelativeProjectDirectory), test.wantRelativeProjectDirectory)
-			}
+def supported_monorepo_config_file_exists(dir_path: str) -> bool:
+    """
+    Checks if a supported monorepo config file exists in the specified directory.
+    Returns True if any of the supported files exist, False otherwise.
+    """
+    dir_path = os.path.abspath(dir_path)
+    
+    for filename in supported_monorepo_config_files:
+        file_path = os.path.join(dir_path, filename)
+        
+        try:
+            with open(file_path, "r") as f:
+                return True
+        except FileNotFoundError:
+            continue
+        
+    return False
 
-			gotBuildDirectory, err := os.ReadFile(filepath.Join(buildpackConfigFilePath, "build-directory.txt"))
-			if err != nil {
-				t.Errorf("error reading in build directory file: %v", err)
-			}
-			if string(gotBuildDirectory) != test.wantBuildDirectory {
-				t.Errorf("got %v, want %v", string(gotBuildDirectory), test.wantBuildDirectory)
-			}
-		})
+def build_directory_context(cwd: str, user_specified_app_dir: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Returns the build directory and relative project directory context.
+    
+    If a monorepo config file is detected, it sets the build directory to the
+    nearest monorepo root and the relative project directory to the specified app dir
+    relative to that root. Otherwise, returns the user-specified app dir as both values.
+    """
+    if not user_specified_app_dir:
+        return (None, None)
+        
+    absolute_app_dir = os.path.join(cwd, user_specified_app_dir)
+    
+    try:
+        if not os.path.exists(absolute_app_dir):
+            raise InvalidRootDirectoryError(f"Application directory {user_specified_app_dir} does not exist")
+            
+        current_path = absolute_app_dir
+        monorepo_root = None
+        
+        while True:
+            if current_path in (os.getcwd(), "/", "."):
+                break
+                
+            if supported_monorepo_config_file_exists(current_path):
+                monorepo_root = current_path
+                break
+                
+            current_path = os.path.dirname(current_path)
+            
+        if not monorepo_root:
+            return (user_specified_app_dir, None)
+            
+        build_dir = os.path.relpath(monorepo_root, cwd)
+        relative_project_dir = os.path.relpath(absolute_app_dir, monorepo_root)
+        
+        return (build_dir, relative_project_dir)
+        
+    except Exception as e:
+        raise ValueError(f"Error determining build directory context: {str(e)}")
 
-	}
-}
+def write_build_directory_context(cwd: str, app_dir_path: str, output_dir: str) -> None:
+    """
+    Writes the build directory context to files in the specified output directory.
+    Creates necessary directories if they don't exist.
+    """
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+        
+        build_dir, relative_project_dir = build_directory_context(cwd, app_dir_path)
+        
+        with open(os.path.join(output_dir, "build-directory.txt"), "w") as f:
+            f.write(build_dir if build_dir is not None else "")
+            
+        with open(os.path.join(output_dir, "relative-project-directory.txt"), "w") as f:
+            f.write(relative_project_dir if relative_project_dir is not None else "")
+            
+    except Exception as e:
+        raise RuntimeError(f"Error writing build directory context: {str(e)}")

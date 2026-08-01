@@ -1,127 +1,133 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Package lib implements config/entrypoint buildpack.
-// The entrypoint buildpack sets the image entrypoint based on an environment variable or Procfile.
-package lib
+"""
+Package lib implements config/entrypoint buildpack.
+The entrypoint buildpack sets the image entrypoint based on environment variables or Procfile.
+"""
 
-import (
-	"fmt"
-	"os"
+import os
+from typing import Dict, List, Optional
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/entrypoint"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+from gcpbuildpack import Context, DetectResult, OptIn, OptOut, UserError
+from .appengine import Build as appengine_build
+from .appyaml import get_entrypoint_from_file
+from ..env import (
+    GOOGLE_ENTRYPOINT,
+    GAE_APPLICATION_YAML_PATH,
+    XGOOGLE_TARGET_PLATFORM,
 )
 
-// DetectFn is the exported detect function.
-func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	// Detection for GAE and GCF
-	if env.IsGAE() || env.IsGCF() {
-		return gcp.OptInEnvSet(env.XGoogleTargetPlatform), nil
-	}
+def detect(ctx: Context) -> DetectResult:
+    """
+    Determines if the buildpack should be applied based on environment and files.
+    Returns OptIn or OptOut result.
+    """
+    # Detection for GAE and GCF
+    is_gae = os.getenv("GAE_ENV") == "standard"
+    is_gcf = os.getenv("FUNCTIONS_WORKER_POOL") is not None
 
-	// Detection for GCP builds follows
-	if os.Getenv(env.Entrypoint) != "" {
-		return gcp.OptInEnvSet(env.Entrypoint), nil
-	}
-	procExists, err := ctx.FileExists("Procfile")
-	if err != nil {
-		return nil, err
-	}
-	if procExists {
-		return gcp.OptInFileFound("Procfile"), nil
-	}
-	if entrypoint, _ := appyaml.EntrypointIfExists(ctx.ApplicationRoot()); entrypoint != "" {
-		ctx.Logf("Using entrypoint from app.yaml.")
-		return gcp.OptIn("Found the app.yaml file specified by GAE_APPLICATION_YAML_PATH."), nil
-	}
-	return gcp.OptOut(fmt.Sprintf(
-		"%s not set, no valid entrypoint in app.yaml and Procfile not found", env.Entrypoint)), nil
-}
+    if is_gae or is_gcf:
+        return OptIn({XGOOGLE_TARGET_PLATFORM: os.getenv(XGOOGLE_TARGET_PLATFORM)})
 
-// BuildFn is the exported build function.
-func BuildFn(ctx *gcp.Context) error {
-	if env.IsGCF() {
-		// Function Frameworks with the function target will automatically build correctly without entrypoint modification.
-		return nil
-	}
-	if env.IsGAE() {
-		runtime, ok := os.LookupEnv(env.Runtime)
-		if !ok {
-			return gcp.InternalErrorf("env.%s required for GAE platform.", env.XGoogleTargetPlatform)
-		}
-		return appengine.Build(ctx, runtime, nil)
-	}
+    # Check for GOOGLE_ENTRYPOINT
+    entrypoint_env = os.getenv(GOOGLE_ENTRYPOINT)
+    if entrypoint_env:
+        return OptIn({GOOGLE_ENTRYPOINT: entrypoint_env})
 
-	if entrypoint := os.Getenv(env.Entrypoint); entrypoint != "" {
-		ctx.AddProcess(gcp.WebProcess, []string{entrypoint}, gcp.AsDefaultProcess())
-		ctx.Logf("Using entrypoint from environment variable %s: %s", env.Entrypoint, entrypoint)
-		return nil
-	}
+    # Check for Procfile
+    if ctx.file_exists("Procfile"):
+        return OptIn({"Procfile": "found"})
 
-	procExists, err := ctx.FileExists("Procfile")
-	if err != nil {
-		return err
-	}
-	if procExists {
-		b, err := ctx.ReadFile("Procfile")
-		if err != nil {
-			return err
-		}
-		return addProcfileProcesses(ctx, string(b))
-	}
+    # Check app.yaml for entrypoint
+    app_yaml_path = os.getenv(GOOGLE_APPLICATION_YAML_PATH, "app.yaml")
+    if ctx.file_exists(app_yaml_path):
+        entrypoint = get_entrypoint_from_file(ctx.application_root)
+        if entrypoint:
+            return OptIn({"app.yaml": f"entrypoint: {entrypoint}"})
 
-	entrypoint, err := appyaml.EntrypointIfExists(ctx.ApplicationRoot())
-	if err != nil {
-		return gcp.UserErrorf(fmt.Sprintf(
-			"app.yaml env var set but the specified app.yaml file doesn't exist."))
-	}
-	if entrypoint != "" {
-		ctx.AddProcess(gcp.WebProcess, []string{entrypoint}, gcp.AsDefaultProcess())
-		ctx.Logf("Using entrypoint from app.yaml.")
-		return nil
-	}
+    # If none of the above, opt out
+    return OptOut(f"{GOOGLE_ENTRYPOINT} not set and no valid entrypoint found")
 
-	return gcp.UserErrorf(fmt.Sprintf(
-		"%s not set, no valid entrypoint config in Procfile or app.yaml.", env.Entrypoint))
-}
+def build(ctx: Context) -> None:
+    """
+    Builds the application with the detected entrypoint.
+    Modifies the context to add processes as needed.
+    """
+    is_gcf = os.getenv("FUNCTIONS_WORKER_POOL") is not None
+    if is_gcf:
+        return  # No action needed for GCF
 
-// addProcfileProcesses adds all processes from the given Procfile contents.
-func addProcfileProcesses(ctx *gcp.Context, content string) error {
-	processes, err := entrypoint.Parse(ctx, content)
-	if err != nil {
-		return err
-	}
+    is_gae = os.getenv("GAE_ENV") == "standard"
+    if is_gae:
+        runtime = os.getenv("RUNTIME")
+        if not runtime:
+            raise UserError(f"Environment variable {XGOOGLE_TARGET_PLATFORM} is required for GAE.")
+        appengine_build(ctx, runtime)
+        return
 
-	for name, command := range processes {
-		if name == gcp.WebProcess {
-			ctx.Logf("Using entrypoint from Procfile: %s", command)
-			ctx.AddProcess(name, []string{command}, gcp.AsDefaultProcess())
-		} else {
-			ctx.AddProcess(name, []string{command})
-		}
-	}
+    # Check environment variables
+    entrypoint_env = os.getenv(GOOGLE_ENTRYPOINT)
+    if entrypoint_env:
+        ctx.add_process("web", [entrypoint_env], default=True)
+        ctx.log(f"Using entrypoint from {GOOGLE_ENTRYPOINT}: {entrypoint_env}")
+        return
 
-	if _, found := processes[gcp.WebProcess]; !found {
-		foundProcesses := make([]string, 0, len(processes))
-		for p := range processes {
-			foundProcesses = append(foundProcesses, p)
-		}
-		return gcp.UserErrorf("web process not found in Procfile, found processes: %v", foundProcesses)
-	}
-	return nil
-}
+    # Check Procfile
+    if ctx.file_exists("Procfile"):
+        content = ctx.read_file("Procfile")
+        add_procfile_processes(ctx, content.decode())
+        return
+
+    # Check app.yaml for entrypoint
+    app_yaml_path = os.getenv(GOOGLE_APPLICATION_YAML_PATH, "app.yaml")
+    if ctx.file_exists(app_yaml_path):
+        entrypoint = get_entrypoint_from_file(ctx.application_root)
+        if entrypoint:
+            ctx.add_process("web", [entrypoint], default=True)
+            ctx.log("Using entrypoint from app.yaml.")
+            return
+
+    raise UserError(f"{GOOGLE_ENTRYPOINT} not set and no valid entrypoint found")
+
+def add_procfile_processes(ctx: Context, content: str) -> None:
+    """
+    Parses Procfile content and adds processes to the context.
+    Raises UserError if no web process is found.
+    """
+    lines = [line.strip() for line in content.splitlines()]
+    processes: Dict[str, str] = {}
+
+    for line in lines:
+        # Skip empty lines and comments
+        if not line or line.startswith('#'):
+            continue
+
+        parts = line.split(':', 1)
+        if len(parts) != 2:
+            continue  # Invalid format, skip
+
+        name, cmd = parts[0].strip(), parts[1].strip()
+        if not name or not cmd:
+            continue
+
+        processes[name] = cmd
+
+    # Add all processes
+    for name, cmd in processes.items():
+        ctx.add_process(name, ["bash", "-c", cmd], default=(name == "web"))
+
+    # Validate web process exists
+    if "web" not in processes:
+        raise UserError("No 'web' process found in Procfile")

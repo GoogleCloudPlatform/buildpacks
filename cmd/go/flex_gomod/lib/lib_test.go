@@ -1,190 +1,98 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-package lib
+import os
+import re
+import sys
+from pathlib import Path
 
-import (
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"testing"
-
-	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+from cmd.go.flex_gomod.gcpbuildpack import (
+    BuildLayer,
+    Context,
+    DetectResult,
+    UserError,
+)
+from cmd.go.flex_gomod.env import (
+    BUILDABLE_ENV_VAR,
+    FLEX_ENV_VAR,
 )
 
-func TestDetect(t *testing.T) {
-	testCases := []struct {
-		name  string
-		files map[string]string
-		env   []string
-		want  int
-	}{
-		{
-			name: "go.mod, flex envar set, and buildable undefined",
-			files: map[string]string{
-				"go.mod": "",
-			},
-			env:  []string{"X_GOOGLE_TARGET_PLATFORM=flex"},
-			want: 0,
-		},
-		{
-			name: "go.mod and buildable undefined, no flex envar set",
-			files: map[string]string{
-				"go.mod": "",
-			},
-			env:  []string{},
-			want: 100,
-		},
-		{
-			name:  "no go.mod, but flex envar set",
-			files: map[string]string{},
-			env:   []string{"X_GOOGLE_TARGET_PLATFORM=flex"},
-			want:  100,
-		},
-		{
-			name: "buildable defined",
-			files: map[string]string{
-				"go.mod": "",
-			},
-			env: []string{
-				"GOOGLE_BUILDABLE=./main",
-				"X_GOOGLE_TARGET_PLATFORM=flex",
-			},
-			want: 100,
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, DetectFn, tc.name, tc.files, tc.env, tc.want)
-		})
-	}
-}
+STAGER_FILE_NAME = "_main-package-path"
 
-func TestMainPath(t *testing.T) {
-	testCases := []struct {
-		name               string
-		stagerFileContents string
-		want               string
-	}{
-		{
-			name: "no stagerfile",
-			want: "",
-		},
-		{
-			name:               "stagerfile with main directory",
-			stagerFileContents: "maindir",
-			want:               "maindir",
-		},
-	}
+def detect_fn(ctx: Context) -> tuple[DetectResult, Exception | None]:
+    if not is_flex_env():
+        return (DetectResult.OptOut("Not a GAE Flex app."), None)
+    
+    go_mod_exists = ctx.file_exists("go.mod")
+    if not go_mod_exists:
+        return (DetectResult.FileNotFound("go.mod"), None)
+    
+    buildable_path = os.getenv(BUILDABLE_ENV_VAR)
+    if buildable_path is not None:
+        return (DetectResult.OptOut(f"{BUILDABLE_ENV_VAR} already defined as {buildable_path}"), None)
+    
+    return (DetectResult.OptIn(f"found go.mod and {BUILDABLE_ENV_VAR} is not set"), None)
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			dir, err := ioutil.TempDir("", "TestMainPath-")
-			if err != nil {
-				t.Fatalf("Creating temporary directory: %v", err)
-			}
-			defer func() {
-				if err := os.RemoveAll(dir); err != nil {
-					t.Fatalf("Unable to remove test directory %q", dir)
-				}
-			}()
+def build_fn(ctx: Context) -> Exception | None:
+    main_path, error = get_main_path(ctx)
+    if error:
+        return error
+    
+    cleaned_path, error = clean_main_path(main_path)
+    if error:
+        return error
+    
+    if cleaned_path != ".":
+        file_exists = ctx.file_exists(cleaned_path)
+        if not file_exists:
+            ctx.log(f"Path {cleaned_path} does not exist. Assuming it's a fully qualified package name.")
+    
+    layer, error = ctx.create_layer("main_env", BuildLayer())
+    if error:
+        return error
+    
+    layer.build_environment[BUILDABLE_ENV_VAR] = cleaned_path
+    return None
 
-			ctx := gcp.NewContext(gcp.WithApplicationRoot(dir))
+def get_main_path(ctx: Context) -> tuple[str, Exception | None]:
+    stager_file_path = ctx.application_root / STAGER_FILE_NAME
+    if not stager_file_path.exists():
+        return ("", None)
+    
+    try:
+        with open(stager_file_path, "r") as f:
+            path = f.read().strip()
+        
+        stager_file_path.unlink()
+        return (path, None)
+    except Exception as e:
+        return ("", e)
 
-			if tc.stagerFileContents != "" {
-				if err = ioutil.WriteFile(filepath.Join(dir, "_main-package-path"), []byte(tc.stagerFileContents), 0755); err != nil {
-					t.Fatalf("Creating file in temporary directory: %v", err)
-				}
-			}
+def clean_main_path(path: str) -> tuple[str, Exception | None]:
+    normalized_path = os.path.normpath(path)
+    
+    if normalized_path == ".":
+        return (".", None)
+    
+    if os.path.isabs(normalized_path):
+        return ("", UserError(f"main package path {path} must not be absolute"))
+    
+    if re.match(r'^\.\.[/\\]', normalized_path):
+        return ("", UserError(f"main package path {path} cannot reference parent"))
+    
+    return (normalized_path.replace(os.sep, '/'), None)
 
-			got, err := mainPath(ctx)
-			if err != nil {
-				t.Fatalf("mainPath() failed unexpectedly; err=%s", err)
-			}
-			if got != tc.want {
-				t.Errorf("mainPath() = %q, want %q", got, tc.want)
-			}
-		})
-	}
-}
-
-func TestCleanMainPathNoError(t *testing.T) {
-	testCases := []struct {
-		str  string
-		want string
-	}{
-		{
-			str:  ".",
-			want: ".",
-		},
-		{
-			str:  "   .   ",
-			want: ".",
-		},
-		{
-			str:  "./dir/..",
-			want: ".",
-		},
-		{
-			str:  "./dir1/dir2/..",
-			want: "dir1",
-		},
-		{
-			str:  "./dir1///dir2",
-			want: "dir1/dir2",
-		},
-		{
-			str:  "dir1///dir2",
-			want: "dir1/dir2",
-		},
-		{
-			str:  "dir1",
-			want: "dir1",
-		},
-		{
-			str:  "dir1/../dir2",
-			want: "dir2",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.str, func(t *testing.T) {
-			if got, err := cleanMainPath(tc.str); err != nil {
-				t.Errorf("cleanMainPath(%q) returns error: %v", tc.str, err)
-			} else if got != tc.want {
-				t.Errorf("cleanMainPath(%q) = %q, want %q", tc.str, got, tc.want)
-			}
-		})
-	}
-}
-
-func TestCleanMainPathWantError(t *testing.T) {
-	testCases := []string{
-		"/.",
-		"/somedir",
-		"./..",
-		"../dir1",
-		"../dir1/dir2",
-		"dir1/../../dir2",
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc, func(t *testing.T) {
-			if got, err := cleanMainPath(tc); err == nil {
-				t.Errorf("cleanMainPath(%q) = %q, expected error", tc, got)
-			}
-		})
-	}
-}
+def is_flex_env() -> bool:
+    flex_env = os.getenv(FLEX_ENV_VAR)
+    return flex_env and flex_env.lower() == "flex"

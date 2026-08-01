@@ -1,132 +1,125 @@
-// Copyright 2024 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Complete refactored code here
+import os
+import yaml
+from dataclasses import dataclass, field
+from typing import List, Optional, Dict
 
-// Package bundleschema provides functionality around parsing and managing bundle.yaml.
-package bundleschema
+from google.cloud import apphostingschema  # Assuming this is the correct import path
 
-import (
-	"errors"
-	"fmt"
-	"os"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
-	"gopkg.in/yaml.v2"
-)
+class EnvironmentVariable:
+    def __init__(self, variable: str, value: str, availability: List[str], source: str = apphostingschema.SourceFirebaseSystem):
+        self.variable = variable
+        self.value = value
+        self.availability = availability
+        self.source = source
 
-var (
-	validAvailabilityValues      = map[string]bool{"RUNTIME": true}
-	errMissingAdapterPackageName = errors.New("missing the adapter package name in bundle.yaml metadata")
-	errMissingAdapterVersion     = errors.New("missing the adapter version in bundle.yaml metadata")
-	errMissingFrameworkName      = errors.New("missing the framework name in bundle.yaml metadata")
-	errMissingFrameworkVersion   = errors.New("missing the framework version in bundle.yaml metadata")
-)
+    def validate(self) -> None:
+        if not self.value or self.secret:
+            raise ValueError(f"For environment variable {self.variable}, 'value' is required and 'secret' should not be present")
 
-// EnvironmentVariable is the struct representation of the environment variables from bundle.yaml.
-type EnvironmentVariable apphostingschema.EnvironmentVariable
+        valid_availabilities = {"RUNTIME"}
+        for avail in self.availability:
+            if avail not in valid_availabilities:
+                raise ValueError(f"Invalid value {avail} in 'availability'")
 
-// BundleSchema is the struct representation of bundle.yaml.
-type BundleSchema struct {
-	RunConfig RunConfig `yaml:"runConfig"`
-	Metadata  *Metadata `yaml:"metadata,omitempty"`
-}
 
-// RunConfig is the struct representation of the passed cloud run config.
-type RunConfig struct {
-	EnvironmentVariables []EnvironmentVariable       `yaml:"environmentVariables,omitempty"`
-	CPU                  *float32                    `yaml:"cpu"`
-	MemoryMiB            *int32                      `yaml:"memoryMiB"`
-	Concurrency          *int32                      `yaml:"concurrency"`
-	MaxInstances         *int32                      `yaml:"maxInstances"`
-	MinInstances         *int32                      `yaml:"minInstances"`
-	VpcAccess            *apphostingschema.VpcAccess `yaml:"vpcAccess"`
-	CPUAlwaysAllocated   *bool                       `yaml:"cpuAlwaysAllocated"`
-}
+@dataclass
+class VpcAccess:
+    connector: str
 
-// Metadata is the struct representation of the metadata from bundle.yaml.
-type Metadata struct {
-	AdapterPackageName string `yaml:"adapterPackageName"`
-	AdapterVersion     string `yaml:"adapterVersion"`
-	Framework          string `yaml:"framework"`
-	// TODO: b/366036980 retrieve community adapter's framework version from buildpack
-	FrameworkVersion string `yaml:"frameworkVersion"`
-}
 
-// UnmarshalYAML provides custom validation logic to validate bundle.yaml environment variables.
-func (ev *EnvironmentVariable) UnmarshalYAML(unmarshal func(any) error) error {
-	type standardYAML EnvironmentVariable // Define an alias
-	// Use alias and standard unmarshal to avoid recursive unmarshal on EnvironmentVariable fields
-	if err := unmarshal((*standardYAML)(ev)); err != nil {
-		return err
-	}
+@dataclass
+class RunConfig:
+    environment_variables: List[EnvironmentVariable] = field(default_factory=list)
+    cpu: Optional[float] = None
+    memory_mib: Optional[int] = None
+    concurrency: Optional[int] = None
+    max_instances: Optional[int] = None
+    min_instances: Optional[int] = None
+    vpc_access: Optional[VpcAccess] = None
+    cpu_always_allocated: Optional[bool] = None
 
-	if ev.Value == "" || ev.Secret != "" {
-		return fmt.Errorf("for bundle.yaml environment variable %q, 'value' is required and 'secret' should not be present", ev.Variable)
-	}
+    def validate(self) -> None:
+        for env_var in self.environment_variables:
+            env_var.validate()
 
-	for _, val := range ev.Availability {
-		if !validAvailabilityValues[val] {
-			return fmt.Errorf("invalid value %s in 'availability'", val)
-		}
-	}
 
-	return nil
-}
+@dataclass
+class Metadata:
+    adapter_package_name: str
+    adapter_version: str
+    framework: str
+    framework_version: str
 
-// UnmarshalYAML provides custom validation logic to validate bundle.yaml metadata.
-func (md *Metadata) UnmarshalYAML(unmarshal func(any) error) error {
-	type standardYAML Metadata // Define an alias
-	// Use alias and standard unmarshal to avoid recursive unmarshal on Metadata fields
-	if err := unmarshal((*standardYAML)(md)); err != nil {
-		return err
-	}
+    def validate(self) -> None:
+        if not self.adapter_package_name:
+            raise ValueError("Missing the adapter package name in bundle.yaml metadata")
+        if not self.adapter_version:
+            raise ValueError("Missing the adapter version in bundle.yaml metadata")
+        if not self.framework:
+            raise ValueError("Missing the framework name in bundle.yaml metadata")
+        if not self.framework_version:
+            raise ValueError("Missing the framework version in bundle.yaml metadata")
 
-	if md.AdapterPackageName == "" {
-		return errMissingAdapterPackageName
-	}
-	if md.AdapterVersion == "" {
-		return errMissingAdapterVersion
-	}
-	if md.Framework == "" {
-		return errMissingFrameworkName
-	}
-	if md.FrameworkVersion == "" {
-		return errMissingFrameworkVersion
-	}
 
-	return nil
-}
+@dataclass
+class BundleSchema:
+    run_config: RunConfig = field(default_factory=RunConfig)
+    metadata: Optional[Metadata] = None
 
-// ReadAndValidateFromFile converts the provided file into an BundleSchema.
-func ReadAndValidateFromFile(filePath string) (BundleSchema, error) {
-	var b BundleSchema
-	bundleBuffer, err := os.ReadFile(filePath)
-	if os.IsNotExist(err) {
-		return b, fmt.Errorf("missing output bundle config at %v", filePath)
-	} else if err != nil {
-		return b, fmt.Errorf("reading output bundle config at %v: %w", filePath, err)
-	}
+    def validate(self) -> None:
+        self.run_config.validate()
+        if self.metadata is not None:
+            self.metadata.validate()
 
-	if err = yaml.Unmarshal(bundleBuffer, &b); err != nil {
-		return b, fmt.Errorf("unmarshalling apphosting config as YAML: %w", err)
-	}
 
-	// For cases where the adapters set an env var
-	for i := range b.RunConfig.EnvironmentVariables {
-		if b.RunConfig.EnvironmentVariables[i].Source == "" {
-			b.RunConfig.EnvironmentVariables[i].Source = apphostingschema.SourceFirebaseSystem
-		}
-	}
+def read_and_validate_from_file(file_path: str) -> BundleSchema:
+    try:
+        with open(file_path, 'r') as f:
+            data = yaml.safe_load(f)
+    except FileNotFoundError:
+        raise ValueError(f"Missing output bundle config at {file_path}")
+    except Exception as e:
+        raise ValueError(f"Reading output bundle config at {file_path}: {e}")
 
-	return b, nil
-}
+    # Parse the data into BundleSchema
+    run_config_data = data.get('runConfig', {})
+    metadata_data = data.get('metadata')
+
+    # Process RunConfig
+    environment_vars = []
+    if 'environmentVariables' in run_config_data:
+        for env_var_dict in run_config_data['environmentVariables']:
+            variable = env_var_dict.get('variable', '')
+            value = env_var_dict.get('value', '')
+            availability = env_var_dict.get('availability', [])
+            source = env_var_dict.get('source', apphostingschema.SourceFirebaseSystem)
+            env_var = EnvironmentVariable(variable, value, availability, source)
+            environment_vars.append(env_var)
+
+    run_config = RunConfig(
+        environment_variables=environment_vars,
+        cpu=run_config_data.get('cpu'),
+        memory_mib=run_config_data.get('memoryMiB'),
+        concurrency=run_config_data.get('concurrency'),
+        max_instances=run_config_data.get('maxInstances'),
+        min_instances=run_config_data.get('minInstances'),
+        vpc_access=VpcAccess(run_config_data['vpcAccess']['connector']) if 'vpcAccess' in run_config_data else None,
+        cpu_always_allocated=run_config_data.get('cpuAlwaysAllocated')
+    )
+
+    # Process Metadata
+    metadata = None
+    if metadata_data:
+        metadata = Metadata(
+            adapter_package_name=metadata_data['adapterPackageName'],
+            adapter_version=metadata_data['adapterVersion'],
+            framework=metadata_data['framework'],
+            framework_version=metadata_data['frameworkVersion']
+        )
+
+    bundle_schema = BundleSchema(run_config, metadata)
+    bundle_schema.validate()
+
+    return bundle_schema
