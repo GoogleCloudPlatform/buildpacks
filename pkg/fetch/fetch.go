@@ -17,7 +17,6 @@ package fetch
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -200,11 +199,7 @@ func untar(dir string, r io.Reader, stripComponents int, url string) error {
 		dr = zr
 	} else {
 		var gzr io.ReadCloser
-		if v, _ := env.IsPresentAndTrue(env.FasterLanguageTarballInstallation); v {
-			gzr, err = pgzip.NewReader(r)
-		} else {
-			gzr, err = gzip.NewReader(r)
-		}
+		gzr, err = pgzip.NewReader(r)
 		if err != nil {
 			return err
 		}
