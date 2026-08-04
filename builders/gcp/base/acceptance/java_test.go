@@ -78,7 +78,7 @@ func TestAcceptanceJava(t *testing.T) {
 		{
 			Name:                "Java maven (Dev Mode)",
 			App:                 "hello_quarkus_maven",
-			Env:                 []string{"GOOGLE_DEVMODE=1"},
+			Env:                 []string{"GOOGLE_DEVMODE=1", "MAVEN_SKIP_RC=true"},
 			FilesMustExist:      []string{"/layers/google.java.maven/m2", "/layers/google.java.maven/m2/bin/.devmode_rebuild.sh"},
 			MustRebuildOnChange: "/workspace/src/main/java/hello/Hello.java",
 		},
@@ -107,7 +107,7 @@ func TestAcceptanceJava(t *testing.T) {
 		{
 			Name:                "Java gradle (Dev Mode)",
 			App:                 "gradle_micronaut",
-			Env:                 []string{"GOOGLE_DEVMODE=1"},
+			Env:                 []string{"GOOGLE_DEVMODE=1", "MAVEN_SKIP_RC=true"},
 			FilesMustExist:      []string{"/layers/google.java.gradle/cache", "/layers/google.java.gradle/cache/bin/.devmode_rebuild.sh"},
 			MustRebuildOnChange: "/workspace/src/main/java/example/HelloController.java",
 		},

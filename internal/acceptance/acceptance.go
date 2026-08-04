@@ -604,6 +604,21 @@ func cleanUpImage(t *testing.T, name string) {
 	}
 }
 
+// pullImageWithRetry pulls a container image with up to 3 retry attempts upon transient network errors.
+func pullImageWithRetry(t testing.TB, image string) error {
+	t.Helper()
+	var err error
+	for attempt := 1; attempt <= 3; attempt++ {
+		_, err = runOutput(ContainerEngine, "pull", image)
+		if err == nil {
+			return nil
+		}
+		t.Logf("docker pull %s failed on attempt %d: %v. Retrying...", image, attempt, err)
+		time.Sleep(time.Duration(attempt*2) * time.Second)
+	}
+	return fmt.Errorf("docker pull %s failed after 3 attempts: %w", image, err)
+}
+
 // ProvisionImages provisions the builder, build, and run images necessary for running
 // a test.
 //
@@ -629,7 +644,7 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 	if builderImage != "" {
 		t.Logf("Testing existing builder image: %s", builderImage)
 		if pullImages {
-			if _, err := runOutput(ContainerEngine, "pull", builderImage); err != nil {
+			if err := pullImageWithRetry(t, builderImage); err != nil {
 				t.Fatalf("Error pulling %s: %v", builderImage, err)
 			}
 		}
@@ -637,7 +652,7 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 		if _, err := runOutput(ContainerEngine, "tag", builderImage, builderName); err != nil {
 			t.Fatalf("Error tagging %s as %s: %v", builderImage, builderName, err)
 		}
-		runName, cleanUpRun, err := provisionRunImageFromBuilder(builderName)
+		runName, cleanUpRun, err := provisionRunImageFromBuilder(t, builderName)
 		if err != nil {
 			t.Fatalf("Error provisioning run image for builder %q: %v", builderName, err)
 		}
@@ -692,11 +707,11 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 	// The images are intentionally not cleaned up to prevent conflicts across different test targets.
 	if pullImages {
 		buildName := builderConfig.Stack.BuildImage
-		if _, err := runOutput(ContainerEngine, "pull", buildName); err != nil {
+		if err := pullImageWithRetry(t, buildName); err != nil {
 			t.Fatalf("Error pulling %s: %v", buildName, err)
 		}
 	}
-	runName, cleanUpRun, err := provisionRunImageFromTOML(builderConfig)
+	runName, cleanUpRun, err := provisionRunImageFromTOML(t, builderConfig)
 	if err != nil {
 		t.Fatalf("Error provisioning run image: %v", err)
 	}
@@ -736,13 +751,13 @@ func ProvisionImages(t *testing.T) (ImageContext, func()) {
 	}
 }
 
-func provisionRunImageFromTOML(builderConfig *builderTOML) (string, func(t *testing.T), error) {
+func provisionRunImageFromTOML(t testing.TB, builderConfig *builderTOML) (string, func(t *testing.T), error) {
 	runName := builderConfig.Stack.RunImage
 	if runImageOverride != "" {
 		runName = runImageOverride
 	}
 	if pullImages {
-		if _, err := runOutput(ContainerEngine, "pull", runName); err != nil {
+		if err := pullImageWithRetry(t, runName); err != nil {
 			return "", nil, fmt.Errorf("pulling %q: %w", runName, err)
 		}
 	}
@@ -754,7 +769,7 @@ func provisionRunImageFromTOML(builderConfig *builderTOML) (string, func(t *test
 	return provisionImageWithMatchingStackID(runName, builderConfig.Stack.ID)
 }
 
-func provisionRunImageFromBuilder(builderName string) (string, func(t *testing.T), error) {
+func provisionRunImageFromBuilder(t testing.TB, builderName string) (string, func(t *testing.T), error) {
 	builderDefinedRunImage, err := runImageFromMetadata(builderName)
 	if err != nil {
 		return "", nil, fmt.Errorf("Error extracting run image from image %q: %w", builderName, err)
@@ -764,7 +779,7 @@ func provisionRunImageFromBuilder(builderName string) (string, func(t *testing.T
 		runName = runImageOverride
 	}
 	if pullImages {
-		if _, err := runOutput(ContainerEngine, "pull", runName); err != nil {
+		if err := pullImageWithRetry(t, runName); err != nil {
 			return "", nil, fmt.Errorf("pulling %q: %w", runName, err)
 		}
 	}
@@ -1028,7 +1043,7 @@ func buildApp(t *testing.T, srcDir, image, builderName, runName string, env map[
 
 	attempts := cfg.FlakyBuildAttempts
 	if attempts < 1 {
-		attempts = 1
+		attempts = 2
 	}
 
 	start := time.Now()
@@ -1144,7 +1159,7 @@ func verifyStructure(t *testing.T, image, builder string, cache bool, checks *St
 	t.Helper()
 
 	if remoteRepo != "" {
-		if _, err := runOutput(ContainerEngine, "pull", image); err != nil {
+		if err := pullImageWithRetry(t, image); err != nil {
 			t.Fatalf("Pulling image %q: %v", image, err)
 		}
 	}
@@ -1204,7 +1219,7 @@ func verifyLabelValues(t *testing.T, image string, labels map[string]string) {
 	t.Helper()
 
 	if remoteRepo != "" {
-		if _, err := runOutput(ContainerEngine, "pull", image); err != nil {
+		if err := pullImageWithRetry(t, image); err != nil {
 			t.Fatalf("Pulling image %q: %v", image, err)
 		}
 	}
@@ -1228,7 +1243,7 @@ func verifyBuildMetadata(t *testing.T, image string, mustUse, mustNotUse []strin
 	t.Helper()
 
 	if remoteRepo != "" {
-		if _, err := runOutput(ContainerEngine, "pull", image); err != nil {
+		if err := pullImageWithRetry(t, image); err != nil {
 			t.Fatalf("Pulling image %q: %v", image, err)
 		}
 	}
@@ -1275,7 +1290,7 @@ func startContainer(t *testing.T, image, entrypoint string, env []string, cache 
 	t.Helper()
 
 	if remoteRepo != "" {
-		if _, err := runOutput(ContainerEngine, "pull", image); err != nil {
+		if err := pullImageWithRetry(t, image); err != nil {
 			t.Fatalf("Pulling image %q: %v", image, err)
 		}
 	}
