@@ -73,10 +73,11 @@ func TestDetect(t *testing.T) {
 
 func TestBuild(t *testing.T) {
 	testCases := []struct {
-		name  string
-		files map[string]string
-		envs  []string
-		want  string
+		name    string
+		files   map[string]string
+		envs    []string
+		want    string
+		wantErr bool
 	}{
 		{
 			name: "with_firebase_json_public_priority",
@@ -88,13 +89,45 @@ func TestBuild(t *testing.T) {
 			envs: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
 			want: "Target static asset folder found via firebase.json: my_public_folder",
 		},
+		{
+			name: "with_firebase_json_headers",
+			files: map[string]string{
+				"index.html": "hello",
+				"firebase.json": `{
+					"hosting": {
+						"headers": [
+							{
+								"source": "**/*.js",
+								"headers": [
+									{ "key": "Cache-Control", "value": "max-age=3600" }
+								]
+							}
+						]
+					}
+				}`,
+			},
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			want: "Successfully parsed firebase.json. Applied 1 custom header rules.",
+		},
+		{
+			name: "with_invalid_firebase_json",
+			files: map[string]string{
+				"index.html":    "hello",
+				"firebase.json": `{ invalid json }`,
+			},
+			envs:    []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			wantErr: true,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := buildpacktest.RunBuild(t, BuildFn, buildpacktest.WithFiles(tc.files), buildpacktest.WithEnvs(tc.envs...), buildpacktest.WithTestName(tc.name))
-			if err != nil {
-				t.Fatalf("error running build: %v, result: %#v", err, result)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("RunBuild() error = %v, wantErr %v, result: %#v", err, tc.wantErr, result)
+			}
+			if tc.wantErr {
+				return
 			}
 			if !strings.Contains(result.Output, tc.want) {
 				t.Errorf("RunBuild().Output = %q, want %q", result.Output, tc.want)

@@ -17,8 +17,115 @@ package static
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
+	"slices"
+	"strings"
+	"text/template"
 )
+
+// FirebaseNginxMap represents an Nginx map directive for Firebase custom headers.
+type FirebaseNginxMap struct {
+	VariableName string
+	DefaultValue string
+	Mappings     []FirebaseNginxMapping
+}
+
+// FirebaseNginxMapping represents a single mapping in an Nginx map for Firebase custom headers.
+type FirebaseNginxMapping struct {
+	Regex string
+	Value string
+}
+
+// FirebaseNginxHeader represents an Nginx add_header directive for Firebase custom headers.
+type FirebaseNginxHeader struct {
+	Key          string
+	VariableName string
+}
+
+// FirebaseNginxConfigParams holds the runtime configuration parameters for templating nginx.conf in the Firebase buildpack.
+type FirebaseNginxConfigParams struct {
+	RootPath      string
+	MimeTypesPath string
+	Maps          []FirebaseNginxMap
+	Headers       []FirebaseNginxHeader
+	Redirects     []NginxRedirect
+	Rewrites      []NginxRewrite
+}
+
+const firebaseNginxConfTmpl = `
+pid /tmp/nginx.pid;
+error_log /dev/stderr notice;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include {{.MimeTypesPath}};
+    access_log /dev/stdout;
+
+    client_body_temp_path /tmp/nginx_client_body;
+    proxy_temp_path /tmp/nginx_proxy;
+    fastcgi_temp_path /tmp/nginx_fastcgi;
+    uwsgi_temp_path /tmp/nginx_uwsgi;
+    scgi_temp_path /tmp/nginx_scgi;
+
+    # Define a variable for literal dollar sign to avoid interpolation
+    geo $literal_dollar {
+        default "$";
+    }
+
+{{range .Maps}}
+    map $uri ${{.VariableName}} {
+        default {{.DefaultValue}};
+{{range .Mappings}}        "~{{.Regex}}" {{.Value}};
+{{end}}    }
+{{end}}
+    server {
+        listen 8080;
+        root {{.RootPath}};
+        index index.html;
+{{range .Headers}}
+        add_header {{.Key}} ${{.VariableName}} always;{{end}}
+
+        {{range .Redirects}}
+        location ~ {{.Pattern}} {
+            return {{.Code}} {{.Target}};
+        }
+        {{end}}
+
+        {{range .Rewrites}}
+        location ~ {{.Pattern}} {
+            rewrite {{.Pattern}} {{.Target}} break;
+        }
+        {{end}}
+
+        # Default Fallback
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        absolute_redirect off;
+    }
+}
+`
+
+// WriteFirebaseNginxConfig compiles the Firebase Nginx configuration template with parameters and writes it to disk.
+func WriteFirebaseNginxConfig(dstPath string, params FirebaseNginxConfigParams) error {
+	tmpl, err := template.New(NginxConfFile).Parse(firebaseNginxConfTmpl)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.Create(dstPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return tmpl.Execute(f, params)
+}
 
 // HeaderConfig represents a single header key-value pair in firebase.json.
 type HeaderConfig struct {
@@ -120,4 +227,164 @@ func ParseFirebaseConfig(path string) ([]HostingConfig, error) {
 	}
 
 	return fb.Hosting, nil
+}
+
+func normalizeVarName(key string) string {
+	var sb strings.Builder
+	sb.WriteString("hdr_")
+	for _, r := range strings.ToLower(key) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			sb.WriteRune(r)
+		} else {
+			sb.WriteRune('_')
+		}
+	}
+	return sb.String()
+}
+
+func escapeNginxValue(val string) string {
+	val = strings.ReplaceAll(val, "\\", "\\\\")
+	val = strings.ReplaceAll(val, "\"", "\\\"")
+	val = strings.ReplaceAll(val, "$", "${literal_dollar}")
+	return `"` + val + `"`
+}
+
+func isMultiValueHeader(key string) bool {
+	return key == "Set-Cookie" || key == "Link"
+}
+
+type headerSlot struct {
+	key          string
+	variableName string
+	mappings     []FirebaseNginxMapping
+}
+
+type headerRegexKey struct {
+	header string
+	regex  string
+}
+
+// PrepareNginxHeaders converts Firebase header configs into Nginx map and header structures.
+func PrepareNginxHeaders(config *HostingConfig) ([]FirebaseNginxMap, []FirebaseNginxHeader, error) {
+	if config == nil || len(config.Headers) == 0 {
+		return nil, nil, nil
+	}
+
+	singleValueSlots, multiValueSlots, err := processHeaderSlots(config)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	finalSlots := orderedSingleValueSlots(config, singleValueSlots)
+	finalSlots = append(finalSlots, multiValueSlots...)
+
+	maps, headers := buildNginxDirectives(finalSlots)
+	return maps, headers, nil
+}
+
+func processHeaderSlots(config *HostingConfig) (map[string]*headerSlot, []headerSlot, error) {
+	singleValueSlots := make(map[string]*headerSlot)
+	var multiValueSlots []headerSlot
+	multiValueCounts := make(map[string]int)
+	seen := make(map[headerRegexKey]bool)
+
+	// Process in reverse order so the last match in firebase.json wins (first match in Nginx map)
+	for _, h := range slices.Backward(config.Headers) {
+		if err := processHeaderRule(h, singleValueSlots, &multiValueSlots, multiValueCounts, seen); err != nil {
+			return nil, nil, err
+		}
+	}
+	return singleValueSlots, multiValueSlots, nil
+}
+
+func processHeaderRule(h Header, singleValueSlots map[string]*headerSlot, multiValueSlots *[]headerSlot, multiValueCounts map[string]int, seen map[headerRegexKey]bool) error {
+	regex, err := GlobToRegex(h.Source)
+	if err != nil {
+		return fmt.Errorf("invalid source pattern %q: %w", h.Source, err)
+	}
+
+	// Process headers in reverse order as well to respect last-match-wins within the same block
+	for _, kv := range slices.Backward(h.Headers) {
+		key := http.CanonicalHeaderKey(kv.Key)
+		val := kv.Value
+
+		if !isMultiValueHeader(key) {
+			refKey := headerRegexKey{header: key, regex: regex}
+			if seen[refKey] {
+				continue
+			}
+			seen[refKey] = true
+			addSingleValueMapping(key, val, regex, singleValueSlots)
+		} else {
+			addMultiValueMapping(key, val, regex, multiValueSlots, multiValueCounts)
+		}
+	}
+	return nil
+}
+
+func addSingleValueMapping(key, val, regex string, singleValueSlots map[string]*headerSlot) {
+	slot, exists := singleValueSlots[key]
+	if !exists {
+		slot = &headerSlot{
+			key:          key,
+			variableName: normalizeVarName(key),
+		}
+		singleValueSlots[key] = slot
+	}
+	slot.mappings = append(slot.mappings, FirebaseNginxMapping{
+		Regex: regex,
+		Value: escapeNginxValue(val),
+	})
+}
+
+func addMultiValueMapping(key, val, regex string, multiValueSlots *[]headerSlot, multiValueCounts map[string]int) {
+	idx := multiValueCounts[key]
+	multiValueCounts[key]++
+	varName := fmt.Sprintf("%s_%d", normalizeVarName(key), idx)
+
+	*multiValueSlots = append(*multiValueSlots, headerSlot{
+		key:          key,
+		variableName: varName,
+		mappings: []FirebaseNginxMapping{
+			{
+				Regex: regex,
+				Value: escapeNginxValue(val),
+			},
+		},
+	})
+}
+
+func orderedSingleValueSlots(config *HostingConfig, singleValueSlots map[string]*headerSlot) []headerSlot {
+	var finalSlots []headerSlot
+	keySet := make(map[string]bool)
+	for _, h := range config.Headers {
+		for _, kv := range h.Headers {
+			canonicalKey := http.CanonicalHeaderKey(kv.Key)
+			if !keySet[canonicalKey] && !isMultiValueHeader(canonicalKey) {
+				keySet[canonicalKey] = true
+				if slot, exists := singleValueSlots[canonicalKey]; exists {
+					finalSlots = append(finalSlots, *slot)
+				}
+			}
+		}
+	}
+	return finalSlots
+}
+
+func buildNginxDirectives(slots []headerSlot) ([]FirebaseNginxMap, []FirebaseNginxHeader) {
+	var maps []FirebaseNginxMap
+	var headers []FirebaseNginxHeader
+
+	for _, slot := range slots {
+		maps = append(maps, FirebaseNginxMap{
+			VariableName: slot.variableName,
+			DefaultValue: `""`,
+			Mappings:     slot.mappings,
+		})
+		headers = append(headers, FirebaseNginxHeader{
+			Key:          slot.key,
+			VariableName: slot.variableName,
+		})
+	}
+	return maps, headers
 }

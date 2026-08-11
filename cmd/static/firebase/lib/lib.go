@@ -86,21 +86,9 @@ func BuildFn(ctx *gcp.Context) error {
 		}
 	}
 
-	nginxConfPath := filepath.Join(l.Path, static.NginxConfFile)
-	ctx.Logf("Generating default SPA/SSG-friendly %s for firebase.json", static.NginxConfFile)
-
-	nginxPath := nginxPathBuildpacks
-	if env.IsStaticBaseImage() {
-		nginxPath = nginxPathBaseImage
-	}
-	nginxMimeTypesPath := filepath.Join(nginxPath, "conf/mime.types")
-
-	params := static.NginxConfigParams{
-		RootPath:      rootPath,
-		MimeTypesPath: nginxMimeTypesPath,
-	}
-	if err := static.WriteNginxConfig(nginxConfPath, params); err != nil {
-		return fmt.Errorf("writing %s: %w", static.NginxConfFile, err)
+	nginxPath, nginxConfPath, err := generateNginxConfig(ctx, l.Path, rootPath, fbConfig)
+	if err != nil {
+		return err
 	}
 
 	// Setup Entrypoint
@@ -113,4 +101,39 @@ func BuildFn(ctx *gcp.Context) error {
 	}, gcp.AsDefaultProcess(), gcp.AsDirectProcess())
 
 	return nil
+}
+
+func generateNginxConfig(ctx *gcp.Context, layerPath string, rootPath string, fbConfig *static.HostingConfig) (string, string, error) {
+	nginxConfPath := filepath.Join(layerPath, static.NginxConfFile)
+	ctx.Logf("Generating default SPA/SSG-friendly %s for firebase.json", static.NginxConfFile)
+
+	nginxPath := nginxPathBuildpacks
+	if env.IsStaticBaseImage() {
+		nginxPath = nginxPathBaseImage
+	}
+	nginxMimeTypesPath := filepath.Join(nginxPath, "conf/mime.types")
+
+	var (
+		maps    []static.FirebaseNginxMap
+		headers []static.FirebaseNginxHeader
+		err     error
+	)
+	if fbConfig != nil {
+		maps, headers, err = static.PrepareNginxHeaders(fbConfig)
+		if err != nil {
+			return "", "", fmt.Errorf("preparing nginx headers from firebase.json: %w", err)
+		}
+	}
+
+	params := static.FirebaseNginxConfigParams{
+		RootPath:      rootPath,
+		MimeTypesPath: nginxMimeTypesPath,
+		Maps:          maps,
+		Headers:       headers,
+	}
+	if err := static.WriteFirebaseNginxConfig(nginxConfPath, params); err != nil {
+		return "", "", fmt.Errorf("writing %s: %w", static.NginxConfFile, err)
+	}
+
+	return nginxPath, nginxConfPath, nil
 }

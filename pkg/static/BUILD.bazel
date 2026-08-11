@@ -4,6 +4,7 @@ go_library(
     name = "static",
     srcs = [
         "firebase.go",
+        "glob.go",
         "static.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
@@ -18,9 +19,11 @@ go_test(
         "firebase_test.go",
         "static_test.go",
     ],
+    data = glob(["testdata/**"]),
     embed = [":static"],
     rundir = ".",
     deps = [
+        "//pkg/testdata",
         "@com_github_google_go-cmp//cmp:go_default_library",
     ],
 )
