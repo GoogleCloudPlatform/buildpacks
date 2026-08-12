@@ -48,7 +48,7 @@ var staticAssets = []string{
 // DetectFn checks for standard static compiled directories or an index.html.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	// Restrict this feature behind ALPHA release track.
-	if !env.IsAlphaSupported() {
+	if !env.IsBetaSupported() {
 		return gcp.OptOut("Static runtimes feature is supported only on ALPHA release track."), nil
 	}
 

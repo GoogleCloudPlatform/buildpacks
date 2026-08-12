@@ -33,7 +33,7 @@ func TestDetect(t *testing.T) {
 			files: map[string]string{
 				"index.html": "hello",
 			},
-			envs: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
 			want: 0,
 		},
 		{
@@ -41,7 +41,7 @@ func TestDetect(t *testing.T) {
 			files: map[string]string{
 				"dist/index.html": "hello",
 			},
-			envs: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
 			want: 0,
 		},
 		{
@@ -54,7 +54,7 @@ func TestDetect(t *testing.T) {
 		{
 			name:  "neither_index_nor_build_folders",
 			files: map[string]string{},
-			envs:  []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			envs:  []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
 			want:  100,
 		},
 	}
@@ -79,7 +79,7 @@ func TestBuild(t *testing.T) {
 				"dist/index.html": "hello",
 				"index.html":      "root dummy file",
 			},
-			envs: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
 			want: "Target static asset folder found: dist",
 		},
 	}
