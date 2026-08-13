@@ -5,6 +5,7 @@ licenses(["notice"])
 package(default_visibility = [
     "//builders/gcp/base/acceptance:__pkg__",
     "//builders/osonly/acceptance:__pkg__",
+    "//builders/static/acceptance:__pkg__",
     "//maker:__pkg__",
 ])
 
