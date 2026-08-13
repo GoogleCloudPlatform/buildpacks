@@ -20,7 +20,6 @@ BUILDPACKS = [
     "//cmd/python/webserver:webserver.tgz",
     "//cmd/python/appengine:appengine.tgz",
     "//cmd/static/serve:serve.tgz",
-    "//cmd/static/firebase:firebase.tgz",
     "//cmd/utils/devsync:devsync.tgz",
 ]
 
@@ -110,7 +109,6 @@ BUILDPACKS_USING_RUNNER = [
     "//cmd/python/webserver:webserver_using_runner.tgz",
     "//cmd/python/appengine:appengine_using_runner.tgz",
     "//cmd/static/serve:serve_using_runner.tgz",
-    "//cmd/static/firebase:firebase_using_runner.tgz",
     "//cmd/utils/devsync:devsync_using_runner.tgz",
 ]
 
