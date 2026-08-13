@@ -25,7 +25,7 @@ import (
 	"github.com/Masterminds/semver"
 )
 
-var skipKeywords = []string{"deprecated", "public-image", "latest"}
+var skipKeywords = []string{"deprecated", "public-image", "latest", "update-available", "no-new-use-public-image"}
 
 type resolveParams struct {
 	noSanitize bool

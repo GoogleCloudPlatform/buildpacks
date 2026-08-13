@@ -87,6 +87,18 @@ func TestResolveVersion(t *testing.T) {
 			want:       "21.0.0+35.0.LTS",
 		},
 		{
+			name:       "java_version_lts_resolver_with_update-available_tag",
+			constraint: "21.0",
+			versions:   []string{"update-available-2026.21.0.0+35.0.LTS", "11.0.10+9", "21.0.0+35.0.LTS"},
+			want:       "21.0.0+35.0.LTS",
+		},
+		{
+			name:       "java_version_lts_resolver_with_no-new-use-public-image_tag",
+			constraint: "21.0",
+			versions:   []string{"no-new-use-public-image-2026.21.0.0+35.0.LTS", "11.0.10+9", "21.0.0+35.0.LTS"},
+			want:       "21.0.0+35.0.LTS",
+		},
+		{
 			name:       "java_version_ea_resolver",
 			constraint: "25.0",
 			versions:   []string{"25.0.0+35.0.ea", "25.0.0+35.0.LTS"},
