@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
@@ -72,6 +73,13 @@ func BuildFn(ctx *gcp.Context) error {
 
 	if err := python.InstallUV(ctx); err != nil {
 		return fmt.Errorf("installing uv: %w", err)
+	}
+
+	// uv reads credentials from ~/.netrc, so generating the Artifact Registry
+	// config here covers both the pyproject.toml and the requirements.txt path
+	// below.
+	if err := ar.GeneratePythonConfig(ctx); err != nil {
+		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
 
 	l, err := ctx.Layer(layerName, gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
