@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"slices"
 	"strings"
 	"text/template"
@@ -144,16 +145,51 @@ type Header struct {
 type Run struct {
 	ServiceID string `json:"serviceId"`
 	Region    string `json:"region,omitempty"`
+	Tag       string `json:"tag,omitempty"`
 }
 
 // Rewrite represents a rewrite rule in firebase.json.
 type Rewrite struct {
-	Source       string `json:"source"`
-	Regex        string `json:"regex,omitempty"`
-	Destination  string `json:"destination,omitempty"`
-	Function     string `json:"function,omitempty"`
-	Run          *Run   `json:"run,omitempty"`
-	DynamicLinks bool   `json:"dynamicLinks,omitempty"`
+	Source         string `json:"source"`
+	Regex          string `json:"regex,omitempty"`
+	Destination    string `json:"destination,omitempty"`
+	Function       string `json:"function,omitempty"`
+	FunctionRegion string `json:"functionRegion,omitempty"`
+	Run            *Run   `json:"run,omitempty"`
+	DynamicLinks   bool   `json:"dynamicLinks,omitempty"`
+}
+
+// UnmarshalJSON handles parsing Rewrite where function can be a string or an object.
+func (r *Rewrite) UnmarshalJSON(data []byte) error {
+	type Alias Rewrite
+	var aux struct {
+		RawFunction json.RawMessage `json:"function"`
+		*Alias
+	}
+	aux.Alias = (*Alias)(r)
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	if len(aux.RawFunction) > 0 && string(aux.RawFunction) != "null" {
+		// Try to unmarshal as string
+		var funcStr string
+		if err := json.Unmarshal(aux.RawFunction, &funcStr); err == nil {
+			r.Function = funcStr
+		} else {
+			// Try to unmarshal as object
+			var funcObj struct {
+				FunctionID string `json:"functionId"`
+				Region     string `json:"region"`
+			}
+			if err := json.Unmarshal(aux.RawFunction, &funcObj); err != nil {
+				return fmt.Errorf("failed to parse function field: %w", err)
+			}
+			r.Function = funcObj.FunctionID
+			r.FunctionRegion = funcObj.Region
+		}
+	}
+	return nil
 }
 
 // Redirect represents a redirect rule in firebase.json.
@@ -387,4 +423,66 @@ func buildNginxDirectives(slots []headerSlot) ([]FirebaseNginxMap, []FirebaseNgi
 		})
 	}
 	return maps, headers
+}
+
+var paramRegex = regexp.MustCompile(`:([a-zA-Z0-9_]+)[*+]?`)
+
+func translateDestination(dest string) string {
+	return paramRegex.ReplaceAllString(dest, "$$$1")
+}
+
+func resolvePattern(regex, source string) (string, error) {
+	if regex != "" {
+		return regex, nil
+	}
+	return GlobToRegex(source)
+}
+
+// TranslateRedirects converts Firebase redirects to generic Nginx redirects.
+func TranslateRedirects(fbRedirects []Redirect) ([]NginxRedirect, error) {
+	var redirects []NginxRedirect
+	for _, r := range fbRedirects {
+		if r.Destination == "" {
+			return nil, fmt.Errorf("redirect missing destination: %+v", r)
+		}
+
+		pattern, err := resolvePattern(r.Regex, r.Source)
+		if err != nil {
+			return nil, fmt.Errorf("invalid redirect source %q: %w", r.Source, err)
+		}
+
+		code := r.Type
+		if code == 0 {
+			code = 301 // Firebase default
+		}
+
+		redirects = append(redirects, NginxRedirect{
+			Pattern: pattern,
+			Target:  translateDestination(r.Destination),
+			Code:    code,
+		})
+	}
+	return redirects, nil
+}
+
+// TranslateRewrites converts Firebase rewrites to generic Nginx rewrites.
+func TranslateRewrites(fbRewrites []Rewrite) ([]NginxRewrite, error) {
+	var rewrites []NginxRewrite
+	for _, r := range fbRewrites {
+		// Note: The Nginx template currently only supports internal rewrites to a destination.
+		if r.Destination == "" {
+			continue
+		}
+
+		pattern, err := resolvePattern(r.Regex, r.Source)
+		if err != nil {
+			return nil, fmt.Errorf("invalid rewrite source %q: %w", r.Source, err)
+		}
+
+		rewrites = append(rewrites, NginxRewrite{
+			Pattern: pattern,
+			Target:  translateDestination(r.Destination),
+		})
+	}
+	return rewrites, nil
 }

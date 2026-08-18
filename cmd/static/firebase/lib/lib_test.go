@@ -110,6 +110,24 @@ func TestBuild(t *testing.T) {
 			want: "Successfully parsed firebase.json. Applied 1 custom header rules.",
 		},
 		{
+			name: "with_firebase_json_redirects_and_rewrites",
+			files: map[string]string{
+				"index.html": "hello",
+				"firebase.json": `{
+					"hosting": {
+						"redirects": [
+							{ "source": "/old", "destination": "/new", "type": 301 }
+						],
+						"rewrites": [
+							{ "source": "/api/**", "destination": "/index.html" }
+						]
+					}
+				}`,
+			},
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			want: "Generating default SPA/SSG-friendly nginx.conf for firebase.json",
+		},
+		{
 			name: "with_invalid_firebase_json",
 			files: map[string]string{
 				"index.html":    "hello",

@@ -92,11 +92,43 @@ func (p *globParser) step() {
 		p.parseGroupClose()
 	case '[':
 		p.parseBracketClass()
+	case ':':
+		if !p.parseColonParam() {
+			p.result.WriteRune(p.consume())
+		}
 	case '.', '^', '$', ']', '{', '}', '(':
 		p.result.WriteString(regexp.QuoteMeta(string(p.consume())))
 	default:
 		p.result.WriteRune(p.consume())
 	}
+}
+
+func (p *globParser) parseColonParam() bool {
+	start := p.pos + 1
+	i := start
+	for i < len(p.runes) && isIdentRune(p.runes[i]) {
+		i++
+	}
+	if i == start {
+		return false
+	}
+	name := string(p.runes[start:i])
+	p.pos = i
+	isSplat := false
+	if p.peek(0) == '*' || p.peek(0) == '+' {
+		isSplat = true
+		p.pos++
+	}
+	if isSplat {
+		p.result.WriteString(fmt.Sprintf("(?P<%s>.+)", name))
+	} else {
+		p.result.WriteString(fmt.Sprintf("(?P<%s>[^/]+)", name))
+	}
+	return true
+}
+
+func isIdentRune(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_'
 }
 
 func (p *globParser) parseEscape() {

@@ -86,6 +86,51 @@ func TestParseFirebaseConfig(t *testing.T) {
 				{Target: "app2", Public: "dist2"},
 			},
 		},
+		{
+			name: "hosting with function object and run tag",
+			fileContent: `{
+				"hosting": {
+					"public": "public",
+					"rewrites": [
+						{
+							"source": "/compute",
+							"function": {
+								"functionId": "heavyCompute",
+								"region": "europe-west1"
+							}
+						},
+						{
+							"source": "/api",
+							"run": {
+								"serviceId": "user-service",
+								"region": "us-central1",
+								"tag": "canary"
+							}
+						}
+					]
+				}
+			}`,
+			wantConfigs: []HostingConfig{
+				{
+					Public: "public",
+					Rewrites: []Rewrite{
+						{
+							Source:         "/compute",
+							Function:       "heavyCompute",
+							FunctionRegion: "europe-west1",
+						},
+						{
+							Source: "/api",
+							Run: &Run{
+								ServiceID: "user-service",
+								Region:    "us-central1",
+								Tag:       "canary",
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -626,5 +671,226 @@ func TestWriteFirebaseNginxConfig_GoldenFile(t *testing.T) {
 
 	if diff := cmp.Diff(string(wantBytes), string(gotBytes)); diff != "" {
 		t.Errorf("WriteFirebaseNginxConfig() generated config mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestWriteFirebaseNginxConfig_RedirectsAndRewrites(t *testing.T) {
+	tmpDir := t.TempDir()
+	dstPath := filepath.Join(tmpDir, NginxConfFile)
+
+	params := FirebaseNginxConfigParams{
+		RootPath:      "/my/app/root",
+		MimeTypesPath: "/opt/nginx/conf/mime.types",
+		Redirects: []NginxRedirect{
+			{Pattern: `^/old$`, Target: "/new", Code: 301},
+		},
+		Rewrites: []NginxRewrite{
+			{Pattern: `^/api/(.*)$`, Target: "/index.html"},
+		},
+	}
+
+	if err := WriteFirebaseNginxConfig(dstPath, params); err != nil {
+		t.Fatalf("WriteFirebaseNginxConfig() error = %v", err)
+	}
+
+	content, err := os.ReadFile(dstPath)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%q) error = %v", dstPath, err)
+	}
+
+	got := string(content)
+	if !strings.Contains(got, "location ~ ^/old$ {") {
+		t.Errorf("WriteFirebaseNginxConfig() output = %q; missing redirect location block", got)
+	}
+	if !strings.Contains(got, "return 301 /new;") {
+		t.Errorf("WriteFirebaseNginxConfig() output = %q; missing redirect return directive", got)
+	}
+	if !strings.Contains(got, `location ~ ^/api/(.*)$ {`) {
+		t.Errorf("WriteFirebaseNginxConfig() output = %q; missing rewrite location block", got)
+	}
+	if !strings.Contains(got, `rewrite ^/api/(.*)$ /index.html break;`) {
+		t.Errorf("WriteFirebaseNginxConfig() output = %q; missing rewrite directive", got)
+	}
+}
+
+func TestTranslateRedirects(t *testing.T) {
+	tests := []struct {
+		name        string
+		fbRedirects []Redirect
+		want        []NginxRedirect
+		wantErr     bool
+	}{
+		{
+			name: "basic redirect",
+			fbRedirects: []Redirect{
+				{Source: "/foo", Destination: "/bar", Type: 302},
+			},
+			want: []NginxRedirect{
+				{Pattern: `^/foo$`, Target: "/bar", Code: 302},
+			},
+		},
+		{
+			name: "glob redirect",
+			fbRedirects: []Redirect{
+				{Source: "/blog/**", Destination: "/news", Type: 301},
+			},
+			want: []NginxRedirect{
+				{Pattern: `^/blog(?:/.*)?$`, Target: "/news", Code: 301},
+			},
+		},
+		{
+			name: "segment redirect (splat)",
+			fbRedirects: []Redirect{
+				{Source: "/library-seg/:splat*", Destination: "/archive/:splat*", Type: 301},
+			},
+			want: []NginxRedirect{
+				{Pattern: `^/library-seg/(?P<splat>.+)$`, Target: "/archive/$splat", Code: 301},
+			},
+		},
+		{
+			name: "regex redirect",
+			fbRedirects: []Redirect{
+				{Regex: `^/p/(.*)$`, Destination: "/post/$1"},
+			},
+			want: []NginxRedirect{
+				{Pattern: `^/p/(.*)$`, Target: "/post/$1", Code: 301},
+			},
+		},
+		{
+			name: "redirect with colon segments",
+			fbRedirects: []Redirect{
+				{Source: "/blog/:slug", Destination: "/blogs/:slug", Type: 301},
+			},
+			want: []NginxRedirect{
+				{Pattern: `^/blog/(?P<slug>[^/]+)$`, Target: "/blogs/$slug", Code: 301},
+			},
+		},
+		{
+			name: "redirect with regex and numeric captures",
+			fbRedirects: []Redirect{
+				{Regex: `^/p/(\d+)$`, Destination: "/post/:1"},
+			},
+			want: []NginxRedirect{
+				{Pattern: `^/p/(\d+)$`, Target: "/post/$1", Code: 301},
+			},
+		},
+		{
+			name: "redirect with regex and named captures",
+			fbRedirects: []Redirect{
+				{Regex: `^/p/(?P<id>\d+)$`, Destination: "/post/:id"},
+			},
+			want: []NginxRedirect{
+				{Pattern: `^/p/(?P<id>\d+)$`, Target: "/post/$id", Code: 301},
+			},
+		},
+		{
+			name: "missing destination",
+			fbRedirects: []Redirect{
+				{Source: "/foo"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid glob (unbalanced group)",
+			fbRedirects: []Redirect{
+				{Source: "/foo@(bar", Destination: "/target"},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := TranslateRedirects(tc.fbRedirects)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("TranslateRedirects() returned error %v, wantErr %t", err, tc.wantErr)
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("TranslateRedirects() returned unexpected diff (-want +got):\\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestTranslateRewrites(t *testing.T) {
+	tests := []struct {
+		name       string
+		fbRewrites []Rewrite
+		want       []NginxRewrite
+		wantErr    bool
+	}{
+		{
+			name: "basic rewrite",
+			fbRewrites: []Rewrite{
+				{Source: "/foo", Destination: "/bar"},
+			},
+			want: []NginxRewrite{
+				{Pattern: `^/foo$`, Target: "/bar"},
+			},
+		},
+		{
+			name: "glob rewrite",
+			fbRewrites: []Rewrite{
+				{Source: "/blog/**", Destination: "/news"},
+			},
+			want: []NginxRewrite{
+				{Pattern: `^/blog(?:/.*)?$`, Target: "/news"},
+			},
+		},
+		{
+			name: "segment rewrite (splat)",
+			fbRewrites: []Rewrite{
+				{Source: "/library-seg/:splat*", Destination: "/archive/:splat*"},
+			},
+			want: []NginxRewrite{
+				{Pattern: `^/library-seg/(?P<splat>.+)$`, Target: "/archive/$splat"},
+			},
+		},
+		{
+			name: "regex rewrite",
+			fbRewrites: []Rewrite{
+				{Regex: `^/p/(.*)$`, Destination: "/post/$1"},
+			},
+			want: []NginxRewrite{
+				{Pattern: `^/p/(.*)$`, Target: "/post/$1"},
+			},
+		},
+		{
+			name: "rewrite with colon segments",
+			fbRewrites: []Rewrite{
+				{Source: "/blog/:slug", Destination: "/blogs/:slug"},
+			},
+			want: []NginxRewrite{
+				{Pattern: `^/blog/(?P<slug>[^/]+)$`, Target: "/blogs/$slug"},
+			},
+		},
+		{
+			name: "rewrite with regex and numeric captures",
+			fbRewrites: []Rewrite{
+				{Regex: `^/p/(\d+)$`, Destination: "/post/:1"},
+			},
+			want: []NginxRewrite{
+				{Pattern: `^/p/(\d+)$`, Target: "/post/$1"},
+			},
+		},
+		{
+			name: "hosting redirect (ignored in rewrite translation)",
+			fbRewrites: []Rewrite{
+				{Source: "/foo"},
+			},
+			want: nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := TranslateRewrites(tc.fbRewrites)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("TranslateRewrites() returned error %v, wantErr %t", err, tc.wantErr)
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("TranslateRewrites() returned unexpected diff (-want +got):\\n%s", diff)
+			}
+		})
 	}
 }
