@@ -34,6 +34,8 @@ events {
 
 http {
     include {{.MimeTypesPath}};
+    default_type application/octet-stream;
+
     access_log /dev/stdout;
 
     client_body_temp_path /tmp/nginx_client_body;
@@ -42,10 +44,54 @@ http {
     uwsgi_temp_path /tmp/nginx_uwsgi;
     scgi_temp_path /tmp/nginx_scgi;
 
+    # Performance & Kernel Optimizations
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    open_file_cache max=10000 inactive=30s;
+    open_file_cache_valid 60s;
+    open_file_cache_min_uses 2;
+    open_file_cache_errors on;
+
+    # Compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_min_length 256;
+    gzip_types
+        text/plain
+        text/css
+        text/javascript
+        application/javascript
+        application/json
+        application/xml
+        application/wasm
+        image/svg+xml
+        font/ttf
+        font/otf;
+
+    # Security
+    server_tokens off;
+
     server {
-        listen 8080;
+        listen 8080 default_server;
+        server_name _;
+
         root {{.RootPath}};
         index index.html;
+
+        # Reverse-proxy & redirect safety for Cloud Run
+        absolute_redirect off;
+        port_in_redirect off;
+
+        # Block hidden dotfiles (.git, .env, .DS_Store)
+        location ~ /\. {
+            access_log off;
+            log_not_found off;
+            return 404;
+        }
 
         {{range .Redirects}}
         location ~ {{.Pattern}} {
@@ -64,16 +110,14 @@ http {
             {{range .Headers}}
             add_header "{{.Name}}" "{{.Value}}";
             {{end}}
-            try_files $uri $uri/ /index.html;
         }
         {{end}}
 
         # Default Fallback
         location / {
-            try_files $uri $uri/ /index.html;
+            add_header X-Content-Type-Options "nosniff" always;
+            try_files $uri $uri/ $uri.html /index.html =404;
         }
-
-        absolute_redirect off;
     }
 }
 `

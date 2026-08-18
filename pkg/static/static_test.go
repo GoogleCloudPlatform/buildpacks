@@ -98,6 +98,20 @@ func TestWriteNginxConfig(t *testing.T) {
 	if !strings.Contains(got, `rewrite ^/api/(.*)$ /$1 break;`) {
 		t.Errorf("WriteNginxConfig() output = %q; missing rewrite statement", got)
 	}
+
+	// Verify smart defaults.
+	if !strings.Contains(got, "gzip on;") {
+		t.Errorf("WriteNginxConfig() output = %q; missing gzip directive", got)
+	}
+	if !strings.Contains(got, "sendfile on;") {
+		t.Errorf("WriteNginxConfig() output = %q; missing sendfile directive", got)
+	}
+	if !strings.Contains(got, "server_tokens off;") {
+		t.Errorf("WriteNginxConfig() output = %q; missing server_tokens directive", got)
+	}
+	if !strings.Contains(got, "try_files $uri $uri/ $uri.html /index.html =404;") {
+		t.Errorf("WriteNginxConfig() output = %q; missing clean URLs try_files directive", got)
+	}
 }
 
 func TestNginxVersionConstraint(t *testing.T) {
