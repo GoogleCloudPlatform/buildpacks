@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devsync"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
@@ -51,6 +52,8 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 // BuildFn is the exported build function.
 func BuildFn(ctx *gcp.Context) error {
+	buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.DevSyncBuildpackUsageCounterID).Increment(1)
+
 	layer, err := ctx.Layer("devsync", gcp.LaunchLayer)
 	if err != nil {
 		return fmt.Errorf("creating devsync layer: %w", err)

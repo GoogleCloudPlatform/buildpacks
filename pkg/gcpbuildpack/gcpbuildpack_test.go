@@ -26,6 +26,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktestenv"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/builderoutput"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/buildpacks/libcnb/v2"
@@ -264,6 +265,21 @@ func TestAddWebProcess(t *testing.T) {
 
 	if !reflect.DeepEqual(ctx.buildResult.Processes, want) {
 		t.Errorf("Processes not equal got %#v, want %#v", ctx.buildResult.Processes, want)
+	}
+}
+
+func TestAddWebProcess_DevSyncMetric(t *testing.T) {
+	t.Cleanup(buildermetrics.Reset)
+	t.Setenv(env.DevSync, "true")
+	t.Setenv(env.XGoogleDevSyncActivated, "true")
+
+	ctx := NewContext()
+	if got := buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.DevSyncUsageCounterID).Value(); got != 0 {
+		t.Errorf("DevSyncUsageCounterID before AddWebProcess = %v, want 0", got)
+	}
+	ctx.AddWebProcess([]string{"npm", "run", "dev"})
+	if got := buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.DevSyncUsageCounterID).Value(); got != 1 {
+		t.Errorf("DevSyncUsageCounterID after AddWebProcess = %v, want 1", got)
 	}
 }
 

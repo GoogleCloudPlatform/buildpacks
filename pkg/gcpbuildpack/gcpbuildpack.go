@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/buildpacks/libcnb/v2"
 )
@@ -483,6 +484,7 @@ func AsDefaultProcess() processOption {
 func (ctx *Context) AddProcess(name string, cmd []string, opts ...processOption) {
 	if name == WebProcess {
 		if devSync, _ := env.IsDevSync(); devSync {
+			buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.DevSyncUsageCounterID).Increment(1)
 			if el, err := ctx.Layer("devsync_env", BuildLayer); err == nil {
 				el.BuildEnvironment.Override(env.DevSyncInitEntrypoint, strings.Join(cmd, " "))
 			}

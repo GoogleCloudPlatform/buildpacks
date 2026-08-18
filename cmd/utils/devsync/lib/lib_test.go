@@ -18,6 +18,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
 )
@@ -80,5 +81,18 @@ func TestDetect(t *testing.T) {
 				t.Errorf("DetectFn Pass = %v, want %v", res.Result().Pass, tc.want)
 			}
 		})
+	}
+}
+
+func TestBuildFnMetric(t *testing.T) {
+	t.Cleanup(buildermetrics.Reset)
+	ctx := gcp.NewContext()
+	// Test that BuildFn increments DevSyncBuildpackUsageCounterID
+	if got := buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.DevSyncBuildpackUsageCounterID).Value(); got != 0 {
+		t.Errorf("DevSyncBuildpackUsageCounterID before BuildFn = %v, want 0", got)
+	}
+	_ = BuildFn(ctx)
+	if got := buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.DevSyncBuildpackUsageCounterID).Value(); got != 1 {
+		t.Errorf("DevSyncBuildpackUsageCounterID after BuildFn = %v, want 1", got)
 	}
 }

@@ -10,6 +10,7 @@ go_library(
         "//:__subpackages__",
     ],
     deps = [
+        "//pkg/buildermetrics",
         "//pkg/devsync",
         "//pkg/env",
         "//pkg/fetch",
@@ -25,6 +26,7 @@ go_test(
     embed = [":lib"],
     rundir = ".",
     deps = [
+        "//pkg/buildermetrics",
         "//pkg/gcpbuildpack",
         "//pkg/testdata",
     ],

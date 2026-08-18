@@ -51,6 +51,8 @@ const (
 	PNPMUsageCounterID                    MetricID = "19"
 	JavaSpringBootUsageCounterID          MetricID = "20"
 	ZstdTarballExtractionCounterID        MetricID = "21"
+	DevSyncUsageCounterID                 MetricID = "22"
+	DevSyncBuildpackUsageCounterID        MetricID = "23"
 )
 
 var (
@@ -159,6 +161,16 @@ var (
 			ZstdTarballExtractionCounterID,
 			"zstd_tarball_extraction",
 			"The number of times zstd is used for tarball extraction",
+		),
+		DevSyncUsageCounterID: newDescriptor(
+			DevSyncUsageCounterID,
+			"devsync_usage",
+			"The number of builds in which the GOOGLE_DEVSYNC env var was passed and activated",
+		),
+		DevSyncBuildpackUsageCounterID: newDescriptor(
+			DevSyncBuildpackUsageCounterID,
+			"devsync_buildpack_usage",
+			"The number of builds in which the devsync buildpack was detected",
 		),
 	}
 )
