@@ -411,6 +411,7 @@ def generate_universal_acceptance_test_cloudbuild_bin_targets():
         "python": ["generic", "functions"],
         "ruby": ["generic", "functions"],
         "osonly": ["generic"],
+        "static": ["generic"],
     }
 
     _universal_acceptance_test_cloudbuild_bin_targets = []

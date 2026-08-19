@@ -172,3 +172,14 @@ acceptance_test_suite(
     rundir = ".",
     testdata = "//builders/testdata/osonly:generic",
 )
+
+acceptance_test_suite(
+    name = "static_acceptance_test",
+    srcs = [
+        "//builders/static/acceptance:common_test.go",
+        "//builders/static/acceptance:gcp_test.go",
+    ],
+    builder = "//builders/gcp/base:google_24_builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/static:generic",
+)
