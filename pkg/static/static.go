@@ -56,10 +56,11 @@ http {
 
     # Compression
     gzip on;
+    gzip_static on;
     gzip_vary on;
     gzip_proxied any;
-    gzip_comp_level 6;
-    gzip_min_length 256;
+    gzip_comp_level 1;
+    gzip_min_length 8192;
     gzip_types
         text/plain
         text/css

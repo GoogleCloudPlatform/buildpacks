@@ -103,6 +103,15 @@ func TestWriteNginxConfig(t *testing.T) {
 	if !strings.Contains(got, "gzip on;") {
 		t.Errorf("WriteNginxConfig() output = %q; missing gzip directive", got)
 	}
+	if !strings.Contains(got, "gzip_static on;") {
+		t.Errorf("WriteNginxConfig() output = %q; missing gzip_static directive", got)
+	}
+	if !strings.Contains(got, "gzip_comp_level 1;") {
+		t.Errorf("WriteNginxConfig() output = %q; missing gzip_comp_level directive", got)
+	}
+	if !strings.Contains(got, "gzip_min_length 8192;") {
+		t.Errorf("WriteNginxConfig() output = %q; missing gzip_min_length directive", got)
+	}
 	if !strings.Contains(got, "sendfile on;") {
 		t.Errorf("WriteNginxConfig() output = %q; missing sendfile directive", got)
 	}
