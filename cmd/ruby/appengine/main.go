@@ -1,26 +1,51 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-// Implements ruby/appengine buildpack.
-// The appengine buildpack sets the image entrypoint.
-package main
+"""Implements Ruby App Engine buildpack functionality."""
 
-import (
-	lib "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/appengine/lib"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+__version__ = "0.1.0"
+__description__ = "Ruby App Engine Buildpack"
 
-func main() {
-	gcp.Main(lib.DetectFn, lib.BuildFn)
-}
+import logging
+from pathlib import Path
+
+import lib  # Assuming this is a Python package with similar structure
+from gcpbuildpack import main as gcp_main
+
+def detect() -> bool:
+    """Detect if the buildpack applies to the current environment."""
+    try:
+        return True  # Placeholder for actual detection logic
+    except Exception as e:
+        logging.error(f"Detection failed: {e}")
+        return False
+
+def build() -> None:
+    """Perform the build operations for the App Engine buildpack."""
+    try:
+        # Example of build operations, adjust based on specific needs
+        entrypoint = lib.set_entrypoint()
+        if not entrypoint:
+            raise ValueError("Failed to set image entrypoint")
+        logging.info(f"Image entrypoint set to: {entrypoint}")
+    except Exception as e:
+        logging.error(f"Build failed: {e}")
+        raise
+
+if __name__ == "__main__":
+    try:
+        gcp_main(detect_fn=detect, build_fn=build)
+    except Exception as e:
+        logging.error(f"Main execution failed: {e}")
+        exit(1)

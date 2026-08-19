@@ -1,27 +1,22 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import os
+from google_cloud_platform.buildpacks import gcp_buildpacks as gcp
 
-// Implements python/link-runtime buildpack.
-// The link-runtime replaces the python layer content installed by the python/runtime buildpack
-// with symlinks to the python installed in the GAE base images.
-package main
+from .lib import detect as lib_detect, build as lib_build
 
-import (
-	"github.com/GoogleCloudPlatform/buildpacks/cmd/python/link_runtime/lib"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+class LinkRuntimeBuildpack:
+    def detect(self):
+        """Determine if this buildpack should be applied."""
+        return lib_detect()
 
-func main() {
-	gcp.Main(lib.DetectFn, lib.BuildFn)
-}
+    def build(self):
+        """Link the Python runtime to the GAE base image."""
+        lib_build()
+
+def main():
+    """Main entry point for the link-runtime buildpack."""
+    buildpack = LinkRuntimeBuildpack()
+    if buildpack.detect():
+        buildpack.build()
+
+if __name__ == "__main__":
+    main()

@@ -1,85 +1,89 @@
-// The runner binary executes buildpacks for the Go language builder.
-package main
+# The runner script executes buildpacks for the Go language builder.
+import argparse
 
-import (
-	"flag"
+from googlecloudplatform.buildpacks.common import common_buildpacks
+from googlecloudplatform.buildpacks.gcp import gcp_buildpack
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/commonbuildpacks"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+# Buildpack modules
+import googlecloudplatform.buildpacks.go.appengine as goappengine
+import googlecloudplatform.buildpacks.go.appengine_gomod as goappenginegomod
+import googlecloudplatform.buildpacks.go.appengine_gopath as goappenginegopath
+import googlecloudplatform.buildpacks.go.build as gobuild
+import googlecloudplatform.buildpacks.go.clear_source as goclearsource
+import googlecloudplatform.buildpacks.go.flex_gomod as goflexgomod
+import googlecloudplatform.buildpacks.go.functions_framework as gofunctionsframework
+import googlecloudplatform.buildpacks.go.gomod as gogomod
+import googlecloudplatform.buildpacks.go.gopath as gogopath
+import googlecloudplatform.buildpacks.go.legacy_worker as golegacyworker
+import googlecloudplatform.buildpacks.go.runtime as goruntime
 
-	// Buildpack libraries
-	goappengine "github.com/GoogleCloudPlatform/buildpacks/cmd/go/appengine/lib"
-	goappenginegomod "github.com/GoogleCloudPlatform/buildpacks/cmd/go/appengine_gomod/lib"
-	goappenginegopath "github.com/GoogleCloudPlatform/buildpacks/cmd/go/appengine_gopath/lib"
-	gobuild "github.com/GoogleCloudPlatform/buildpacks/cmd/go/build/lib"
-	goclearsource "github.com/GoogleCloudPlatform/buildpacks/cmd/go/clear_source/lib"
-	goflexgomod "github.com/GoogleCloudPlatform/buildpacks/cmd/go/flex_gomod/lib"
-	gofunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/go/functions_framework/lib"
-	gogomod "github.com/GoogleCloudPlatform/buildpacks/cmd/go/gomod/lib"
-	gogopath "github.com/GoogleCloudPlatform/buildpacks/cmd/go/gopath/lib"
-	golegacyworker "github.com/GoogleCloudPlatform/buildpacks/cmd/go/legacy_worker/lib"
-	goruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/go/runtime/lib"
-)
+def main():
+    parser = argparse.ArgumentParser(description='Run Go buildpacks.')
+    parser.add_argument('--buildpack', required=True, help='The ID of the buildpack to run (e.g., google.nodejs.runtime)')
+    parser.add_argument('--phase', required=True, choices=['detect', 'build'], help='The phase to run: detect or build')
+    args = parser.parse_args()
 
-var (
-	buildpackID = flag.String("buildpack", "", "The ID of the buildpack to run (e.g., google.nodejs.runtime)")
-	phase       = flag.String("phase", "", "The phase to run: 'detect' or 'build'")
-)
+    # Register buildpack functions
+    buildpacks = {
+        "google.go.appengine": {
+            "detect": goappengine.detect,
+            "build": goappengine.build
+        },
+        "google.go.appengine-gomod": {
+            "detect": goappenginegomod.detect,
+            "build": goappenginegomod.build
+        },
+        "google.go.flex-gomod": {
+            "detect": goflexgomod.detect,
+            "build": goflexgomod.build
+        },
+        "google.go.appengine-gopath": {
+            "detect": goappenginegopath.detect,
+            "build": goappenginegopath.build
+        },
+        "google.go.build": {
+            "detect": gobuild.detect,
+            "build": gobuild.build
+        },
+        "google.go.clear-source": {
+            "detect": goclearsource.detect,
+            "build": goclearsource.build
+        },
+        "google.go.functions-framework": {
+            "detect": gofunctionsframework.detect,
+            "build": gofunctionsframework.build
+        },
+        "google.go.gomod": {
+            "detect": gogomod.detect,
+            "build": gogomod.build
+        },
+        "google.go.gopath": {
+            "detect": gogopath.detect,
+            "build": gogopath.build
+        },
+        "google.go.legacy-worker": {
+            "detect": golegacyworker.detect,
+            "build": golegacyworker.build
+        },
+        "google.go.runtime": {
+            "detect": goruntime.detect,
+            "build": goruntime.build
+        }
+    }
 
-// Register buildpack functions here
-var buildpacks = commonbuildpacks.CommonBuildpacks()
+    # Get buildpack details
+    selected_buildpack = args.buildpack
+    phase = args.phase
 
-// (-- LINT.IfChange --)
-func init() {
-	buildpacks["google.go.appengine"] = gcp.BuildpackFuncs{
-		Detect: goappengine.DetectFn,
-		Build:  goappengine.BuildFn,
-	}
-	buildpacks["google.go.appengine-gomod"] = gcp.BuildpackFuncs{
-		Detect: goappenginegomod.DetectFn,
-		Build:  goappenginegomod.BuildFn,
-	}
-	buildpacks["google.go.flex-gomod"] = gcp.BuildpackFuncs{
-		Detect: goflexgomod.DetectFn,
-		Build:  goflexgomod.BuildFn,
-	}
-	buildpacks["google.go.appengine-gopath"] = gcp.BuildpackFuncs{
-		Detect: goappenginegopath.DetectFn,
-		Build:  goappenginegopath.BuildFn,
-	}
-	buildpacks["google.go.build"] = gcp.BuildpackFuncs{
-		Detect: gobuild.DetectFn,
-		Build:  gobuild.BuildFn,
-	}
-	buildpacks["google.go.clear-source"] = gcp.BuildpackFuncs{
-		Detect: goclearsource.DetectFn,
-		Build:  goclearsource.BuildFn,
-	}
-	buildpacks["google.go.functions-framework"] = gcp.BuildpackFuncs{
-		Detect: gofunctionsframework.DetectFn,
-		Build:  gofunctionsframework.BuildFn,
-	}
-	buildpacks["google.go.gomod"] = gcp.BuildpackFuncs{
-		Detect: gogomod.DetectFn,
-		Build:  gogomod.BuildFn,
-	}
-	buildpacks["google.go.gopath"] = gcp.BuildpackFuncs{
-		Detect: gogopath.DetectFn,
-		Build:  gogopath.BuildFn,
-	}
-	buildpacks["google.go.legacy-worker"] = gcp.BuildpackFuncs{
-		Detect: golegacyworker.DetectFn,
-		Build:  golegacyworker.BuildFn,
-	}
-	buildpacks["google.go.runtime"] = gcp.BuildpackFuncs{
-		Detect: goruntime.DetectFn,
-		Build:  goruntime.BuildFn,
-	}
-}
+    if selected_buildpack not in buildpacks:
+        raise ValueError(f"Buildpack {selected_buildpack} is not registered.")
 
-// (-- LINT.ThenChange(//depot/google3/third_party/gcp_buildpacks/builders/go/runner/BUILD) --)
+    buildpack = buildpacks[selected_buildpack]
 
-func main() {
-	flag.Parse()
-	gcp.MainRunner(buildpacks, buildpackID, phase)
-}
+    if phase == 'detect':
+        buildpack['detect']()
+    elif phase == 'build':
+        buildpack['build']()
+
+if __name__ == "__main__":
+    main()

@@ -1,85 +1,84 @@
-// The runner binary executes buildpacks for the PHP language builder.
-package main
+import argparse
 
-import (
-	"flag"
+from google.cloud import buildpacks_v2
+from google.cloud.buildpacks_v2.types import buildpack as buildpack_types
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/commonbuildpacks"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+# Buildpack libraries
+import phpappengine
+import phpcloudfunctions
+import phpcomposer
+import phpcomposergcpbuild
+import phpcomposerinstall
+import phpfunctionsframework
+import phpruntime
+import phpsupervisor
+import phpwebconfig
+import pythonruntime
+import utilsnginx
 
-	// Buildpack libraries
-	phpappengine "github.com/GoogleCloudPlatform/buildpacks/cmd/php/appengine/lib"
-	phpcloudfunctions "github.com/GoogleCloudPlatform/buildpacks/cmd/php/cloudfunctions/lib"
-	phpcomposer "github.com/GoogleCloudPlatform/buildpacks/cmd/php/composer/lib"
-	phpcomposergcpbuild "github.com/GoogleCloudPlatform/buildpacks/cmd/php/composer_gcp_build/lib"
-	phpcomposerinstall "github.com/GoogleCloudPlatform/buildpacks/cmd/php/composer_install/lib"
-	phpfunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/php/functions_framework/lib"
-	phpruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/php/runtime/lib"
-	phpsupervisor "github.com/GoogleCloudPlatform/buildpacks/cmd/php/supervisor/lib"
-	phpwebconfig "github.com/GoogleCloudPlatform/buildpacks/cmd/php/webconfig/lib"
-	pythonruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/python/runtime/lib"
-	utilsnginx "github.com/GoogleCloudPlatform/buildpacks/cmd/utils/nginx/lib"
-)
+def main():
+    parser = argparse.ArgumentParser(description='Run PHP buildpacks.')
+    parser.add_argument('--buildpack', required=True, help='The ID of the buildpack to run')
+    parser.add_argument('--phase', required=True, choices=['detect', 'build'],
+                      help='The phase to run: detect or build')
+    args = parser.parse_args()
 
-var (
-	buildpackID = flag.String("buildpack", "", "The ID of the buildpack to run (e.g., google.nodejs.runtime)")
-	phase       = flag.String("phase", "", "The phase to run: 'detect' or 'build'")
-)
+    # Dictionary mapping buildpack IDs to their respective functions
+    buildpacks = {
+        "google.php.appengine": {
+            "detect": phpappengine.detect,
+            "build": phpappengine.build
+        },
+        "google.php.cloudfunctions": {
+            "detect": phpcloudfunctions.detect,
+            "build": phpcloudfunctions.build
+        },
+        "google.php.composer": {
+            "detect": phpcomposer.detect,
+            "build": phpcomposer.build
+        },
+        "google.php.composer-gcp-build": {
+            "detect": phpcomposergcpbuild.detect,
+            "build": phpcomposergcpbuild.build
+        },
+        "google.php.composer-install": {
+            "detect": phpcomposerinstall.detect,
+            "build": phpcomposerinstall.build
+        },
+        "google.php.functions-framework": {
+            "detect": phpfunctionsframework.detect,
+            "build": phpfunctionsframework.build
+        },
+        "google.php.runtime": {
+            "detect": phpruntime.detect,
+            "build": phpruntime.build
+        },
+        "google.php.supervisor": {
+            "detect": phpsupervisor.detect,
+            "build": phpsupervisor.build
+        },
+        "google.php.webconfig": {
+            "detect": phpwebconfig.detect,
+            "build": phpwebconfig.build
+        },
+        "google.python.runtime": {
+            "detect": pythonruntime.detect,
+            "build": pythonruntime.build
+        },
+        "google.utils.nginx": {
+            "detect": utilsnginx.detect,
+            "build": utilsnginx.build
+        }
+    }
 
-// Register buildpack functions here
-var buildpacks = commonbuildpacks.CommonBuildpacks()
+    if args.buildpack not in buildpacks:
+        print(f"Buildpack {args.buildpack} not found.")
+        return 1
 
-// (-- LINT.IfChange --)
-func init() {
-	buildpacks["google.php.appengine"] = gcp.BuildpackFuncs{
-		Detect: phpappengine.DetectFn,
-		Build:  phpappengine.BuildFn,
-	}
-	buildpacks["google.php.cloudfunctions"] = gcp.BuildpackFuncs{
-		Detect: phpcloudfunctions.DetectFn,
-		Build:  phpcloudfunctions.BuildFn,
-	}
-	buildpacks["google.php.composer"] = gcp.BuildpackFuncs{
-		Detect: phpcomposer.DetectFn,
-		Build:  phpcomposer.BuildFn,
-	}
-	buildpacks["google.php.composer-gcp-build"] = gcp.BuildpackFuncs{
-		Detect: phpcomposergcpbuild.DetectFn,
-		Build:  phpcomposergcpbuild.BuildFn,
-	}
-	buildpacks["google.php.composer-install"] = gcp.BuildpackFuncs{
-		Detect: phpcomposerinstall.DetectFn,
-		Build:  phpcomposerinstall.BuildFn,
-	}
-	buildpacks["google.php.functions-framework"] = gcp.BuildpackFuncs{
-		Detect: phpfunctionsframework.DetectFn,
-		Build:  phpfunctionsframework.BuildFn,
-	}
-	buildpacks["google.php.runtime"] = gcp.BuildpackFuncs{
-		Detect: phpruntime.DetectFn,
-		Build:  phpruntime.BuildFn,
-	}
-	buildpacks["google.php.supervisor"] = gcp.BuildpackFuncs{
-		Detect: phpsupervisor.DetectFn,
-		Build:  phpsupervisor.BuildFn,
-	}
-	buildpacks["google.php.webconfig"] = gcp.BuildpackFuncs{
-		Detect: phpwebconfig.DetectFn,
-		Build:  phpwebconfig.BuildFn,
-	}
-	buildpacks["google.python.runtime"] = gcp.BuildpackFuncs{
-		Detect: pythonruntime.DetectFn,
-		Build:  pythonruntime.BuildFn,
-	}
-	buildpacks["google.utils.nginx"] = gcp.BuildpackFuncs{
-		Detect: utilsnginx.DetectFn,
-		Build:  utilsnginx.BuildFn,
-	}
-}
+    if args.phase == 'detect':
+        buildpacks[args.buildpack]['detect']()
+    elif args.phase == 'build':
+        buildpacks[args.buildpack]['build']()
 
-// (-- LINT.ThenChange(//depot/google3/third_party/gcp_buildpacks/builders/php/runner/BUILD) --)
-
-func main() {
-	flag.Parse()
-	gcp.MainRunner(buildpacks, buildpackID, phase)
-}
+if __name__ == "__main__":
+    main()
