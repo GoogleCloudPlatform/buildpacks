@@ -5,7 +5,7 @@ Tooling versions generated from tooling.textproto.
 TOOLING_VERSIONS = {
     "python": {
         "default": {
-            "uv": "0.12.4",
+            "uv": "0.12.5",
             "poetry": "2.4.1",
             "setuptools": "84.0.0",
         },
@@ -37,7 +37,7 @@ TOOLING_VERSIONS = {
     "nodejs": {
         "default": {
             "yarn": "1.22.22",
-            "pnpm": "11.21.0",
+            "pnpm": "11.22.0",
             "bun": "1.3.14",
         },
         "runtimes": [
@@ -70,7 +70,7 @@ TOOLING_VERSIONS = {
     "java": {
         "default": {
             "maven": "3.9.16",
-            "gradle": "9.7.0",
+            "gradle": "9.7.1",
         },
         "runtimes": [
             {
