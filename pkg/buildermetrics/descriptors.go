@@ -53,6 +53,9 @@ const (
 	ZstdTarballExtractionCounterID        MetricID = "21"
 	DevSyncUsageCounterID                 MetricID = "22"
 	DevSyncBuildpackUsageCounterID        MetricID = "23"
+	LayerCacheHitCounterID                MetricID = "24"
+	LayerCacheMissCounterID               MetricID = "25"
+	LayerCacheColdCounterID               MetricID = "26"
 )
 
 var (
@@ -171,6 +174,21 @@ var (
 			DevSyncBuildpackUsageCounterID,
 			"devsync_buildpack_usage",
 			"The number of builds in which the devsync buildpack was detected",
+		),
+		LayerCacheHitCounterID: newDescriptor(
+			LayerCacheHitCounterID,
+			"layer_cache_hit",
+			"The number of times a dependency layer cache hit occurred",
+		),
+		LayerCacheMissCounterID: newDescriptor(
+			LayerCacheMissCounterID,
+			"layer_cache_miss",
+			"The number of times a dependency layer cache miss occurred on a warm build",
+		),
+		LayerCacheColdCounterID: newDescriptor(
+			LayerCacheColdCounterID,
+			"layer_cache_cold",
+			"The number of times a dependency layer was evaluated on a cold build i.e. first ever build for that app image in that region",
 		),
 	}
 )

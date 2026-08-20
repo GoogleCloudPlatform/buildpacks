@@ -9,8 +9,10 @@ go_library(
     srcs = ["cache.go"],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     deps = [
+        "//pkg/buildermetrics",
         "//pkg/gcpbuildpack",
         "@com_github_buildpacks_libcnb_v2//:go_default_library",
+        "@com_github_burntsushi_toml//:go_default_library",
     ],
 )
 
@@ -21,6 +23,7 @@ go_test(
     embed = [":cache"],
     rundir = ".",
     deps = [
+        "//pkg/buildermetrics",
         "//pkg/gcpbuildpack",
         "@com_github_buildpacks_libcnb_v2//:go_default_library",
     ],

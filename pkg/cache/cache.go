@@ -19,12 +19,96 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"os"
 
+	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/libcnb/v2"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
+
+const (
+	analyzedPathEnv     = "CNB_ANALYZED_PATH"
+	defaultAnalyzedPath = "/layers/analyzed.toml"
+)
+
+// analyzedTOML represents the relevant metadata schema of CNB analyzed.toml.
+type analyzedTOML struct {
+	Metadata struct {
+		Buildpacks []analyzedBuildpack `toml:"buildpacks"`
+	} `toml:"metadata"`
+	Buildpacks []analyzedBuildpack `toml:"buildpacks"`
+}
+
+type analyzedBuildpack struct {
+	ID     string         `toml:"id"`
+	Key    string         `toml:"key"`
+	Layers map[string]any `toml:"layers"`
+}
+
+func findKeyInMap(v any, targetKey string) string {
+	switch val := v.(type) {
+	case map[string]any:
+		for k, item := range val {
+			if k == targetKey {
+				if s, ok := item.(string); ok {
+					return s
+				}
+			}
+			if s := findKeyInMap(item, targetKey); s != "" {
+				return s
+			}
+		}
+	case map[string]string:
+		for k, s := range val {
+			if k == targetKey {
+				return s
+			}
+		}
+	}
+	return ""
+}
+
+// readHashFromAnalyzed attempts to read the cached dependency hash for the given buildpack and
+// key from the remote OCI metadata file (analyzed.toml). Returns an empty string if analyzed.toml
+// does not exist, is unreadable, or does not contain the key for the buildpack to keep the logic
+// fail-open.
+func readHashFromAnalyzed(ctx *gcp.Context, key string) string {
+	path := os.Getenv(analyzedPathEnv)
+	if path == "" {
+		path = defaultAnalyzedPath
+	}
+	ctx.Debugf("Checking for analyzed.toml at path: %s", path)
+
+	var analyzed analyzedTOML
+	if _, err := toml.DecodeFile(path, &analyzed); err != nil {
+		ctx.Debugf("Could not decode analyzed.toml at %s: %v", path, err)
+		return ""
+	}
+
+	bpID := ctx.BuildpackID()
+	ctx.Debugf("Searching analyzed.toml for buildpack %q, layer key %q...", bpID, key)
+
+	bps := analyzed.Metadata.Buildpacks
+	if len(bps) == 0 {
+		bps = analyzed.Buildpacks
+	}
+
+	for _, bp := range bps {
+		if bp.ID != bpID && bp.Key != bpID {
+			continue
+		}
+		for _, layer := range bp.Layers {
+			if s := findKeyInMap(layer, key); s != "" {
+				ctx.Debugf("Found remote OCI metadata hash in analyzed.toml for %s/%s: %s", bpID, key, s)
+				return s
+			}
+		}
+	}
+	ctx.Debugf("Key %q not found for buildpack %q in analyzed.toml.", key, bpID)
+	return ""
+}
 
 // Option is a function that returns strings to be hashed when computing a cache key.
 type Option func() ([]string, error)
@@ -43,7 +127,7 @@ func WithFiles(files ...string) Option {
 	return func() ([]string, error) {
 		var strings []string
 		for _, f := range files {
-			b, err := ioutil.ReadFile(f)
+			b, err := os.ReadFile(f)
 			if err != nil {
 				return nil, err
 			}
@@ -88,15 +172,24 @@ func HashAndCheck(ctx *gcp.Context, l *libcnb.Layer, key string, opts ...Option)
 		return "", false, fmt.Errorf("computing dependency hash: %w", err)
 	}
 
-	prevHash := ctx.GetMetadata(l, key)
-	ctx.Debugf("Current dependency hash: %q", currHash)
-	ctx.Debugf("  Cache dependency hash: %q", prevHash)
+	prevHashOnDisk := ctx.GetMetadata(l, key)
+	prevHashRemote := readHashFromAnalyzed(ctx, key)
 
-	if prevHash == "" {
-		ctx.Debugf("No cache metadata found from a previous build for key: %q, skipping cache.", key)
+	ctx.Debugf("Current dependency hash: %q", currHash)
+	ctx.Debugf("Disk cache dependency hash: %q", prevHashOnDisk)
+	ctx.Debugf("Remote analyzed.toml dependency hash: %q", prevHashRemote)
+
+	// Record telemetry metrics based on remote OCI analyzed.toml and local disk metadata.
+	if (prevHashRemote != "" && currHash == prevHashRemote) || (prevHashOnDisk != "" && currHash == prevHashOnDisk) {
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.LayerCacheHitCounterID).Increment(1)
+	} else if prevHashRemote != "" || prevHashOnDisk != "" {
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.LayerCacheMissCounterID).Increment(1)
+	} else {
+		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.LayerCacheColdCounterID).Increment(1)
 	}
 
-	cached := currHash == prevHash
+	// Execution caching behavior: strictly preserve existing disk-based caching behavior.
+	cached := prevHashOnDisk != "" && currHash == prevHashOnDisk
 	if cached {
 		ctx.CacheHit(l.Name)
 	} else {

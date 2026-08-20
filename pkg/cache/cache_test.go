@@ -15,12 +15,12 @@
 package cache
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb/v2"
 )
@@ -33,6 +33,7 @@ func TestHashAndCheck(t *testing.T) {
 		cacheOpts    []Option
 		wantHash     string
 		wantCacheHit bool
+		wantMetric   buildermetrics.MetricID
 	}{
 		{
 			name: "cacheHit",
@@ -43,6 +44,7 @@ func TestHashAndCheck(t *testing.T) {
 			cacheOpts:    []Option{WithStrings("my-string")},
 			wantHash:     "75e3d0ce18615f1fcca84513474b0040ec223ceac07e0079a0221a7e1704caa6",
 			wantCacheHit: true,
+			wantMetric:   buildermetrics.LayerCacheHitCounterID,
 		},
 		{
 			name: "cacheMissValueChanged",
@@ -53,6 +55,7 @@ func TestHashAndCheck(t *testing.T) {
 			cacheOpts:    []Option{WithStrings("my-string")},
 			wantHash:     "75e3d0ce18615f1fcca84513474b0040ec223ceac07e0079a0221a7e1704caa6",
 			wantCacheHit: false,
+			wantMetric:   buildermetrics.LayerCacheMissCounterID,
 		},
 		{
 			name:         "cacheMissNoPreviousEntry",
@@ -60,11 +63,14 @@ func TestHashAndCheck(t *testing.T) {
 			cacheOpts:    []Option{WithStrings("my-string", "my-other-string")},
 			wantHash:     "2896169f03a0b3756a77cd30c84e949e9bcde7af0869e291e06aaebbb97b6d11",
 			wantCacheHit: false,
+			wantMetric:   buildermetrics.LayerCacheColdCounterID,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			counterBefore := buildermetrics.GlobalBuilderMetrics().GetCounter(tc.wantMetric).Value()
+
 			ctx := gcp.NewContext(gcp.WithBuildpackInfo(libcnb.BuildpackInfo{ID: "id", Version: "version"}))
 			if tc.prevEntries == nil {
 				tc.prevEntries = map[string]any{}
@@ -81,6 +87,9 @@ func TestHashAndCheck(t *testing.T) {
 			}
 			if hash != tc.wantHash {
 				t.Errorf("HashAndCheck() hash result = %q, want %q", hash, tc.wantHash)
+			}
+			if counterAfter := buildermetrics.GlobalBuilderMetrics().GetCounter(tc.wantMetric).Value(); counterAfter != counterBefore+1 {
+				t.Errorf("metric counter %q = %d, want %d", tc.wantMetric, counterAfter, counterBefore+1)
 			}
 		})
 	}
@@ -192,11 +201,7 @@ func TestWithFiles(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			temp, err := ioutil.TempDir("", "test-sha-")
-			if err != nil {
-				t.Fatalf("creating temp dir: %v", err)
-			}
-			defer os.RemoveAll(temp)
+			temp := t.TempDir()
 
 			var names []string
 			for name, contents := range tc.files {
@@ -232,15 +237,7 @@ func TestWithFilesError(t *testing.T) {
 }
 
 func TestHash_SameFileContentsYieldsSameHash(t *testing.T) {
-	temp, err := ioutil.TempDir("", "test-sha-same-contents-")
-	if err != nil {
-		t.Fatalf("creating temp dir: %v", err)
-	}
-	defer func() {
-		if err := os.RemoveAll(temp); err != nil {
-			t.Fatalf("removing temp dir %q: %v", temp, err)
-		}
-	}()
+	temp := t.TempDir()
 
 	contents := "same-contents"
 	fname1 := writeFile(t, temp, "file1", contents)
@@ -255,15 +252,7 @@ func TestHash_SameFileContentsYieldsSameHash(t *testing.T) {
 }
 
 func TestHash_Uniqueness(t *testing.T) {
-	temp, err := ioutil.TempDir("", "test-sha-uniqueness-")
-	if err != nil {
-		t.Fatalf("creating temp dir: %v", err)
-	}
-	defer func() {
-		if err := os.RemoveAll(temp); err != nil {
-			t.Fatalf("removing temp dir %q: %v", temp, err)
-		}
-	}()
+	temp := t.TempDir()
 
 	fname1 := writeFile(t, temp, "file1", "content1")
 	fname2 := writeFile(t, temp, "file2", "content2")
@@ -294,7 +283,7 @@ func TestHash_Uniqueness(t *testing.T) {
 func writeFile(t *testing.T, tempDir, name, contents string) string {
 	t.Helper()
 	fullName := filepath.Join(tempDir, name)
-	if err := ioutil.WriteFile(fullName, []byte(contents), 0644); err != nil {
+	if err := os.WriteFile(fullName, []byte(contents), 0644); err != nil {
 		t.Fatalf("writing file %q: %v", fullName, err)
 	}
 	return fullName
@@ -320,4 +309,55 @@ func removeDuplicates(t *testing.T, original []string) []string {
 		}
 	}
 	return result
+}
+
+func TestReadHashFromAnalyzed(t *testing.T) {
+	tomlContent := `
+[metadata]
+  [[metadata.buildpacks]]
+    key = "google.nodejs.yarn"
+    version = "2.1.1"
+    [metadata.buildpacks.layers]
+      [metadata.buildpacks.layers.yarn_modules]
+        [metadata.buildpacks.layers.yarn_modules.data]
+          dependency_hash = "d4163ebe844c726528cdd69f492d80b9f284fce22d455b09efe86b3e65b52269"
+`
+	tmpDir := t.TempDir()
+	analyzedFile := filepath.Join(tmpDir, "analyzed.toml")
+	if err := os.WriteFile(analyzedFile, []byte(tomlContent), 0644); err != nil {
+		t.Fatalf("failed to write analyzed.toml: %v", err)
+	}
+	t.Setenv("CNB_ANALYZED_PATH", analyzedFile)
+
+	ctx := gcp.NewContext(gcp.WithBuildpackInfo(libcnb.BuildpackInfo{ID: "google.nodejs.yarn", Version: "2.1.1"}))
+	got := readHashFromAnalyzed(ctx, "dependency_hash")
+	want := "d4163ebe844c726528cdd69f492d80b9f284fce22d455b09efe86b3e65b52269"
+	if got != want {
+		t.Errorf("readHashFromAnalyzed() = %q, want %q", got, want)
+	}
+}
+
+func TestReadHashFromAnalyzed_TopLevelBuildpacks(t *testing.T) {
+	tomlContent := `
+[[buildpacks]]
+  id = "google.nodejs.yarn"
+  version = "2.1.1"
+  [buildpacks.layers]
+    [buildpacks.layers.yarn_modules]
+      [buildpacks.layers.yarn_modules.data]
+        dependency_hash = "d4163ebe844c726528cdd69f492d80b9f284fce22d455b09efe86b3e65b52269"
+`
+	tmpDir := t.TempDir()
+	analyzedFile := filepath.Join(tmpDir, "analyzed.toml")
+	if err := os.WriteFile(analyzedFile, []byte(tomlContent), 0644); err != nil {
+		t.Fatalf("failed to write analyzed.toml: %v", err)
+	}
+	t.Setenv("CNB_ANALYZED_PATH", analyzedFile)
+
+	ctx := gcp.NewContext(gcp.WithBuildpackInfo(libcnb.BuildpackInfo{ID: "google.nodejs.yarn", Version: "2.1.1"}))
+	got := readHashFromAnalyzed(ctx, "dependency_hash")
+	want := "d4163ebe844c726528cdd69f492d80b9f284fce22d455b09efe86b3e65b52269"
+	if got != want {
+		t.Errorf("readHashFromAnalyzed() = %q, want %q", got, want)
+	}
 }
