@@ -14,6 +14,27 @@ Google Cloud's container platforms:
 * Read our documentation on [Google Cloud's buildpacks](https://cloud.google.com/docs/buildpacks/overview)
 * Try [building an application](https://cloud.google.com/docs/buildpacks/build-application) or [building a function](https://cloud.google.com/docs/buildpacks/build-function) with Google Cloud's buildpacks
 
+## Installation for Development
+
+To contribute to this project or build buildpacks locally, you'll need to install the following dependencies:
+
+* [Bazel](https://docs.bazel.build/install.html) - Build system
+* [Docker](https://store.docker.com/search?type=edition&offering=community) - Container runtime
+* [pack](https://buildpacks.io/docs/install-pack/) - Cloud Native Buildpacks CLI
+* [container-structure-test](https://github.com/GoogleContainerTools/container-structure-test#installation) - Container testing tool
+
+**Note:** `docker`, `pack`, and `container-structure-test` must be on `$PATH` as interpreted by Bazel.
+
+### Verifying Installation
+
+Run the following command to verify all dependencies are installed correctly:
+
+```bash
+bazel test --test_output=errors tools/checktools:main_test
+```
+
+For detailed build instructions and contribution guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Additional tooling
 
 The Google Cloud's buildpacks project provides builder images suitable for use
