@@ -1,65 +1,63 @@
-// The runner binary executes buildpacks for the .NET language builder.
-package main
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import asyncio
 
-import (
-	"flag"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/commonbuildpacks"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-
-	// Buildpack libraries
-	dotnetappengine "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/appengine/lib"
-	dotnetappenginemain "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/appengine_main/lib"
-	dotnetflex "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/flex/lib"
-	dotnetfunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/functions_framework/lib"
-	dotnetpublish "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/publish/lib"
-	dotnetruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/runtime/lib"
-	dotnetsdk "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/sdk/lib"
+app = FastAPI(
+    title="Dotnet Buildpacks Runner",
+    description="Runs .NET language builder buildpacks for Google Cloud Platform",
+    version="1.0.0"
 )
 
-var (
-	buildpackID = flag.String("buildpack", "", "The ID of the buildpack to run (e.g., google.nodejs.runtime)")
-	phase       = flag.String("phase", "", "The phase to run: 'detect' or 'build'")
-)
+class DetectRequest(BaseModel):
+    buildpack_id: str
 
-// Register buildpack functions here
-var buildpacks = commonbuildpacks.CommonBuildpacks()
+class DetectResponse(BaseModel):
+    detected: bool
+    message: str
 
-// (-- LINT.IfChange --)
-func init() {
-	buildpacks["google.dotnet.appengine"] = gcp.BuildpackFuncs{
-		Detect: dotnetappengine.DetectFn,
-		Build:  dotnetappengine.BuildFn,
-	}
-	buildpacks["google.dotnet.appengine-main"] = gcp.BuildpackFuncs{
-		Detect: dotnetappenginemain.DetectFn,
-		Build:  dotnetappenginemain.BuildFn,
-	}
-	buildpacks["google.dotnet.flex"] = gcp.BuildpackFuncs{
-		Detect: dotnetflex.DetectFn,
-		Build:  dotnetflex.BuildFn,
-	}
-	buildpacks["google.dotnet.runtime"] = gcp.BuildpackFuncs{
-		Detect: dotnetruntime.DetectFn,
-		Build:  dotnetruntime.BuildFn,
-	}
-	buildpacks["google.dotnet.sdk"] = gcp.BuildpackFuncs{
-		Detect: dotnetsdk.DetectFn,
-		Build:  dotnetsdk.BuildFn,
-	}
-	buildpacks["google.dotnet.publish"] = gcp.BuildpackFuncs{
-		Detect: dotnetpublish.DetectFn,
-		Build:  dotnetpublish.BuildFn,
-	}
-	buildpacks["google.dotnet.functions-framework"] = gcp.BuildpackFuncs{
-		Detect: dotnetfunctionsframework.DetectFn,
-		Build:  dotnetfunctionsframework.BuildFn,
-	}
-}
+class BuildRequest(BaseModel):
+    buildpack_id: str
+    # Add any other required parameters here
 
-// (-- LINT.ThenChange(//depot/google3/third_party/gcp_buildpacks/builders/dotnet/runner/BUILD) --)
+class BuildResponse(BaseModel):
+    success: bool
+    output: dict
 
-func main() {
-	flag.Parse()
-	gcp.MainRunner(buildpacks, buildpackID, phase)
-}
+# Register buildpack functions here
+buildpacks = {}
+
+async def detect_handler(request: DetectRequest):
+    try:
+        buildpack = buildpacks.get(request.buildpack_id)
+        if not buildpack or not buildpack["detect"]:
+            raise HTTPException(status_code=404, detail="Buildpack not found")
+
+        # Run detection logic
+        detected = await buildpack["detect"]()
+        return {"detected": detected, "message": "Detection completed successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def build_handler(request: BuildRequest):
+    try:
+        buildpack = buildpacks.get(request.buildpack_id)
+        if not buildpack or not buildpack["build"]:
+            raise HTTPException(status_code=404, detail="Buildpack not found")
+
+        # Run build logic
+        result = await buildpack["build"](request.dict())
+        return {"success": True, "output": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/")
+async def root():
+    return {"message": "Dotnet Buildpacks Runner"}
+
+@app.post("/detect")
+async def detect(request: DetectRequest):
+    return await detect_handler(request)
+
+@app.post("/build")
+async def build(request: BuildRequest):
+    return await build_handler(request)

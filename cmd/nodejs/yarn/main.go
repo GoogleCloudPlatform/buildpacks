@@ -1,26 +1,45 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+"""Implements nodejs/yarn buildpack.
+The npm buildpack installs dependencies using yarn and installs yarn itself if not present.
+"""
 
-// Implements nodejs/yarn buildpack.
-// The npm buildpack installs dependencies using yarn and installs yarn itself if not present.
-package main
+import sys
+import os
+import asyncio
+from typing import Any
+from pydantic import BaseModel, BaseSettings, Field
+from fastapi import FastAPI
 
-import (
-	"github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/yarn/lib"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+# Assuming these are the converted async functions from the original Go library
+from .lib import detect, build  # type: ignore
 
-func main() {
-	gcp.Main(lib.DetectFn, lib.BuildFn)
-}
+class Settings(BaseSettings):
+    """Pydantic settings model for environment variables."""
+
+    project_id: str = Field(..., env="GOOGLE_CLOUD_PROJECT")
+    region: str = Field("us-central1", env="GOOGLE_CLOUD_REGION")
+
+    class Config:
+        """Configuration for the settings model."""
+
+        env_file = ".env"
+
+async def main() -> None:
+    """Main entry point for the buildpack."""
+
+    try:
+        # Parse command-line arguments
+        args = sys.argv[1:]
+        if not args:
+            print("Error: No arguments provided")
+            return
+
+        settings = Settings()
+        remaining_args = await detect(settings=settings, args=args)
+        await build(settings=settings, args=remaining_args)
+
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    asyncio.run(main())

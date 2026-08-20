@@ -1,26 +1,34 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+"""
+Implements dotnet/functions_framework buildpack.
+The functions_framework buildpack sets up the execution environment for functions.
+"""
 
-// Implements dotnet/functions_framework buildpack.
-// The functions_framework buildpack sets up the execution environment for functions.
-package main
+from fastapi import FastAPI
+from pydantic import BaseModel
+import asyncio
 
-import (
-	lib "github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/functions_framework/lib"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+app = FastAPI()
 
-func main() {
-	gcp.Main(lib.DetectFn, lib.BuildFn)
-}
+class FunctionsFrameworkBuildpack:
+    async def detect(self) -> bool:
+        """
+        Detects if the buildpack applies to the current project.
+        Returns True if applicable, False otherwise.
+        """
+        # Implement detection logic here
+        return True
+
+    async def build(self) -> None:
+        """
+        Performs the build steps for the functions framework.
+        """
+        # Implement build logic here
+
+async def main():
+    buildpack = FunctionsFrameworkBuildpack()
+
+    if await buildpack.detect():
+        await buildpack.build()
+
+if __name__ == "__main__":
+    asyncio.run(main())

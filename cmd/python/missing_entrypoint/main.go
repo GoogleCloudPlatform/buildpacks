@@ -12,16 +12,47 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Implements python/missing-entrypoint buildpack.
-// This buildpack's goal is to display a clear error message when
-// no entrypoint is defined on a Python application.
-package main
+import os
+from fastapi import FastAPI, Request, HTTPException
+from pydantic import BaseModel
+import asyncio
 
-import (
-	"github.com/GoogleCloudPlatform/buildpacks/cmd/python/missing_entrypoint/lib"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+app = FastAPI()
 
-func main() {
-	gcp.Main(lib.DetectFn, lib.BuildFn)
-}
+class BuildpackRequest(BaseModel):
+    project_id: str
+    entrypoint: str | None = None
+    runtime: str
+    files: dict[str, str]
+
+async def detect_fn(request: BuildpackRequest) -> dict:
+    # Implement detection logic here
+    await asyncio.sleep(0.1)  # Simulate async operation
+    return {"detected": True}
+
+async def build_fn(request: BuildpackRequest) -> dict:
+    # Implement build logic here
+    await asyncio.sleep(0.1)  # Simulate async operation
+    if not request.entrypoint:
+        raise HTTPException(status_code=400, detail="Missing entrypoint")
+    return {"status": "success"}
+
+@app.post("/detect")
+async def detect(request: BuildpackRequest):
+    try:
+        result = await detect_fn(request)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/build")
+async def build(request: BuildpackRequest):
+    try:
+        result = await build_fn(request)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))

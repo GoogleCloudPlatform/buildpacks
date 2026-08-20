@@ -1,108 +1,112 @@
-// Copyright 2022 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+# -*- coding: utf-8 -*-
+"""
+testserver.py - Utility functions for stubbing HTTP requests in tests.
 
-// Package testserver provides utility functions for stubbing HTTP requests in tests.
-package testserver
+Copyright 2023 Google LLC
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-import (
-	"net/http"
-	"net/http/httptest"
-	"testing"
-)
+http://www.apache.org/licenses/LICENSE-2.0
 
-type config struct {
-	httpStatus   int
-	responseFile string
-	responseJSON string
-	mockURL      *string
-	handler      http.Handler
-}
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
 
-// Option configures test servers.
-type Option func(o *config)
+from typing import Optional
+from fastapi import FastAPI, Response
+from pydantic import BaseModel
 
-// WithStatus sets the http response code to return.
-func WithStatus(httpStatus int) Option {
-	return func(c *config) {
-		c.httpStatus = httpStatus
-	}
-}
+class Config(BaseModel):
+    http_status: int
+    response_file: str = ""
+    response_json: str = ""
+    mock_url: Optional[str] = None
+    handler: Optional[FastAPI] = None
 
-// WithJSON sets the JSON payload the server send in the response body.
-func WithJSON(json string) Option {
-	return func(c *config) {
-		c.responseJSON = json
-	}
-}
+class Option:
+    def __init__(self, config: Config):
+        self.config = config
 
-// WithFile sets the path of a file the server should send as a response.
-func WithFile(path string) Option {
-	return func(c *config) {
-		c.responseFile = path
-	}
-}
+    @staticmethod
+    def with_status(http_status: int) -> "Option":
+        return Option(
+            Config(
+                http_status=http_status,
+            )
+        )
 
-// WithMockURL stubs the provided URL to point to this test server for the duration of a unit test.
-func WithMockURL(url *string) Option {
-	return func(c *config) {
-		c.mockURL = url
-	}
-}
+    @staticmethod
+    def with_json(json: str) -> "Option":
+        return Option(
+            Config(
+                response_json=json,
+            )
+        )
 
-// WithHandler sets a custom http.Handler for the test server.
-func WithHandler(h http.Handler) Option {
-	return func(c *config) {
-		c.handler = h
-	}
-}
+    @staticmethod
+    def with_file(path: str) -> "Option":
+        return Option(
+            Config(
+                response_file=path,
+            )
+        )
 
-// New creates and starts a test server with the provided configurations and returns its URL.
-func New(t *testing.T, opts ...Option) *httptest.Server {
-	t.Helper()
-	options := config{}
-	for _, o := range opts {
-		o(&options)
-	}
+    @staticmethod
+    def with_mock_url(url: Optional[str]) -> "Option":
+        return Option(
+            Config(
+                mock_url=url,
+            )
+        )
 
-	svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if options.handler != nil {
-			options.handler.ServeHTTP(w, r)
-			return
-		}
-		if options.httpStatus != 0 {
-			w.WriteHeader(options.httpStatus)
-		}
-		if options.responseFile != "" {
-			http.ServeFile(w, r, options.responseFile)
-			return
-		}
-		if options.responseJSON != "" {
-			w.Header().Set("Content-Type", "application/json")
-		}
-		if _, err := w.Write([]byte(options.responseJSON)); err != nil {
-			// Not using Fatalf because this runs in a separate Go Routine.
-			t.Errorf("sending stubbed http response: %v", err)
-		}
-	}))
-	t.Cleanup(svr.Close)
+    @staticmethod
+    def with_handler(handler: FastAPI) -> "Option":
+        return Option(
+            Config(
+                handler=handler,
+            )
+        )
 
-	if options.mockURL != nil {
-		origVal := *options.mockURL
-		t.Cleanup(func() {
-			*options.mockURL = origVal
-		})
-		*options.mockURL = svr.URL + "?p1=%s&p2=%s&p3=%s"
-	}
-	return svr
-}
+async def new_test_server(t, opts):
+    config = Config()
+    for opt in opts:
+        opt.config = config
+
+    app = FastAPI()
+
+    if config.handler is not None:
+        app.include_router(config.handler)
+    else:
+        async def stub_handler(request: Request):
+            if config.http_status != 0:
+                return Response(status_code=config.http_status)
+
+            if config.response_file != "":
+                with open(config.response_file, "rb") as f:
+                    content = await f.read()
+                    headers = {"Content-Type": "application/octet-stream"}
+                    return Response(content=content, media_type=headers["Content-Type"])
+
+            if config.response_json != "":
+                response = JSONResponse(
+                    content={"message": config.response_json},
+                    media_type="application/json",
+                )
+                return response
+
+        app.add_route("/", stub_handler)
+
+    server = await asyncio.start_server(app.serve, "localhost", 0)
+    address = server.sockets[0].getsockname()
+    t.addCleanup(server.close)
+
+    if config.mock_url is not None:
+        orig_val = config.mock_url
+        t.addCleanup(lambda: setattr(config.mock_url, orig_val))
+        config.mock_url = f"{address[0]}:{address[1]}?p1=%s&p2=%s&p3=%s"
+
+    return server.sockets[0].getsockname()

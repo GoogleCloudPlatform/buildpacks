@@ -1,108 +1,77 @@
-// Package webconfig allows the users to override some configuration properties.
-package webconfig
+from pydantic import BaseModel, Field
+import os.path
+from typing import Optional, Tuple, Dict
+import asyncio
 
-import (
-	"path/filepath"
+class OverrideProperties(BaseModel):
+    ComposerFlags: str = ""
+    DocumentRoot: str = "/workspace"
+    FrontController: str = "index.php"
+    NginxConfOverride: bool = False
+    NginxConfOverrideFileName: str = ""
+    NginxServerConfInclude: bool = False
+    NginxServerConfIncludeFileName: str = ""
+    NginxHTTPInclude: bool = False
+    NginxHTTPIncludeFileName: str = ""
+    PHPFPMOverride: bool = False
+    PHPFPMOverrideFileName: str = ""
+    PHPIniOverride: bool = False
+    PHPIniOverrideFileName: str = ""
+    NginxServesStaticFiles: bool = False
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/php"
-	"github.com/buildpacks/libcnb/v2"
-)
+DEFAULT_ROOT = "/workspace"
+DEFAULT_NGINX_CONF_INCLUDE = "nginx-app.conf"
+DEFAULT_NGINX_HTTP_INCLUDE = "nginx-http.conf"
+DEFAULT_NGINX_CONF = "nginx.conf"
+DEFAULT_PHP_FPM_CONF_OVERRIDE = "php-fpm.conf"
+DEFAULT_PHP_INI = "php.ini"
 
-const (
+async def file_exists(path: str) -> bool:
+    try:
+        return await asyncio.to_thread(os.path.exists, path)
+    except Exception:
+        return False
 
-	// nginx
-	defaultRoot                 = "/workspace"
-	defaultNginxConfInclude     = "nginx-app.conf"
-	defaultNginxConfHTTPInclude = "nginx-http.conf"
-	defaultNginxConf            = "nginx.conf"
+async def override_properties(ctx: Dict, config_value: str, default_file: str) -> Tuple[bool, str]:
+    if config_value:
+        return (True, os.path.join(DEFAULT_ROOT, config_value))
 
-	// php-fpm
-	defaultPHPFPMConfOverride = "php-fpm.conf"
+    exists = await file_exists(default_file)
+    if exists:
+        return (True, os.path.join(DEFAULT_ROOT, default_file))
+    return (False, "")
 
-	defaultPHPIni = "php.ini"
-)
+async def overridden_properties(runtime_config: Dict) -> OverrideProperties:
+    php_ini_result = await override_properties({}, runtime_config.get("PHPIniOverride", ""), DEFAULT_PHP_INI)
+    php_fpm_result = await override_properties({}, runtime_config.get("PHPFPMConfOverride", ""), DEFAULT_PHP_FPM_CONF_OVERRIDE)
+    nginx_conf_result = await override_properties({}, runtime_config.get("NginxConfOverride", ""), DEFAULT_NGINX_CONF)
+    nginx_server_include_result = await override_properties({}, runtime_config.get("NginxConfInclude", ""), DEFAULT_NGINX_CONF_INCLUDE)
+    nginx_http_include_result = await override_properties({}, runtime_config.get("NginxConfHTTPInclude", ""), DEFAULT_NGINX_HTTP_INCLUDE)
 
-// OverrideProperties is the struct for the possible configs that can be overridden.
-type OverrideProperties struct {
-	// ComposerFlags overrides the composer arguments.
-	ComposerFlags string
-	// DocumentRoot specifies the DOCUMENT_ROOT for nginx and PHP.
-	DocumentRoot string
-	// FrontController is default PHP file name for directory access.
-	FrontController string
-	// NginxConfOverride boolean if user-provided nginx config exists.
-	NginxConfOverride bool
-	// NginxConfOverrideFileName name of the user-provided nginx config.
-	NginxConfOverrideFileName string
-	// NginxServerConfInclude boolean if partial nginx config exists to be included in the server section.
-	NginxServerConfInclude bool
-	// NginxServerConfIncludeFileName name of the partial nginx config to be included in the server section.
-	NginxServerConfIncludeFileName string
-	// NginxHTTPInclude boolean if partial nginx config exists to be included in the http section.
-	NginxHTTPInclude bool
-	// NginxHTTPIncludeFileName name of the partial nginx config to be included in the http section.
-	NginxHTTPIncludeFileName string
-	// PHPFPMOverride boolean to check if user-provided php-fpm config exists.
-	PHPFPMOverride bool
-	// PHPFPMOverrideFileName name of the user-provided php-fpm config file.
-	PHPFPMOverrideFileName string
-	// PHPIniOverride boolean to check if user-provided php ini config exists.
-	PHPIniOverride bool
-	// PHPIniOverrideFileName name of the user-provided php ini config.
-	PHPIniOverrideFileName string
-	// NginxServesStaticFiles whether Nginx also serves static files for matching URIs.
-	NginxServesStaticFiles bool
-}
+    return OverrideProperties(
+        ComposerFlags=runtime_config.get("ComposerFlags", ""),
+        DocumentRoot=runtime_config.get("DocumentRoot", "/workspace"),
+        FrontController=runtime_config.get("FrontControllerFile", "index.php"),
+        PHPIniOverride=php_ini_result[0],
+        PHPIniOverrideFileName=php_ini_result[1],
+        PHPFPMOverride=php_fpm_result[0],
+        PHPFPMOverrideFileName=php_fpm_result[1],
+        NginxConfOverride=nginx_conf_result[0],
+        NginxConfOverrideFileName=nginx_conf_result[1],
+        NginxServerConfInclude=nginx_server_include_result[0],
+        NginxServerConfIncludeFileName=nginx_server_include_result[1],
+        NginxHTTPInclude=nginx_http_include_result[0],
+        NginxHTTPIncludeFileName=nginx_http_include_result[1]
+    )
 
-// OverriddenProperties returns whether the property has been overridden and the path to the file.
-func OverriddenProperties(ctx *gcp.Context, runtimeConfig appyaml.RuntimeConfig) OverrideProperties {
-	phpIniOverride, phpIniOverrideFileName := overrideProperties(ctx, runtimeConfig.PHPIniOverride, defaultPHPIni)
-	phpFPMOverride, phpFPMOverrideFileName := overrideProperties(ctx, runtimeConfig.PHPFPMConfOverride, defaultPHPFPMConfOverride)
-	nginxConfOverride, nginxConfOverrideFileName := overrideProperties(ctx, runtimeConfig.NginxConfOverride, defaultNginxConf)
-	nginxServerConfInclude, nginxServerConfIncludeFileName := overrideProperties(ctx, runtimeConfig.NginxConfInclude, defaultNginxConfInclude)
-	nginxHTTPInclude, nginxHTTPIncludeFileName := overrideProperties(ctx, runtimeConfig.NginxConfHTTPInclude, defaultNginxConfHTTPInclude)
+class Layer:
+    def __init__(self):
+        self.build_env = {}
+        self.launch_env = {}
 
-	return OverrideProperties{
-		ComposerFlags:                  runtimeConfig.ComposerFlags,
-		DocumentRoot:                   runtimeConfig.DocumentRoot,
-		FrontController:                runtimeConfig.FrontControllerFile,
-		PHPIniOverride:                 phpIniOverride,
-		PHPIniOverrideFileName:         phpIniOverrideFileName,
-		PHPFPMOverride:                 phpFPMOverride,
-		PHPFPMOverrideFileName:         phpFPMOverrideFileName,
-		NginxConfOverride:              nginxConfOverride,
-		NginxConfOverrideFileName:      nginxConfOverrideFileName,
-		NginxServerConfInclude:         nginxServerConfInclude,
-		NginxServerConfIncludeFileName: nginxServerConfIncludeFileName,
-		NginxHTTPInclude:               nginxHTTPInclude,
-		NginxHTTPIncludeFileName:       nginxHTTPIncludeFileName,
-	}
-}
+async def set_env_variables(layer: Layer, props: OverrideProperties) -> None:
+    if props.ComposerFlags:
+        layer.build_env["COMPOSER_ARGS"] = props.ComposerFlags
 
-func overrideProperties(ctx *gcp.Context, configValue, defaultFile string) (bool, string) {
-	if configValue != "" {
-		return true, filepath.Join(defaultRoot, configValue)
-	}
-
-	defaultFileExists, err := ctx.FileExists(defaultFile)
-	if err != nil {
-		return false, ""
-	}
-	if defaultFileExists {
-		return true, filepath.Join(defaultRoot, defaultFile)
-	}
-	return false, ""
-}
-
-// SetEnvVariables sets the env variables necessary for configuring the overrides.
-func SetEnvVariables(l *libcnb.Layer, props OverrideProperties) {
-	if props.ComposerFlags != "" {
-		l.BuildEnvironment.Override(php.ComposerArgsEnv, props.ComposerFlags)
-	}
-
-	if props.PHPIniOverride {
-		l.LaunchEnvironment.Override("PHPRC", props.PHPIniOverrideFileName)
-	}
-}
+    if props.PHPIniOverride:
+        layer.launch_env["PHPRC"] = props.PHPIniOverrideFileName

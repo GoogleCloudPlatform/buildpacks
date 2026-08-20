@@ -1,26 +1,39 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import asyncio
+from typing import Optional
 
-// Implements utils/archive-source buildpack.
-// The archive-source buildpack archives user's source code.
-package main
+import typer
+from pydantic import BaseModel
 
-import (
-	"github.com/GoogleCloudPlatform/buildpacks/cmd/utils/archive_source/lib"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+class BuildpackInfo(BaseModel):
+    id: str
+    version: str
+    checksum: Optional[str] = None
 
-func main() {
-	gcp.Main(lib.DetectFn, lib.BuildFn)
-}
+async def main():
+    from lib.detector import Detector
+    from lib.builder import Builder
+
+    detector = Detector()
+    builder = Builder()
+
+    try:
+        stdin = await asyncio.get_event_loop().run_in_executor(None, open, '/dev/stdin', 'r')
+        stdout = await asyncio.get_event_loop().run_in_executor(None, open, '/dev/stdout', 'w')
+
+        detected = await detector.detect(stdin, stdout)
+        if not detected:
+            return
+
+        buildpack_info = await builder.build(detected.version)
+
+        print(f"Buildpack ID: {buildpack_info.id}")
+        print(f"Version: {buildpack_info.version}")
+        if buildpack_info.checksum:
+            print(f"Checksum: {buildpack_info.checksum}")
+
+    except Exception as e:
+        print(f"Error processing request: {str(e)}")
+        raise typer.Exit(1)
+
+if __name__ == "__main__":
+    asyncio.run(main())

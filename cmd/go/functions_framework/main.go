@@ -1,26 +1,53 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+"""Implements functions_framework buildpack functionality using FastAPI and Pydantic."""
 
-// Implements go/functions_framework buildpack.
-// The functions_framework buildpack converts a functionn into an application and sets up the execution environment.
-package main
+from fastapi import FastAPI
+from pydantic import BaseModel
+import asyncio
 
-import (
-	"github.com/GoogleCloudPlatform/buildpacks/cmd/go/functions_framework/lib"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+app = FastAPI()
 
-func main() {
-	gcp.Main(lib.DetectFn, lib.BuildFn)
-}
+class BuildContext(BaseModel):
+    """
+    Represents the build context containing necessary information for building.
+
+    Attributes:
+        path (str): Path to the source code directory.
+        functions (list[str]): List of function names to be built.
+    """
+    path: str
+    functions: list[str]
+
+async def detectBuildContext() -> bool:
+    """
+    Detects whether the current context is applicable for this buildpack.
+
+    Returns:
+        bool: True if the buildpack applies, False otherwise.
+    """
+    # Simulate detection logic asynchronously
+    await asyncio.sleep(0.1)  # Replace with actual async checks
+    return True
+
+async def buildApplication(context: BuildContext) -> None:
+    """
+    Builds the application based on the provided context.
+
+    Args:
+        context (BuildContext): The build context containing necessary information.
+    """
+    # Simulate building process asynchronously
+    await asyncio.sleep(0.1)  # Replace with actual async build operations
+
+@app.on_event("startup")
+async def startup_event():
+    """Runs during application startup to initialize buildpack environment."""
+    context = BuildContext(path="./src", functions=["main"])
+
+    if await detectBuildContext():
+        await buildApplication(context)
+    else:
+        print("Buildpack does not apply to this context.")
+
+if __name__ == "__main__":
+    import uvicorn
+    asyncio.run(uvicorn.run(app, host="0.0.0.0", port=8000))

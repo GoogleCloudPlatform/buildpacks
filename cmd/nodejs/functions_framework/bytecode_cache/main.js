@@ -1,67 +1,91 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import asyncio
+import importlib.util
+import json
+import logging
+import os
+import shutil
+from pathlib import Path
+from typing import Dict, Any
 
-// This script is used to generate bytecode cache for a Node.js application.
-// It is intended to be run by the Node.js functions-framework buildpack.
-//
-// The script takes the absolute path to the user's entrypoint as an argument.
-// It then enables bytecode caching, requires the entrypoint, and flushes the
-// cache to disk.
-//
-// The script is designed to be run in a Node.js environment with the
-// functions-framework installed. Any dependencies of the entrypoint must be
-// installed in the Node.js environment.
+import aiofiles
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, validator
 
-const { enableCompileCache, flushCompileCache } = require('node:module');
-const path = require('node:path');
-const fs = require('node:fs');
+app = FastAPI()
 
-// The buildpack passes the absolute path to the user's entrypoint as the first argument.
-const entrypoint = process.argv[2];
-if (!entrypoint) {
-  console.error('Internal error: Application entrypoint not provided to cache generator.');
-  process.exit(1);
-}
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-// The buildpack passes the cache directory name as the second argument.
-const cacheDirName = process.argv[3];
-if (!cacheDirName) {
-  console.error('Internal error: Cache directory name not provided to cache generator.');
-  process.exit(1);
-}
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
+class InputData(BaseModel):
+    entrypoint: str
+    cache_dir_name: str
 
-console.log('--- Starting bytecode cache generation ---');
+    @validator('entrypoint', 'cache_dir_name')
+    def check_not_empty(cls, value):
+        if not value.strip():
+            raise ValueError("Field cannot be empty")
+        return value
 
-try {
-  const cachePath = path.join(process.cwd(), cacheDirName);
+async def generate_bytecode_cache(data: InputData) -> Dict[str, Any]:
+    try:
+        entrypoint = data.entrypoint
+        cache_dir_name = data.cache_dir_name
 
-  if (fs.existsSync(cachePath)) {
-    fs.rmSync(cachePath, { recursive: true, force: true });
-  }
-  fs.mkdirSync(cachePath);
+        # Get the current working directory
+        cwd = Path.cwd()
+        cache_path = cwd / cache_dir_name
 
-  enableCompileCache(cachePath);
+        # Check if cache directory exists and remove it
+        if os.path.exists(cache_path):
+            await asyncio.to_thread(shutil.rmtree, str(cache_path), ignore_errors=True)
 
-  console.log('Requiring application entrypoint to trigger compilation...');
-  require(entrypoint);
+        # Create the cache directory
+        cache_path.mkdir(parents=True, exist_ok=True)
 
-  console.log('Flushing compile cache to disk...');
-  flushCompileCache();
+        # Get module spec for entrypoint
+        spec = importlib.util.find_spec(entrypoint)
+        if not spec:
+            raise ValueError(f"Module {entrypoint} not found.")
 
-  console.log('--- Cache generation complete. ---');
-} catch (error) {
-  console.error(' Warning: Error during cache generation, build will continue without it.', error);
-  process.exit(1);
-}
+        # Read source code
+        async with aiofiles.open(spec.origin, 'rb') as f:
+            source_bytes = await f.read()
+
+        # Compile the source into a code object
+        code = compile(source_bytes, str(cache_path / (spec.name + '.py')), 'exec')
+
+        # Write bytecode to cache directory
+        target_pyc = cache_path / (spec.name + '.pyc')
+        async with aiofiles.open(target_pyc, 'wb') as f:
+            await f.write(importlib.util._write_bytecode(code))
+
+        # Import the module to trigger other compilations
+        importlib.import_module(entrypoint)
+
+        return {"status": "success", "message": "Cache generation complete."}
+
+    except Exception as e:
+        logger.error(f"Error during cache generation: {e}")
+        return {"status": "error", "message": str(e), "details": traceback.format_exc()}
+
+@app.post('/generate')
+async def handle_generate(data: InputData):
+    result = await generate_bytecode_cache(data)
+    if result['status'] == 'error':
+        raise HTTPException(status_code=500, detail=result['message'])
+    return result
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

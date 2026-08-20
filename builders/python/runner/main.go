@@ -1,80 +1,113 @@
-// The runner binary executes buildpacks for the Python language builder.
-package main
+"""
+The runner module executes Python language builder buildpacks using FastAPI and Pydantic.
+"""
 
-import (
-	"flag"
+import argparse
+from typing import Dict, Any
+from pydantic import BaseModel
+from fastapi import FastAPI
+import asyncio
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/commonbuildpacks"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+app = FastAPI()
 
-	// Buildpack libraries
-	pythonappengine "github.com/GoogleCloudPlatform/buildpacks/cmd/python/appengine/lib"
-	pythonfunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/python/functions_framework/lib"
-	pythonfunctionsframeworkcompat "github.com/GoogleCloudPlatform/buildpacks/cmd/python/functions_framework_compat/lib"
-	pythonlinkruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/python/link_runtime/lib"
-	pythonmissingentrypoint "github.com/GoogleCloudPlatform/buildpacks/cmd/python/missing_entrypoint/lib"
-	pythonpip "github.com/GoogleCloudPlatform/buildpacks/cmd/python/pip/lib"
-	pythonpoetry "github.com/GoogleCloudPlatform/buildpacks/cmd/python/poetry/lib"
-	pythonruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/python/runtime/lib"
-	pythonuv "github.com/GoogleCloudPlatform/buildpacks/cmd/python/uv/lib"
-	pythonwebserver "github.com/GoogleCloudPlatform/buildpacks/cmd/python/webserver/lib"
-)
+class Buildpack(BaseModel):
+    detect: callable
+    build: callable
 
-var (
-	buildpackID = flag.String("buildpack", "", "The ID of the buildpack to run (e.g., google.nodejs.runtime)")
-	phase       = flag.String("phase", "", "The phase to run: 'detect' or 'build'")
-)
+# Import buildpack modules
+from .appengine import lib as pythonappengine
+from .functions_framework import lib as pythonfunctionsframework
+from .functions_framework_compat import lib as pythonfunctionsframeworkcompat
+from .link_runtime import lib as pythonlinkruntime
+from .missing_entrypoint import lib as pythonmissingentrypoint
+from .pip import lib as pythonpip
+from .poetry import lib as pythonpoetry
+from .runtime import lib as pythonruntime
+from .uv import lib as pythonuv
+from .webserver import lib as pythonwebserver
 
-// Register buildpack functions here
-var buildpacks = commonbuildpacks.CommonBuildpacks()
-
-// (-- LINT.IfChange --)
-func init() {
-	buildpacks["google.python.appengine"] = gcp.BuildpackFuncs{
-		Detect: pythonappengine.DetectFn,
-		Build:  pythonappengine.BuildFn,
-	}
-	buildpacks["google.python.functions-framework"] = gcp.BuildpackFuncs{
-		Detect: pythonfunctionsframework.DetectFn,
-		Build:  pythonfunctionsframework.BuildFn,
-	}
-	buildpacks["google.python.functions-framework-compat"] = gcp.BuildpackFuncs{
-		Detect: pythonfunctionsframeworkcompat.DetectFn,
-		Build:  pythonfunctionsframeworkcompat.BuildFn,
-	}
-	buildpacks["google.python.link-runtime"] = gcp.BuildpackFuncs{
-		Detect: pythonlinkruntime.DetectFn,
-		Build:  pythonlinkruntime.BuildFn,
-	}
-	buildpacks["google.python.missing-entrypoint"] = gcp.BuildpackFuncs{
-		Detect: pythonmissingentrypoint.DetectFn,
-		Build:  pythonmissingentrypoint.BuildFn,
-	}
-	buildpacks["google.python.pip"] = gcp.BuildpackFuncs{
-		Detect: pythonpip.DetectFn,
-		Build:  pythonpip.BuildFn,
-	}
-	buildpacks["google.python.poetry"] = gcp.BuildpackFuncs{
-		Detect: pythonpoetry.DetectFn,
-		Build:  pythonpoetry.BuildFn,
-	}
-	buildpacks["google.python.runtime"] = gcp.BuildpackFuncs{
-		Detect: pythonruntime.DetectFn,
-		Build:  pythonruntime.BuildFn,
-	}
-	buildpacks["google.python.webserver"] = gcp.BuildpackFuncs{
-		Detect: pythonwebserver.DetectFn,
-		Build:  pythonwebserver.BuildFn,
-	}
-	buildpacks["google.python.uv"] = gcp.BuildpackFuncs{
-		Detect: pythonuv.DetectFn,
-		Build:  pythonuv.BuildFn,
-	}
+# Register buildpacks
+buildpacks: Dict[str, Buildpack] = {
+    "google.python.appengine": Buildpack(
+        detect=pythonappengine.detect,
+        build=pythonappengine.build
+    ),
+    "google.python.functions-framework": Buildpack(
+        detect=pythonfunctionsframework.detect,
+        build=pythonfunctionsframework.build
+    ),
+    "google.python.functions-framework-compat": Buildpack(
+        detect=pythonfunctionsframeworkcompat.detect,
+        build=pythonfunctionsframeworkcompat.build
+    ),
+    "google.python.link-runtime": Buildpack(
+        detect=pythonlinkruntime.detect,
+        build=pythonlinkruntime.build
+    ),
+    "google.python.missing-entrypoint": Buildpack(
+        detect=pythonmissingentrypoint.detect,
+        build=pythonmissingentrypoint.build
+    ),
+    "google.python.pip": Buildpack(
+        detect=pythonpip.detect,
+        build=pythonpip.build
+    ),
+    "google.python.poetry": Buildpack(
+        detect=pythonpoetry.detect,
+        build=pythonpoetry.build
+    ),
+    "google.python.runtime": Buildpack(
+        detect=pythonruntime.detect,
+        build=pythonruntime.build
+    ),
+    "google.python.webserver": Buildpack(
+        detect=pythonwebserver.detect,
+        build=pythonwebserver.build
+    ),
+    "google.python.uv": Buildpack(
+        detect=pythonuv.detect,
+        build=pythonuv.build
+    )
 }
 
-// (-- LINT.ThenChange(//depot/google3/third_party/gcp_buildpacks/builders/python/runner/BUILD) --)
+async def run_buildpack(buildpack_id: str, phase: str) -> Dict[str, Any]:
+    """
+    Run the specified buildpack phase.
 
-func main() {
-	flag.Parse()
-	gcp.MainRunner(buildpacks, buildpackID, phase)
-}
+    Args:
+        buildpack_id: The ID of the buildpack to run
+        phase: The phase to execute ('detect' or 'build')
+
+    Returns:
+        dict: The result of the buildpack execution
+
+    Raises:
+        ValueError: If buildpack_id or phase is invalid
+    """
+    if buildpack_id not in buildpacks:
+        raise ValueError(f"Buildpack {buildpack_id} not found")
+
+    bp = buildpacks[buildpack_id]
+
+    if phase == "detect":
+        return await bp.detect()
+    elif phase == "build":
+        return await bp.build()
+    else:
+        raise ValueError(f"Invalid phase: {phase}")
+
+def main():
+    parser = argparse.ArgumentParser(description='Run Python buildpacks')
+    parser.add_argument('--buildpack', type=str, required=True,
+                       help='The ID of the buildpack to run (e.g., google.python.runtime)')
+    parser.add_argument('--phase', type=str, required=True,
+                       choices=['detect', 'build'],
+                       help='The phase to run')
+
+    args = parser.parse_args()
+
+    result = asyncio.run(run_buildpack(args.buildpack, args.phase))
+    print(result)
+
+if __name__ == "__main__":
+    main()

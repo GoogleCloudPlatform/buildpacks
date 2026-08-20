@@ -1,101 +1,162 @@
-// The runner binary executes buildpacks for the Nodejs language builder.
-package main
+from typing import Dict, Any
+import argparse
+import asyncio
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, BaseSettings
 
-import (
-	"flag"
+class BuildpackFuncs(BaseModel):
+    detect: callable
+    build: callable
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/commonbuildpacks"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+class Settings(BaseSettings):
+    buildpack_id: str = ""
+    phase: str = ""
 
-	// Buildpack libraries
-	firebasebundle "github.com/GoogleCloudPlatform/buildpacks/cmd/firebase/bundle/lib"
-	nodejsappengine "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/appengine/lib"
-	nodejsbun "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/bun/lib"
+    class Config:
+        env_file = ".env"
 
-	nodejsfirebaseangular "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebaseangular/lib"
-	nodejsfirebasebundle "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebasebundle/lib"
-	nodejsfirebasenextjs "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebasenextjs/lib"
-	nodejsfirebasenx "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/firebasenx/lib"
-	nodejsfunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/functions_framework/lib"
-	nodejslegacyworker "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/legacy_worker/lib"
-	nodejsnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/npm/lib"
-	nodejspnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/pnpm/lib"
-	nodejsruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/runtime/lib"
-	nodejsturborepo "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/turborepo/lib"
-	nodejsyarn "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/yarn/lib"
-)
+settings = Settings()
 
-var (
-	buildpackID = flag.String("buildpack", "", "The ID of the buildpack to run (e.g., google.nodejs.runtime)")
-	phase       = flag.String("phase", "", "The phase to run: 'detect' or 'build'")
-)
+app = FastAPI()
+router = app.router
 
-// Register buildpack functions here
-var buildpacks = commonbuildpacks.CommonBuildpacks()
+# Register buildpack functions here
+buildpacks: Dict[str, BuildpackFuncs] = {}
 
-// (-- LINT.IfChange --)
-func init() {
-	buildpacks["google.nodejs.appengine"] = gcp.BuildpackFuncs{
-		Detect: nodejsappengine.DetectFn,
-		Build:  nodejsappengine.BuildFn,
-	}
-	buildpacks["google.nodejs.firebaseangular"] = gcp.BuildpackFuncs{
-		Detect: nodejsfirebaseangular.DetectFn,
-		Build:  nodejsfirebaseangular.BuildFn,
-	}
-	buildpacks["google.nodejs.firebasebundle"] = gcp.BuildpackFuncs{
-		Detect: nodejsfirebasebundle.DetectFn,
-		Build:  nodejsfirebasebundle.BuildFn,
-	}
-	buildpacks["google.firebase.firebasebundle"] = gcp.BuildpackFuncs{
-		Detect: firebasebundle.DetectFn,
-		Build:  firebasebundle.BuildFn,
-	}
-	buildpacks["google.nodejs.firebasenextjs"] = gcp.BuildpackFuncs{
-		Detect: nodejsfirebasenextjs.DetectFn,
-		Build:  nodejsfirebasenextjs.BuildFn,
-	}
-	buildpacks["google.nodejs.firebasenx"] = gcp.BuildpackFuncs{
-		Detect: nodejsfirebasenx.DetectFn,
-		Build:  nodejsfirebasenx.BuildFn,
-	}
-	buildpacks["google.nodejs.functions-framework"] = gcp.BuildpackFuncs{
-		Detect: nodejsfunctionsframework.DetectFn,
-		Build:  nodejsfunctionsframework.BuildFn,
-	}
-	buildpacks["google.nodejs.legacy-worker"] = gcp.BuildpackFuncs{
-		Detect: nodejslegacyworker.DetectFn,
-		Build:  nodejslegacyworker.BuildFn,
-	}
-	buildpacks["google.nodejs.npm"] = gcp.BuildpackFuncs{
-		Detect: nodejsnpm.DetectFn,
-		Build:  nodejsnpm.BuildFn,
-	}
-	buildpacks["google.nodejs.pnpm"] = gcp.BuildpackFuncs{
-		Detect: nodejspnpm.DetectFn,
-		Build:  nodejspnpm.BuildFn,
-	}
-	buildpacks["google.nodejs.runtime"] = gcp.BuildpackFuncs{
-		Detect: nodejsruntime.DetectFn,
-		Build:  nodejsruntime.BuildFn,
-	}
-	buildpacks["google.nodejs.turborepo"] = gcp.BuildpackFuncs{
-		Detect: nodejsturborepo.DetectFn,
-		Build:  nodejsturborepo.BuildFn,
-	}
-	buildpacks["google.nodejs.yarn"] = gcp.BuildpackFuncs{
-		Detect: nodejsyarn.DetectFn,
-		Build:  nodejsyarn.BuildFn,
-	}
-	buildpacks["google.nodejs.bun"] = gcp.BuildpackFuncs{
-		Detect: nodejsbun.DetectFn,
-		Build:  nodejsbun.BuildFn,
-	}
-}
+def init_buildpacks():
+    global buildpacks
 
-// (-- LINT.ThenChange(//depot/google3/third_party/gcp_buildpacks/builders/nodejs/runner/BUILD) --)
+    # firebasebundle
+    from firebase.bundle import lib as firebasebundle_lib
+    buildpacks["google.firebase.firebasebundle"] = BuildpackFuncs(
+        detect=firebasebundle_lib.DetectFn,
+        build=firebasebundle_lib.BuildFn
+    )
 
-func main() {
-	flag.Parse()
-	gcp.MainRunner(buildpacks, buildpackID, phase)
-}
+    # nodejs appengine
+    from nodejs.appengine import lib as nodejsappengine_lib
+    buildpacks["google.nodejs.appengine"] = BuildpackFuncs(
+        detect=nodejsappengine_lib.DetectFn,
+        build=nodejsappengine_lib.BuildFn
+    )
+
+    # nodejs firebaseangular
+    from nodejs.firebaseangular import lib as nodejsfirebaseangular_lib
+    buildpacks["google.nodejs.firebaseangular"] = BuildpackFuncs(
+        detect=nodejsfirebaseangular_lib.DetectFn,
+        build=nodejsfirebaseangular_lib.BuildFn
+    )
+
+    # nodejs firebasebundle
+    from nodejs.firebasebundle import lib as nodejsfirebasebundle_lib
+    buildpacks["google.nodejs.firebasebundle"] = BuildpackFuncs(
+        detect=nodejsfirebasebundle_lib.DetectFn,
+        build=nodejsfirebasebundle_lib.BuildFn
+    )
+
+    # nodejs firebasenextjs
+    from nodejs.firebasenextjs import lib as nodejsfirebasenextjs_lib
+    buildpacks["google.nodejs.firebasenextjs"] = BuildpackFuncs(
+        detect=nodejsfirebasenextjs_lib.DetectFn,
+        build=nodejsfirebasenextjs_lib.BuildFn
+    )
+
+    # nodejs firebasenx
+    from nodejs.firebasenx import lib as nodejsfirebasenx_lib
+    buildpacks["google.nodejs.firebasenx"] = BuildpackFuncs(
+        detect=nodejsfirebasenx_lib.DetectFn,
+        build=nodejsfirebasenx_lib.BuildFn
+    )
+
+    # nodejs functions_framework
+    from nodejs.functions_framework import lib as nodejsfunctionsframework_lib
+    buildpacks["google.nodejs.functions-framework"] = BuildpackFuncs(
+        detect=nodejsfunctionsframework_lib.DetectFn,
+        build=nodejsfunctionsframework_lib.BuildFn
+    )
+
+    # nodejs legacy_worker
+    from nodejs.legacy_worker import lib as nodejslegacyworker_lib
+    buildpacks["google.nodejs.legacy-worker"] = BuildpackFuncs(
+        detect=nodejslegacyworker_lib.DetectFn,
+        build=nodejslegacyworker_lib.BuildFn
+    )
+
+    # nodejs npm
+    from nodejs.npm import lib as nodejsnpm_lib
+    buildpacks["google.nodejs.npm"] = BuildpackFuncs(
+        detect=nodejsnpm_lib.DetectFn,
+        build=nodejsnpm_lib.BuildFn
+    )
+
+    # nodejs pnpm
+    from nodejs.pnpm import lib as nodejspnpm_lib
+    buildpacks["google.nodejs.pnpm"] = BuildpackFuncs(
+        detect=nodejspnpm_lib.DetectFn,
+        build=nodejspnpm_lib.BuildFn
+    )
+
+    # nodejs runtime
+    from nodejs.runtime import lib as nodejsruntime_lib
+    buildpacks["google.nodejs.runtime"] = BuildpackFuncs(
+        detect=nodejsruntime_lib.DetectFn,
+        build=nodejsruntime_lib.BuildFn
+    )
+
+    # nodejs turborepo
+    from nodejs.turborepo import lib as nodejsturborepo_lib
+    buildpacks["google.nodejs.turborepo"] = BuildpackFuncs(
+        detect=nodejsturborepo_lib.DetectFn,
+        build=nodejsturborepo_lib.BuildFn
+    )
+
+    # nodejs yarn
+    from nodejs.yarn import lib as nodejsyarn_lib
+    buildpacks["google.nodejs.yarn"] = BuildpackFuncs(
+        detect=nodejsyarn_lib.DetectFn,
+        build=nodejsyarn_lib.BuildFn
+    )
+
+    # nodejs bun
+    from nodejs.bun import lib as nodejsbun_lib
+    buildpacks["google.nodejs.bun"] = BuildpackFuncs(
+        detect=nodejsbun_lib.DetectFn,
+        build=nodejsbun_lib.BuildFn
+    )
+
+@app.get("/")
+async def root():
+    if not settings.buildpack_id or not settings.phase:
+        raise HTTPException(status_code=400, detail="Missing required parameters")
+
+    if settings.phase not in ["detect", "build"]:
+        raise HTTPException(status_code=400, detail="Invalid phase value. Must be 'detect' or 'build'")
+
+    if settings.buildpack_id not in buildpacks:
+        raise HTTPException(status_code=404, detail=f"Buildpack {settings.buildpack_id} not found")
+
+    func = buildpacks[settings.buildpack_id]
+    if settings.phase == "detect":
+        result = await asyncio.to_thread(func.detect)
+    else:
+        result = await asyncio.to_thread(func.build)
+
+    return {"result": result}
+
+def main():
+    init_buildpacks()
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Node.js Buildpack Runner')
+    parser.add_argument('--buildpack', type=str, help='The ID of the buildpack to run (e.g., google.nodejs.runtime)')
+    parser.add_argument('--phase', type=str, help='The phase to run: "detect" or "build"')
+    args = parser.parse_args()
+
+    if args.buildpack:
+        settings.buildpack_id = args.buildpack
+    if args.phase:
+        settings.phase = args.phase
+
+    main()

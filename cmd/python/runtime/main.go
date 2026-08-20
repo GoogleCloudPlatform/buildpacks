@@ -1,26 +1,73 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+import asyncio
+import json
+import os
+from pathlib import Path
+from typing import Dict, Optional
 
-// Implements python/runtime buildpack.
-// The runtime buildpack installs the Python runtime.
-package main
+from pydantic import BaseModel
 
-import (
-	"github.com/GoogleCloudPlatform/buildpacks/cmd/python/runtime/lib"
-	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-)
+class BuildpackInfo(BaseModel):
+    detected: bool = False
+    version: Optional[str] = None
+    python_version: Optional[str] = None
 
-func main() {
-	gcp.Main(lib.DetectFn, lib.BuildFn)
-}
+async def detect(build_dir: str) -> Dict:
+    """Detect if the Python runtime should be applied."""
+    info = BuildpackInfo()
+
+    # Check for requirements.txt or setup.py
+    loop = asyncio.get_event_loop()
+    files = await loop.run_in_executor(None, lambda:
+        [f.name for f in Path(build_dir).iterdir() if f.is_file()]
+    )
+
+    if 'requirements.txt' in files or 'setup.py' in files:
+        info.detected = True
+
+        # Determine Python version
+        python_version = os.environ.get("PYTHON_VERSION", "latest")
+        info.python_version = python_version
+
+    return json.loads(info.json())
+
+async def build(build_dir: str) -> Dict:
+    """Install the Python runtime."""
+    info = BuildpackInfo()
+
+    # Get detected info from environment or file
+    try:
+        with open(os.path.join(build_dir, '.python-buildpack'), 'r') as f:
+            detected_info = json.load(f)
+    except FileNotFoundError:
+        detected_info = {}
+
+    if not detected_info.get('detected'):
+        return {'error': 'Python runtime not detected'}
+
+    # Install Python version
+    version = detected_info.get('version', os.environ.get("PYTHON_VERSION", "latest"))
+    await asyncio.create_subprocess_exec(
+        'python3',
+        '-m', 'ensurepath', f'python/{version}',
+        cwd=build_dir,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+
+    info.version = version
+    return json.loads(info.json())
+
+async def main():
+    buildpack_info = await detect(os.environ.get('BP_BUILDPACK_DIR', './'))
+    if not buildpack_info.get('detected'):
+        print(json.dumps({'error': 'Not a Python application'}))
+        return
+
+    try:
+        result = await build(os.environ.get('BP_APP_DIR', './'))
+        print(json.dumps(result))
+    except Exception as e:
+        print(json.dumps({'error': str(e)}))
+
+if __name__ == "__main__":
+    asyncio.run(main())
