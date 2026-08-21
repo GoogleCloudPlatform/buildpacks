@@ -17,6 +17,8 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
+	gcpbuildpack "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 )
 
 func TestDetectBunVersion(t *testing.T) {
@@ -88,7 +90,10 @@ func TestDetectBunVersion(t *testing.T) {
 				testserver.WithMockURL(&npmRegistryURL),
 			)
 
-			version, err := detectBunVersion(&tc.packageJSON)
+			ctx := gcpbuildpack.NewContext()
+			defer tooling.MockData()()
+
+			version, err := detectBunVersion(ctx, &tc.packageJSON)
 			if version != tc.wantVersion {
 				t.Errorf("detectBunVersion() got version: %v, want version: %v", version, tc.wantVersion)
 			}

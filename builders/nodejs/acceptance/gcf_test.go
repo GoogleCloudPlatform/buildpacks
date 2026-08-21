@@ -100,10 +100,11 @@ func TestAcceptance(t *testing.T) {
 			MustNotUse:             []string{npm},
 		},
 		{
-			Name:       "function_with_framework_bun",
-			App:        "with_framework_bun",
-			MustUse:    []string{bun},
-			MustNotUse: []string{npm},
+			Name:                       "function_with_framework_bun",
+			App:                        "with_framework_bun",
+			MustUse:                    []string{bun},
+			MustNotUse:                 []string{npm},
+			VersionInclusionConstraint: ">= 20.0.0",
 		},
 		{
 			Name:            "function with dependencies",

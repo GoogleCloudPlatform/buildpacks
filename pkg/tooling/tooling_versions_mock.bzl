@@ -20,6 +20,7 @@ MOCK_TOOLING_VERSIONS = {
         "default": {
             "yarn": "1.22.22",
             "pnpm": "10.32.1",
+            "bun": "1.0.0",
         },
         "runtimes": [
             {

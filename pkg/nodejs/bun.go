@@ -5,8 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
 	"github.com/buildpacks/libcnb/v2"
 )
 
@@ -43,7 +45,7 @@ func InstallBun(ctx *gcp.Context, bunLayer *libcnb.Layer, pjs *PackageJSON) erro
 	}
 
 	installDir := filepath.Join(bunLayer.Path, "bin")
-	version, err := detectBunVersion(pjs)
+	version, err := detectBunVersion(ctx, pjs)
 	if err != nil {
 		return err
 	}
@@ -77,12 +79,19 @@ func InstallBun(ctx *gcp.Context, bunLayer *libcnb.Layer, pjs *PackageJSON) erro
 // by examining the "engines.bun" and "packageManager" constraints specified in package.json and comparing them against all
 // published versions in the NPM registry, if both exist "engines.bun" will take precedence.
 // If the package.json does not include "engines.bun" or "packageManager" it
-// returns the latest stable version available.
-func detectBunVersion(pjs *PackageJSON) (string, error) {
+// returns the version in tooling.textproto and falls back to the
+// latest stable version available.
+func detectBunVersion(ctx *gcp.Context, pjs *PackageJSON) (string, error) {
 	const bunPackageName = "bun"
 
 	if pjs == nil || (pjs.Engines.Bun == "" && pjs.PackageManager == "") {
-		version, err := latestPackageVersion(bunPackageName)
+		version, err := tooling.ResolveToolVersion("nodejs", bunPackageName, os.Getenv(env.RuntimeVersion), "")
+		if err == nil && version != "" {
+			return version, nil
+		}
+		ctx.Warnf("Could not resolve pinned bun version, falling back to latest: %v", err)
+
+		version, err = latestPackageVersion(bunPackageName)
 		if err != nil {
 			return "", gcp.InternalErrorf("fetching available bun versions: %w", err)
 		}
