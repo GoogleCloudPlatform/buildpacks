@@ -20,6 +20,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/buildpacks/libcnb/v2"
@@ -34,6 +35,7 @@ func TestHashAndCheck(t *testing.T) {
 		wantHash     string
 		wantCacheHit bool
 		wantMetric   buildermetrics.MetricID
+		wantStatus   buildermetadata.MetadataValue
 	}{
 		{
 			name: "cacheHit",
@@ -45,6 +47,7 @@ func TestHashAndCheck(t *testing.T) {
 			wantHash:     "75e3d0ce18615f1fcca84513474b0040ec223ceac07e0079a0221a7e1704caa6",
 			wantCacheHit: true,
 			wantMetric:   buildermetrics.LayerCacheHitCounterID,
+			wantStatus:   "hit",
 		},
 		{
 			name: "cacheMissValueChanged",
@@ -56,6 +59,7 @@ func TestHashAndCheck(t *testing.T) {
 			wantHash:     "75e3d0ce18615f1fcca84513474b0040ec223ceac07e0079a0221a7e1704caa6",
 			wantCacheHit: false,
 			wantMetric:   buildermetrics.LayerCacheMissCounterID,
+			wantStatus:   "miss",
 		},
 		{
 			name:         "cacheMissNoPreviousEntry",
@@ -64,6 +68,7 @@ func TestHashAndCheck(t *testing.T) {
 			wantHash:     "2896169f03a0b3756a77cd30c84e949e9bcde7af0869e291e06aaebbb97b6d11",
 			wantCacheHit: false,
 			wantMetric:   buildermetrics.LayerCacheColdCounterID,
+			wantStatus:   "cold",
 		},
 	}
 
@@ -90,6 +95,9 @@ func TestHashAndCheck(t *testing.T) {
 			}
 			if counterAfter := buildermetrics.GlobalBuilderMetrics().GetCounter(tc.wantMetric).Value(); counterAfter != counterBefore+1 {
 				t.Errorf("metric counter %q = %d, want %d", tc.wantMetric, counterAfter, counterBefore+1)
+			}
+			if gotStatus := buildermetadata.GlobalBuilderMetadata().GetValue(buildermetadata.LayerCacheStatus); gotStatus != tc.wantStatus {
+				t.Errorf("LayerCacheStatus = %q, want %q", gotStatus, tc.wantStatus)
 			}
 		})
 	}

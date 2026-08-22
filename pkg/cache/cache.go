@@ -24,6 +24,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/libcnb/v2"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
@@ -182,10 +183,13 @@ func HashAndCheck(ctx *gcp.Context, l *libcnb.Layer, key string, opts ...Option)
 	// Record telemetry metrics based on remote OCI analyzed.toml and local disk metadata.
 	if (prevHashRemote != "" && currHash == prevHashRemote) || (prevHashOnDisk != "" && currHash == prevHashOnDisk) {
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.LayerCacheHitCounterID).Increment(1)
+		buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.LayerCacheStatus, "hit")
 	} else if prevHashRemote != "" || prevHashOnDisk != "" {
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.LayerCacheMissCounterID).Increment(1)
+		buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.LayerCacheStatus, "miss")
 	} else {
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.LayerCacheColdCounterID).Increment(1)
+		buildermetadata.GlobalBuilderMetadata().SetValue(buildermetadata.LayerCacheStatus, "cold")
 	}
 
 	// Execution caching behavior: strictly preserve existing disk-based caching behavior.
