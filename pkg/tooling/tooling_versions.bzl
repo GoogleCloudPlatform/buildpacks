@@ -38,7 +38,7 @@ TOOLING_VERSIONS = {
         "default": {
             "yarn": "1.22.22",
             "pnpm": "11.22.0",
-            "bun": "1.3.14",
+            "bun": "1.4.0",
         },
         "runtimes": [
             {
