@@ -17,10 +17,12 @@
 package lib
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/ar"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/faherror"
@@ -71,6 +73,10 @@ func BuildFn(ctx *gcp.Context) error {
 
 	if err := installBun(ctx, pjs); err != nil {
 		return gcp.InternalErrorf("installing bun: %w", err)
+	}
+
+	if err := ar.GenerateNPMConfig(ctx); err != nil {
+		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
 	}
 
 	if err := bunInstallModules(ctx); err != nil {
