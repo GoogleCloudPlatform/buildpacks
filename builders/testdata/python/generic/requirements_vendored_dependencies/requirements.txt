@@ -1,1 +1,2 @@
+--no-index
 sample-pip-dependency==0.0.1
