@@ -84,20 +84,34 @@ func BuildFn(ctx *gcp.Context) error {
 	el.SharedEnvironment.Prepend("PATH", string(os.PathListSeparator), filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin"))
 	el.SharedEnvironment.Default("NODE_ENV", nodejs.NodeEnv())
 
+	// Check for known vulnerable dependency versions (e.g. React2Shell / CVE-2025-55182).
+	nodeDeps, err := nodejs.ReadNodeDependencies(ctx, ctx.ApplicationRoot())
+	if err != nil {
+		ctx.Warnf("Failed to read node dependencies: %v", err)
+	} else {
+		if err := nodejs.CheckVulnerabilities(ctx, nodeDeps); err != nil {
+			return err
+		}
+	}
+
+	entrypoint, err := nodejs.Entrypoint(ctx, "bun")
+	if err != nil {
+		return err
+	}
+
 	devSync, err := env.IsDevSync()
 	if err != nil {
 		ctx.Warnf("Unable to determine dev sync status: %v", err)
 	} else if devSync {
-		cmd, err := nodejs.DevSyncEntrypoint(ctx, pjs, "bun")
+		entrypoint, err = nodejs.DevSyncEntrypoint(ctx, pjs, "bun")
 		if err != nil {
 			return gcp.InternalErrorf("getting dev sync entrypoint: %w", err)
 		}
-		ctx.AddWebProcess(cmd)
+		ctx.AddWebProcess(entrypoint)
 		return nil
 	}
 
-	// Configure the entrypoint for production.
-	ctx.AddWebProcess([]string{"npm", "run", "start"})
+	ctx.AddWebProcess(entrypoint)
 	return nil
 }
 
