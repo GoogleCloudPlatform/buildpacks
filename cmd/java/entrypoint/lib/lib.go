@@ -18,6 +18,7 @@ package lib
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/appyaml"
@@ -45,7 +46,13 @@ func BuildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("finding executable jar: %w", err)
 	}
 
-	command := []string{"java", "-jar", executable}
+	relExecutable, err := filepath.Rel(ctx.ApplicationRoot(), executable)
+	if err != nil {
+		return fmt.Errorf("relativizing executable jar path %q against %q: %w", executable, ctx.ApplicationRoot(), err)
+	}
+	relExecutable = filepath.ToSlash(relExecutable)
+
+	command := []string{"java", "-jar", relExecutable}
 
 	// Configure the entrypoint and metadata for dev mode.
 	if devmode.Enabled(ctx) {
