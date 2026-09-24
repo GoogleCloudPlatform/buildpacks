@@ -16,6 +16,7 @@ package python
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	stdruntime "runtime"
 	"testing"
@@ -701,28 +702,76 @@ func TestCommand(t *testing.T) {
 	}
 }
 
+func TestExecutable(t *testing.T) {
+	oldLookPath := execLookPath
+	defer func() { execLookPath = oldLookPath }()
+
+	t.Run("resolved", func(t *testing.T) {
+		execLookPath = func(cmd string) (string, error) {
+			return "/custom/bin/" + cmd, nil
+		}
+		if got, want := executable(), "/custom/bin/"+Command(); got != want {
+			t.Errorf("executable() = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("not_found", func(t *testing.T) {
+		execLookPath = func(cmd string) (string, error) {
+			return "", exec.ErrNotFound
+		}
+		if got, want := executable(), Command(); got != want {
+			t.Errorf("executable() = %q, want %q", got, want)
+		}
+	})
+}
+
 func TestMakerUVPipInstallArgs(t *testing.T) {
 	testCases := []struct {
-		name string
-		req  string
-		want []string
+		name         string
+		req          string
+		lookPathFunc func(string) (string, error)
+		wantPython   string
 	}{
 		{
-			name: "install_from_current_directory",
+			name: "install_from_current_directory_resolved_path",
 			req:  ".",
-			want: []string{"uv", "pip", "install", ".", "--reinstall", "--link-mode=copy", "--python", Command()},
+			lookPathFunc: func(cmd string) (string, error) {
+				return "/usr/bin/" + cmd, nil
+			},
+			wantPython: "/usr/bin/" + Command(),
 		},
 		{
-			name: "install_from_requirements_txt",
+			name: "install_from_requirements_txt_resolved_path",
 			req:  "requirements.txt",
-			want: []string{"uv", "pip", "install", "-r", "requirements.txt", "--reinstall", "--link-mode=copy", "--python", Command()},
+			lookPathFunc: func(cmd string) (string, error) {
+				return "/usr/bin/" + cmd, nil
+			},
+			wantPython: "/usr/bin/" + Command(),
+		},
+		{
+			name: "lookpath_fails_fallback_to_command",
+			req:  "requirements.txt",
+			lookPathFunc: func(cmd string) (string, error) {
+				return "", exec.ErrNotFound
+			},
+			wantPython: Command(),
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			oldLookPath := execLookPath
+			defer func() { execLookPath = oldLookPath }()
+			execLookPath = tc.lookPathFunc
+
 			got := makerUVPipInstallArgs(tc.req)
-			if diff := cmp.Diff(tc.want, got); diff != "" {
+			var want []string
+			if tc.req == "." {
+				want = []string{"uv", "pip", "install", ".", "--reinstall", "--link-mode=copy", "--python", tc.wantPython}
+			} else {
+				want = []string{"uv", "pip", "install", "-r", tc.req, "--reinstall", "--link-mode=copy", "--python", tc.wantPython}
+			}
+			if diff := cmp.Diff(want, got); diff != "" {
 				t.Errorf("makerUVPipInstallArgs(%q) returned diff (-want +got):\n%s", tc.req, diff)
 			}
 		})

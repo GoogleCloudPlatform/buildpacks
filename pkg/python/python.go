@@ -18,6 +18,7 @@ package python
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -697,9 +698,19 @@ func (i MakerUVDependencyInstaller) Install(ctx *gcp.Context, l *libcnb.Layer, r
 	})
 }
 
+var execLookPath = exec.LookPath
+
+// executable returns the absolute path to the Python executable in PATH, or Command() if not found.
+func executable() string {
+	if p, err := execLookPath(Command()); err == nil {
+		return p
+	}
+	return Command()
+}
+
 func makerUVPipInstallArgs(req string) []string {
 	cmd := baseuvPipInstallArgs(req)
-	return append(cmd, "--python", Command())
+	return append(cmd, "--python", executable())
 }
 
 func baseuvPipInstallArgs(req string) []string {
