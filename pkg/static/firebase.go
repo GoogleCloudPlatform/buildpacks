@@ -71,6 +71,8 @@ events {
 
 http {
     include {{.MimeTypesPath}};
+    default_type application/octet-stream;
+
     access_log /dev/stdout;
 
     client_body_temp_path /tmp/nginx_client_body;
@@ -78,6 +80,38 @@ http {
     fastcgi_temp_path /tmp/nginx_fastcgi;
     uwsgi_temp_path /tmp/nginx_uwsgi;
     scgi_temp_path /tmp/nginx_scgi;
+
+    # Performance & Kernel Optimizations
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    open_file_cache max=10000 inactive=30s;
+    open_file_cache_valid 60s;
+    open_file_cache_min_uses 2;
+    open_file_cache_errors on;
+
+    # Compression
+    gzip on;
+    gzip_static on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 1;
+    gzip_min_length 8192;
+    gzip_types
+        text/plain
+        text/css
+        text/javascript
+        application/javascript
+        application/json
+        application/xml
+        application/wasm
+        image/svg+xml
+        font/ttf
+        font/otf;
+
+    # Security
+    server_tokens off;
 
     # Define a variable for literal dollar sign to avoid interpolation
     geo $literal_dollar {
@@ -91,9 +125,21 @@ http {
 {{end}}    }
 {{end}}
     server {
-        listen 8080;
+        listen 8080 default_server;
+        server_name _;
+
         root {{.RootPath}};
         index index.html;
+
+        # Reverse-proxy & redirect safety for Cloud Run
+        port_in_redirect off;
+
+        # Block hidden dotfiles (.git, .env, .DS_Store)
+        location ~ /\. {
+            access_log off;
+            log_not_found off;
+            return 404;
+        }
 
         {{if .Has404HTML}}
         error_page 404 /404.html;
@@ -128,7 +174,7 @@ http {
         # Remove trailing slash
         # We don't use if (!-d) because we want to redirect directories that have index.html.
         # We avoid loops by removing $uri/ from try_files (see below).
-        rewrite ^([^.\?]*)/$ $1 permanent;
+        rewrite ^([^.\?]+)/$ $1 permanent;
         {{end}}
         {{end}}
 

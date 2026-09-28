@@ -935,7 +935,7 @@ func TestWriteFirebaseNginxConfig_CleanUrlsAndTrailingSlash(t *testing.T) {
 			name:          "trailing slash false",
 			trailingSlash: ptrBool(false),
 			wantContains: []string{
-				"rewrite ^([^.\\?]*)/$ $1 permanent;",
+				"rewrite ^([^.\\?]+)/$ $1 permanent;",
 				"try_files $uri $uri/index.html =404;",
 			},
 			wantNotContain: []string{

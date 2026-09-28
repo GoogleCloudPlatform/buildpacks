@@ -26,10 +26,10 @@ import (
 )
 
 const (
-	// nginxPathBaseImage is the path to the nginx root in the static runtimes base image.
-	nginxPathBaseImage = "/opt/nginx/"
-	// nginxPathBuildpacks is the path to the nginx root when installed by the nginx buildpack.
-	nginxPathBuildpacks = "/layers/google.utils.nginx/nginx"
+	// nginxPathBaseImage is the path to the nginx configuration root in the static runtimes base image.
+	nginxPathBaseImage = "/etc/nginx/"
+	// nginxPathBuildpacks is the path to the nginx configuration root when installed by the nginx buildpack.
+	nginxPathBuildpacks = "/layers/google.utils.nginx/nginx/conf"
 	// languageNameLabel is the label key for the language name.
 	languageNameLabel = "language-name"
 )
@@ -115,7 +115,7 @@ func generateNginxConfig(ctx *gcp.Context, layerPath string, rootPath string, fb
 	if env.IsStaticBaseImage() {
 		nginxPath = nginxPathBaseImage
 	}
-	nginxMimeTypesPath := filepath.Join(nginxPath, "conf/mime.types")
+	nginxMimeTypesPath := filepath.Join(nginxPath, "mime.types")
 
 	params := static.FirebaseNginxConfigParams{
 		RootPath:      rootPath,
