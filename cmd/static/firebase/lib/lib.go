@@ -30,6 +30,8 @@ const (
 	nginxPathBaseImage = "/opt/nginx/"
 	// nginxPathBuildpacks is the path to the nginx root when installed by the nginx buildpack.
 	nginxPathBuildpacks = "/layers/google.utils.nginx/nginx"
+	// languageNameLabel is the label key for the language name.
+	languageNameLabel = "language-name"
 )
 
 // DetectFn checks for firebase.json with a valid public directory.
@@ -57,6 +59,8 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 // BuildFn generates the nginx configuration for a firebase.json application and registers the web entrypoint.
 func BuildFn(ctx *gcp.Context) error {
+	ctx.AddLabel(languageNameLabel, "static24")
+
 	l, err := ctx.Layer("nginx_config", gcp.LaunchLayer, gcp.BuildLayer)
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
