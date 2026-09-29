@@ -97,9 +97,29 @@
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/github.com/aws/smithy-go/internal/sync/singleflight/LICENSE
 
+- package: github.com/AzureAD/microsoft-authentication-library-for-go/apps
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/AzureAD/microsoft-authentication-library-for-go/apps/LICENSE
+
 - package: github.com/Azure/azure-sdk-for-go
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/Azure/azure-sdk-for-go/LICENSE.txt
+
+- package: github.com/Azure/azure-sdk-for-go/sdk/azcore
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/Azure/azure-sdk-for-go/sdk/azcore/LICENSE.txt
+
+- package: github.com/Azure/azure-sdk-for-go/sdk/azidentity
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/Azure/azure-sdk-for-go/sdk/azidentity/LICENSE.txt
+
+- package: github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry/LICENSE.txt
+
+- package: github.com/Azure/azure-sdk-for-go/sdk/internal
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/Azure/azure-sdk-for-go/sdk/internal/LICENSE.txt
 
 - package: github.com/Azure/go-autorest/autorest/adal
   license_name: Apache-2.0
@@ -140,6 +160,10 @@
 - package: github.com/BurntSushi/toml
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/BurntSushi/toml/COPYING
+
+- package: github.com/cenkalti/backoff/v5
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/cenkalti/backoff/v5/LICENSE
 
 - package: github.com/cespare/xxhash/v2
   license_name: MIT
@@ -213,6 +237,10 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/golang-jwt/jwt/v4/LICENSE
 
+- package: github.com/golang-jwt/jwt/v5
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/golang-jwt/jwt/v5/LICENSE
+
 - package: github.com/golang/mock/gomock
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/golang/mock/gomock/LICENSE
@@ -237,6 +265,10 @@
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/github.com/google/uuid/LICENSE
 
+- package: github.com/grpc-ecosystem/grpc-gateway/v2
+  license_name: BSD-3-Clause
+  license_path: /usr/local/share/licenses/lifecycle/github.com/grpc-ecosystem/grpc-gateway/v2/LICENSE
+
 - package: github.com/heroku/color
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/heroku/color/LICENSE
@@ -252,6 +284,10 @@
 - package: github.com/klauspost/compress/zstd/internal/xxhash
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/klauspost/compress/zstd/internal/xxhash/LICENSE.txt
+
+- package: github.com/kylelemons/godebug
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/kylelemons/godebug/LICENSE
 
 - package: github.com/mattn/go-colorable
   license_name: MIT
@@ -317,9 +353,9 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/opencontainers/image-spec/specs-go/LICENSE
 
-- package: github.com/osscontainertools/docker-credential-acr/pkg
+- package: github.com/osscontainertools/docker-credential-acr
   license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/osscontainertools/docker-credential-acr/pkg/LICENSE
+  license_path: /usr/local/share/licenses/lifecycle/github.com/osscontainertools/docker-credential-acr/LICENSE
 
 - package: github.com/osscontainertools/kaniko/pkg
   license_name: Apache-2.0
@@ -328,6 +364,10 @@
 - package: github.com/otiai10/copy
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/otiai10/copy/LICENSE
+
+- package: github.com/pkg/browser
+  license_name: BSD-2-Clause
+  license_path: /usr/local/share/licenses/lifecycle/github.com/pkg/browser/LICENSE
 
 - package: github.com/pkg/errors
   license_name: BSD-2-Clause
@@ -357,6 +397,10 @@
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/golang.org/x/crypto/pkcs12/LICENSE
 
+- package: golang.org/x/net
+  license_name: BSD-3-Clause
+  license_path: /usr/local/share/licenses/lifecycle/golang.org/x/net/LICENSE
+
 - package: golang.org/x/oauth2
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/golang.org/x/oauth2/LICENSE
@@ -373,6 +417,18 @@
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/golang.org/x/text/LICENSE
 
+- package: google.golang.org/genproto/googleapis/api/httpbody
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/google.golang.org/genproto/googleapis/api/httpbody/LICENSE
+
+- package: google.golang.org/genproto/googleapis/rpc/status
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/google.golang.org/genproto/googleapis/rpc/status/LICENSE
+
+- package: google.golang.org/grpc
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/google.golang.org/grpc/LICENSE
+
 - package: google.golang.org/protobuf
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/google.golang.org/protobuf/LICENSE
@@ -385,6 +441,14 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp/LICENSE
 
+- package: go.opentelemetry.io/otel/exporters/otlp/otlptrace
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/go.opentelemetry.io/otel/exporters/otlp/otlptrace/LICENSE
+
+- package: go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp/LICENSE
+
 - package: go.opentelemetry.io/otel
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/go.opentelemetry.io/otel/LICENSE
@@ -393,6 +457,14 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/go.opentelemetry.io/otel/metric/LICENSE
 
+- package: go.opentelemetry.io/otel/sdk
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/go.opentelemetry.io/otel/sdk/LICENSE
+
 - package: go.opentelemetry.io/otel/trace
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/go.opentelemetry.io/otel/trace/LICENSE
+
+- package: go.opentelemetry.io/proto/otlp
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/go.opentelemetry.io/proto/otlp/LICENSE
