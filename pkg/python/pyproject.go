@@ -349,6 +349,9 @@ func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) (st
 
 	venvBinDir := filepath.Join(venvDir, "bin")
 	l.SharedEnvironment.Prepend("PATH", string(filepath.ListSeparator), venvBinDir)
+	l.SharedEnvironment.Default("VIRTUAL_ENV", venvDir)
+	l.SharedEnvironment.Default("UV_PROJECT_ENVIRONMENT", venvDir)
+	l.SharedEnvironment.Default("UV_NO_SYNC", "1")
 	if err := CheckUVIncompatibleDependencies(ctx, venvDir); err != nil {
 		return "", err
 	}

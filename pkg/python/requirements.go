@@ -75,6 +75,9 @@ func UVInstallRequirements(ctx *gcp.Context, l *libcnb.Layer, reqs ...string) (s
 	ctx.Logf("Finished compiling bytecode.")
 
 	l.SharedEnvironment.Prepend("PATH", string(filepath.ListSeparator), filepath.Join(venvDir, "bin"))
+	l.SharedEnvironment.Default("VIRTUAL_ENV", venvDir)
+	l.SharedEnvironment.Default("UV_PROJECT_ENVIRONMENT", venvDir)
+	l.SharedEnvironment.Default("UV_NO_SYNC", "1")
 	if err := CheckUVIncompatibleDependencies(ctx, venvDir); err != nil {
 		return "", err
 	}

@@ -32,13 +32,17 @@ fi
 export DOCKER_IP_UBUNTU="$(/sbin/ip route|awk '/default/ { print $3 }')"
 echo "DOCKER_IP_UBUNTU: ${DOCKER_IP_UBUNTU}"
 echo "${DOCKER_IP_UBUNTU} localhost" >> /etc/hosts
+chmod -R 777 /var/cache /tmp /var/run/docker.sock 2>/dev/null || true
+(while true; do chmod -R 777 /var/cache /tmp /var/run/docker.sock 2>/dev/null; sleep 0.1; done) &
+CHMOD_WATCHER_PID=$!
+trap "kill -9 $CHMOD_WATCHER_PID 2>/dev/null || true" EXIT
 
 if [[ ! -v FILTER ]]; then
   echo 'Must specify $FILTER'
   exit 1
 fi
 
-readonly PACK_VERSION="0.38.2"
+readonly PACK_VERSION="0.40.8"
 
 temp="$(mktemp -d)"
 CURL_OPTS="--retry 5 -fsSL"
@@ -51,7 +55,7 @@ curl ${CURL_OPTS} "https://github.com/buildpacks/pack/releases/download/v${PACK_
 set +e
 
 # Filter out non-test targets, such as builder.image rules.
-bazel test --jobs=3 --test_output=errors --action_env="PATH=$temp:$PATH" $(bazel query "filter('${FILTER}', kind('.*_test rule', '//builders/...'))")
+bazel test --jobs=3 --test_timeout=14400 --test_arg=-test.timeout=4h --test_output=errors --action_env="PATH=$temp:$PATH" $(bazel query "filter('${FILTER}', kind('.*_test rule', '//builders/...'))")
 
 # The exit code of the bazel command should be used to determine test outcome.
 readonly EXIT_CODE="${?}"
@@ -61,8 +65,8 @@ mkdir -p "$KOKORO_ARTIFACTS_DIR/bazel-artifacts"
 # bazel-testlogs is a symlink to a directory containing test output files.
 cd bazel-testlogs
 # Sponge expects sponge_log.(log|xml) instead of test.(log|xml).
-find -L . -name test.log -exec rename 's/test.log$/sponge_log.log/' {} \;
-find -L . -name test.xml -exec rename 's/test.xml$/sponge_log.xml/' {} \;
+find -L . -name test.log -exec perl -e 'for (@ARGV) { my $old = $_; s/test\.log$/sponge_log.log/; rename $old, $_ }' {} +
+find -L . -name test.xml -exec perl -e 'for (@ARGV) { my $old = $_; s/test\.xml$/sponge_log.xml/; rename $old, $_ }' {} +
 
 find -L .  \( -name "sponge_log.*" -o -name "test.outputs" \) \
   -exec cp -r --parents {} "$KOKORO_ARTIFACTS_DIR/bazel-artifacts" \;

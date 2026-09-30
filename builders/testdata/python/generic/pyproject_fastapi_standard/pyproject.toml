@@ -1,5 +1,5 @@
 [project]
-name = "pyproject-uvicorn"
+name = "pyproject-fastapi-standard"
 version = "0.1.0"
 description = ""
 requires-python = ">=3.9"
