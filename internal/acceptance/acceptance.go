@@ -90,19 +90,6 @@ func init() {
 		// The Test Encyclopedia says HOME shouldbe $TEST_TMPDIR
 		os.Setenv("HOME", os.Getenv("TEST_TMPDIR"))
 	}
-	// In CI environments (such as Kokoro Instances), files and sockets (e.g., Docker daemon and proxy
-	// sockets) under /var/cache and /tmp are continuously recreated or have their permissions reset to
-	// restrictive values during test execution, causing tests and `pack` commands to fail.
-	exec.Command("chmod", "-R", "777", "/var/cache", "/tmp").Run()
-	exec.Command("chmod", "666", "/var/cache/proxy.sock", "/var/run/docker.sock").Run()
-	// Continuously ensure accessible permissions as sockets and temporary files are dynamically recreated.
-	go func() {
-		for {
-			exec.Command("chmod", "-R", "777", "/var/cache", "/tmp").Run()
-			exec.Command("chmod", "666", "/var/cache/proxy.sock", "/var/run/docker.sock").Run()
-			time.Sleep(100 * time.Millisecond)
-		}
-	}()
 }
 
 // DefineFlags sets up flags that control the behavior of the test runner.
