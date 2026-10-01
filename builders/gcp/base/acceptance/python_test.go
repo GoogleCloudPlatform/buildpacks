@@ -425,7 +425,7 @@ func TestAcceptancePython(t *testing.T) {
 			App:                        "pyproject_script",
 			Env:                        []string{},
 			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint},
-			VersionInclusionConstraint: ">= 3.10.0",
+			VersionInclusionConstraint: ">= 3.10.0 < 3.15.0", // TODO(b/559931848): Remove < 3.15.0 constraint once we move away from RC candidate.
 		},
 		{
 			Name:                       "pyproject_script_pip",
@@ -478,7 +478,7 @@ func TestAcceptancePython(t *testing.T) {
 			DevSyncUpdateSubdir:        "update",
 			MustMatch:                  "INITIAL",
 			DevSyncExpectedResponse:    "UPDATED: fastapi",
-			VersionInclusionConstraint: ">=3.10.0",
+			VersionInclusionConstraint: ">=3.10.0 < 3.15.0", // TODO(b/559931848): Remove < 3.15.0 constraint once we move away from RC candidate.
 			SkipStacks:                 []string{"google.gae.18", "google.18", "google.gae.22", "google.min.22", "google.22"},
 		},
 	}
