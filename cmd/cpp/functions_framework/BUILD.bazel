@@ -1,0 +1,54 @@
+# Buildpack for the C++ functions framework
+
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
+
+licenses(["notice"])
+
+buildpack(
+    name = "functions_framework",
+    srcs = [
+        "converter/CMakeLists.txt",
+        "converter/vcpkg.json",
+        "converter/x64-linux-nodebug.cmake",
+    ],
+    executables = [
+        ":main",
+    ],
+    prefix = "cpp",
+    version = "0.1.0",
+    visibility = [
+        "//builders:cpp_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "functions_framework_using_runner",
+    srcs = [
+        "converter/CMakeLists.txt",
+        "converter/vcpkg.json",
+        "converter/x64-linux-nodebug.cmake",
+    ],
+    buildpack_id = "google.cpp.functions-framework",
+    prefix = "cpp",
+    version = "0.1.0",
+    visibility = [
+        "//builders:cpp_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = [
+        "main.go",
+    ],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//cmd/cpp/functions_framework/lib",
+        "//pkg/gcpbuildpack",
+    ],
+)

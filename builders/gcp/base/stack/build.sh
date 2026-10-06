@@ -15,7 +15,7 @@
 
 # The build.sh script builds stack images for the gcp/base builder.
 #
-# The script builds the following two images:
+# The script builds the following images:
 #   gcr.io/buildpacks/gcp/run:$tag
 #   gcr.io/buildpacks/gcp/build:$tag
 #

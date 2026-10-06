@@ -1,0 +1,48 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+# Buildpack for the Python runtime.
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
+
+licenses(["notice"])
+
+buildpack(
+    name = "functions_framework_compat",
+    srcs = [
+        "converter/requirements.txt",
+    ],
+    executables = [
+        ":main",
+    ],
+    prefix = "python",
+    version = "0.9.2",
+    visibility = [
+        "//builders:python_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "functions_framework_compat_using_runner",
+    srcs = [
+        "converter/requirements.txt",
+    ],
+    buildpack_id = "google.python.functions-framework-compat",
+    prefix = "python",
+    version = "0.9.2",
+    visibility = [
+        "//builders:python_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//cmd/python/functions_framework_compat/lib",
+        "//pkg/gcpbuildpack",
+    ],
+)

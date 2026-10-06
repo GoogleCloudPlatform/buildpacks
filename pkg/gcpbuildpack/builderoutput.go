@@ -15,10 +15,8 @@
 package gcpbuildpack
 
 import (
-	"crypto/sha256"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -26,71 +24,27 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetadata"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/builderoutput"
 )
 
 const (
-	errorIDLength            = 8
 	builderOutputEnv         = "BUILDER_OUTPUT"
 	builderOutputFilename    = "output"
 	expectedBuilderOutputEnv = "EXPECTED_BUILDER_OUTPUT"
 )
 
 var (
-	maxMessageBytes = 3000
+	// maxMessageBytes limits the size of the exported BuilderOutputs
+	maxMessageBytes = 49000
+	// InternalErrorf constructs an Error with status StatusInternal (Google-attributed SLO).
+	InternalErrorf = buildererror.InternalErrorf
+	// UserErrorf constructs an Error with status StatusUnknown (user-attributed SLO).
+	UserErrorf = buildererror.UserErrorf
 )
-
-// ErrorID is a short error code passed to the user for supportability.
-type ErrorID string
-
-type builderOutput struct {
-	Error Error         `json:"error"`
-	Stats []builderStat `json:"stats"`
-}
-
-// Error is a gcpbuildpack structured error.
-type Error struct {
-	BuildpackID      string  `json:"buildpackId"`
-	BuildpackVersion string  `json:"buildpackVersion"`
-	Type             Status  `json:"errorType"`
-	Status           Status  `json:"canonicalCode"`
-	ID               ErrorID `json:"errorId"`
-	Message          string  `json:"errorMessage"`
-}
-
-type builderStat struct {
-	BuildpackID      string `json:"buildpackId"`
-	BuildpackVersion string `json:"buildpackVersion"`
-	DurationMs       int64  `json:"totalDurationMs"`
-	UserDurationMs   int64  `json:"userDurationMs"`
-}
-
-func (e *Error) Error() string {
-	if e.ID == "" {
-		return e.Message
-	}
-	return fmt.Sprintf("%s [id:%s]", e.Message, e.ID)
-}
-
-// Errorf constructs an Error.
-func Errorf(status Status, format string, args ...interface{}) *Error {
-	msg := fmt.Sprintf(format, args...)
-	return &Error{
-		Type:    status,
-		Status:  status,
-		ID:      generateErrorID(msg),
-		Message: msg,
-	}
-}
-
-// InternalErrorf constructs an Error with status StatusInternal (Google-attributed SLO).
-func InternalErrorf(format string, args ...interface{}) *Error {
-	return Errorf(StatusInternal, format, args...)
-}
-
-// UserErrorf constructs an Error with status StatusUnknown (user-attributed SLO).
-func UserErrorf(format string, args ...interface{}) *Error {
-	return Errorf(StatusUnknown, format, args...)
-}
 
 // MessageProducer is a function that produces a useful message from the result.
 type MessageProducer func(result *ExecResult) string
@@ -114,7 +68,11 @@ var KeepStdoutTail = func(result *ExecResult) string { return keepTail(result.St
 var KeepStdoutHead = func(result *ExecResult) string { return keepHead(result.Stdout) }
 
 // saveErrorOutput saves to the builder output file, if appropriate.
-func (ctx *Context) saveErrorOutput(be *Error) {
+func (ctx *Context) saveErrorOutput(err error) {
+	var be *buildererror.Error
+	if !errors.As(err, &be) {
+		be = buildererror.Errorf(buildererror.StatusInternal, "%s", err.Error())
+	}
 	outputDir := os.Getenv(builderOutputEnv)
 	if outputDir == "" {
 		return
@@ -125,8 +83,12 @@ func (ctx *Context) saveErrorOutput(be *Error) {
 	}
 
 	be.BuildpackID, be.BuildpackVersion = ctx.BuildpackID(), ctx.BuildpackVersion()
-	bo := builderOutput{Error: *be}
-	data, err := json.Marshal(&bo)
+	bo := builderoutput.BuilderOutput{Error: *be}
+	bm := buildermetrics.GlobalBuilderMetrics()
+	bmd := buildermetadata.GlobalBuilderMetadata()
+	bo.Metrics = *bm
+	bo.Metadata = *bmd
+	data, err := bo.JSON()
 	if err != nil {
 		ctx.Warnf("Failed to marshal, skipping structured error output: %v", err)
 		return
@@ -145,7 +107,7 @@ func (ctx *Context) saveErrorOutput(be *Error) {
 		return
 	}
 	fname := filepath.Join(outputDir, builderOutputFilename)
-	if _, err := ctx.ExecWithErr([]string{"mv", "-f", tname, fname}); err != nil {
+	if _, err := ctx.Exec([]string{"mv", "-f", tname, fname}); err != nil {
 		ctx.Warnf("Failed to move %s to %s, skipping structured error output: %v", tname, fname, err)
 		return
 	}
@@ -183,50 +145,85 @@ func keepHead(message string) string {
 	return message[:maxMessageBytes-3] + "..."
 }
 
-// generateErrorID creates a short hash from the provided parts.
-func generateErrorID(parts ...string) ErrorID {
-	h := sha256.New()
-	for _, p := range parts {
-		io.WriteString(h, p)
-	}
-	result := fmt.Sprintf("%x", h.Sum(nil))
-
-	// Since this is only a reporting aid for support, we truncate the hash to make it more human friendly.
-	return ErrorID(strings.ToLower(result[:errorIDLength]))
-}
-
+// saveSuccessOutput saves information from the context into BUILDER_OUTPUT.
 func (ctx *Context) saveSuccessOutput(duration time.Duration) {
 	outputDir := os.Getenv(builderOutputEnv)
 	if outputDir == "" {
 		return
 	}
 
-	var bo builderOutput
+	bo := builderoutput.New()
 	fname := filepath.Join(outputDir, builderOutputFilename)
 
-	if ctx.FileExists(fname) {
+	fnameExists, err := ctx.FileExists(fname)
+	if err != nil {
+		ctx.Warnf("Failed to determine if %s exists, skipping statistics: %v", fname, err)
+		return
+	}
+	// Previous buildpacks may have already written to the builder output file.
+	if fnameExists {
 		content, err := ioutil.ReadFile(fname)
 		if err != nil {
 			ctx.Warnf("Failed to read %s, skipping statistics: %v", fname, err)
 			return
 		}
-		if err := json.Unmarshal(content, &bo); err != nil {
+		bofj, err := builderoutput.FromJSON(content)
+		bo = &bofj
+		if err != nil {
 			ctx.Warnf("Failed to unmarshal %s, skipping statistics: %v", fname, err)
 			return
 		}
 	}
 
-	bo.Stats = append(bo.Stats, builderStat{
+	if len(ctx.InstalledRuntimeVersions()) > 0 {
+		bo.InstalledRuntimeVersions = append(bo.InstalledRuntimeVersions, ctx.InstalledRuntimeVersions()...)
+	}
+
+	bo.Stats = append(bo.Stats, builderoutput.BuilderStat{
 		BuildpackID:      ctx.BuildpackID(),
 		BuildpackVersion: ctx.BuildpackVersion(),
 		DurationMs:       duration.Milliseconds(),
 		UserDurationMs:   ctx.stats.user.Milliseconds(),
 	})
+	bo.Warnings = append(bo.Warnings, ctx.warnings...)
 
-	content, err := json.Marshal(&bo)
-	if err != nil {
-		ctx.Warnf("Failed to marshal stats, skipping statistics: %v", err)
-		return
+	bm := buildermetrics.GlobalBuilderMetrics()
+	bm.ForEachCounter(func(id buildermetrics.MetricID, c *buildermetrics.Counter) {
+		count := bo.Metrics.GetCounter(id)
+		count.Increment(c.Value())
+	})
+	bmd := buildermetadata.GlobalBuilderMetadata()
+	bmd.ForEachValue(func(id buildermetadata.MetadataID, m buildermetadata.MetadataValue) {
+		(&bo.Metadata).SetValue(id, m)
+	})
+
+	var content []byte
+	// Make sure the message is smaller than the maximum allowed size.
+	for {
+		var err error
+		content, err = bo.JSON()
+		if err != nil {
+			ctx.Warnf("Failed to marshal stats, skipping statistics: %v", err)
+			return
+		}
+		if len(content) <= maxMessageBytes {
+			break
+		}
+		// This is a defensive check; if there are no warnings, the message should be small enough.
+		// In either case, skip this stat.
+		if len(bo.Warnings) == 0 {
+			ctx.Warnf("The builder output is too large and there are no warnings, skipping statistics")
+			return
+		}
+		diff := len(content) - maxMessageBytes
+		last := len(bo.Warnings) - 1
+		// If the last warning is too long, only trim it. Otherwise, drop it.
+		// Also drop the last warning if it is shorter than three characters.
+		if len(bo.Warnings[last]) > diff+3 {
+			bo.Warnings[last] = bo.Warnings[last][:len(bo.Warnings[last])-diff-3] + "..."
+		} else {
+			bo.Warnings = bo.Warnings[:last]
+		}
 	}
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		ctx.Warnf("Failed to create dir %s, skipping statistics: %v", outputDir, err)

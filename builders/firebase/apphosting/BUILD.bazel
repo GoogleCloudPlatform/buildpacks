@@ -1,0 +1,20 @@
+load("//tools:defs.bzl", "builder")
+
+licenses(["notice"])
+
+package(default_visibility = ["//builders/firebase/apphosting/acceptance:__pkg__"])
+
+builder(
+    name = "builder",
+    buildpacks = [
+        "//cmd/nodejs/runtime:runtime.tgz",
+        "//cmd/nodejs/npm:npm.tgz",
+        "//cmd/nodejs/pnpm:pnpm.tgz",
+        "//cmd/nodejs/yarn:yarn.tgz",
+        "//cmd/nodejs/firebasenextjs:firebasenextjs.tgz",
+        "//cmd/nodejs/firebaseangular:firebaseangular.tgz",
+        "//cmd/nodejs/firebasebundle:firebasebundle.tgz",
+        "//cmd/nodejs/firebasenx:firebasenx.tgz",
+    ],
+    image = "firebase/apphosting",
+)

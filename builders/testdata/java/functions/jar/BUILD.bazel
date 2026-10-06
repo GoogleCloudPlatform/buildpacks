@@ -1,5 +1,7 @@
 # Function deployed as an already-built jar.
 
+load("@rules_java//java:defs.bzl", "java_binary")
+
 licenses(["notice"])
 
 # We can use :fatjar_deploy.jar as a "far jar" (one that contains all its
@@ -9,6 +11,13 @@ licenses(["notice"])
 java_binary(
     name = "fatjar",
     srcs = ["HelloWorld.java"],
+    javacopts = ["-source 8 -target 8"],
     visibility = ["//builders/testdata/java:__subpackages__"],
     deps = ["@maven//:com_google_cloud_functions_functions_framework_api"],
+)
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]),
+    visibility = ["//builders/testdata/java:__subpackages__"],
 )

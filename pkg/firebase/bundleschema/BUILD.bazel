@@ -1,0 +1,29 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+go_library(
+    name = "bundleschema",
+    srcs = ["bundleschema.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    deps = [
+        "//pkg/firebase/apphostingschema",
+        "@in_gopkg_yaml_v2//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "bundleschema_test",
+    srcs = ["bundleschema_test.go"],
+    data = glob(["testdata/**"]),
+    embed = [":bundleschema"],
+    rundir = ".",
+    deps = [
+        "//pkg/firebase/apphostingschema",
+        "//pkg/testdata",
+        "//third_party/golang/protobuf/v2/proto",
+        "@com_github_google_go-cmp//cmp:go_default_library",
+    ],
+)

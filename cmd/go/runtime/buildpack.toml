@@ -1,9 +1,0 @@
-api = "0.2"
-
-[buildpack]
-id = "google.go.runtime"
-version = "0.9.0"
-name = "Go - Runtime"
-
-[[stacks]]
-id = "google"

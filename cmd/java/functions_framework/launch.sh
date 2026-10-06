@@ -17,10 +17,10 @@
 # If the environment variable $JAVA_TOOL_OPTIONS is set (even if empty), we just
 # launch the java command we are given. If it is not set, and we have a hint
 # from the environment of what the memory size is, then we set JAVA_TOOL_OPTIONS
-# to a value that should cause the JVM to use that memory size minus 80M.
+# to a value that should cause the JVM to use 70% of that memory size.
 # The JVM reads command-line options from this environment variable.
 if [[ -z "${JAVA_TOOL_OPTIONS+x}" && -n "${X_GOOGLE_MEMORY_HINT_DO_NOT_USE}" ]]
 then
-  export JAVA_TOOL_OPTIONS="-XX:MaxRAM=$((${X_GOOGLE_MEMORY_HINT_DO_NOT_USE} - 80))m -XX:MaxRAMPercentage=100"
+  export JAVA_TOOL_OPTIONS="-XX:MaxRAM=${X_GOOGLE_MEMORY_HINT_DO_NOT_USE}m -XX:MaxRAMPercentage=70"
 fi
 exec "$@"

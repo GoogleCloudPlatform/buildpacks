@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,106 +17,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"regexp"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/python/functions_framework/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
-	"github.com/buildpack/libbuildpack/layers"
-)
-
-const (
-	layerName = "functions-framework"
-)
-
-var (
-	ffRegexp  = regexp.MustCompile(`(?m)^functions-framework\b([^-]|$)`)
-	eggRegexp = regexp.MustCompile(`(?m)#egg=functions-framework$`)
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) error {
-	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
-		ctx.OptIn("%s set", env.FunctionTarget)
-	}
-	ctx.OptOut("%s not set", env.FunctionTarget)
-	return nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-
-	if err := validateSource(ctx); err != nil {
-		return err
-	}
-
-	// Check for syntax errors.
-	ctx.Exec([]string{"python3", "-m", "compileall", "-q", "."}, gcp.WithStdoutTail, gcp.WithUserAttribution)
-
-	// Determine if the function has dependency on functions-framework.
-	hasFrameworkDependency := false
-	if ctx.FileExists("requirements.txt") {
-		content := ctx.ReadFile("requirements.txt")
-		hasFrameworkDependency = containsFF(string(content))
-	}
-
-	// Install functions-framework.
-	l := ctx.Layer(layerName)
-	if hasFrameworkDependency {
-		ctx.Logf("Handling functions with dependency on functions-framework.")
-		ctx.ClearLayer(l)
-
-		// With framework dependency, framework module is in pip buildpack, so only env vars are present in this layer.
-		ctx.WriteMetadata(l, nil, layers.Launch)
-	} else {
-		ctx.Logf("Handling functions without dependency on functions-framework.")
-		if err := installFramework(ctx, l); err != nil {
-			return fmt.Errorf("installing framework: %v", err)
-		}
-	}
-
-	ctx.SetFunctionsEnvVars(l)
-	ctx.AddWebProcess([]string{"functions-framework"})
-	return nil
-}
-
-func validateSource(ctx *gcp.Context) error {
-	// Fail if the default|custom source file doesn't exist, otherwise the app will fail at runtime but still build here.
-	fnSource, ok := os.LookupEnv(env.FunctionSource)
-	if !ok {
-		if !ctx.FileExists("main.py") {
-			return gcp.UserErrorf("missing main.py and %s not specified. Either create the function in main.py or specify %s to point to the file that contains the function", env.FunctionSource, env.FunctionSource)
-		}
-	} else if !ctx.FileExists(fnSource) {
-		return gcp.UserErrorf("%s specified file '%s' but it does not exist", env.FunctionSource, fnSource)
-	}
-	return nil
-}
-
-func containsFF(s string) bool {
-	return ffRegexp.MatchString(s) || eggRegexp.MatchString(s)
-}
-
-func installFramework(ctx *gcp.Context, l *layers.Layer) error {
-	cvt := filepath.Join(ctx.BuildpackRoot(), "converter")
-	req := filepath.Join(cvt, "requirements.txt")
-	cached, meta, err := python.CheckCache(ctx, l, cache.WithFiles(req))
-	if err != nil {
-		return fmt.Errorf("checking cache: %w", err)
-	}
-	if cached {
-		ctx.CacheHit(layerName)
-	} else {
-		ctx.CacheMiss(layerName)
-		ctx.Exec([]string{"python3", "-m", "pip", "install", "--upgrade", "-t", l.Root, "-r", req}, gcp.WithUserAttribution)
-	}
-	ctx.PrependPathSharedEnv(l, "PYTHONPATH", l.Root)
-	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

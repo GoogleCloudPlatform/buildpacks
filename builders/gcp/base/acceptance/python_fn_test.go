@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,7 +16,7 @@ package acceptance
 import (
 	"testing"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/acceptance"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
 func init() {
@@ -24,7 +24,7 @@ func init() {
 }
 
 func TestAcceptancePythonFn(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
@@ -32,23 +32,23 @@ func TestAcceptancePythonFn(t *testing.T) {
 			Name:       "function without framework",
 			App:        "without_framework",
 			Path:       "/testFunction",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction"},
-			MustUse:    []string{pythonRuntime, pythonFF},
-			MustNotUse: []string{pythonPIP, entrypoint},
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
+			MustUse:    []string{pythonRuntime, pythonFF, pythonPIP},
+			MustNotUse: []string{entrypoint},
 		},
 		{
 			Name:       "function with custom source file",
 			App:        "custom_file",
 			Path:       "/testFunction",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_FUNCTION_SOURCE=func.py"},
-			MustUse:    []string{pythonRuntime, pythonFF},
-			MustNotUse: []string{pythonPIP, entrypoint},
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_FUNCTION_SOURCE=func.py", "GOOGLE_PYTHON_VERSION=3.13.0"},
+			MustUse:    []string{pythonRuntime, pythonFF, pythonPIP},
+			MustNotUse: []string{entrypoint},
 		},
 		{
 			Name:       "function with dependencies",
 			App:        "with_dependencies",
 			Path:       "/testFunction",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction"},
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
 			MustUse:    []string{pythonRuntime, pythonPIP, pythonFF},
 			MustNotUse: []string{entrypoint},
 		},
@@ -56,7 +56,7 @@ func TestAcceptancePythonFn(t *testing.T) {
 			Name:       "function with framework",
 			App:        "with_framework",
 			Path:       "/testFunction",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction"},
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
 			MustUse:    []string{pythonRuntime, pythonPIP, pythonFF},
 			MustNotUse: []string{entrypoint},
 		},
@@ -64,47 +64,95 @@ func TestAcceptancePythonFn(t *testing.T) {
 			Name:       "function with runtime env var",
 			App:        "with_env_var",
 			Path:       "/testFunction",
-			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction"},
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
 			RunEnv:     []string{"FOO=foo"},
-			MustUse:    []string{pythonRuntime, pythonFF},
-			MustNotUse: []string{pythonPIP, entrypoint},
+			MustUse:    []string{pythonRuntime, pythonFF, pythonPIP},
+			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:       "function_with_uv",
+			App:        "uv",
+			Path:       "/testFunction",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
+			MustUse:    []string{pythonRuntime, pythonUV, pythonFF},
+			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:       "function_with_poetry",
+			App:        "poetry",
+			Path:       "/testFunction",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
+			MustUse:    []string{pythonRuntime, pythonPoetry, pythonFF},
+			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:       "pyproject",
+			App:        "pyproject",
+			Path:       "/testFunction",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
+			MustUse:    []string{pythonRuntime, pythonUV, pythonFF},
+			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:       "pyproject_pip",
+			App:        "pyproject",
+			Path:       "/testFunction",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0", "GOOGLE_PYTHON_PACKAGE_MANAGER=pip"},
+			MustUse:    []string{pythonRuntime, pythonPIP, pythonFF},
+			MustNotUse: []string{entrypoint},
+		},
+		{
+			Name:       "pyproject_uv",
+			App:        "pyproject",
+			Path:       "/testFunction",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0", "GOOGLE_PYTHON_PACKAGE_MANAGER=uv"},
+			MustUse:    []string{pythonRuntime, pythonUV, pythonFF},
+			MustNotUse: []string{entrypoint},
 		},
 	}
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
-			acceptance.TestApp(t, builder, tc)
+			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
 }
 
 func TestFailuresPythonFn(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.FailureTest{
 		{
 			Name:      "missing framework file",
 			App:       "with_framework",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_FUNCTION_SOURCE=func.py"},
-			MustMatch: "GOOGLE_FUNCTION_SOURCE specified file 'func.py' but it does not exist",
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_FUNCTION_SOURCE=func.py", "GOOGLE_PYTHON_VERSION=3.13.0"},
+			MustMatch: `GOOGLE_FUNCTION_SOURCE specified file "func.py" but it does not exist`,
 		},
 		{
 			Name:      "missing main.py",
 			App:       "custom_file",
-			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction"},
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
 			MustMatch: "missing main.py and GOOGLE_FUNCTION_SOURCE not specified. Either create the function in main.py or specify GOOGLE_FUNCTION_SOURCE to point to the file that contains the function",
+		},
+		{
+			Name:      "missing_framework_pyproject",
+			App:       "fail_pyproject_without_framework",
+			Env:       []string{"GOOGLE_FUNCTION_TARGET=testFunction", "GOOGLE_PYTHON_VERSION=3.13.0"},
+			MustMatch: "This project is using pyproject.toml but you have not included the Functions Framework in your dependencies. Please add it to your pyproject.toml.",
 		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
-			acceptance.TestBuildFailure(t, builder, tc)
+			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}
 }

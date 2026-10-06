@@ -1,0 +1,15 @@
+name: dart_server
+resolution: workspace
+description: An example shelf server
+version: 1.0.0
+
+environment:
+  sdk: ">=3.7.0 <4.0.0"
+
+dependencies:
+  shelf: ^1.4.0
+  shelf_router: ^1.1.0
+  namer: ^1.0.0
+
+dev_dependencies:
+  test: ^1.24.0

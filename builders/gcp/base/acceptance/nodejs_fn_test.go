@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,7 +16,7 @@ package acceptance
 import (
 	"testing"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/acceptance"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
 func init() {
@@ -24,7 +24,7 @@ func init() {
 }
 
 func TestAcceptanceNodeJsFn(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
@@ -77,6 +77,14 @@ func TestAcceptanceNodeJsFn(t *testing.T) {
 			MustNotUse: []string{nodeNPM, entrypoint},
 		},
 		{
+			Name:       "function_with_framework_bun",
+			App:        "with_framework_bun",
+			Path:       "/testFunction",
+			Env:        []string{"GOOGLE_FUNCTION_TARGET=testFunction"},
+			MustUse:    []string{nodeRuntime, nodeBun, nodeFF},
+			MustNotUse: []string{nodeNPM, nodeYarn, entrypoint},
+		},
+		{
 			Name:       "function with dependencies",
 			App:        "with_dependencies",
 			Path:       "/testFunction",
@@ -105,15 +113,16 @@ func TestAcceptanceNodeJsFn(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
-			acceptance.TestApp(t, builder, tc)
+			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
 }
 
 func TestFailuresNodeJsFn(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.FailureTest{
@@ -138,9 +147,10 @@ func TestFailuresNodeJsFn(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.App, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
-			acceptance.TestBuildFailure(t, builder, tc)
+			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}
 }

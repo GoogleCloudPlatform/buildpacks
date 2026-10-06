@@ -16,23 +16,134 @@ package gcpbuildpack
 
 import (
 	"os"
+	"strings"
 
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 const (
 	layerMode os.FileMode = 0755
 )
 
+// LayerOption is an option for configuring a layer.
+type LayerOption func(ctx *Context, l *libcnb.Layer) error
+
+// BuildLayer specifies a Build layer.
+var BuildLayer = func(ctx *Context, l *libcnb.Layer) error {
+	l.Build = true
+	return nil
+}
+
+// CacheLayer specifies a Cache layer.
+var CacheLayer = func(ctx *Context, l *libcnb.Layer) error {
+	disableCache, err := env.IsPresentAndTrue(env.NoCache)
+	if err != nil {
+		return buildererror.Errorf(buildererror.StatusInternal, "checking NoCache env var: %v", err.Error())
+	}
+	if !disableCache {
+		l.Cache = true
+	}
+	return nil
+}
+
+// LaunchLayer specifies a Launch layer.
+var LaunchLayer = func(ctx *Context, l *libcnb.Layer) error {
+	l.Launch = true
+	return nil
+}
+
+// LaunchLayerIfDevMode specifies a Launch layer, but only if dev mode is enabled.
+var LaunchLayerIfDevMode = func(ctx *Context, l *libcnb.Layer) error {
+	devMode, err := env.IsDevMode()
+	if err != nil {
+		ctx.Warnf("Dev mode not enabled: %v", err)
+		return nil
+	}
+	if devMode {
+		l.Launch = true
+	}
+	return nil
+}
+
+// LaunchLayerUnlessSkipRuntimeLaunch specifies a Launch layer unless XGoogleSkipRuntimeLaunch is set to "true".
+var LaunchLayerUnlessSkipRuntimeLaunch = func(ctx *Context, l *libcnb.Layer) error {
+	skip, err := env.IsPresentAndTrue(env.XGoogleSkipRuntimeLaunch)
+	if err != nil {
+		return buildererror.Errorf(buildererror.StatusInternal, "checking XGoogleSkipRuntimeLaunch env var: %v", err.Error())
+	}
+	if !skip {
+		l.Launch = true
+	}
+	return nil
+}
+
 // Layer returns a layer, creating its directory.
-func (ctx *Context) Layer(name string) *layers.Layer {
-	l := ctx.b.Layers.Layer(name)
-	ctx.MkdirAll(l.Root, layerMode)
-	return &l
+func (ctx *Context) Layer(name string, opts ...LayerOption) (*libcnb.Layer, error) {
+	if strings.Contains(name, "/") {
+		return nil, buildererror.Errorf(buildererror.StatusInternal, "%v is an invalid layer name; layer names may not contain '/'", name)
+	}
+	l, err := ctx.buildContext.Layers.Layer(name)
+	if err != nil {
+		return nil, buildererror.Errorf(buildererror.StatusInternal, "creating layer %q: %v", name, err.Error())
+	}
+	if err := ctx.MkdirAll(l.Path, layerMode); err != nil {
+		return nil, buildererror.Errorf(buildererror.StatusInternal, "creating %s: %v", l.Path, err)
+	}
+	for _, o := range opts {
+		if err := o(ctx, &l); err != nil {
+			return nil, err
+		}
+	}
+	if l.Metadata == nil {
+		l.Metadata = make(map[string]interface{})
+	}
+	ctx.layerContributors = append(ctx.layerContributors, layerContributor{l: &l})
+	ctx.buildResult.Layers = append(ctx.buildResult.Layers, l)
+	return &l, nil
+}
+
+type layerContributor struct {
+	l *libcnb.Layer
+}
+
+// Contribute accepts a layer and transforms it, returning a layer.
+func (lc layerContributor) Contribute(layer libcnb.Layer) (libcnb.Layer, error) {
+	return *lc.l, nil
+}
+
+// Name is the name of the layer.
+func (lc layerContributor) Name() string {
+	return lc.l.Name
 }
 
 // ClearLayer erases the existing layer, and re-creates the directory.
-func (ctx *Context) ClearLayer(l *layers.Layer) {
-	ctx.RemoveAll(l.Root)
-	ctx.MkdirAll(l.Root, layerMode)
+func (ctx *Context) ClearLayer(l *libcnb.Layer) error {
+	if err := ctx.RemoveAll(l.Path); err != nil {
+		return err
+	}
+	if err := ctx.MkdirAll(l.Path, layerMode); err != nil {
+		return err
+	}
+	l.Metadata = make(map[string]interface{})
+	return nil
+}
+
+// SetMetadata sets metadata on the layer.
+func (ctx *Context) SetMetadata(l *libcnb.Layer, key, value string) {
+	l.Metadata[key] = value
+}
+
+// GetMetadata gets metadata from the layer.
+func (ctx *Context) GetMetadata(l *libcnb.Layer, key string) string {
+	v, ok := l.Metadata[key]
+	if !ok {
+		return ""
+	}
+	s, ok := v.(string)
+	if !ok {
+		ctx.Exit(1, buildererror.Errorf(buildererror.StatusInternal, "could not cast metadata %v to string", v))
+	}
+	return s
 }

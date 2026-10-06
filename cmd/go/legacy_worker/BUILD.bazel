@@ -1,0 +1,50 @@
+# Buildpack for the Go functions framework
+
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
+
+licenses(["notice"])
+
+buildpack(
+    name = "legacy_worker",
+    srcs = [
+        "converter/get_package/main.go",
+    ],
+    executables = [
+        ":main",
+    ],
+    prefix = "go",
+    version = "0.1.0",
+    visibility = [
+        "//builders:go_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "legacy_worker_using_runner",
+    srcs = [
+        "converter/get_package/main.go",
+    ],
+    buildpack_id = "google.go.legacy-worker",
+    prefix = "go",
+    version = "0.1.0",
+    visibility = [
+        "//builders:go_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = [
+        "main.go",
+    ],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//cmd/go/legacy_worker/lib",
+        "//pkg/gcpbuildpack",
+    ],
+)

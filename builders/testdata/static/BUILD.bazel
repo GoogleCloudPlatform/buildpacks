@@ -1,0 +1,17 @@
+# Test data for static web builder acceptance tests.
+
+licenses(["notice"])
+
+package(default_visibility = ["//builders:__subpackages__"])
+
+exports_files(["generic"])
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]),
+)
+
+filegroup(
+    name = "generic_files",
+    srcs = glob(["generic/**"]),
+)

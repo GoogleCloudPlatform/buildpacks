@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,43 +17,10 @@
 package main
 
 import (
-	"path/filepath"
-
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/utils/archive_source/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
-)
-
-const (
-	archiveName = "source-code.tar.gz"
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) error {
-	return nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	sl := ctx.Layer("src")
-	sp := filepath.Join(sl.Root, archiveName)
-	archiveSource(ctx, sp, ctx.ApplicationRoot())
-
-	// Symlink the archive to /workspace/.googlebuild for a stable path.
-	ctx.MkdirAll(".googlebuild", 0755)
-	ctx.Symlink(sp, filepath.Join(ctx.ApplicationRoot(), ".googlebuild", archiveName))
-
-	ctx.WriteMetadata(sl, nil, layers.Launch)
-
-	return nil
-}
-
-// archiveSource archives user's source code in a layer
-func archiveSource(ctx *gcp.Context, fileName, dirName string) {
-	ctx.Exec([]string{"tar",
-		"--create", "--gzip", "--preserve-permissions",
-		"--file=" + fileName,
-		"--directory", dirName,
-		"."}, gcp.WithUserTimingAttribution)
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

@@ -18,44 +18,74 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 )
 
-// Glob returns the names of all files matching pattern or nil if there is no matching file, exiting on any error.
-func (ctx *Context) Glob(pattern string) []string {
+// Glob is a pass through for filepath.Glob(...). It returns any error with proper user / system attribution.
+func (ctx *Context) Glob(pattern string) ([]string, error) {
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, "globbing %s: %v", pattern, err))
+		return nil, buildererror.Errorf(buildererror.StatusInternal, "globbing %s: %v", pattern, err)
 	}
-	return matches
+	return matches, nil
 }
 
 // HasAtLeastOne walks through file tree searching for at least one match.
-func (ctx *Context) HasAtLeastOne(pattern string) bool {
+func (ctx *Context) HasAtLeastOne(pattern string) (bool, error) {
+	return ctx.HasAtLeastOneFiltered(pattern, nil)
+}
+
+// HasAtLeastOneOutsideDependencyDirectories walks through file tree searching
+// for at least one match while ignoring dependency-only directories.
+func (ctx *Context) HasAtLeastOneOutsideDependencyDirectories(pattern string) (bool, error) {
+	filterFunc := func(path string) bool {
+		rootedPath := "/" + path
+
+		// Ignore the `node_modules` folder (as it may contain non-NodeJS files)
+		return !strings.HasSuffix(rootedPath, "/node_modules")
+	}
+
+	return ctx.HasAtLeastOneFiltered(pattern, filterFunc)
+}
+
+type filepathFilter func(string) bool
+
+// HasAtLeastOneFiltered is a pass through for filepath.Glob(...) it returns true if there is at least one
+// file which matches the search pattern and is included by `filter`
+func (ctx *Context) HasAtLeastOneFiltered(pattern string, filter filepathFilter) (bool, error) {
 	dir := ctx.ApplicationRoot()
 
 	errFileMatch := errors.New("File matched")
-	if len(ctx.Glob(filepath.Join(dir, pattern))) > 0 {
-		return true
+	matches, err := ctx.Glob(filepath.Join(dir, pattern))
+	if err != nil {
+		return false, err
+	}
+	if len(matches) > 0 {
+		return true, nil
 	}
 
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if filter != nil && !filter(path) {
+			return filepath.SkipDir
+		}
 		if err != nil {
-			ctx.Exit(1, Errorf(StatusInternal, "walking through %s within %s: %v", path, dir, err))
+			return buildererror.Errorf(buildererror.StatusInternal, "walking through %s within %s: %v", path, dir, err)
 		}
 		match, err := filepath.Match(pattern, info.Name())
 		if err != nil {
-			ctx.Exit(1, Errorf(StatusInternal, "matching %s with pattern %s: %v", path, pattern, err))
+			return buildererror.Errorf(buildererror.StatusInternal, "matching %s with pattern %s: %v", path, pattern, err)
 		}
 		if match {
 			return errFileMatch
 		}
 		return nil
-	})
-	if err == errFileMatch {
-		return true
+	}); err != nil {
+		if err == errFileMatch {
+			return true, nil
+		}
+		return false, buildererror.Errorf(buildererror.StatusInternal, "walking through %s: %v", dir, err)
 	}
-	if err != nil {
-		ctx.Exit(1, Errorf(StatusInternal, "walking through %s: %v", dir, err))
-	}
-	return false
+	return false, nil
 }

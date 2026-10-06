@@ -21,6 +21,9 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func TestReadComposerJSON(t *testing.T) {
@@ -33,7 +36,8 @@ func TestReadComposerJSON(t *testing.T) {
 	contents := strings.TrimSpace(`
 {
   "require": {
-    "myorg/mypackage": "^0.7"
+    "myorg/mypackage": "^0.7",
+    "php": "7.4"
   },
   "scripts": {
     "gcp-build": "my-script"
@@ -41,13 +45,14 @@ func TestReadComposerJSON(t *testing.T) {
 }
 `)
 
-	if err := ioutil.WriteFile(filepath.Join(d, "composer.json"), []byte(contents), 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(d, composerJSON), []byte(contents), 0644); err != nil {
 		t.Fatalf("Failed to write composer.json: %v", err)
 	}
 
 	want := ComposerJSON{
 		Require: map[string]string{
 			"myorg/mypackage": "^0.7",
+			"php":             "7.4",
 		},
 		Scripts: composerScriptsJSON{
 			GCPBuild: "my-script",
@@ -60,4 +65,125 @@ func TestReadComposerJSON(t *testing.T) {
 	if !reflect.DeepEqual(*got, want) {
 		t.Errorf("ReadComposerJSON\ngot %#v\nwant %#v", *got, want)
 	}
+}
+
+func TestExtractVersion(t *testing.T) {
+
+	testCases := []struct {
+		name         string
+		runtimeEnv   string
+		want         string
+		composerJSON string
+		wantErr      bool
+	}{
+		{
+			name:       "from environment",
+			runtimeEnv: "7.3",
+			want:       "7.3",
+		},
+		{
+			name: "from composer.json",
+			composerJSON: strings.TrimSpace(`
+{
+  "require": {
+    "php": "7.4.1"
+  }
+}
+`),
+			want: "7.4.1",
+		},
+		{
+			name:       "both environment and composer.json",
+			runtimeEnv: "7.4.1",
+			composerJSON: strings.TrimSpace(`
+{
+  "require": {
+    "php": "7.3.0"
+  }
+}
+`),
+			want: "7.4.1",
+		},
+		{
+			name: "composer.json without php version",
+			composerJSON: strings.TrimSpace(`
+{
+  "require": {
+    "myorg/mypackage": "^0.7"
+  }
+}
+`),
+			want: "",
+		},
+		{
+			name: "invalid composer.json missing parentheses",
+			composerJSON: strings.TrimSpace(`
+{
+  "require":
+    "myorg/mypackage": "^0.7"
+  }
+}
+`),
+			wantErr: true,
+		},
+		{
+			name: "no composer.json and environment",
+			want: "",
+		},
+		{
+			name: "composer.json with version constraint",
+			composerJSON: strings.TrimSpace(`
+{
+  "require": {
+    "php": ">=7.0.0"
+  }
+}
+`),
+			want: ">=7.0.0",
+		},
+		{
+			name: "composer.json with complex version constraint",
+			composerJSON: strings.TrimSpace(`
+{
+  "require": {
+    "php": ">= 7.1.3, < 7.4.4"
+  }
+}
+`),
+			want: ">= 7.1.3, < 7.4.4",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.runtimeEnv != "" {
+				t.Setenv(env.RuntimeVersion, tc.runtimeEnv)
+			}
+
+			path, err := ioutil.TempDir("/tmp", "test-detect-version-")
+			if err != nil {
+				t.Fatalf("Failed to create temp dir: %v", err)
+			}
+			defer os.RemoveAll(path)
+
+			if len(tc.composerJSON) > 0 {
+				if err := ioutil.WriteFile(filepath.Join(path, composerJSON), []byte(tc.composerJSON), 0644); err != nil {
+					t.Fatalf("Failed to write composer.json: %v", err)
+				}
+			}
+
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(path))
+			got, err := ExtractVersion(ctx)
+			gotErr := err != nil
+
+			if gotErr != tc.wantErr {
+				t.Fatalf("ExtractVersion() got err=%t, want err=%t. err: %v", gotErr, tc.wantErr, err)
+			}
+
+			if got != tc.want {
+				t.Errorf("ExtractVersion()=%q, want=%q", got, tc.want)
+			}
+		})
+	}
+
 }

@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,7 +16,7 @@ package acceptance
 import (
 	"testing"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/acceptance"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
 func init() {
@@ -24,18 +24,37 @@ func init() {
 }
 
 func TestAcceptanceNodeJs(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
 		{
-			Name:    "simple application",
-			App:     "nodejs/simple",
-			MustUse: []string{nodeRuntime, nodeNPM},
+			Name:            "simple application",
+			App:             "simple",
+			MustUse:         []string{nodeRuntime, nodeNPM},
+			EnableCacheTest: true,
 		},
 		{
-			Name:                "simple application (Dev Mode)",
-			App:                 "nodejs/simple",
+			// Tests a specific versions of Node.js available on dl.google.com.
+			Name:       "runtime_version_16.17.1",
+			App:        "simple",
+			Path:       "/version?want=16.17.1",
+			Env:        []string{"GOOGLE_NODEJS_VERSION=16.17.1"},
+			MustUse:    []string{nodeRuntime},
+			SkipStacks: []string{"google.24.full", "google.24"},
+		},
+		{
+			// Tests a specific versions of Node.js available on dl.google.com.
+			Name:       "runtime version 22.10.0",
+			App:        "simple",
+			Path:       "/version?want=22.10.0",
+			Env:        []string{"GOOGLE_NODEJS_VERSION=22.10.0"},
+			MustUse:    []string{nodeRuntime},
+			SkipStacks: []string{"google.gae.18", "google.18", "google"},
+		},
+		{
+			Name:                "Dev mode",
+			App:                 "simple",
 			Env:                 []string{"GOOGLE_DEVMODE=1"},
 			MustUse:             []string{nodeRuntime, nodeNPM},
 			FilesMustExist:      []string{"/workspace/server.js"},
@@ -43,81 +62,174 @@ func TestAcceptanceNodeJs(t *testing.T) {
 		},
 		{
 			Name:    "simple application (custom entrypoint)",
-			App:     "nodejs/custom_entrypoint",
+			App:     "custom_entrypoint",
 			Env:     []string{"GOOGLE_ENTRYPOINT=node custom.js"},
 			MustUse: []string{nodeRuntime, nodeNPM, entrypoint},
 		},
 		{
 			Name:       "yarn",
-			App:        "nodejs/yarn",
+			App:        "yarn",
 			MustUse:    []string{nodeRuntime, nodeYarn},
-			MustNotUse: []string{nodeNPM},
+			MustNotUse: []string{nodeNPM, nodePNPM},
 		},
 		{
 			Name:       "yarn (Dev Mode)",
-			App:        "nodejs/yarn",
+			App:        "yarn",
 			Env:        []string{"GOOGLE_DEVMODE=1"},
 			MustUse:    []string{nodeRuntime, nodeYarn},
-			MustNotUse: []string{nodeNPM},
+			MustNotUse: []string{nodeNPM, nodePNPM},
 		},
 		{
-			Name:    "runtime version with npm install",
-			App:     "nodejs/simple",
-			Path:    "/version?want=12.13.0",
-			Env:     []string{"GOOGLE_RUNTIME_VERSION=12.13.0"},
-			MustUse: []string{nodeRuntime, nodeNPM},
+			Name:       "pnpm",
+			App:        "pnpm",
+			MustUse:    []string{nodeRuntime, nodePNPM},
+			MustNotUse: []string{nodeNPM, nodeYarn},
+			SkipStacks: []string{"google.gae.18", "google.18"},
 		},
 		{
-			Name:    "runtime version with npm ci",
-			App:     "nodejs/simple",
-			Path:    "/version?want=12.13.1",
-			Env:     []string{"GOOGLE_RUNTIME_VERSION=12.13.1"},
-			MustUse: []string{nodeRuntime, nodeNPM},
+			Name:       "runtime version with npm ci",
+			App:        "simple",
+			Path:       "/version?want=16.18.1",
+			Env:        []string{"GOOGLE_RUNTIME_VERSION=16.18.1"},
+			MustUse:    []string{nodeRuntime, nodeNPM},
+			MustNotUse: []string{nodePNPM, nodeYarn},
+			SkipStacks: []string{"google.24.full", "google.24"},
+		},
+		{
+			Name:       "runtime version with npm ci 22.10.0",
+			App:        "simple",
+			Path:       "/version?want=22.10.0",
+			Env:        []string{"GOOGLE_RUNTIME_VERSION=22.10.0"},
+			MustUse:    []string{nodeRuntime, nodeNPM},
+			MustNotUse: []string{nodePNPM, nodeYarn},
+			SkipStacks: []string{"google.gae.18", "google.18", "google"},
 		},
 		{
 			Name:       "without package.json",
-			App:        "nodejs/no_package",
+			App:        "no_package",
 			Env:        []string{"GOOGLE_ENTRYPOINT=node server.js"},
 			MustUse:    []string{nodeRuntime},
 			MustNotUse: []string{nodeNPM, nodeYarn},
 		},
 		{
-			Name:       "selected via GOOGLE_RUNTIME",
-			App:        "override",
-			Env:        []string{"GOOGLE_RUNTIME=nodejs"},
-			MustUse:    []string{nodeRuntime},
-			MustNotUse: []string{goRuntime, javaRuntime, pythonRuntime},
+			Name: "NPM version specified",
+			// npm@8 requires nodejs@12+
+			VersionInclusionConstraint: ">= 12.0.0",
+			App:                        "npm_version_specified",
+			MustOutput:                 []string{"npm --version\n\n8.3.1"},
+			Path:                       "/version?want=8.3.1",
+		},
+		{
+			Name: "old NPM version specified",
+			// npm@5 requires nodejs@8
+			VersionInclusionConstraint: "8",
+			App:                        "old_npm_version_specified",
+			Path:                       "/version?want=5.5.1",
+			MustUse:                    []string{nodeRuntime, nodeNPM},
+			MustOutput:                 []string{"npm --version\n\n5.5.1"},
+			// nodejs@8 is not available on Ubuntu 22.04
+			SkipStacks: []string{"google.22", "google.min.22", "google.gae.22", "google.24.full", "google.24"},
+		},
+		{
+			Name:                       "bun_lock",
+			App:                        "bun_lock",
+			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "bun_engine",
+			App:                        "bun_engine",
+			Env:                        []string{"GOOGLE_PACKAGE_MANAGER=bun"},
+			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "bun_lockb",
+			App:                        "bun_lockb",
+			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "simple_no_lock_bun",
+			App:                        "simple_no_lock",
+			Env:                        []string{"GOOGLE_PACKAGE_MANAGER=bun"},
+			MustUse:                    []string{nodeBun},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "simple_no_lock_pnpm",
+			App:                        "simple_no_lock",
+			Env:                        []string{"GOOGLE_PACKAGE_MANAGER=pnpm"},
+			MustUse:                    []string{nodePNPM},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "simple_no_lock_yarn",
+			App:                        "simple_no_lock",
+			Env:                        []string{"GOOGLE_PACKAGE_MANAGER=yarn"},
+			MustUse:                    []string{nodeYarn},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                       "simple_no_lock_default_npm",
+			App:                        "simple_no_lock",
+			MustUse:                    []string{nodeNPM},
+			VersionInclusionConstraint: ">= 20.0.0",
+		},
+		{
+			Name:                    "devsync_nodejs_rebuild",
+			App:                     "devsync_dependency",
+			Env:                     []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual", "X_GOOGLE_DEVSYNC_ACTIVATED=1", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER=1"},
+			MustUse:                 []string{nodeRuntime, nodeNPM, "google.utils.devsync"},
+			EnableDevSyncTest:       true,
+			DevSyncUpdateSubdir:     "update",
+			MustMatch:               "INITIAL",
+			DevSyncExpectedResponse: "UPDATED: 4.17.21",
+			SkipStacks:              []string{"google.gae.18", "google.18", "google.gae.22", "google.min.22", "google.22"},
+		},
+		{
+			Name:                    "devsync_nodejs_bun_switch",
+			App:                     "devsync_entrypoint",
+			Env:                     []string{"GOOGLE_DEVSYNC=1", "GOOGLE_BUILD_ENV=qual", "X_GOOGLE_DEVSYNC_ACTIVATED=1", "X_GOOGLE_DEVSYNC_USE_RUNIT_MAKER=1"},
+			MustUse:                 []string{nodeRuntime, nodeNPM, "google.utils.devsync"},
+			EnableDevSyncTest:       true,
+			DevSyncUpdateSubdir:     "update",
+			MustMatch:               "INITIAL",
+			DevSyncExpectedResponse: "UPDATED: lodash=4.17.21, runtime=bun",
+			SkipStacks:              []string{"google.gae.18", "google.18", "google.gae.22", "google.min.22", "google.22"},
 		},
 	}
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
-			acceptance.TestApp(t, builder, tc)
+			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
 }
 
 func TestFailuresNodeJs(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.FailureTest{
 		{
 			Name:      "bad runtime version",
-			App:       "nodejs/simple",
+			App:       "simple",
 			Env:       []string{"GOOGLE_RUNTIME_VERSION=BAD_NEWS_BEARS"},
-			MustMatch: "Runtime version BAD_NEWS_BEARS does not exist",
+			MustMatch: "invalid Node.js version specified",
 		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
-			acceptance.TestBuildFailure(t, builder, tc)
+			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}
 }

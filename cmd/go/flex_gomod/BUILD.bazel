@@ -1,0 +1,42 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+# Go flex-gomod Buildpack
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
+
+licenses(["notice"])
+
+buildpack(
+    name = "flex_gomod",
+    executables = [
+        ":main",
+    ],
+    prefix = "go",
+    version = "0.9.0",
+    visibility = [
+        "//builders:go_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "flex_gomod_using_runner",
+    buildpack_id = "google.go.flex-gomod",
+    prefix = "go",
+    version = "0.9.0",
+    visibility = [
+        "//builders:go_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//cmd/go/flex_gomod/lib",
+        "//pkg/gcpbuildpack",
+    ],
+)

@@ -1,0 +1,40 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
+
+licenses(["notice"])
+
+buildpack(
+    name = "clear_source",
+    executables = [
+        ":main",
+    ],
+    prefix = "cpp",
+    version = "0.1.0",
+    visibility = [
+        "//builders:cpp_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "clear_source_using_runner",
+    buildpack_id = "google.cpp.clear-source",
+    prefix = "cpp",
+    version = "0.1.0",
+    visibility = [
+        "//builders:cpp_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//cmd/cpp/clear_source/lib",
+        "//pkg/gcpbuildpack",
+    ],
+)

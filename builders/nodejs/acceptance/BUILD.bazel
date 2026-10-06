@@ -1,0 +1,151 @@
+load("//internal/acceptance:args.bzl", "get_runtime_to_builder_map", "languageargs")
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
+load(":args.bzl", "fah_runtime_versions", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions")
+load(":runtime.bzl", "gae_runtimes", "gcf_runtimes", "version_to_stack")
+
+licenses(["notice"])
+
+exports_files([
+    "config.yaml",
+    "args.bzl",
+])
+
+RUNTIME_TO_BUILDER_MAP = get_runtime_to_builder_map(version_to_stack, "nodejs")
+
+create_acceptance_versions_dict_file(
+    name = "gen_acceptance_targets_list",
+    fah_runtime_versions = fah_runtime_versions,
+    file = "acceptance_targets.dict",
+    flex_runtime_versions = flex_runtime_versions,
+    gae_runtime_versions = gae_runtime_versions,
+    gcf_runtime_versions = gcf_runtime_versions,
+    gcp_runtime_versions = gcp_runtime_versions,
+)
+
+test_suite(
+    name = "acceptance_test",
+    tests = [
+        gcf_runtimes["nodejs8"] + "_gcf_test",
+        "fah_test",
+        "flex_test",
+        "gae_test",
+        "gcf_test",
+        "gcp_test",
+    ],
+)
+
+# The GCF Legacy Worker is only available and used for the "GCF nodejs8" runtime version. It has
+# different behavior, a unique order group, and is tested seperately.
+VERSION_GCF_LEGACY_WORKER = gcf_runtimes["nodejs8"]
+
+acceptance_test_suite(
+    name = "gcp_test",
+    srcs = [
+        "gcp_test.go",
+    ],
+    builder = "//builders/nodejs:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/nodejs:generic",
+    versions = gcp_runtime_versions,
+)
+
+# Test the run image tagged as latest in gae-runtimes.
+acceptance_test_suite(
+    name = "gae_test",
+    srcs = [
+        "gae_test.go",
+    ],
+    argsmap = languageargs(gae_runtimes, version_to_stack),
+    builder = "//builders/nodejs:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/nodejs:appengine",
+    versions = gae_runtime_versions,
+)
+
+# Test the run image tagged as ${_CANDIDATE_NAME} in gae-runtimes-private.
+acceptance_test_suite(
+    name = "gae_candidate_test",
+    srcs = [
+        "gae_test.go",
+    ],
+    argsmap = languageargs(gae_runtimes, version_to_stack, "$${_CANDIDATE_NAME}"),
+    builder = "//builders/nodejs:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/nodejs:appengine",
+    versions = gae_runtime_versions,
+)
+
+# Test the run image tagged as ${_CANDIDATE_NAME} with ${_STACK} in gae-runtimes-private.
+acceptance_test_suite(
+    name = "gae_stack_candidate_test",
+    srcs = [
+        "gae_test.go",
+    ],
+    argsmap = languageargs(gae_runtimes, version_to_stack, "$${_CANDIDATE_NAME}", "$${_STACK}"),
+    builder = "//builders/nodejs:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/nodejs:appengine",
+    versions = gae_runtime_versions,
+)
+
+acceptance_test_suite(
+    name = "gcf_test",
+    srcs = [
+        "gcf_test.go",
+    ],
+    argsmap = languageargs(gcf_runtimes, version_to_stack),
+    builder = "//builders/nodejs:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/nodejs:functions",
+    versions = gcf_runtime_versions,
+)
+
+acceptance_test_suite(
+    name = "8.17.0_gcf_test",
+    srcs = [
+        "legacy_worker_gcf_test.go",
+    ],
+    args = [
+        "-runtime-version=" + VERSION_GCF_LEGACY_WORKER,
+    ],
+    builder = "//builders/nodejs:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/nodejs:functions",
+)
+
+acceptance_test_argo_source(
+    name = "argo_source",
+    srcs = [
+        ":8.17.0_gcf_test_cloudbuild_bin",
+        "//cmd/apprunner:app-runner",
+        "//cmd/apprunner:functional_test",
+    ],
+    testdata = "//builders/testdata/nodejs:all_files",
+)
+
+acceptance_test_suite(
+    name = "flex_test",
+    srcs = ["flex_test.go"],
+    builder = "//builders/nodejs:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/nodejs:flex",
+    versions = flex_runtime_versions,
+)
+
+acceptance_test_suite(
+    name = "fah_test",
+    srcs = ["fah_test.go"],
+    builder = "//builders/nodejs:builder_22.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/nodejs:apphosting",
+    versions = fah_runtime_versions,
+)
+
+exports_files(["runtime.bzl"])

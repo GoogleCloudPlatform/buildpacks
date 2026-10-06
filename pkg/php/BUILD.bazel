@@ -10,11 +10,16 @@ go_library(
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
         "//cmd/php:__subpackages__",
+        "//maker:__subpackages__",
+        "//pkg/webconfig:__subpackages__",
     ],
     deps = [
+        "//pkg/appengine",
         "//pkg/cache",
+        "//pkg/env",
         "//pkg/gcpbuildpack",
-        "@com_github_buildpack_libbuildpack//layers:go_default_library",
+        "//pkg/runtime",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
     ],
 )
 
@@ -23,4 +28,8 @@ go_test(
     srcs = ["php_test.go"],
     embed = [":php"],
     rundir = ".",
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+    ],
 )

@@ -17,13 +17,58 @@ package golang
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/testserver"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
+	"github.com/buildpacks/libcnb/v2"
+
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/buildpack"
 )
+
+func TestGoVersion(t *testing.T) {
+	testCases := []struct {
+		goVersion string
+		want      string
+	}{
+		{
+			goVersion: "go version go1.13 darwin/amd64",
+			want:      "1.13",
+		},
+		{
+			goVersion: "go version go1.14.7 darwin/amd64",
+			want:      "1.14.7",
+		},
+		{
+			goVersion: "go version go1.15beta2 darwin/amd64",
+			want:      "1.15",
+		},
+		{
+			goVersion: "go version go1.15rc1 darwin/amd64",
+			want:      "1.15",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.goVersion, func(t *testing.T) {
+			mockReadGoVersion(t, tc.goVersion)
+
+			got, err := GoVersion(nil)
+			if err != nil {
+				t.Errorf("GoVersion(nil) failed unexpectedly; err=%s", err)
+			}
+			if got != tc.want {
+				t.Errorf("GoVersion(nil) = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
 
 func TestGoModVersion(t *testing.T) {
 	testCases := []struct {
@@ -259,59 +304,19 @@ module dir
 			}
 			defer os.RemoveAll(dir)
 
-			ctx := gcp.NewContextForTests(buildpack.Info{}, dir)
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(dir))
 
 			if err := ioutil.WriteFile(filepath.Join(dir, "go.mod"), []byte(tc.gomod), 0644); err != nil {
 				t.Fatalf("writing go.mod: %v", err)
 			}
 
-			if got := GoModVersion(ctx); got != tc.want {
-				t.Errorf("GoModVersion(%q) = %q, want %q", dir, got, tc.want)
+			got, err := GoModVersion(ctx)
+
+			if err != nil {
+				t.Fatalf("GoModVersion(%q) failed unexpectedly; err=%s", dir, err)
 			}
-		})
-	}
-}
-
-func TestSupportsNoGoMod(t *testing.T) {
-	testCases := []struct {
-		goVersion string
-		want      bool
-	}{
-		{
-			goVersion: "go version go1.11 darwin/amd64",
-			want:      true,
-		},
-		{
-			goVersion: "go version go1.11.1 darwin/amd64",
-			want:      true,
-		},
-		{
-			goVersion: "go version go1.13 darwin/amd64",
-			want:      true,
-		},
-		{
-			goVersion: "go version go1.13.3 darwin/amd64",
-			want:      true,
-		},
-		{
-			goVersion: "go version go1.10 darwin/amd64",
-			want:      true,
-		},
-		{
-			goVersion: "go version go1.14 darwin/amd64",
-			want:      false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.goVersion, func(t *testing.T) {
-			defer func(fn func(*gcp.Context) string) { readGoVersion = fn }(readGoVersion)
-			readGoVersion = func(*gcp.Context) string { return tc.goVersion }
-
-			supported := SupportsNoGoMod(nil)
-
-			if supported != tc.want {
-				t.Errorf("VersionSupportsNoGoModFile() returned %v, wanted %v", supported, tc.want)
+			if got != tc.want {
+				t.Errorf("GoModVersion(%q) = %q, want %q", dir, got, tc.want)
 			}
 		})
 	}
@@ -361,14 +366,14 @@ func TestSupportsAutoVendor(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.goMod, func(t *testing.T) {
-			defer func(fn func(*gcp.Context) string) { readGoVersion = fn }(readGoVersion)
-			readGoVersion = func(*gcp.Context) string { return tc.goVersion }
+			mockReadGoVersion(t, tc.goVersion)
+			mockReadGoMod(t, tc.goMod)
 
-			defer func(fn func(*gcp.Context) string) { readGoMod = fn }(readGoMod)
-			readGoMod = func(*gcp.Context) string { return tc.goMod }
+			supported, err := SupportsAutoVendor(nil)
 
-			supported := SupportsAutoVendor(nil)
-
+			if err != nil {
+				t.Fatalf("VersionSupportsVendoredModules() failed unexpectedly; err=%s", err)
+			}
 			if supported != tc.want {
 				t.Errorf("VersionSupportsVendoredModules() returned %v, wanted %v", supported, tc.want)
 			}
@@ -402,6 +407,12 @@ func TestVersionMatches(t *testing.T) {
 			want:         true,
 		},
 		{
+			goVersion:    "go version go1.15rc1 darwin/amd64",
+			goMod:        "module dir\ngo 1.15",
+			versionCheck: ">=1.15.0",
+			want:         true,
+		},
+		{
 			goVersion:    "go version go1.14.2 darwin/amd64",
 			goMod:        "module v\ngo 1.14.1",
 			versionCheck: ">=1.15.0",
@@ -416,16 +427,378 @@ func TestVersionMatches(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.goMod, func(t *testing.T) {
-			defer func(fn func(*gcp.Context) string) { readGoVersion = fn }(readGoVersion)
-			readGoVersion = func(*gcp.Context) string { return tc.goVersion }
+			mockReadGoVersion(t, tc.goVersion)
+			mockReadGoMod(t, tc.goMod)
 
-			defer func(fn func(*gcp.Context) string) { readGoMod = fn }(readGoMod)
-			readGoMod = func(*gcp.Context) string { return tc.goMod }
+			supported, err := VersionMatches(nil, tc.versionCheck)
 
-			supported := VersionMatches(nil, tc.versionCheck)
-
+			if err != nil {
+				t.Fatalf("VersionMatches() failed unexpectedly; err=%s", err)
+			}
 			if supported != tc.want {
 				t.Errorf("VersionMatches() returned %v, wanted %v", supported, tc.want)
+			}
+		})
+	}
+}
+
+func TestNewGoWorkspaceLayerHappyPath(t *testing.T) {
+	testCases := []struct {
+		Name            string
+		ApplicationRoot string
+		CacheEnabled    bool
+		goMod           string
+		goVersion       string
+	}{
+		{
+			Name:            "go mod exists",
+			ApplicationRoot: testdata.MustGetPath("testdata/gopath_layer/simple_gomod"),
+			CacheEnabled:    true,
+			goVersion:       "go version go1.14.2 darwin/amd64",
+			goMod:           "module v\ngo 1.14.2",
+		},
+		{
+			Name:            "go mod exists for go < 1.13",
+			ApplicationRoot: testdata.MustGetPath("testdata/gopath_layer/simple_gomod"),
+			CacheEnabled:    false,
+			goVersion:       "go version go1.12.2 darwin/amd64",
+			goMod:           "module v\ngo 1.12.1",
+		},
+		{
+			Name:            "no go mod",
+			ApplicationRoot: t.TempDir(),
+			CacheEnabled:    false,
+		},
+	}
+
+	mockCleanModCache(t)
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			mockReadGoVersion(t, tc.goVersion)
+			mockReadGoMod(t, tc.goMod)
+
+			buildCtx := libcnb.BuildContext{
+				Layers: libcnb.Layers{
+					Path: t.TempDir(),
+				},
+			}
+			ctx := gcp.NewContext(
+				gcp.WithApplicationRoot(tc.ApplicationRoot),
+				gcp.WithBuildContext(buildCtx))
+
+			l, err := NewGoWorkspaceLayer(ctx)
+			if err != nil {
+				t.Fatalf("NewGoPathLayer() failed unexpectedly; err=%s", err)
+			}
+			if l.Cache != tc.CacheEnabled {
+				t.Errorf("layer.Cache enablement mismatch: got %t, want %t", l.Cache, tc.CacheEnabled)
+			}
+			buildVars := map[string]string{
+				"GOPATH":      l.Path,
+				"GO111MODULE": "on",
+				"GOPROXY":     "off",
+			}
+			for envVar, expectedVal := range buildVars {
+				// libcnb appends an ".override" suffix to each env var
+				val, ok := l.BuildEnvironment[fmt.Sprintf("%s.override", envVar)]
+				if !ok {
+					t.Fatalf("Layer missing required env var %v", envVar)
+				}
+				if val != expectedVal {
+					t.Errorf("env var %q value mismatch: got %q, want %q", envVar, val, expectedVal)
+				}
+			}
+		})
+	}
+}
+
+func TestResolveGoVersion(t *testing.T) {
+	testCases := []struct {
+		name       string
+		constraint string
+		want       string
+		json       string
+	}{
+		{
+			name: "all_stable",
+			want: "1.16",
+			json: `
+[
+ {
+  "version": "go1.16",
+  "stable": true
+ },
+ {
+  "version": "go1.15.3",
+  "stable": true
+ },
+ {
+  "version": "go1.12.12",
+  "stable": true
+ }
+]`,
+		},
+		{
+			name: "recent_unstable",
+			want: "1.15.3",
+			json: `
+[
+ {
+  "version": "go1.15.4",
+  "stable": false
+ },
+ {
+  "version": "go1.15.3",
+  "stable": true
+ },
+ {
+  "version": "go1.12.12",
+  "stable": true
+ }
+]`,
+		},
+		{
+			name:       "old exact major version",
+			constraint: "1.12",
+			want:       "1.12",
+			json: `
+[
+ {
+  "version": "go1.15.4",
+  "stable": false
+ },
+ {
+  "version": "go1.15.3",
+  "stable": true
+ }
+]`,
+		},
+		{
+			name:       "exact_unstable_rc_candidate",
+			constraint: "1.21rc2",
+			want:       "1.21rc2",
+			json: `
+[
+{
+"version": "go1.16",
+"stable": true
+},
+{
+"version": "go1.15.3",
+"stable": true
+},
+{
+"version": "go1.12.12",
+"stable": true
+}
+]`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testserver.New(
+				t,
+				testserver.WithStatus(http.StatusOK),
+				testserver.WithJSON(tc.json),
+				testserver.WithMockURL(&goVersionsURL),
+			)
+			if v, err := ResolveGoVersion(tc.constraint); err != nil {
+				t.Fatalf("resolveGoVersion(%q) failed: %v", tc.constraint, err)
+			} else if v != tc.want {
+				t.Errorf("resolveGoVersion(%q) = %q, want %q", tc.constraint, v, tc.want)
+			}
+		})
+	}
+}
+
+func TestRuntimeVersion(t *testing.T) {
+	testCases := []struct {
+		name              string
+		envGoVersion      string
+		envRuntimeVersion string
+		stackID           string
+		want              string
+	}{
+		{
+			name:         "env_go_version_set",
+			envGoVersion: "1.22.0",
+			want:         "1.22.0",
+		},
+		{
+			name:              "env_runtime_version_set",
+			envRuntimeVersion: "1.22.0",
+			want:              "1.22.0",
+		},
+		{
+			name:    "no_env_use_latest for the stack id",
+			stackID: "google.22",
+			want:    "1.26.*",
+		},
+		{
+			name:    "invalid stack id, will fallback to ubuntu2204 and pass",
+			stackID: "abc",
+			want:    "1.26.*",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv(envGoVersion, tc.envGoVersion)
+			t.Setenv(env.RuntimeVersion, tc.envRuntimeVersion)
+			mockResolveGoVersion(t, nil)
+
+			ctx := gcp.NewContext(gcp.WithStackID(tc.stackID))
+			got, err := RuntimeVersion(ctx)
+			if err != nil {
+				t.Fatalf("RuntimeVersion() failed unexpectedly; err=%v", err)
+			}
+			if got != tc.want {
+				t.Errorf("RuntimeVersion() got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRuntimeVersionError(t *testing.T) {
+	testCases := []struct {
+		name                  string
+		stackID               string
+		resolveGoVersionError error
+	}{
+		{
+			name:                  "valid stack id but resolveGoVersion errors out",
+			stackID:               "google.22",
+			resolveGoVersionError: fmt.Errorf("resolveGoVersion error"),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockResolveGoVersion(t, tc.resolveGoVersionError)
+
+			ctx := gcp.NewContext(gcp.WithStackID(tc.stackID))
+			_, err := RuntimeVersion(ctx)
+			if err == nil {
+				t.Fatalf("RuntimeVersion() passed, expected error")
+			}
+		})
+	}
+}
+
+func TestRuntimeVersionMaker(t *testing.T) {
+	testCases := []struct {
+		name      string
+		goVersion string
+		want      string
+	}{
+		{
+			name:      "Local Go version preferred in maker mode",
+			goVersion: "go version go1.24.5 linux/amd64",
+			want:      "1.24.5",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockReadGoVersion(t, tc.goVersion)
+			mockResolveGoVersion(t, nil)
+			// InstallerCapability presence indicates maker mode. Use non-nil value.
+			ctx := gcp.NewContext(gcp.WithCapability(GoBuilderCapability, "dummy"))
+
+			got, err := RuntimeVersion(ctx)
+			if err != nil {
+				t.Fatalf("RuntimeVersion() failed unexpectedly; err=%v", err)
+			}
+			if got != tc.want {
+				t.Errorf("RuntimeVersion() got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func mockResolveGoVersion(t *testing.T, err error) {
+	origResolveGoVersion := ResolveGoVersion
+	ResolveGoVersion = func(verConstraint string) (string, error) {
+		return verConstraint, err
+	}
+	t.Cleanup(func() { ResolveGoVersion = origResolveGoVersion })
+}
+
+// mockReadGoVersion mocks the readGoVersion
+func mockReadGoVersion(t *testing.T, goVer string) {
+	origReadGoVersion := readGoVersion
+	readGoVersion = func(*gcp.Context) (string, error) { return goVer, nil }
+	t.Cleanup(func() {
+		readGoVersion = origReadGoVersion
+	})
+}
+
+// mockReadGoMod mocks the readGoMod
+func mockReadGoMod(t *testing.T, goMod string) {
+	origReadGoMod := readGoMod
+	readGoMod = func(*gcp.Context) (string, error) { return goMod, nil }
+	t.Cleanup(func() {
+		readGoMod = origReadGoMod
+	})
+}
+
+// mockCleanModCache mocks the cleanModCache
+func mockCleanModCache(t *testing.T) {
+	origCleanModCache := cleanModCache
+	cleanModCache = func(*gcp.Context) error { return nil }
+	t.Cleanup(func() {
+		cleanModCache = origCleanModCache
+	})
+}
+
+func TestBuild(t *testing.T) {
+	testCases := []struct {
+		name         string
+		capabilities map[string]any
+		wantExecuted string
+	}{
+		{
+			name: "WithCapability",
+			capabilities: map[string]any{
+				GoBuilderCapability: &MakerGolangBuilder{},
+			},
+			wantExecuted: `go build.*-o \./main`,
+		},
+		{
+			name:         "Default",
+			wantExecuted: `go build.*-o bin/main`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dummyBuildFn := func(ctx *gcp.Context) error {
+				bl, err := ctx.Layer("bin", gcp.LaunchLayer)
+				if err != nil {
+					return err
+				}
+				_, _, err = PerformBuild(ctx, bl, ".", ctx.ApplicationRoot(), "/gocache", []string{})
+				return err
+			}
+
+			opts := []buildpacktest.Option{
+				buildpacktest.WithTestName(tc.name),
+				buildpacktest.WithFiles(map[string]string{"main.go": ""}),
+				buildpacktest.WithExecMocks(mockprocess.New(`^go build`)),
+			}
+			if tc.capabilities != nil {
+				opts = append(opts, buildpacktest.WithCapabilities(tc.capabilities))
+			}
+
+			result, err := buildpacktest.RunBuild(t, dummyBuildFn, opts...)
+			if err != nil {
+				t.Fatalf("RunBuild() failed: %v", err)
+			}
+
+			if !result.CommandExecuted(tc.wantExecuted) {
+				t.Errorf("expected command %q to be executed, but it was not. Output:\n%s", tc.wantExecuted, result.Output)
 			}
 		})
 	}

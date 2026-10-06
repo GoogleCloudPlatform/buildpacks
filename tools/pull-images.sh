@@ -29,8 +29,12 @@ readonly candidate="latest"
 
 echo "Pulling stack images for ${product}/${runtime}"
 if [[ "${product}" == "gcp" ]]; then
+  # We pull both the google-22 and the google-18 images, because the OSS builder
+  # supports both.
   docker pull "gcr.io/buildpacks/${product}/run:${candidate}"
   docker pull "gcr.io/buildpacks/${product}/build:${candidate}"
+  docker pull "gcr.io/buildpacks/google-22/build:${candidate}"
+  docker pull "gcr.io/buildpacks/google-22/run:{candidate}"
 else
   docker pull "gcr.io/${project}/buildpacks/${runtime}/run:${candidate}"
   docker pull "gcr.io/${project}/buildpacks/${runtime}/build:${candidate}"

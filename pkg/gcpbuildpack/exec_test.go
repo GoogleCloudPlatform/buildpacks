@@ -15,17 +15,26 @@
 package gcpbuildpack
 
 import (
+	"bytes"
 	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestExecEmitsSpan(t *testing.T) {
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
 
-	ctx.ExecWithErr(strings.Fields("echo Hello"))
+	ctx.Exec(strings.Fields("echo Hello"))
 
 	if len(ctx.stats.spans) != 1 {
 		t.Fatalf("Unexpected number of spans, got %d want 1", len(ctx.stats.spans))
@@ -35,22 +44,8 @@ func TestExecEmitsSpan(t *testing.T) {
 	if span.name != wantSpanName {
 		t.Errorf("Unexpected span name got %q want %q", span.name, wantSpanName)
 	}
-	if span.status != StatusOk {
-		t.Errorf("Unexpected span status got %d want %d", span.status, StatusOk)
-	}
-}
-
-func TestExecWithErrInvokesCommand(t *testing.T) {
-	cmd := strings.Fields("echo Hello")
-	ctx, cleanUp := simpleContext(t)
-	defer cleanUp()
-	result, err := ctx.ExecWithErr(cmd)
-	if err != nil {
-		t.Errorf("Exec2WithErr(%v) got unexpected error: %v", cmd, err)
-	}
-	want := "Hello"
-	if result.Stdout != want {
-		t.Errorf("Exec2WithErr(%v) got stdout=%q, want stdout=%q", cmd, result.Stdout, want)
+	if span.status != buildererror.StatusOk {
+		t.Errorf("Unexpected span status got %d want %d", span.status, buildererror.StatusOk)
 	}
 }
 
@@ -58,7 +53,10 @@ func TestExecInvokesCommand(t *testing.T) {
 	cmd := strings.Fields("echo Hello")
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
-	result := ctx.Exec(cmd)
+	result, err := ctx.Exec(cmd)
+	if err != nil {
+		t.Errorf("Exec(%v) got unexpected error: %v", cmd, err)
+	}
 	want := "Hello"
 	if result.Stdout != want {
 		t.Errorf("Exec(%v) got stdout=%q, want stdout=%q", cmd, result.Stdout, want)
@@ -70,8 +68,11 @@ func TestExecResult(t *testing.T) {
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
 
-	got := ctx.Exec(cmd)
+	got, err := ctx.Exec(cmd)
 
+	if err != nil {
+		t.Fatalf("Exec(%v) got unexpected error: %v", cmd, err)
+	}
 	if got.ExitCode != 0 {
 		t.Error("Exit code got 0, want != 0")
 	}
@@ -196,13 +197,12 @@ func TestExecAsDefaultDoesNotUpdateDuration(t *testing.T) {
 		opt  func(*execParams)
 	}{
 		{name: "default"},
-		{name: "WithUserFailureAttribution", opt: WithUserFailureAttribution}, // WithUserFailureAttribution should not impact timing attribution.
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cleanUp := simpleContext(t)
 			defer cleanUp()
-			opts := []execOption{}
+			opts := []ExecOption{}
 			if tc.opt != nil {
 				opts = append(opts, tc.opt)
 			}
@@ -220,12 +220,19 @@ func TestExecAsDefaultDoesNotUpdateDuration(t *testing.T) {
 	}
 }
 
+func (ctx *Context) execWithErrCastToBuildError(cmd []string, opts ...ExecOption) (*ExecResult, *buildererror.Error) {
+	result, err := ctx.Exec(cmd, opts...)
+	if err == nil {
+		return result, nil
+	}
+	return result, err.(*buildererror.Error)
+}
+
 func TestExecAsUserDoesNotReturnStatusInternal(t *testing.T) {
 	testCases := []struct {
 		name string
 		opt  func(*execParams)
 	}{
-		{name: "WithUserFailureAttribution", opt: WithUserFailureAttribution},
 		{name: "WithUserAttribution", opt: WithUserAttribution},
 	}
 	for _, tc := range testCases {
@@ -233,9 +240,9 @@ func TestExecAsUserDoesNotReturnStatusInternal(t *testing.T) {
 			ctx, cleanUp := simpleContext(t)
 			defer cleanUp()
 
-			result, err := ctx.ExecWithErr([]string{"/bin/bash", "-c", "exit 99"}, tc.opt)
+			result, err := ctx.execWithErrCastToBuildError([]string{"/bin/bash", "-c", "exit 99"}, tc.opt)
 
-			if err.Status == StatusInternal {
+			if err.Status == buildererror.StatusInternal {
 				t.Error("unexpected error status StatusInternal")
 			}
 			if got, want := result.ExitCode, 99; got != want {
@@ -257,14 +264,14 @@ func TestExecAsDefaultReturnsStatusInternal(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cleanUp := simpleContext(t)
 			defer cleanUp()
-			opts := []execOption{}
+			opts := []ExecOption{}
 			if tc.opt != nil {
 				opts = append(opts, tc.opt)
 			}
 
-			result, err := ctx.ExecWithErr([]string{"/bin/bash", "-c", "exit 99"}, opts...)
+			result, err := ctx.execWithErrCastToBuildError([]string{"/bin/bash", "-c", "exit 99"}, opts...)
 
-			if got, want := err.Status, StatusInternal; got != want {
+			if got, want := err.Status, buildererror.StatusInternal; got != want {
 				t.Errorf("incorrect error status got %v want %v", got, want)
 			}
 			if got, want := result.ExitCode, 99; got != want {
@@ -277,10 +284,29 @@ func TestExecAsDefaultReturnsStatusInternal(t *testing.T) {
 func TestExecWithEnv(t *testing.T) {
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
+	cmd := []string{"/bin/bash", "-c", "echo $FOO"}
 
-	result := ctx.Exec([]string{"/bin/bash", "-c", "echo $FOO"}, WithEnv("A=B", "FOO=bar"))
+	result, err := ctx.Exec(cmd, WithEnv("A=B", "FOO=bar"))
 
+	if err != nil {
+		t.Fatalf("Exec(%v) got unexpected error: %v", cmd, err)
+	}
 	if got, want := strings.TrimSpace(result.Stdout), "bar"; got != want {
+		t.Errorf("incorrect output got=%q want=%q", got, want)
+	}
+}
+
+func TestExecWithEnvMultiple(t *testing.T) {
+	ctx, cleanUp := simpleContext(t)
+	defer cleanUp()
+	cmd := []string{"/bin/bash", "-c", "echo $A $FOO"}
+
+	result, err := ctx.Exec(cmd, WithEnv("A=B", "FOO=bar"), WithEnv("FOO=baz"))
+
+	if err != nil {
+		t.Fatalf("Exec(%v) got unexpected error: %v", cmd, err)
+	}
+	if got, want := strings.TrimSpace(result.Stdout), "B baz"; got != want {
 		t.Errorf("incorrect output got=%q want=%q", got, want)
 	}
 }
@@ -292,9 +318,13 @@ func TestExecWithWorkDir(t *testing.T) {
 	}
 	ctx, cleanUp := simpleContext(t)
 	defer cleanUp()
+	cmd := []string{"/bin/bash", "-c", "echo $PWD"}
 
-	result := ctx.Exec([]string{"/bin/bash", "-c", "echo $PWD"}, WithWorkDir(tdir))
+	result, err := ctx.Exec(cmd, WithWorkDir(tdir))
 
+	if err != nil {
+		t.Fatalf("Exec(%v) got unexpected error: %v", cmd, err)
+	}
 	if got, want := strings.TrimSpace(result.Stdout), tdir; got != want {
 		t.Errorf("incorrect output got=%q want=%q", got, want)
 	}
@@ -305,7 +335,7 @@ func TestExecWithMessageProducer(t *testing.T) {
 	defer cleanUp()
 	wantProducer := func(result *ExecResult) string { return "HELLO" }
 
-	_, gotErr := ctx.ExecWithErr([]string{"/bin/bash", "-c", "exit 99"}, WithMessageProducer(wantProducer))
+	_, gotErr := ctx.execWithErrCastToBuildError([]string{"/bin/bash", "-c", "exit 99"}, WithMessageProducer(wantProducer))
 
 	if got, want := gotErr.Message, "HELLO"; got != want {
 		t.Errorf("incorrect message got=%q want=%q", got, want)
@@ -315,7 +345,7 @@ func TestExecWithMessageProducer(t *testing.T) {
 func TestMessageProducerHelpers(t *testing.T) {
 	testCases := []struct {
 		name     string
-		opt      execOption
+		opt      ExecOption
 		stdout   string
 		stderr   string
 		combined string
@@ -375,4 +405,271 @@ func TestMessageProducerHelpers(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestExec(t *testing.T) {
+	testCases := []struct {
+		name            string
+		cmd             []string
+		opts            []ExecOption
+		wantResult      *ExecResult
+		wantErr         bool
+		wantErrMessage  string
+		wantUserTiming  bool
+		wantMinUserDur  time.Duration
+		wantUserFailure bool
+		wantLogged      []string
+	}{
+		{
+			name:           "nil cmd",
+			wantErr:        true,
+			wantErrMessage: "no command provided",
+		},
+		{
+			name:           "empty cmd slice",
+			cmd:            []string{},
+			wantErr:        true,
+			wantErrMessage: "no command provided",
+		},
+		{
+			name:           "empty cmd",
+			cmd:            []string{""},
+			wantErr:        true,
+			wantErrMessage: "empty command provided",
+		},
+		{
+			name:           "successful cmd with user attribution",
+			cmd:            []string{"sleep", ".5"},
+			opts:           []ExecOption{WithUserAttribution},
+			wantResult:     &ExecResult{},
+			wantUserTiming: true,
+			wantMinUserDur: 500 * time.Millisecond,
+			wantLogged: []string{
+				`Running "sleep .5"`,
+			},
+		},
+		{
+			name:           "successful cmd with user timing attribution",
+			cmd:            []string{"sleep", ".5"},
+			opts:           []ExecOption{WithUserTimingAttribution},
+			wantResult:     &ExecResult{},
+			wantUserTiming: true,
+			wantMinUserDur: 500 * time.Millisecond,
+		},
+		{
+			name:            "failing cmd with user attribution",
+			cmd:             []string{"bash", "-c", "sleep .5; exit 99"},
+			opts:            []ExecOption{WithUserAttribution},
+			wantResult:      &ExecResult{ExitCode: 99},
+			wantErr:         true,
+			wantUserTiming:  true,
+			wantMinUserDur:  500 * time.Millisecond,
+			wantUserFailure: true,
+			wantLogged: []string{
+				`Running "bash -c sleep .5; exit 99"`,
+			},
+		},
+		{
+			name:           "failing cmd with user timing attribution",
+			cmd:            []string{"bash", "-c", "sleep .5; exit 99"},
+			opts:           []ExecOption{WithUserTimingAttribution},
+			wantResult:     &ExecResult{ExitCode: 99},
+			wantErr:        true,
+			wantUserTiming: true,
+			wantMinUserDur: 500 * time.Millisecond,
+		},
+		{
+			name:           "enoent cmd with user failure attribution",
+			cmd:            []string{"cat", "/tmp/does-not-exist-123456"},
+			opts:           []ExecOption{WithUserAttribution},
+			wantErrMessage: "...ory", // Last few characters of message below due to maxMessageBytes setting in main test below.
+			wantResult: &ExecResult{
+				ExitCode: 1,
+				Stderr:   "cat: /tmp/does-not-exist-123456: No such file or directory",
+				Combined: "cat: /tmp/does-not-exist-123456: No such file or directory",
+			},
+			wantErr:         true,
+			wantUserTiming:  true,
+			wantUserFailure: true,
+			wantLogged: []string{
+				`Running "cat /tmp/does-not-exist-123456"`,
+				"No such file or directory",
+			},
+		},
+		{
+			name:       "WithEnv",
+			cmd:        []string{"bash", "-c", "echo $FOO"},
+			opts:       []ExecOption{WithEnv("FOO=bar")},
+			wantResult: &ExecResult{Stdout: "bar", Combined: "bar"},
+		},
+		{
+			name:       "WithWorkDir",
+			cmd:        []string{"bash", "-c", "echo $PWD"},
+			opts:       []ExecOption{WithWorkDir(os.TempDir())},
+			wantResult: &ExecResult{Stdout: os.TempDir(), Combined: os.TempDir()},
+		},
+		{
+			name:           "WithMessageProducer",
+			cmd:            []string{"bash", "-c", "exit 99"},
+			opts:           []ExecOption{WithMessageProducer(func(result *ExecResult) string { return "foo" })},
+			wantErr:        true,
+			wantErrMessage: "foo",
+			wantResult:     &ExecResult{ExitCode: 99},
+		},
+		{
+			name:           "WithStdoutTail",
+			cmd:            []string{"bash", "-c", "echo ------foo; exit 99"},
+			opts:           []ExecOption{WithStdoutTail},
+			wantErr:        true,
+			wantErrMessage: "...foo",
+			wantResult:     &ExecResult{ExitCode: 99, Stdout: "------foo", Combined: "------foo"},
+		},
+		{
+			name:           "WithStdoutHead",
+			cmd:            []string{"bash", "-c", "echo foo------; exit 99"},
+			opts:           []ExecOption{WithStdoutHead},
+			wantErr:        true,
+			wantErrMessage: "foo...",
+			wantResult:     &ExecResult{ExitCode: 99, Stdout: "foo------", Combined: "foo------"},
+		},
+		{
+			name:           "WithStderrTail",
+			cmd:            []string{"bash", "-c", "echo ------foo >&2; exit 99"},
+			opts:           []ExecOption{WithStderrTail},
+			wantErr:        true,
+			wantErrMessage: "...foo",
+			wantResult:     &ExecResult{ExitCode: 99, Stderr: "------foo", Combined: "------foo"},
+		},
+		{
+			name:           "WithStderrHead",
+			cmd:            []string{"bash", "-c", "echo foo------ >&2; exit 99"},
+			opts:           []ExecOption{WithStderrHead},
+			wantErr:        true,
+			wantErrMessage: "foo...",
+			wantResult:     &ExecResult{ExitCode: 99, Stderr: "foo------", Combined: "foo------"},
+		},
+		{
+			name:       "WithLogCommand true overrides system attribution",
+			cmd:        []string{"bash", "-c", "echo foo------"},
+			opts:       []ExecOption{WithLogCommand(true)},
+			wantResult: &ExecResult{ExitCode: 0, Stdout: "foo------", Combined: "foo------"},
+			wantLogged: []string{
+				`Running "bash -c echo foo------"`,
+			},
+		},
+		{
+			name:           "WithLogOutput true overrides system attribution",
+			cmd:            []string{"cat", "/tmp/does-not-exist-123456"},
+			opts:           []ExecOption{WithLogOutput(true)},
+			wantErrMessage: "...ory", // Last few characters of message below due to maxMessageBytes setting in main test below.
+			wantResult: &ExecResult{
+				ExitCode: 1,
+				Stderr:   "cat: /tmp/does-not-exist-123456: No such file or directory",
+				Combined: "cat: /tmp/does-not-exist-123456: No such file or directory",
+			},
+			wantErr: true,
+			wantLogged: []string{
+				"No such file or directory",
+			},
+		},
+		{
+			// These don't have to be used together, but it's easier to test when both are on.
+			name:           "WithLogCommand false WithLogOutput false overrides user attribution",
+			cmd:            []string{"sleep", ".5"},
+			opts:           []ExecOption{WithUserAttribution, WithLogCommand(false), WithLogOutput(false)},
+			wantResult:     &ExecResult{},
+			wantUserTiming: true,
+			wantMinUserDur: 500 * time.Millisecond,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			oldMaxMessageBytes := maxMessageBytes
+			maxMessageBytes = 6
+			defer func() {
+				maxMessageBytes = oldMaxMessageBytes
+			}()
+			// Capture stderr for test
+			buf := new(bytes.Buffer)
+			logger := log.New(buf, "", 0)
+			ctx := NewContext(WithLogger(logger))
+
+			result, err := ctx.execWithErrCastToBuildError(tc.cmd, tc.opts...)
+			if got, want := err != nil, tc.wantErr; got != want {
+				t.Errorf("got error %t want error %t", got, want)
+			}
+			if diff := cmp.Diff(tc.wantResult, result); diff != "" {
+				t.Errorf("Exec() mismatch (-want +got):\n%s", diff)
+			}
+
+			if tc.wantUserTiming && ctx.stats.user < tc.wantMinUserDur {
+				t.Errorf("got user timing %v want timing >= %v", ctx.stats.user, tc.wantMinUserDur)
+			}
+			if !tc.wantUserTiming && ctx.stats.user > 0 {
+				t.Error("got user timing > 0, want user timing 0")
+			}
+
+			gotOut := buf.String()
+			if tc.wantLogged == nil && gotOut != "" {
+				t.Errorf("expected Exec() to be silent, but got logs: %s", gotOut)
+			}
+
+			for _, want := range tc.wantLogged {
+				if !strings.Contains(gotOut, want) {
+					t.Errorf("Exec() missing expected logs, got logs: %s\nshould contain: %q", gotOut, want)
+				}
+			}
+
+			if tc.wantErr {
+				if tc.wantUserFailure {
+					if err.Status == buildererror.StatusInternal {
+						t.Error("got error status internal (i.e., system attribution), want something else")
+					}
+				} else {
+					if err.Status != buildererror.StatusInternal {
+						t.Errorf("got error status %s, want status internal", err.Status)
+					}
+				}
+				if err.Message != tc.wantErrMessage {
+					t.Errorf("incorrect error message got %q want %q", err.Message, tc.wantErrMessage)
+				}
+				if err.ID == "" {
+					t.Errorf("missing error ID")
+				}
+			}
+		})
+	}
+}
+
+func TestExecWithCRLF(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("only applicable for Linux")
+	}
+
+	f := filepath.Join(t.TempDir(), "script")
+	// must be executable
+	if err := ioutil.WriteFile(f, []byte("#!/bin/sh\r\necho NO\r\n"), 0555); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := NewContext()
+	_, gotErr := ctx.execWithErrCastToBuildError([]string{f})
+	if gotErr == nil {
+		t.Errorf("expected error: %v", gotErr)
+	} else if !strings.Contains(gotErr.Message, "Unix-style LF") {
+		t.Errorf("should have mentioned Unix line-endings: %v", gotErr)
+	}
+}
+
+type fakeExiter struct {
+	called bool
+	code   int
+	err    *buildererror.Error
+}
+
+func (e *fakeExiter) Exit(exitCode int, be *buildererror.Error) {
+	e.called = true
+	e.code = exitCode
+	e.err = be
 }

@@ -21,16 +21,17 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
 	"time"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	libbuild "github.com/buildpack/libbuildpack/build"
-	"github.com/buildpack/libbuildpack/buildpack"
-	"github.com/buildpack/libbuildpack/buildpackplan"
-	"github.com/buildpack/libbuildpack/buildplan"
-	libdetect "github.com/buildpack/libbuildpack/detect"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 const (
@@ -39,17 +40,39 @@ const (
 
 	// cacheMissMessage is emitted by ctx.CacheMiss(). Must match acceptance test value.
 	cacheMissMessage = "***** CACHE MISS:"
+
+	passStatusCode = 0
+	failStatusCode = 100
+
+	// labelKeyRegexpStr are valid characters for input to a label name. The label
+	// name itself undergoes some transformation _after_ this regexp. See
+	// AddLabel() for specifcs.
+	// See https://docs.docker.com/config/labels-custom-metadata/#key-format-recommendations
+	// for the formal label specification, though this regexp is also sensitive to strings
+	// allowable as env vars - for example, it does not allow "." even though the label
+	// specification does.
+	labelKeyRegexpStr = `\A[A-Za-z][A-Za-z0-9-_]*\z`
+
+	// WebProcess is the name of the default web process.
+	WebProcess = "web"
 )
 
 var (
-	logger = log.New(os.Stderr, "", 0)
+	defaultLogger  = log.New(os.Stderr, "", 0)
+	labelKeyRegexp = regexp.MustCompile(labelKeyRegexpStr)
 )
 
 // DetectFn is the callback signature for Detect()
-type DetectFn func(*Context) error
+type DetectFn func(*Context) (DetectResult, error)
 
 // BuildFn is the callback signature for Build()
 type BuildFn func(*Context) error
+
+// BuildpackFuncs contains the Detect and Build functions for a buildpack.
+type BuildpackFuncs struct {
+	Detect DetectFn
+	Build  BuildFn
+}
 
 type stats struct {
 	spans []*spanInfo
@@ -58,62 +81,146 @@ type stats struct {
 
 // Context provides contextually aware functions for buildpack authors.
 type Context struct {
-	info            buildpack.Info
-	applicationRoot string
-	buildpackRoot   string
-	exitCode        int
-	buildPlan       buildplan.Plan
-	buildpackPlans  []buildpackplan.Plan
-	debug           bool
-	processes       layers.Processes
-	d               *libdetect.Detect
-	b               *libbuild.Build
-	stats           stats
+	info                     libcnb.BuildpackInfo
+	applicationRoot          string
+	buildpackRoot            string
+	debug                    bool
+	logger                   *log.Logger
+	installedRuntimeVersions []string
+	stats                    stats
+	exiter                   Exiter
+	warnings                 []string
+
+	// detect items
+	detectContext libcnb.DetectContext
+
+	// build items
+	buildContext      libcnb.BuildContext
+	buildResult       libcnb.BuildResult
+	layerContributors []layerContributor
+
+	// capabilities holds dependency injection overrides (e.g., for Maker).
+	// Keys are scoped strings (e.g., "runtime.Installer"), and values are interface implementations.
+	// This allows the Maker tool to inject lightweight mock implementations for heavy operations
+	// like runtime installation, avoiding the need to download large artifacts during local simulation.
+	capabilities map[string]any
+
+	disabledCapabilities map[string]bool
+
+	execCmd func(name string, arg ...string) *exec.Cmd
+}
+
+// ContextOption configures NewContext functions.
+type ContextOption func(ctx *Context)
+
+// WithApplicationRoot sets the application root in Context.
+func WithApplicationRoot(root string) ContextOption {
+	return func(ctx *Context) {
+		ctx.applicationRoot = root
+	}
+}
+
+// WithBuildpackRoot sets the buildpack root in Context.
+func WithBuildpackRoot(root string) ContextOption {
+	return func(ctx *Context) {
+		ctx.buildpackRoot = root
+	}
+}
+
+// WithBuildpackInfo sets the buildpack info in Context.
+func WithBuildpackInfo(info libcnb.BuildpackInfo) ContextOption {
+	return func(ctx *Context) {
+		ctx.info = info
+	}
+}
+
+// WithBuildContext sets the buildContext in Context.
+func WithBuildContext(buildCtx libcnb.BuildContext) ContextOption {
+	return func(ctx *Context) {
+		ctx.buildContext = buildCtx
+	}
+}
+
+// WithExecCmd overrides the exec.Cmd instance used for executing commands,
+// primarily useful for testing.
+func WithExecCmd(execCmd func(name string, args ...string) *exec.Cmd) ContextOption {
+	return func(ctx *Context) {
+		ctx.execCmd = execCmd
+	}
+}
+
+// WithLogger override the logger implementation, this is useful for unit tests
+// which want to verify logging output.
+func WithLogger(logger *log.Logger) ContextOption {
+	return func(ctx *Context) {
+		ctx.logger = logger
+	}
+}
+
+// WithStackID sets the StackID in Context.
+func WithStackID(stackID string) ContextOption {
+	return func(ctx *Context) {
+		ctx.buildContext.StackID = stackID
+	}
+}
+
+// WithCapability allows the entrypoint (Maker or Runner) to inject a strategy/capability.
+// This is used to override default behaviors with specialized implementations, specifically
+// for the "maker" use case where we simulate build steps without performing full operations
+// (like downloading runtimes).
+func WithCapability(key string, impl any) ContextOption {
+	return func(ctx *Context) {
+		if ctx.capabilities == nil {
+			ctx.capabilities = make(map[string]any)
+		}
+		ctx.capabilities[key] = impl
+	}
+}
+
+// WithDisabledCapability disables a capability in the context.
+func WithDisabledCapability(key string) ContextOption {
+	return func(ctx *Context) {
+		if ctx.disabledCapabilities == nil {
+			ctx.disabledCapabilities = make(map[string]bool)
+		}
+		ctx.disabledCapabilities[key] = true
+	}
 }
 
 // NewContext creates a context.
-func NewContext(info buildpack.Info) *Context {
+func NewContext(opts ...ContextOption) *Context {
 	debug, err := env.IsDebugMode()
 	if err != nil {
-		logger.Printf("Failed to parse debug mode: %v", err)
+		defaultLogger.Printf("Failed to parse debug mode: %v", err)
 		os.Exit(1)
 	}
-	return &Context{
-		debug: debug,
-		info:  info,
+	ctx := &Context{
+		debug:   debug,
+		execCmd: exec.Command,
+		logger:  defaultLogger,
 	}
-}
+	ctx.exiter = defaultExiter{ctx: ctx}
+	for _, o := range opts {
+		o(ctx)
+	}
 
-// NewContextForTests creates a context to be used for tests.
-func NewContextForTests(info buildpack.Info, root string) *Context {
-	ctx := NewContext(info)
-	ctx.applicationRoot = root
 	return ctx
 }
 
-func newDetectContext() *Context {
-	d, err := libdetect.DefaultDetect()
-	if err != nil {
-		logger.Printf("Failed to initialize /bin/detect: %v", err)
-		os.Exit(1)
-	}
-	ctx := NewContext(d.Buildpack.Info)
-	ctx.d = &d
-	ctx.applicationRoot = ctx.d.Application.Root
-	ctx.buildpackRoot = ctx.d.Buildpack.Root
+func newDetectContext(detectContext libcnb.DetectContext) *Context {
+	ctx := NewContext(WithBuildpackInfo(detectContext.Buildpack.Info))
+	ctx.detectContext = detectContext
+	ctx.applicationRoot = ctx.detectContext.ApplicationPath
+	ctx.buildpackRoot = ctx.detectContext.Buildpack.Path
 	return ctx
 }
 
-func newBuildContext() *Context {
-	b, err := libbuild.DefaultBuild()
-	if err != nil {
-		logger.Printf("Failed to initialize /bin/build: %v", err)
-		os.Exit(1)
-	}
-	ctx := NewContext(b.Buildpack.Info)
-	ctx.b = &b
-	ctx.applicationRoot = ctx.b.Application.Root
-	ctx.buildpackRoot = ctx.b.Buildpack.Root
+func newBuildContext(buildContext libcnb.BuildContext, opts ...ContextOption) *Context {
+	ctx := NewContext(append(opts, WithBuildpackInfo(buildContext.Buildpack.Info))...)
+	ctx.buildContext = buildContext
+	ctx.applicationRoot = ctx.buildContext.ApplicationPath
+	ctx.buildpackRoot = ctx.buildContext.Buildpack.Path
+	ctx.buildResult = libcnb.NewBuildResult()
 	return ctx
 }
 
@@ -132,6 +239,21 @@ func (ctx *Context) BuildpackName() string {
 	return ctx.info.Name
 }
 
+// Capability returns a capability from Context.
+// This is used to retrieve injected dependencies/strategies, allowing buildpacks to
+// behave differently depending on the context (e.g., real build vs maker simulation).
+func (ctx *Context) Capability(key string) any {
+	return ctx.capabilities[key]
+}
+
+// IsDisabled returns whether a capability is disabled.
+func (ctx *Context) IsDisabled(key string) bool {
+	if ctx.disabledCapabilities == nil {
+		return false
+	}
+	return ctx.disabledCapabilities[key]
+}
+
 // ApplicationRoot returns the root folder of the application code.
 func (ctx *Context) ApplicationRoot() string {
 	return ctx.applicationRoot
@@ -142,127 +264,142 @@ func (ctx *Context) BuildpackRoot() string {
 	return ctx.buildpackRoot
 }
 
+// StackID returns the stack id.
+func (ctx *Context) StackID() string {
+	if stackID := ctx.buildContext.StackID; stackID != "" {
+		return stackID
+	}
+	return ctx.detectContext.StackID
+}
+
 // Debug returns whether debug mode is enabled.
 func (ctx *Context) Debug() bool {
 	return ctx.debug
 }
 
+// Processes returns the list of processes added by buildpacks.
+func (ctx *Context) Processes() []libcnb.Process {
+	return ctx.buildResult.Processes
+}
+
+// Labels returns the list of labels added by buildpacks.
+func (ctx *Context) Labels() []libcnb.Label {
+	return ctx.buildResult.Labels
+}
+
 // Main is the main entrypoint to a buildpack's detect and build functions.
-func Main(d DetectFn, b BuildFn) {
+func Main(d DetectFn, b BuildFn, buildOpts ...ContextOption) {
 	switch filepath.Base(os.Args[0]) {
 	case "detect":
 		detect(d)
 	case "build":
-		build(b)
+		build(b, buildOpts...)
 	default:
-		logger.Print("Unknown command, expected 'detect' or 'build'.")
+		defaultLogger.Print("Unknown command, expected 'detect' or 'build'.")
 		os.Exit(1)
 	}
 }
 
-// detect implements the /bin/detect phase of the buildpack.
-func detect(f DetectFn) {
-	ctx := newDetectContext()
-	status := StatusInternal
-	defer func(now time.Time) {
-		ctx.Span(fmt.Sprintf("Buildpack Detect %s", ctx.info.ID), now, status)
-	}(time.Now())
-
-	if err := f(ctx); err != nil {
-		msg := fmt.Sprintf("Failed to run /bin/detect: %v", err)
-		var be *Error
-		if errors.As(err, &be) {
-			status = be.Status
-			ctx.Exit(ctx.d.Error(1), be)
-		}
-		ctx.Exit(ctx.d.Error(1), Errorf(status, msg))
-	}
-
-	_, err := ctx.d.Pass(ctx.buildPlan)
-	if err != nil {
-		ctx.Exit(ctx.d.Error(1), Errorf(StatusInternal, err.Error()))
-	}
-
-	status = StatusOk
+type gcpdetector struct {
+	detectFn DetectFn
 }
 
-func build(b BuildFn) {
-	start := time.Now()
-	ctx := newBuildContext()
-	ctx.Logf("=== %s (%s@%s) ===", ctx.BuildpackName(), ctx.BuildpackID(), ctx.BuildpackVersion())
+// detectFnWrapper creates a DetectFunc that wraps the given detectFn.
+func detectFnWrapper(detectFn DetectFn) libcnb.DetectFunc {
+	return func(ldctx libcnb.DetectContext) (libcnb.DetectResult, error) {
 
-	status := StatusInternal
-	defer func(now time.Time) {
-		ctx.Span(fmt.Sprintf("Buildpack Build %s", ctx.BuildpackID()), now, status)
-	}(time.Now())
+		ctx := newDetectContext(ldctx)
+		status := buildererror.StatusInternal
+		defer func(now time.Time) {
+			ctx.Span(fmt.Sprintf("Buildpack Detect %q", ctx.info.ID), now, status)
+		}(time.Now())
 
-	if err := b(ctx); err != nil {
-		msg := fmt.Sprintf("Failed to run /bin/build: %v", err)
-		var be *Error
-		if errors.As(err, &be) {
-			status = be.Status
-			ctx.Exit(ctx.b.Failure(1), be)
+		result, err := detectFn(ctx)
+		if err != nil {
+			msg := fmt.Sprintf("failed to run /bin/detect: %v", err)
+			var be *buildererror.Error
+			if errors.As(err, &be) {
+				status = be.Status
+				return libcnb.DetectResult{}, be
+			}
+			return libcnb.DetectResult{}, buildererror.Errorf(status, msg)
 		}
-		ctx.Exit(ctx.b.Failure(1), Errorf(status, msg))
-	}
-
-	// Emit application metadata.
-	if len(ctx.processes) > 0 {
-		metadata := layers.Metadata{Processes: ctx.processes}
-		if err := ctx.b.Layers.WriteApplicationMetadata(metadata); err != nil {
-			ctx.Exit(ctx.b.Failure(1), Errorf(StatusInternal, "writing application metadata: %v", err))
+		// detectFn has an interface return type so result may be nil.
+		if result == nil {
+			return libcnb.DetectResult{}, InternalErrorf("detect did not return a result or an error")
 		}
-	}
 
-	if _, err := ctx.b.Success(ctx.buildpackPlans...); err != nil {
-		ctx.Exit(ctx.b.Failure(1), Errorf(StatusInternal, err.Error()))
+		status = buildererror.StatusOk
+		ctx.Logf(result.Reason())
+		return result.Result(), nil
 	}
+}
 
-	status = StatusOk
-	ctx.saveSuccessOutput(time.Since(start))
+// detect implements the /bin/detect phase of the buildpack.
+func detect(detectFn DetectFn, opts ...libcnb.Option) {
+	config := libcnb.NewConfig(opts...)
+	wrappedDetectFn := detectFnWrapper(detectFn)
+	libcnb.Detect(wrappedDetectFn, config)
+}
+
+type gcpbuilder struct {
+	buildFn BuildFn
+}
+
+// buildFnWrapper creates a libcnb.BuildFunc that wraps the given buildFn.
+func buildFnWrapper(buildFn BuildFn, opts ...ContextOption) libcnb.BuildFunc {
+	return func(lbctx libcnb.BuildContext) (libcnb.BuildResult, error) {
+		start := time.Now()
+		ctx := newBuildContext(lbctx, opts...)
+		ctx.Logf("=== %s (%s@%s) ===", ctx.BuildpackName(), ctx.BuildpackID(), ctx.BuildpackVersion())
+
+		status := buildererror.StatusInternal
+		defer func(now time.Time) {
+			ctx.Span(fmt.Sprintf("Buildpack Build %q", ctx.BuildpackID()), now, status)
+		}(time.Now())
+
+		if err := buildFn(ctx); err != nil {
+			var be *buildererror.Error
+			if errors.As(err, &be) {
+				status = be.Status
+			}
+			err := fmt.Errorf("failed to build: %w", err)
+			ctx.Exit(1, err)
+		}
+
+		for i := 0; i < len(ctx.buildResult.Layers); i++ {
+			creator := ctx.layerContributors[i]
+			name := creator.Name()
+			layer, _ := ctx.buildContext.Layers.Layer(name)
+			layer, _ = creator.Contribute(layer)
+			ctx.buildResult.Layers[i] = layer
+		}
+		status = buildererror.StatusOk
+		ctx.saveSuccessOutput(time.Since(start))
+		return ctx.buildResult, nil
+	}
+}
+
+// build implements the /bin/build phase of the buildpack.
+func build(buildFn BuildFn, opts ...ContextOption) {
+	options := []libcnb.Option{
+		// Without this flag the build SBOM is NOT written to the image's "io.buildpacks.build.metadata" label.
+		// The acceptence tests rely on this being present.
+		// libcnb.WithBOMLabel(true),
+	}
+	config := libcnb.NewConfig(options...)
+	wrappedBuildFn := buildFnWrapper(buildFn, opts...)
+	libcnb.Build(wrappedBuildFn, config)
 }
 
 // Exit causes the buildpack to exit with the given exit code and message.
-func (ctx *Context) Exit(exitCode int, be *Error) {
-	if be != nil {
-		msg := "Failure: "
-		if be.ID != "" {
-			msg += fmt.Sprintf("(ID: %s) ", be.ID)
-		}
-		msg += be.Message
-		ctx.Logf(msg)
-		ctx.saveErrorOutput(be)
-	}
-
-	if exitCode != 0 {
-		ctx.Tipf(divider)
-		ctx.Tipf(`Sorry your project couldn't be built.`)
-		ctx.Tipf(`Our documentation explains ways to configure Buildpacks to better recognise your project:`)
-		ctx.Tipf(` -> https://github.com/GoogleCloudPlatform/buildpacks/blob/master/README.md`)
-		ctx.Tipf(`If you think you've found an issue, please report it:`)
-		ctx.Tipf(` -> https://github.com/GoogleCloudPlatform/buildpacks/issues/new`)
-		ctx.Tipf(divider)
-	}
-
-	ctx.exitCode = exitCode
-	os.Exit(exitCode)
-}
-
-// OptOut is used during the detect phase to opt out of the build process.
-func (ctx *Context) OptOut(format string, args ...interface{}) {
-	ctx.Logf(format, args...)
-	os.Exit(libdetect.FailStatusCode)
-}
-
-// OptIn is used during the detect phase to opt in to the build process.
-func (ctx *Context) OptIn(format string, args ...interface{}) {
-	ctx.Logf(format, args...)
-	os.Exit(libdetect.PassStatusCode)
+func (ctx *Context) Exit(exitCode int, err error) {
+	ctx.exiter.Exit(exitCode, err)
 }
 
 // Logf emits a structured logging line.
 func (ctx *Context) Logf(format string, args ...interface{}) {
-	logger.Printf(format, args...)
+	ctx.logger.Printf(format, args...)
 }
 
 // Debugf emits a structured logging line if the debug flag is set.
@@ -275,29 +412,30 @@ func (ctx *Context) Debugf(format string, args ...interface{}) {
 
 // Warnf emits a structured logging line for warnings.
 func (ctx *Context) Warnf(format string, args ...interface{}) {
-	ctx.Logf("Warning: "+format, args...)
+	ctx.warnings = append(ctx.warnings, fmt.Sprintf(format, args...))
+	ctx.Logf("WARNING: "+format, args...)
 }
 
 // Tipf emits a structured logging line for usage tips.
 func (ctx *Context) Tipf(format string, args ...interface{}) {
 	// Tips are only displayed for the gcp/base builder, not in GAE/GCF environments.
-	if os.Getenv("CNB_STACK_ID") == "google" {
+	if env.IsGCP() {
 		ctx.Logf(format, args...)
 	}
 }
 
 // CacheHit records a cache hit debug message. This is used in acceptance test validation.
 func (ctx *Context) CacheHit(tag string) {
-	ctx.Debugf("%s %q", cacheHitMessage, tag)
+	ctx.Logf("%s %q", cacheHitMessage, tag)
 }
 
 // CacheMiss records a cache miss debug message. This is used in acceptance test validation.
 func (ctx *Context) CacheMiss(tag string) {
-	ctx.Debugf("%s %q", cacheMissMessage, tag)
+	ctx.Logf("%s %q", cacheMissMessage, tag)
 }
 
 // Span emits a structured Stackdriver span.
-func (ctx *Context) Span(label string, start time.Time, status Status) {
+func (ctx *Context) Span(label string, start time.Time, status buildererror.Status) {
 	now := time.Now()
 	attributes := map[string]interface{}{
 		"/buildpack_id":      ctx.BuildpackID(),
@@ -306,53 +444,185 @@ func (ctx *Context) Span(label string, start time.Time, status Status) {
 	}
 	si, err := newSpanInfo(label, start, now, attributes, status)
 	if err != nil {
-		ctx.Logf("Warning: invalid span dropped: %v", err)
+		ctx.Warnf("Invalid span dropped: %v", err)
 	}
 	ctx.stats.spans = append(ctx.stats.spans, si)
 }
 
-// AddBuildPlanProvides adds a provided dependency to the build plan.
-func (ctx *Context) AddBuildPlanProvides(provided buildplan.Provided) {
-	ctx.buildPlan.Provides = append(ctx.buildPlan.Provides, provided)
+// InstalledRuntimeVersions returns the list of runtime versions installed during build time.
+func (ctx *Context) InstalledRuntimeVersions() []string {
+	return ctx.installedRuntimeVersions
 }
 
-// AddBuildPlanRequires adds a required dependency to the build plan.
-func (ctx *Context) AddBuildPlanRequires(required buildplan.Required) {
-	ctx.buildPlan.Requires = append(ctx.buildPlan.Requires, required)
-}
-
-// AddBuildpackPlan adds a required dependency to the build plan.
-func (ctx *Context) AddBuildpackPlan(plan buildpackplan.Plan) {
-	ctx.buildpackPlans = append(ctx.buildpackPlans, plan)
+// AddInstalledRuntimeVersion adds a runtime version to the list of installed runtimes. Used
+// for versionless runtimes to provide feedback on the runtime version selected at build time.
+func (ctx *Context) AddInstalledRuntimeVersion(version string) {
+	ctx.installedRuntimeVersions = append(ctx.installedRuntimeVersions, version)
 }
 
 // AddWebProcess adds the given command as the web start process, overwriting any previous web start process.
 func (ctx *Context) AddWebProcess(cmd []string) {
-	current := ctx.processes
-	ctx.processes = layers.Processes{}
+	ctx.AddProcess(WebProcess, cmd, AsDirectProcess(), AsDefaultProcess())
+}
+
+// processOption configures the AddProcess function.
+type processOption func(o *libcnb.Process)
+
+// AsDirectProcess causes the process to be executed directly, i.e. without a shell.
+func AsDirectProcess() processOption {
+	return func(o *libcnb.Process) {
+		o.Command = o.Command[2:]
+	}
+}
+
+// AsDefaultProcess marks the process as the default one for when launcher is invoked without arguments.
+func AsDefaultProcess() processOption {
+	return func(o *libcnb.Process) { o.Default = true }
+}
+
+// AddProcess adds the given command as named process, overwriting any previous process with the same name.
+func (ctx *Context) AddProcess(name string, cmd []string, opts ...processOption) {
+	if name == WebProcess {
+		if devSync, _ := env.IsDevSync(); devSync {
+			buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.DevSyncUsageCounterID).Increment(1)
+			if el, err := ctx.Layer("devsync_env", BuildLayer); err == nil {
+				el.BuildEnvironment.Override(env.DevSyncInitEntrypoint, strings.Join(cmd, " "))
+			}
+		}
+	}
+
+	current := ctx.buildResult.Processes
+	ctx.buildResult.Processes = []libcnb.Process{}
 	for _, p := range current {
-		if p.Type == "web" {
-			ctx.Logf("Warning: overwriting existing web process %q.", p.Command)
+		if p.Type == name {
+			ctx.Logf("Overwriting existing %s process %q.", name, p.Command)
 			continue // Do not add this item back to the ctx.processes; we are overwriting it.
 		}
-		ctx.processes = append(ctx.processes, p)
+		ctx.buildResult.Processes = append(ctx.buildResult.Processes, p)
 	}
-	p := layers.Process{
-		Type:    "web",
-		Command: cmd[0],
-		Direct:  true, // Uses Exec (no shell).
+
+	cmdWithDirectAsFalse := append([]string{"bash", "-c"}, cmd...)
+	p := libcnb.Process{
+		Type:    name,
+		Command: cmdWithDirectAsFalse,
 	}
-	if len(cmd) > 1 {
-		p.Args = cmd[1:]
+	for _, opt := range opts {
+		opt(&p)
 	}
-	ctx.processes = append(ctx.processes, p)
+	if len(p.Command) > 0 && p.Command[0] == "bash" {
+		p.Command = []string{"bash", "-c", strings.Join(p.Command[2:], " ")}
+	}
+	ctx.buildResult.Processes = append(ctx.buildResult.Processes, p)
+
 }
 
 // HTTPStatus returns the status code for a url.
-func (ctx *Context) HTTPStatus(url string) int {
+func (ctx *Context) HTTPStatus(url string) (int, error) {
 	res, err := http.Head(url)
 	if err != nil {
-		ctx.Exit(1, UserErrorf("making a request to %s", url))
+		return 0, InternalErrorf("getting status code for %s: %v", url, err)
 	}
-	return res.StatusCode
+	return res.StatusCode, nil
+}
+
+// AddLabel adds a label to the user's application container.
+func (ctx *Context) AddLabel(key, value string) {
+	if !labelKeyRegexp.MatchString(key) {
+		ctx.Warnf("Label %q does not match %s, skipping.", key, labelKeyRegexpStr)
+		return
+	}
+	if strings.Contains(key, "__") {
+		ctx.Warnf("Label %q must not contain consecutive underscores, skipping.", key)
+		return
+	}
+	key = "google." + strings.ToLower(strings.ReplaceAll(key, "_", "-"))
+	ctx.Logf("Adding image label %s: %s", key, value)
+	ctx.buildResult.Labels = append(ctx.buildResult.Labels, libcnb.Label{Key: key, Value: value})
+}
+
+// SaveLayerMetadataAndEnv iterates over the layer contributors and writes their metadata and environment files to disk.
+//
+// This function is required for the "maker" tool, which runs buildpacks as in-process functions
+// rather than separate binaries. Unlike the standard lifecycle where `libcnb` automatically
+// persists layer data upon process exit, the in-process model requires this manual step to:
+// 1. Finalize layer state (by calling `Contribute`).
+// 2. Persist environment variables to `env`, `env.build`, and `env.launch` directories.
+//
+// This enables the maker tool to read these environment files and propagate changes to
+// subsequent buildpacks, mimicking the standard Cloud Native Buildpacks lifecycle behavior.
+func (ctx *Context) SaveLayerMetadataAndEnv() error {
+	for i, creator := range ctx.layerContributors {
+		l, err := ctx.buildContext.Layers.Layer(creator.Name())
+		if err != nil {
+			return err
+		}
+		l, err = creator.Contribute(l)
+		if err != nil {
+			return err
+		}
+		ctx.buildResult.Layers[i] = l
+
+		for dir, env := range map[string]map[string]string{
+			"env.build":  l.BuildEnvironment,
+			"env":        l.SharedEnvironment,
+			"env.launch": l.LaunchEnvironment,
+		} {
+			if len(env) > 0 {
+				if err := writeEnvDir(filepath.Join(l.Path, dir), env); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// writeEnvDir writes the environment variables to the specified directory.
+// This mimics the behavior of libcnb's internal EnvironmentWriter (which cannot be imported directly).
+func writeEnvDir(dir string, env map[string]string) error {
+	const envFilePerm = 0644
+
+	if err := os.MkdirAll(dir, layerMode); err != nil {
+		return fmt.Errorf("mkdir %s: %w", dir, err)
+	}
+	for k, v := range env {
+		f := filepath.Join(dir, k)
+		if err := os.MkdirAll(filepath.Dir(f), layerMode); err != nil {
+			return fmt.Errorf("mkdir %s: %w", filepath.Dir(f), err)
+		}
+		if err := os.WriteFile(f, []byte(v), envFilePerm); err != nil {
+			return fmt.Errorf("writing %s: %w", f, err)
+		}
+	}
+	return nil
+}
+
+// MainRunner is the main entrypoint for runners.
+func MainRunner(buildpacks map[string]BuildpackFuncs, buildpackID *string, phase *string, buildOpts ...ContextOption) {
+	ctx := NewContext()
+	if *buildpackID == "" {
+		err := buildererror.Errorf(buildererror.StatusInternal, "Usage: runner -buildpack <id> [args...]")
+		ctx.Exit(failStatusCode, err)
+	}
+
+	bp, ok := buildpacks[*buildpackID]
+	if !ok {
+		var ids []string
+		for id := range buildpacks {
+			ids = append(ids, id)
+		}
+		sort.Strings(ids)
+		err := buildererror.Errorf(buildererror.StatusInternal, "Unknown buildpack ID: %s\nRegistered buildpacks are:\n  %s", *buildpackID, strings.Join(ids, "\n  "))
+		ctx.Exit(failStatusCode, err)
+	}
+
+	switch *phase {
+	case "detect":
+		detect(bp.Detect)
+	case "build":
+		build(bp.Build, buildOpts...)
+	default:
+		err := buildererror.Errorf(buildererror.StatusInternal, "Invalid phase %q, expected 'detect' or 'build'", *phase)
+		ctx.Exit(failStatusCode, err)
+	}
 }

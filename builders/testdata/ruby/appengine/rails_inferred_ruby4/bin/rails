@@ -1,0 +1,12 @@
+#!/opt/ruby/bin/ruby
+case ARGV
+when ["server"]
+  require_relative "../myapp.rb"
+  Sinatra::Application.set :run, true
+when ["assets:precompile"]
+  abort "Wrong RAILS_ENV" unless ENV["RAILS_ENV"] == "production"
+  system "mkdir -p public"
+  system "cp -r app/assets public"
+else
+  abort "Error: ARGV was #{ARGV.inspect} but expected [\"server\"]"
+end

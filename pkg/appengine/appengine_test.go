@@ -19,8 +19,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/buildpack"
 )
 
 func TestConfig(t *testing.T) {
@@ -29,15 +29,15 @@ func TestConfig(t *testing.T) {
 		entrypointEnv string
 		runtimeEnv    string
 		mainEnv       string
-		want          Config
+		want          appstart.Config
 	}{
 		{
 			name:          "entrypoint from env",
 			entrypointEnv: "custom entrypoint",
-			want: Config{
+			want: appstart.Config{
 				Runtime: "runtime",
-				Entrypoint: Entrypoint{
-					Type:    EntrypointUser.String(),
+				Entrypoint: appstart.Entrypoint{
+					Type:    appstart.EntrypointUser.String(),
 					Command: "custom entrypoint",
 				},
 				MainExecutable: "",
@@ -46,10 +46,10 @@ func TestConfig(t *testing.T) {
 		{
 			name:       "runtime from env",
 			runtimeEnv: "custom runtime",
-			want: Config{
+			want: appstart.Config{
 				Runtime: "custom runtime",
-				Entrypoint: Entrypoint{
-					Type:    EntrypointGenerated.String(),
+				Entrypoint: appstart.Entrypoint{
+					Type:    appstart.EntrypointGenerated.String(),
 					Command: "generated",
 				},
 				MainExecutable: "",
@@ -59,10 +59,10 @@ func TestConfig(t *testing.T) {
 		{
 			name:    "main from env",
 			mainEnv: "custom main",
-			want: Config{
+			want: appstart.Config{
 				Runtime: "runtime",
-				Entrypoint: Entrypoint{
-					Type:    EntrypointGenerated.String(),
+				Entrypoint: appstart.Entrypoint{
+					Type:    appstart.EntrypointGenerated.String(),
 					Command: "generated",
 				},
 				MainExecutable: "custom main",
@@ -70,21 +70,18 @@ func TestConfig(t *testing.T) {
 		},
 	}
 
-	ctx := gcp.NewContext(buildpack.Info{ID: "id", Version: "version", Name: "name"})
-	eg := func(*gcp.Context) (*Entrypoint, error) {
-		return &Entrypoint{
-			Type:    EntrypointGenerated.String(),
+	ctx := gcp.NewContext()
+	eg := func(*gcp.Context) (*appstart.Entrypoint, error) {
+		return &appstart.Entrypoint{
+			Type:    appstart.EntrypointGenerated.String(),
 			Command: "generated",
 		}, nil
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			cleanup := setEnv("GOOGLE_ENTRYPOINT", tc.entrypointEnv)
-			defer cleanup()
-			cleanup = setEnv("GOOGLE_RUNTIME", tc.runtimeEnv)
-			defer cleanup()
-			cleanup = setEnv("GAE_YAML_MAIN", tc.mainEnv)
-			defer cleanup()
+			setEnv(t, "GOOGLE_ENTRYPOINT", tc.entrypointEnv)
+			setEnv(t, "GOOGLE_RUNTIME", tc.runtimeEnv)
+			setEnv(t, "GAE_YAML_MAIN", tc.mainEnv)
 
 			got, err := getConfig(ctx, "runtime", eg)
 			if err != nil {
@@ -97,17 +94,21 @@ func TestConfig(t *testing.T) {
 	}
 }
 
-func setEnv(key, value string) func() {
-	var cleanup func()
-	if val, ok := os.LookupEnv(key); ok {
-		cleanup = func() {
-			os.Setenv(key, val)
-		}
-	} else {
-		cleanup = func() {
-			os.Unsetenv(key)
-		}
+func setEnv(t *testing.T, name, value string) {
+	t.Helper()
+
+	old, oldPresent := os.LookupEnv(name)
+	if err := os.Setenv(name, value); err != nil {
+		t.Fatal(err)
 	}
-	os.Setenv(key, value)
-	return cleanup
+
+	t.Cleanup(func() {
+		if oldPresent {
+			if err := os.Setenv(name, old); err != nil {
+				t.Fatal(err)
+			}
+		} else if err := os.Unsetenv(name); err != nil {
+			t.Fatal(err)
+		}
+	})
 }

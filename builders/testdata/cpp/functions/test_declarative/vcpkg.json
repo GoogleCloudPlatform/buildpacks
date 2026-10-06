@@ -1,0 +1,7 @@
+{
+  "name": "with-manifest",
+  "version-string": "unversioned",
+  "dependencies": [
+    "functions-framework-cpp"
+  ]
+}

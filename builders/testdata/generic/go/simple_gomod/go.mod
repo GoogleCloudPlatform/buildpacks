@@ -1,2 +1,0 @@
-module example.com/package
-

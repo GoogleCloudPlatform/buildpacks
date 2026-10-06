@@ -1,0 +1,4 @@
+rootProject.name = 'gradle_mono_repo_springboot'
+
+include 'apps:application-one'
+project(':apps:application-one').projectDir = new File('apps/application-one')

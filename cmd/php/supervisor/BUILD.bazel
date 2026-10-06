@@ -1,0 +1,40 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
+
+licenses(["notice"])
+
+buildpack(
+    name = "supervisor",
+    executables = [
+        ":main",
+    ],
+    prefix = "php",
+    version = "0.0.1",
+    visibility = [
+        "//builders:php_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "supervisor_using_runner",
+    buildpack_id = "google.php.supervisor",
+    prefix = "php",
+    version = "0.0.1",
+    visibility = [
+        "//builders:php_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//cmd/php/supervisor/lib",
+        "//pkg/gcpbuildpack",
+    ],
+)

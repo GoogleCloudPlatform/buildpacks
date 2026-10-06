@@ -1,0 +1,4 @@
+bazel-*
+.DS_Store
+.vscode
+.idea

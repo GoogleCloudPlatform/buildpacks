@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,43 +16,10 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/java/entrypoint/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) error {
-	// Always opt in.
-	return nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	executable, err := java.ExecutableJar(ctx)
-	if err != nil {
-		return fmt.Errorf("finding executable jar: %w", err)
-	}
-
-	command := []string{"java", "-jar", executable}
-
-	// Configure the entrypoint and metadata for dev mode.
-	if devmode.Enabled(ctx) {
-		devmode.AddSyncMetadata(ctx, devmode.JavaSyncRules)
-		devmode.AddFileWatcherProcess(ctx, devmode.Config{
-			BuildCmd: []string{".devmode_rebuild.sh"},
-			RunCmd:   command,
-			Ext:      devmode.JavaWatchedExtensions,
-		})
-
-		return nil
-	}
-
-	// Configure the entrypoint for production.
-	ctx.AddWebProcess(command)
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

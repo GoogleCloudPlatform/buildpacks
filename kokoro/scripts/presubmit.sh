@@ -23,26 +23,27 @@ set -euo pipefail
 
 if [[ -v KOKORO_ARTIFACTS_DIR ]]; then
   cd "${KOKORO_ARTIFACTS_DIR}/git/buildpacks"
-  use_bazel.sh latest
-
-  # Move docker storage location to scratch disk so we don't run out of space.
-  echo 'DOCKER_OPTS="${DOCKER_OPTS} --data-root=/tmpfs/docker"' | sudo tee --append /etc/default/docker
-  sudo service docker restart
+  use_bazel.sh 7.4.1
 else
   export KOKORO_ARTIFACTS_DIR="$(mktemp -d)"
   echo "Setting KOKORO_ARTIFACTS_DIR=$KOKORO_ARTIFACTS_DIR"
 fi
+
+export DOCKER_IP_UBUNTU="$(/sbin/ip route|awk '/default/ { print $3 }')"
+echo "DOCKER_IP_UBUNTU: ${DOCKER_IP_UBUNTU}"
+echo "${DOCKER_IP_UBUNTU} localhost" >> /etc/hosts
 
 if [[ ! -v FILTER ]]; then
   echo 'Must specify $FILTER'
   exit 1
 fi
 
-readonly PACK_VERSION="0.12.0"
+readonly PACK_VERSION="0.38.2"
 
 temp="$(mktemp -d)"
-curl -fsSL "https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64" -o "$temp/container-structure-test" && chmod +x "$temp/container-structure-test"
-curl -fsSL "https://github.com/buildpacks/pack/releases/download/v${PACK_VERSION}/pack-v${PACK_VERSION}-linux.tgz" | tar xz -C "$temp"
+CURL_OPTS="--retry 5 -fsSL"
+curl ${CURL_OPTS} "https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64" -o "$temp/container-structure-test" && chmod +x "$temp/container-structure-test"
+curl ${CURL_OPTS} "https://github.com/buildpacks/pack/releases/download/v${PACK_VERSION}/pack-v${PACK_VERSION}-linux.tgz" | tar xz -C "$temp"
 
 # TODO(b/155193275): Build stack images when testing GCP builder instead of pulling.
 
@@ -50,7 +51,7 @@ curl -fsSL "https://github.com/buildpacks/pack/releases/download/v${PACK_VERSION
 set +e
 
 # Filter out non-test targets, such as builder.image rules.
-bazel test --test_output=errors --action_env="PATH=$temp:$PATH" $(bazel query "filter('${FILTER}', kind('.*_test rule', '//builders/...'))")
+bazel test --jobs=3 --test_output=errors --action_env="PATH=$temp:$PATH" $(bazel query "filter('${FILTER}', kind('.*_test rule', '//builders/...'))")
 
 # The exit code of the bazel command should be used to determine test outcome.
 readonly EXIT_CODE="${?}"

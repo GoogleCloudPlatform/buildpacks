@@ -19,11 +19,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 const (
@@ -33,6 +38,61 @@ const (
 	composerLock = "composer.lock"
 	// Vendor is the name of the Composer vendor directory.
 	Vendor = "vendor"
+
+	phpVersionKey     = "php_version"
+	dependencyHashKey = "dependency_hash"
+
+	composerVersionKey = "php"
+
+	// PHPIni is the content of the php.ini config file
+	PHPIni = `
+; Copyright 2022 Google Inc.
+;
+; Licensed under the Apache License, Version 2.0 (the "License");
+; you may not use this file except in compliance with the License.
+; You may obtain a copy of the License at
+;
+;     http://www.apache.org/licenses/LICENSE-2.0
+;
+; Unless required by applicable law or agreed to in writing, software
+; distributed under the License is distributed on an "AS IS" BASIS,
+; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+; See the License for the specific language governing permissions and
+; limitations under the License.
+
+expose_php = Off
+memory_limit = -1
+max_execution_time = 0
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Error handling and logging, based on php.ini-production. ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT
+display_errors = Off
+display_startup_errors = Off
+log_errors = On
+log_errors_max_len = 0
+ignore_repeated_errors = Off
+ignore_repeated_source = Off
+html_errors = Off
+zend.assertions = -1
+;; Enable maximum file sizes up to Front-End limits.
+upload_max_filesize = 32M
+post_max_size = 32M
+`
+
+	// ComposerArgsEnv is an environment variable used to pass custom composer variables.
+	ComposerArgsEnv = "GOOGLE_COMPOSER_ARGS"
+
+	// ComposerVersion is used to determine which version for composer to install.
+	ComposerVersion = "GOOGLE_COMPOSER_VERSION"
+
+	// CustomNginxConfig is an environment variable to pass a custom nginx configuration.
+	CustomNginxConfig = "GOOGLE_CUSTOM_NGINX_CONFIG"
+
+	// NginxServesStaticFiles is an environment variable to configure Nginx to serve static files.
+	NginxServesStaticFiles = "NGINX_SERVES_STATIC_FILES"
 )
 
 type composerScriptsJSON struct {
@@ -45,10 +105,13 @@ type ComposerJSON struct {
 	Scripts composerScriptsJSON `json:"scripts"`
 }
 
-// Metadata represents metadata stored for a dependencies layer.
-type Metadata struct {
-	PHPVersion     string `toml:"php_version"`
-	DependencyHash string `toml:"dependency_hash"`
+// SupportsAppEngineApis is a function that returns true if App Engine API access is enabled
+func SupportsAppEngineApis(ctx *gcp.Context) (bool, error) {
+	if os.Getenv(env.Runtime) == "php55" {
+		return true, nil
+	}
+
+	return appengine.ApisEnabled(ctx)
 }
 
 // ReadComposerJSON returns the deserialized composer.json from the given dir. Empty dir uses the current working directory.
@@ -67,100 +130,221 @@ func ReadComposerJSON(dir string) (*ComposerJSON, error) {
 }
 
 // version returns the installed version of PHP.
-func version(ctx *gcp.Context) string {
-	result := ctx.Exec([]string{"php", "-r", "echo PHP_VERSION;"})
-	return result.Stdout
-}
-
-// checkCache checks whether cached dependencies exist and match.
-func checkCache(ctx *gcp.Context, l *layers.Layer, opts ...cache.Option) (bool, *Metadata, error) {
-	currentPHPVersion := version(ctx)
-	opts = append(opts, cache.WithStrings(currentPHPVersion))
-	currentDependencyHash, err := cache.Hash(ctx, opts...)
+func version(ctx *gcp.Context) (string, error) {
+	result, err := ctx.Exec([]string{"php", "-r", "echo PHP_VERSION;"})
 	if err != nil {
-		return false, nil, fmt.Errorf("computing dependency hash: %v", err)
+		return "", err
 	}
-
-	var meta Metadata
-	ctx.ReadMetadata(l, &meta)
-
-	// Perform install, skipping if the dependency hash matches existing metadata.
-	ctx.Debugf("Current dependency hash: %q", currentDependencyHash)
-	ctx.Debugf("  Cache dependency hash: %q", meta.DependencyHash)
-	if currentDependencyHash == meta.DependencyHash {
-		ctx.Logf("Dependencies cache hit, skipping installation.")
-		return true, &meta, nil
-	}
-
-	if meta.DependencyHash == "" {
-		ctx.Debugf("No metadata found from a previous build, skipping cache.")
-	}
-	ctx.Logf("Installing application dependencies.")
-	// Update the layer metadata.
-	meta.DependencyHash = currentDependencyHash
-	meta.PHPVersion = currentPHPVersion
-
-	return false, &meta, nil
+	return result.Stdout, nil
 }
 
 // composerInstall runs `composer install` with the given flags.
-func composerInstall(ctx *gcp.Context, flags []string) {
+func composerInstall(ctx *gcp.Context, flags []string) error {
 	cmd := append([]string{"composer", "install"}, flags...)
-	ctx.Exec(cmd, gcp.WithUserAttribution)
+	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
+		return err
+	}
+	return nil
+}
+
+// composerDumpAutoload runs `composer dump-autoload` with the given flags.
+func composerDumpAutoload(ctx *gcp.Context, flags []string) error {
+	cmd := append([]string{"composer", "dump-autoload"}, flags...)
+	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
+		return err
+	}
+	return nil
 }
 
 // ComposerInstall runs `composer install`, using the cache iff a lock file is present.
 // It creates a layer, so it returns the layer so that the caller may further modify it
 // if they desire.
-func ComposerInstall(ctx *gcp.Context, cacheTag string) (*layers.Layer, error) {
-	// We don't install dev dependencies (i.e. we pass --no-dev to composer) because doing so has caused
-	// problems for customers in the past. For more information see these links:
-	//   https://github.com/GoogleCloudPlatform/php-docs-samples/issues/736
-	//   https://github.com/GoogleCloudPlatform/runtimes-common/pull/763
-	//   https://github.com/GoogleCloudPlatform/runtimes-common/commit/6c4970f609d80f9436ac58ae272cfcc6bcd57143
-	flags := []string{"--no-dev", "--no-progress", "--no-suggest", "--no-interaction"}
+func ComposerInstall(ctx *gcp.Context, cacheTag string) (*libcnb.Layer, error) {
+	l, err := ctx.Layer("composer", gcp.CacheLayer)
+	if err != nil {
+		return nil, fmt.Errorf("creating layer: %w", err)
+	}
 
-	ctx.RemoveAll(Vendor)
-	l := ctx.Layer("composer")
-	layerVendor := filepath.Join(l.Root, Vendor)
-
-	// If there's no composer.lock then don't attempt to cache. We'd have to cache using composer.json,
-	// which could result in outdated dependencies if the version constraints in composer.json resolve
-	// to newer versions in the future.
-	if !ctx.FileExists(composerLock) {
-		ctx.Logf("*** Improve build performance by generating and committing %s.", composerLock)
-		composerInstall(ctx, flags)
+	if cap := ctx.Capability(ComposerInstallerCapability); cap != nil {
+		i, ok := cap.(ComposerInstaller)
+		if !ok {
+			return nil, gcp.InternalErrorf("capability %q must implement ComposerInstaller", ComposerInstallerCapability)
+		}
+		if err := i.Install(ctx, l, ""); err != nil {
+			return nil, err
+		}
 		return l, nil
 	}
 
-	cached, meta, err := checkCache(ctx, l, cache.WithStrings(composerLock))
-	if err != nil {
-		return l, fmt.Errorf("checking cache: %w", err)
-	}
-	if cached {
-		ctx.CacheHit(cacheTag)
-
-		// PHP expects the vendor/ directory to be in the application directory.
-		ctx.Exec([]string{"cp", "--archive", layerVendor, Vendor}, gcp.WithUserTimingAttribution)
+	var flags []string
+	if composerArgs := os.Getenv(ComposerArgsEnv); composerArgs != "" {
+		flags = strings.Split(composerArgs, " ")
 	} else {
-		ctx.CacheMiss(cacheTag)
+		// We don't install dev dependencies (i.e. we pass --no-dev to composer) because doing so has caused
+		// problems for customers in the past. For more information see these links:
+		//   https://github.com/GoogleCloudPlatform/php-docs-samples/issues/736
+		//   https://github.com/GoogleCloudPlatform/runtimes-common/pull/763
+		//   https://github.com/GoogleCloudPlatform/runtimes-common/commit/6c4970f609d80f9436ac58ae272cfcc6bcd57143
+		flags = []string{"--no-dev", "--no-progress", "--no-interaction", "--optimize-autoloader"}
+	}
+
+	if err := ctx.RemoveAll(Vendor); err != nil {
+		return nil, err
+	}
+	layerVendor := filepath.Join(l.Path, Vendor)
+
+	composerLockExists, err := ctx.FileExists(composerLock)
+	if err != nil {
+		return nil, err
+	}
+	// If there's no composer.lock then don't attempt to cache. We'd have to cache using composer.json,
+	// which could result in outdated dependencies if the version constraints in composer.json resolve
+	// to newer versions in the future.
+	if !composerLockExists {
+		ctx.Logf("*** Improve build performance by generating and committing %s.", composerLock)
+		if err := composerInstall(ctx, flags); err != nil {
+			return nil, err
+		}
+		return l, nil
+	}
+
+	currentPHPVersion, err := version(ctx)
+	if err != nil {
+		return nil, err
+	}
+	hash, cached, err := cache.HashAndCheck(ctx, l, dependencyHashKey, cache.WithFiles(composerJSON, composerLock), cache.WithStrings(currentPHPVersion))
+	if err != nil {
+		return nil, err
+	}
+
+	if cached {
+		// PHP expects the vendor/ directory to be in the application directory.
+		if _, err := ctx.Exec([]string{"cp", "--archive", layerVendor, Vendor}, gcp.WithUserTimingAttribution); err != nil {
+			return nil, err
+		}
+		// Why re-generate the autoload files? Since these autoload files include list of all PSR auto-loaded files (including local workspace files)
+		// This will cause issues for files added/removed since the last cache as these won't be within the classmap
+		ctx.Logf("Re-generating autoload files.")
+		if err := composerDumpAutoload(ctx, []string{"--optimize"}); err != nil {
+			return nil, err
+		}
+	} else {
+		ctx.Logf("Installing application dependencies.")
 		// Clear layer so we don't end up with outdated dependencies (e.g. something was removed from composer.json).
-		ctx.ClearLayer(l)
-		composerInstall(ctx, flags)
+		if err := ctx.ClearLayer(l); err != nil {
+			return nil, fmt.Errorf("clearing layer %q: %w", l.Name, err)
+		}
+		if err := composerInstall(ctx, flags); err != nil {
+			return nil, err
+		}
+
+		// Update the layer metadata.
+		cache.Add(ctx, l, dependencyHashKey, hash)
 
 		// Ensure vendor exists even if no dependencies were installed.
-		ctx.MkdirAll(Vendor, 0755)
-		ctx.Exec([]string{"cp", "--archive", Vendor, layerVendor}, gcp.WithUserTimingAttribution)
+		if err := ctx.MkdirAll(Vendor, 0755); err != nil {
+			return nil, err
+		}
+		if _, err := ctx.Exec([]string{"cp", "--archive", Vendor, layerVendor}, gcp.WithUserTimingAttribution); err != nil {
+			return nil, err
+		}
 	}
 
-	ctx.WriteMetadata(l, &meta, layers.Cache)
 	return l, nil
 }
 
 // ComposerRequire runs `composer require` with the given packages. It expects packages to
 // be specified as `composer require` would expect them on the command line, for example
 // "myorg/mypackage:^0.7". It does no caching.
-func ComposerRequire(ctx *gcp.Context, packages []string) {
-	cmd := append([]string{"composer", "require", "--no-progress", "--no-suggest", "--no-interaction"}, packages...)
-	ctx.Exec(cmd, gcp.WithUserAttribution)
+func ComposerRequire(ctx *gcp.Context, packages []string) error {
+	cmd := append([]string{"composer", "require", "--no-progress", "--no-interaction"}, packages...)
+	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution); err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetInstallableRuntime returns the installable runtime prefix.
+func GetInstallableRuntime(ctx *gcp.Context) runtime.InstallableRuntime {
+	return runtime.PHP
+}
+
+// ExtractVersion extracts the php version from the environment, composer.json.
+func ExtractVersion(ctx *gcp.Context) (string, error) {
+	// get the runtime version from env.RuntimeVersion
+	if v := os.Getenv(env.RuntimeVersion); v != "" {
+		ctx.Logf("Using runtime version from %s: %s", env.RuntimeVersion, v)
+		return v, nil
+	}
+
+	// get the runtime version from the composer.json file
+	composerFilePath := filepath.Join(ctx.ApplicationRoot(), composerJSON)
+	composerFileExists, err := ctx.FileExists(composerFilePath)
+	if err != nil {
+		return "", err
+	}
+	if composerFileExists {
+		v, err := composerFileVersion(ctx)
+		if err != nil {
+			return "", err
+		}
+		if v != "" {
+			ctx.Logf("Using php version from %s %s: %s", composerJSON, composerVersionKey, v)
+			return v, nil
+		}
+	}
+
+	return "", nil
+}
+
+// composerFileVersion extracts the version number from composer.json. returns an error in
+// case the version cannot be read.
+func composerFileVersion(ctx *gcp.Context) (string, error) {
+	cjs, err := ReadComposerJSON(ctx.ApplicationRoot())
+	if err != nil {
+		return "", err
+	}
+
+	// check if composer json has specified php version.
+	v, ok := cjs.Require[composerVersionKey]
+	if !ok {
+		ctx.Logf("composer.json exists but does not specify a php version")
+		return "", nil
+	}
+
+	return v, nil
+}
+
+// ComposerInstallerCapability is the capability key for the maker Composer installer.
+const ComposerInstallerCapability = "php.ComposerInstaller"
+
+// ComposerInstaller is an interface for installing Composer.
+type ComposerInstaller interface {
+	Install(ctx *gcp.Context, l *libcnb.Layer, version string) error
+}
+
+// MakerComposerInstaller implements the ComposerInstaller interface for the maker tool.
+type MakerComposerInstaller struct{}
+
+// Install does nothing, assuming Composer is already present in the environment.
+func (i MakerComposerInstaller) Install(ctx *gcp.Context, l *libcnb.Layer, version string) error {
+	ctx.Logf("Composer is assumed to be installed by the user. Skipping installation.")
+	return nil
+}
+
+// WebConfigCapability is the capability key for the maker Webconfig configurator.
+const WebConfigCapability = "php.WebConfigCapability"
+
+// WebConfigurator is an interface for configuring PHP web processes.
+type WebConfigurator interface {
+	Configure(ctx *gcp.Context) error
+}
+
+// MakerWebConfigurator implements the WebConfigurator interface for the maker tool.
+type MakerWebConfigurator struct{}
+
+// Configure adds a clean default built-in server process for PHP.
+func (c MakerWebConfigurator) Configure(ctx *gcp.Context) error {
+	ctx.AddWebProcess([]string{"bash", "-c", "php -S 0.0.0.0:8080 index.php"})
+	return nil
 }

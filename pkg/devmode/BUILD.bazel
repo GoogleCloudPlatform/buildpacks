@@ -7,7 +7,6 @@ go_library(
     name = "devmode",
     srcs = [
         "devmode.go",
-        "dotnet.go",
         "go.go",
         "java.go",
         "nodejs.go",
@@ -19,13 +18,12 @@ go_library(
         "//cmd/java:__subpackages__",
         "//cmd/nodejs:__subpackages__",
         "//pkg/clearsource:__subpackages__",
-        "//pkg/golang:__subpackages__",
+        "//pkg/dotnet:__subpackages__",
     ],
     deps = [
         "//pkg/env",
         "//pkg/gcpbuildpack",
-        "@com_github_buildpack_libbuildpack//buildpackplan:go_default_library",
-        "@com_github_buildpack_libbuildpack//layers:go_default_library",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
     ],
 )
 
@@ -37,7 +35,6 @@ go_test(
     rundir = ".",
     deps = [
         "//pkg/gcpbuildpack",
-        "@com_github_buildpack_libbuildpack//buildpack:go_default_library",
-        "@com_github_buildpack_libbuildpack//layers:go_default_library",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
     ],
 )

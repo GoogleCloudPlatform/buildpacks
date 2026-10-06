@@ -1,0 +1,380 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Binary worker implements an HTTP server that loads and runs user's code
+// on incoming HTTP requests.
+// This worker compiles along with the user's code statically.
+package main
+
+import (
+    "context"
+    "encoding/json"
+    "fmt"
+    "io/ioutil"
+    "log"
+    "net/http"
+    "os"
+    "reflect"
+    "runtime/debug"
+    "strings"
+    "time"
+    userfunction "{{ .Package }}"
+)
+
+// legacyEvent represents a legacy event that triggered the execution of a background function.
+type legacyEvent struct {
+    // EventID is the unique ID of the event.
+    EventID string `json:"eventId"`
+
+    // Timestamp holds the timestamp the event was created.
+    // The timestamp is represented as an ISO 8601 formatted string.
+    Timestamp string `json:"timestamp"`
+
+    // EventType specifies the event type.
+    EventType string `json:"eventType"`
+
+    // Resource specifies the resource that emitted the event.
+    Resource string `json:"resource"`
+
+    // Data contains the event data.
+    // The contents depend on the resource that generated the event.
+    Data interface{} `json:"data"`
+}
+
+// event represents the event that triggered the execution of a background function.
+type event struct {
+    // Context specifies the contex of the event.
+    Context eventContext `json:"context"`
+
+    // Data contains the event data.
+    // The contents depend on the resource that generated the event.
+    Data interface{} `json:"data"`
+}
+
+// eventContext represents the context part of the event that triggered the execution
+// of a background function.
+// This is an input structure that needs to be compatible with what Supervisor sends.
+type eventContext struct {
+    EventID   string   `json:"eventId"`
+    Timestamp string   `json:"timestamp"`
+    EventType string   `json:"eventType"`
+    Resource  resource `json:"resource"`
+}
+
+// resource represents the resource part of the event that triggered the execution
+// of a background function.
+// This is an input structure that needs to be compatible with what Supervisor sends.
+type resource struct {
+    Service string `json:"service"`
+    Name    string `json:"name"`
+    Type    string `json:"type"`
+}
+
+// Metadata is a struct storing Google Cloud Functions metadata.
+// This is an output strucutre that needs to be compatible with cloud.google.com/go/functions/metadata.
+type Metadata struct {
+    EventID   string    `json:"eventId"`
+    Timestamp time.Time `json:"timestamp"`
+    EventType string    `json:"eventType"`
+    Resource  Resource  `json:"resource"`
+}
+
+// Resource is a struct used as a field of Metadata to store Google Cloud Functions resource metadata.
+// This is an output strucutre that needs to be compatible with cloud.google.com/go/functions/metadata.
+type Resource struct {
+    Service string `json:"service"`
+    Name    string `json:"name"`
+    Type    string `json:"type"`
+}
+
+// GetMetadataAndDataFromBody parses an http request body and extracts GCF-specific metadata and event data
+func GetMetadataAndDataFromBody(body []byte) (Metadata, interface{}, error) {
+    var legEv legacyEvent
+    var ev event
+    if err := json.Unmarshal(body, &legEv); err != nil {
+        return Metadata{}, nil, err
+    }
+    if err := json.Unmarshal(body, &ev); err != nil {
+        return Metadata{}, nil, err
+    }
+
+    var md Metadata
+    var data interface{}
+    emptyContext := eventContext{}
+    if ev.Context == emptyContext {
+        // This is a legacy event
+        md = Metadata{
+            EventID:   legEv.EventID,
+            EventType: legEv.EventType,
+            Resource: Resource{
+                Name: legEv.Resource,
+            },
+        }
+        parsedTime, err := time.Parse(time.RFC3339Nano, legEv.Timestamp)
+        if err == nil {
+            md.Timestamp = parsedTime
+        }
+
+        data = legEv.Data
+    } else {
+        // This is a regular event
+        md = Metadata{
+            EventID:   ev.Context.EventID,
+            EventType: ev.Context.EventType,
+            Resource: Resource{
+                Service: ev.Context.Resource.Service,
+                Name:    ev.Context.Resource.Name,
+                Type:    ev.Context.Resource.Type,
+            },
+        }
+        parsedTime, err := time.Parse(time.RFC3339Nano, ev.Context.Timestamp)
+        if err == nil {
+            md.Timestamp = parsedTime
+        }
+        data = ev.Data
+    }
+
+    return md, data, nil
+}
+
+const (
+    httpTrigger          = "HTTP_TRIGGER"
+    executePrefix        = "/execute"
+    functionStatusHeader = "X-Google-Status"
+    crashStatus          = "crash"
+    loadErrorStatus      = "load_error"
+    errorStatus          = "error"
+    defaultEntryPoint    = "F"
+)
+
+// workerPort can also be overriden by the environment variable
+// 'X_GOOGLE_WORKER_PORT', which takes precedence over 'PORT'.
+var workerPort = os.Getenv("PORT")
+var entryPoint = os.Getenv("X_GOOGLE_ENTRY_POINT")
+var functionTriggerType = os.Getenv("X_GOOGLE_FUNCTION_TRIGGER_TYPE")
+
+// loadedHTTPFunction stores the loaded user function for HTTP trigger globally.
+// If this is not successfully loaded with the user function, it writes an
+// error about the function signature type by default.
+var loadedHTTPFunction func(http.ResponseWriter, *http.Request)
+
+func checkServer(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintf(w, "OK")
+}
+
+// writeSignatureErrorHTTPFunc is a function that matches the HTTP function
+// stub that will write an error about the user's function signature type.
+func writeSignatureErrorHTTPFunc(w http.ResponseWriter, r *http.Request) {
+    var handler interface{} = userfunction.{{ .Target }}
+    entryFunction := defaultEntryPoint
+    if ep := entryPoint; ep != "" {
+        entryFunction = ep
+    }
+    w.Header().Set(functionStatusHeader, loadErrorStatus)
+    w.WriteHeader(http.StatusInternalServerError)
+    fmt.Fprintf(w, "func %s is of the type %s, expected func(http.ResponseWriter, *http.Request)", entryFunction, reflect.TypeOf(handler))
+}
+
+func loadFunction(w http.ResponseWriter, r *http.Request) {
+    var handler interface{} = userfunction.{{ .Target }}
+    var ok bool
+
+    if functionTriggerType == httpTrigger {
+        loadedHTTPFunction, ok = handler.(func(http.ResponseWriter, *http.Request))
+        if !ok {
+            writeSignatureErrorHTTPFunc(w, r)
+            return
+        }
+    } else {
+        ft := reflect.TypeOf(handler)
+        if ft.NumIn() != 2 {
+            w.Header().Set(functionStatusHeader, loadErrorStatus)
+            w.WriteHeader(http.StatusInternalServerError)
+            fmt.Fprintf(w, "expected function to have two parameters")
+            return
+        }
+        var err error
+        errorType := reflect.TypeOf(&err).Elem()
+        if ft.NumOut() != 1 || !ft.Out(0).AssignableTo(errorType) {
+            w.Header().Set(functionStatusHeader, loadErrorStatus)
+            w.WriteHeader(http.StatusInternalServerError)
+            fmt.Fprintf(w, "expected function to return only an error")
+            return
+        }
+        ctx := r.Context()
+        ctxType := reflect.TypeOf(&ctx).Elem()
+        if !ctxType.AssignableTo(ft.In(0)) {
+            w.Header().Set(functionStatusHeader, loadErrorStatus)
+            w.WriteHeader(http.StatusInternalServerError)
+            fmt.Fprintf(w, "expected first parameter to be context.Context")
+            return
+        }
+    }
+
+    fmt.Fprintf(w, "User function is ready")
+}
+
+type gcfContext struct {
+    context.Context // base
+
+    meta json.RawMessage
+}
+
+func (c gcfContext) Value(key interface{}) interface{} {
+    type gcfKey interface {
+        GCFContextKey() string
+    }
+
+    if v, ok := key.(gcfKey); ok {
+        if v.GCFContextKey() == "metadata" {
+            return c.meta
+        }
+    }
+
+    return c.Context.Value(key)
+}
+
+func executeFunction(w http.ResponseWriter, r *http.Request) {
+    // TODO(b/111823046): Remove below after fix in Titanium.
+    // Force flush of logs after every function trigger.
+    defer fmt.Println()
+    defer fmt.Fprintln(os.Stderr)
+
+    defer func() {
+        if r := recover(); r != nil {
+            reportUserFunctionError(w, crashStatus, fmt.Sprintf("Function panic: %v\n\n%s", r, debug.Stack()))
+        }
+    }()
+
+    adjustUserRequest(r)
+
+    if functionTriggerType == httpTrigger {
+        loadedHTTPFunction(w, r)
+    } else {
+        if r.Body == nil {
+            w.Header().Set(functionStatusHeader, crashStatus)
+            w.WriteHeader(http.StatusBadRequest)
+            fmt.Fprintf(w, "Request body not found")
+            fmt.Fprintf(os.Stderr, "Could not read request body")
+            return
+        }
+
+        var err error
+        body, err := ioutil.ReadAll(r.Body)
+        if err != nil {
+            w.Header().Set(functionStatusHeader, crashStatus)
+            w.WriteHeader(http.StatusUnsupportedMediaType)
+            fmt.Fprintf(os.Stderr, "Could not read request body: %s", err.Error())
+            fmt.Fprintf(w, "Could not read request body: %s", err.Error())
+            return
+        }
+
+        md, data, err := GetMetadataAndDataFromBody(body)
+        if err != nil {
+            w.Header().Set(functionStatusHeader, crashStatus)
+            w.WriteHeader(http.StatusUnsupportedMediaType)
+            fmt.Fprintf(os.Stderr, "Body cannot be parsed to event type: %s", err.Error())
+            fmt.Fprintf(w, "Body cannot be parsed to event type: %s", err.Error())
+            return
+        }
+
+        mdJSON, err := json.Marshal(md)
+        if err != nil {
+            w.Header().Set(functionStatusHeader, crashStatus)
+            w.WriteHeader(http.StatusUnsupportedMediaType)
+            fmt.Fprintf(os.Stderr, "Error while converting event metadata: %s", err.Error())
+            fmt.Fprintf(w, "Error while converting event metadata: %s", err.Error())
+            return
+        }
+
+        ctx := gcfContext{
+            r.Context(),
+            mdJSON,
+        }
+
+        dataMap := map[string]interface{}{}
+        dataMap, ok := data.(map[string]interface{})
+        if !ok {
+            fmt.Printf("event data could not be cast to map[string]interface{}")
+        }
+
+        dataJSON, err := json.Marshal(dataMap)
+        var handler interface{} = userfunction.{{ .Target }}
+        ft := reflect.TypeOf(handler)
+        argVal := reflect.New(ft.In(1))
+
+        err = json.Unmarshal(dataJSON, argVal.Interface())
+        if err != nil {
+            w.Header().Set(functionStatusHeader, crashStatus)
+            w.WriteHeader(http.StatusUnsupportedMediaType)
+            fmt.Fprintf(os.Stderr, "Error while converting event data: %s", err.Error())
+            fmt.Fprintf(w, "Error while converting event data: %s", err.Error())
+            return
+        }
+
+        fv := reflect.ValueOf(handler)
+        userFunErr := fv.Call([]reflect.Value{
+            reflect.ValueOf(ctx),
+            argVal.Elem(),
+        })
+
+        if userFunErr[0].Interface() != nil {
+            reportUserFunctionError(w, errorStatus, fmt.Sprintf("Function error: %v\n\n%s", userFunErr[0], debug.Stack()))
+        }
+    }
+}
+
+func reportUserFunctionError(w http.ResponseWriter, status string, errorMessage string) {
+    // Ensure logs end with a newline otherwise they are grouped incorrectly in Stackdriver.
+    if !strings.HasSuffix(errorMessage, "\n") {
+        errorMessage += "\n"
+    }
+    fmt.Fprintf(os.Stderr, errorMessage)
+
+    // Flush stdout and stderr. This must be done before writing the HTTP response
+    // in order for all logs to appear in Stackdriver.
+    fmt.Println()
+    fmt.Fprintln(os.Stderr)
+
+    w.Header().Set(functionStatusHeader, status)
+    w.WriteHeader(http.StatusInternalServerError)
+    fmt.Fprintf(w, errorMessage)
+}
+
+func adjustUserRequest(r *http.Request) {
+    r.URL.Path = strings.TrimPrefix(r.URL.Path, executePrefix)
+    r.URL.RawPath = strings.TrimPrefix(r.URL.RawPath, executePrefix)
+}
+
+func main() {
+    if functionTriggerType == httpTrigger {
+        var handler interface{} = userfunction.{{ .Target }}
+        loadedHTTPFunction = writeSignatureErrorHTTPFunc
+        if f, ok := handler.(func(http.ResponseWriter, *http.Request)); ok {
+            // load the global used to execute user function, though it
+            // will only be fully validated if the '/load' endpoint is called.
+            loadedHTTPFunction = f
+        }
+    }
+    if overridePort := os.Getenv("X_GOOGLE_WORKER_PORT"); overridePort != "" {
+        workerPort = overridePort
+    }
+    http.HandleFunc("/check", checkServer)
+    http.HandleFunc("/load", loadFunction)
+    // Match everything else.
+    http.HandleFunc("/", executeFunction)
+    if err := http.ListenAndServe(":"+workerPort, nil); err != nil {
+        log.Fatalf("Error starting the Worker server for Go: %v\n", err)
+    }
+}

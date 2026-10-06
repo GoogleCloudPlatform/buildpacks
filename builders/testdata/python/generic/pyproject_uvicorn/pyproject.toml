@@ -1,0 +1,9 @@
+[project]
+name = "pyproject-uvicorn"
+version = "0.1.0"
+description = ""
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.111.0",
+    "uvicorn>=0.30.1",
+]

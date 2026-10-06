@@ -1,2 +1,0 @@
-flask==1.1.1
-hatch # this package relies on pip

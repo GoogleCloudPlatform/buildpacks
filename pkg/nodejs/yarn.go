@@ -15,22 +15,226 @@
 package nodejs
 
 import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/fetch"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/tooling"
+	"github.com/buildpacks/libcnb/v2"
+	"github.com/Masterminds/semver"
+	"gopkg.in/yaml.v2"
+)
+
+var (
+	yarnURL    = "https://yarnpkg.com/downloads/%[1]s/yarn-v%[1]s.tar.gz"
+	yarn2URL   = "https://repo.yarnpkg.com/%s/packages/yarnpkg-cli/bin/yarn.js"
+	version2   = semver.MustParse("2.0.0")
+	versionKey = "version"
 )
 
 const (
 	// YarnLock is the name of the yarn lock file.
 	YarnLock = "yarn.lock"
+
+	// YarnInstallerCapability is the capability key for the YarnInstaller.
+	YarnInstallerCapability = "nodejs.YarnInstaller"
+
+	// Yarn1ModuleInstallerCapability is the capability key for the Yarn1ModuleInstaller.
+	Yarn1ModuleInstallerCapability = "nodejs.Yarn1ModuleInstaller"
 )
 
-// LockfileFlag returns an appropriate lockfile handling flag, including empty string.
-func LockfileFlag(ctx *gcp.Context) string {
-	// HACK: For backwards compatibility on App Engine Node.js 10, skip using `--frozen-lockfile`.
-	if strings.HasPrefix(strings.TrimSpace(NodeVersion(ctx)), "v10.") {
-		return ""
+// yarnInstaller is an interface for installing Yarn.
+type yarnInstaller interface {
+	InstallYarn(ctx *gcp.Context, yarnLayer *libcnb.Layer, pjs *PackageJSON) error
+}
+
+// MakerYarn1ModuleInstaller implements the Yarn1ModuleInstaller interface for the maker tool.
+//
+// Example:
+//
+//	type moduleInstaller interface {
+//		InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error
+//	}
+//
+//	if cap := ctx.Capability(Yarn1ModuleInstallerCapability); cap != nil {
+//		return cap.(moduleInstaller).InstallModules(ctx, pjs)
+//	}
+type MakerYarn1ModuleInstaller struct{}
+
+// InstallModules installs modules using yarn install in the application root.
+func (i MakerYarn1ModuleInstaller) InstallModules(ctx *gcp.Context, pjs *PackageJSON) error {
+	cmd := []string{"yarn", "install", "--non-interactive"}
+	freezeLockfile, err := UseFrozenLockfile(ctx)
+	if err != nil {
+		return err
+	}
+	if freezeLockfile {
+		cmd = append(cmd, "--frozen-lockfile")
+	}
+	_, err = ctx.Exec(cmd, gcp.WithUserAttribution)
+	return err
+}
+
+type yarn2Lock struct {
+	Metadata struct {
+		Version string `yaml:"version"`
+	} `yaml:"__metadata"`
+}
+
+// UseFrozenLockfile returns an true if the environment supporte Yarn's --frozen-lockfile flag. This
+// is a hack to maintain backwards compatibility on App Engine Node.js 10 and older.
+func UseFrozenLockfile(ctx *gcp.Context) (bool, error) {
+	if devSync, _ := env.IsDevSync(); devSync {
+		return false, nil
+	}
+	oldNode, err := isPreNode11(ctx)
+	return !oldNode, err
+}
+
+// IsYarn2 detects whether the given lockfile was generated with Yarn 2.
+func IsYarn2(rootDir string) (bool, error) {
+	path := filepath.Join(rootDir, YarnLock)
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return false, nil
+	}
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return false, gcp.InternalErrorf("reading yarn.lock: %v", err)
 	}
 
-	return "--frozen-lockfile"
+	var manifest yarn2Lock
+
+	if err := yaml.Unmarshal(data, &manifest); err != nil {
+		// In Yarn1, yarn.lock was not necessarily valid YAML.
+		return false, nil
+	}
+	// After Yarn2, yarn.lock files contain a __metadata.version field.
+	return manifest.Metadata.Version != "", nil
+}
+
+// HasYarnWorkspacePlugin returns true if this project has Yarn2's workspaces plugin installed.
+func HasYarnWorkspacePlugin(ctx *gcp.Context) (bool, error) {
+	res, err := ctx.Exec([]string{"yarn", "plugin", "runtime"})
+	if err != nil {
+		return false, err
+	}
+	return strings.Contains(res.Stdout, "plugin-workspace-tools"), nil
+}
+
+// detectYarnVersion determines the version of Yarn that should be installed in a Node.js project
+// by examining the "engines.yarn" and "packageManager" constraints specified in package.json and comparing it against all
+// published versions in the NPM registry, if both exist "engines.yarn" will take precedence.
+// If the package.json does not include "engines.yarn" or "packageManager" it
+// returns the latest stable version available.
+// TODO(b/338411091) create a shared packagejson util library and refactor out a generic detect
+// package manager version function.
+func detectYarnVersion(ctx *gcp.Context, pjs *PackageJSON) (string, error) {
+	if pjs == nil || (pjs.Engines.Yarn == "" && pjs.PackageManager == "") {
+		version, err := tooling.ResolveToolVersion("nodejs", "yarn", os.Getenv(env.RuntimeVersion), "")
+		if err == nil && version != "" {
+			return version, nil
+		}
+		ctx.Warnf("Could not resolve pinned yarn version, falling back to latest: %v", err)
+
+		version, err = latestPackageVersion("yarn")
+		if err != nil {
+			return "", gcp.InternalErrorf("fetching available Yarn versions: %w", err)
+		}
+		return version, nil
+	}
+	var requestedVersion string
+	if pjs.Engines.Yarn != "" {
+		requestedVersion = pjs.Engines.Yarn
+	} else {
+		packageManagerName, packageManagerVersion, err := parsePackageManager(pjs.PackageManager)
+		if err != nil {
+			return "", err
+		}
+		if packageManagerName != "yarn" {
+			return "", gcp.UserErrorf("yarn was detected but %s is set in the packageManager package.json field.", packageManagerName)
+		}
+		requestedVersion = packageManagerVersion
+	}
+	version, err := resolvePackageVersion("yarn", requestedVersion)
+	if err != nil {
+		return "", gcp.UserErrorf("finding Yarn version that matched %q: %w", requestedVersion, err)
+	}
+	return version, nil
+}
+
+// InstallYarnLayer installs Yarn in the given layer if it is not already cached.
+func InstallYarnLayer(ctx *gcp.Context, yarnLayer *libcnb.Layer, pjs *PackageJSON) error {
+	if ctx.IsDisabled(YarnInstallerCapability) {
+		ctx.Logf("YarnInstaller capability is disabled. Skipping installation.")
+		return nil
+	}
+
+	if cap := ctx.Capability(YarnInstallerCapability); cap != nil {
+		return cap.(yarnInstaller).InstallYarn(ctx, yarnLayer, pjs)
+	}
+
+	layerName := yarnLayer.Name
+	version, err := detectYarnVersion(ctx, pjs)
+	if err != nil {
+		return err
+	}
+
+	// Check the metadata in the cache layer to determine if we need to proceed.
+	metaVersion := ctx.GetMetadata(yarnLayer, versionKey)
+	if version == metaVersion {
+		ctx.CacheHit(layerName)
+		ctx.Logf("Yarn cache hit: %q, %q, skipping installation.", version, metaVersion)
+	} else {
+		ctx.CacheMiss(layerName)
+		if err := ctx.ClearLayer(yarnLayer); err != nil {
+			return fmt.Errorf("clearing layer %q: %w", layerName, err)
+		}
+		// Download and install yarn in layer.
+		ctx.Logf("Installing Yarn v%s", version)
+		if err := InstallYarn(ctx, yarnLayer.Path, version); err != nil {
+			return err
+		}
+	}
+
+	// Store layer flags and metadata.
+	ctx.SetMetadata(yarnLayer, versionKey, version)
+	// We need to update the path here to ensure the version we just installed take precendence over
+	// anything pre-installed in the base image.
+	if err := ctx.Setenv("PATH", filepath.Join(yarnLayer.Path, "bin")+":"+os.Getenv("PATH")); err != nil {
+		return err
+	}
+	return nil
+}
+
+// InstallYarn downloads a given version of Yarn into the provided directory.
+func InstallYarn(ctx *gcp.Context, dir, version string) error {
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		gcp.UserErrorf("parsing yarn version %q: %v", version, err)
+	}
+	if v.LessThan(version2) {
+		archiveURL := fmt.Sprintf(yarnURL, version)
+		stripComponents := 1
+		return fetch.Tarball(archiveURL, dir, stripComponents)
+	}
+
+	yarnPath := filepath.Join(dir, "bin", "yarn")
+	if err = os.MkdirAll(filepath.Dir(yarnPath), 0755); err != nil {
+		return gcp.InternalErrorf("creating directory %q: %v", filepath.Dir(yarnPath), err)
+	}
+	out, err := os.OpenFile(yarnPath, os.O_CREATE|os.O_RDWR, os.FileMode(0777))
+	if err != nil {
+		return gcp.InternalErrorf("creating file %q: %v", yarnPath, err)
+	}
+	defer out.Close()
+	binURL := fmt.Sprintf(yarn2URL, version)
+	if err = fetch.GetURL(binURL, out); err != nil {
+		return err
+	}
+	return nil
 }

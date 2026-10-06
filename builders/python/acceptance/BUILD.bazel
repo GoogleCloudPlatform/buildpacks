@@ -1,0 +1,117 @@
+load("//internal/acceptance:args.bzl", "get_runtime_to_builder_map", "languageargs")
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
+load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions")
+load(":runtime.bzl", "gae_runtimes", "gcf_runtimes", "version_to_stack")
+
+licenses(["notice"])
+
+exports_files([
+    "config.yaml",
+    "args.bzl",
+])
+
+RUNTIME_TO_BUILDER_MAP = get_runtime_to_builder_map(version_to_stack, "python")
+
+create_acceptance_versions_dict_file(
+    name = "gen_acceptance_targets_list",
+    file = "acceptance_targets.dict",
+    flex_runtime_versions = flex_runtime_versions,
+    gae_runtime_versions = gae_runtime_versions,
+    gcf_runtime_versions = gcf_runtime_versions,
+    gcp_runtime_versions = gcp_runtime_versions,
+)
+
+test_suite(
+    name = "acceptance_test",
+    tests = [
+        "flex_test",
+        "gae_test",
+        "gcf_test",
+        "gcp_test",
+    ],
+)
+
+acceptance_test_suite(
+    name = "gcp_test",
+    srcs = [
+        "gcp_test.go",
+    ],
+    builder = "//builders/python:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/python:generic",
+    versions = gcp_runtime_versions,
+)
+
+acceptance_test_suite(
+    name = "gae_test",
+    srcs = [
+        "gae_test.go",
+    ],
+    argsmap = languageargs(gae_runtimes, version_to_stack),
+    builder = "//builders/python:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/python:appengine",
+    versions = gae_runtime_versions,
+)
+
+acceptance_test_suite(
+    name = "gcf_test",
+    srcs = [
+        "gcf_test.go",
+    ],
+    argsmap = languageargs(gcf_runtimes, version_to_stack),
+    builder = "//builders/python:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/python:functions",
+    versions = gcf_runtime_versions,
+)
+
+acceptance_test_suite(
+    name = "flex_test",
+    srcs = ["flex_test.go"],
+    builder = "//builders/python:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/python:flex",
+    versions = flex_runtime_versions,
+)
+
+acceptance_test_argo_source(
+    name = "argo_source",
+    srcs = [
+        "//cmd/apprunner:app-runner",
+        "//cmd/apprunner:functional_test",
+    ],
+    testdata = "//builders/testdata/python:all_files",
+)
+
+# Test the run image tagged as ${_CANDIDATE_NAME} in gae-runtimes-private.
+acceptance_test_suite(
+    name = "gae_candidate_test",
+    srcs = [
+        "gae_test.go",
+    ],
+    argsmap = languageargs(gae_runtimes, version_to_stack, "$${_CANDIDATE_NAME}"),
+    builder = "//builders/python:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/python:appengine",
+    versions = gae_runtime_versions,
+)
+
+# Test the run image tagged as ${_CANDIDATE_NAME} with ${_STACK} in gae-runtimes-private.
+acceptance_test_suite(
+    name = "gae_stack_candidate_test",
+    srcs = [
+        "gae_test.go",
+    ],
+    argsmap = languageargs(gae_runtimes, version_to_stack, "$${_CANDIDATE_NAME}", "$${_STACK}"),
+    builder = "//builders/python:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/python:appengine",
+    versions = gae_runtime_versions,
+)
+
+exports_files(["runtime.bzl"])

@@ -1,0 +1,6 @@
+runtime: php
+env: flex
+
+runtime_config:
+  document_root: .
+  php_ini_override: php.ini

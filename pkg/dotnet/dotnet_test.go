@@ -15,12 +15,23 @@
 package dotnet
 
 import (
+	"bytes"
 	"encoding/xml"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
+	"text/template"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
+	"github.com/google/go-cmp/cmp"
+	"google3/third_party/golang/cmp/cmpopts/cmpopts"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 func TestReadProjectFile(t *testing.T) {
@@ -75,5 +86,581 @@ func TestReadProjectFile(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("ReadProjectFile\ngot %#v\nwant %#v", got, want)
+	}
+}
+
+func TestProjectFiles(t *testing.T) {
+	d, err := ioutil.TempDir("", "test-project-files")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(d)
+
+	testFiles := []string{
+		"test.csproj",
+		"test.fsproj",
+		"test.vbproj",
+		"other.txt",
+		"sub/another.csproj",
+		"sub/more.txt",
+	}
+	want := []string{
+		filepath.Join(d, "test.csproj"),
+		filepath.Join(d, "test.fsproj"),
+		filepath.Join(d, "test.vbproj"),
+		filepath.Join(d, "sub/another.csproj"),
+	}
+
+	for _, f := range testFiles {
+		dir := filepath.Dir(filepath.Join(d, f))
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("Failed to create dir %s: %v", dir, err)
+		}
+		if err := ioutil.WriteFile(filepath.Join(d, f), []byte("test"), 0644); err != nil {
+			t.Fatalf("Failed to write file %s: %v", f, err)
+		}
+	}
+
+	ctx := gcp.NewContext()
+	got, err := ProjectFiles(ctx, d)
+	if err != nil {
+		t.Fatalf("ProjectFiles got error: %v", err)
+	}
+
+	if diff := cmp.Diff(want, got, cmpopts.SortSlices(func(a, b string) bool { return a < b })); diff != "" {
+		t.Errorf("ProjectFiles returned unexpected diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestRuntimeConfigJSONFiles(t *testing.T) {
+	testCases := []struct {
+		Name                 string
+		TestDataRelativePath string
+		ExpectedResult       []string
+	}{
+		{
+			Name:                 "finds_single_file_in_root_dir",
+			TestDataRelativePath: "singleRtCfg",
+			ExpectedResult:       []string{"singleRtCfg/my.runtimeconfig.json"},
+		},
+		{
+			Name:                 "doesn't_find_recursively",
+			TestDataRelativePath: "nestedRtCfg",
+			ExpectedResult:       []string{},
+		},
+		{
+			Name:                 "finds_multiples_in_root_dir",
+			TestDataRelativePath: "multipleRtCfg",
+			ExpectedResult:       []string{"multipleRtCfg/my.runtimeconfig.json", "multipleRtCfg/my.second.runtimeconfig.json"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			rootDir := testdata.MustGetPath("testdata/runtimeconfig")
+			tstDir := path.Join(rootDir, tc.TestDataRelativePath)
+			files, err := RuntimeConfigJSONFiles(tstDir)
+			if err != nil {
+				t.Fatalf("RuntimeConfigFiles(%v) got error: %v", tstDir, err)
+			}
+			// the test cases are written without the full path to make writing test cases easier
+			// prepend the tstDir to the relative paths to get the true expected result
+			fullPathExpectedResults := make([]string, 0, len(tc.ExpectedResult))
+			for _, val := range tc.ExpectedResult {
+				fullPathExpectedResults = append(fullPathExpectedResults, path.Join(rootDir, val))
+			}
+			if !cmp.Equal(files, fullPathExpectedResults, cmpopts.SortSlices(func(a, b string) bool { return a < b })) {
+				t.Errorf("RuntimeConfigFiles(%v) = %q, want %q", tstDir, files, fullPathExpectedResults)
+			}
+		})
+	}
+}
+
+func TestReadRuntimeConfigJSON(t *testing.T) {
+	path := "testdata/runtimeconfig/singleRtCfg/my.runtimeconfig.json"
+	rtCfg, err := ReadRuntimeConfigJSON(testdata.MustGetPath(path))
+	if err != nil {
+		t.Fatalf("ReadRuntimeConfigJSON(%v) got error: %v", path, err)
+	}
+	expectedTFM := "netcoreapp3.1"
+	if rtCfg.RuntimeOptions.TFM != expectedTFM {
+		t.Errorf("unexpected tfm value: got %q, want %q", rtCfg.RuntimeOptions.TFM, expectedTFM)
+	}
+}
+
+func TestGetSDKVersion(t *testing.T) {
+	testCases := []struct {
+		Name                 string
+		SDKVersionEnvVar     string
+		RuntimeVersionEnvVar string
+		ApplicationRoot      string
+		ExpectedResult       string
+		StackID              string
+		WantError            bool
+	}{
+		{
+			Name:                 "Should_read_from_GOOGLE_RUNTIME_VERSION",
+			RuntimeVersionEnvVar: "2.1.100",
+			ApplicationRoot:      "",
+			ExpectedResult:       "2.1.100",
+		},
+		{
+			Name:             "Should_read_from_GOOGLE_DOTNET_SDK_VERSION",
+			SDKVersionEnvVar: "2.1.100",
+			ApplicationRoot:  "",
+			ExpectedResult:   "2.1.100",
+		},
+		{
+			Name:                 "GOOGLE_DOTNET_SDK_VERSION_takes_precedence_over_GOOGLE_RUNTIME_VERSION",
+			SDKVersionEnvVar:     "2.1.100",
+			RuntimeVersionEnvVar: "3.1.100",
+			ApplicationRoot:      "",
+			ExpectedResult:       "2.1.100",
+		},
+		{
+			Name:                 "Env_var_should_take_precedence_over_global.json",
+			RuntimeVersionEnvVar: "2.1.100",
+			ApplicationRoot:      testdata.MustGetPath("testdata/"),
+			ExpectedResult:       "2.1.100",
+		},
+		{
+			Name:                 "Should_read_from_global.json",
+			RuntimeVersionEnvVar: "",
+			ApplicationRoot:      testdata.MustGetPath("testdata/"),
+			ExpectedResult:       "3.1.100",
+		},
+		{
+			Name:                 "Should_read_from_global.json",
+			RuntimeVersionEnvVar: "",
+			ApplicationRoot:      testdata.MustGetPath("testdata/"),
+			ExpectedResult:       "3.1.100",
+		},
+		{
+			Name:                 "Should_return_latest_version_available_for_ubuntu2204",
+			RuntimeVersionEnvVar: "",
+			ApplicationRoot:      "",
+			ExpectedResult:       "8.*.*",
+			StackID:              "google.22",
+		},
+		{
+			Name:                 "Should_error_out_for_ubuntu1804,_since_no_supported_version_on_that",
+			RuntimeVersionEnvVar: "",
+			ApplicationRoot:      "",
+			ExpectedResult:       "",
+			StackID:              "google.gae.18",
+			WantError:            true,
+		},
+		{
+			Name:                 "Will_pickup_ubuntu2404_by_default,_pick_up_latest_version",
+			RuntimeVersionEnvVar: "",
+			ApplicationRoot:      "",
+			ExpectedResult:       "10.*.*",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+
+			opts := []gcp.ContextOption{gcp.WithApplicationRoot(tc.ApplicationRoot)}
+			if tc.StackID != "" {
+				opts = append(opts, gcp.WithStackID(tc.StackID))
+			}
+
+			ctx := gcp.NewContext(opts...)
+			if tc.SDKVersionEnvVar != "" {
+				t.Setenv(envSdkVersion, tc.SDKVersionEnvVar)
+			}
+			if tc.RuntimeVersionEnvVar != "" {
+				t.Setenv(env.RuntimeVersion, tc.RuntimeVersionEnvVar)
+			}
+
+			result, err := GetSDKVersion(ctx)
+
+			if tc.WantError {
+				if err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if tc.ExpectedResult != result {
+				t.Fatalf("result mismatch: got %q, want %q", result, tc.ExpectedResult)
+			}
+		})
+	}
+}
+
+func TestGetRuntimeVersion(t *testing.T) {
+	testCases := []struct {
+		Name            string
+		RtVersionEnvVar string
+		RtCfgSearchRoot string
+		ExpectedVersion string
+		ExpectError     bool
+		ExpectErrSubStr string
+	}{
+		{
+			Name:            "NoEnvVar_ReadFromRuntimeConfigJson",
+			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/singleRtCfg/"),
+			ExpectedVersion: "3.1.0",
+		},
+		{
+			Name:            "EnvVarPrecedenceOverRuntimeConfigJson",
+			RtVersionEnvVar: "6.0.5",
+			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/singleRtCfg/"),
+			ExpectedVersion: "6.0.5",
+		},
+		{
+			Name:            "NoRuntimeConfigJson_Fails",
+			RtCfgSearchRoot: testdata.MustGetPath("testdata/"),
+			ExpectError:     true,
+		},
+		{
+			Name:            "EnvVarSet_NoRuntimeConfigJson_Succeeds",
+			RtVersionEnvVar: "6.0.5",
+			RtCfgSearchRoot: testdata.MustGetPath("testdata/"),
+			ExpectedVersion: "6.0.5",
+		},
+		{
+			Name:            "MultipleRuntimeConfigJson_Fails",
+			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/multipleRtCfg"),
+			ExpectError:     true,
+		},
+		{
+			Name:            "EnvVarSet_MultipleRuntimeConfigJson_Succeeds",
+			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/multipleRtCfg"),
+			ExpectError:     true,
+		},
+		{
+			Name:            "NoEnvVar_NonAspRuntimeConfigJson_Fails",
+			RtCfgSearchRoot: testdata.MustGetPath("testdata/runtimeconfig/nonAspRtCfg"),
+			ExpectError:     true,
+			ExpectErrSubStr: "when GOOGLE_ASP_NET_CORE_VERSION absent, getting version from runtimeconfig.json failed: couldn't find runtime version for framework Microsoft.AspNetCore.App",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			ctx := gcp.NewContext()
+			if tc.RtVersionEnvVar != "" {
+				t.Setenv(EnvRuntimeVersion, tc.RtVersionEnvVar)
+			}
+			runtimeVersion, err := GetRuntimeVersion(ctx, tc.RtCfgSearchRoot)
+
+			if tc.ExpectError == true {
+				if err == nil {
+					t.Fatalf("%s: got no error and expected error", tc.Name)
+				} else {
+					if tc.ExpectErrSubStr != "" && !strings.Contains(err.Error(), tc.ExpectErrSubStr) {
+						t.Fatalf("got error message %s and expected substring in error %s", err.Error(), tc.ExpectErrSubStr)
+					}
+					return
+				}
+			}
+			if err != nil {
+				t.Fatalf("GetRuntimeVersion(ctx, %v) got unexpected error: %v",
+					tc.RtCfgSearchRoot, err)
+			}
+			if tc.ExpectedVersion != runtimeVersion {
+				t.Errorf("GetRuntimeVersion(ctx, %v) = %v, want %v",
+					tc.RtCfgSearchRoot, runtimeVersion, tc.ExpectedVersion)
+			}
+		})
+	}
+}
+
+func TestRequiresGlobalizationInvariant(t *testing.T) {
+	testCases := []struct {
+		Stack string
+		Want  bool
+	}{
+		{
+			Stack: googleMin22,
+			Want:  true,
+		},
+		{
+			Stack: "google.gae.22",
+			Want:  false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Stack, func(t *testing.T) {
+			buildCtx := libcnb.BuildContext{
+				StackID: tc.Stack,
+			}
+			ctx := gcp.NewContext(gcp.WithBuildContext(buildCtx))
+
+			got := RequiresGlobalizationInvariant(ctx)
+			if got != tc.Want {
+				t.Errorf("RequiresGlobalizationInvariant(ctx) = %t, want %t", got, tc.Want)
+			}
+		})
+	}
+}
+
+func TestAssemblyName(t *testing.T) {
+	tcs := []struct {
+		name string
+		want string
+		err  bool
+		data string
+	}{
+		{
+			name: "no AssemblyName fields",
+			err:  true,
+			data: `<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	</Project>`,
+		},
+		{
+			name: "one AssemblyName field",
+			want: "MyApp",
+			err:  false,
+			data: `<Project Sdk="Microsoft.NET.Sdk.Web">
+
+		<PropertyGroup>
+			<AssemblyName>MyApp</AssemblyName>
+		</PropertyGroup>
+
+	</Project>`,
+		},
+		{
+			name: "two AssemblyName fields",
+			want: "",
+			err:  true,
+			data: `<Project Sdk="Microsoft.NET.Sdk.Web">
+
+		<PropertyGroup>
+			<AssemblyName>MyApp</AssemblyName>
+		</PropertyGroup>
+
+		<PropertyGroup>
+			<AssemblyName>Oopsie</AssemblyName>
+		</PropertyGroup>
+
+	</Project>`,
+		},
+		{
+			name: "malformed xml",
+			want: "",
+			err:  true,
+			data: `<Project Sdk="Microsoft.NET.Sdk.Web">
+
+		<PropertyGroup>
+
+	</Project>`,
+		},
+	}
+	for _, tc := range tcs {
+		ctx := gcp.NewContext()
+		t.Run(tc.name, func(t *testing.T) {
+			tmpDir, err := ioutil.TempDir("", "dotnettest")
+			if err != nil {
+				t.Fatalf("creating temp dir: %v", err)
+			}
+			defer os.RemoveAll(tmpDir)
+
+			filename := filepath.Join(tmpDir, "app.csproj")
+			if err = ioutil.WriteFile(filename, []byte(tc.data), 0644); err != nil {
+				t.Fatalf("writing project file: %v", err)
+			}
+
+			v, err := AssemblyName(ctx, filename)
+			if err != nil {
+				if !tc.err {
+					t.Errorf("got no error, want an error")
+				}
+				return
+			}
+			if v != tc.want {
+				t.Errorf("got %s, want %s", v, tc.want)
+			}
+		})
+	}
+}
+
+func TestEntrypointCmd(t *testing.T) {
+	d, err := ioutil.TempDir("", "test-entrypoint-cmd")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(d)
+
+	ctx := gcp.NewContext(gcp.WithApplicationRoot(d))
+	ep := filepath.Join(d, "bin", "app")
+	if err := os.MkdirAll(filepath.Dir(ep), 0755); err != nil {
+		t.Fatalf("Failed to create bin dir: %v", err)
+	}
+	if err := ioutil.WriteFile(ep+".dll", []byte("dll"), 0644); err != nil {
+		t.Fatalf("Failed to write dll: %v", err)
+	}
+
+	got, err := EntrypointCmd(ctx, ep)
+	if err != nil {
+		t.Fatalf("EntrypointCmd got unexpected error: %v", err)
+	}
+	want := "exec dotnet bin/app.dll"
+	if got != want {
+		t.Errorf("EntrypointCmd = %q, want %q", got, want)
+	}
+}
+
+func TestEntrypoint(t *testing.T) {
+	tcs := []struct {
+		name string
+		exe  string
+		proj string
+		data string
+		want string
+	}{
+		{
+			name: "dll from project file",
+			exe:  "myapp.dll",
+			proj: "myapp.proj",
+			want: "cd {{.Tmp}} && exec dotnet myapp.dll",
+		},
+		{
+			name: "dll from project file with dots",
+			exe:  "my.app.dll",
+			proj: "my.app.proj",
+			want: "cd {{.Tmp}} && exec dotnet my.app.dll",
+		},
+		{
+			name: "exe from assembly name",
+			exe:  "customapp.dll",
+			proj: "myapp.proj",
+			data: `<Project Sdk="Microsoft.NET.Sdk.Web">
+
+		<PropertyGroup>
+			<AssemblyName>customapp</AssemblyName>
+		</PropertyGroup>
+
+	</Project>`,
+			want: "cd {{.Tmp}} && exec dotnet customapp.dll",
+		},
+		{
+			name: "dll from assembly name",
+			exe:  "customapp.dll",
+			proj: "myapp.proj",
+			data: `<Project Sdk="Microsoft.NET.Sdk.Web">
+
+		<PropertyGroup>
+			<AssemblyName>customapp</AssemblyName>
+		</PropertyGroup>
+
+	</Project>`,
+			want: "cd {{.Tmp}} && exec dotnet customapp.dll",
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := gcp.NewContext()
+
+			tmpDir, err := ioutil.TempDir("", "dotnettest")
+			if err != nil {
+				t.Fatalf("creating temp dir: %v", err)
+			}
+			defer func() {
+				if err := os.RemoveAll(tmpDir); err != nil {
+					t.Fatalf("removing temp dir: %v", err)
+				}
+			}()
+
+			// Write the expected exe file.
+			exe := filepath.Join(tmpDir, tc.exe)
+			if err = ioutil.WriteFile(exe, []byte(""), 0644); err != nil {
+				t.Fatalf("writing exe file: %v", err)
+			}
+
+			// Write the project file.
+			proj := filepath.Join(tmpDir, tc.proj)
+			if err = ioutil.WriteFile(proj, []byte(tc.data), 0644); err != nil {
+				t.Fatalf("writing proj file: %v", err)
+			}
+
+			ep, err := Entrypoint(ctx, tmpDir, proj)
+			if err != nil {
+				t.Fatalf("getting entrypoint: %v", err)
+			}
+
+			tmpl, err := template.New("want").Parse(tc.want)
+			if err != nil {
+				t.Fatalf("executing template: %v", err)
+			}
+
+			var buf bytes.Buffer
+			if err = tmpl.Execute(&buf, struct{ Tmp string }{tmpDir}); err != nil {
+				t.Fatalf("executing template: %v", err)
+			}
+
+			if want := buf.String(); ep != want {
+				t.Errorf("got %s, want %s", ep, want)
+			}
+		})
+	}
+}
+
+func TestDeleteFolder(t *testing.T) {
+	testCases := []struct {
+		name         string
+		toDelete     string
+		createFolder string
+		createFiles  []string
+		want         bool
+	}{
+		{
+			name:     "target doesn't exist",
+			toDelete: "bin",
+			want:     false,
+		},
+		{
+			name:        "bin file",
+			toDelete:    "bin",
+			createFiles: []string{"bin"},
+			want:        true,
+		},
+		{
+			name:         "empty folder",
+			toDelete:     "bin",
+			createFolder: "bin",
+			want:         true,
+		},
+		{
+			name:         "non-empty folder",
+			toDelete:     "bin",
+			createFolder: "bin",
+			createFiles:  []string{"bin/a", "bin/b"},
+			want:         true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+
+			if tc.createFolder != "" {
+				if err := os.MkdirAll(filepath.Join(dir, tc.createFolder), os.ModePerm); err != nil {
+					t.Fatalf("error making %v dir: %v", tc.createFolder, err)
+				}
+			}
+
+			for _, f := range tc.createFiles {
+				if _, err := os.Create(filepath.Join(dir, f)); err != nil {
+					t.Fatalf("error creating %v: %v", f, err)
+				}
+			}
+
+			deleted, err := deleteFolder(gcp.NewContext(gcp.WithApplicationRoot(dir)), filepath.Join(dir, tc.toDelete))
+			if err != nil {
+				t.Fatalf("an error occurred, but none was expected: %v", err)
+			}
+			if tc.want != deleted {
+				t.Errorf("got %v, want %v", deleted, tc.want)
+			}
+		})
 	}
 }

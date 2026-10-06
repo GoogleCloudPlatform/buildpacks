@@ -6,6 +6,28 @@ package(default_visibility = ["//builders:__subpackages__"])
 
 exports_files(
     [
+        "flex",
         "functions",
+        "generic",
     ],
+)
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]),
+)
+
+filegroup(
+    name = "functions_files",
+    srcs = glob(["functions/**"]),
+)
+
+filegroup(
+    name = "flex_files",
+    srcs = glob(["flex/**"]),
+)
+
+filegroup(
+    name = "generic_files",
+    srcs = glob(["generic/**"]),
 )

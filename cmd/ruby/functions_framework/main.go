@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,64 +19,10 @@
 package main
 
 import (
-	"os"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/functions_framework/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
-)
-
-const (
-	layerName = "functions-framework"
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) error {
-	if _, ok := os.LookupEnv(env.FunctionTarget); ok {
-		ctx.OptIn("%s set", env.FunctionTarget)
-	}
-	// TODO(b/154846199): For compatibility with GCF; this will be removed later.
-	if os.Getenv("CNB_STACK_ID") != "google" {
-		if _, ok := os.LookupEnv(env.FunctionTargetLaunch); ok {
-			ctx.OptIn("%s set", env.FunctionTargetLaunch)
-		}
-	}
-	ctx.OptOut("%s not set", env.FunctionTarget)
-	return nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	if err := validateSource(ctx); err != nil {
-		return err
-	}
-
-	// The framework has been installed with the dependencies, so this layer is
-	// used only for env vars.
-	l := ctx.Layer(layerName)
-	ctx.WriteMetadata(l, nil, layers.Launch)
-	ctx.SetFunctionsEnvVars(l)
-
-	// Verify that the framework is installed and ready.
-	// TODO(b/156038129): Implement a --verify flag in the functions framework
-	// that also checks the actual function for readiness.
-	cmd := []string{"bundle", "exec", "functions-framework", "--help"}
-	if _, err := ctx.ExecWithErr(cmd, gcp.WithUserAttribution); err != nil {
-		return gcp.UserErrorf("unable to execute functions-framework; please ensure the functions_framework gem is in your Gemfile")
-	}
-
-	ctx.AddWebProcess([]string{"bundle", "exec", "functions-framework"})
-
-	return nil
-}
-
-func validateSource(ctx *gcp.Context) error {
-	// Fail if the default|custom source file doesn't exist, otherwise the app will fail at runtime but still build here.
-	fnSource, ok := os.LookupEnv(env.FunctionSource)
-	if ok && !ctx.FileExists(fnSource) {
-		return gcp.UserErrorf("%s specified file '%s' but it does not exist", env.FunctionSource, fnSource)
-	}
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

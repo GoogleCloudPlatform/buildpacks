@@ -24,9 +24,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktestenv"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/builderoutput"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
-	"github.com/buildpack/libbuildpack/buildpack"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 func TestDebugModeInitialized(t *testing.T) {
@@ -67,7 +70,7 @@ func TestDebugModeInitialized(t *testing.T) {
 				}
 			}
 
-			ctx := NewContext(buildpack.Info{ID: "id", Version: "version", Name: "name"})
+			ctx := NewContext()
 			if ctx.debug != tc.want {
 				t.Errorf("ctx.debug=%t, want %t", ctx.debug, tc.want)
 			}
@@ -78,19 +81,41 @@ func TestDebugModeInitialized(t *testing.T) {
 	}
 }
 
+func TestNewContextWithApplicationRoot(t *testing.T) {
+	want := "myroot"
+	got := NewContext(WithApplicationRoot(want)).applicationRoot
+	if got != want {
+		t.Errorf("NewContext().applicationRoot=%q want %q", got, want)
+	}
+}
+
+func TestNewContextWithBuidpackInfo(t *testing.T) {
+	want := libcnb.BuildpackInfo{Name: "myname"}
+	got := NewContext(WithBuildpackInfo(want)).info
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("NewContext().info\ngot %#v\nwant %#v", got, want)
+	}
+}
+
+func TestNewContextWithBuildContext(t *testing.T) {
+	want := libcnb.BuildContext{StackID: "mystack"}
+	got := NewContext(WithBuildContext(want)).buildContext
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("NewContext().buildContext\ngot %#v\nwant %#v", got, want)
+	}
+}
+
 func TestDetectContextInitialized(t *testing.T) {
-	_, cleanUp := setUpDetectEnvironment(t)
-	defer cleanUp()
+	setUpDetectEnvironment(t)
 
 	id := "my-id"
 	version := "my-version"
 	name := "my-name"
-
 	var ctx *Context
-	detect(func(c *Context) error {
+	detect(func(c *Context) (DetectResult, error) {
 		ctx = c
-		return nil
-	})
+		return OptIn("some reason"), nil
+	}, libcnb.WithExitHandler(&fakeExitHandler{}))
 
 	if ctx.BuildpackID() != id {
 		t.Errorf("Unexpected id got=%q want=%q", ctx.BuildpackID(), id)
@@ -104,17 +129,16 @@ func TestDetectContextInitialized(t *testing.T) {
 }
 
 func TestDetectEmitsSpan(t *testing.T) {
-	_, cleanUp := setUpDetectEnvironment(t)
-	defer cleanUp()
+	setUpDetectEnvironment(t)
 
 	var ctx *Context
-	detect(func(c *Context) error {
+	detect(func(c *Context) (DetectResult, error) {
 		ctx = c
-		return nil
-	})
+		return OptIn("some reason"), nil
+	}, libcnb.WithExitHandler(&fakeExitHandler{}))
 
 	if len(ctx.stats.spans) != 1 {
-		t.Fatalf("len(spans)=%d want=1", len(ctx.stats.spans))
+		t.Errorf("len(spans)=%d want=1", len(ctx.stats.spans))
 	}
 	got := ctx.stats.spans[0]
 	wantName := "Buildpack Detect"
@@ -122,22 +146,33 @@ func TestDetectEmitsSpan(t *testing.T) {
 		t.Errorf("Unexpected span name got %q want prefix %q", got.name, wantName)
 	}
 	if got.start.IsZero() {
-		t.Error("Start time not set")
+		t.Errorf("Start time not set")
 	}
 	if !got.end.After(got.start) {
 		t.Errorf("End %v not after start %v", got.end, got.start)
 	}
-	if got.status != StatusOk {
-		t.Errorf("Unexpected status got=%s want=%s", got.status, StatusOk)
+	if got.status != buildererror.StatusOk {
+		t.Errorf("Unexpected status got=%s want=%s", got.status, buildererror.StatusOk)
 	}
 }
 
-// func TestDetectCallbackReturingErrorExits(t *testing.T) {}
-// func TestDetectFinalizes(t *testing.T) {}
+func TestDetectNilResult(t *testing.T) {
+	setUpDetectEnvironment(t)
+
+	handler := &fakeExitHandler{}
+	// Tests that the function does not panic when both result and error are nil.
+	detect(func(c *Context) (DetectResult, error) {
+		return nil, nil
+	}, libcnb.WithExitHandler(handler))
+
+	// Tests that the function does not panic when both result and error are nil.
+	if want, got := "detect did not return a result or an error", handler.err.Error(); !strings.Contains(got, want) {
+		t.Errorf("ExitHandler.err = %q, should contain %q", got, want)
+	}
+}
 
 func TestBuildContextInitialized(t *testing.T) {
-	_, cleanUp := setUpBuildEnvironment(t)
-	defer cleanUp()
+	setUpBuildEnvironment(t)
 
 	id := "my-id"
 	version := "my-version"
@@ -161,8 +196,7 @@ func TestBuildContextInitialized(t *testing.T) {
 }
 
 func TestBuildEmitsSpan(t *testing.T) {
-	_, cleanUp := setUpBuildEnvironment(t)
-	defer cleanUp()
+	setUpBuildEnvironment(t)
 
 	var ctx *Context
 	build(func(c *Context) error {
@@ -171,7 +205,7 @@ func TestBuildEmitsSpan(t *testing.T) {
 	})
 
 	if len(ctx.stats.spans) != 1 {
-		t.Fatalf("len(spans)=%d want=1", len(ctx.stats.spans))
+		t.Errorf("len(spans)=%d want=1", len(ctx.stats.spans))
 	}
 	got := ctx.stats.spans[0]
 	wantName := "Buildpack Build"
@@ -179,13 +213,13 @@ func TestBuildEmitsSpan(t *testing.T) {
 		t.Errorf("Unexpected span name got %q want prefix %q", got.name, wantName)
 	}
 	if got.start.IsZero() {
-		t.Error("Start time not set")
+		t.Errorf("Start time not set")
 	}
 	if !got.end.After(got.start) {
 		t.Errorf("End %v not after start %v", got.end, got.start)
 	}
-	if got.status != StatusOk {
-		t.Errorf("Unexpected status got=%s want=%s", got.status, StatusOk)
+	if got.status != buildererror.StatusOk {
+		t.Errorf("Unexpected status got=%s want=%s", got.status, buildererror.StatusOk)
 	}
 }
 
@@ -200,8 +234,7 @@ func TestBuildEmitsSuccessOutput(t *testing.T) {
 		os.Unsetenv("BUILDER_OUTPUT")
 	}()
 
-	_, cleanUp := setUpBuildEnvironment(t)
-	defer cleanUp()
+	setUpBuildEnvironment(t)
 
 	build(func(c *Context) error {
 		time.Sleep(100 * time.Millisecond)
@@ -209,7 +242,7 @@ func TestBuildEmitsSuccessOutput(t *testing.T) {
 	})
 
 	fname := filepath.Join(tempDir, builderOutputFilename)
-	var got builderOutput
+	var got builderoutput.BuilderOutput
 	content, err := ioutil.ReadFile(fname)
 	if err != nil {
 		t.Fatalf("Failed to read %s: %v", fname, err)
@@ -218,7 +251,7 @@ func TestBuildEmitsSuccessOutput(t *testing.T) {
 		t.Fatalf("Failed to unmarshal: %v", err)
 	}
 	if len(got.Stats) != 1 {
-		t.Fatalf("Incorrect length of stats, got %d, want %d", len(got.Stats), 1)
+		t.Errorf("Incorrect length of stats, got %d, want %d", len(got.Stats), 1)
 	}
 	if got.Stats[0].DurationMs < 100 {
 		t.Errorf("Duration is too short, got %d, want >= %d", got.Stats[0].DurationMs, 100)
@@ -226,43 +259,201 @@ func TestBuildEmitsSuccessOutput(t *testing.T) {
 }
 
 func TestAddWebProcess(t *testing.T) {
+	ctx := NewContext()
+	ctx.AddWebProcess([]string{"/start"})
+	want := []libcnb.Process{proc("/start", "web")}
+
+	if !reflect.DeepEqual(ctx.buildResult.Processes, want) {
+		t.Errorf("Processes not equal got %#v, want %#v", ctx.buildResult.Processes, want)
+	}
+}
+
+func TestAddWebProcess_DevSyncMetric(t *testing.T) {
+	t.Cleanup(buildermetrics.Reset)
+	t.Setenv(env.DevSync, "true")
+	t.Setenv(env.XGoogleDevSyncActivated, "true")
+
+	ctx := NewContext()
+	if got := buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.DevSyncUsageCounterID).Value(); got != 0 {
+		t.Errorf("DevSyncUsageCounterID before AddWebProcess = %v, want 0", got)
+	}
+	ctx.AddWebProcess([]string{"npm", "run", "dev"})
+	if got := buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.DevSyncUsageCounterID).Value(); got != 1 {
+		t.Errorf("DevSyncUsageCounterID after AddWebProcess = %v, want 1", got)
+	}
+}
+
+func TestAddProcess(t *testing.T) {
 	testCases := []struct {
+		desc    string
 		name    string
-		initial layers.Processes
 		cmd     []string
-		want    layers.Processes
+		opts    []processOption
+		initial []libcnb.Process
+		want    []libcnb.Process
 	}{
 		{
-			name:    "empty processes",
-			initial: layers.Processes{},
-			cmd:     []string{"/web"},
-			want:    layers.Processes{proc("/web", "web")},
+			desc: "no args, no processes",
+			name: "web",
+			cmd:  []string{"/web"},
+			want: []libcnb.Process{
+				libcnb.Process{Command: []string{"bash", "-c", "/web"}, Type: "web"},
+			},
 		},
 		{
-			name:    "existing web",
-			initial: layers.Processes{proc("/dev", "dev"), proc("/web", "web"), proc("/cli", "cli")},
-			cmd:     []string{"/OVERRIDE"},
-			want:    layers.Processes{proc("/dev", "dev"), proc("/cli", "cli"), proc("/OVERRIDE", "web")},
+			desc: "add to existing",
+			name: "web",
+			cmd:  []string{"/web"},
+			initial: []libcnb.Process{
+				libcnb.Process{Command: []string{"bash", "-c", "/dev"}, Type: "dev"},
+				libcnb.Process{Command: []string{"bash", "-c", "/cli"}, Type: "cli"},
+			},
+			want: []libcnb.Process{
+				libcnb.Process{Command: []string{"bash", "-c", "/dev"}, Type: "dev"},
+				libcnb.Process{Command: []string{"bash", "-c", "/cli"}, Type: "cli"},
+				libcnb.Process{Command: []string{"bash", "-c", "/web"}, Type: "web"},
+			},
 		},
 		{
-			name:    "no web",
-			initial: layers.Processes{proc("/dev", "dev"), proc("/cli", "cli")},
-			cmd:     []string{"/web"},
-			want:    layers.Processes{proc("/dev", "dev"), proc("/cli", "cli"), proc("/web", "web")},
+			desc: "override existing",
+			name: "web",
+			cmd:  []string{"/OVERRIDE"},
+			initial: []libcnb.Process{
+				libcnb.Process{Command: []string{"bash", "-c", "/dev"}, Type: "dev"},
+				libcnb.Process{Command: []string{"bash", "-c", "/web"}, Type: "web"},
+				libcnb.Process{Command: []string{"bash", "-c", "/cli"}, Type: "cli"},
+			},
+			want: []libcnb.Process{
+				libcnb.Process{Command: []string{"bash", "-c", "/dev"}, Type: "dev"},
+				libcnb.Process{Command: []string{"bash", "-c", "/cli"}, Type: "cli"},
+				libcnb.Process{Command: []string{"bash", "-c", "/OVERRIDE"}, Type: "web"},
+			},
+		},
+		{
+			desc: "no args",
+			name: "foo",
+			cmd:  []string{"/start"},
+			want: []libcnb.Process{
+				libcnb.Process{Command: []string{"bash", "-c", "/start"}, Type: "foo"},
+			},
+		},
+		{
+			desc: "with args",
+			name: "foo",
+			cmd:  []string{"/start", "arg1", "arg2"},
+			want: []libcnb.Process{
+				libcnb.Process{Command: []string{"bash", "-c", "/start arg1 arg2"}, Type: "foo"},
+			},
+		},
+		{
+			desc: "with opts, direct",
+			name: "foo",
+			cmd:  []string{"/start", "arg1", "arg2"},
+			opts: []processOption{AsDirectProcess()},
+			want: []libcnb.Process{
+				libcnb.Process{Command: []string{"/start", "arg1", "arg2"}, Type: "foo"},
+			},
+		},
+		{
+			desc: "with opts, default",
+			name: "foo",
+			cmd:  []string{"/start", "arg1", "arg2"},
+			opts: []processOption{AsDefaultProcess()},
+			want: []libcnb.Process{
+				libcnb.Process{Command: []string{"bash", "-c", "/start arg1 arg2"}, Type: "foo", Default: true},
+			},
+		},
+		{
+			desc: "with opts, direct default",
+			name: "foo",
+			cmd:  []string{"/start", "arg1", "arg2"},
+			opts: []processOption{AsDirectProcess(), AsDefaultProcess()},
+			want: []libcnb.Process{
+				libcnb.Process{Command: []string{"/start", "arg1", "arg2"}, Type: "foo", Default: true},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			ctx := NewContext()
+			ctx.buildResult.Processes = tc.initial
+
+			ctx.AddProcess(tc.name, tc.cmd, tc.opts...)
+
+			if !reflect.DeepEqual(ctx.buildResult.Processes, tc.want) {
+				t.Errorf("Processes not equal got %#v, want %#v", ctx.buildResult.Processes, tc.want)
+			}
+		})
+	}
+}
+
+func TestAddLabel(t *testing.T) {
+	testCases := []struct {
+		name      string
+		keyvalues []string
+		value     string
+		want      []libcnb.Label
+	}{
+		{
+			name:      "simple",
+			keyvalues: []string{"my-key=my-value"},
+			want:      []libcnb.Label{{Key: "google.my-key", Value: "my-value"}},
+		},
+		{
+			name:      "uppercase key",
+			keyvalues: []string{"MY-KEY=my-value"},
+			want:      []libcnb.Label{{Key: "google.my-key", Value: "my-value"}},
+		},
+		{
+			name:      "mixed case value",
+			keyvalues: []string{"my-key=My-Value"},
+			want:      []libcnb.Label{{Key: "google.my-key", Value: "My-Value"}},
+		},
+		{
+			name:      "underscore to dash key",
+			keyvalues: []string{"my_key=My-Value"},
+			want:      []libcnb.Label{{Key: "google.my-key", Value: "My-Value"}},
+		},
+		{
+			name:      "multiple",
+			keyvalues: []string{"my-key=My-Value", "my-other-key=my-other-value"},
+			want: []libcnb.Label{
+				{Key: "google.my-key", Value: "My-Value"},
+				{Key: "google.my-other-key", Value: "my-other-value"},
+			},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := NewContext(buildpack.Info{ID: "id", Version: "version", Name: "name"})
-			ctx.processes = tc.initial
+			ctx := NewContext()
 
-			ctx.AddWebProcess(tc.cmd)
+			for _, kv := range tc.keyvalues {
+				parts := strings.SplitN(kv, "=", 2)
+				if len(parts) != 2 {
+					t.Fatalf("incorrect format %q, expect key=value", kv)
+				}
+				ctx.AddLabel(parts[0], parts[1])
+			}
 
-			if !reflect.DeepEqual(ctx.processes, tc.want) {
-				t.Errorf("Processes not equal got %#v, want %#v", ctx.processes, tc.want)
+			if !reflect.DeepEqual(ctx.buildResult.Labels, tc.want) {
+				t.Errorf("Labels not equal got %#v, want %#v", ctx.buildResult.Labels, tc.want)
 			}
 		})
+	}
+}
+
+func TestAddLabelErrors(t *testing.T) {
+	invalids := []string{"", "0", "00invalid", "abc def", "abd@def", "  abc", "def  ", "a__b"}
+
+	for _, invalid := range invalids {
+		ctx := NewContext()
+		ctx.AddLabel(invalid, "some-value")
+
+		if len(ctx.buildResult.Labels) > 0 {
+			t.Errorf("invalid label %q was incorrectly included", invalid)
+		}
 	}
 }
 
@@ -313,26 +504,259 @@ func TestHasAtLeastOne(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			dir, cleanup := tempWorkingDir(t)
+			dir, cleanup := buildpacktestenv.TempWorkingDir(t)
 			defer cleanup()
 
-			ctx := NewContextForTests(buildpack.Info{ID: "id", Version: "version", Name: "name"}, dir)
+			ctx := NewContext(WithApplicationRoot(dir))
 			for _, f := range tc.files {
-				ctx.MkdirAll(tc.prefix, 0777)
+				if err := os.MkdirAll(tc.prefix, 0777); err != nil {
+					t.Fatalf("Error creating %s: %v", tc.prefix, err)
+				}
 				_, err := ioutil.TempFile(tc.prefix, f)
 				if err != nil {
 					t.Fatalf("Creating temp file %s/%s: %v", tc.prefix, f, err)
 				}
 			}
 
-			got := ctx.HasAtLeastOne("*.py")
+			pattern := "*.py"
+			got, err := ctx.HasAtLeastOne(pattern)
+			if err != nil {
+				t.Errorf("HasAtLeastOne(%v) failed unexpectedly; err=%s", pattern, err)
+			}
 			if got != tc.want {
-				t.Errorf("HasAtLeastOne()=%t, want=%t", got, tc.want)
+				t.Errorf("HasAtLeastOne(%v)=%t, want=%t", pattern, got, tc.want)
 			}
 		})
 	}
 }
 
-func proc(command, commandType string) layers.Process {
-	return layers.Process{Command: command, Type: commandType, Direct: true}
+func TestHasAtLeastOneFiltered(t *testing.T) {
+	testCases := []struct {
+		name   string
+		prefix string
+		files  []string
+		filter filepathFilter
+		want   bool
+	}{
+		{
+			name:   "empty",
+			prefix: ".",
+			files:  []string{},
+			filter: nil,
+			want:   false,
+		},
+		{
+			name:   "single_file_nil_filter",
+			prefix: ".",
+			files:  []string{"*.py"},
+			want:   true,
+		},
+		{
+			name:   "single_file_wrong_name",
+			prefix: ".",
+			files:  []string{"*.rb"},
+			filter: nil,
+			want:   false,
+		},
+		{
+			name:   "multiple_files_nil_filter",
+			prefix: ".",
+			files:  []string{"*.py", "*.rb"},
+			filter: nil,
+			want:   true,
+		},
+		{
+			name:   "subfolder_contains_file",
+			prefix: "sub",
+			files:  []string{"*.py"},
+			filter: nil,
+			want:   true,
+		},
+		{
+			name:   "subfolder_contains_wrong_name",
+			prefix: "sub",
+			files:  []string{"*.rb"},
+			filter: nil,
+			want:   false,
+		},
+		{
+			name:   "subfolder_respects_false_filter",
+			prefix: "node_modules",
+			files:  []string{"*.py"},
+			filter: func(path string) bool {
+				return false
+			},
+			want: false,
+		},
+		{
+			name:   "subfolder_respects_true_filter",
+			prefix: "node_modules",
+			files:  []string{"*.py"},
+			filter: func(path string) bool {
+				return true
+			},
+			want: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir, cleanup := buildpacktestenv.TempWorkingDir(t)
+			defer cleanup()
+
+			ctx := NewContext(WithApplicationRoot(dir))
+			for _, f := range tc.files {
+				prefixDir := filepath.Join(dir, tc.prefix)
+				if err := os.MkdirAll(prefixDir, 0777); err != nil {
+					t.Fatalf("Error creating %s: %v", prefixDir, err)
+				}
+				_, err := ioutil.TempFile(prefixDir, f)
+				if err != nil {
+					t.Fatalf("Creating temp file %s/%s: %v", prefixDir, f, err)
+				}
+			}
+
+			pattern := "*.py"
+			got, err := ctx.HasAtLeastOneFiltered(pattern, tc.filter)
+			if err != nil {
+				t.Errorf("HasAtLeastOneFiltered(%v) failed unexpectedly; err=%s", pattern, err)
+			}
+			if got != tc.want {
+				t.Errorf("HasAtLeastOneFiltered(%v)=%t, want=%t", pattern, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHasAtLeastOneOutsideDependencyDirectories(t *testing.T) {
+	testCases := []struct {
+		name   string
+		prefix string
+		files  []string
+		want   bool
+	}{
+		{
+			name:   "detects_file_in_root",
+			prefix: ".",
+			files:  []string{"*.py"},
+			want:   true,
+		},
+		{
+			name:   "ignores_file_in_node_modules",
+			prefix: "node_modules",
+			files:  []string{"*.py"},
+			want:   false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir, cleanup := buildpacktestenv.TempWorkingDir(t)
+			defer cleanup()
+
+			ctx := NewContext(WithApplicationRoot(dir))
+			for _, f := range tc.files {
+				prefixDir := filepath.Join(dir, tc.prefix)
+				if err := os.MkdirAll(prefixDir, 0777); err != nil {
+					t.Fatalf("Error creating %s: %v", prefixDir, err)
+				}
+				_, err := ioutil.TempFile(prefixDir, f)
+				if err != nil {
+					t.Fatalf("Creating temp file %s/%s: %v", prefixDir, f, err)
+				}
+			}
+
+			pattern := "*.py"
+			got, err := ctx.HasAtLeastOneOutsideDependencyDirectories(pattern)
+			if err != nil {
+				t.Errorf("HasAtLeastOneOutsideDependencyDirectories(%v) failed unexpectedly; err=%s", pattern, err)
+			}
+			if got != tc.want {
+				t.Errorf("HasAtLeastOneOutsideDependencyDirectories(%v)=%t, want=%t", pattern, got, tc.want)
+			}
+		})
+	}
+}
+
+func proc(command, commandType string) libcnb.Process {
+	return libcnb.Process{Command: []string{command}, Type: commandType, Default: true}
+}
+
+// fakeExitHandler allows libcnb's Detect() function to be called without causing an os.Exit().
+type fakeExitHandler struct {
+	err        error
+	errCalled  bool
+	passCalled bool
+	failCalled bool
+}
+
+// Error is called when an error is encountered.
+func (eh *fakeExitHandler) Error(err error) {
+	eh.errCalled = true
+	eh.err = err
+}
+
+// Fail is called when a buildpack fails.
+func (eh *fakeExitHandler) Fail() {
+	eh.failCalled = true
+}
+
+// Pass is called when a buildpack passes.
+func (eh *fakeExitHandler) Pass() {
+	eh.passCalled = true
+}
+
+func simpleContext(t *testing.T) (*Context, func()) {
+	t.Helper()
+	setUpDetectEnvironment(t)
+	c := NewContext()
+	// simpleContext relies on t.Cleanup() for cleanup now and no longer
+	// has to return a cleanup func, but calling sites expect a cleanup func.
+	return c, func() {}
+}
+
+// setUpDetectEnvironment sets up an environment for testing buildpack detect
+// functionality.
+func setUpDetectEnvironment(t *testing.T) buildpacktestenv.TempDirs {
+	t.Helper()
+	temps := buildpacktestenv.SetUpTempDirs(t, "")
+	setOSArgs(t, []string{filepath.Join(temps.BuildpackDir, "bin", "detect"), temps.PlatformDir, temps.PlanFile})
+
+	return temps
+}
+
+// setUpBuildEnvironment sets up an environment for testing buildpack build
+// functionality.
+func setUpBuildEnvironment(t *testing.T) buildpacktestenv.TempDirs {
+	t.Helper()
+	temps := buildpacktestenv.SetUpTempDirs(t, "")
+	setOSArgs(t, []string{filepath.Join(temps.BuildpackDir, "bin", "build"), temps.LayersDir, temps.PlatformDir, temps.PlanFile})
+
+	return temps
+}
+
+func setOSArgs(t *testing.T, args []string) {
+	t.Helper()
+	oldArgs := os.Args
+	os.Args = args
+	t.Cleanup(func() {
+		os.Args = oldArgs
+	})
+}
+
+func TestDisabledCapabilities(t *testing.T) {
+	ctx := NewContext(
+		WithDisabledCapability("cap1"),
+		WithDisabledCapability("cap2"),
+	)
+
+	if !ctx.IsDisabled("cap1") {
+		t.Errorf("Expected cap1 to be disabled")
+	}
+	if !ctx.IsDisabled("cap2") {
+		t.Errorf("Expected cap2 to be disabled")
+	}
+	if ctx.IsDisabled("cap3") {
+		t.Errorf("Expected cap3 to NOT be disabled")
+	}
 }

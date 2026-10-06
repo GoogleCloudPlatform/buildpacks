@@ -1,0 +1,13 @@
+{
+  "name": "typescript-npm",
+  "scripts": {
+    "build": "tsc -p ."
+  },
+  "dependencies": {
+    "@types/node": "*",
+    "polka": "^0.5.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.0"
+  }
+}

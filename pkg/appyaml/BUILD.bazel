@@ -1,0 +1,27 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+package(default_visibility = ["//:__subpackages__"])
+
+go_library(
+    name = "appyaml",
+    srcs = [
+        "appyaml.go",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+        "@in_gopkg_yaml_v2//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "appyaml_test",
+    srcs = [
+        "appyaml_test.go",
+    ],
+    embed = [":appyaml"],
+    rundir = ".",
+)

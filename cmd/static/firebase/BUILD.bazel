@@ -1,0 +1,40 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load(
+    "//tools:defs.bzl",
+    "buildpack",
+    "buildpack_using_runner",
+)
+
+licenses(["notice"])
+
+buildpack(
+    name = "firebase",
+    buildpack_id = "google.static.firebase",
+    executables = [
+        ":main",
+    ],
+    prefix = "static",
+    version = "0.0.1",
+    visibility = ["//visibility:public"],
+)
+
+buildpack_using_runner(
+    name = "firebase_using_runner",
+    buildpack_id = "google.static.firebase",
+    prefix = "static",
+    version = "0.0.1",
+    visibility = ["//visibility:public"],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//cmd/static/firebase/lib",
+        "//pkg/gcpbuildpack",
+    ],
+)

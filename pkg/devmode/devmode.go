@@ -19,13 +19,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/buildpackplan"
-	"github.com/buildpack/libbuildpack/layers"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 const (
@@ -34,6 +32,7 @@ const (
 	watchexecURL     = "https://github.com/watchexec/watchexec/releases/download/%[1]s/watchexec-%[1]s-x86_64-unknown-linux-gnu.tar.xz"
 	scriptsLayer     = "devmode_scripts"
 	buildAndRun      = "build_and_run.sh"
+	versionKey       = "version"
 
 	// WatchAndRun is the name of the script that watches source files and runs the
 	// build_and_run.sh script when those files change.
@@ -52,17 +51,11 @@ type SyncRule struct {
 
 // Enabled indicates that the builder is running in Development mode.
 func Enabled(ctx *gcp.Context) bool {
-	devMode, present := os.LookupEnv(env.DevMode)
-	if !present {
-		return false
-	}
-
-	enabled, err := strconv.ParseBool(devMode)
+	enabled, err := env.IsDevMode()
 	if err != nil {
-		ctx.Warnf("%s env var must be parseable to a bool: %q", env.DevMode, devMode)
+		ctx.Warnf("Dev mode not enabled: %v", err)
 		return false
 	}
-
 	return enabled
 }
 
@@ -80,27 +73,25 @@ type Config struct {
 }
 
 // AddFileWatcherProcess installs and configures a file watcher as the entrypoint.
-func AddFileWatcherProcess(ctx *gcp.Context, cfg Config) {
+func AddFileWatcherProcess(ctx *gcp.Context, cfg Config) error {
 	installFileWatcher(ctx)
-	writeBuildAndRunScript(ctx, ctx.Layer(scriptsLayer), cfg)
+	sl, err := ctx.Layer(scriptsLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", scriptsLayer, err)
+	}
+	writeBuildAndRunScript(ctx, sl, cfg)
 	// Override the web process.
 	ctx.AddWebProcess([]string{WatchAndRun})
-}
-
-// AddSyncMetadata adds sync metadata to the final image.
-func AddSyncMetadata(ctx *gcp.Context, syncRulesFn func(string) []SyncRule) {
-	ctx.AddBuildpackPlan(buildpackplan.Plan{
-		Metadata: buildpackplan.Metadata{
-			"devmode.sync": syncRulesFn(ctx.ApplicationRoot()),
-		},
-	})
+	return nil
 }
 
 // writeBuildAndRunScript writes the contents of a file that builds code and then runs the resulting program
-func writeBuildAndRunScript(ctx *gcp.Context, sl *layers.Layer, cfg Config) {
-
-	binDir := filepath.Join(sl.Root, "bin")
-	ctx.MkdirAll(binDir, 0755)
+func writeBuildAndRunScript(ctx *gcp.Context, sl *libcnb.Layer, cfg Config) error {
+	sl.Launch = true
+	binDir := filepath.Join(sl.Path, "bin")
+	if err := ctx.MkdirAll(binDir, 0755); err != nil {
+		return err
+	}
 
 	var cmd []string
 	if cfg.BuildCmd != nil {
@@ -112,41 +103,49 @@ func writeBuildAndRunScript(ctx *gcp.Context, sl *layers.Layer, cfg Config) {
 
 	c := fmt.Sprintf("#!/bin/sh\n%s", strings.Join(cmd, " && "))
 	br := filepath.Join(binDir, buildAndRun)
-	ctx.WriteFile(br, []byte(c), os.FileMode(0755))
+	if err := ctx.WriteFile(br, []byte(c), os.FileMode(0755)); err != nil {
+		return err
+	}
 
 	c = fmt.Sprintf("#!/bin/sh\nwatchexec -r -e %s %s", strings.Join(cfg.Ext, ","), br)
 	wr := filepath.Join(binDir, WatchAndRun)
-	ctx.WriteFile(wr, []byte(c), os.FileMode(0755))
-
-	ctx.WriteMetadata(sl, nil, layers.Launch)
+	if err := ctx.WriteFile(wr, []byte(c), os.FileMode(0755)); err != nil {
+		return err
+	}
+	return nil
 }
 
 // installFileWatcher installs the `watchexec` file watcher.
-func installFileWatcher(ctx *gcp.Context) {
-	wxl := ctx.Layer(watchexecLayer)
+func installFileWatcher(ctx *gcp.Context) error {
+	wxl, err := ctx.Layer(watchexecLayer, gcp.CacheLayer, gcp.LaunchLayer)
+	if err != nil {
+		return fmt.Errorf("creating %v layer: %w", watchexecLayer, err)
+	}
 
 	// Check metadata layer to see if correct version of watchexec is already installed.
-	var meta metadata
-	ctx.ReadMetadata(wxl, &meta)
-	if meta.WatchexecVersion == watchexecVersion {
+	metaWatchexecVersion := ctx.GetMetadata(wxl, versionKey)
+	if metaWatchexecVersion == watchexecVersion {
 		ctx.CacheHit(watchexecLayer)
 	} else {
 		ctx.CacheMiss(watchexecLayer)
 		// Clear layer data to avoid files from multiple versions of watchexec.
-		ctx.ClearLayer(wxl)
+		if err := ctx.ClearLayer(wxl); err != nil {
+			return fmt.Errorf("clearing layer %q: %w", wxl.Name, err)
+		}
 
-		binDir := filepath.Join(wxl.Root, "bin")
-		ctx.MkdirAll(binDir, 0755)
+		binDir := filepath.Join(wxl.Path, "bin")
+		if err := ctx.MkdirAll(binDir, 0755); err != nil {
+			return err
+		}
 
 		// Download and install watchexec in layer.
 		ctx.Logf("Installing watchexec v%s", watchexecVersion)
 		archiveURL := fmt.Sprintf(watchexecURL, watchexecVersion)
 		command := fmt.Sprintf("curl --fail --show-error --silent --location --retry 3 %s | tar xJ --directory %s --strip-components=1 --wildcards \"*watchexec\"", archiveURL, binDir)
-		ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution)
-
-		meta.WatchexecVersion = watchexecVersion
+		if _, err := ctx.Exec([]string{"bash", "-c", command}, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+		ctx.SetMetadata(wxl, versionKey, watchexecVersion)
 	}
-
-	// Write the layer information.
-	ctx.WriteMetadata(wxl, meta, layers.Cache, layers.Launch)
+	return nil
 }

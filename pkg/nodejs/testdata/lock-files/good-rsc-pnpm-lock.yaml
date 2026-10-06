@@ -1,0 +1,4 @@
+lockfileVersion: '6.0'
+dependencies:
+  react-server-dom-webpack:
+    version: 19.0.1

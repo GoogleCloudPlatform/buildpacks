@@ -18,11 +18,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 )
 
 func TestNewSpanValidation(t *testing.T) {
 	badName := ""
-	_, err := newSpanInfo(badName, time.Now(), time.Now(), nil, StatusOk)
+	_, err := newSpanInfo(badName, time.Now(), time.Now(), nil, buildererror.StatusOk)
 	if err == nil {
 		t.Fatalf("newSpanInfo(%q, ...) got err=nil want err!=nil", badName)
 	}
@@ -33,7 +35,7 @@ func TestNewSpanValidation(t *testing.T) {
 	name := "End before start"
 	start := time.Now()
 	end := start.Add(-1 * time.Second)
-	_, err = newSpanInfo(name, start, end, nil, StatusOk)
+	_, err = newSpanInfo(name, start, end, nil, buildererror.StatusOk)
 	if err == nil {
 		t.Fatalf("newSpanInfo(%q, ...) got err=nil want err!=nil", name)
 	}

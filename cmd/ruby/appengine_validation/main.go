@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,41 +17,10 @@
 package main
 
 import (
-	"path/filepath"
-
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/appengine_validation/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) error {
-	if ctx.FileExists("Gemfile") || ctx.FileExists("gems.rb") {
-		return nil
-	}
-	ctx.OptOut("No Gemfile nor gems.rb found.")
-	return nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	gemfile := ""
-	if ctx.FileExists("Gemfile") {
-		gemfile = "Gemfile"
-		if ctx.FileExists("gems.rb") {
-			ctx.Warnf("Gemfile and gems.gb both exist. Using Gemfile.")
-		}
-	} else if ctx.FileExists("gems.rb") {
-		gemfile = "gems.rb"
-	}
-	if gemfile == "" {
-		return nil
-	}
-
-	script := filepath.Join(ctx.BuildpackRoot(), "scripts", "check_gemfile_version.rb")
-	result, err := ctx.ExecWithErr([]string{"ruby", script, gemfile})
-	if err != nil && result != nil && result.ExitCode != 0 {
-		return gcp.UserErrorf(result.Stdout)
-	}
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

@@ -1,0 +1,42 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+# Go build Buildpack
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
+
+licenses(["notice"])
+
+buildpack(
+    name = "compile",
+    executables = [
+        ":main",
+    ],
+    prefix = "dart",
+    version = "1.0.0",
+    visibility = [
+        "//builders:dart_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "compile_using_runner",
+    buildpack_id = "google.dart.compile",
+    prefix = "dart",
+    version = "1.0.0",
+    visibility = [
+        "//builders:dart_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//cmd/dart/compile/lib",
+        "//pkg/gcpbuildpack",
+    ],
+)

@@ -1,0 +1,16 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+licenses(["notice"])
+
+go_library(
+    name = "execd",
+    srcs = ["execd.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//cmd:__subpackages__",
+        "//maker:__subpackages__",
+    ],
+    deps = [
+        "//pkg/gcpbuildpack",
+    ],
+)

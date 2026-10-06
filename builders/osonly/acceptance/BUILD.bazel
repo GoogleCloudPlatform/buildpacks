@@ -1,0 +1,46 @@
+load("//internal/acceptance:args.bzl", "get_runtime_to_universal_builder_map", "languageargs")
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite")
+load(":args.bzl", "gcp_runtime_versions", "version_to_builder_stack", "version_to_run_stack_min")
+
+licenses(["notice"])
+
+exports_files([
+    "config.yaml",
+    "args.bzl",
+    "gcp_test.go",
+    "common_test.go",
+])
+
+RUNTIME_TO_UNIVERSAL_BUILDER_MAP = get_runtime_to_universal_builder_map(version_to_builder_stack)
+
+test_suite(
+    name = "acceptance_test",
+    tests = [
+        "gcp_test",
+    ],
+)
+
+acceptance_test_suite(
+    name = "gcp_test",
+    srcs = [
+        "common_test.go",
+        "gcp_test.go",
+    ],
+    argsmap = languageargs(
+        gcp_runtime_versions,
+        version_to_run_stack_min,
+        use_runtime_name_as_version = True,
+    ),
+    builder = "//builders/gcp/base:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_UNIVERSAL_BUILDER_MAP,
+    testdata = "//builders/testdata/osonly:generic",
+    use_runtime_name_as_version = True,
+    versions = gcp_runtime_versions,
+)
+
+acceptance_test_argo_source(
+    name = "argo_source",
+    gcpOnly = True,
+    testdata = "//builders/testdata/osonly:all_files",
+)

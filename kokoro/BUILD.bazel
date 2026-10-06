@@ -1,0 +1,7 @@
+filegroup(
+    name = "buildcfgs",
+    srcs = glob(["**/**/*_test.cfg"]),
+    visibility = ["//visibility:public"],
+)
+
+exports_files(glob(["**/**/*_test.cfg"]))

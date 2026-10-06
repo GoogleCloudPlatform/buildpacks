@@ -22,34 +22,38 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/appstart"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/devmode"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 var (
-	defaultExclusions = []string{appengine.ConfigDir}
+	defaultExclusions = []string{appstart.ConfigDir}
 )
 
-// DetectFn detemines if clear source buildpacks should opt in.
-func DetectFn(ctx *gcp.Context) error {
+// DetectFn detemines if clear source buildpacks should opt out.
+// In case the buildpack shouldn't opt out, the function does not make a
+// determination and instead returns a nil result.
+func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if devmode.Enabled(ctx) {
-		ctx.OptOut("Development mode enabled")
+		return gcp.OptOut("development mode enabled"), nil
 	}
 
 	if clearSource, ok := os.LookupEnv(env.ClearSource); ok {
 		clear, err := strconv.ParseBool(clearSource)
 		if err != nil {
-			return fmt.Errorf("parsing %q: %v", env.ClearSource, err)
+			return nil, gcp.UserErrorf("parsing %q: %v", env.ClearSource, err)
 		}
 
 		if clear {
-			return nil
+			// It is up to the buildpack to determine if clear source has any effect
+			// and if it should opt in, e.g. Java only opts in for Gradle/Maven builds.
+			return nil, nil
 		}
 	}
-	ctx.OptOut("%s not set", env.ClearSource)
-	return nil
+	return gcp.OptOutEnvNotSet(env.ClearSource), nil
 }
 
 // BuildFn clears the workspace while leaving exclusion patterns untouched.
@@ -58,7 +62,7 @@ func BuildFn(ctx *gcp.Context, exclusions []string) error {
 	ctx.Logf("Clearing source")
 
 	defer func(now time.Time) {
-		ctx.Span("Clear source", now, gcp.StatusOk)
+		ctx.Span("Clear source", now, buildererror.StatusOk)
 	}(time.Now())
 
 	exclusions = append(exclusions, defaultExclusions...)
@@ -67,7 +71,9 @@ func BuildFn(ctx *gcp.Context, exclusions []string) error {
 		return fmt.Errorf("filtering paths: %w", err)
 	}
 	for _, path := range paths {
-		ctx.RemoveAll(path)
+		if err := ctx.RemoveAll(path); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -75,7 +81,10 @@ func BuildFn(ctx *gcp.Context, exclusions []string) error {
 
 // pathsToRemove returns a list of entries in dir, filtering entries that match any in exclusions. exclusions should be a partial path relative to dir.
 func pathsToRemove(ctx *gcp.Context, dir string, exclusions []string) ([]string, error) {
-	paths := ctx.Glob(filepath.Join(dir, "*"))
+	paths, err := ctx.Glob(filepath.Join(dir, "*"))
+	if err != nil {
+		return nil, fmt.Errorf("finding paths: %w", err)
+	}
 	var filteredPaths []string
 	for _, path := range paths {
 		remove := true

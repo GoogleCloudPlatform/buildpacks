@@ -1,0 +1,5 @@
+runConfig:
+  vpcAccess:
+    networkInterfaces:
+    - network: "projects/test-project/global/networks/my-network"
+      subnetwork: "projects/test-project/regions/us-central1/subnetworks/my-subnet"

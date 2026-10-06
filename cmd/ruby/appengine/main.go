@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,66 +17,10 @@
 package main
 
 import (
-	"errors"
-	"path/filepath"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
+	lib "github.com/GoogleCloudPlatform/buildpacks/cmd/ruby/appengine/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
-const (
-	bundleIndicator  = "Gemfile.lock"
-	bundle2Indicator = "gems.locked"
-	railsIndicator   = "bin/rails"
-	railsCommand     = "bin/rails server"
-	rackIndicator    = "config.ru"
-	rackCommand      = "rackup --port $PORT"
-)
-
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) error {
-	// Always opt-in.
-	return nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	// Ruby sometimes writes to local directories tmp/ and log/, so we link these to writable areas.
-	localTemp := filepath.Join(ctx.ApplicationRoot(), "tmp")
-	localLog := filepath.Join(ctx.ApplicationRoot(), "log")
-	ctx.RemoveAll(localTemp)
-	ctx.RemoveAll(localLog)
-	ctx.Symlink("/tmp", localTemp)
-	ctx.Symlink("/var/log", localLog)
-
-	return appengine.Build(ctx, "ruby",
-		func(ctx *gcp.Context) (*appengine.Entrypoint, error) {
-			return entrypoint(ctx, ctx.ApplicationRoot())
-		})
-}
-
-func entrypoint(ctx *gcp.Context, srcDir string) (*appengine.Entrypoint, error) {
-	var ep string
-	ctx.Logf("WARNING: No entrypoint specified. Attempting to infer entrypoint, but it is recommended to set an explicit `entrypoint` in app.yaml.")
-	if ctx.FileExists(srcDir, railsIndicator) {
-		ep = maybeBundle(ctx, srcDir, railsCommand)
-	} else if ctx.FileExists(srcDir, rackIndicator) {
-		ep = maybeBundle(ctx, srcDir, rackCommand)
-	} else {
-		return nil, errors.New("unable to infer entrypoint, please set the `entrypoint` field in app.yaml: https://cloud.google.com/appengine/docs/standard/ruby/runtime#application_startup")
-	}
-	ctx.Logf("Using inferred entrypoint: %q", ep)
-	return &appengine.Entrypoint{
-		Type:    appengine.EntrypointGenerated.String(),
-		Command: ep,
-	}, nil
-}
-
-func maybeBundle(ctx *gcp.Context, srcDir, cmd string) string {
-	if ctx.FileExists(srcDir, bundleIndicator) || ctx.FileExists(srcDir, bundle2Indicator) {
-		return "bundle exec " + cmd
-	}
-	return cmd
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

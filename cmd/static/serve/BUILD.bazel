@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
+
+licenses(["notice"])
+
+buildpack(
+    name = "serve",
+    executables = [
+        ":main",
+    ],
+    prefix = "static",
+    version = "0.9.0",
+    visibility = ["//visibility:public"],
+)
+
+buildpack_using_runner(
+    name = "serve_using_runner",
+    buildpack_id = "google.static.serve",
+    prefix = "static",
+    version = "0.9.0",
+    visibility = ["//visibility:public"],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//cmd/static/serve/lib",
+        "//pkg/gcpbuildpack",
+    ],
+)

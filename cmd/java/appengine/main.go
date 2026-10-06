@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,38 +17,10 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
+	lib "github.com/GoogleCloudPlatform/buildpacks/cmd/java/appengine/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/java"
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) error {
-	// Always opt-in.
-	return nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	return appengine.Build(ctx, "java", entrypoint)
-}
-
-func entrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
-	if ctx.FileExists("WEB-INF", "appengine-web.xml") {
-		return nil, gcp.UserErrorf("appengine-web.xml found, GAE Java compat apps are not supported on Java 11")
-	}
-
-	executable, err := java.ExecutableJar(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("finding executable jar: %w", err)
-	}
-
-	return &appengine.Entrypoint{
-		Type:    appengine.EntrypointGenerated.String(),
-		Command: "/serve " + executable,
-	}, nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

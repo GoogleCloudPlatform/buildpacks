@@ -1,0 +1,2 @@
+Django==4.0.4
+gunicorn==23.0.0

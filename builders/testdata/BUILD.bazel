@@ -1,12 +1,15 @@
 # Test data for builder acceptance tests.
-load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
-
 licenses(["notice"])
 
-package(default_visibility = ["//builders:__subpackages__"])
+package(default_visibility = [
+    "//builders:__subpackages__",
+    "//cmd:__subpackages__",
+    "//pkg/apprunner:__subpackages__",
+])
 
 exports_files(
     [
+        "dart",
         "dotnet",
         "generic",
         "go",
@@ -18,20 +21,48 @@ exports_files(
     ],
 )
 
-# The java builder acceptance tests expect the following structure:
-#   ./custom_entrypoint/Main.java
-#   ./single_jar/fatjar.jar
-#   ./<other test cases>
-# Note that java/custom_entrypoint is considered a package due to the BUILD file
-# and so must be fully-resolved. Likewise the presence of a java/BUILD file
-# means that we can't just use java/** here.
-pkg_tar(
-    name = "javatestdata",
-    srcs = ["//builders/testdata/java:files"],
-    extension = "tgz",
-    files = {
-        "//builders/testdata/java/custom_entrypoint:Main.java": "custom_entrypoint/Main.java",
-        "//builders/testdata/java/custom_entrypoint:runnablejar": "single_jar/fatjar.jar",
-    },
-    strip_prefix = "java",
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]) + [
+        "//builders/testdata/{}:all_files".format(subpkg)
+        for subpkg in subpackages(include = ["**"])
+    ],
+)
+
+filegroup(
+    name = "nodejs_generic_and_function_files",
+    srcs = [
+        "//builders/testdata/nodejs:functions_files",
+        "//builders/testdata/nodejs:generic_files",
+    ],
+)
+
+filegroup(
+    name = "all_generic_and_function_files",
+    srcs = glob(["**"]) + [
+        "//builders/testdata/{}:generic_files".format(subpkg)
+        for subpkg in subpackages(
+            include = ["**"],
+            exclude = ["cpp/**"],
+        )
+    ] + [
+        "//builders/testdata/{}:functions_files".format(subpkg)
+        for subpkg in subpackages(
+            include = ["**"],
+            exclude = [
+                "cpp/**",
+                "dart/**",
+                "osonly/**",
+                "php/**",
+                "static/**",
+            ],
+        )
+    ],
+)
+
+filegroup(
+    name = "firebase_files",
+    srcs = [
+        "//builders/testdata/nodejs:generic_files",
+    ],
 )

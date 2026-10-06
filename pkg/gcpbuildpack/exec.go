@@ -23,10 +23,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"errors"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
 )
 
 var (
-	divider = strings.Repeat("—", 80)
+	divider = strings.Repeat("-", 80)
 )
 
 // ExecResult bundles exec results.
@@ -42,22 +46,25 @@ type execParams struct {
 	dir string
 	env []string
 
-	userFailure     bool
-	userTiming      bool
-	messageProducer MessageProducer
+	userAttribution    bool
+	userTiming         bool
+	messageProducer    MessageProducer
+	logCommandOverride *bool
+	logOutputOverride  *bool
 }
 
-type execOption func(o *execParams)
+// ExecOption configures Exec functions.
+type ExecOption func(o *execParams)
 
 // WithEnv sets environment variables (of the form "KEY=value").
-func WithEnv(env ...string) execOption {
+func WithEnv(env ...string) ExecOption {
 	return func(o *execParams) {
-		o.env = env
+		o.env = append(o.env, env...)
 	}
 }
 
 // WithWorkDir sets a specific working directory.
-func WithWorkDir(dir string) execOption {
+func WithWorkDir(dir string) ExecOption {
 	return func(o *execParams) {
 		o.dir = dir
 	}
@@ -65,7 +72,7 @@ func WithWorkDir(dir string) execOption {
 
 // WithUserAttribution indicates that failure and timing both are attributed to the user.
 var WithUserAttribution = func(o *execParams) {
-	o.userFailure = true
+	o.userAttribution = true
 	o.userTiming = true
 }
 
@@ -74,15 +81,26 @@ var WithUserTimingAttribution = func(o *execParams) {
 	o.userTiming = true
 }
 
-// WithUserFailureAttribution indicates that only failure is attributed to the user.
-var WithUserFailureAttribution = func(o *execParams) {
-	o.userFailure = true
-}
-
 // WithMessageProducer sets a custom MessageProducer to produce the error message.
-func WithMessageProducer(mp MessageProducer) execOption {
+func WithMessageProducer(mp MessageProducer) ExecOption {
 	return func(o *execParams) {
 		o.messageProducer = mp
+	}
+}
+
+// WithLogCommand logs or silences the shell command itself from being printed. This takes
+// precedence over any other options.
+func WithLogCommand(shouldLog bool) ExecOption {
+	return func(o *execParams) {
+		o.logCommandOverride = &shouldLog
+	}
+}
+
+// WithLogOutput logs or silences the shell command's output from being printed. This takes
+// precedence over any other options.
+func WithLogOutput(shouldLog bool) ExecOption {
+	return func(o *execParams) {
+		o.logOutputOverride = &shouldLog
 	}
 }
 
@@ -104,19 +122,8 @@ var WithStdoutTail = WithMessageProducer(KeepStdoutTail)
 // WithStdoutHead keeps the head of stdout for the error message.
 var WithStdoutHead = WithMessageProducer(KeepStdoutHead)
 
-// Exec runs the given command under the default configuration, handling error if present.
-func (ctx *Context) Exec(cmd []string, opts ...execOption) *ExecResult {
-	result, err := ctx.ExecWithErr(cmd, opts...)
-	if err == nil {
-		return result
-	}
-
-	ctx.Exit(result.ExitCode, err)
-	return nil
-}
-
-// ExecWithErr runs the given command (with args) under the default configuration, allowing the caller to handle the error.
-func (ctx *Context) ExecWithErr(cmd []string, opts ...execOption) (*ExecResult, *Error) {
+// Exec runs the given command (with args) under the default configuration, allowing the caller to handle the error.
+func (ctx *Context) Exec(cmd []string, opts ...ExecOption) (*ExecResult, error) {
 	params := execParams{cmd: cmd, messageProducer: KeepCombinedTail}
 	for _, o := range opts {
 		o(&params)
@@ -134,18 +141,19 @@ func (ctx *Context) ExecWithErr(cmd []string, opts ...execOption) (*ExecResult, 
 		return result, nil
 	}
 
-	var be *Error
-	if result == nil {
-		be = Errorf(StatusInternal, err.Error())
-	} else {
-		message := params.messageProducer(result)
-		if params.userFailure {
-			be = UserErrorf(message)
-		} else {
-			be = Errorf(StatusInternal, message)
-		}
+	message := err.Error()
+	if result != nil {
+		message = params.messageProducer(result)
 	}
-	be.ID = generateErrorID(params.cmd...)
+
+	var be *buildererror.Error
+	if params.userAttribution {
+		be = UserErrorf(message)
+	} else {
+		be = buildererror.Errorf(buildererror.StatusInternal, message)
+	}
+
+	be.ID = buildererror.GenerateErrorID(params.cmd...)
 	return result, be
 }
 
@@ -157,17 +165,10 @@ func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
 		return nil, fmt.Errorf("empty command provided")
 	}
 
-	log := true
-	if !params.userFailure && !ctx.debug {
+	defaultShouldLog := true
+	if !params.userAttribution && !ctx.debug {
 		// For "system" commands, we will only log if the debug flag is present.
-		log = false
-	}
-
-	optionalLogf := func(format string, args ...interface{}) {
-		if !log {
-			return
-		}
-		ctx.Logf(format, args...)
+		defaultShouldLog = false
 	}
 
 	readableCmd := strings.Join(params.cmd, " ")
@@ -175,32 +176,46 @@ func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
 		env := strings.Join(params.env, " ")
 		readableCmd = fmt.Sprintf("%s (%s)", readableCmd, env)
 	}
-	optionalLogf(divider)
-	optionalLogf("Running %q", readableCmd)
 
-	status := StatusInternal
+	logCmd := defaultShouldLog
+	if params.logCommandOverride != nil {
+		logCmd = *params.logCommandOverride
+	}
+	if logCmd {
+		ctx.Logf(divider)
+		ctx.Logf("Running %q", readableCmd)
+	}
+
+	status := buildererror.StatusInternal
 	defer func(start time.Time) {
 		truncated := readableCmd
 		if len(truncated) > 60 {
 			truncated = truncated[:60] + "..."
 		}
-		optionalLogf("Done %q (%v)", truncated, time.Since(start))
+
+		if logCmd {
+			ctx.Logf("Done %q (%v)", truncated, time.Since(start))
+		}
 		ctx.Span(ctx.createSpanName(params.cmd), start, status)
 	}(time.Now())
 
 	exitCode := 0
-	ecmd := exec.Command(params.cmd[0], params.cmd[1:]...)
+	ecmd := ctx.execCmd(params.cmd[0], params.cmd[1:]...)
 
 	if params.dir != "" {
 		ecmd.Dir = params.dir
 	}
 
 	if len(params.env) > 0 {
-		ecmd.Env = append(os.Environ(), params.env...)
+		ecmd.Env = append(append(ecmd.Env, os.Environ()...), params.env...)
 	}
 
+	logOutput := defaultShouldLog
+	if params.logOutputOverride != nil {
+		logOutput = *params.logOutputOverride
+	}
 	var outb, errb bytes.Buffer
-	combinedb := lockingBuffer{log: log}
+	combinedb := lockingBuffer{ctx: ctx, log: logOutput}
 	ecmd.Stdout = io.MultiWriter(&outb, &combinedb)
 	ecmd.Stderr = io.MultiWriter(&errb, &combinedb)
 
@@ -208,6 +223,16 @@ func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
 		if ee, ok := err.(*exec.ExitError); ok {
 			// The command returned a non-zero result.
 			exitCode = ee.ExitCode()
+		} else if pe, ok := err.(*os.PathError); ok && errors.Is(pe.Err, os.ErrNotExist) {
+			// ENOENT normally occurs if the command cannot
+			// be found, but also occurs with scripts using
+			// CR-LF line endings.  Unix uses LF as its line
+			// ending, so a script with a shebang using CR-LF
+			// will result in the kernel attempting to
+			// resolve an executable name with the trailing
+			// CR. This search will almost certainly fail and
+			// otherwise results in an confusing ENOENT.
+			return nil, fmt.Errorf("executing command %q: %v: if %q is a script, ensure that it has Unix-style LF line endings", readableCmd, err, params.cmd[0])
 		} else {
 			return nil, fmt.Errorf("executing command %q: %v", readableCmd, err)
 		}
@@ -224,7 +249,7 @@ func (ctx *Context) configuredExec(params execParams) (*ExecResult, error) {
 		return result, fmt.Errorf("executing command %q: exit code %d", readableCmd, exitCode)
 	}
 
-	status = StatusOk
+	status = buildererror.StatusOk
 	return result, nil
 }
 
@@ -234,13 +259,14 @@ type lockingBuffer struct {
 
 	// log tells the buffer to also log the output to stderr.
 	log bool
+	ctx *Context
 }
 
 func (lb *lockingBuffer) Write(p []byte) (int, error) {
 	lb.Lock()
 	defer lb.Unlock()
 	if lb.log {
-		os.Stderr.Write(p)
+		lb.ctx.Logf(string(p))
 	}
 	return lb.buf.Write(p)
 }

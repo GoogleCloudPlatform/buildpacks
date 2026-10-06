@@ -38,7 +38,7 @@ with `blaze`.
 
 Please follow the links below for installation instructions.
 
-* [Bazel](https://docs.bazel.build/versions/master/install.html)
+* [Bazel](https://docs.bazel.build/install.html)
 * [Docker](https://store.docker.com/search?type=edition&offering=community)
 * [pack](https://buildpacks.io/docs/install-pack/)
 * [container-structure-test](https://github.com/GoogleContainerTools/container-structure-test#installation)
@@ -51,7 +51,7 @@ The following command verifies that all dependencies are installed correctly
 or prints further instructions:
 
 ```bash
-bazel test --test_output=errors tools:check_dependencies_test
+bazel test --test_output=errors tools/checktools:main_test
 ```
 
 ### Builder overview
@@ -78,8 +78,10 @@ Each buildpack has a single `main.go` file that implements a `detectFn` and
 a `buildFn`:
 
 * `detectFn` is invoked through `/bin/detect`.
-  A buildpack signals that it can participate in the build unless it explicitly
-  opts out using `ctx.OptOut` or returns an error.
+  A buildpack must choose to participate in a build by returning a
+  `detect.OptIn` or one if its variants opt-out of the build by returning
+  `detect.OptOut` or one of its variants. If needed, it may also return an
+  error. See `pkg/gcpbuildpack/detect.go` for the full list of `Opt*` functions.
 
 * `buildFn` is invoked through `/bin/build`.
   The responsibility of the build function is to create layers and populate them
@@ -207,6 +209,24 @@ docker image prune --all --filter until=720h
 ```
 
 ## Common Problems
+
+### Local Testing with Compressed Image Tarballs `crane.Pull` fails
+
+If you are testing locally with `pkg/fetch` and trying to download `.zstd`
+compressed tarballs from Artifact Registry, `crane.Pull(url)` might fail with an
+`UNAUTHORIZED` error. The standard Docker credential helper may not be
+configured properly.
+
+As a temporary workaround for local testing only, you can inject Google
+Application Default Credentials directly into `crane` by manually modifying
+`pkg/fetch/fetch.go` where `crane.Pull(url)` occurs:
+
+```go
+keychain := authn.NewMultiKeychain(google.Keychain, authn.DefaultKeychain)
+image, err := crane.Pull(url, crane.WithAuthFromKeychain(keychain))
+```
+
+Note: Ensure you run `gcloud auth application-default login` first.
 
 ### Testing builder with `pack build` fails
 

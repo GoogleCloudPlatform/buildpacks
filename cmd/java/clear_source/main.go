@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,24 +17,10 @@
 package main
 
 import (
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/clearsource"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/java/clear_source/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) error {
-	if err := clearsource.DetectFn(ctx); err != nil {
-		return err
-	}
-	if !ctx.FileExists("pom.xml") && !ctx.FileExists("build.gradle") && !ctx.FileExists("build.gradle.kts") {
-		ctx.OptOut("None of pom.xml, build.gradle, nor build.gradle.kts found. Clearing souce only supported on maven and gradle projects.")
-	}
-	return nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	return clearsource.BuildFn(ctx, []string{"target", "build"})
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

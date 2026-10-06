@@ -1,0 +1,33 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+go_library(
+    name = "dart",
+    srcs = [
+        "dart.go",
+        "flutter.go",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//:__subpackages__",
+    ],
+    deps = [
+        "//pkg/buildererror",
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+        "@com_github_hashicorp_go_retryablehttp//:go_default_library",
+        "@in_gopkg_yaml_v2//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "dart_test",
+    srcs = [
+        "dart_test.go",
+        "flutter_test.go",
+    ],
+    embed = [":dart"],
+    rundir = ".",
+    deps = ["//internal/testserver"],
+)

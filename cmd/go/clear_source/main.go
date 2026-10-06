@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,18 +17,10 @@
 package main
 
 import (
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/clearsource"
+	lib "github.com/GoogleCloudPlatform/buildpacks/cmd/go/clear_source/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) error {
-	return clearsource.DetectFn(ctx)
-}
-
-func buildFn(ctx *gcp.Context) error {
-	return clearsource.BuildFn(ctx, nil)
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

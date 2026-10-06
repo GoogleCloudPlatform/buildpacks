@@ -1,0 +1,16 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+package(default_visibility = ["//visibility:public"])
+
+go_library(
+    name = "faherror",
+    srcs = ["faherror.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+)
+
+go_test(
+    name = "faherror_test",
+    srcs = ["faherror_test.go"],
+    embed = [":faherror"],
+    rundir = ".",
+)

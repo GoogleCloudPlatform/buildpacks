@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,29 +17,10 @@
 package main
 
 import (
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/go/gopath/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) error {
-	if ctx.FileExists("go.mod") {
-		ctx.OptOut("go.mod file found")
-	}
-	return nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer("gopath")
-	ctx.OverrideBuildEnv(l, "GOPATH", l.Root)
-	ctx.OverrideBuildEnv(l, "GO111MODULE", "off")
-	ctx.WriteMetadata(l, nil, layers.Build)
-
-	// TODO(b/145604612): Investigate caching the modules layer.
-
-	ctx.Exec([]string{"go", "get", "-d"}, gcp.WithEnv("GOPATH="+l.Root, "GO111MODULE=off"), gcp.WithUserAttribution)
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

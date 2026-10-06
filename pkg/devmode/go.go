@@ -18,10 +18,3 @@ var (
 	// GoWatchedExtensions is the list of file extensions to be watched for changes in Dev Mode for Go.
 	GoWatchedExtensions = []string{"go"}
 )
-
-// GoSyncRules is the list of SyncRules to be configured in Dev Mode for Go.
-func GoSyncRules(dest string) []SyncRule {
-	return []SyncRule{
-		{Src: "**/*.go", Dest: dest},
-	}
-}

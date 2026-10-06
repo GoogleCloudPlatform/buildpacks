@@ -1,0 +1,18 @@
+modelVersion: 4.0.0
+groupId: main
+artifactId: polyglot-maven
+version: 0.1
+
+properties:
+  maven.compiler.target: 11
+  maven.compiler.source: 11
+
+build:
+  plugins:
+  - groupId: org.apache.maven.plugins
+    artifactId: maven-jar-plugin
+    version: 3.2.0
+    configuration:
+      archive:
+        manifest:
+          mainClass: main.Main

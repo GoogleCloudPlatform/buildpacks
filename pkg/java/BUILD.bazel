@@ -5,26 +5,54 @@ licenses(["notice"])
 
 go_library(
     name = "java",
-    srcs = ["java.go"],
+    srcs = [
+        "appenginewebxml.go",
+        "gradle.go",
+        "java.go",
+        "maven.go",
+    ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
         "//cmd/java:__subpackages__",
+        "//maker:__subpackages__",
+        "//pkg/apprunner/java:__subpackages__",
     ],
     deps = [
+        "//pkg/env",
+        "//pkg/fetch",
         "//pkg/gcpbuildpack",
-        "@com_github_buildpack_libbuildpack//layers:go_default_library",
+        "//pkg/runtime",
+        "//pkg/tooling",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
     ],
 )
 
 go_test(
     name = "java_test",
     size = "small",
-    srcs = ["java_test.go"],
+    srcs = [
+        "appenginewebxml_test.go",
+        "gradle_test.go",
+        "java_test.go",
+        "maven_test.go",
+    ],
+    embedsrcs = [
+        "testdata/appengine-web.xml",  # keep
+        "testdata/empty_file.xml",  # keep
+        "testdata/empty_project.xml",  # keep
+        "testdata/extra_config_appengine-web.xml",  # keep
+        "testdata/invalid_project.xml",  # keep
+        "testdata/jetty_property_appengine-web.xml",  # keep
+        "testdata/minimal_appengine-web.xml",  # keep
+        "testdata/simple_project.xml",  # keep
+    ],
     embed = [":java"],
     rundir = ".",
     deps = [
+        "//internal/testserver",
+        "//pkg/env",
         "//pkg/gcpbuildpack",
-        "@com_github_buildpack_libbuildpack//buildpack:go_default_library",
-        "@com_github_buildpack_libbuildpack//layers:go_default_library",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
+        "@com_github_google_go-cmp//cmp:go_default_library",
     ],
 )

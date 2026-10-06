@@ -1,0 +1,40 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
+
+licenses(["notice"])
+
+buildpack(
+    name = "rubygems",
+    executables = [
+        ":main",
+    ],
+    prefix = "ruby",
+    version = "0.9.0",
+    visibility = [
+        "//builders:ruby_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "rubygems_using_runner",
+    buildpack_id = "google.ruby.rubygems",
+    prefix = "ruby",
+    version = "0.9.0",
+    visibility = [
+        "//builders:ruby_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//cmd/ruby/rubygems/lib",
+        "//pkg/gcpbuildpack",
+    ],
+)

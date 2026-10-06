@@ -2,6 +2,26 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 licenses(["notice"])
 
+exports_files([
+    "nodejs_test.go",
+    "nodejs_fn_test.go",
+    "go_test.go",
+    "go_fn_test.go",
+    "java_test.go",
+    "java_fn_test.go",
+    "python_test.go",
+    "python_fn_test.go",
+    "ruby_test.go",
+    "ruby_fn_test.go",
+    "cpp_fn_test.go",
+    "dotnet_fn_test.go",
+    "dotnet_test.go",
+    "dart_test.go",
+    "php_test.go",
+    "acceptance.go",
+    "config.yaml",
+])
+
 go_library(
     name = "acceptance",
     srcs = ["acceptance.go"],
@@ -9,26 +29,49 @@ go_library(
 )
 
 go_test(
-    name = "dotnet_test",
+    name = "dart_test",
     size = "enormous",
-    srcs = ["dotnet_test.go"],
+    srcs = ["dart_test.go"],
     args = [
-        "-test-data=$(location //builders/testdata:generic)",
+        "-test-data=$(location //builders/testdata/dart:generic)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
-        "-builder-prefix=gcpbase-dotnet-test-",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
+        "-builder-prefix=gcpbase-dart-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
-        "//builders/testdata:generic",
+        "//builders/gcp/base:google_24_builder.tar",
+        "//builders/testdata/dart:generic",
     ],
     embed = [":acceptance"],
     rundir = ".",
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
+)
+
+go_test(
+    name = "dotnet_test",
+    size = "enormous",
+    srcs = ["dotnet_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata/dotnet:generic)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
+        "-builder-prefix=gcpbase-dotnet-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gcp/base:google_24_builder.tar",
+        "//builders/testdata/dotnet:generic",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -36,22 +79,22 @@ go_test(
     size = "enormous",
     srcs = ["go_test.go"],
     args = [
-        "-test-data=$(location //builders/testdata:generic)",
+        "-test-data=$(location //builders/testdata/go:generic)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-go-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
-        "//builders/testdata:generic",
+        "//builders/gcp/base:google_24_builder.tar",
+        "//builders/testdata/go:generic",
     ],
     embed = [":acceptance"],
     rundir = ".",
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -59,23 +102,22 @@ go_test(
     size = "enormous",
     srcs = ["java_test.go"],
     args = [
-        "-test-data=$(location //builders/testdata:generic)",
+        "-test-data=$(location //builders/testdata/java:generic)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-java-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
-        "//builders/testdata:generic",
+        "//builders/gcp/base:google_24_builder.tar",
+        "//builders/testdata/java:generic",
     ],
-    flaky = 1,
     embed = [":acceptance"],
     rundir = ".",
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -83,22 +125,45 @@ go_test(
     size = "enormous",
     srcs = ["nodejs_test.go"],
     args = [
-        "-test-data=$(location //builders/testdata:generic)",
+        "-test-data=$(location //builders/testdata/nodejs:generic)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-nodejs-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
-        "//builders/testdata:generic",
+        "//builders/gcp/base:google_24_builder.tar",
+        "//builders/testdata/nodejs:generic",
     ],
     embed = [":acceptance"],
     rundir = ".",
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
+)
+
+go_test(
+    name = "php_test",
+    size = "enormous",
+    srcs = ["php_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata/php:generic)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
+        "-builder-prefix=gcpbase-php-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gcp/base:google_24_builder.tar",
+        "//builders/testdata/php:generic",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -106,22 +171,68 @@ go_test(
     size = "enormous",
     srcs = ["python_test.go"],
     args = [
-        "-test-data=$(location //builders/testdata:generic)",
+        "-test-data=$(location //builders/testdata/python:generic)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-python-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
-        "//builders/testdata:generic",
+        "//builders/gcp/base:google_24_builder.tar",
+        "//builders/testdata/python:generic",
     ],
     embed = [":acceptance"],
     rundir = ".",
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
+)
+
+go_test(
+    name = "ruby_test",
+    size = "enormous",
+    srcs = ["ruby_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata/ruby:generic)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
+        "-builder-prefix=gcpbase-ruby-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gcp/base:google_24_builder.tar",
+        "//builders/testdata/ruby:generic",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//internal/acceptance"],
+)
+
+go_test(
+    name = "cpp_fn_test",
+    size = "enormous",
+    srcs = ["cpp_fn_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata/cpp:functions)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
+        "-builder-prefix=gcpbase-cpp-fn-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gcp/base:google_24_builder.tar",
+        "//builders/testdata/cpp:functions",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -131,12 +242,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/dotnet:functions)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-dotnet-fn-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/dotnet:functions",
     ],
     embed = [":acceptance"],
@@ -144,7 +255,7 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -154,12 +265,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/nodejs:functions)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-nodejs-fn-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/nodejs:functions",
     ],
     embed = [":acceptance"],
@@ -167,7 +278,7 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -177,12 +288,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/go:functions)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-go-fn-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/go:functions",
     ],
     embed = [":acceptance"],
@@ -190,7 +301,7 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -200,12 +311,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/java:functions.tgz)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-java-fn-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/java:functions.tgz",
     ],
     embed = [":acceptance"],
@@ -213,7 +324,7 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
 )
 
 go_test(
@@ -223,12 +334,12 @@ go_test(
     args = [
         "-test-data=$(location //builders/testdata/python:functions)",
         "-structure-test-config=$(location :config.yaml)",
-        "-builder-source=$(location //builders/gcp/base:builder.tar)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
         "-builder-prefix=gcpbase-python-fn-test-",
     ],
     data = [
         ":config.yaml",
-        "//builders/gcp/base:builder.tar",
+        "//builders/gcp/base:google_24_builder.tar",
         "//builders/testdata/python:functions",
     ],
     embed = [":acceptance"],
@@ -236,5 +347,28 @@ go_test(
     tags = [
         "local",
     ],
-    deps = ["//pkg/acceptance"],
+    deps = ["//internal/acceptance"],
+)
+
+go_test(
+    name = "ruby_fn_test",
+    size = "enormous",
+    srcs = ["ruby_fn_test.go"],
+    args = [
+        "-test-data=$(location //builders/testdata/ruby:functions)",
+        "-structure-test-config=$(location :config.yaml)",
+        "-builder-source=$(location //builders/gcp/base:google_24_builder.tar)",
+        "-builder-prefix=gcpbase-ruby-fn-test-",
+    ],
+    data = [
+        ":config.yaml",
+        "//builders/gcp/base:google_24_builder.tar",
+        "//builders/testdata/ruby:functions",
+    ],
+    embed = [":acceptance"],
+    rundir = ".",
+    tags = [
+        "local",
+    ],
+    deps = ["//internal/acceptance"],
 )

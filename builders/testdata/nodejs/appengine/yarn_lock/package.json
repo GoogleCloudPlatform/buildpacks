@@ -1,0 +1,8 @@
+{
+  "engines": {
+	  "yarn": "1.22.5"
+  },
+  "dependencies": {
+    "polka": "0.5.2"
+  }
+}

@@ -1,0 +1,36 @@
+schemaVersion: '3.0.0'
+
+runConfig:
+  cpu: 1
+  cpuAlwaysAllocated: true
+  memoryMiB: 1024
+  maxInstances: 4
+  concurrency: 100
+  vpcAccess:
+    egress: ALL_TRAFFIC
+    networkInterfaces:
+      - network: projects/test-project/global/networks/test-network
+        subnetwork: projects/test-project/regions/us-central1/subnetworks/test-subnetwork
+        tags:
+          - test-tag
+
+env:
+  - variable: STORAGE_BUCKET
+    value: mybucket.appspot.com
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: VAR_JSON
+    value: '{"apiKey":"myApiKey","appId":"myAppId"}'
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: API_KEY
+    secret: myApiKeySecret
+    availability:
+      - BUILD
+
+  - variable: PINNED_API_KEY
+    secret: myApiKeySecret@5

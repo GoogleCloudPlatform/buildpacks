@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,85 +17,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"regexp"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/python/webserver/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
 )
-
-const (
-	layerName string = "gunicorn"
-)
-
-var (
-	gunicornRegexp = regexp.MustCompile(`(?m)^gunicorn\b([^-]|$)`)
-	eggRegexp      = regexp.MustCompile(`(?m)#egg=gunicorn$`)
-	versionRegexp  = regexp.MustCompile(`(?m)^gunicorn\ \((.*?)\)`)
-)
-
-// metadata represents metadata stored for a dependencies layer.
-type metadata struct {
-	GunicornVersion string `toml:"gunicorn_version"`
-}
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) error {
-	if os.Getenv(env.Entrypoint) != "" {
-		ctx.OptOut("custom entrypoint present")
-	}
-	if ctx.FileExists("requirements.txt") && gunicornPresentInRequirements(ctx, "requirements.txt") {
-		ctx.OptOut("gunicorn present in requirements.txt")
-	}
-	return nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	var meta metadata
-	l := ctx.Layer(layerName)
-	ctx.ReadMetadata(l, &meta)
-
-	// Check for up to date gunicorn version
-	raw := ctx.Exec([]string{"python3", "-m", "pip", "search", "gunicorn"}, gcp.WithUserAttribution).Stdout
-	match := versionRegexp.FindStringSubmatch(raw)
-	if len(match) < 2 || match[1] == "" {
-		return fmt.Errorf("pip search returned unexpected gunicorn version %q", raw)
-	}
-
-	version := match[1]
-	ctx.Debugf("Current gunicorn version: %q", version)
-	ctx.Debugf(" Cached gunicorn version: %q", meta.GunicornVersion)
-	if version == meta.GunicornVersion {
-		ctx.CacheHit(layerName)
-		ctx.Logf("Dependencies cache hit, skipping installation.")
-		return nil
-	}
-	ctx.CacheMiss(layerName)
-
-	if meta.GunicornVersion == "" {
-		ctx.Debugf("No metadata found from a previous build, skipping cache.")
-	}
-
-	ctx.Logf("Installing gunicorn.")
-	ctx.Exec([]string{"python3", "-m", "pip", "install", "--upgrade", "gunicorn", "-t", l.Root}, gcp.WithUserAttribution)
-
-	ctx.PrependPathSharedEnv(l, "PYTHONPATH", l.Root)
-
-	meta.GunicornVersion = version
-	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)
-	return nil
-}
-
-func gunicornPresentInRequirements(ctx *gcp.Context, path string) bool {
-	content := ctx.ReadFile(path)
-	return containsGunicorn(string(content))
-}
-
-func containsGunicorn(s string) bool {
-	return gunicornRegexp.MatchString(s) || eggRegexp.MatchString(s)
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

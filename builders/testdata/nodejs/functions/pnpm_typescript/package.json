@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "gcp-build": "tsc function.ts"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.4"
+  }
+}

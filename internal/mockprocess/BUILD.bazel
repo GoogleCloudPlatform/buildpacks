@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+licenses(["notice"])
+
+package(default_visibility = ["//:__subpackages__"])
+
+go_library(
+    name = "mockprocess",
+    testonly = 1,
+    srcs = ["mockprocess.go"],
+    data = ["//internal/mockprocess/cmd"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    deps = ["//internal/mockprocess/mockprocessutil"],
+)

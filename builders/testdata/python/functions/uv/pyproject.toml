@@ -1,0 +1,7 @@
+[project]
+name = "uv"
+version = "0.1.0"
+description = ""
+dependencies = [
+    "functions-framework==3.0.0",
+]

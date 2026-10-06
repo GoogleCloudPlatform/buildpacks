@@ -1,0 +1,7 @@
+version: v1
+runConfig:
+  runCommand: node dist/angular/server/server.mjs
+  environmentVariables: []
+metadata:
+  adapterPackageName: "@apphosting/adapter-angular"
+  framework: angular

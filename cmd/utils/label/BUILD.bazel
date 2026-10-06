@@ -1,0 +1,42 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+
+# Buildpack for adding labels to the final image.
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
+
+licenses(["notice"])
+
+buildpack(
+    name = "label_image",
+    executables = [
+        ":main",
+    ],
+    prefix = "utils",
+    version = "0.0.2",
+    visibility = [
+        "//builders:__subpackages__",
+    ],
+)
+
+buildpack_using_runner(
+    name = "label_image_using_runner",
+    buildpack_id = "google.utils.label-image",
+    prefix = "utils",
+    version = "0.0.2",
+    visibility = [
+        "//builders:__subpackages__",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//cmd/utils/label/lib",
+        "//pkg/gcpbuildpack",
+    ],
+)

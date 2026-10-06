@@ -1,0 +1,5 @@
+{
+    "require": {
+        "google/appengine-php-sdk": "^1.9"
+    }
+}

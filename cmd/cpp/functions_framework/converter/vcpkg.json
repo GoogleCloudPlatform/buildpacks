@@ -1,0 +1,5 @@
+{
+  "name": "auto-generated-vcpkg-json",
+  "version-string": "unversioned",
+  "dependencies": [ "functions-framework-cpp" ]
+}

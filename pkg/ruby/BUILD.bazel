@@ -1,0 +1,40 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+go_library(
+    name = "ruby",
+    srcs = [
+        "entrypoint.go",
+        "gemfile.go",
+        "ruby.go",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        # Ruby on Rails apps require Nodejs and Yarn for precompiling assets
+        "//cmd/nodejs/runtime:__subpackages__",
+        "//cmd/ruby:__subpackages__",
+        "//maker:__subpackages__",
+    ],
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
+        "@com_github_masterminds_semver//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "ruby_test",
+    srcs = [
+        "entrypoint_test.go",
+        "gemfile_test.go",
+        "ruby_test.go",
+    ],
+    embed = [":ruby"],
+    rundir = ".",
+    deps = [
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+    ],
+)

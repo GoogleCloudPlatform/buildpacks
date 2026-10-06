@@ -1,11 +1,11 @@
 licenses(["notice"])
 
-package(
-    default_visibility = ["//:__subpackages__"],
-)
+package(default_visibility = ["//:__subpackages__"])
 
 exports_files([
     "defs.bzl",
+    "buildpack.toml.template",
+    "generate_flatten_flag.sh",
 ])
 
 # Used in builder macro in defs.bzl.
@@ -14,16 +14,14 @@ sh_binary(
     srcs = ["create-builder.sh"],
 )
 
-# Used in builder macro in defs.bzl.
 sh_binary(
-    name = "check_dependencies",
-    srcs = ["check-dependencies.sh"],
+    name = "create_buildpackage",
+    srcs = ["create-buildpackage.sh"],
 )
 
-sh_test(
-    name = "check_dependencies_test",
-    srcs = ["check-dependencies.sh"],
-    local = 1,
+sh_binary(
+    name = "generate_flatten_flag",
+    srcs = ["generate_flatten_flag.sh"],
 )
 
 sh_binary(

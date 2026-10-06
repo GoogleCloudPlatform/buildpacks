@@ -1,18 +1,37 @@
 # Buildpack for the Go functions framework
 
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
-load("//tools:defs.bzl", "buildpack")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
 
 licenses(["notice"])
 
 buildpack(
     name = "functions_framework",
     srcs = [
-        "converter/get_package/src/main/main.go",
+        "converter/without-framework/go.mod",
+        "converter/without-framework/main.go",
+        "//cmd/go/functions_framework/converter/get_package:main.go",
     ],
     executables = [
         ":main",
     ],
+    prefix = "go",
+    version = "0.9.4",
+    visibility = [
+        "//builders:go_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "functions_framework_using_runner",
+    srcs = [
+        "converter/without-framework/go.mod",
+        "converter/without-framework/main.go",
+        "//cmd/go/functions_framework/converter/get_package:main.go",
+    ],
+    buildpack_id = "google.go.functions-framework",
+    prefix = "go",
+    version = "0.9.4",
     visibility = [
         "//builders:go_builders",
     ],
@@ -20,28 +39,14 @@ buildpack(
 
 go_binary(
     name = "main",
-    srcs = [
-        "main.go",
-        "template.go",
-    ],
+    srcs = ["main.go"],
     # Strip debugging information to reduce binary size.
     gc_linkopts = [
         "-s",
         "-w",
     ],
     deps = [
-        "//pkg/env",
+        "//cmd/go/functions_framework/lib",
         "//pkg/gcpbuildpack",
-        "//pkg/golang",
-        "@com_github_buildpack_libbuildpack//layers:go_default_library",
     ],
-)
-
-go_test(
-    name = "main_test",
-    size = "small",
-    srcs = ["main_test.go"],
-    embed = [":main"],
-    rundir = ".",
-    deps = ["//pkg/gcpbuildpack"],
 )

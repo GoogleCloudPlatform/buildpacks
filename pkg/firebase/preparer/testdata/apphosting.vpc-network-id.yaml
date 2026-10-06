@@ -1,0 +1,5 @@
+runConfig:
+  vpcAccess:
+    networkInterfaces:
+    - network: "my-network"
+      subnetwork: "my-subnet"

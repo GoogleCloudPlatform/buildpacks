@@ -1,0 +1,7 @@
+version: v1
+runConfig:
+  runCommand: node dist/angular/server/server.mjs
+  environmentVariables: 
+    - variable: SSR_PORT
+      availability:
+        - RUNTIME

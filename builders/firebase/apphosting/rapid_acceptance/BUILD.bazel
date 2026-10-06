@@ -1,0 +1,19 @@
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source_firebase", "acceptance_test_suite")
+
+licenses(["notice"])
+
+acceptance_test_argo_source_firebase(
+    name = "argo_source",
+    testdata = "//builders/testdata:firebase_files",
+)
+
+acceptance_test_suite(
+    name = "nodejs_acceptance_test",
+    srcs = [
+        "//builders/firebase/apphosting/acceptance:acceptance.go",
+        "//builders/firebase/apphosting/acceptance:nodejs_test.go",
+    ],
+    builder = "//builders/firebase/apphosting:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/nodejs:generic",
+)

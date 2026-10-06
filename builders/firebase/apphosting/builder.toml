@@ -1,0 +1,135 @@
+description = "Builder for Firebase App Hosting"
+
+[[buildpacks]]
+  id = "google.nodejs.runtime"
+  uri = "runtime.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.firebasenx"
+  uri = "firebasenx.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.firebasenextjs"
+  uri = "firebasenextjs.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.firebaseangular"
+  uri = "firebaseangular.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.firebasebundle"
+  uri = "firebasebundle.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.npm"
+  uri = "npm.tgz"
+[[buildpacks]]
+  id = "google.nodejs.yarn"
+  uri = "yarn.tgz"
+[[buildpacks]]
+  id = "google.nodejs.pnpm"
+  uri = "pnpm.tgz"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[stack]
+  id = "firebase.apphosting.22"
+  build-image = "gcr.io/buildpacks/firebase-app-hosting-22/build"
+  run-image = "gcr.io/buildpacks/firebase-app-hosting-22/run"
+
+[lifecycle]
+  version = "0.21.14"

@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,7 +16,7 @@ package acceptance
 import (
 	"testing"
 
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/acceptance"
+	"github.com/GoogleCloudPlatform/buildpacks/internal/acceptance"
 )
 
 func init() {
@@ -24,14 +24,16 @@ func init() {
 }
 
 func TestAcceptanceDotNetFn(t *testing.T) {
-	builder, cleanup := acceptance.CreateBuilder(t)
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
 	t.Cleanup(cleanup)
 
 	testCases := []acceptance.Test{
 		// When there is only one target, we don't need to set FUNCTION_TARGET.
 		{
+			// .NET 3.1 is not supported on Ubuntu 22.04.
 			Name:       "cs single target",
 			App:        "cs_single_target",
+			SkipStacks: []string{"google.24.full", "google.24", "google.22", "google.gae.22"},
 			Path:       "/function",
 			MustUse:    []string{dotnetRuntime, dotnetPublish},
 			MustNotUse: []string{entrypoint},
@@ -39,6 +41,7 @@ func TestAcceptanceDotNetFn(t *testing.T) {
 		{
 			Name:       "cs multiple targets",
 			App:        "cs_multiple_targets",
+			SkipStacks: []string{"google.24.full", "google.24"},
 			Env:        []string{"GOOGLE_FUNCTION_TARGET=TestFunction.Function"},
 			Path:       "/function",
 			MustUse:    []string{dotnetRuntime, dotnetPublish, dotnetFF},
@@ -61,12 +64,13 @@ func TestAcceptanceDotNetFn(t *testing.T) {
 			MustNotUse: []string{entrypoint},
 		},
 	}
-	for _, tc := range testCases {
+	for _, tc := range acceptance.FilterTests(t, imageCtx, testCases) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			t.Parallel()
+			// Running these tests in parallel causes the server to run out of disk space.
+			// t.Parallel()
 
-			acceptance.TestApp(t, builder, tc)
+			acceptance.TestApp(t, imageCtx, tc)
 		})
 	}
 }

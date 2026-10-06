@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+go_library(
+    name = "devsync",
+    srcs = ["devsync.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//:__subpackages__",
+    ],
+)
+
+go_test(
+    name = "devsync_test",
+    srcs = ["devsync_test.go"],
+    embed = [":devsync"],
+    rundir = ".",
+)

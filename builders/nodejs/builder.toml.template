@@ -1,0 +1,587 @@
+description = "Builder for the Node.js runtime"
+
+[[buildpacks]]
+  id = "google.nodejs.appengine"
+  uri = "appengine.tgz"
+
+[[buildpacks]]
+  id = "google.utils.archive-source"
+  uri = "archive_source.tgz"
+
+[[buildpacks]]
+  id = "google.config.entrypoint"
+  uri = "entrypoint.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.functions-framework"
+  uri = "functions_framework.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.legacy-worker"
+  uri = "legacy_worker.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.npm"
+  uri = "npm.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.runtime"
+  uri = "runtime.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.yarn"
+  uri = "yarn.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.pnpm"
+  uri = "pnpm.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.bun"
+  uri = "bun.tgz"
+
+[[buildpacks]]
+  id = "google.utils.label-image"
+  uri = "label_image.tgz"
+
+[[buildpacks]]
+  id = "google.config.flex"
+  uri = "flex.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.turborepo"
+  uri = "turborepo.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.firebasenx"
+  uri = "firebasenx.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.firebasenextjs"
+  uri = "firebasenextjs.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.firebaseangular"
+  uri = "firebaseangular.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.firebasebundle"
+  uri = "firebasebundle.tgz"
+
+[[buildpacks]]
+  id = "google.firebase.firebasebundle"
+  uri = "firebasebundle_v2.tgz"
+
+# The Firebase apphosting order group for Node.js applications.
+# TODO: Change the naming convention for firebase apphosting buildpacks
+# since Serverless Runtimes prefers generic buildpack names.
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenextjs"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.turborepo"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebasenx"
+    optional = true
+  [[order.group]]
+    id = "google.nodejs.firebaseangular"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.yarn"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.nodejs.firebasebundle"
+
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+  [[order.group]]
+    id = "google.nodejs.npm"
+  [[order.group]]
+    id = "google.firebase.firebasebundle"
+
+# GAE Flex for yarn
+[[order]]
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.yarn"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# GAE Flex for pnpm
+[[order]]
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# GAE Flex for npm
+[[order]]
+  [[order.group]]
+    id = "google.config.flex"
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.npm"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# the GAE order group for yarn
+[[order]]
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.yarn"
+
+  [[order.group]]
+    id = "google.nodejs.appengine"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# the GAE order group for pnpm
+[[order]]
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+
+  [[order.group]]
+    id = "google.nodejs.appengine"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# the GAE order group for npm
+[[order]]
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.npm"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.appengine"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# The GCF order group for nodejs8 and yarn, this group must be before any
+# order with functions-framework marked as optional.
+[[order]]
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    # archive source is marked as optional so that this order group can be used by GCP
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.yarn"
+
+  [[order.group]]
+    id = "google.nodejs.legacy-worker"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# The GCF order group for nodejs8 and npm, this group must be before any
+# order with functions-framework marked as optional.
+[[order]]
+
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.npm"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.legacy-worker"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# The GCP / GCF order group for yarn
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    # archive source is marked as optional so that this order group can be used by GCP
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.yarn"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# The GCP / GCF order group for pnpm
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    # archive source is marked as optional so that this order group can be used by GCP
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.pnpm"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# The GCP / GCF order group for bun package manager.
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    # archive source is marked as optional so that this order group can be used by GCP
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.bun"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# The GCP / GCF order group for npm
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    # archive source is marked as optional so that this order group can be used by GCP
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.npm"
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# Separate groups for Node.js projects without dependencies.
+# Making both yarn and npm optional in the previous groups leads
+# the yarn group to opt in every time.
+
+# The GCP / GCF Node.js functions without a package.json.
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.utils.archive-source"
+    # archive source is marked as optional so that this order group can be used by GCP
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.functions-framework"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+# The GCP order group for Node.js applications without a package.json.
+# Entrypoint is required because it cannot be read from package.json.
+[[order]]
+  [[order.group]]
+    id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.config.entrypoint"
+
+  [[order.group]]
+    id = "google.utils.label-image"
+
+[stack]
+  id = "${STACK_ID}"
+  build-image = "${STACK_BUILD_IMAGE}"
+  run-image = "${STACK_RUN_IMAGE}"
+
+[lifecycle]
+  version = "0.21.14"

@@ -1,0 +1,6 @@
+{
+    "require": {
+        "cloudevents/sdk-php": "^1.0",
+        "google/cloud-functions-framework": "^1.1"
+    }
+}

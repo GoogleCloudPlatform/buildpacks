@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,25 +17,10 @@
 package main
 
 import (
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/appengine"
+	lib "github.com/GoogleCloudPlatform/buildpacks/cmd/go/appengine/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/golang"
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) error {
-	// Always opt in.
-	return nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	return appengine.Build(ctx, "go", entrypoint)
-}
-
-func entrypoint(ctx *gcp.Context) (*appengine.Entrypoint, error) {
-	ctx.Logf("No user entrypoint specified. Using the generated entrypoint %q", golang.OutBin)
-	return &appengine.Entrypoint{Type: appengine.EntrypointGenerated.String(), Command: golang.OutBin}, nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

@@ -18,15 +18,3 @@ var (
 	// NodeWatchedExtensions is the list of file extensions to be watched for changes in Dev Mode for NodeJS.
 	NodeWatchedExtensions = []string{"js", "mjs", "coffee", "litcoffee", "json"}
 )
-
-// NodeSyncRules is the list of SyncRules to be configured in Dev Mode for NodeJS.
-func NodeSyncRules(dest string) []SyncRule {
-	return []SyncRule{
-		{Src: "**/*.js", Dest: dest},
-		{Src: "**/*.mjs", Dest: dest},
-		{Src: "**/*.coffee", Dest: dest},
-		{Src: "**/*.litcoffee", Dest: dest},
-		{Src: "**/*.json", Dest: dest},
-		{Src: "public/**", Dest: dest},
-	}
-}

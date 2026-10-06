@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,66 +17,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/cache"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/python/pip/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/python"
-	"github.com/buildpack/libbuildpack/layers"
 )
-
-const (
-	layerName = "pip"
-	cacheName = "pipcache"
-)
-
-// metadata represents metadata stored for a dependencies layer.
-type metadata struct {
-	PythonVersion   string `toml:"python_version"`
-	DependencyHash  string `toml:"dependency_hash"`
-	ExpiryTimestamp string `toml:"expiry_timestamp"`
-}
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) error {
-	if !ctx.FileExists("requirements.txt") {
-		ctx.OptOut("requirements.txt not found")
-	}
-	return nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer(layerName)
-	cl := ctx.Layer(cacheName)
-
-	cached, meta, err := python.CheckCache(ctx, l, cache.WithFiles("requirements.txt"))
-	if err != nil {
-		return fmt.Errorf("checking cache: %w", err)
-	}
-	if cached {
-		ctx.CacheHit(layerName)
-		return nil
-	}
-	ctx.CacheMiss(layerName)
-
-	// Install modules in requirements.txt.
-	ctx.Logf("Running pip install.")
-	ctx.Exec([]string{"python3", "-m", "pip", "install", "--upgrade", "-r", "requirements.txt", "-t", l.Root}, gcp.WithEnv("PIP_CACHE_DIR="+cl.Root), gcp.WithUserAttribution)
-
-	ctx.PrependPathSharedEnv(l, "PYTHONPATH", l.Root)
-
-	// Check for broken dependencies.
-	ctx.Logf("Checking for incompatible dependencies.")
-	checkDeps := ctx.Exec([]string{"python3", "-m", "pip", "check"}, gcp.WithEnv("PYTHONPATH="+l.Root+":"+os.Getenv("PYTHONPATH")), gcp.WithUserAttribution)
-	if checkDeps.ExitCode != 0 {
-		return fmt.Errorf("incompatible dependencies installed: %q", checkDeps.Stdout)
-	}
-
-	ctx.WriteMetadata(l, &meta, layers.Build, layers.Cache, layers.Launch)
-	ctx.WriteMetadata(cl, nil, layers.Cache)
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }

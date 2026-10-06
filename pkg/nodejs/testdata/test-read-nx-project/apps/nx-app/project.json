@@ -1,0 +1,35 @@
+{
+  "name": "nx-app",
+  "projectType": "application",
+  "prefix": "test-read-nx-project",
+  "sourceRoot": "apps/nx-app/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@framework/builder",
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "2kb",
+              "maximumError": "4kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    }
+  }
+}

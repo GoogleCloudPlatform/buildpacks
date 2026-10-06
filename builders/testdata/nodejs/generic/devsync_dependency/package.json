@@ -1,0 +1,10 @@
+{
+  "name": "nodejs-devsync",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "polka": "^0.5.2"
+  }
+}

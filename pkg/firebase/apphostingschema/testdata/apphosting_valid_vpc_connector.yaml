@@ -1,0 +1,3 @@
+runConfig:
+  vpcAccess:
+    connector: my-connector

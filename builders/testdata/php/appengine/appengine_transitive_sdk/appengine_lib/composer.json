@@ -1,0 +1,7 @@
+{
+  "name": "local/lib",
+  "version": "1.0.0",
+  "require": {
+    "google/appengine-php-sdk": "^1.9"
+  }
+}

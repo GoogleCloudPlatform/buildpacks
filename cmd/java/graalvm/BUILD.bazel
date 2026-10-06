@@ -1,0 +1,40 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("//tools:defs.bzl", "buildpack", "buildpack_using_runner")
+
+licenses(["notice"])
+
+buildpack(
+    name = "graalvm",
+    executables = [
+        ":main",
+    ],
+    prefix = "java",
+    version = "0.1.0",
+    visibility = [
+        "//builders:java_builders",
+    ],
+)
+
+buildpack_using_runner(
+    name = "graalvm_using_runner",
+    buildpack_id = "google.java.graalvm",
+    prefix = "java",
+    version = "0.1.0",
+    visibility = [
+        "//builders:java_builders",
+    ],
+)
+
+go_binary(
+    name = "main",
+    srcs = ["main.go"],
+    # Strip debugging information to reduce binary size.
+    gc_linkopts = [
+        "-s",
+        "-w",
+    ],
+    deps = [
+        "//cmd/java/graalvm/lib",
+        "//pkg/gcpbuildpack",
+    ],
+)

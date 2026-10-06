@@ -16,10 +16,10 @@
 # Cloud Build builder that extends the bazel builder with pack and
 # container-structure-test binaries, as well as the Go toolchain.
 
-FROM gcr.io/cloud-builders/bazel
+FROM gcr.io/cloud-builders/bazel:7.3.2
 
 # Binaries must be in /usr/bin to be visible to Bazel.
-ARG PACK_VERSION=0.12.0
+ARG PACK_VERSION=0.38.2
 RUN curl -fsSL https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64 -o /usr/bin/container-structure-test && chmod +x /usr/bin/container-structure-test
 RUN curl -fsSL https://github.com/buildpacks/pack/releases/download/v${PACK_VERSION}/pack-v${PACK_VERSION}-linux.tgz | tar xz -C /usr/bin
 RUN curl -fsSL https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -o /usr/bin/jq && chmod +x /usr/bin/jq
@@ -27,11 +27,11 @@ RUN curl -fsSL https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux6
 # Go is required for go-licenses even when statically compiled.
 RUN mkdir -p /go \
   && mkdir -p /usr/local/go \
-  && curl --silent https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz \
+  && curl --silent https://dl.google.com/go/go1.26.5.linux-amd64.tar.gz \
   | tar xz --strip-components=1 --directory /usr/local/go
 ENV GOPATH=/go
 ENV GOROOT=/usr/local/go/
 ENV PATH=/go/bin:/usr/local/go/bin:${PATH}
 
 WORKDIR /go-licenses
-RUN go mod init tmp; go get github.com/google/go-licenses
+RUN go mod init tmp; go install github.com/google/go-licenses@latest

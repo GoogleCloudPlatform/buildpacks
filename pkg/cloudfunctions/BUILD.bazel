@@ -1,0 +1,36 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+go_library(
+    name = "cloudfunctions",
+    srcs = [
+        "cloudfunctions.go",
+        "env.go",
+        "labels.go",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    visibility = [
+        "//cmd:__subpackages__",
+    ],
+    deps = [
+        "//pkg/appstart",
+        "//pkg/buildererror",
+        "//pkg/env",
+        "//pkg/gcpbuildpack",
+    ],
+)
+
+go_test(
+    name = "cloudfunctions_test",
+    size = "small",
+    srcs = [
+        "cloudfunctions_test.go",
+    ],
+    embed = [":cloudfunctions"],
+    rundir = ".",
+    deps = [
+        "//pkg/appstart",
+        "//pkg/gcpbuildpack",
+    ],
+)

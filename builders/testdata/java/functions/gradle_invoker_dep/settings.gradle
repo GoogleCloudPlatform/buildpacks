@@ -1,0 +1,3 @@
+// In an earlier version of this builder, the presence of the following
+// definition caused builds to fail unless build.gradle had a jar{} clause.
+rootProject.name = 'whatever'

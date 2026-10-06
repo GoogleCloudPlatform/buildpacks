@@ -1,0 +1,150 @@
+load("//internal/acceptance:args.bzl", "get_runtime_to_builder_map", "languageargs")
+load("//internal/acceptance:defs.bzl", "acceptance_test_argo_source", "acceptance_test_suite", "create_acceptance_versions_dict_file")
+load(":args.bzl", "flex_runtime_versions", "gae_runtime_versions", "gcf_runtime_versions", "gcp_runtime_versions")
+load(":runtime.bzl", "gae_runtimes", "gcf_runtimes", "version_to_stack")
+
+licenses(["notice"])
+
+exports_files([
+    "config.yaml",
+    "args.bzl",
+])
+
+RUNTIME_TO_BUILDER_MAP = get_runtime_to_builder_map(version_to_stack, "go")
+
+create_acceptance_versions_dict_file(
+    name = "gen_acceptance_targets_list",
+    file = "acceptance_targets.dict",
+    flex_runtime_versions = flex_runtime_versions,
+    gae_runtime_versions = gae_runtime_versions,
+    gcf_runtime_versions = gcf_runtime_versions,
+    gcp_runtime_versions = gcp_runtime_versions,
+)
+
+test_suite(
+    name = "acceptance_test",
+    tests = [
+        "1.11_gcf_test",
+        "flex_test",
+        "gae_test",
+        "gcf_test",
+        "gcp_test",
+    ],
+)
+
+# The GCF Legacy Worker is only available and used for the "GCF go111" runtime version. It has different behavior,
+# a unique order group, and is tested seperately.
+VERSION_GCF_LEGACY_WORKER = "1.11"
+
+acceptance_test_suite(
+    name = "gcf_test",
+    srcs = [
+        "common_test.go",
+        "gcf_test.go",
+    ],
+    argsmap = languageargs(gcf_runtimes, version_to_stack),
+    builder = "//builders/go:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/go:functions",
+    versions = gcf_runtime_versions,
+)
+
+acceptance_test_suite(
+    name = "gcp_test",
+    srcs = [
+        "common_test.go",
+        "gcp_test.go",
+    ],
+    builder = "//builders/go:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/go:generic",
+    versions = gcp_runtime_versions,
+)
+
+# Test the run image tagged as latest in gae-runtimes.
+acceptance_test_suite(
+    name = "gae_test",
+    srcs = [
+        "common_test.go",
+        "gae_test.go",
+    ],
+    argsmap = languageargs(gae_runtimes, version_to_stack),
+    builder = "//builders/go:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/go:appengine",
+    versions = gae_runtime_versions,
+)
+
+# Test the run image tagged as ${_CANDIDATE_NAME} in gae-runtimes-private.
+acceptance_test_suite(
+    name = "gae_candidate_test",
+    srcs = [
+        "common_test.go",
+        "gae_test.go",
+    ],
+    argsmap = languageargs(gae_runtimes, version_to_stack, "$${_CANDIDATE_NAME}"),
+    builder = "//builders/go:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/go:appengine",
+    versions = gae_runtime_versions,
+)
+
+# Test the run image tagged as ${_CANDIDATE_NAME} with ${_STACK} in gae-runtimes-private.
+acceptance_test_suite(
+    name = "gae_stack_candidate_test",
+    srcs = [
+        "common_test.go",
+        "gae_test.go",
+    ],
+    argsmap = languageargs(gae_runtimes, version_to_stack, "$${_CANDIDATE_NAME}", "$${_STACK}"),
+    builder = "//builders/go:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/go:appengine",
+    versions = gae_runtime_versions,
+)
+
+# This suite is a special suite just for go 1.11. The order group GCF & go111 includes the legacy-worker buildpack.
+# As a result, the behavior and the tests for that version are slightly different.
+acceptance_test_suite(
+    name = "1.11_gcf_test",
+    srcs = [
+        "common_test.go",
+        "v111_gcf_test.go",
+    ],
+    args = [
+        "-runtime-version=" + VERSION_GCF_LEGACY_WORKER,
+    ],
+    builder = "//builders/go:builder.tar",
+    rundir = ".",
+    testdata = "//builders/testdata/go:functions",
+)
+
+acceptance_test_suite(
+    name = "flex_test",
+    srcs = [
+        "common_test.go",
+        "flex_test.go",
+    ],
+    builder = "//builders/go:builder.tar",
+    rundir = ".",
+    runtime_to_builder_map = RUNTIME_TO_BUILDER_MAP,
+    testdata = "//builders/testdata/go:flex",
+    versions = flex_runtime_versions,
+)
+
+acceptance_test_argo_source(
+    name = "argo_source",
+    srcs = [
+        ":1.11_gcf_test_cloudbuild_bin",
+        "//cmd/apprunner:app-runner",
+        "//cmd/apprunner:functional_test",
+    ],
+    testdata = "//builders/testdata/go:all_files",
+)
+
+exports_files(["runtime.bzl"])

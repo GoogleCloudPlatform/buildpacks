@@ -16,6 +16,7 @@ package devmode
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -44,24 +45,8 @@ fi
 `))
 )
 
-// JavaSyncRules is the list of SyncRules to be configured in Dev Mode for Java.
-func JavaSyncRules(dest string) []SyncRule {
-	var rules []SyncRule
-
-	for _, ext := range JavaWatchedExtensions {
-		rules = append(rules, SyncRule{
-			Src:  "**/*." + ext,
-			Dest: dest,
-		})
-	}
-
-	// TODO(dgageot): Also sync resources (html,css,js...).
-
-	return rules
-}
-
 // WriteBuildScript writes the build steps to a script to be run on each file change in dev mode.
-func WriteBuildScript(ctx *gcp.Context, layerSrc, dest string, command []string) {
+func WriteBuildScript(ctx *gcp.Context, layerSrc, dest string, command []string) error {
 	var script bytes.Buffer
 	buildScriptTmpl.Execute(&script, map[string]string{
 		"src":          layerSrc,
@@ -70,6 +55,12 @@ func WriteBuildScript(ctx *gcp.Context, layerSrc, dest string, command []string)
 	})
 
 	bin := filepath.Join(layerSrc, "bin")
-	ctx.MkdirAll(bin, 0755)
-	ctx.WriteFile(filepath.Join(bin, ".devmode_rebuild.sh"), script.Bytes(), 0744)
+	if err := ctx.MkdirAll(bin, 0755); err != nil {
+		return err
+	}
+	shPath := filepath.Join(bin, ".devmode_rebuild.sh")
+	if err := ctx.WriteFile(shPath, script.Bytes(), os.FileMode(0744)); err != nil {
+		return err
+	}
+	return nil
 }

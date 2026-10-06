@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,31 +17,10 @@
 package main
 
 import (
-	"os"
-
-	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/cmd/dotnet/appengine_main/lib"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
-	"github.com/buildpack/libbuildpack/layers"
 )
 
 func main() {
-	gcp.Main(detectFn, buildFn)
-}
-
-func detectFn(ctx *gcp.Context) error {
-	if proj := os.Getenv(env.GAEMain); proj == "" {
-		ctx.OptOut("app.yaml main field is not defined, using default")
-	}
-
-	if _, exists := os.LookupEnv(env.Buildable); exists {
-		ctx.OptOut("%s is set, ignoring app.yaml main field", env.Buildable)
-	}
-	return nil
-}
-
-func buildFn(ctx *gcp.Context) error {
-	l := ctx.Layer("main_env")
-	ctx.OverrideBuildEnv(l, env.Buildable, os.Getenv(env.GAEMain))
-	ctx.WriteMetadata(l, nil, layers.Build)
-	return nil
+	gcp.Main(lib.DetectFn, lib.BuildFn)
 }
