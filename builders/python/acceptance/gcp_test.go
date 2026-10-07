@@ -374,7 +374,7 @@ func TestAcceptancePython(t *testing.T) {
 			Name:                       "streamlit_3.13_and_above_default_uv",
 			App:                        "streamlit",
 			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint},
-			VersionInclusionConstraint: ">=3.14.0",
+			VersionInclusionConstraint: ">=3.14.0 < 3.15.0", // TODO(b/559931848): Remove < 3.15.0 constraint once we move away from RC candidate.
 			MustMatch:                  "Streamlit",
 		},
 		{
@@ -517,7 +517,7 @@ func TestAcceptancePython(t *testing.T) {
 			App:                        "poetry_gradio",
 			Env:                        []string{},
 			MustUse:                    []string{pythonRuntime, pythonPoetry, pythonMissingEntrypoint},
-			VersionInclusionConstraint: ">= 3.13.0",
+			VersionInclusionConstraint: ">= 3.13.0 < 3.15.0", // TODO(b/559931848): Remove < 3.15.0 constraint once we move away from RC candidate.
 		},
 		{
 			Name:                       "pyproject_gradio",
@@ -538,7 +538,7 @@ func TestAcceptancePython(t *testing.T) {
 			App:                        "pyproject_streamlit",
 			Env:                        []string{},
 			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint},
-			VersionInclusionConstraint: ">= 3.13.0",
+			VersionInclusionConstraint: ">= 3.13.0 < 3.15.0", // TODO(b/559931848): Remove < 3.15.0 constraint once we move away from RC candidate.
 			MustMatch:                  "Streamlit",
 		},
 		{
@@ -546,7 +546,7 @@ func TestAcceptancePython(t *testing.T) {
 			App:                        "pyproject_streamlit",
 			Env:                        []string{"GOOGLE_PYTHON_PACKAGE_MANAGER=pip"},
 			MustUse:                    []string{pythonRuntime, pythonPIP, pythonMissingEntrypoint},
-			VersionInclusionConstraint: ">= 3.13.0",
+			VersionInclusionConstraint: ">= 3.13.0 < 3.15.0", // TODO(b/559931848): Remove < 3.15.0 constraint once we move away from RC candidate.
 			MustMatch:                  "Streamlit",
 		},
 		{
@@ -554,7 +554,7 @@ func TestAcceptancePython(t *testing.T) {
 			App:                        "pyproject_script",
 			Env:                        []string{},
 			MustUse:                    []string{pythonRuntime, pythonUV, pythonMissingEntrypoint},
-			VersionInclusionConstraint: ">= 3.10.0",
+			VersionInclusionConstraint: ">= 3.10.0 < 3.15.0", // TODO(b/559931848): Remove < 3.15.0 constraint once we move away from RC candidate.
 		},
 		{
 			Name:                       "pyproject_script_pip",
