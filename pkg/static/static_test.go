@@ -15,44 +15,92 @@
 package static
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
+	"github.com/google/go-cmp/cmp"
 )
+
+// testNginxConfigParams exercises every section of the nginx.conf templates.
+var testNginxConfigParams = NginxConfigParams{
+	RootPath:      "/my/app/root",
+	MimeTypesPath: "/opt/nginx/conf/mime.types",
+	HeaderBlocks: []NginxHeaderBlock{
+		{
+			Location: "/static",
+			Headers: []NginxHeader{
+				{Name: "Cache-Control", Value: "public, max-age=31536000"},
+				{Name: "X-Custom", Value: "value"},
+			},
+		},
+	},
+	Redirects: []NginxRedirect{
+		{
+			Pattern: "/old-path",
+			Target:  "/new-path",
+			Code:    301,
+		},
+	},
+	Rewrites: []NginxRewrite{
+		{
+			Pattern: "^/api/(.*)$",
+			Target:  "/$1",
+		},
+	},
+}
+
+// TestWriteNginxConfigGolden pins the output of every released template version. If this test
+// fails for an existing version, do not update its golden file: add a new version instead. The
+// generated output is written to TEST_UNDECLARED_OUTPUTS_DIR to help create the golden file for
+// a new version.
+func TestWriteNginxConfigGolden(t *testing.T) {
+	for version := range nginxConfTemplates {
+		t.Run(fmt.Sprintf("v%d", version), func(t *testing.T) {
+			dstPath := filepath.Join(t.TempDir(), NginxConfFile)
+			if err := WriteNginxConfig(dstPath, version, testNginxConfigParams); err != nil {
+				t.Fatalf("WriteNginxConfig(%d) error = %v", version, err)
+			}
+			got, err := os.ReadFile(dstPath)
+			if err != nil {
+				t.Fatalf("os.ReadFile(%q) error = %v", dstPath, err)
+			}
+
+			goldenName := fmt.Sprintf("nginx_v%d_expected.conf", version)
+			if outDir := os.Getenv("TEST_UNDECLARED_OUTPUTS_DIR"); outDir != "" {
+				if err := os.WriteFile(filepath.Join(outDir, goldenName), got, 0644); err != nil {
+					t.Logf("Writing generated config to undeclared outputs: %v", err)
+				}
+			}
+			want, err := os.ReadFile(testdata.MustGetPath(filepath.Join("testdata", goldenName)))
+			if err != nil {
+				t.Fatalf("Reading golden file %s: %v (every version needs a golden file)", goldenName, err)
+			}
+			if diff := cmp.Diff(string(want), string(got)); diff != "" {
+				t.Errorf("WriteNginxConfig(%d) output changed (-want +got):\n%s", version, diff)
+			}
+		})
+	}
+}
+
+func TestWriteNginxConfigUnsupportedVersion(t *testing.T) {
+	dstPath := filepath.Join(t.TempDir(), NginxConfFile)
+	if err := WriteNginxConfig(dstPath, NginxConfigVersion(0), testNginxConfigParams); err == nil {
+		t.Errorf("WriteNginxConfig(0) succeeded, want error")
+	}
+	if _, err := os.Stat(dstPath); !os.IsNotExist(err) {
+		t.Errorf("WriteNginxConfig(0) created %s, want no file", dstPath)
+	}
+}
 
 func TestWriteNginxConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 	dstPath := filepath.Join(tmpDir, NginxConfFile)
 
-	params := NginxConfigParams{
-		RootPath:      "/my/app/root",
-		MimeTypesPath: "/opt/nginx/conf/mime.types",
-		HeaderBlocks: []NginxHeaderBlock{
-			{
-				Location: "/static",
-				Headers: []NginxHeader{
-					{Name: "Cache-Control", Value: "public, max-age=31536000"},
-					{Name: "X-Custom", Value: "value"},
-				},
-			},
-		},
-		Redirects: []NginxRedirect{
-			{
-				Pattern: "/old-path",
-				Target:  "/new-path",
-				Code:    301,
-			},
-		},
-		Rewrites: []NginxRewrite{
-			{
-				Pattern: "^/api/(.*)$",
-				Target:  "/$1",
-			},
-		},
-	}
-
-	if err := WriteNginxConfig(dstPath, params); err != nil {
+	if err := WriteNginxConfig(dstPath, NginxConfigV1, testNginxConfigParams); err != nil {
 		t.Fatalf("WriteNginxConfig() error = %v", err)
 	}
 

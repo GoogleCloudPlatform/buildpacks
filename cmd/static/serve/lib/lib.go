@@ -107,7 +107,7 @@ func BuildFn(ctx *gcp.Context) error {
 		RootPath:      rootPath,
 		MimeTypesPath: nginxMimeTypesPath,
 	}
-	if err := static.WriteNginxConfig(nginxConfPath, params); err != nil {
+	if err := static.WriteNginxConfig(nginxConfPath, static.NginxConfigV1, params); err != nil {
 		return fmt.Errorf("writing %s: %w", static.NginxConfFile, err)
 	}
 

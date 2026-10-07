@@ -16,15 +16,34 @@
 package static
 
 import (
+	"fmt"
 	"os"
 	"text/template"
 )
+
+// NginxConfigVersion identifies a frozen revision of the default static nginx.conf template.
+//
+// Generated configs can be part of a contract with deployed workloads (e.g. when the config is
+// regenerated on every container start), so a template must never change once released. To
+// change the generated config, add a new template and version, and let callers opt in to it.
+type NginxConfigVersion int
+
+const (
+	// NginxConfigV1 is the first version of the default static nginx.conf template.
+	NginxConfigV1 NginxConfigVersion = 1
+)
+
+// nginxConfTemplates maps each NginxConfigVersion to its frozen template.
+var nginxConfTemplates = map[NginxConfigVersion]string{
+	NginxConfigV1: nginxConfTmplV1,
+}
 
 // TODO(b/514251263): Parameterize the nginx config to allow for custom headers. eg: PORT etc.
 const (
 	// NginxConfFile is the default configuration file name for nginx in static runtimes.
 	NginxConfFile = "nginx.conf"
-	nginxConfTmpl = `
+	// nginxConfTmplV1 is the NginxConfigV1 template. Do not modify; add a new version instead.
+	nginxConfTmplV1 = `
 pid /tmp/nginx.pid;
 error_log /dev/stderr notice;
 
@@ -160,9 +179,14 @@ type NginxHeaderBlock struct {
 	Headers  []NginxHeader // Slice of custom header key-value pairs (ordered)
 }
 
-// WriteNginxConfig compiles the configuration template with parameters and writes it to disk.
-func WriteNginxConfig(dstPath string, params NginxConfigParams) error {
-	tmpl, err := template.New(NginxConfFile).Parse(nginxConfTmpl)
+// WriteNginxConfig compiles the given version of the configuration template with parameters
+// and writes it to disk.
+func WriteNginxConfig(dstPath string, version NginxConfigVersion, params NginxConfigParams) error {
+	tmplStr, ok := nginxConfTemplates[version]
+	if !ok {
+		return fmt.Errorf("unsupported nginx config version %d", version)
+	}
+	tmpl, err := template.New(NginxConfFile).Parse(tmplStr)
 	if err != nil {
 		return err
 	}
