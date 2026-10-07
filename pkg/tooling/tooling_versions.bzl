@@ -37,7 +37,7 @@ TOOLING_VERSIONS = {
     "nodejs": {
         "default": {
             "yarn": "1.22.22",
-            "pnpm": "12.9.1",
+            "pnpm": "11.25.0",
             "bun": "1.4.2",
         },
         "runtimes": [
