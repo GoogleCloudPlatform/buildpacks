@@ -327,6 +327,10 @@ description = "Builder for the Node.js runtime"
     id = "google.nodejs.yarn"
 
   [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
     id = "google.utils.label-image"
 
 # GAE Flex for pnpm
@@ -341,6 +345,10 @@ description = "Builder for the Node.js runtime"
     id = "google.nodejs.pnpm"
 
   [[order.group]]
+    id = "google.config.entrypoint"
+    optional = true
+
+  [[order.group]]
     id = "google.utils.label-image"
 
 # GAE Flex for npm
@@ -353,6 +361,10 @@ description = "Builder for the Node.js runtime"
 
   [[order.group]]
     id = "google.nodejs.npm"
+    optional = true
+
+  [[order.group]]
+    id = "google.config.entrypoint"
     optional = true
 
   [[order.group]]
