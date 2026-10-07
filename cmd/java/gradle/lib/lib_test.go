@@ -81,6 +81,19 @@ func TestBuildCommand(t *testing.T) {
 				"gradle clean assemble -x test --build-cache",
 			},
 		},
+		{
+			name: "gradlew wrapper execution",
+			app:  "gradle_micronaut",
+			files: map[string]string{
+				"gradlew": "#!/bin/sh\nexit 0\n",
+			},
+			mocks: []*mockprocess.Mock{
+				mockprocess.New(`^\./gradlew clean assemble`, mockprocess.WithStdout("BUILD SUCCESSFUL")),
+			},
+			wantCommands: []string{
+				"./gradlew clean assemble -x test --build-cache",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -90,6 +103,9 @@ func TestBuildCommand(t *testing.T) {
 				buildpacktest.WithApp(tc.app),
 				buildpacktest.WithEnvs(tc.envs...),
 				buildpacktest.WithExecMocks(tc.mocks...),
+			}
+			if tc.files != nil {
+				opts = append(opts, buildpacktest.WithFiles(tc.files))
 			}
 
 			opts = append(opts, tc.opts...)

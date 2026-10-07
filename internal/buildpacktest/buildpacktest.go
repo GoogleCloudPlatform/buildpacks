@@ -250,16 +250,23 @@ func runBuildpackPhaseForTest(t *testing.T, cfg *config) (*Result, error) {
 		// by executing the current tests again in a separate process and adding
 		// the env var that signals the buildpack phase should be run (args[0]
 		// is the current running binary).
-		testBinary := filepath.Join(testDir, os.Args[0])
-		// Allows Unit Tests to work with Debug mode,
-		// which has a different directory structure (ideally neither of these would be hardcoded)
-		if _, err := os.Stat(testBinary); errors.Is(err, os.ErrNotExist) {
-			testCommand := filepath.Base(os.Args[0])
-			testBinary = filepath.Join(testDir, "../..", testCommand)
+		testBinary := os.Args[0]
+		if !filepath.IsAbs(testBinary) {
+			testBinary = filepath.Join(testDir, os.Args[0])
+			// Allows Unit Tests to work with Debug mode,
+			// which has a different directory structure (ideally neither of these would be hardcoded)
+			if _, err := os.Stat(testBinary); errors.Is(err, os.ErrNotExist) {
+				testCommand := filepath.Base(os.Args[0])
+				testBinary = filepath.Join(testDir, "../..", testCommand)
+			}
 		}
-		args := []string{fmt.Sprintf("-test.run=Test%s/^%s$", cfg.buildpackPhase, strings.ReplaceAll(cfg.testName, " ", "_"))}
+		args := []string{fmt.Sprintf("-test.run=Test%s/^%s$", cfg.buildpackPhase, strings.ReplaceAll(cfg.testName, " ", "_")), "-test.paniconexit0=false"}
 		// Forward the `buildpacktest` flags to the child process.
-		args = append(args, os.Args[1:]...)
+		for _, arg := range os.Args[1:] {
+			if !strings.HasPrefix(arg, "-test.paniconexit0") && !strings.HasPrefix(arg, "-test.run") {
+				args = append(args, arg)
+			}
+		}
 		cmd := exec.Command(testBinary, args...)
 		cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", runTestAsHelperProcessEnv, cfg.buildpackPhase))
 
