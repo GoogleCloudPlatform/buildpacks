@@ -285,6 +285,10 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/klauspost/compress/zstd/internal/xxhash/LICENSE.txt
 
+- package: github.com/klauspost/cpuid/v2
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/klauspost/cpuid/v2/LICENSE
+
 - package: github.com/kylelemons/godebug
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/kylelemons/godebug/LICENSE
@@ -392,6 +396,10 @@
 - package: github.com/tonistiigi/go-csvvalue
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/tonistiigi/go-csvvalue/LICENSE
+
+- package: github.com/zeebo/blake3
+  license_name: CC0-1.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/zeebo/blake3/LICENSE
 
 - package: golang.org/x/crypto/pkcs12
   license_name: BSD-3-Clause
