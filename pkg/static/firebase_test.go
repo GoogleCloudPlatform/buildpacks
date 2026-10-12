@@ -394,6 +394,10 @@ func TestPrepareNginxHeaders_CustomHeaders(t *testing.T) {
 					{Key: "X-Foo", Value: `bar "with" \escapes`},
 				},
 			},
+			{
+				Regex:   `^/regex-path/.*$`,
+				Headers: []HeaderConfig{{Key: "X-Regex", Value: "matched"}},
+			},
 		},
 	}
 
@@ -418,10 +422,18 @@ func TestPrepareNginxHeaders_CustomHeaders(t *testing.T) {
 				{Regex: `^.*/[^/]*\.png$`, Value: `"bar \"with\" \\escapes"`},
 			},
 		},
+		{
+			VariableName: "hdr_x_regex",
+			DefaultValue: `""`,
+			Mappings: []FirebaseNginxMapping{
+				{Regex: `^/regex-path/.*$`, Value: `"matched"`},
+			},
+		},
 	}
 	wantHeaders := []FirebaseNginxHeader{
 		{Key: "Cache-Control", VariableName: "hdr_cache_control"},
 		{Key: "X-Foo", VariableName: "hdr_x_foo"},
+		{Key: "X-Regex", VariableName: "hdr_x_regex"},
 	}
 
 	if diff := cmp.Diff(wantMaps, gotMaps); diff != "" {
@@ -683,6 +695,7 @@ func TestWriteFirebaseNginxConfig_RedirectsAndRewrites(t *testing.T) {
 		MimeTypesPath: "/opt/nginx/conf/mime.types",
 		Redirects: []NginxRedirect{
 			{Pattern: `^/old$`, Target: "/new", Code: 301},
+			{Pattern: `^/archive/[0-9]{4}$`, Target: "/archive/latest", Code: 301},
 		},
 		Rewrites: []NginxRewrite{
 			{Pattern: `^/api/(.*)$`, Target: "/index.html"},
@@ -699,16 +712,19 @@ func TestWriteFirebaseNginxConfig_RedirectsAndRewrites(t *testing.T) {
 	}
 
 	got := string(content)
-	if !strings.Contains(got, "location ~ ^/old$ {") {
+	if !strings.Contains(got, `location ~ "^/old$" {`) {
 		t.Errorf("WriteFirebaseNginxConfig() output = %q; missing redirect location block", got)
 	}
 	if !strings.Contains(got, "return 301 /new;") {
 		t.Errorf("WriteFirebaseNginxConfig() output = %q; missing redirect return directive", got)
 	}
-	if !strings.Contains(got, `location ~ ^/api/(.*)$ {`) {
+	if !strings.Contains(got, `location ~ "^/archive/[0-9]{4}$" {`) {
+		t.Errorf("WriteFirebaseNginxConfig() output = %q; missing quantifier redirect location block", got)
+	}
+	if !strings.Contains(got, `location ~ "^/api/(.*)$" {`) {
 		t.Errorf("WriteFirebaseNginxConfig() output = %q; missing rewrite location block", got)
 	}
-	if !strings.Contains(got, `rewrite ^/api/(.*)$ /index.html break;`) {
+	if !strings.Contains(got, `rewrite "^/api/(.*)$" /index.html break;`) {
 		t.Errorf("WriteFirebaseNginxConfig() output = %q; missing rewrite directive", got)
 	}
 }
@@ -950,9 +966,24 @@ func TestWriteFirebaseNginxConfig_CleanUrlsAndTrailingSlash(t *testing.T) {
 			trailingSlash: ptrBool(true),
 			wantContains: []string{
 				"rewrite ^([^.\\?]*[^/])$ $1/ permanent;",
-				"try_files $uri $uri.html $uri/ =404;",
+				"rewrite ^/(.+)/$ /$1 break;",
+				"try_files $uri $uri.html $uri/index.html =404;",
 				"if ($request_uri ~ ^/(.*)\\.html(\\?|$)) {",
 				"return 301 /$1$is_args$args;",
+			},
+		},
+		{
+			name:          "clean urls and trailing slash false",
+			cleanUrls:     true,
+			trailingSlash: ptrBool(false),
+			wantContains: []string{
+				"rewrite ^([^.\\?]+)/$ $1 permanent;",
+				"try_files $uri $uri.html $uri/index.html =404;",
+				"if ($request_uri ~ ^/(.*)\\.html(\\?|$)) {",
+				"return 301 /$1$is_args$args;",
+			},
+			wantNotContain: []string{
+				"rewrite ^/(.+)/$ /$1 break;",
 			},
 		},
 	}

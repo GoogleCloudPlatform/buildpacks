@@ -148,40 +148,43 @@ http {
         add_header {{.Key}} ${{.VariableName}} always;{{end}}
 
         {{range .Redirects}}
-        location ~ {{.Pattern}} {
+        location ~ "{{.Pattern}}" {
             return {{.Code}} {{.Target}};
         }
         {{end}}
 
         {{range .Rewrites}}
-        location ~ {{.Pattern}} {
-            rewrite {{.Pattern}} {{.Target}} break;
+        location ~ "{{.Pattern}}" {
+            rewrite "{{.Pattern}}" {{.Target}} break;
         }
-        {{end}}
-
-        {{if .CleanUrls}}
-        # Clean URLs: redirect .html to clean URL
-        if ($request_uri ~ ^/(.*)\.html(\?|$)) {
-            return 301 /$1$is_args$args;
-        }
-        {{end}}
-
-        {{if .HasTrailingSlash}}
-        {{if .TrailingSlash}}
-        # Enforce trailing slash
-        rewrite ^([^.\?]*[^/])$ $1/ permanent;
-        {{else}}
-        # Remove trailing slash
-        # We don't use if (!-d) because we want to redirect directories that have index.html.
-        # We avoid loops by removing $uri/ from try_files (see below).
-        rewrite ^([^.\?]+)/$ $1 permanent;
-        {{end}}
         {{end}}
 
         # Default Fallback
         location / {
             {{if .CleanUrls}}
-            {{if and .HasTrailingSlash (not .TrailingSlash)}}
+            # Clean URLs: redirect .html to clean URL
+            if ($request_uri ~ ^/(.*)\.html(\?|$)) {
+                return 301 /$1$is_args$args;
+            }
+            {{end}}
+
+            {{if .HasTrailingSlash}}
+            {{if .TrailingSlash}}
+            # Enforce trailing slash
+            rewrite ^([^.\?]*[^/])$ $1/ permanent;
+            {{if .CleanUrls}}
+            rewrite ^/(.+)/$ /$1 break;
+            {{end}}
+            {{else}}
+            # Remove trailing slash
+            # We don't use if (!-d) because we want to redirect directories that have index.html.
+            # We avoid loops by removing $uri/ from try_files (see below).
+            rewrite ^([^.\?]+)/$ $1 permanent;
+            {{end}}
+            {{end}}
+
+            {{if .CleanUrls}}
+            {{if .HasTrailingSlash}}
             try_files $uri $uri.html $uri/index.html {{if .IsSPA}}/index.html{{else}}=404{{end}};
             {{else}}
             try_files $uri $uri.html $uri/ {{if .IsSPA}}/index.html{{else}}=404{{end}};
@@ -479,7 +482,7 @@ func processHeaderSlots(config *HostingConfig) (map[string]*headerSlot, []header
 }
 
 func processHeaderRule(h Header, singleValueSlots map[string]*headerSlot, multiValueSlots *[]headerSlot, multiValueCounts map[string]int, seen map[headerRegexKey]bool) error {
-	regex, err := GlobToRegex(h.Source)
+	regex, err := resolvePattern(h.Regex, h.Source)
 	if err != nil {
 		return fmt.Errorf("invalid source pattern %q: %w", h.Source, err)
 	}
