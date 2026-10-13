@@ -21,6 +21,8 @@
 
 set -euo pipefail
 
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 if [[ -v KOKORO_ARTIFACTS_DIR ]]; then
   cd "${KOKORO_ARTIFACTS_DIR}/git/buildpacks"
   use_bazel.sh 7.4.1
@@ -56,6 +58,9 @@ exec "$(dirname "$0")/container-structure-test.bin" "$@"
 EOF
 chmod +x "$temp/container-structure-test"
 curl ${CURL_OPTS} "https://github.com/buildpacks/pack/releases/download/v${PACK_VERSION}/pack-v${PACK_VERSION}-linux.tgz" | tar xz -C "$temp"
+mv "$temp/pack" "$temp/pack.bin"
+cp "${SCRIPT_DIR}/pack_wrapper.sh" "$temp/pack"
+chmod +x "$temp/pack"
 
 # TODO(b/155193275): Build stack images when testing GCP builder instead of pulling.
 
