@@ -37,12 +37,28 @@ func TestDetect(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "with_dist_directory",
+			name: "with_index_html_only_in_dist_directory",
 			files: map[string]string{
 				"dist/index.html": "hello",
 			},
 			envs: []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
-			want: 0,
+			want: 100,
+		},
+		{
+			name: "with_index_html_only_in_build_directory",
+			files: map[string]string{
+				"build/index.html": "hello",
+			},
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
+			want: 100,
+		},
+		{
+			name: "with_index_html_directory_at_root",
+			files: map[string]string{
+				"index.html/placeholder": "not a file",
+			},
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
+			want: 100,
 		},
 		{
 			name: "with_index_html_but_release_track_not_alpha",
@@ -74,13 +90,21 @@ func TestBuild(t *testing.T) {
 		want  string
 	}{
 		{
-			name: "with_dist_directory_priority",
+			name: "serves_application_root",
 			files: map[string]string{
-				"dist/index.html": "hello",
-				"index.html":      "root dummy file",
+				"index.html": "hello",
 			},
 			envs: []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
-			want: "Target static asset folder found: dist",
+			want: "Serving static files from the application root",
+		},
+		{
+			name: "serves_application_root_even_with_dist_directory",
+			files: map[string]string{
+				"dist/index.html": "compiled output",
+				"index.html":      "root file",
+			},
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
+			want: "Serving static files from the application root",
 		},
 	}
 

@@ -35,12 +35,6 @@ func TestAcceptanceStatic(t *testing.T) {
 			MustUse: []string{staticServe, nginxUtil},
 		},
 		{
-			Name:    "compiled dist static webroot",
-			App:     "dist_build",
-			Env:     []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
-			MustUse: []string{staticServe, nginxUtil},
-		},
-		{
 			Name:    "spa with config and stylesheets",
 			App:     "spa_with_config",
 			Env:     []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
@@ -54,6 +48,28 @@ func TestAcceptanceStatic(t *testing.T) {
 			t.Parallel()
 
 			acceptance.TestApp(t, imageCtx, tc)
+		})
+	}
+}
+
+func TestFailuresStatic(t *testing.T) {
+	imageCtx, cleanup := acceptance.ProvisionImages(t)
+	t.Cleanup(cleanup)
+
+	testCases := []acceptance.FailureTest{
+		{
+			// Subdirectories are not scanned: index.html must be in the deployed directory.
+			Name:      "index html only in dist subdirectory",
+			App:       "dist_build",
+			Env:       []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
+			MustMatch: "No buildpack groups passed detection|no buildpacks participating",
+		},
+	}
+
+	for _, tc := range acceptance.FilterFailureTests(t, testCases) {
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			acceptance.TestBuildFailure(t, imageCtx, tc)
 		})
 	}
 }

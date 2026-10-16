@@ -34,38 +34,21 @@ const (
 	nginxPathBuildpacks = "/layers/google.utils.nginx/nginx/conf"
 )
 
-// staticAssets is a list of potential static file/folder indicators, ordered by preference.
-// Output directories take precedence over a raw index.html to ensure compiled distribution logic wins.
-var staticAssets = []string{
-	"build",
-	"dist",
-	"public",
-	"_site",
-	"site",
-	indexHTML,
-}
-
-// DetectFn checks for standard static compiled directories or an index.html.
+// DetectFn checks for an index.html at the application root. Subdirectories
+// such as build/ or dist/ are not scanned: the static files must be in the
+// directory being deployed (for example, `--source ./dist`).
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	// Restrict this feature behind ALPHA release track.
 	if !env.IsBetaSupported() {
 		return gcp.OptOut("Static runtimes feature is supported only on ALPHA release track."), nil
 	}
 
-	for _, c := range staticAssets {
-		fullPath := filepath.Join(ctx.ApplicationRoot(), c)
-		info, err := os.Stat(fullPath)
-		if err == nil {
-			if c == indexHTML && !info.IsDir() {
-				return gcp.OptInFileFound(c), nil
-			}
-			if c != indexHTML && info.IsDir() {
-				return gcp.OptInFileFound(c), nil
-			}
-		}
+	info, err := os.Stat(filepath.Join(ctx.ApplicationRoot(), indexHTML))
+	if err == nil && !info.IsDir() {
+		return gcp.OptInFileFound(indexHTML), nil
 	}
 
-	return gcp.OptOut("No static asset folders or index.html found."), nil
+	return gcp.OptOut("index.html not found at the application root; subdirectories are not scanned, so deploy the directory that contains index.html (for example, --source ./dist)."), nil
 }
 
 // BuildFn generates or copies the nginx configuration and registers the web entrypoint.
@@ -77,22 +60,7 @@ func BuildFn(ctx *gcp.Context) error {
 	l.BuildEnvironment.Override(env.StaticServe, "true")
 
 	rootPath := ctx.ApplicationRoot()
-	for _, c := range staticAssets {
-		fullPath := filepath.Join(ctx.ApplicationRoot(), c)
-		info, err := os.Stat(fullPath)
-		if err != nil {
-			continue
-		}
-		if c == indexHTML && !info.IsDir() {
-			ctx.Logf("Target static asset found: index.html at root.")
-			break
-		}
-		if c != indexHTML && info.IsDir() {
-			rootPath = fullPath
-			ctx.Logf("Target static asset folder found: %s", c)
-			break
-		}
-	}
+	ctx.Logf("Serving static files from the application root: %s", rootPath)
 
 	nginxConfPath := filepath.Join(l.Path, static.NginxConfFile)
 	ctx.Logf("Generating default SPA/SSG-friendly %s", static.NginxConfFile)
