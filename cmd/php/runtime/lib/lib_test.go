@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
 func TestDetect(t *testing.T) {
@@ -74,6 +75,27 @@ func TestDetect(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			buildpacktest.TestDetect(t, DetectFn, tc.name, tc.files, tc.env, tc.want)
+		})
+	}
+}
+
+func TestDefaultVersion(t *testing.T) {
+	testCases := []struct {
+		stackID string
+		want    string
+	}{
+		{stackID: "google.22", want: "8.4.x"},
+		{stackID: "google.gae.22", want: "8.4.x"},
+		{stackID: "google.24", want: "8.5.x"},
+		{stackID: "google.24.full", want: "8.5.x"},
+		{stackID: "unknown", want: "8.5.x"},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.stackID, func(t *testing.T) {
+			ctx := gcp.NewContext(gcp.WithStackID(tc.stackID))
+			if got := defaultVersion(ctx); got != tc.want {
+				t.Errorf("defaultVersion() with stack %q = %q, want %q", tc.stackID, got, tc.want)
+			}
 		})
 	}
 }

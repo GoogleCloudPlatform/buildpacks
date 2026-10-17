@@ -32,6 +32,15 @@ const (
 	phpIniName = "php.ini"
 )
 
+// defaultVersion returns the PHP version to use when the app doesn't specify one.
+func defaultVersion(ctx *gcp.Context) string {
+	if runtime.OSForStack(ctx) == runtime.Ubuntu2404 {
+		// PHP 8.5 is only published for Ubuntu 24.04.
+		return "8.5.x"
+	}
+	return "8.4.x"
+}
+
 // DetectFn is the exported detect function.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if result := runtime.CheckOverride("php"); result != nil {
@@ -60,7 +69,7 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 func BuildFn(ctx *gcp.Context) error {
 	version, err := php.ExtractVersion(ctx)
 	if version == "" {
-		version = "8.4.x"
+		version = defaultVersion(ctx)
 	}
 	if err != nil {
 		return fmt.Errorf("determining runtime version: %w", err)
