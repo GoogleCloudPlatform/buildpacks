@@ -63,6 +63,9 @@ func TestFailuresStatic(t *testing.T) {
 			App:       "dist_build",
 			Env:       []string{"X_GOOGLE_RELEASE_TRACK=ALPHA"},
 			MustMatch: "No buildpack groups passed detection|no buildpacks participating",
+			// Detection fails in the lifecycle, not in a buildpack, so no buildpack
+			// writes a structured error to $BUILDER_OUTPUT.
+			SkipBuilderOutputMatch: true,
 		},
 	}
 
