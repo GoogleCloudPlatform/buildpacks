@@ -323,6 +323,16 @@ func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) (st
 		return "", i.Install(ctx, l, ".")
 	}
 
+	// Record whether a lockfile already exists before ensuring it. When a
+	// pre-existing uv.lock is used, uv sync has already validated the resolved
+	// dependencies (including any override-dependencies or dependency-metadata
+	// overrides in pyproject.toml). Running uv pip check afterwards is redundant
+	// and can produce false positives for intentional overrides.
+	lockfilePreExisted, err := ctx.FileExists(uvLock)
+	if err != nil {
+		return "", fmt.Errorf("checking for %s: %w", uvLock, err)
+	}
+
 	if err := EnsureUVLockfile(ctx); err != nil {
 		return "", fmt.Errorf("ensuring uv.lock file: %w", err)
 	}
@@ -352,8 +362,10 @@ func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) (st
 	l.SharedEnvironment.Default("VIRTUAL_ENV", venvDir)
 	l.SharedEnvironment.Default("UV_PROJECT_ENVIRONMENT", venvDir)
 	l.SharedEnvironment.Default("UV_NO_SYNC", "1")
-	if err := CheckUVIncompatibleDependencies(ctx, venvDir); err != nil {
-		return "", err
+	if !lockfilePreExisted {
+		if err := CheckUVIncompatibleDependencies(ctx, venvDir); err != nil {
+			return "", err
+		}
 	}
 	return venvDir, nil
 }
