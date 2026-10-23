@@ -68,7 +68,7 @@ chmod +x "$temp/pack"
 set +e
 
 # Filter out non-test targets, such as builder.image rules.
-bazel test --jobs=3 --test_timeout=14400 --test_arg=-test.timeout=4h --test_output=errors --action_env="PATH=$temp:$PATH" $(bazel query "filter('${FILTER}', kind('.*_test rule', '//builders/...'))")
+bazel test --jobs=3 --test_timeout=14400 --test_arg=-test.timeout=4h --test_output=errors --experimental_ui_max_stdouterr_bytes=-1 --action_env="PATH=$temp:$PATH" $(bazel query "filter('${FILTER}', kind('.*_test rule', '//builders/...'))")
 
 # The exit code of the bazel command should be used to determine test outcome.
 readonly EXIT_CODE="${?}"

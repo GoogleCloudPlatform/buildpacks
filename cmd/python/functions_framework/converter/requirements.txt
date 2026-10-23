@@ -1,4 +1,9 @@
-anyio==4.14.2
+# Install anyio 4.5.2 for Python 3.8
+anyio==4.5.2; python_version == '3.8'
+# Install anyio 4.12.1 for Python 3.9
+anyio==4.12.1; python_version == '3.9'
+# Install anyio 4.14.2 for Python 3.10+
+anyio==4.14.2; python_version >= '3.10'
 blinker==1.8.2
 click==8.1.8
 cloudevents==1.11.0
