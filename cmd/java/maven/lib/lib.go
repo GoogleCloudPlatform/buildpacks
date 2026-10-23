@@ -131,6 +131,9 @@ func provisionOrDetectMaven(ctx *gcp.Context) (string, error) {
 		if err := fileutil.EnsureUnixLineEndings("mvnw"); err != nil {
 			return "", fmt.Errorf("ensuring unix newline characters: %w", err)
 		}
+		if err := fileutil.EnsureExecutable("mvnw"); err != nil {
+			return "", fmt.Errorf("ensuring executable permissions: %w", err)
+		}
 		return "./mvnw", nil
 	}
 	mvnInstalled, err := mvnInstalled(ctx)
