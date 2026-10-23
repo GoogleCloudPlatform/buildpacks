@@ -84,7 +84,7 @@ BUNDLED WITH
 `,
 				},
 			},
-			want: defaultVersion,
+			want: "4.0.*",
 		},
 		{
 			name: "from gems.locked",
@@ -115,7 +115,7 @@ BUNDLED WITH
 `,
 				},
 			},
-			want: defaultVersion,
+			want: "4.0.*",
 		},
 		{
 			name: "both Gemfile.lock and gems.locked is present",
@@ -139,7 +139,7 @@ RUBY VERSION
 		},
 		{
 			name: "default version",
-			want: defaultVersion,
+			want: "4.0.*",
 		},
 		{
 			name: "both Gemfile.lock and .ruby-version are present",
@@ -331,6 +331,32 @@ RUBY VERSION
 
 			if tc.errorContent != "" && !strings.Contains(err.Error(), tc.errorContent) {
 				t.Fatalf("DetectRubyVersion(ctx) got error: %v, wanted %v", err.Error(), tc.errorContent)
+			}
+		})
+	}
+}
+
+func TestDetectVersionDefaultPerStack(t *testing.T) {
+	testCases := []struct {
+		stackID string
+		want    string
+	}{
+		{stackID: "google.18", want: "3.0.*"},
+		{stackID: "google.22", want: "3.4.*"},
+		{stackID: "google.gae.22", want: "3.4.*"},
+		{stackID: "google.24", want: "4.0.*"},
+		{stackID: "google.24.full", want: "4.0.*"},
+		{stackID: "unknown", want: "4.0.*"},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.stackID, func(t *testing.T) {
+			ctx := gcp.NewContext(gcp.WithApplicationRoot(t.TempDir()), gcp.WithStackID(tc.stackID))
+			got, err := DetectVersion(ctx)
+			if err != nil {
+				t.Fatalf("DetectVersion(ctx) with stack %q got error: %v", tc.stackID, err)
+			}
+			if got != tc.want {
+				t.Errorf("DetectVersion(ctx) with stack %q = %q, want %q", tc.stackID, got, tc.want)
 			}
 		})
 	}

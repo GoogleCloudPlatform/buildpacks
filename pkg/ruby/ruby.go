@@ -22,13 +22,20 @@ import (
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/buildpacks/libcnb/v2"
 	"github.com/Masterminds/semver"
 
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 )
 
-const defaultVersion = "3.4.*"
+// latestRubyVersionPerStack is the latest Ruby version per stack to use if not specified by the user.
+// Ruby 4.0 is only published for Ubuntu 24.04.
+var latestRubyVersionPerStack = map[string]string{
+	runtime.Ubuntu1804: "3.0.*",
+	runtime.Ubuntu2204: "3.4.*",
+	runtime.Ubuntu2404: "4.0.*",
+}
 
 // RubyVersionKey is the environment variable name used to store the Ruby version installed.
 const RubyVersionKey = "build_ruby_version"
@@ -108,7 +115,13 @@ func DetectVersion(ctx *gcp.Context) (string, error) {
 		return versionFromRubyVersion, nil
 	}
 
-	return defaultVersion, nil
+	os := runtime.OSForStack(ctx)
+	latestRubyVersionForStack, ok := latestRubyVersionPerStack[os]
+	if !ok {
+		return "", gcp.UserErrorf("invalid stack for Ruby runtime: %q", os)
+	}
+	ctx.Logf("Ruby version not specified, using the latest available Ruby runtime for the stack %q", os)
+	return latestRubyVersionForStack, nil
 }
 
 // IsRuby25 returns true if the build environment has Ruby 2.5.x installed.
