@@ -420,7 +420,7 @@ func runtimeImageURLZstd(hostname, registry, osName string, runtime InstallableR
 
 func fetchZstd(ctx *gcp.Context, hostname, registry, osName string, runtime InstallableRuntime, version string, layer *libcnb.Layer, stripComponents int) (bool, error) {
 	// TODO(b/493740533): Add support for other runtimes.
-	if v, _ := env.IsPresentAndTrue(env.FasterTarballExtraction); v && isZstdSupportedRuntime(os.Getenv(env.Runtime)) {
+	if v, _ := env.IsPresentAndTrue(env.FasterTarballExtraction); v && zstdAvailable(runtime, version) {
 		urlZstd := runtimeImageURLZstd(hostname, registry, osName, runtime, version)
 		fallbackURLZstd, err := fallbackRuntimeImageURL(ctx, hostname, registry, osName, runtime, version, true)
 		if err != nil {
@@ -805,4 +805,40 @@ func isZstdSupportedRuntime(runtimeEnv string) bool {
 		"dotnet8", "dotnet10",
 	}
 	return slices.Contains(supported, runtimeEnv)
+}
+
+// zstdRuntimePrefix maps a runtime tarball to the prefix of its runtime name
+// in isZstdSupportedRuntime.
+var zstdRuntimePrefix = map[InstallableRuntime]string{
+	Nodejs:       "nodejs",
+	Python:       "python",
+	Ruby:         "ruby",
+	PHP:          "php",
+	OpenJDK:      "java",
+	CanonicalJDK: "java",
+	DotnetSDK:    "dotnet",
+	AspNetCore:   "dotnet",
+}
+
+// zstdAvailable reports whether the given version of a runtime tarball has a
+// zstd copy in Artifact Registry. It checks the tarball being installed rather
+// than GOOGLE_RUNTIME, so it also covers universal builder builds (which have
+// no GOOGLE_RUNTIME) and helper tarballs such as pid1.
+func zstdAvailable(runtime InstallableRuntime, version string) bool {
+	switch runtime {
+	case Bun, Nginx:
+		// Not tied to a runtime line, and every version that builds resolve has a
+		// zstd copy.
+		return true
+	}
+	prefix, ok := zstdRuntimePrefix[runtime]
+	if !ok {
+		// pid1 has no zstd copy, and Go, jetty and canonicalnginx are not
+		// supported.
+		return false
+	}
+	// For example, Node.js 24.11.1 maps to "nodejs24", Python 3.14.0 to
+	// "python314" and OpenJDK 21.0.9_10 to "java21".
+	majorVersion := extractMajorVersion(version, string(runtime))
+	return isZstdSupportedRuntime(prefix + strings.ReplaceAll(majorVersion, ".", ""))
 }

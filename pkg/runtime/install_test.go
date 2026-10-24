@@ -545,7 +545,6 @@ func TestInstallSource(t *testing.T) {
 			}
 			if tc.fasterTarballExtraction {
 				t.Setenv(env.FasterTarballExtraction, "true")
-				t.Setenv(env.Runtime, "nodejs24")
 			}
 			if tc.tpcHostname != "" {
 				t.Setenv(env.TPCHostname, tc.tpcHostname)
@@ -581,7 +580,9 @@ func TestFetchZstd(t *testing.T) {
 	testCases := []struct {
 		name                    string
 		fasterTarballExtraction string
-		runtime                 string
+		googleRuntime           string
+		runtime                 InstallableRuntime
+		version                 string
 		arImageErr              error
 		clearLayerFail          bool
 		wantFetched             bool
@@ -589,36 +590,62 @@ func TestFetchZstd(t *testing.T) {
 	}{
 		{
 			name:        "faster_tarball_extraction_not_set",
+			runtime:     Nodejs,
+			version:     "24.19.0",
 			wantFetched: false,
 		},
 		{
 			name:                    "faster_tarball_extraction_not_true",
 			fasterTarballExtraction: "false",
+			runtime:                 Nodejs,
+			version:                 "24.19.0",
 			wantFetched:             false,
 		},
 		{
 			name:                    "unsupported_runtime",
 			fasterTarballExtraction: "true",
-			runtime:                 "nodejs18",
+			runtime:                 Nodejs,
+			version:                 "18.20.8",
 			wantFetched:             false,
+		},
+		{
+			name:                    "pid1_in_php_build_has_no_zstd_copy",
+			fasterTarballExtraction: "true",
+			googleRuntime:           "php84",
+			runtime:                 Pid1,
+			version:                 "1.0.8",
+			wantFetched:             false,
+		},
+		{
+			name:                    "universal_build_without_google_runtime",
+			fasterTarballExtraction: "true",
+			runtime:                 Nodejs,
+			version:                 "24.19.0",
+			wantFetched:             true,
 		},
 		{
 			name:                    "arimage_fetch_success",
 			fasterTarballExtraction: "true",
-			runtime:                 "nodejs24",
+			googleRuntime:           "nodejs24",
+			runtime:                 Nodejs,
+			version:                 "24.19.0",
 			wantFetched:             true,
 		},
 		{
 			name:                    "arimage_fetch_fail_clearlayer_success",
 			fasterTarballExtraction: "true",
-			runtime:                 "nodejs24",
+			googleRuntime:           "nodejs24",
+			runtime:                 Nodejs,
+			version:                 "24.19.0",
 			arImageErr:              errors.New("fetching AR image failed"),
 			wantFetched:             false,
 		},
 		{
 			name:                    "arimage_fetch_fail_clearlayer_fail",
 			fasterTarballExtraction: "true",
-			runtime:                 "nodejs24",
+			googleRuntime:           "nodejs24",
+			runtime:                 Nodejs,
+			version:                 "24.19.0",
 			arImageErr:              errors.New("fetching AR image failed"),
 			clearLayerFail:          true,
 			wantFetched:             false,
@@ -633,8 +660,8 @@ func TestFetchZstd(t *testing.T) {
 			} else {
 				t.Setenv(env.FasterTarballExtraction, "")
 			}
-			if tc.runtime != "" {
-				t.Setenv(env.Runtime, tc.runtime)
+			if tc.googleRuntime != "" {
+				t.Setenv(env.Runtime, tc.googleRuntime)
 			} else {
 				t.Setenv(env.Runtime, "")
 			}
@@ -663,12 +690,12 @@ func TestFetchZstd(t *testing.T) {
 				defer os.Chmod(filepath.Dir(layer.Path), 0755)
 			}
 
-			fetched, err := fetchZstd(ctx, "hostname", "registry", "osName", Nodejs, "version", layer, 0)
+			fetched, err := fetchZstd(ctx, "hostname", "registry", Ubuntu2404, tc.runtime, tc.version, layer, 0)
 			if tc.wantErr != (err != nil) {
-				t.Errorf("fetchZstd() got err: %v, want err? %t", err, tc.wantErr)
+				t.Errorf("fetchZstd(%q, %q) returned error %v, want error: %t", tc.runtime, tc.version, err, tc.wantErr)
 			}
 			if fetched != tc.wantFetched {
-				t.Errorf("fetchZstd() got fetched: %t, want fetched? %t", fetched, tc.wantFetched)
+				t.Errorf("fetchZstd(%q, %q) = %t, want %t", tc.runtime, tc.version, fetched, tc.wantFetched)
 			}
 		})
 	}
@@ -1385,6 +1412,46 @@ func TestIsZstdSupportedRuntime(t *testing.T) {
 			got := isZstdSupportedRuntime(tc.runtimeEnv)
 			if got != tc.want {
 				t.Errorf("isZstdSupportedRuntime(%q) = %v, want %v", tc.runtimeEnv, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestZstdAvailable(t *testing.T) {
+	testCases := []struct {
+		runtime InstallableRuntime
+		version string
+		want    bool
+	}{
+		{runtime: Nodejs, version: "24.19.0", want: true},
+		{runtime: Nodejs, version: "20.20.2", want: true},
+		{runtime: Nodejs, version: "18.20.8", want: false},
+		{runtime: Python, version: "3.13.14", want: true},
+		{runtime: Python, version: "3.9.23", want: false},
+		{runtime: Ruby, version: "3.3.12", want: true},
+		{runtime: PHP, version: "8.4.25", want: true},
+		{runtime: PHP, version: "8.1.33", want: false},
+		{runtime: OpenJDK, version: "8.0.504_1", want: false},
+		{runtime: OpenJDK, version: "11.0.32_9", want: false},
+		{runtime: OpenJDK, version: "17.0.20_8", want: true},
+		{runtime: OpenJDK, version: "25.0.4_7.0.LTS", want: true},
+		{runtime: CanonicalJDK, version: "21.0.12_8-1-24.04-Ubuntu", want: true},
+		{runtime: DotnetSDK, version: "8.0.425", want: true},
+		{runtime: AspNetCore, version: "10.0.12", want: true},
+		{runtime: DotnetSDK, version: "6.0.428", want: false},
+		{runtime: Bun, version: "1.4.2", want: true},
+		{runtime: Nginx, version: "1.31.6", want: true},
+		{runtime: Pid1, version: "1.0.8", want: false},
+		{runtime: Go, version: "1.25.4", want: false},
+		{runtime: Jetty, version: "latest", want: false},
+		{runtime: CanonicalNginx, version: "1.24.0", want: false},
+		{runtime: Nodejs, version: "", want: false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("%s_%s", tc.runtime, tc.version), func(t *testing.T) {
+			if got := zstdAvailable(tc.runtime, tc.version); got != tc.want {
+				t.Errorf("zstdAvailable(%q, %q) = %v, want %v", tc.runtime, tc.version, got, tc.want)
 			}
 		})
 	}
