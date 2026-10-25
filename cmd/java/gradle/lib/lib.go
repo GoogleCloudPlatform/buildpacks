@@ -125,6 +125,9 @@ func provisionOrDetectGradle(ctx *gcp.Context) (string, error) {
 		if err := fileutil.EnsureUnixLineEndings("gradlew"); err != nil {
 			return "", fmt.Errorf("ensuring unix newline characters: %w", err)
 		}
+		if err := fileutil.EnsureExecutable("gradlew"); err != nil {
+			return "", fmt.Errorf("ensuring executable permissions: %w", err)
+		}
 		return "./gradlew", nil
 	}
 	installed, err := gradleInstalled(ctx)
