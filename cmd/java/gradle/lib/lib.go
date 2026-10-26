@@ -61,23 +61,8 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 // BuildFn is the exported build function.
 func BuildFn(ctx *gcp.Context) error {
-
-	gradleCachedRepo, err := ctx.Layer(cacheLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	gradleRepoPath, err := setupGradleCache(ctx)
 	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", cacheLayer, err)
-	}
-
-	if err := java.CheckCacheExpiration(ctx, gradleCachedRepo); err != nil {
-		return fmt.Errorf("validating the cache: %w", err)
-	}
-
-	homeGradle := filepath.Join(ctx.HomeDir(), ".gradle")
-	// Symlink the gradle-cache layer into ~/.gradle. If ~/.gradle already exists, delete it first.
-	// If it exists as a symlink, RemoveAll will remove the link, not anything it's linked to.
-	if err := ctx.RemoveAll(homeGradle); err != nil {
-		return err
-	}
-	if err := ctx.Symlink(gradleCachedRepo.Path, homeGradle); err != nil {
 		return err
 	}
 
@@ -108,11 +93,38 @@ func BuildFn(ctx *gcp.Context) error {
 	}
 
 	// Store the build steps in a script to be run on each file change.
-	if devmode.Enabled(ctx) {
-		devmode.WriteBuildScript(ctx, gradleCachedRepo.Path, "~/.gradle", command)
+	if devmode.Enabled(ctx) && gradleRepoPath != "" {
+		devmode.WriteBuildScript(ctx, gradleRepoPath, "~/.gradle", command)
 	}
 
 	return nil
+}
+
+func setupGradleCache(ctx *gcp.Context) (string, error) {
+	if ctx.IsDisabled(java.GradleInstallerCapability) {
+		ctx.Logf("GradleInstaller capability is disabled. Skipping gradle cache setup.")
+		return "", nil
+	}
+
+	gradleCachedRepo, err := ctx.Layer(cacheLayer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	if err != nil {
+		return "", fmt.Errorf("creating %v layer: %w", cacheLayer, err)
+	}
+
+	if err := java.CheckCacheExpiration(ctx, gradleCachedRepo); err != nil {
+		return "", fmt.Errorf("validating the cache: %w", err)
+	}
+
+	homeGradle := filepath.Join(ctx.HomeDir(), ".gradle")
+	// Symlink the gradle-cache layer into ~/.gradle. If ~/.gradle already exists, delete it first.
+	// If it exists as a symlink, RemoveAll will remove the link, not anything it's linked to.
+	if err := ctx.RemoveAll(homeGradle); err != nil {
+		return "", err
+	}
+	if err := ctx.Symlink(gradleCachedRepo.Path, homeGradle); err != nil {
+		return "", err
+	}
+	return gradleCachedRepo.Path, nil
 }
 
 func provisionOrDetectGradle(ctx *gcp.Context) (string, error) {

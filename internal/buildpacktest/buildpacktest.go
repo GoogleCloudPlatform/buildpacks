@@ -69,18 +69,19 @@ const (
 )
 
 type config struct {
-	buildpackPhase buildpackPhase
-	buildFn        gcp.BuildFn
-	detectFn       gcp.DetectFn
-	testName       string
-	files          map[string]string
-	envs           []string
-	stack          string
-	want           int
-	appPath        string
-	mockProcesses  []*mockprocess.Mock
-	capabilities   map[string]any
-	codeDir        string
+	buildpackPhase       buildpackPhase
+	buildFn              gcp.BuildFn
+	detectFn             gcp.DetectFn
+	testName             string
+	files                map[string]string
+	envs                 []string
+	stack                string
+	want                 int
+	appPath              string
+	mockProcesses        []*mockprocess.Mock
+	capabilities         map[string]any
+	disabledCapabilities []string
+	codeDir              string
 }
 
 // Result encapsulates the result of a buildpack phase ran as a child process.
@@ -173,6 +174,13 @@ func WithExecMocks(mocks ...*mockprocess.Mock) Option {
 func WithCapabilities(caps map[string]any) Option {
 	return func(cfg *config) {
 		cfg.capabilities = caps
+	}
+}
+
+// WithDisabledCapabilities disables the specified capabilities for the buildpack test.
+func WithDisabledCapabilities(caps ...string) Option {
+	return func(cfg *config) {
+		cfg.disabledCapabilities = append(cfg.disabledCapabilities, caps...)
 	}
 }
 
@@ -322,6 +330,9 @@ func runBuildpackPhase(t *testing.T, cfg *config) (bool, error) {
 
 	for k, v := range cfg.capabilities {
 		opts = append(opts, gcp.WithCapability(k, v))
+	}
+	for _, k := range cfg.disabledCapabilities {
+		opts = append(opts, gcp.WithDisabledCapability(k))
 	}
 
 	// Logs all ctx.Exec commands to stderr

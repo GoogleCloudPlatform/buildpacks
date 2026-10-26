@@ -55,23 +55,8 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 // BuildFn is the exported build function.
 func BuildFn(ctx *gcp.Context) error {
-	m2CachedRepo, err := ctx.Layer(m2Layer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	m2RepoPath, err := setupM2Cache(ctx)
 	if err != nil {
-		return fmt.Errorf("creating %v layer: %w", m2Layer, err)
-	}
-	if err := java.CheckCacheExpiration(ctx, m2CachedRepo); err != nil {
-		return fmt.Errorf("validating the cache: %w", err)
-	}
-
-	homeM2 := filepath.Join(ctx.HomeDir(), ".m2")
-	// Symlink the m2 layer into ~/.m2. If ~/.m2 already exists, delete it first.
-	// If it exists as a symlink, RemoveAll will remove the link, not anything it's linked to.
-	// We can't just use `-Dmaven.repo.local`. It does set the path to `m2/repo` but it fails
-	// to set the path to `m2/wrapper` which is used by mvnw to download Maven.
-	if err := ctx.RemoveAll(homeM2); err != nil {
-		return err
-	}
-	if err := ctx.Symlink(m2CachedRepo.Path, homeM2); err != nil {
 		return err
 	}
 
@@ -114,11 +99,39 @@ func BuildFn(ctx *gcp.Context) error {
 	}
 
 	// Store the build steps in a script to be run on each file change.
-	if devmode.Enabled(ctx) {
-		devmode.WriteBuildScript(ctx, m2CachedRepo.Path, "~/.m2", command)
+	if devmode.Enabled(ctx) && m2RepoPath != "" {
+		devmode.WriteBuildScript(ctx, m2RepoPath, "~/.m2", command)
 	}
 
 	return nil
+}
+
+func setupM2Cache(ctx *gcp.Context) (string, error) {
+	if ctx.IsDisabled(java.MavenInstallerCapability) {
+		ctx.Logf("MavenInstaller capability is disabled. Skipping m2 cache setup.")
+		return "", nil
+	}
+
+	m2CachedRepo, err := ctx.Layer(m2Layer, gcp.CacheLayer, gcp.LaunchLayerIfDevMode)
+	if err != nil {
+		return "", fmt.Errorf("creating %v layer: %w", m2Layer, err)
+	}
+	if err := java.CheckCacheExpiration(ctx, m2CachedRepo); err != nil {
+		return "", fmt.Errorf("validating the cache: %w", err)
+	}
+
+	homeM2 := filepath.Join(ctx.HomeDir(), ".m2")
+	// Symlink the m2 layer into ~/.m2. If ~/.m2 already exists, delete it first.
+	// If it exists as a symlink, RemoveAll will remove the link, not anything it's linked to.
+	// We can't just use `-Dmaven.repo.local`. It does set the path to `m2/repo` but it fails
+	// to set the path to `m2/wrapper` which is used by mvnw to download Maven.
+	if err := ctx.RemoveAll(homeM2); err != nil {
+		return "", err
+	}
+	if err := ctx.Symlink(m2CachedRepo.Path, homeM2); err != nil {
+		return "", err
+	}
+	return m2CachedRepo.Path, nil
 }
 
 func provisionOrDetectMaven(ctx *gcp.Context) (string, error) {

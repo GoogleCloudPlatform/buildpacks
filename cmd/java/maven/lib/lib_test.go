@@ -16,6 +16,8 @@ package lib
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
@@ -119,5 +121,47 @@ func TestBuildCommand(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestBuildPreservesHomeM2WhenInstallerDisabled(t *testing.T) {
+	homeDir := t.TempDir()
+	m2Dir := filepath.Join(homeDir, ".m2")
+	if err := os.MkdirAll(m2Dir, 0755); err != nil {
+		t.Fatalf("creating %s: %v", m2Dir, err)
+	}
+	settingsFile := filepath.Join(m2Dir, "settings.xml")
+	wantContent := "<settings/>"
+	if err := os.WriteFile(settingsFile, []byte(wantContent), 0644); err != nil {
+		t.Fatalf("writing %s: %v", settingsFile, err)
+	}
+
+	opts := []buildpacktest.Option{
+		buildpacktest.WithApp("hello_quarkus_maven"),
+		buildpacktest.WithEnvs("HOME=" + homeDir),
+		buildpacktest.WithDisabledCapabilities(java.MavenInstallerCapability),
+		buildpacktest.WithExecMocks(
+			mockprocess.New(`^bash -c command -v mvn || true`, mockprocess.WithStdout("Apache Maven")),
+		),
+	}
+	result, err := buildpacktest.RunBuild(t, BuildFn, opts...)
+	if err != nil {
+		t.Fatalf("error running build: %v, logs: %s", err, result.Output)
+	}
+
+	fi, err := os.Lstat(m2Dir)
+	if err != nil {
+		t.Fatalf("Lstat(%s) failed: %v", m2Dir, err)
+	}
+	if fi.Mode()&os.ModeSymlink != 0 {
+		t.Errorf("expected %s to remain a real directory, but it is a symlink", m2Dir)
+	}
+
+	gotContent, err := os.ReadFile(settingsFile)
+	if err != nil {
+		t.Fatalf("expected %s to be preserved, but ReadFile failed: %v", settingsFile, err)
+	}
+	if string(gotContent) != wantContent {
+		t.Errorf("settings.xml content = %q, want %q", string(gotContent), wantContent)
 	}
 }

@@ -16,6 +16,8 @@ package lib
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
@@ -110,5 +112,47 @@ func TestBuildCommand(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestBuildPreservesHomeGradleWhenInstallerDisabled(t *testing.T) {
+	homeDir := t.TempDir()
+	gradleDir := filepath.Join(homeDir, ".gradle")
+	if err := os.MkdirAll(gradleDir, 0755); err != nil {
+		t.Fatalf("creating %s: %v", gradleDir, err)
+	}
+	propsFile := filepath.Join(gradleDir, "gradle.properties")
+	wantContent := "org.gradle.daemon=false\n"
+	if err := os.WriteFile(propsFile, []byte(wantContent), 0644); err != nil {
+		t.Fatalf("writing %s: %v", propsFile, err)
+	}
+
+	opts := []buildpacktest.Option{
+		buildpacktest.WithApp("gradle_micronaut"),
+		buildpacktest.WithEnvs("HOME=" + homeDir),
+		buildpacktest.WithDisabledCapabilities(java.GradleInstallerCapability),
+		buildpacktest.WithExecMocks(
+			mockprocess.New(`^bash -c command -v gradle || true`, mockprocess.WithStdout("Gradle 0.0.0")),
+		),
+	}
+	result, err := buildpacktest.RunBuild(t, BuildFn, opts...)
+	if err != nil {
+		t.Fatalf("error running build: %v, logs: %s", err, result.Output)
+	}
+
+	fi, err := os.Lstat(gradleDir)
+	if err != nil {
+		t.Fatalf("Lstat(%s) failed: %v", gradleDir, err)
+	}
+	if fi.Mode()&os.ModeSymlink != 0 {
+		t.Errorf("expected %s to remain a real directory, but it is a symlink", gradleDir)
+	}
+
+	gotContent, err := os.ReadFile(propsFile)
+	if err != nil {
+		t.Fatalf("expected %s to be preserved, but ReadFile failed: %v", propsFile, err)
+	}
+	if string(gotContent) != wantContent {
+		t.Errorf("gradle.properties content = %q, want %q", string(gotContent), wantContent)
 	}
 }
