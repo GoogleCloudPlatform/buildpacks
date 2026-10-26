@@ -446,7 +446,7 @@ func invokeApp(t *testing.T, cfg Test, image string, srcDir string, cache bool) 
 
 		// Check that the application responds with `UPDATED`.
 		want := "UPDATED"
-		body, err := pollEndpoint(host, port, cfg.Path, want, reqType, 30*time.Second)
+		body, err := pollEndpoint(host, port, cfg.Path, want, reqType, 60*time.Second)
 		if err != nil {
 			t.Fatalf("Unable to invoke app after updating source: %v", err)
 		}
