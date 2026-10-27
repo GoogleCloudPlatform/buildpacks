@@ -97,6 +97,10 @@
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/github.com/aws/smithy-go/internal/sync/singleflight/LICENSE
 
+- package: github.com/aws/smithy-go/transport/http/protocol/internal/json/internal/stdlib
+  license_name: BSD-3-Clause
+  license_path: /usr/local/share/licenses/lifecycle/github.com/aws/smithy-go/transport/http/protocol/internal/json/internal/stdlib/LICENSE
+
 - package: github.com/AzureAD/microsoft-authentication-library-for-go/apps
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/AzureAD/microsoft-authentication-library-for-go/apps/LICENSE
@@ -397,6 +401,10 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/tonistiigi/go-csvvalue/LICENSE
 
+- package: github.com/ulikunitz/xz
+  license_name: BSD-3-Clause
+  license_path: /usr/local/share/licenses/lifecycle/github.com/ulikunitz/xz/LICENSE
+
 - package: github.com/zeebo/blake3
   license_name: CC0-1.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/zeebo/blake3/LICENSE
@@ -460,6 +468,10 @@
 - package: go.opentelemetry.io/otel
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/go.opentelemetry.io/otel/LICENSE
+
+- package: go.opentelemetry.io/otel/log
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/go.opentelemetry.io/otel/log/LICENSE
 
 - package: go.opentelemetry.io/otel/metric
   license_name: Apache-2.0
