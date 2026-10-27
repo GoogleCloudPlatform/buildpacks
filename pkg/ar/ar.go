@@ -33,6 +33,9 @@ import (
 )
 
 const (
+	// CredsGeneratorCapability controls whether Artifact Registry credential files are generated.
+	CredsGeneratorCapability = "ar.CredsGenerator"
+
 	pythonConfigName = ".netrc"
 	npmConfigName    = ".npmrc"
 	yarnConfigName   = ".yarnrc.yml"
@@ -131,6 +134,11 @@ func arRepositories() []string {
 // necessary for PIP to make authenticated requests to Artifact Registry (see
 // https://pip.pypa.io/en/stable/topics/authentication/#netrc-support).
 func GeneratePythonConfig(ctx *gcp.Context) error {
+	if ctx.IsDisabled(CredsGeneratorCapability) {
+		ctx.Debugf("Artifact Registry credential generation is disabled; skipping .netrc creation.")
+		return nil
+	}
+
 	netrcPath := filepath.Join(ctx.HomeDir(), pythonConfigName)
 	netrcExists, err := ctx.FileExists(netrcPath)
 	if err != nil {
@@ -195,6 +203,11 @@ machine {{$entry}} login oauth2accesstoken password {{$.Token}}
 // necessary for NPM to make authenticated requests to Artifact Registry (see
 // https://cloud.google.com/artifact-registry/docs/nodejs/authentication).
 func GenerateNPMConfig(ctx *gcp.Context) error {
+	if ctx.IsDisabled(CredsGeneratorCapability) {
+		ctx.Debugf("Artifact Registry credential generation is disabled; skipping .npmrc creation.")
+		return nil
+	}
+
 	userConfig := filepath.Join(ctx.HomeDir(), npmConfigName)
 	userConfigExists, err := ctx.FileExists(userConfig)
 	if err != nil {
@@ -303,6 +316,11 @@ var findDefaultCredentials = func() (string, error) {
 // necessary for Yarn to make authenticated requests to Artifact Registry (see
 // https://cloud.google.com/artifact-registry/docs/nodejs/authentication).
 func GenerateYarnConfig(ctx *gcp.Context) error {
+	if ctx.IsDisabled(CredsGeneratorCapability) {
+		ctx.Debugf("Artifact Registry credential generation is disabled; skipping %s creation.", yarnConfigName)
+		return nil
+	}
+
 	userConfig := filepath.Join(ctx.HomeDir(), yarnConfigName)
 	userConfigExists, err := ctx.FileExists(userConfig)
 	if err != nil {

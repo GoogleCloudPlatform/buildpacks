@@ -536,3 +536,55 @@ func TestGenerateYarnConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestCredsGeneratorDisabled(t *testing.T) {
+	t.Cleanup(buildermetrics.Reset)
+
+	origFindDefaultCredentials := findDefaultCredentials
+	credsCalled := false
+	findDefaultCredentials = func() (string, error) {
+		credsCalled = true
+		return "should-not-be-used", nil
+	}
+	defer func() {
+		findDefaultCredentials = origFindDefaultCredentials
+	}()
+
+	tempRoot := t.TempDir()
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+
+	if err := os.WriteFile(filepath.Join(tempRoot, ".npmrc"), []byte("registry=https://us-west1-npm.pkg.dev/my-project/my-repo/\n"), 0664); err != nil {
+		t.Fatalf("writing project .npmrc: %v", err)
+	}
+	projYarnrc := "npmScopes:\n  scope1:\n    npmRegistryServer: https://us-central1-npm.pkg.dev/project/repo/\n    npmAlwaysAuth: true\n"
+	if err := os.WriteFile(filepath.Join(tempRoot, ".yarnrc.yml"), []byte(projYarnrc), 0664); err != nil {
+		t.Fatalf("writing project .yarnrc.yml: %v", err)
+	}
+
+	ctx := gcp.NewContext(
+		gcp.WithApplicationRoot(tempRoot),
+		gcp.WithDisabledCapability(CredsGeneratorCapability),
+	)
+
+	if err := GeneratePythonConfig(ctx); err != nil {
+		t.Fatalf("GeneratePythonConfig() unexpected error: %v", err)
+	}
+	if err := GenerateNPMConfig(ctx); err != nil {
+		t.Fatalf("GenerateNPMConfig() unexpected error: %v", err)
+	}
+	if err := GenerateYarnConfig(ctx); err != nil {
+		t.Fatalf("GenerateYarnConfig() unexpected error: %v", err)
+	}
+
+	if credsCalled {
+		t.Errorf("findDefaultCredentials was called despite %s being disabled", CredsGeneratorCapability)
+	}
+
+	for _, name := range []string{".netrc", ".npmrc", ".yarnrc.yml"} {
+		p := filepath.Join(tempHome, name)
+		if _, err := os.Stat(p); !os.IsNotExist(err) {
+			t.Errorf("expected %s not to exist when %s is disabled, got err=%v", p, CredsGeneratorCapability, err)
+		}
+	}
+}
