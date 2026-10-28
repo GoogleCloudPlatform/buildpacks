@@ -34,8 +34,14 @@ fi
 export DOCKER_IP_UBUNTU="$(/sbin/ip route|awk '/default/ { print $3 }')"
 echo "DOCKER_IP_UBUNTU: ${DOCKER_IP_UBUNTU}"
 echo "${DOCKER_IP_UBUNTU} localhost" >> /etc/hosts
-chmod -R 777 /var/cache /tmp /var/run/docker.sock 2>/dev/null || true
-(while true; do chmod -R 777 /var/cache /tmp /var/run/docker.sock 2>/dev/null; sleep 0.1; done) &
+chmod 1777 /var/cache /tmp 2>/dev/null || true
+chmod 666 /var/cache/proxy.sock 2>/dev/null || true
+chmod 666 /var/run/docker.sock 2>/dev/null || true
+(while true; do
+  chmod 666 /var/cache/proxy.sock 2>/dev/null || true
+  chmod 666 /var/run/docker.sock 2>/dev/null || true
+  sleep 1
+done) &
 CHMOD_WATCHER_PID=$!
 trap "kill -9 $CHMOD_WATCHER_PID 2>/dev/null || true" EXIT
 
