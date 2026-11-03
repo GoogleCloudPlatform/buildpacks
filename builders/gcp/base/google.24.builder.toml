@@ -169,6 +169,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   uri = "python/missing_entrypoint.tgz"
 
 [[buildpacks]]
+  id = "google.python.link-runtime"
+  uri = "python/link_runtime.tgz"
+
+[[buildpacks]]
   id = "google.utils.archive-source"
   uri = "archive_source.tgz"
 
@@ -584,6 +588,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   [[order.group]]
     id = "google.utils.label-image"
 
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
+
 # UV order group.
 [[order]]
   [[order.group]]
@@ -605,6 +613,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
 
 # Pip order group.
 [[order]]
@@ -628,6 +640,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
 
 # Python applications with default entrypoint or fail with a message.
 # Poetry order group.
@@ -648,6 +664,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   [[order.group]]
     id = "google.utils.label-image"
 
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
+
 # UV order group.
 [[order]]
   [[order.group]]
@@ -665,6 +685,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
 
 # Pip order group.
 [[order]]
@@ -684,6 +708,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
 
 ###########
 # Ruby applications #
@@ -1174,6 +1202,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   [[order.group]]
     id = "google.utils.label-image"
 
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
+
 # UV order group.
 [[order]]
   [[order.group]]
@@ -1195,6 +1227,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
 
 # Pip order group.
 [[order]]
@@ -1218,6 +1254,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 
   [[order.group]]
     id = "google.utils.label-image"
+
+  [[order.group]]
+    id = "google.python.link-runtime"
+    optional = true
 
 ##########
 # Static Web Applications

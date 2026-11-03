@@ -52,6 +52,7 @@ import (
 	phpwebconfig "github.com/GoogleCloudPlatform/buildpacks/cmd/php/webconfig/lib"
 	pythonappengine "github.com/GoogleCloudPlatform/buildpacks/cmd/python/appengine/lib"
 	pythonfunctionsframework "github.com/GoogleCloudPlatform/buildpacks/cmd/python/functions_framework/lib"
+	pythonlinkruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/python/link_runtime/lib"
 	pythonmissingentrypoint "github.com/GoogleCloudPlatform/buildpacks/cmd/python/missing_entrypoint/lib"
 	pythonpip "github.com/GoogleCloudPlatform/buildpacks/cmd/python/pip/lib"
 	pythonpoetry "github.com/GoogleCloudPlatform/buildpacks/cmd/python/poetry/lib"
@@ -255,6 +256,10 @@ func init() {
 	buildpacks["google.python.functions-framework"] = gcp.BuildpackFuncs{
 		Detect: pythonfunctionsframework.DetectFn,
 		Build:  pythonfunctionsframework.BuildFn,
+	}
+	buildpacks["google.python.link-runtime"] = gcp.BuildpackFuncs{
+		Detect: pythonlinkruntime.DetectFn,
+		Build:  pythonlinkruntime.BuildFn,
 	}
 	buildpacks["google.python.missing-entrypoint"] = gcp.BuildpackFuncs{
 		Detect: pythonmissingentrypoint.DetectFn,

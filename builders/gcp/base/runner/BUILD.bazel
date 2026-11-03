@@ -58,6 +58,7 @@ go_binary(
         "//cmd/php/webconfig/lib",
         "//cmd/python/appengine/lib",
         "//cmd/python/functions_framework/lib",
+        "//cmd/python/link_runtime/lib",
         "//cmd/python/missing_entrypoint/lib",
         "//cmd/python/pip/lib",
         "//cmd/python/poetry/lib",

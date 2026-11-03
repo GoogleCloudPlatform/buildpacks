@@ -45,28 +45,38 @@ var linkDirs = []string{
 }
 
 // DetectFn is the exported detect function.
+//
+// The buildpack always opts in because the env vars that decide whether linking is needed
+// (X_GOOGLE_SKIP_RUNTIME_LAUNCH and GOOGLE_RUNTIME) may only be set after the detect phase, e.g. by
+// the platform once the runtime has been detected. The checks are performed in BuildFn instead,
+// which is a no-op when they are not set. This buildpack is only placed in Python order groups as
+// optional.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	skip, err := env.IsPresentAndTrue(env.XGoogleSkipRuntimeLaunch)
-	if err != nil {
-		return nil, err
-	}
-	if !skip {
-		return gcp.OptOut(fmt.Sprintf("%s is not 'true'", env.XGoogleSkipRuntimeLaunch)), nil
-	}
-	if result := runtime.CheckOverride("python"); result != nil {
-		return result, nil
-	}
-	return gcp.OptOut("GOOGLE_RUNTIME env var not a python runtime"), nil
+	return gcp.OptIn("python link-runtime checks whether to link the runtime during build"), nil
 }
 
 // BuildFn is the exported build function.
 func BuildFn(ctx *gcp.Context) error {
+	link, reason, err := shouldLinkRuntime()
+	if err != nil {
+		return err
+	}
+	if !link {
+		ctx.Logf("Skipping linking the Python runtime to the base image Python: %s.", reason)
+		return nil
+	}
 	pythonPath, err := pythonSystemDir(ctx)
 	if err != nil {
 		return err
 	}
+	return linkDirsTo(layerDir, pythonPath)
+}
+
+// linkDirsTo replaces each of linkDirs in layerPath with a symlink to the same directory in
+// pythonPath.
+func linkDirsTo(layerPath, pythonPath string) error {
 	for _, file := range linkDirs {
-		p := filepath.Join(layerDir, file)
+		p := filepath.Join(layerPath, file)
 		if err := os.RemoveAll(p); err != nil {
 			return gcp.InternalErrorf("removing %q: %w", p, err)
 		}
@@ -76,6 +86,22 @@ func BuildFn(ctx *gcp.Context) error {
 		}
 	}
 	return nil
+}
+
+// shouldLinkRuntime reports whether the python layer should be replaced by symlinks to the base
+// image Python. If not, it also returns the reason.
+func shouldLinkRuntime() (bool, string, error) {
+	skip, err := env.IsPresentAndTrue(env.XGoogleSkipRuntimeLaunch)
+	if err != nil {
+		return false, "", err
+	}
+	if !skip {
+		return false, fmt.Sprintf("%s is not 'true'", env.XGoogleSkipRuntimeLaunch), nil
+	}
+	if result := runtime.CheckOverride("python"); result == nil || !result.Result().Pass {
+		return false, fmt.Sprintf("%s env var is not a python runtime", env.Runtime), nil
+	}
+	return true, "", nil
 }
 
 // pythonSystemDir returns the file path that python is installed to in the GAE base images.
