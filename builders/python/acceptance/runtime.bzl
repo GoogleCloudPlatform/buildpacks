@@ -9,11 +9,11 @@ gae_runtimes = {
     "python38": "3.8.20",
     "python39": "3.9.25",
     "python310": "3.10.22",
-    "python311": "3.11.17",
-    "python312": "3.12.15",
-    "python313": "3.13.15",
-    "python314": "3.14.6",
-    "python315": "3.15.0",
+    "python311": "3.11.18",
+    "python312": "3.12.16",
+    "python313": "3.13.18",
+    "python314": "3.14.10",
+    "python315": "3.15.2",
 }
 
 gcf_runtimes = {
@@ -21,22 +21,22 @@ gcf_runtimes = {
     "python38": "3.8.20",
     "python39": "3.9.25",
     "python310": "3.10.22",
-    "python311": "3.11.17",
-    "python312": "3.12.15",
-    "python313": "3.13.15",
-    "python314": "3.14.6",
-    "python315": "3.15.0",
+    "python311": "3.11.18",
+    "python312": "3.12.16",
+    "python313": "3.13.18",
+    "python314": "3.14.10",
+    "python315": "3.15.2",
 }
 
 flex_runtimes = {
     "python38": "3.8.20",
     "python39": "3.9.25",
     "python310": "3.10.22",
-    "python311": "3.11.17",
-    "python312": "3.12.15",
-    "python313": "3.13.15",
-    "python314": "3.14.6",
-    "python315": "3.15.0",
+    "python311": "3.11.18",
+    "python312": "3.12.16",
+    "python313": "3.13.18",
+    "python314": "3.14.10",
+    "python315": "3.15.2",
 }
 
 version_to_stack = {
