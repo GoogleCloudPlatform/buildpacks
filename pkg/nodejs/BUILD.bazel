@@ -28,6 +28,7 @@ go_library(
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
     visibility = [
+        "//pkg/webbundle:__subpackages__",
         "//pkg/apprunner:__subpackages__",
         "//pkg/apprunner/nodejs:__subpackages__",
         "//cmd/firebase/bundle:__subpackages__",

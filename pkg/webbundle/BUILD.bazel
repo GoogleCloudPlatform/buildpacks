@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+package(default_visibility = ["//:__subpackages__"])
+
+licenses(["notice"])
+
+go_library(
+    name = "webbundle",
+    srcs = [
+        "paths.go",
+        "webbundle.go",
+    ],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    deps = ["//pkg/nodejs"],
+)
+
+go_test(
+    name = "webbundle_test",
+    srcs = ["webbundle_test.go"],
+    embed = [":webbundle"],
+    rundir = ".",
+    deps = ["@com_github_google_go-cmp//cmp:go_default_library"],
+)
