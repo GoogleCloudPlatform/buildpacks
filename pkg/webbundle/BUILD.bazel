@@ -7,7 +7,10 @@ licenses(["notice"])
 go_library(
     name = "webbundle",
     srcs = [
+        "command.go",
+        "copy.go",
         "paths.go",
+        "standalone.go",
         "webbundle.go",
     ],
     importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),

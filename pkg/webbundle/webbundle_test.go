@@ -18,6 +18,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -450,6 +452,311 @@ outputFiles:
 			if !tc.wantErr {
 				if diff := cmp.Diff(tc.want, got); diff != "" {
 					t.Errorf("ParseAndValidate() mismatch (-want +got):\n%s", diff)
+				}
+			}
+		})
+	}
+}
+
+func TestCheckStandalone(t *testing.T) {
+	tests := []struct {
+		name    string
+		files   map[string]string
+		schema  *BundleSchema
+		wantErr bool
+	}{
+		{
+			name: "valid_root_standalone",
+			files: map[string]string{
+				".next/standalone/server.js":                      "console.log('server');",
+				".next/standalone/node_modules/next/package.json": `{"name":"next"}`,
+			},
+			schema: &BundleSchema{
+				Metadata: Metadata{
+					ProjectDir: ".",
+					DistDir:    ".next",
+					ServerDir:  ".next/standalone",
+				},
+				OutputFiles: OutputFiles{
+					ServerApp: ServerApp{
+						Include: []string{".next/standalone", ".cloudrun"},
+					},
+				},
+			},
+		},
+		{
+			name: "valid_monorepo_standalone_next_in_standalone_root",
+			files: map[string]string{
+				"apps/web/.next/standalone/apps/web/server.js":             "console.log('server');",
+				"apps/web/.next/standalone/node_modules/next/package.json": `{"name":"next"}`,
+			},
+			schema: &BundleSchema{
+				Metadata: Metadata{
+					ProjectDir: "apps/web",
+					DistDir:    "apps/web/.next",
+					ServerDir:  "apps/web/.next/standalone/apps/web",
+				},
+				OutputFiles: OutputFiles{
+					ServerApp: ServerApp{
+						Include: []string{"apps/web/.next/standalone", ".cloudrun"},
+					},
+				},
+			},
+		},
+		{
+			name: "missing_server_js_fails",
+			files: map[string]string{
+				".next/standalone/node_modules/next/package.json": `{"name":"next"}`,
+			},
+			schema: &BundleSchema{
+				Metadata: Metadata{
+					ProjectDir: ".",
+					DistDir:    ".next",
+					ServerDir:  ".next/standalone",
+				},
+				OutputFiles: OutputFiles{
+					ServerApp: ServerApp{
+						Include: []string{".next/standalone", ".cloudrun"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "next_package_only_outside_standalone_root_fails",
+			files: map[string]string{
+				"apps/web/.next/standalone/apps/web/server.js": "console.log('server');",
+				"node_modules/next/package.json":               `{"name":"next"}`,
+			},
+			schema: &BundleSchema{
+				Metadata: Metadata{
+					ProjectDir: "apps/web",
+					DistDir:    "apps/web/.next",
+					ServerDir:  "apps/web/.next/standalone/apps/web",
+				},
+				OutputFiles: OutputFiles{
+					ServerApp: ServerApp{
+						Include: []string{"apps/web/.next/standalone", ".cloudrun"},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ws := t.TempDir()
+			writeTestFiles(t, ws, tc.files)
+			err := CheckStandalone(ws, tc.schema)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("CheckStandalone() error = %v, wantErr %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestMergeCopy(t *testing.T) {
+	ws := t.TempDir()
+	writeTestFiles(t, ws, map[string]string{
+		"shared-assets/brand.svg":                           "<svg>brand</svg>",
+		"public/favicon.ico":                                "new-favicon",
+		"public/images/logo.png":                            "logo-bytes",
+		".next/static/chunks/main.js":                       "main-chunk",
+		".next/standalone/public/existing.txt":              "keep-me",
+		".next/standalone/public/favicon.ico":               "old-favicon",
+		".next/standalone/.next/server/pages-manifest.json": `{}`,
+	})
+	if err := os.Symlink("../shared-assets/brand.svg", filepath.Join(ws, "public/brand.svg")); err != nil {
+		t.Fatalf("Symlink public/brand.svg failed: %v", err)
+	}
+
+	specs := []CopySpec{
+		{From: "public", To: ".next/standalone/public"},
+		{From: ".next/static", To: ".next/standalone/.next/static"},
+		{From: "missing_optional_dir", To: ".next/standalone/missing_optional_dir"},
+	}
+
+	if err := MergeCopy(ws, specs); err != nil {
+		t.Fatalf("MergeCopy() unexpected error: %v", err)
+	}
+
+	wantContents := map[string]string{
+		".next/standalone/public/existing.txt":              "keep-me",
+		".next/standalone/public/favicon.ico":               "new-favicon",
+		".next/standalone/public/images/logo.png":           "logo-bytes",
+		".next/standalone/public/brand.svg":                 "<svg>brand</svg>",
+		".next/standalone/.next/static/chunks/main.js":      "main-chunk",
+		".next/standalone/.next/server/pages-manifest.json": `{}`,
+	}
+	for rel, want := range wantContents {
+		gotBytes, err := os.ReadFile(filepath.Join(ws, filepath.FromSlash(rel)))
+		if err != nil {
+			t.Errorf("os.ReadFile(%q) after MergeCopy() failed: %v", rel, err)
+			continue
+		}
+		if string(gotBytes) != want {
+			t.Errorf("os.ReadFile(%q) after MergeCopy() = %q, want %q", rel, string(gotBytes), want)
+		}
+	}
+
+	if err := MergeCopy(ws, []CopySpec{{From: "public", To: "public"}}); err == nil {
+		t.Errorf("MergeCopy() with overlapping From/To = nil, want non-nil error")
+	}
+}
+
+func TestCheckBootPackageJSON(t *testing.T) {
+	schema := &BundleSchema{
+		Metadata: Metadata{
+			ProjectDir: "apps/web",
+			DistDir:    "apps/web/.next",
+			ServerDir:  "apps/web/.next/standalone/apps/web",
+		},
+	}
+
+	tests := []struct {
+		name    string
+		files   map[string]string
+		mode    string
+		wantErr bool
+	}{
+		{
+			name: "report_only_present_in_project_dir",
+			files: map[string]string{
+				"apps/web/package.json": `{"name":"web"}`,
+			},
+			mode:    PruneModeReportOnly,
+			wantErr: false,
+		},
+		{
+			name: "report_only_missing_in_project_dir",
+			files: map[string]string{
+				"package.json": `{"name":"root"}`,
+				"apps/web/.next/standalone/apps/web/package.json": `{"name":"web"}`,
+			},
+			mode:    PruneModeReportOnly,
+			wantErr: true,
+		},
+		{
+			name: "prune_false_present_in_project_dir",
+			files: map[string]string{
+				"apps/web/package.json": `{"name":"web"}`,
+			},
+			mode:    PruneModeFalse,
+			wantErr: false,
+		},
+		{
+			name: "prune_false_missing_in_project_dir",
+			files: map[string]string{
+				"package.json": `{"name":"root"}`,
+			},
+			mode:    PruneModeFalse,
+			wantErr: true,
+		},
+		{
+			name: "prune_true_present_in_server_dir",
+			files: map[string]string{
+				"apps/web/.next/standalone/apps/web/package.json": `{"name":"web"}`,
+			},
+			mode:    PruneModeTrue,
+			wantErr: false,
+		},
+		{
+			name: "prune_true_missing_in_server_dir",
+			files: map[string]string{
+				"package.json":          `{"name":"root"}`,
+				"apps/web/package.json": `{"name":"web"}`,
+			},
+			mode:    PruneModeTrue,
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ws := t.TempDir()
+			writeTestFiles(t, ws, tc.files)
+			err := CheckBootPackageJSON(ws, schema, tc.mode)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("CheckBootPackageJSON(_, _, %q) error = %v, wantErr %v", tc.mode, err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestCheckProjectFallbackFiles(t *testing.T) {
+	const (
+		projectPkgJSON  = "apps/web/package.json"
+		runtimeManifest = ".cloudrun/next-routing.json"
+		reqServerFiles  = "apps/web/.next/required-server-files.json"
+	)
+	schema := &BundleSchema{
+		Metadata: Metadata{
+			ProjectDir:      "apps/web",
+			DistDir:         "apps/web/.next",
+			ServerDir:       "apps/web/.next/standalone/apps/web",
+			RuntimeManifest: runtimeManifest,
+		},
+	}
+
+	tests := []struct {
+		name  string
+		files map[string]string
+		// wantNamed lists the files the error must name. Empty means no error.
+		wantNamed []string
+	}{
+		{
+			name: "valid_when_project_package_json_and_manifests_exist",
+			files: map[string]string{
+				projectPkgJSON:  `{"name":"web"}`,
+				runtimeManifest: `{"version":1}`,
+				reqServerFiles:  `{"version":1}`,
+			},
+		},
+		{
+			name: "project_package_json_missing",
+			files: map[string]string{
+				"package.json":  `{"name":"root"}`,
+				runtimeManifest: `{"version":1}`,
+				reqServerFiles:  `{"version":1}`,
+			},
+			wantNamed: []string{projectPkgJSON},
+		},
+		{
+			name: "runtime_manifest_empty",
+			files: map[string]string{
+				projectPkgJSON:  `{"name":"web"}`,
+				runtimeManifest: `{}`,
+				reqServerFiles:  `{"version":1}`,
+			},
+			wantNamed: []string{runtimeManifest},
+		},
+		{
+			name: "both_manifests_missing",
+			files: map[string]string{
+				projectPkgJSON: `{"name":"web"}`,
+			},
+			wantNamed: []string{runtimeManifest, reqServerFiles},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ws := t.TempDir()
+			writeTestFiles(t, ws, tc.files)
+			err := CheckProjectFallbackFiles(ws, schema)
+			if len(tc.wantNamed) == 0 {
+				if err != nil {
+					t.Errorf("CheckProjectFallbackFiles() = %v, want nil", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("CheckProjectFallbackFiles() = nil, want error naming %q", tc.wantNamed)
+			}
+			for _, f := range []string{projectPkgJSON, runtimeManifest, reqServerFiles} {
+				if got, want := strings.Contains(err.Error(), f), slices.Contains(tc.wantNamed, f); got != want {
+					t.Errorf("CheckProjectFallbackFiles() = %q, names %s: %t, want %t", err, f, got, want)
 				}
 			}
 		})
