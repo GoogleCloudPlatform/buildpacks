@@ -605,6 +605,101 @@ func TestMergeCopy(t *testing.T) {
 	}
 }
 
+func TestPrune_ModeTruePreservesSymlinkClosure(t *testing.T) {
+	ws, schema := setupPruneWorkspace(t)
+	stats, err := Prune(ws, schema, PruneModeTrue)
+	if err != nil {
+		t.Fatalf("Prune(true) unexpected error: %v", err)
+	}
+	if stats.RemovedFiles == 0 || stats.RemovedBytes == 0 {
+		t.Errorf("Prune(true) stats = %+v, want non-zero RemovedFiles and RemovedBytes", stats)
+	}
+
+	mustExist := []string{
+		".cloudrun/bundle.yaml",
+		".cloudrun/serve.js",
+		"apps/web/.next/standalone/apps/web/server.js",
+		"apps/web/.next/standalone/node_modules/next/package.json",
+		"node_modules/.pnpm/next@15.2.0/node_modules/next/package.json",
+		"node_modules/.pnpm/react@19.0.0/node_modules/react/index.js",
+		"packages/shared-ui/dist/index.js",
+	}
+	for _, rel := range mustExist {
+		if _, err := os.Stat(filepath.Join(ws, filepath.FromSlash(rel))); err != nil {
+			t.Errorf("os.Stat(%q) after Prune(true) failed: %v, want file to exist", rel, err)
+		}
+	}
+
+	mustNotExist := []string{
+		"apps/web/.next/cache",
+		"apps/web/src/page.tsx",
+		"apps/web/config/tenants.json",
+		"node_modules/.pnpm/typescript@5.7.0",
+		"packages/unused-pkg",
+	}
+	for _, rel := range mustNotExist {
+		if _, err := os.Lstat(filepath.Join(ws, filepath.FromSlash(rel))); !os.IsNotExist(err) {
+			t.Errorf("os.Lstat(%q) after Prune(true) = %v, want os.IsNotExist", rel, err)
+		}
+	}
+}
+
+func TestPrune_ModeReportOnly(t *testing.T) {
+	ws, schema := setupPruneWorkspace(t)
+	stats, err := Prune(ws, schema, PruneModeReportOnly)
+	if err != nil {
+		t.Fatalf("Prune(report-only) unexpected error: %v", err)
+	}
+	if stats.RemovedFiles == 0 || stats.RemovedBytes == 0 {
+		t.Errorf("Prune(report-only) stats = %+v, want non-zero RemovedFiles and RemovedBytes", stats)
+	}
+
+	wantUntraced := []string{
+		"apps/web/config/tenants.json",
+		"apps/web/content/posts/hello.md",
+	}
+	if diff := cmp.Diff(wantUntraced, stats.UntracedDataFiles); diff != "" {
+		t.Errorf("Prune(report-only) UntracedDataFiles diff (-want +got):\n%s", diff)
+	}
+
+	// <distDir>/standalone must be deleted in report-only mode so image is not bloated.
+	if _, err := os.Lstat(filepath.Join(ws, "apps/web/.next/standalone")); !os.IsNotExist(err) {
+		t.Errorf("os.Lstat(apps/web/.next/standalone) after Prune(report-only) = %v, want os.IsNotExist", err)
+	}
+	// Full project tree must remain intact in report-only mode.
+	if _, err := os.Stat(filepath.Join(ws, "apps/web/config/tenants.json")); err != nil {
+		t.Errorf("os.Stat(apps/web/config/tenants.json) after Prune(report-only) failed: %v, want file to exist", err)
+	}
+}
+
+func TestPrune_ModeFalse(t *testing.T) {
+	ws, schema := setupPruneWorkspace(t)
+	if _, err := Prune(ws, schema, PruneModeFalse); err != nil {
+		t.Fatalf("Prune(false) unexpected error: %v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(ws, "apps/web/.next/standalone")); !os.IsNotExist(err) {
+		t.Errorf("os.Lstat(apps/web/.next/standalone) after Prune(false) = %v, want os.IsNotExist", err)
+	}
+	if _, err := os.Stat(filepath.Join(ws, "apps/web/src/page.tsx")); err != nil {
+		t.Errorf("os.Stat(apps/web/src/page.tsx) after Prune(false) failed: %v, want file to exist", err)
+	}
+}
+
+func TestPrune_DotInIncludeKeepsAllFiles(t *testing.T) {
+	ws, schema := setupPruneWorkspace(t)
+	schema.OutputFiles.ServerApp.Include = []string{"."}
+	stats, err := Prune(ws, schema, PruneModeTrue)
+	if err != nil {
+		t.Fatalf("Prune(true) with '.' in include failed: %v", err)
+	}
+	if stats.RemovedFiles != 0 {
+		t.Errorf("Prune(true) with '.' in include RemovedFiles = %d, want 0", stats.RemovedFiles)
+	}
+	if _, err := os.Stat(filepath.Join(ws, "packages/unused-pkg/dist/index.js")); err != nil {
+		t.Errorf("os.Stat(packages/unused-pkg/dist/index.js) after Prune(true) failed: %v, want file to exist", err)
+	}
+}
+
 func TestCheckBootPackageJSON(t *testing.T) {
 	schema := &BundleSchema{
 		Metadata: Metadata{
@@ -774,4 +869,82 @@ func writeTestFiles(t *testing.T, root string, files map[string]string) {
 			t.Fatalf("WriteFile(%q) failed: %v", abs, err)
 		}
 	}
+}
+
+func setupPruneWorkspace(t *testing.T) (string, *BundleSchema) {
+	t.Helper()
+	ws := t.TempDir()
+	writeTestFiles(t, ws, map[string]string{
+		".cloudrun/bundle.yaml":                                                  "version: v2\n",
+		".cloudrun/serve.js":                                                     "console.log('serve');",
+		".cloudrun/next-routing.json":                                            `{"version":1}`,
+		"apps/web/package.json":                                                  `{"name":"web"}`,
+		"apps/web/tsconfig.json":                                                 `{}`,
+		"apps/web/src/page.tsx":                                                  "export default function Page() {}",
+		"apps/web/public/robots.txt":                                             "User-agent: *\nAllow: /\n",
+		"apps/web/public/traced.json":                                            `{"shipped":true}`,
+		"apps/web/config/tenants.json":                                           `{"tenant":"acme"}`,
+		"apps/web/content/posts/hello.md":                                        "# Hello",
+		"apps/web/tests/fixtures.json":                                           `{"test":true}`,
+		"apps/web/.next/required-server-files.json":                              `{"version":1}`,
+		"apps/web/.next/cache/webpack/pack.gz":                                   "huge-webpack-cache",
+		"apps/web/.next/standalone/apps/web/server.js":                           "console.log('standalone');",
+		"node_modules/.pnpm/next@15.2.0/node_modules/next/package.json":          `{"name":"next"}`,
+		"node_modules/.pnpm/next@15.2.0/node_modules/next/dist/server/next.js":   "module.exports = {};",
+		"node_modules/.pnpm/react@19.0.0/node_modules/react/index.js":            "module.exports = {};",
+		"node_modules/.pnpm/typescript@5.7.0/node_modules/typescript/lib/tsc.js": "console.log('dev-only');",
+		"packages/shared-ui/dist/index.js":                                       "export const Button = () => {};",
+		"packages/unused-pkg/dist/index.js":                                      "export const Unused = () => {};",
+	})
+
+	// Create pnpm-style symlink farm inside standalone pointing out to workspace
+	// root node_modules/.pnpm and workspace package packages/shared-ui.
+	standaloneNM := filepath.Join(ws, "apps/web/.next/standalone/node_modules")
+	if err := os.MkdirAll(filepath.Join(standaloneNM, "@acme"), 0755); err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+	// apps/web/.next/standalone/node_modules/next -> ../../../../../node_modules/.pnpm/next@15.2.0/node_modules/next
+	if err := os.Symlink("../../../../../node_modules/.pnpm/next@15.2.0/node_modules/next", filepath.Join(standaloneNM, "next")); err != nil {
+		t.Fatalf("Symlink next failed: %v", err)
+	}
+	// Chained symlink inside .pnpm: node_modules/.pnpm/next@15.2.0/node_modules/react -> ../../react@19.0.0/node_modules/react
+	if err := os.Symlink("../../react@19.0.0/node_modules/react", filepath.Join(ws, "node_modules/.pnpm/next@15.2.0/node_modules/react")); err != nil {
+		t.Fatalf("Symlink react failed: %v", err)
+	}
+	// Workspace package symlink: apps/web/.next/standalone/node_modules/@acme/shared-ui -> ../../../../../../packages/shared-ui
+	if err := os.Symlink("../../../../../../packages/shared-ui", filepath.Join(standaloneNM, "@acme/shared-ui")); err != nil {
+		t.Fatalf("Symlink shared-ui failed: %v", err)
+	}
+	// Symlink cycle inside shared-ui to verify fixed-point termination without
+	// infinite loop.
+	if err := os.Symlink(".", filepath.Join(ws, "packages/shared-ui/self_loop")); err != nil {
+		t.Fatalf("Symlink self_loop failed: %v", err)
+	}
+
+	schema := &BundleSchema{
+		Version: "v2",
+		RunConfig: RunConfig{
+			RunCommand:        "node .cloudrun/serve.js",
+			ProjectRunCommand: "node .cloudrun/serve.js --project",
+		},
+		Metadata: Metadata{
+			OutputMode:      "standalone",
+			ProjectDir:      "apps/web",
+			DistDir:         "apps/web/.next",
+			ServerDir:       "apps/web/.next/standalone/apps/web",
+			RuntimeManifest: ".cloudrun/next-routing.json",
+		},
+		OutputFiles: OutputFiles{
+			ServerApp: ServerApp{
+				Include: []string{"apps/web/.next/standalone"},
+				Copy: []CopySpec{
+					{
+						From: "apps/web/public",
+						To:   "apps/web/.next/standalone/apps/web/public",
+					},
+				},
+			},
+		},
+	}
+	return ws, schema
 }

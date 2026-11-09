@@ -10,6 +10,7 @@ go_library(
         "command.go",
         "copy.go",
         "paths.go",
+        "prune.go",
         "standalone.go",
         "webbundle.go",
     ],
