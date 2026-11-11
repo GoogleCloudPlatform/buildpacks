@@ -784,6 +784,7 @@ func TestCheckProjectFallbackFiles(t *testing.T) {
 		projectPkgJSON  = "apps/web/package.json"
 		runtimeManifest = ".cloudrun/next-routing.json"
 		reqServerFiles  = "apps/web/.next/required-server-files.json"
+		nextPkg         = "node_modules/next/package.json"
 	)
 	schema := &BundleSchema{
 		Metadata: Metadata{
@@ -797,6 +798,8 @@ func TestCheckProjectFallbackFiles(t *testing.T) {
 	tests := []struct {
 		name  string
 		files map[string]string
+		// symlinks maps a link path to its target, relative to the link's directory.
+		symlinks map[string]string
 		// wantNamed lists the files the error must name. Empty means no error.
 		wantNamed []string
 	}{
@@ -804,14 +807,46 @@ func TestCheckProjectFallbackFiles(t *testing.T) {
 			name: "valid_when_project_package_json_and_manifests_exist",
 			files: map[string]string{
 				projectPkgJSON:  `{"name":"web"}`,
+				nextPkg:         `{"name":"next"}`,
 				runtimeManifest: `{"version":1}`,
 				reqServerFiles:  `{"version":1}`,
 			},
 		},
 		{
+			name: "valid_when_next_is_in_project_dir",
+			files: map[string]string{
+				projectPkgJSON: `{"name":"web"}`,
+				"apps/web/node_modules/next/package.json": `{"name":"next"}`,
+				runtimeManifest: `{"version":1}`,
+				reqServerFiles:  `{"version":1}`,
+			},
+		},
+		{
+			name: "valid_when_next_is_a_pnpm_style_symlink",
+			files: map[string]string{
+				projectPkgJSON: `{"name":"web"}`,
+				"node_modules/.pnpm/next@16.4.3/node_modules/next/package.json": `{"name":"next"}`,
+				runtimeManifest: `{"version":1}`,
+				reqServerFiles:  `{"version":1}`,
+			},
+			symlinks: map[string]string{
+				"apps/web/node_modules/next": "../../../node_modules/.pnpm/next@16.4.3/node_modules/next",
+			},
+		},
+		{
+			name: "next_missing",
+			files: map[string]string{
+				projectPkgJSON:  `{"name":"web"}`,
+				runtimeManifest: `{"version":1}`,
+				reqServerFiles:  `{"version":1}`,
+			},
+			wantNamed: []string{nextPkg},
+		},
+		{
 			name: "project_package_json_missing",
 			files: map[string]string{
 				"package.json":  `{"name":"root"}`,
+				nextPkg:         `{"name":"next"}`,
 				runtimeManifest: `{"version":1}`,
 				reqServerFiles:  `{"version":1}`,
 			},
@@ -821,6 +856,7 @@ func TestCheckProjectFallbackFiles(t *testing.T) {
 			name: "runtime_manifest_empty",
 			files: map[string]string{
 				projectPkgJSON:  `{"name":"web"}`,
+				nextPkg:         `{"name":"next"}`,
 				runtimeManifest: `{}`,
 				reqServerFiles:  `{"version":1}`,
 			},
@@ -830,6 +866,7 @@ func TestCheckProjectFallbackFiles(t *testing.T) {
 			name: "both_manifests_missing",
 			files: map[string]string{
 				projectPkgJSON: `{"name":"web"}`,
+				nextPkg:        `{"name":"next"}`,
 			},
 			wantNamed: []string{runtimeManifest, reqServerFiles},
 		},
@@ -839,6 +876,15 @@ func TestCheckProjectFallbackFiles(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ws := t.TempDir()
 			writeTestFiles(t, ws, tc.files)
+			for link, target := range tc.symlinks {
+				abs := filepath.Join(ws, filepath.FromSlash(link))
+				if err := os.MkdirAll(filepath.Dir(abs), 0755); err != nil {
+					t.Fatalf("MkdirAll(%q) failed: %v", filepath.Dir(abs), err)
+				}
+				if err := os.Symlink(filepath.FromSlash(target), abs); err != nil {
+					t.Fatalf("Symlink(%q, %q) failed: %v", target, abs, err)
+				}
+			}
 			err := CheckProjectFallbackFiles(ws, schema)
 			if len(tc.wantNamed) == 0 {
 				if err != nil {
@@ -849,7 +895,7 @@ func TestCheckProjectFallbackFiles(t *testing.T) {
 			if err == nil {
 				t.Fatalf("CheckProjectFallbackFiles() = nil, want error naming %q", tc.wantNamed)
 			}
-			for _, f := range []string{projectPkgJSON, runtimeManifest, reqServerFiles} {
+			for _, f := range []string{projectPkgJSON, nextPkg, runtimeManifest, reqServerFiles} {
 				if got, want := strings.Contains(err.Error(), f), slices.Contains(tc.wantNamed, f); got != want {
 					t.Errorf("CheckProjectFallbackFiles() = %q, names %s: %t, want %t", err, f, got, want)
 				}

@@ -162,11 +162,13 @@ func CheckBootPackageJSON(workspaceRoot string, schema *BundleSchema, mode strin
 	return nil
 }
 
-// CheckProjectFallbackFiles verifies the files that project mode needs inside
-// workspaceRoot: <projectDir>/package.json must be a regular file, and the
-// runtime manifest (default .cloudrun/next-routing.json) and
-// <distDir>/required-server-files.json must be valid non-empty JSON objects.
-// The returned error names every file that failed its check.
+// CheckProjectFallbackFiles verifies what project mode needs inside
+// workspaceRoot: <projectDir>/package.json must be a regular file, next must be
+// installed where Node.js resolves it from projectDir (node_modules/next in
+// projectDir or a parent directory), and the runtime manifest (default
+// .cloudrun/next-routing.json) and <distDir>/required-server-files.json must be
+// valid non-empty JSON objects. The returned error names every check that
+// failed.
 func CheckProjectFallbackFiles(workspaceRoot string, schema *BundleSchema) error {
 	if schema == nil {
 		return errors.New("bundle schema is nil")
@@ -190,6 +192,9 @@ func CheckProjectFallbackFiles(workspaceRoot string, schema *BundleSchema) error
 	if _, err := validateRegularFile(realRoot, pkgJSONRel); err != nil {
 		errs = append(errs, fmt.Errorf("checking project package.json at %s: %v", pkgJSONRel, err))
 	}
+	if !nextResolvableFrom(realRoot, projectDir) {
+		errs = append(errs, fmt.Errorf("checking next for %s: node_modules/next/package.json not found there or in a parent directory", projectDir))
+	}
 	if err := validateNonEmptyJSONFile(realRoot, runtimeManifestRel); err != nil {
 		errs = append(errs, fmt.Errorf("checking runtime manifest at %s: %v", runtimeManifestRel, err))
 	}
@@ -197,6 +202,25 @@ func CheckProjectFallbackFiles(workspaceRoot string, schema *BundleSchema) error
 		errs = append(errs, fmt.Errorf("checking required-server-files.json at %s: %v", reqServerFilesRel, err))
 	}
 	return errors.Join(errs...)
+}
+
+// nextResolvableFrom reports whether node_modules/next/package.json is a
+// regular file inside realRoot in dir or one of its parent directories, which
+// is where Node.js looks when serve.js loads next from dir. Package managers
+// can remove an app's node_modules after the build (for example, pnpm prune
+// --prod in a workspace), and project mode can't boot without next.
+func nextResolvableFrom(realRoot, dir string) bool {
+	cur := path.Clean(dir)
+	for {
+		if _, err := validateRegularFile(realRoot, path.Join(cur, "node_modules/next/package.json")); err == nil {
+			return true
+		}
+		parent := path.Dir(cur)
+		if cur == "." || parent == cur {
+			return false
+		}
+		cur = parent
+	}
 }
 
 // validateRegularFile checks that relPath stays inside realRoot, is a regular

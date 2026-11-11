@@ -119,6 +119,7 @@ func TestBuild(t *testing.T) {
 			name: "default_report_only_mode_deletes_standalone_and_sets_project_run_command",
 			files: map[string]string{
 				"package.json":                                      `{"scripts":{"start":"next start"}}`,
+				"node_modules/next/package.json":                    `{"name":"next"}`,
 				"src/app/page.tsx":                                  "export default function Page() {}",
 				"data/Catalog.json":                                 `{"items":[]}`,
 				"public/logo.png":                                   "logo",
@@ -148,6 +149,24 @@ func TestBuild(t *testing.T) {
 			wantNotExist: []string{
 				".next/standalone",
 			},
+		},
+		{
+			// pnpm prune --prod in a workspace can leave the app without next; project
+			// mode can't boot then, so the default start command is kept.
+			name: "report_only_without_next_installed_keeps_initial_start_command",
+			files: map[string]string{
+				"package.json":                                      `{"scripts":{"start":"next start"}}`,
+				".cloudrun/bundle.yaml":                             validBundleYAML,
+				".cloudrun/serve.js":                                "console.log('serve');",
+				".cloudrun/next-routing.json":                       `{"version":1}`,
+				".next/required-server-files.json":                  `{"version":1}`,
+				".next/standalone/server.js":                        "console.log('standalone');",
+				".next/standalone/.next/required-server-files.json": `{"version":1}`,
+				".next/standalone/node_modules/next/package.json":   `{"name":"next"}`,
+			},
+			initialCmd: []string{"npm", "run", "start"},
+			wantCmd:    []string{"npm", "run", "start"},
+			wantExist:  []string{"package.json", ".cloudrun/serve.js"},
 		},
 		{
 			name: "prune_true_copies_assets_prunes_workspace_and_sets_standalone_command",
@@ -194,6 +213,7 @@ func TestBuild(t *testing.T) {
 			name: "prune_false_deletes_standalone_and_sets_project_run_command",
 			files: map[string]string{
 				"package.json":                                      `{"scripts":{"start":"next start"}}`,
+				"node_modules/next/package.json":                    `{"name":"next"}`,
 				"src/app/page.tsx":                                  "export default function Page() {}",
 				".cloudrun/bundle.yaml":                             validBundleYAML,
 				".cloudrun/serve.js":                                "console.log('serve');",
@@ -304,6 +324,7 @@ metadata:
 			name: "failed_standalone_check_with_valid_fallback_files_uses_project_run_command",
 			files: map[string]string{
 				"package.json":                     `{"scripts":{"start":"next start"}}`,
+				"node_modules/next/package.json":   `{"name":"next"}`,
 				".cloudrun/bundle.yaml":            validBundleYAML,
 				".cloudrun/serve.js":               "console.log('serve');",
 				".cloudrun/next-routing.json":      `{"version":1}`,
@@ -511,8 +532,9 @@ outputFiles:
 		{
 			name: "monorepo_report_only_with_boot_package_json_present_succeeds",
 			files: map[string]string{
-				"package.json":          `{"scripts":{"start":"turbo run start --filter=web"}}`,
-				"apps/web/package.json": `{"name":"web","scripts":{"start":"next start"}}`,
+				"package.json":                   `{"scripts":{"start":"turbo run start --filter=web"}}`,
+				"apps/web/package.json":          `{"name":"web","scripts":{"start":"next start"}}`,
+				"node_modules/next/package.json": `{"name":"next"}`,
 				".cloudrun/bundle.yaml": `version: "v2"
 runConfig:
   runCommand: "node .cloudrun/serve.js"
