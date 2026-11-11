@@ -140,6 +140,16 @@ const (
 	// runtime layer in the builder image and omit it from the launch image.
 	XGoogleSkipRuntimeLaunch = "X_GOOGLE_SKIP_RUNTIME_LAUNCH"
 
+	// XGoogleRuntimeVersions lists the runtimes that are eligible for automatic base image updates
+	// when the runtime is detected automatically, as a JSON object that maps runtime names to
+	// versions, for example {"nodejs24":"24.22.1","python314":"3.14.10"}. It is only set for
+	// builds that detect the runtime automatically.
+	//
+	// TODO(b/561842062): Consider moving the list of eligible runtimes and versions into the builder
+	// instead of passing it from the platform. Both options have trade-offs and the change is
+	// reversible, so revisit it.
+	XGoogleRuntimeVersions = "X_GOOGLE_RUNTIME_VERSIONS"
+
 	// XGoogleTargetPlatform is an envar used to specify the target platform for a build (gae, gcf or gcp).
 	XGoogleTargetPlatform = "X_GOOGLE_TARGET_PLATFORM"
 

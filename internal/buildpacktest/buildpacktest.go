@@ -17,6 +17,7 @@
 package buildpacktest
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -36,6 +37,8 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/fileutil"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/google/go-cmp/cmp"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 var (
@@ -118,6 +121,20 @@ func (r *Result) MetadataAdded() map[bmd.MetadataID]bmd.MetadataValue {
 		}
 	}
 	return metadata
+}
+
+// PlansAdded returns the build plans of a detect phase that passed, or nil if it added none.
+func (r *Result) PlansAdded() ([]libcnb.BuildPlan, error) {
+	re := regexp.MustCompile(`(?m)^BUILDPACK_TEST_PLANS:(.+)$`)
+	match := re.FindStringSubmatch(r.Output)
+	if match == nil {
+		return nil, nil
+	}
+	var plans []libcnb.BuildPlan
+	if err := json.Unmarshal([]byte(match[1]), &plans); err != nil {
+		return nil, fmt.Errorf("parsing build plans %q: %w", match[1], err)
+	}
+	return plans, nil
 }
 
 // Option is a type for buildpack test options.
@@ -207,6 +224,29 @@ func TestDetectWithStack(t *testing.T, detectFn gcp.DetectFn, testName string, f
 
 	if err == nil && want != 0 {
 		t.Errorf("unexpected exit status 0, want %d", want)
+		t.Errorf("\ncombined stdout, stderr: %s", result.Output)
+	}
+}
+
+// TestDetectWithPlans is like TestDetect, but also checks the build plans of the detect result.
+// This MUST be called from a test function with the name `func TestDetect(t *testing.T)`.
+func TestDetectWithPlans(t *testing.T, detectFn gcp.DetectFn, testName string, files map[string]string, envs []string, want int, wantPlans []libcnb.BuildPlan) {
+	result, err := RunDetectPhaseForTest(t, detectFn, testName, files, envs, "com.stack", want)
+
+	if result.ExitCode != want {
+		t.Errorf("unexpected exit status %d, want %d", result.ExitCode, want)
+		t.Errorf("\ncombined stdout, stderr: %s", result.Output)
+	}
+	if err == nil && want != 0 {
+		t.Errorf("unexpected exit status 0, want %d", want)
+		t.Errorf("\ncombined stdout, stderr: %s", result.Output)
+	}
+	plans, err := result.PlansAdded()
+	if err != nil {
+		t.Fatalf("reading build plans: %v", err)
+	}
+	if diff := cmp.Diff(wantPlans, plans); diff != "" {
+		t.Errorf("unexpected build plans (-want +got):\n%s", diff)
 		t.Errorf("\ncombined stdout, stderr: %s", result.Output)
 	}
 }
@@ -381,6 +421,13 @@ func runBuildpackPhase(t *testing.T, cfg *config) (bool, error) {
 		// succeeds but does not pass detect.
 		if !detect.Result().Pass {
 			return false, nil
+		}
+		if plans := detect.Result().Plans; len(plans) > 0 {
+			raw, err := json.Marshal(plans)
+			if err != nil {
+				return false, fmt.Errorf("marshaling build plans: %v", err)
+			}
+			fmt.Printf("BUILDPACK_TEST_PLANS:%s\n", raw)
 		}
 	}
 

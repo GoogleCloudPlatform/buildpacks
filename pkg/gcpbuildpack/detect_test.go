@@ -204,3 +204,41 @@ func TestOptOutVariants(t *testing.T) {
 		t.Errorf(`OptOutEnvNotSet("MY_ENV", opt).Result() = %#v, want %#v`, got, want)
 	}
 }
+
+func TestWithBuildPlansFunc(t *testing.T) {
+	existing := WithBuildPlans(libcnb.BuildPlan{Provides: []libcnb.BuildPlanProvide{{Name: "existing"}}})
+	lazy := libcnb.BuildPlan{Provides: []libcnb.BuildPlanProvide{{Name: "lazy"}}}
+	testCases := []struct {
+		name  string
+		plans []libcnb.BuildPlan
+		want  []libcnb.BuildPlan
+	}{
+		{
+			name:  "adds plans",
+			plans: []libcnb.BuildPlan{lazy},
+			want:  []libcnb.BuildPlan{lazy},
+		},
+		{
+			name: "keeps existing plans when no plans are returned",
+			want: []libcnb.BuildPlan{{Provides: []libcnb.BuildPlanProvide{{Name: "existing"}}}},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			called := false
+			opt := WithBuildPlansFunc(func() []libcnb.BuildPlan {
+				called = true
+				return tc.plans
+			})
+			if called {
+				t.Fatal("WithBuildPlansFunc() called f before the option was applied")
+			}
+
+			result := OptIn("some reason", existing, opt)
+
+			if got := result.Result().Plans; !reflect.DeepEqual(tc.want, got) {
+				t.Errorf("result.Result().Plans = %#v, want %#v", got, tc.want)
+			}
+		})
+	}
+}

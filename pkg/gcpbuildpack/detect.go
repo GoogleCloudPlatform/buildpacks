@@ -50,6 +50,17 @@ func WithBuildPlans(plans ...libcnb.BuildPlan) DetectResultOption {
 	}
 }
 
+// WithBuildPlansFunc adds the build plans returned by f to the detect result. f is only called
+// when the option is applied, so pass the option only to the result that is returned. Existing
+// build plans are kept if f returns no plans.
+func WithBuildPlansFunc(f func() []libcnb.BuildPlan) DetectResultOption {
+	return func(r *detectResult) {
+		if plans := f(); len(plans) > 0 {
+			r.result.Plans = plans
+		}
+	}
+}
+
 // OptIn is used during the detect phase to opt in to the build process.
 func OptIn(reason string, opts ...DetectResultOption) DetectResult {
 	return opt(true, "Opting in: "+reason, opts...)

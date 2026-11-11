@@ -43,14 +43,16 @@ import (
 //	 o If the GOOGLE_RUNTIME environment variable is set to another value this returns an OptOut result..
 //		Indicates a gae or gcf build and the runtime needed for the build is not supported by the
 //		buildpack performing detection.
-func CheckOverride(wantRuntime string) gcp.DetectResult {
+//
+// opts are applied to the OptIn result only.
+func CheckOverride(wantRuntime string, opts ...gcp.DetectResultOption) gcp.DetectResult {
 	envRuntime := strings.ToLower(strings.TrimSpace(os.Getenv(env.Runtime)))
 	if envRuntime == "" {
 		return nil
 	}
 
 	if strings.HasPrefix(envRuntime, wantRuntime) {
-		return gcp.OptIn(fmt.Sprintf("%s  matches %q", env.Runtime, wantRuntime))
+		return gcp.OptIn(fmt.Sprintf("%s  matches %q", env.Runtime, wantRuntime), opts...)
 	}
 	return gcp.OptOut(fmt.Sprintf("%s does not match to %q", env.Runtime, wantRuntime))
 }
