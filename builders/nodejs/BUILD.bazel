@@ -28,6 +28,8 @@ BUILDPACKS = [
     "//cmd/nodejs/firebasenx:firebasenx.tgz",
     "//cmd/nodejs/turborepo:turborepo.tgz",
 
+    "//cmd/nodejs/webbundle:webbundle.tgz",
+    "//cmd/nodejs/webnextjs:webnextjs.tgz",
 ]
 
 BUILDPACKS_USING_RUNNER = [
@@ -50,6 +52,8 @@ BUILDPACKS_USING_RUNNER = [
     "//cmd/nodejs/firebasenx:firebasenx_using_runner.tgz",
     "//cmd/nodejs/turborepo:turborepo_using_runner.tgz",
 
+    "//cmd/nodejs/webbundle:webbundle_using_runner.tgz",
+    "//cmd/nodejs/webnextjs:webnextjs_using_runner.tgz",
 ]
 
 builder(

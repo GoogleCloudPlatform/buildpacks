@@ -20,13 +20,15 @@ import (
 )
 
 const (
-	entrypoint  = "google.config.entrypoint"
-	nodeFF      = "google.nodejs.functions-framework"
-	nodeNPM     = "google.nodejs.npm"
-	nodeRuntime = "google.nodejs.runtime"
-	nodeYarn    = "google.nodejs.yarn"
-	nodePNPM    = "google.nodejs.pnpm"
-	nodeBun     = "google.nodejs.bun"
+	entrypoint    = "google.config.entrypoint"
+	nodeFF        = "google.nodejs.functions-framework"
+	nodeNPM       = "google.nodejs.npm"
+	nodeRuntime   = "google.nodejs.runtime"
+	nodeYarn      = "google.nodejs.yarn"
+	nodePNPM      = "google.nodejs.pnpm"
+	nodeBun       = "google.nodejs.bun"
+	nodeWebNextJS = "google.nodejs.webnextjs"
+	nodeWebBundle = "google.nodejs.webbundle"
 )
 
 func init() {
@@ -42,6 +44,7 @@ func TestAcceptance(t *testing.T) {
 			Name:            "simple application",
 			App:             "simple",
 			MustUse:         []string{nodeRuntime, nodeNPM},
+			MustNotUse:      []string{nodeWebNextJS, nodeWebBundle},
 			EnableCacheTest: true,
 		},
 		{
@@ -143,6 +146,7 @@ func TestAcceptance(t *testing.T) {
 			Name:                       "nextjs",
 			App:                        "nextjs",
 			MustUse:                    []string{nodeRuntime, nodeNPM},
+			MustNotUse:                 []string{nodeWebNextJS, nodeWebBundle},
 			VersionInclusionConstraint: ">= 20.0.0",
 		},
 		{

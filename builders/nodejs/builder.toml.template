@@ -72,6 +72,14 @@ description = "Builder for the Node.js runtime"
   id = "google.firebase.firebasebundle"
   uri = "firebasebundle_v2.tgz"
 
+[[buildpacks]]
+  id = "google.nodejs.webbundle"
+  uri = "webbundle.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.webnextjs"
+  uri = "webnextjs.tgz"
+
 # The Firebase apphosting order group for Node.js applications.
 # TODO: Change the naming convention for firebase apphosting buildpacks
 # since Serverless Runtimes prefers generic buildpack names.
@@ -457,10 +465,18 @@ description = "Builder for the Node.js runtime"
     optional = true
 
   [[order.group]]
+    id = "google.nodejs.webnextjs"
+    optional = true
+
+  [[order.group]]
     id = "google.nodejs.yarn"
 
   [[order.group]]
     id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.webbundle"
     optional = true
 
   [[order.group]]
@@ -481,10 +497,18 @@ description = "Builder for the Node.js runtime"
     optional = true
 
   [[order.group]]
+    id = "google.nodejs.webnextjs"
+    optional = true
+
+  [[order.group]]
     id = "google.nodejs.pnpm"
 
   [[order.group]]
     id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.webbundle"
     optional = true
 
   [[order.group]]
@@ -505,10 +529,18 @@ description = "Builder for the Node.js runtime"
     optional = true
 
   [[order.group]]
+    id = "google.nodejs.webnextjs"
+    optional = true
+
+  [[order.group]]
     id = "google.nodejs.bun"
 
   [[order.group]]
     id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.webbundle"
     optional = true
 
   [[order.group]]
@@ -529,10 +561,18 @@ description = "Builder for the Node.js runtime"
     optional = true
 
   [[order.group]]
+    id = "google.nodejs.webnextjs"
+    optional = true
+
+  [[order.group]]
     id = "google.nodejs.npm"
 
   [[order.group]]
     id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.webbundle"
     optional = true
 
   [[order.group]]

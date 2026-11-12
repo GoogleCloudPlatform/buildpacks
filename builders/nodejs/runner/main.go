@@ -22,6 +22,8 @@ import (
 	nodejspnpm "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/pnpm/lib"
 	nodejsruntime "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/runtime/lib"
 	nodejsturborepo "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/turborepo/lib"
+	nodejswebbundle "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/webbundle/lib"
+	nodejswebnextjs "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/webnextjs/lib"
 	nodejsyarn "github.com/GoogleCloudPlatform/buildpacks/cmd/nodejs/yarn/lib"
 )
 
@@ -82,6 +84,14 @@ func init() {
 	buildpacks["google.nodejs.turborepo"] = gcp.BuildpackFuncs{
 		Detect: nodejsturborepo.DetectFn,
 		Build:  nodejsturborepo.BuildFn,
+	}
+	buildpacks["google.nodejs.webbundle"] = gcp.BuildpackFuncs{
+		Detect: nodejswebbundle.DetectFn,
+		Build:  nodejswebbundle.BuildFn,
+	}
+	buildpacks["google.nodejs.webnextjs"] = gcp.BuildpackFuncs{
+		Detect: nodejswebnextjs.DetectFn,
+		Build:  nodejswebnextjs.BuildFn,
 	}
 	buildpacks["google.nodejs.yarn"] = gcp.BuildpackFuncs{
 		Detect: nodejsyarn.DetectFn,

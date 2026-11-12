@@ -32,6 +32,7 @@ func TestAcceptanceNodeJs(t *testing.T) {
 			Name:            "simple application",
 			App:             "simple",
 			MustUse:         []string{nodeRuntime, nodeNPM},
+			MustNotUse:      []string{nodeWebNextJS, nodeWebBundle},
 			EnableCacheTest: true,
 		},
 		{

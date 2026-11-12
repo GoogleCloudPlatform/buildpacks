@@ -145,6 +145,14 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
   uri = "nodejs/functions_framework.tgz"
 
 [[buildpacks]]
+  id = "google.nodejs.webbundle"
+  uri = "nodejs/webbundle.tgz"
+
+[[buildpacks]]
+  id = "google.nodejs.webnextjs"
+  uri = "nodejs/webnextjs.tgz"
+
+[[buildpacks]]
   id = "google.python.runtime"
   uri = "python/runtime.tgz"
 
@@ -1054,10 +1062,18 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.nodejs.runtime"
 
   [[order.group]]
+    id = "google.nodejs.webnextjs"
+    optional = true
+
+  [[order.group]]
     id = "google.nodejs.yarn"
 
   [[order.group]]
     id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.webbundle"
     optional = true
 
   [[order.group]]
@@ -1074,6 +1090,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.webnextjs"
+    optional = true
 
   [[order.group]]
     id = "google.nodejs.pnpm"
@@ -1083,6 +1103,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     optional = true
 
   [[order.group]]
+    id = "google.nodejs.webbundle"
+    optional = true
+
+  [[order.group]]
     id = "google.config.entrypoint"
     optional = true
 
@@ -1096,6 +1120,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
 [[order]]
   [[order.group]]
     id = "google.nodejs.runtime"
+
+  [[order.group]]
+    id = "google.nodejs.webnextjs"
+    optional = true
 
   [[order.group]]
     id = "google.nodejs.bun"
@@ -1105,6 +1133,10 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     optional = true
 
   [[order.group]]
+    id = "google.nodejs.webbundle"
+    optional = true
+
+  [[order.group]]
     id = "google.config.entrypoint"
     optional = true
 
@@ -1120,10 +1152,18 @@ description = "Ubuntu 24.04 base image with buildpacks for .NET, Dart, Go, Java,
     id = "google.nodejs.runtime"
 
   [[order.group]]
+    id = "google.nodejs.webnextjs"
+    optional = true
+
+  [[order.group]]
     id = "google.nodejs.npm"
 
   [[order.group]]
     id = "google.nodejs.functions-framework"
+    optional = true
+
+  [[order.group]]
+    id = "google.nodejs.webbundle"
     optional = true
 
   [[order.group]]

@@ -50,6 +50,8 @@ go_binary(
         "//cmd/nodejs/pnpm/lib",
         "//cmd/nodejs/runtime/lib",
         "//cmd/nodejs/turborepo/lib",
+        "//cmd/nodejs/webbundle/lib",
+        "//cmd/nodejs/webnextjs/lib",
         "//cmd/nodejs/yarn/lib",
         "//cmd/php/composer/lib",
         "//cmd/php/composer_gcp_build/lib",

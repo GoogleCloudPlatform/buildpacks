@@ -49,6 +49,8 @@ const (
 	nodeBun                 = "google.nodejs.bun"
 	nodeRuntime             = "google.nodejs.runtime"
 	nodeYarn                = "google.nodejs.yarn"
+	nodeWebNextJS           = "google.nodejs.webnextjs"
+	nodeWebBundle           = "google.nodejs.webbundle"
 	phpRuntime              = "google.php.runtime"
 	phpWebConfig            = "google.php.webconfig"
 	pythonFF                = "google.python.functions-framework"

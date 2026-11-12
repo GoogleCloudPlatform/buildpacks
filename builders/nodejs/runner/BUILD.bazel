@@ -27,6 +27,8 @@ go_binary(
         "//cmd/nodejs/pnpm/lib",
         "//cmd/nodejs/runtime/lib",
         "//cmd/nodejs/turborepo/lib",
+        "//cmd/nodejs/webbundle/lib",
+        "//cmd/nodejs/webnextjs/lib",
         "//cmd/nodejs/yarn/lib",
         "//pkg/commonbuildpacks",
         "//pkg/gcpbuildpack",
