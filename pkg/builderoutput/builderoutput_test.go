@@ -232,6 +232,69 @@ func TestJSONWithFetch(t *testing.T) {
 	}
 }
 
+func TestRuntimeSelectionRoundTrip(t *testing.T) {
+	want := *New()
+	want.RuntimeSelection = &RuntimeSelection{
+		Runtime:  "nodejs24",
+		Version:  "24.19.0",
+		RunImage: "us-docker.pkg.dev/serverless-runtimes/google-24/scratch/nodejs24:latest",
+		Mode:     RuntimeSelectionModeAutodetect,
+	}
+	want.Stats = []BuilderStat{{BuildpackID: "google.nodejs.runtime", BuildpackVersion: "1.0.0"}}
+
+	s, err := want.JSON()
+	if err != nil {
+		t.Fatalf("JSON() failed: %v", err)
+	}
+	wantJSON := `"runtimeSelection":{"runtime":"nodejs24","version":"24.19.0","runImage":"us-docker.pkg.dev/serverless-runtimes/google-24/scratch/nodejs24:latest","mode":"autodetect"}`
+	if !strings.Contains(string(s), wantJSON) {
+		t.Errorf("JSON() = %s, want it to contain %s", s, wantJSON)
+	}
+
+	got, err := FromJSON(s)
+	if err != nil {
+		t.Fatalf("FromJSON(%s) failed: %v", s, err)
+	}
+	if diff := cmp.Diff(want, got, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{}, buildermetrics.FloatDP{}, buildererror.Error{}, buildermetadata.BuilderMetadata{})); diff != "" {
+		t.Errorf("FromJSON(JSON()) round trip diff (-want +got):\n%v", diff)
+	}
+}
+
+func TestRuntimeSelectionFallbackReasonRoundTrip(t *testing.T) {
+	want := BuilderOutput{RuntimeSelection: &RuntimeSelection{
+		RunImage: "us-docker.pkg.dev/serverless-runtimes/google-24/run/universal:latest",
+		Mode:     RuntimeSelectionModeFallback,
+		Reason:   RuntimeSelectionReasonInvalidConfig,
+	}}
+
+	s, err := want.JSON()
+	if err != nil {
+		t.Fatalf("JSON() failed: %v", err)
+	}
+	wantJSON := `"runtimeSelection":{"runtime":"","version":"","runImage":"us-docker.pkg.dev/serverless-runtimes/google-24/run/universal:latest","mode":"fallback","reason":"invalid_config"}`
+	if !strings.Contains(string(s), wantJSON) {
+		t.Errorf("JSON() = %s, want it to contain %s", s, wantJSON)
+	}
+
+	got, err := FromJSON(s)
+	if err != nil {
+		t.Fatalf("FromJSON(%s) failed: %v", s, err)
+	}
+	if diff := cmp.Diff(want.RuntimeSelection, got.RuntimeSelection); diff != "" {
+		t.Errorf("FromJSON(JSON()) RuntimeSelection round trip diff (-want +got):\n%v", diff)
+	}
+}
+
+func TestJSONWithoutRuntimeSelection(t *testing.T) {
+	s, err := BuilderOutput{}.JSON()
+	if err != nil {
+		t.Fatalf("JSON() failed: %v", err)
+	}
+	if strings.Contains(string(s), "runtimeSelection") {
+		t.Errorf("JSON() = %s, want no runtimeSelection field", s)
+	}
+}
+
 func TestIsSystemError(t *testing.T) {
 	testCases := []struct {
 		name string

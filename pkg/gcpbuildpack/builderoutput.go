@@ -84,6 +84,8 @@ func (ctx *Context) saveErrorOutput(err error) {
 
 	be.BuildpackID, be.BuildpackVersion = ctx.BuildpackID(), ctx.BuildpackVersion()
 	bo := builderoutput.BuilderOutput{Error: *be}
+	// Keep the runtime selection the platform recorded before the buildpacks ran.
+	bo.RuntimeSelection = existingRuntimeSelection(filepath.Join(outputDir, builderOutputFilename))
 	bm := buildermetrics.GlobalBuilderMetrics()
 	bmd := buildermetadata.GlobalBuilderMetadata()
 	bo.Metrics = *bm
@@ -123,6 +125,20 @@ func (ctx *Context) saveErrorOutput(err error) {
 		}
 	}
 	return
+}
+
+// existingRuntimeSelection returns the RuntimeSelection in the builder output file fname, or nil
+// if the file does not exist, cannot be parsed or has no RuntimeSelection.
+func existingRuntimeSelection(fname string) *builderoutput.RuntimeSelection {
+	content, err := os.ReadFile(fname)
+	if err != nil {
+		return nil
+	}
+	bo, err := builderoutput.FromJSON(content)
+	if err != nil {
+		return nil
+	}
+	return bo.RuntimeSelection
 }
 
 func keepTail(message string) string {

@@ -89,6 +89,83 @@ func TestSaveErrorOutput(t *testing.T) {
 	}
 }
 
+func TestSaveErrorOutputRuntimeSelection(t *testing.T) {
+	selection := &builderoutput.RuntimeSelection{
+		Runtime:  "nodejs24",
+		Version:  "24.19.0",
+		RunImage: "scratch/nodejs24",
+		Mode:     builderoutput.RuntimeSelectionModeAutodetect,
+	}
+	testCases := []struct {
+		name    string
+		initial string // Initial content of the output file, or "" for no file.
+		want    *builderoutput.RuntimeSelection
+	}{
+		{
+			name: "no_file",
+			want: nil,
+		},
+		{
+			name:    "existing_file_without_selection",
+			initial: `{"stats":[{"buildpackId":"bp1"}]}`,
+			want:    nil,
+		},
+		{
+			name:    "existing_file_with_selection",
+			initial: `{"runtimeSelection":{"runtime":"nodejs24","version":"24.19.0","runImage":"scratch/nodejs24","mode":"autodetect"},"stats":[{"buildpackId":"bp1"}]}`,
+			want:    selection,
+		},
+		{
+			name:    "unparsable_file",
+			initial: `not json`,
+			want:    nil,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Cleanup(buildermetrics.Reset)
+			t.Cleanup(buildermetadata.Reset)
+			tempDir := t.TempDir()
+			t.Setenv("BUILDER_OUTPUT", tempDir)
+			fname := filepath.Join(tempDir, builderOutputFilename)
+			if tc.initial != "" {
+				if err := os.WriteFile(fname, []byte(tc.initial), 0644); err != nil {
+					t.Fatalf("Writing %s: %v", fname, err)
+				}
+			}
+			ctx := NewContext(WithBuildpackInfo(libcnb.BuildpackInfo{ID: "id", Version: "version"}))
+			msg := "build failed"
+
+			ctx.saveErrorOutput(buildererror.Errorf(buildererror.StatusInternal, "%s", msg))
+
+			content, err := os.ReadFile(fname)
+			if err != nil {
+				t.Fatalf("Reading %s: %v", fname, err)
+			}
+			got, err := builderoutput.FromJSON(content)
+			if err != nil {
+				t.Fatalf("FromJSON(%s) failed: %v", content, err)
+			}
+			want := builderoutput.BuilderOutput{
+				RuntimeSelection: tc.want,
+				Metrics:          buildermetrics.NewBuilderMetrics(),
+				Error: buildererror.Error{
+					BuildpackID:      "id",
+					BuildpackVersion: "version",
+					Type:             buildererror.StatusInternal,
+					Status:           buildererror.StatusInternal,
+					ID:               buildererror.GenerateErrorID(msg),
+					Message:          msg,
+				},
+				Metadata: buildermetadata.NewBuilderMetadata(),
+			}
+			if diff := cmp.Diff(want, got, cmp.AllowUnexported(buildermetrics.BuilderMetrics{}, buildermetrics.Counter{}, buildererror.Error{}, buildermetadata.BuilderMetadata{})); diff != "" {
+				t.Errorf("saveErrorOutput() wrote unexpected builder output (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 func TestMessageProducers(t *testing.T) {
 	testCases := []struct {
 		name     string
@@ -362,6 +439,30 @@ func TestSaveBuilderSuccessOutput(t *testing.T) {
 					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
 				},
 				CustomImage: false,
+			},
+		},
+		{
+			name: "existing file with runtime selection",
+			initial: &builderoutput.BuilderOutput{
+				RuntimeSelection: &builderoutput.RuntimeSelection{
+					Runtime:  "nodejs24",
+					Version:  "24.19.0",
+					RunImage: "scratch/nodejs24",
+					Mode:     builderoutput.RuntimeSelectionModeAutodetect,
+				},
+			},
+			want: builderoutput.BuilderOutput{
+				RuntimeSelection: &builderoutput.RuntimeSelection{
+					Runtime:  "nodejs24",
+					Version:  "24.19.0",
+					RunImage: "scratch/nodejs24",
+					Mode:     builderoutput.RuntimeSelectionModeAutodetect,
+				},
+				Metrics:  buildermetrics.NewBuilderMetrics(),
+				Metadata: buildermetadata.NewBuilderMetadata(),
+				Stats: []builderoutput.BuilderStat{
+					{BuildpackID: buildpackID, BuildpackVersion: buildpackVersion, DurationMs: dur.Milliseconds(), UserDurationMs: userDur.Milliseconds()},
+				},
 			},
 		},
 		{
