@@ -22,6 +22,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/static"
 )
 
@@ -45,10 +46,16 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 
 	info, err := os.Stat(filepath.Join(ctx.ApplicationRoot(), indexHTML))
 	if err == nil && !info.IsDir() {
-		return gcp.OptInFileFound(indexHTML), nil
+		return gcp.OptInFileFound(indexHTML, autodetectPlan(ctx)), nil
 	}
 
 	return gcp.OptOut("index.html not found at the application root; subdirectories are not scanned, so deploy the directory that contains index.html (for example, --source ./dist)."), nil
+}
+
+// autodetectPlan records the static runtime for automatic runtime detection. Static runtimes have
+// no version constraint, so the newest eligible static runtime is selected.
+func autodetectPlan(ctx *gcp.Context) gcp.DetectResultOption {
+	return runtime.WithAutodetectPlan(ctx, "static", func() (string, error) { return "", nil })
 }
 
 // BuildFn generates or copies the nginx configuration and registers the web entrypoint.

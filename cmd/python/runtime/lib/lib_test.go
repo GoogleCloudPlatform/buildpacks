@@ -18,6 +18,8 @@ import (
 	"testing"
 
 	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 func TestDetect(t *testing.T) {
@@ -61,4 +63,71 @@ func TestDetect(t *testing.T) {
 			buildpacktest.TestDetect(t, DetectFn, tc.name, tc.files, tc.env, tc.want)
 		})
 	}
+	testDetectAutodetectPlan(t)
+}
+
+// testDetectAutodetectPlan runs subtests of TestDetect, which buildpacktest requires for detect
+// tests, for the build plan that records the runtime for automatic runtime detection.
+func testDetectAutodetectPlan(t *testing.T) {
+	const versions = `X_GOOGLE_RUNTIME_VERSIONS={"nodejs24":"24.22.1","python314":"3.14.10"}`
+	testCases := []struct {
+		name  string
+		files map[string]string
+		env   []string
+		want  []libcnb.BuildPlan
+	}{
+		{
+			name:  "autodetect_python_version_file",
+			files: map[string]string{"main.py": "", ".python-version": "3.14"},
+			env:   []string{versions},
+			want:  autodetectPlans("python314", "3.14.10"),
+		},
+		{
+			name:  "autodetect_unpinned",
+			files: map[string]string{"main.py": ""},
+			env:   []string{versions},
+			want:  autodetectPlans("python314", "3.14.10"),
+		},
+		{
+			name:  "autodetect_google_python_version_env",
+			files: map[string]string{"main.py": ""},
+			env:   []string{versions, "GOOGLE_PYTHON_VERSION=3.14.10"},
+			want:  autodetectPlans("python314", "3.14.10"),
+		},
+		{
+			name:  "autodetect_google_runtime_override",
+			files: map[string]string{"main.py": ""},
+			env:   []string{versions, "GOOGLE_RUNTIME=python"},
+			want:  autodetectPlans("python314", "3.14.10"),
+		},
+		{
+			name:  "autodetect_version_not_eligible",
+			files: map[string]string{"main.py": "", ".python-version": "3.12"},
+			env:   []string{versions},
+		},
+		{
+			name:  "autodetect_pinned_version_uses_release_line",
+			files: map[string]string{"main.py": "", ".python-version": "3.14.9"},
+			env:   []string{versions},
+			want:  autodetectPlans("python314", "3.14.10"),
+		},
+		{
+			name:  "autodetect_empty_python_version_file",
+			files: map[string]string{"main.py": "", ".python-version": ""},
+			env:   []string{versions},
+		},
+		{
+			name:  "autodetect_not_enabled",
+			files: map[string]string{"main.py": "", ".python-version": "3.14"},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			buildpacktest.TestDetectWithPlans(t, DetectFn, tc.name, tc.files, tc.env, 0, tc.want)
+		})
+	}
+}
+
+func autodetectPlans(name, version string) []libcnb.BuildPlan {
+	return []libcnb.BuildPlan{runtime.AutodetectPlan(&runtime.AutodetectedRuntime{Name: name, Version: version})}
 }

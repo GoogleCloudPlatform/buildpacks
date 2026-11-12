@@ -36,7 +36,11 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return gcp.OptIn("supervisor package is required"), nil
 	}
 
-	if result := runtime.CheckOverride("python"); result != nil {
+	// Records the Python runtime for automatic runtime detection. Only passed to opt-in results.
+	autodetect := runtime.WithAutodetectPlan(ctx, "python", func() (string, error) {
+		return python.RuntimeVersion(ctx, ctx.ApplicationRoot())
+	})
+	if result := runtime.CheckOverride("python", autodetect); result != nil {
 		return result, nil
 	}
 	atLeastOne, err := ctx.HasAtLeastOneOutsideDependencyDirectories("*.py")
@@ -46,7 +50,7 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 	if !atLeastOne {
 		return gcp.OptOut("no .py files found"), nil
 	}
-	return gcp.OptIn("found .py files"), nil
+	return gcp.OptIn("found .py files", autodetect), nil
 }
 
 // BuildFn is the exported build function.

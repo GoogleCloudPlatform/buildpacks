@@ -39,8 +39,9 @@ const (
 
 // DetectFn detects if package.json or .js files are present.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	result := runtime.CheckOverride("nodejs")
 	isRailsApp, _ := ruby.NeedsRailsAssetPrecompile(ctx)
+	autodetect := autodetectOptions(ctx)
+	result := runtime.CheckOverride("nodejs", autodetect...)
 
 	// certain Ruby on Rails apps (< 7.x) require Node.js for asset precompilation
 	if !isRailsApp && result != nil {
@@ -52,14 +53,14 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return nil, err
 	}
 	if pkgJSONExists {
-		return gcp.OptInFileFound("package.json"), nil
+		return gcp.OptInFileFound("package.json", autodetect...), nil
 	}
 	jsFiles, err := ctx.Glob("*.js")
 	if err != nil {
 		return nil, fmt.Errorf("finding js files: %w", err)
 	}
 	if len(jsFiles) > 0 {
-		return gcp.OptIn("found .js files"), nil
+		return gcp.OptIn("found .js files", autodetect...), nil
 	}
 
 	tsFiles, err := ctx.Glob("*.ts")
@@ -78,10 +79,47 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return nil, fmt.Errorf("checking if node version is greater than 24.0.0: %w", err)
 	}
 	if len(tsFiles) > 0 && isNodeVersionGreaterThanOrEqual24 {
-		return gcp.OptIn("found .ts files"), nil
+		return gcp.OptIn("found .ts files", autodetect...), nil
 	}
 
 	return gcp.OptOut("neither package.json nor any .js files found"), nil
+}
+
+// autodetectOptions returns the detect options that record the Node.js runtime for automatic
+// runtime detection. They must only be passed to opt-in results.
+func autodetectOptions(ctx *gcp.Context) []gcp.DetectResultOption {
+	if os.Getenv(env.XGoogleRuntimeVersions) == "" {
+		return nil
+	}
+	// Ruby apps run on Ruby and may only use Node.js at build time, e.g. to precompile assets, so
+	// they must not be enrolled in automatic base image updates for Node.js. The Ruby group includes
+	// this buildpack, so without this check any Ruby app with a package.json would get the entry.
+	if isRuby, err := isRubyApp(ctx); err != nil || isRuby {
+		if err != nil {
+			ctx.Warnf("Automatic runtime detection: checking for a Ruby app: %v", err)
+		}
+		return nil
+	}
+	return []gcp.DetectResultOption{runtime.WithAutodetectPlan(ctx, "nodejs", func() (string, error) {
+		pjs, err := nodejs.ReadPackageJSONIfExists(ctx.ApplicationRoot())
+		if err != nil {
+			return "", err
+		}
+		return nodejs.RequestedNodejsVersion(ctx, pjs)
+	})}
+}
+
+// isRubyApp reports whether the app is a Ruby app. It uses the files that make the Ruby runtime
+// buildpack opt in (a Gemfile, gems.rb or any .rb file outside dependency directories), so it
+// matches whenever a Ruby group can pass detection, plus bin/rails for Ruby on Rails apps.
+func isRubyApp(ctx *gcp.Context) (bool, error) {
+	for _, f := range [][]string{{"Gemfile"}, {"gems.rb"}, {"bin", "rails"}} {
+		exists, err := ctx.FileExists(f...)
+		if err != nil || exists {
+			return exists, err
+		}
+	}
+	return ctx.HasAtLeastOneOutsideDependencyDirectories("*.rb")
 }
 
 // BuildFn installs the Node.js runtime.

@@ -19,6 +19,8 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 func TestDetect(t *testing.T) {
@@ -78,6 +80,37 @@ func TestDetect(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			buildpacktest.TestDetect(t, DetectFn, tc.name, tc.files, tc.envs, tc.want)
+		})
+	}
+	testDetectAutodetectPlan(t)
+}
+
+// testDetectAutodetectPlan runs subtests of TestDetect, which buildpacktest requires for detect
+// tests, for the build plan that records the runtime for automatic runtime detection.
+func testDetectAutodetectPlan(t *testing.T) {
+	files := map[string]string{"index.html": "hello"}
+	testCases := []struct {
+		name string
+		envs []string
+		want []libcnb.BuildPlan
+	}{
+		{
+			name: "autodetect_static24",
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=BETA", `X_GOOGLE_RUNTIME_VERSIONS={"nodejs24":"24.22.1","static24":"24"}`},
+			want: []libcnb.BuildPlan{runtime.AutodetectPlan(&runtime.AutodetectedRuntime{Name: "static24", Version: "24"})},
+		},
+		{
+			name: "autodetect_static_not_eligible",
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=BETA", `X_GOOGLE_RUNTIME_VERSIONS={"nodejs24":"24.22.1"}`},
+		},
+		{
+			name: "autodetect_not_enabled",
+			envs: []string{"X_GOOGLE_RELEASE_TRACK=BETA"},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			buildpacktest.TestDetectWithPlans(t, DetectFn, tc.name, files, tc.envs, 0, tc.want)
 		})
 	}
 }
