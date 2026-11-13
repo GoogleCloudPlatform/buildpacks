@@ -97,9 +97,29 @@
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/github.com/aws/smithy-go/transport/http/protocol/internal/json/internal/stdlib/LICENSE
 
+- package: github.com/AzureAD/microsoft-authentication-library-for-go/apps
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/AzureAD/microsoft-authentication-library-for-go/apps/LICENSE
+
 - package: github.com/Azure/azure-sdk-for-go
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/Azure/azure-sdk-for-go/LICENSE.txt
+
+- package: github.com/Azure/azure-sdk-for-go/sdk/azcore
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/Azure/azure-sdk-for-go/sdk/azcore/LICENSE.txt
+
+- package: github.com/Azure/azure-sdk-for-go/sdk/azidentity
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/Azure/azure-sdk-for-go/sdk/azidentity/LICENSE.txt
+
+- package: github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry/LICENSE.txt
+
+- package: github.com/Azure/azure-sdk-for-go/sdk/internal
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/Azure/azure-sdk-for-go/sdk/internal/LICENSE.txt
 
 - package: github.com/Azure/go-autorest/autorest/adal
   license_name: Apache-2.0
@@ -144,14 +164,6 @@
 - package: github.com/cespare/xxhash/v2
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/cespare/xxhash/v2/LICENSE.txt
-
-- package: github.com/chrismellard/docker-credential-acr-env/pkg
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/chrismellard/docker-credential-acr-env/pkg/LICENSE
-
-- package: github.com/containerd/containerd/platforms
-  license_name: Apache-2.0
-  license_path: /usr/local/share/licenses/lifecycle/github.com/containerd/containerd/platforms/LICENSE
 
 - package: github.com/containerd/errdefs
   license_name: Apache-2.0
@@ -213,6 +225,10 @@
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/golang-jwt/jwt/v4/LICENSE
 
+- package: github.com/golang-jwt/jwt/v5
+  license_name: MIT
+  license_path: /usr/local/share/licenses/lifecycle/github.com/golang-jwt/jwt/v5/LICENSE
+
 - package: github.com/golang/mock/gomock
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/golang/mock/gomock/LICENSE
@@ -256,6 +272,10 @@
 - package: github.com/klauspost/cpuid/v2
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/klauspost/cpuid/v2/LICENSE
+
+- package: github.com/kylelemons/godebug
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/kylelemons/godebug/LICENSE
 
 - package: github.com/mattn/go-colorable
   license_name: MIT
@@ -321,6 +341,10 @@
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/opencontainers/image-spec/specs-go/LICENSE
 
+- package: github.com/osscontainertools/docker-credential-acr
+  license_name: Apache-2.0
+  license_path: /usr/local/share/licenses/lifecycle/github.com/osscontainertools/docker-credential-acr/LICENSE
+
 - package: github.com/osscontainertools/kaniko/pkg
   license_name: Apache-2.0
   license_path: /usr/local/share/licenses/lifecycle/github.com/osscontainertools/kaniko/pkg/LICENSE
@@ -328,6 +352,10 @@
 - package: github.com/otiai10/copy
   license_name: MIT
   license_path: /usr/local/share/licenses/lifecycle/github.com/otiai10/copy/LICENSE
+
+- package: github.com/pkg/browser
+  license_name: BSD-2-Clause
+  license_path: /usr/local/share/licenses/lifecycle/github.com/pkg/browser/LICENSE
 
 - package: github.com/pkg/errors
   license_name: BSD-2-Clause
@@ -361,6 +389,10 @@
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/golang.org/x/crypto/pkcs12/LICENSE
 
+- package: golang.org/x/net
+  license_name: BSD-3-Clause
+  license_path: /usr/local/share/licenses/lifecycle/golang.org/x/net/LICENSE
+
 - package: golang.org/x/sync
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/golang.org/x/sync/LICENSE
@@ -368,6 +400,10 @@
 - package: golang.org/x/sys
   license_name: BSD-3-Clause
   license_path: /usr/local/share/licenses/lifecycle/golang.org/x/sys/LICENSE
+
+- package: golang.org/x/text
+  license_name: BSD-3-Clause
+  license_path: /usr/local/share/licenses/lifecycle/golang.org/x/text/LICENSE
 
 - package: google.golang.org/protobuf
   license_name: BSD-3-Clause
