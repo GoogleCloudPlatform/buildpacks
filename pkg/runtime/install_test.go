@@ -1601,3 +1601,84 @@ func TestCleanVersion(t *testing.T) {
 		}
 	}
 }
+
+func TestInstallBundledRuntime(t *testing.T) {
+	testCases := []struct {
+		name        string
+		platform    string
+		runtime     InstallableRuntime
+		version     string
+		launch      bool
+		layerHasBin bool
+		wantBundled bool
+		wantErr     bool
+		wantBin     string
+		wantCache   bool
+	}{
+		{name: "cloud_run_links", runtime: Nodejs, version: "24.22.1", wantBundled: true, wantBin: "link"},
+		{name: "launch_layer_copies", runtime: Nodejs, version: "24.22.1", launch: true, wantBundled: true, wantBin: "dir", wantCache: true},
+		{name: "link_failure_errors", runtime: Nodejs, version: "24.22.1", layerHasBin: true, wantErr: true, wantBin: "dir", wantCache: true},
+		{name: "version_not_bundled", runtime: Nodejs, version: "24.21.0", wantBin: "missing", wantCache: true},
+		{name: "path_traversal_downloads", runtime: Nodejs, version: "24.0.0-beta/../../python/3.14.10", wantBin: "missing", wantCache: true},
+		{name: "python_not_supported", runtime: Python, version: "3.14.10", wantBin: "missing", wantCache: true},
+		{name: "gcf_downloads", platform: env.TargetPlatformFunctions, runtime: Nodejs, version: "24.22.1", wantBin: "missing", wantCache: true},
+		{name: "gae_downloads", platform: env.TargetPlatformAppEngine, runtime: Nodejs, version: "24.22.1", wantBin: "missing", wantCache: true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv(env.XGoogleTargetPlatform, tc.platform)
+			setUpBundledRuntimes(t, "nodejs/24.22.1", "python/3.14.10")
+			layer := &libcnb.Layer{
+				Path:       t.TempDir(),
+				LayerTypes: libcnb.LayerTypes{Build: true, Cache: true, Launch: tc.launch},
+			}
+			if tc.layerHasBin {
+				if err := os.Mkdir(filepath.Join(layer.Path, "bin"), 0755); err != nil {
+					t.Fatalf("creating layer bin: %v", err)
+				}
+			}
+
+			bundled, err := installBundledRuntime(gcp.NewContext(), tc.runtime, tc.version, layer)
+			if gotErr := err != nil; gotErr != tc.wantErr {
+				t.Fatalf("installBundledRuntime(%q, %q) returned error %v, want error: %t", tc.runtime, tc.version, err, tc.wantErr)
+			}
+			if bundled != tc.wantBundled {
+				t.Errorf("installBundledRuntime(%q, %q) = %t, want %t", tc.runtime, tc.version, bundled, tc.wantBundled)
+			}
+			if got := fileKind(filepath.Join(layer.Path, "bin")); got != tc.wantBin {
+				t.Errorf("installBundledRuntime(%q, %q) left layer bin as %q, want %q", tc.runtime, tc.version, got, tc.wantBin)
+			}
+			if layer.Cache != tc.wantCache {
+				t.Errorf("installBundledRuntime(%q, %q) set layer.Cache = %t, want %t", tc.runtime, tc.version, layer.Cache, tc.wantCache)
+			}
+		})
+	}
+}
+
+// setUpBundledRuntimes points bundledRuntimesDir at a temp dir holding the given
+// <runtime>/<version> folders, each with a bin directory.
+func setUpBundledRuntimes(t *testing.T, runtimes ...string) {
+	t.Helper()
+	dir := t.TempDir()
+	for _, rt := range runtimes {
+		if err := os.MkdirAll(filepath.Join(dir, rt, "bin"), 0755); err != nil {
+			t.Fatalf("creating bundled runtime %q: %v", rt, err)
+		}
+	}
+	orig := bundledRuntimesDir
+	bundledRuntimesDir = dir
+	t.Cleanup(func() { bundledRuntimesDir = orig })
+}
+
+// fileKind reports whether path is a "link", a "dir" or "missing".
+func fileKind(path string) string {
+	fi, err := os.Lstat(path)
+	switch {
+	case err != nil:
+		return "missing"
+	case fi.Mode()&os.ModeSymlink != 0:
+		return "link"
+	default:
+		return "dir"
+	}
+}

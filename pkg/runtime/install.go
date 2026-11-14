@@ -59,6 +59,9 @@ var (
 	runtimeImageARURL         = runtimeImageARRepoURL + ":%s"
 	runtimeImageARURLZstd     = runtimeImageARRepoURLZstd + ":%s"
 	fallbackRegion            = "us"
+	// bundledRuntimesDir holds runtimes that the Serverless builder pipeline adds
+	// to the builder image, as <runtime>/<version>.
+	bundledRuntimesDir = "/usr/local/serverless-runtimes"
 )
 
 // TODO(hemantgoyal): Extract this to a seperate file and use in TPC shuttle as well.
@@ -367,6 +370,28 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 	if err := ctx.ClearLayer(layer); err != nil {
 		return false, gcp.InternalErrorf("clearing layer %q: %w", layer.Name, err)
 	}
+
+	bundled, err := installBundledRuntime(ctx, runtime, version, layer)
+	if err != nil {
+		ctx.Warnf("Using the bundled %s v%s failed, downloading it instead: %v", runtimeName, version, err)
+		if err := ctx.ClearLayer(layer); err != nil {
+			return false, gcp.InternalErrorf("clearing layer %q: %w", layer.Name, err)
+		}
+	}
+	if !bundled {
+		if err := installRuntimeFromRemote(ctx, runtime, osName, version, layer); err != nil {
+			return false, err
+		}
+	}
+	ctx.SetMetadata(layer, stackKey, ctx.StackID())
+	ctx.SetMetadata(layer, versionKey, version)
+	return false, nil
+}
+
+// installRuntimeFromRemote downloads runtime into layer from Lorry or Artifact
+// Registry.
+func installRuntimeFromRemote(ctx *gcp.Context, runtime InstallableRuntime, osName, version string, layer *libcnb.Layer) error {
+	runtimeName := runtimeNames[runtime]
 	ctx.Logf("Installing %s v%s.", runtimeName, version)
 
 	registry := tarballRegistry()
@@ -383,31 +408,72 @@ func InstallTarballIfNotCached(ctx *gcp.Context, runtime InstallableRuntime, ver
 		runtimeURL := TarballDownloadURL(runtime, osName, version)
 		if err := fetch.Tarball(runtimeURL, layer.Path, stripComponents); err != nil {
 			ctx.Warnf("Failed to download %s version %s osName %s from lorry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable. To use Artifact Registry instead, set the GOOGLE_RUNTIME_IMAGE_REGION environment variable (e.g., 'us').", runtimeName, version, osName)
-			return false, err
+			return err
 		}
 	} else {
 		hostname, err := arHostname(ctx, region)
 		if err != nil {
-			return false, err
+			return err
 		}
 		url := runtimeImageURL(hostname, registry, osName, runtime, version)
 
 		if fetched, err := fetchZstd(ctx, hostname, registry, osName, runtime, version, layer, stripComponents); !fetched || err != nil {
 			fallbackURL, err := fallbackRuntimeImageURL(ctx, hostname, registry, osName, runtime, version, false)
 			if err != nil {
-				return false, err
+				return err
 			}
 			if err := fetch.ARImage(url, fallbackURL, layer.Path, stripComponents, ctx); err != nil {
 				ctx.Warnf("Failed to download %s version %s osName %s from artifact registry. You can specify the version by setting the GOOGLE_RUNTIME_VERSION environment variable", runtimeName, version, osName)
-				return false, err
+				return err
 			}
 		}
 	}
+	return nil
+}
 
-	ctx.SetMetadata(layer, stackKey, ctx.StackID())
-	ctx.SetMetadata(layer, versionKey, version)
+// installBundledRuntime installs runtime from bundledRuntimesDir and reports
+// whether it did. Only Cloud Run Node.js builds use it. On error, the layer may
+// hold partial contents.
+func installBundledRuntime(ctx *gcp.Context, runtime InstallableRuntime, version string, layer *libcnb.Layer) (bool, error) {
+	if runtime != Nodejs || !env.IsGCP() {
+		return false, nil
+	}
+	// version can come from package.json; ignore it if it points outside dir.
+	dir := filepath.Join(bundledRuntimesDir, string(runtime))
+	src := filepath.Join(dir, version)
+	if filepath.Dir(src) != dir {
+		return false, nil
+	}
+	if _, err := os.Stat(src); err != nil {
+		ctx.Logf("No bundled %s v%s in the builder.", runtimeNames[runtime], version)
+		return false, nil
+	}
+	if err := linkOrCopyDir(ctx, src, layer); err != nil {
+		return false, err
+	}
+	ctx.Logf("Using the bundled %s v%s.", runtimeNames[runtime], version)
+	return true, nil
+}
 
-	return false, nil
+// linkOrCopyDir links the entries of src into a build-only layer, or copies them
+// into a layer that ships in the app image.
+func linkOrCopyDir(ctx *gcp.Context, src string, layer *libcnb.Layer) error {
+	if layer.Launch {
+		_, err := ctx.Exec([]string{"cp", "--archive", src + "/.", layer.Path})
+		return err
+	}
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if err := os.Symlink(filepath.Join(src, e.Name()), filepath.Join(layer.Path, e.Name())); err != nil {
+			return err
+		}
+	}
+	// Links point into this builder, so another builder can't restore them.
+	layer.Cache = false
+	return nil
 }
 
 func runtimeImageURL(hostname, registry, osName string, runtime InstallableRuntime, version string) string {
