@@ -142,15 +142,18 @@ func CopyFile(dest, src string) error {
 // necessary for executable scripts with shebang as the "\r" gets seen as part of the shebang
 // target, which doesn't exist.
 func EnsureUnixLineEndings(file ...string) error {
+	path := filepath.Join(file...)
 	isWriteable, err := IsWritable(file...)
 	if err != nil {
 		return err
 	}
 	if !isWriteable {
-		return nil
+		// Attempt to make it writable before editing.
+		if err := os.Chmod(path, 0755); err != nil {
+			return nil
+		}
 	}
 
-	path := filepath.Join(file...)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -161,7 +164,18 @@ func EnsureUnixLineEndings(file ...string) error {
 	if err := os.WriteFile(path, data, os.FileMode(0755)); err != nil {
 		return err
 	}
-	return nil
+	return os.Chmod(path, 0755)
+}
+
+// EnsureExecutable ensures that the given file has executable permissions.
+func EnsureExecutable(file ...string) error {
+	path := filepath.Join(file...)
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("stat %q: %w", path, err)
+	}
+	// Add user, group, and others execute bits (0111).
+	return os.Chmod(path, info.Mode().Perm()|0111)
 }
 
 // IsWritable returns true if the file at the path constructed by joining elem is writable by the owner.

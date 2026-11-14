@@ -24,7 +24,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/internal/mockprocess/mockprocessutil"
 )
@@ -129,17 +128,6 @@ func mockProcessBinaryPath() (string, error) {
 	// {buildpacksRepo}/internal/mockprocess
 	callingDir := filepath.Dir(callingFile)
 
-	mockprocessSubPath := "internal/mockprocess"
-	// {buildpacksRepo}
-	buildpacksRepo := strings.TrimSuffix(filepath.ToSlash(callingDir), mockprocessSubPath)
-
-	// {bazelRuntimeRoot} is the current working directory
-	wd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
-	// {bazelRuntimeRoot}/{buildpacksRepo}/internal/mockprocess/cmd/cmd
-	mockProcessBinary := filepath.Join(wd, buildpacksRepo, "internal", "mockprocess", "cmd", "cmd")
+	mockProcessBinary := filepath.Join(callingDir, "cmd", "cmd")
 	return filepath.FromSlash(mockProcessBinary), nil
 }
