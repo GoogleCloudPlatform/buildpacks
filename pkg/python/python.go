@@ -546,6 +546,10 @@ func PatchSysconfig(ctx *gcp.Context, layer *libcnb.Layer) error {
 	if err != nil {
 		ctx.Warnf("Getting python sysconfig: %v", err)
 	}
+	if sysconfig == nil {
+		ctx.Debugf("Python sysconfig result is nil")
+		return nil
+	}
 	execPrefix, err := parseExecPrefix(sysconfig.Stdout)
 	if err != nil {
 		return err
@@ -557,10 +561,21 @@ func PatchSysconfig(ctx *gcp.Context, layer *libcnb.Layer) error {
 		layer.Path,
 	})
 	if err != nil {
+		if result != nil && result.ExitCode == 1 {
+			ctx.Debugf("No files found matching %q in %q", execPrefix, layer.Path)
+			return nil
+		}
 		ctx.Warnf("Grep failed: %v", err)
+		return nil
+	}
+	if result == nil || result.Stdout == "" {
+		return nil
 	}
 	paths := strings.Split(result.Stdout, "\n")
 	for _, path := range paths {
+		if path == "" {
+			continue
+		}
 		if _, err := ctx.Exec([]string{
 			"sed",
 			"-i",

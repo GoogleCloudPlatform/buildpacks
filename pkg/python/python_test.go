@@ -14,11 +14,14 @@
 package python
 
 import (
+	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	stdruntime "runtime"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -530,6 +533,97 @@ installed_base = "/layers/google.python.runtime/python"
 			}
 			if got != tc.want {
 				t.Errorf("parseExecPrefix(%q) = %q, want %q", tc.sysConfig, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestPatchSysconfig(t *testing.T) {
+	testCases := []struct {
+		name           string
+		grepExitCode   int
+		grepStdout     string
+		grepStderr     string
+		wantSedArgs    [][]string
+		wantWarnSubstr string
+		wantNoWarnings bool
+	}{
+		{
+			name:           "grep_matches_files_and_invokes_sed",
+			grepExitCode:   0,
+			grepStdout:     "/layers/python/file1.py\n/layers/python/file2.py\n",
+			wantSedArgs:    [][]string{{"-i", "s|/opt/python3.11|/layers/python|g", "/layers/python/file1.py"}, {"-i", "s|/opt/python3.11|/layers/python|g", "/layers/python/file2.py"}},
+			wantNoWarnings: true,
+		},
+		{
+			name:           "grep_no_matches_exit_1_does_not_invoke_sed_or_warn",
+			grepExitCode:   1,
+			grepStdout:     "",
+			wantSedArgs:    nil,
+			wantNoWarnings: true,
+		},
+		{
+			name:           "grep_error_exit_2_warns_and_does_not_invoke_sed",
+			grepExitCode:   2,
+			grepStdout:     "",
+			grepStderr:     "grep: invalid option",
+			wantSedArgs:    nil,
+			wantWarnSubstr: "Grep failed",
+		},
+		{
+			name:           "grep_exit_0_empty_stdout_does_not_invoke_sed",
+			grepExitCode:   0,
+			grepStdout:     "",
+			wantSedArgs:    nil,
+			wantNoWarnings: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var sedArgs [][]string
+			mockExec := func(name string, args ...string) *exec.Cmd {
+				switch {
+				case strings.HasSuffix(name, "bin/python3"):
+					return exec.Command("printf", `exec_prefix = "/opt/python3.11"`)
+				case name == "grep":
+					cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("printf '%%s' \"$MOCK_STDOUT\"; printf '%%s' \"$MOCK_STDERR\" >&2; exit %d", tc.grepExitCode))
+					cmd.Env = append(os.Environ(), "MOCK_STDOUT="+tc.grepStdout, "MOCK_STDERR="+tc.grepStderr)
+					return cmd
+				case name == "sed":
+					sedArgs = append(sedArgs, args)
+					return exec.Command("true")
+				default:
+					t.Fatalf("unexpected command executed: %s %v", name, args)
+					return nil
+				}
+			}
+
+			var logBuf bytes.Buffer
+			logger := log.New(&logBuf, "", 0)
+			ctx := gcp.NewContext(
+				gcp.WithExecCmd(mockExec),
+				gcp.WithLogger(logger),
+			)
+			layer := &libcnb.Layer{Path: "/layers/python"}
+
+			if err := PatchSysconfig(ctx, layer); err != nil {
+				t.Fatalf("PatchSysconfig() returned unexpected error: %v", err)
+			}
+
+			if diff := cmp.Diff(tc.wantSedArgs, sedArgs); diff != "" {
+				t.Errorf("PatchSysconfig() sed invocations mismatch (-want +got):\n%s", diff)
+			}
+
+			logs := logBuf.String()
+			if tc.wantNoWarnings && strings.Contains(logs, "WARNING:") {
+				t.Errorf("PatchSysconfig() emitted unexpected warning in logs:\n%s", logs)
+			}
+			if tc.wantWarnSubstr != "" && !strings.Contains(logs, tc.wantWarnSubstr) {
+				t.Errorf("PatchSysconfig() logs = %q, want substring %q", logs, tc.wantWarnSubstr)
+			}
+			if strings.Contains(logs, `Patching file ""`) {
+				t.Errorf("PatchSysconfig() attempted to patch empty filename:\n%s", logs)
 			}
 		})
 	}
