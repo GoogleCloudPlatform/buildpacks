@@ -16,9 +16,11 @@
 package version
 
 import (
+	"cmp"
 	"fmt"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildererror"
@@ -96,13 +98,45 @@ func compareMetadata(a, b *semver.Version) int {
 	bIsEA := strings.Contains(b.Metadata(), ".ea")
 	switch {
 	case aIsEA == bIsEA:
-		return strings.Compare(a.Metadata(), b.Metadata())
+		return compareMetadataSegments(a.Metadata(), b.Metadata())
 	// The semver which is not EA is always greater
 	case aIsEA:
 		return -1
 	default:
 		return 1
 	}
+}
+
+// compareMetadataSegments splits build metadata on '.' and '-' and compares the segments in order.
+// Numeric segments compare as numbers and sort before alphanumeric ones, which compare lexically.
+// Ties fall back to the segment count, then the whole string, so it returns 0 only for identical
+// input. This makes a JDK patch release such as "25.0.5+101.0.LTS" (25.0.5.1+1) sort after
+// "25.0.5+8.0.LTS".
+func compareMetadataSegments(a, b string) int {
+	isSep := func(r rune) bool { return r == '.' || r == '-' }
+	as, bs := strings.FieldsFunc(a, isSep), strings.FieldsFunc(b, isSep)
+	for i := range min(len(as), len(bs)) {
+		an, aErr := strconv.ParseUint(as[i], 10, 64)
+		bn, bErr := strconv.ParseUint(bs[i], 10, 64)
+		switch {
+		case aErr == nil && bErr == nil:
+			if c := cmp.Compare(an, bn); c != 0 {
+				return c
+			}
+			continue
+		case aErr == nil:
+			return -1
+		case bErr == nil:
+			return 1
+		}
+		if c := strings.Compare(as[i], bs[i]); c != 0 {
+			return c
+		}
+	}
+	if c := cmp.Compare(len(as), len(bs)); c != 0 {
+		return c
+	}
+	return strings.Compare(a, b)
 }
 
 func shouldSkipVersion(version string, keywords []string) bool {

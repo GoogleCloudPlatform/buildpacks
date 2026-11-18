@@ -60,7 +60,7 @@ func TestResolveVersion(t *testing.T) {
 			name:       "java_version_resolver",
 			constraint: "11.0",
 			versions:   []string{"11.0.10+9", "11.0.11+9", "11.0.12+7", "11.0.13+8", "11.0.14+101", "11.0.14+9", "11.0.15+10", "11.0.16+101", "11.0.16+8", "11.0.17+8", "11.0.18+10", "11.0.19+7", "11.0.2+7", "11.0.2+9", "11.0.20+101", "11.0.20+8", "11.0.3+7", "11.0.4+11.1", "11.0.5+10.1", "11.0.6+10.1", "11.0.7+10.1", "11.0.8+10", "11.0.9+101", "11.0.9+11", "11.0.9+11.1", "16.0.0+36", "16.0.1+9", "16.0.2+7", "17.0.0+35", "17.0.1+12", "17.0.2+8", "17.0.3+7", "17.0.4+101", "17.0.4+8", "17.0.5+8", "17.0.6+10", "17.0.7+7", "17.0.8+101", "17.0.8+7", "18.0.0+36", "18.0.1+10", "18.0.2+101", "18.0.2+9", "19.0.0+36", "19.0.1+10", "19.0.2+7", "8.0.192+12", "8.0.202+8", "8.0.212+3", "8.0.212+4", "8.0.222+10.1", "8.0.232+9.1", "8.0.242+8.1", "8.0.252+9.1", "8.0.262+10", "8.0.265+1", "8.0.272+10", "8.0.275+1", "8.0.282+8", "8.0.292+10", "8.0.302+8", "8.0.312+7", "8.0.322+6", "8.0.332+9", "8.0.342+7", "8.0.345+1", "8.0.352+8", "8.0.362+9", "8.0.372+7", "8.0.382+5"},
-			want:       "11.0.20+8",
+			want:       "11.0.20+101",
 		},
 		{
 			name:       "java_version_lts_resolver",
@@ -102,6 +102,36 @@ func TestResolveVersion(t *testing.T) {
 			name:       "java_version_ea_resolver",
 			constraint: "25.0",
 			versions:   []string{"25.0.0+35.0.ea", "25.0.0+35.0.LTS"},
+			want:       "25.0.0+35.0.LTS",
+		},
+		{
+			name:       "java_temurin_patch_release_feature_version",
+			constraint: "25",
+			versions:   []string{"25.0.4+7.0.LTS", "25.0.5+8.0.LTS", "25.0.5+101.0.LTS"},
+			want:       "25.0.5+101.0.LTS",
+		},
+		{
+			name:       "java_constraint_with_metadata_picks_newest_build",
+			constraint: "25.0.5+101.0.LTS",
+			versions:   []string{"25.0.5+101.0.LTS", "25.0.4+7.0.LTS", "25.0.5+8.0.LTS"},
+			want:       "25.0.5+101.0.LTS",
+		},
+		{
+			name:       "java_temurin_patch_release_no_lts_suffix",
+			constraint: "17.0",
+			versions:   []string{"17.0.20+101", "17.0.21+9", "17.0.21+101"},
+			want:       "17.0.21+101",
+		},
+		{
+			name:       "java_canonical_patch_release",
+			constraint: "21.0",
+			versions:   []string{"21.0.12+8-1-22.04-Ubuntu", "21.0.13+9-1-22.04-Ubuntu", "21.0.13+11-1-22.04-Ubuntu"},
+			want:       "21.0.13+11-1-22.04-Ubuntu",
+		},
+		{
+			name:       "java_ea_loses_to_lower_ga_build",
+			constraint: "25.0",
+			versions:   []string{"25.0.0+36.0.ea", "25.0.0+35.0.LTS"},
 			want:       "25.0.0+35.0.LTS",
 		},
 		{
@@ -228,5 +258,34 @@ func TestIsReleaseCandidate(t *testing.T) {
 				t.Errorf("IsReleaseCandidate(%q) = %t, want %t", tc.version, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestCompareMetadataSegments(t *testing.T) {
+	// Each case has a < b.
+	testCases := []struct {
+		a, b string
+	}{
+		{a: "8.0.LTS", b: "101.0.LTS"},
+		{a: "9", b: "101"},
+		{a: "11", b: "11.1"},
+		{a: "", b: "1"},
+		{a: "04", b: "4"},
+		{a: "1-2", b: "1.2"},
+		{a: "10", b: "2ubuntu1"},
+		{a: "0ubuntu1", b: "0ubuntu2"},
+		{a: "35.0.ea", b: "36.0.ea"},
+		{a: "0.3.1-1-22.04.1-Ubuntu", b: "1.1-1-22.04.1-Ubuntu"},
+	}
+	for _, tc := range testCases {
+		if got := compareMetadataSegments(tc.a, tc.b); got >= 0 {
+			t.Errorf("compareMetadataSegments(%q, %q) = %d, want < 0", tc.a, tc.b, got)
+		}
+		if got := compareMetadataSegments(tc.b, tc.a); got <= 0 {
+			t.Errorf("compareMetadataSegments(%q, %q) = %d, want > 0", tc.b, tc.a, got)
+		}
+		if got := compareMetadataSegments(tc.a, tc.a); got != 0 {
+			t.Errorf("compareMetadataSegments(%q, %q) = %d, want 0", tc.a, tc.a, got)
+		}
 	}
 }
