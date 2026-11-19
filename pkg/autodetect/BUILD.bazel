@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+licenses(["notice"])
+
+package(default_visibility = ["//:__subpackages__"])
+
+go_library(
+    name = "autodetect",
+    srcs = ["autodetect.go"],
+    importpath = "github.com/GoogleCloudPlatform/buildpacks/" + package_name(),
+    deps = [
+        "//pkg/version",
+        "@com_github_buildpacks_libcnb_v2//:go_default_library",
+        "@com_github_burntsushi_toml//:go_default_library",
+        "@com_github_masterminds_semver//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "autodetect_test",
+    srcs = ["autodetect_test.go"],
+    embed = [":autodetect"],
+    rundir = ".",
+    deps = ["@com_github_google_go-cmp//cmp:go_default_library"],
+)

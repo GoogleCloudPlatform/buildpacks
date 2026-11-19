@@ -15,12 +15,12 @@
 package runtime
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
 
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/autodetect"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/version"
@@ -28,23 +28,8 @@ import (
 	"github.com/Masterminds/semver"
 )
 
-const (
-	// AutodetectPlanName is the name of the build plan entry that records the runtime selected
-	// during detect for automatic base image updates.
-	AutodetectPlanName = "google.runtime"
-	// AutodetectPlanRuntimeKey is the build plan metadata key for the runtime name, e.g. "nodejs24".
-	AutodetectPlanRuntimeKey = "runtime"
-	// AutodetectPlanVersionKey is the build plan metadata key for the exact runtime version.
-	AutodetectPlanVersionKey = "version"
-)
-
 // AutodetectedRuntime is a runtime that was selected for automatic base image updates.
-type AutodetectedRuntime struct {
-	// Name is the runtime name, e.g. "nodejs24".
-	Name string
-	// Version is the exact runtime version, e.g. "24.22.1".
-	Version string
-}
+type AutodetectedRuntime = autodetect.Runtime
 
 // SelectAutodetectRuntime returns the runtime of the given language (e.g. "nodejs") that is eligible
 // for automatic base image updates for the requested version constraint. The eligible runtimes
@@ -136,12 +121,12 @@ func pinsReleaseLine(constraint, line string) bool {
 // detection.
 func AutodetectPlan(rt *AutodetectedRuntime) libcnb.BuildPlan {
 	return libcnb.BuildPlan{
-		Provides: []libcnb.BuildPlanProvide{{Name: AutodetectPlanName}},
+		Provides: []libcnb.BuildPlanProvide{{Name: autodetect.PlanName}},
 		Requires: []libcnb.BuildPlanRequire{{
-			Name: AutodetectPlanName,
+			Name: autodetect.PlanName,
 			Metadata: map[string]any{
-				AutodetectPlanRuntimeKey: rt.Name,
-				AutodetectPlanVersionKey: rt.Version,
+				autodetect.PlanRuntimeKey: rt.Name,
+				autodetect.PlanVersionKey: rt.Version,
 			},
 		}},
 	}
@@ -178,32 +163,11 @@ func WithAutodetectPlan(ctx *gcp.Context, language string, constraint func() (st
 	})
 }
 
-// autodetectRuntimes parses X_GOOGLE_RUNTIME_VERSIONS, a JSON object that maps runtime names to
-// versions, e.g. {"nodejs24":"24.22.1","python314":"3.14.10"}.
-//
-// The platform generates the env var, so an invalid entry is a platform bug. Rather than letting
-// it look like an app whose version matches no runtime, the whole env var is rejected with an
-// error that names the entry. A version must be a semantic version that version.ResolveVersion
-// does not skip, i.e. not a release candidate.
+// autodetectRuntimes parses X_GOOGLE_RUNTIME_VERSIONS with autodetect.ParseRuntimeVersions.
 func autodetectRuntimes() (map[string]string, error) {
-	raw := strings.TrimSpace(os.Getenv(env.XGoogleRuntimeVersions))
-	if raw == "" {
-		return nil, nil
-	}
-	var runtimes map[string]string
-	if err := json.Unmarshal([]byte(raw), &runtimes); err != nil {
-		return nil, fmt.Errorf("parsing %s %q as a JSON object of runtime versions: %w", env.XGoogleRuntimeVersions, raw, err)
-	}
-	for name, v := range runtimes {
-		if name == "" || v == "" {
-			return nil, fmt.Errorf("invalid runtime %q with version %q in %s", name, v, env.XGoogleRuntimeVersions)
-		}
-		if _, err := semver.NewVersion(v); err != nil {
-			return nil, fmt.Errorf("invalid version %q of runtime %q in %s: %w", v, name, env.XGoogleRuntimeVersions, err)
-		}
-		if version.IsReleaseCandidate(v) {
-			return nil, fmt.Errorf("invalid version %q of runtime %q in %s: release candidates are not eligible", v, name, env.XGoogleRuntimeVersions)
-		}
+	runtimes, err := autodetect.ParseRuntimeVersions(os.Getenv(env.XGoogleRuntimeVersions))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", env.XGoogleRuntimeVersions, err)
 	}
 	return runtimes, nil
 }
