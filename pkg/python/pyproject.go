@@ -323,6 +323,11 @@ func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) (st
 		return "", i.Install(ctx, l, ".")
 	}
 
+	lockfilePreExisted, err := ctx.FileExists(uvLock)
+	if err != nil {
+		return "", fmt.Errorf("checking for %s: %w", uvLock, err)
+	}
+
 	if err := EnsureUVLockfile(ctx); err != nil {
 		return "", fmt.Errorf("ensuring uv.lock file: %w", err)
 	}
@@ -352,8 +357,11 @@ func UVInstallDependenciesAndConfigureEnv(ctx *gcp.Context, l *libcnb.Layer) (st
 	l.SharedEnvironment.Default("VIRTUAL_ENV", venvDir)
 	l.SharedEnvironment.Default("UV_PROJECT_ENVIRONMENT", venvDir)
 	l.SharedEnvironment.Default("UV_NO_SYNC", "1")
-	if err := CheckUVIncompatibleDependencies(ctx, venvDir); err != nil {
-		return "", err
+	// Skip uv pip check if uv.lock already exists, as uv sync validates it.
+	if !lockfilePreExisted {
+		if err := CheckUVIncompatibleDependencies(ctx, venvDir); err != nil {
+			return "", err
+		}
 	}
 	return venvDir, nil
 }
