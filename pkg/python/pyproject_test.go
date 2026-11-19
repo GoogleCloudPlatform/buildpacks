@@ -16,11 +16,13 @@ package python
 
 import (
 	"os"
+	"os/exec"
 	"reflect"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 func TestIsPoetryProject(t *testing.T) {
@@ -631,6 +633,65 @@ func TestIsPyprojectEnabled(t *testing.T) {
 			ctx := gcp.NewContext(gcp.WithApplicationRoot(appDir))
 			if gotEnabled := IsPyprojectEnabled(ctx); gotEnabled != tc.want {
 				t.Errorf("IsPyprojectEnabled() = %v, want %v", gotEnabled, tc.want)
+			}
+		})
+	}
+}
+
+// TestUVInstallDependenciesAndConfigureEnv_PipCheckWithLockfile verifies that
+// uv pip check is skipped when a pre-existing uv.lock is present (since the
+// lock was already validated at generation time, including any overrides), but
+// runs when there is no lockfile and uv generates one at build time.
+func TestUVInstallDependenciesAndConfigureEnv_PipCheckWithLockfile(t *testing.T) {
+	testCases := []struct {
+		name            string
+		hasExistingLock bool
+		wantPipCheck    bool
+	}{
+		{
+			name:            "skips_pip_check_with_existing_uv.lock",
+			hasExistingLock: true,
+			wantPipCheck:    false,
+		},
+		{
+			name:            "runs_pip_check_without_uv.lock",
+			hasExistingLock: false,
+			wantPipCheck:    true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			files := map[string]string{
+				"pyproject.toml": "[project]\nname = \"test\"\n",
+			}
+			if tc.hasExistingLock {
+				files["uv.lock"] = ""
+			}
+			appDir := setupTest(t, files)
+
+			pipCheckCalled := false
+			mockExec := func(name string, args ...string) *exec.Cmd {
+				if name == "python3" {
+					return exec.Command("echo", "Python 3.12.0")
+				}
+				if name == "uv" && len(args) >= 2 && args[0] == "pip" && args[1] == "check" {
+					pipCheckCalled = true
+				}
+				return exec.Command("true")
+			}
+
+			ctx := gcp.NewContext(
+				gcp.WithApplicationRoot(appDir),
+				gcp.WithExecCmd(mockExec),
+			)
+			l := &libcnb.Layer{Name: "test", Path: t.TempDir(), Metadata: map[string]any{}}
+
+			if _, err := UVInstallDependenciesAndConfigureEnv(ctx, l); err != nil {
+				t.Fatalf("UVInstallDependenciesAndConfigureEnv() error = %v", err)
+			}
+			if pipCheckCalled != tc.wantPipCheck {
+				t.Errorf("uv pip check called = %v, want %v", pipCheckCalled, tc.wantPipCheck)
 			}
 		})
 	}
