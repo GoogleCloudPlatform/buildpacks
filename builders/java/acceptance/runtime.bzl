@@ -8,21 +8,21 @@ gae_runtimes = {
     "java11": "11.0",
     "java17": "17.0",
     "java21": "21.0",
-    "java25": "25.0.5_8.0.LTS",
+    "java25": "25.0.5_8.0.LTS.cve-2026-114938",
 }
 
 gcf_runtimes = {
     "java11": "11.0",
     "java17": "17.0",
     "java21": "21.0",
-    "java25": "25.0.5_8.0.LTS",
+    "java25": "25.0.5_8.0.LTS.cve-2026-114938",
 }
 
 flex_runtimes = {
     "java11": "11.0",
     "java17": "17.0",
     "java21": "21.0",
-    "java25": "25.0.5_8.0.LTS",
+    "java25": "25.0.5_8.0.LTS.cve-2026-114938",
 }
 
 version_to_stack = {
