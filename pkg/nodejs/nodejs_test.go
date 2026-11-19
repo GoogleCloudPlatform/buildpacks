@@ -695,6 +695,156 @@ func TestVersion(t *testing.T) {
 		})
 	}
 }
+
+func TestVersionFromBunLock(t *testing.T) {
+	testCases := []struct {
+		name    string
+		lock    string
+		pkg     string
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "unscoped_package",
+			lock: `{"lockfileVersion": 1, "packages": {"next": ["next@16.4.3", "", {}, "sha512-abc"]}}`,
+			pkg:  "next",
+			want: "16.4.3",
+		},
+		{
+			name: "scoped_package",
+			lock: `{"packages": {"@next/routing": ["@next/routing@16.4.3", "", {}, "sha512-def"]}}`,
+			pkg:  "@next/routing",
+			want: "16.4.3",
+		},
+		{
+			name: "hoisted_package_under_parent",
+			lock: `{"packages": {"send/ms": ["ms@2.1.3", "", {}, "sha512-abc"]}}`,
+			pkg:  "ms",
+			want: "2.1.3",
+		},
+		{
+			name: "top_level_entry_preferred_over_hoisted_entry",
+			lock: `{"packages": {
+				"ms": ["ms@2.0.0", "", {}, "sha512-abc"],
+				"send/ms": ["ms@2.1.3", "", {}, "sha512-def"]
+			}}`,
+			pkg:  "ms",
+			want: "2.0.0",
+		},
+		{
+			name: "npm_prefixed_version",
+			lock: `{"packages": {"foo": ["foo@npm:1.2.3", "", {}, "sha512-abc"]}}`,
+			pkg:  "foo",
+			want: "1.2.3",
+		},
+		{
+			name: "bare_version_without_package_prefix",
+			lock: `{"packages": {"next": ["16.4.3", "", {}, "sha512-abc"]}}`,
+			pkg:  "next",
+			want: "16.4.3",
+		},
+		{
+			name: "tuple_naming_different_package_is_skipped",
+			lock: `{"packages": {"next": ["other@1.0.0", "", {}, "sha512-abc"]}}`,
+			pkg:  "next",
+			want: "",
+		},
+		{
+			name: "object_entry_with_version_field",
+			lock: `{"packages": {"next": {"version": "16.0.0"}}}`,
+			pkg:  "next",
+			want: "16.0.0",
+		},
+		{
+			name: "comments_and_trailing_commas",
+			lock: `{
+  // Bun lockfile with comments and trailing commas.
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "my-bun-app",
+      "dependencies": {
+        "next": "^16.4.3",
+      },
+    },
+  },
+  /* block comment */
+  "packages": {
+    "next": ["next@16.4.3", "", { "dependencies": { "react": "^19.0.0", }, }, "sha512-abc"],
+    "react": ["react@19.2.1", "", {}, "sha512-def",],
+  },
+}`,
+			pkg:  "react",
+			want: "19.2.1",
+		},
+		{
+			name: "comment_markers_and_escaped_quotes_inside_strings_are_kept",
+			lock: `{
+  "packages": {
+    "next": ["next@16.4.3", "https://registry.npmjs.org/next/-/next-16.4.3.tgz", { "description": "a \"quoted\" /* not a comment */ value," }, "sha512-//abc"], // trailing comment
+  },
+}`,
+			pkg:  "next",
+			want: "16.4.3",
+		},
+		{
+			name: "trailing_comma_followed_by_comment",
+			lock: `{
+  "packages": {
+    "next": ["next@16.4.3", "", {}, "sha512-abc"], // last entry
+  },
+}`,
+			pkg:  "next",
+			want: "16.4.3",
+		},
+		{
+			name: "package_not_in_lockfile",
+			lock: `{"packages": {"next": ["next@16.4.3", "", {}, "sha512-abc"]}}`,
+			pkg:  "react",
+			want: "",
+		},
+		{
+			name: "empty_packages",
+			lock: `{"lockfileVersion": 1, "packages": {}}`,
+			pkg:  "next",
+			want: "",
+		},
+		{
+			name: "no_packages_field",
+			lock: `{"lockfileVersion": 1}`,
+			pkg:  "next",
+			want: "",
+		},
+		{
+			name:    "malformed_json",
+			lock:    `{"packages": {"next": ["next@16.4.3"`,
+			pkg:     "next",
+			wantErr: true,
+		},
+		{
+			name:    "empty_file",
+			lock:    ``,
+			pkg:     "next",
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := versionFromBunLock([]byte(tc.lock), tc.pkg)
+			if gotErr := err != nil; gotErr != tc.wantErr {
+				t.Fatalf("versionFromBunLock(_, %q) returned error: %v, want error: %t", tc.pkg, err, tc.wantErr)
+			}
+			if err != nil {
+				return
+			}
+			if got != tc.want {
+				t.Errorf("versionFromBunLock(_, %q) = %q, want %q", tc.pkg, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestOverrideAppHostingBuildScript(t *testing.T) {
 	testCases := []struct {
 		name                  string

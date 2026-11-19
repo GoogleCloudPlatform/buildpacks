@@ -495,6 +495,133 @@ func versionFromNpmLock(rawPackageLock []byte, pkg string) (string, error) {
 	return lockfile.Packages["node_modules/"+pkg].Version, nil
 }
 
+// versionFromBunLock returns the resolved version of pkg from the contents of a
+// text bun.lock file. bun.lock is JSONC (JSON with comments and trailing
+// commas); each entry in its "packages" map is a tuple whose first element is
+// "<name>@<version>". Entries hoisted under a parent (e.g. "parent/pkg") are
+// also matched. It returns ("", nil) when pkg is not in the lockfile.
+func versionFromBunLock(rawPackageLock []byte, pkg string) (string, error) {
+	var parsed struct {
+		Packages map[string]json.RawMessage `json:"packages"`
+	}
+	if err := json.Unmarshal(stripJSONC(rawPackageLock), &parsed); err != nil {
+		return "", gcp.UserErrorf("parsing %s: %w", BunLock, err)
+	}
+	// Look up the top-level entry first. Indexing and ranging over a nil map
+	// are no-ops, so a lockfile without "packages" falls through to ("", nil).
+	if ver := extractBunPackageEntryVersion(parsed.Packages[pkg], pkg); ver != "" {
+		return ver, nil
+	}
+	// Fall back to a copy nested under a parent package, keyed "<parent>/<pkg>".
+	// TODO: b/582363483 - Read only the top-level entry (like versionFromNpmLock),
+	// or sort the keys so nested matches are deterministic across runs.
+	suffix := "/" + pkg
+	for k, entry := range parsed.Packages {
+		if strings.HasSuffix(k, suffix) {
+			if ver := extractBunPackageEntryVersion(entry, pkg); ver != "" {
+				return ver, nil
+			}
+		}
+	}
+	return "", nil
+}
+
+// extractBunPackageEntryVersion returns the version of pkg from a single
+// bun.lock "packages" entry, or "" if none is found. A tuple entry
+// (["<name>@<version>", ...]) yields the text after "<pkg>@", with any "npm:"
+// prefix removed; a first element that contains no "@" is returned as is. An
+// object entry ({"version": "<version>"}) yields its "version" field.
+func extractBunPackageEntryVersion(raw json.RawMessage, pkg string) string {
+	if len(raw) == 0 {
+		return ""
+	}
+	if ver, ok := bunTupleEntryVersion(raw, pkg); ok {
+		return ver
+	}
+	var obj struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return ""
+	}
+	return obj.Version
+}
+
+// bunTupleEntryVersion returns the version of pkg from a tuple entry
+// (["<name>@<version>", ...]) and whether one was found. It reports false when
+// raw is not a non-empty array whose first element is a string, or when that
+// string names a different package, so the caller can try the object form.
+func bunTupleEntryVersion(raw json.RawMessage, pkg string) (string, bool) {
+	var tuple []json.RawMessage
+	if err := json.Unmarshal(raw, &tuple); err != nil || len(tuple) == 0 {
+		return "", false
+	}
+	var ident string
+	if err := json.Unmarshal(tuple[0], &ident); err != nil || ident == "" {
+		return "", false
+	}
+	// Scoped names work too: "@scope/pkg@1.2.3" minus "@scope/pkg@" is "1.2.3".
+	if ver, ok := strings.CutPrefix(ident, pkg+"@"); ok {
+		// Aliased dependencies are recorded as "<name>@npm:<version>".
+		return strings.TrimPrefix(ver, "npm:"), true
+	}
+	if !strings.Contains(ident, "@") {
+		return ident, true
+	}
+	return "", false
+}
+
+// stripJSONC strips line/block comments and trailing commas from JSONC input
+// (such as bun.lock).
+func stripJSONC(src []byte) []byte {
+	out := make([]byte, 0, len(src))
+	inString := false
+	for i := 0; i < len(src); i++ {
+		c := src[i]
+		if inString {
+			out = append(out, c)
+			if c == '\\' && i+1 < len(src) {
+				i++
+				out = append(out, src[i])
+			} else if c == '"' {
+				inString = false
+			}
+			continue
+		}
+		switch {
+		case c == '"':
+			inString = true
+			out = append(out, c)
+		case c == '/' && i+1 < len(src) && src[i+1] == '/':
+			// Skip to the end of the line, keeping the newline.
+			for i += 2; i < len(src) && src[i] != '\n'; i++ {
+			}
+			if i < len(src) {
+				out = append(out, '\n')
+			}
+		case c == '/' && i+1 < len(src) && src[i+1] == '*':
+			// Skip past the closing "*/".
+			for i += 2; i+1 < len(src) && !(src[i] == '*' && src[i+1] == '/'); i++ {
+			}
+			i++
+		case c == '}' || c == ']':
+			// Drop a trailing comma before this closing bracket, keeping any
+			// whitespace in between.
+			j := len(out) - 1
+			for j >= 0 && (out[j] == ' ' || out[j] == '\t' || out[j] == '\r' || out[j] == '\n') {
+				j--
+			}
+			if j >= 0 && out[j] == ',' {
+				out = append(out[:j], out[j+1:]...)
+			}
+			out = append(out, c)
+		default:
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
 // Version tries to get the concrete package version used based on lock file.
 func Version(deps *NodeDependencies, pkg string) (string, error) {
 	raw, err := os.ReadFile(deps.LockfilePath)
