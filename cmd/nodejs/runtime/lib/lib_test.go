@@ -106,7 +106,7 @@ func TestDetect(t *testing.T) {
 // testDetectAutodetectPlan runs subtests of TestDetect, which buildpacktest requires for detect
 // tests, for the build plan that records the runtime for automatic runtime detection.
 func testDetectAutodetectPlan(t *testing.T) {
-	const versions = `X_GOOGLE_RUNTIME_VERSIONS={"nodejs24":"24.22.1","python314":"3.14.10"}`
+	const versions = `X_GOOGLE_RUNTIME_VERSIONS={"nodejs24":"24.22.1","nodejs26":"26.1.0","python314":"3.14.10"}`
 	testCases := []struct {
 		name  string
 		files map[string]string
@@ -123,19 +123,19 @@ func testDetectAutodetectPlan(t *testing.T) {
 			name:  "autodetect_open_range",
 			files: map[string]string{"package.json": `{"engines": {"node": ">=16.0.0"}}`},
 			env:   []string{versions},
-			want:  autodetectPlans("nodejs24", "24.22.1"),
+			want:  autodetectPlans("nodejs26", "26.1.0"),
 		},
 		{
 			name:  "autodetect_unpinned",
 			files: map[string]string{"package.json": `{}`},
 			env:   []string{versions},
-			want:  autodetectPlans("nodejs24", "24.22.1"),
+			want:  autodetectPlans("nodejs26", "26.1.0"),
 		},
 		{
 			name:  "autodetect_js_files_only",
 			files: map[string]string{"index.js": ""},
 			env:   []string{versions},
-			want:  autodetectPlans("nodejs24", "24.22.1"),
+			want:  autodetectPlans("nodejs26", "26.1.0"),
 		},
 		{
 			name:  "autodetect_runtime_version_env",
@@ -147,7 +147,7 @@ func testDetectAutodetectPlan(t *testing.T) {
 			name:  "autodetect_google_runtime_override",
 			files: map[string]string{"index.js": ""},
 			env:   []string{versions, "GOOGLE_RUNTIME=nodejs"},
-			want:  autodetectPlans("nodejs24", "24.22.1"),
+			want:  autodetectPlans("nodejs26", "26.1.0"),
 		},
 		{
 			name:  "autodetect_pinned_version_uses_release_line",

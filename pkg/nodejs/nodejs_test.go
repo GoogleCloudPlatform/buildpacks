@@ -392,17 +392,17 @@ func TestRequestedNodejsVersion(t *testing.T) {
 	}{
 		{
 			name: "default_is_empty",
-			want: "24.*.*",
+			want: "26.*.*",
 		},
 		{
 			name:        "package.json_without_engines",
 			packageJSON: `{}`,
-			want:        "24.*.*",
+			want:        "26.*.*",
 		},
 		{
 			name:    "default_on_ubuntu_24_stack",
 			stackID: "google.24.full",
-			want:    "24.*.*",
+			want:    "26.*.*",
 		},
 		{
 			name:    "GOOGLE_NODEJS_VERSION_is_set",

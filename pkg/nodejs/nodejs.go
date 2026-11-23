@@ -75,7 +75,7 @@ var (
 	latestNodejsVersionPerStack = map[string]string{
 		runtime.Ubuntu1804: "22.*.*",
 		runtime.Ubuntu2204: "22.*.*",
-		runtime.Ubuntu2404: "24.*.*",
+		runtime.Ubuntu2404: "26.*.*",
 	}
 
 	cachedPackageJSONs        = map[string]*PackageJSON{}
