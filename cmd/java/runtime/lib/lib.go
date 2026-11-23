@@ -25,10 +25,16 @@ import (
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/runtime"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 const (
 	javaLayer = "java"
+)
+
+var provideJVMApplication = gcp.WithBuildPlans(
+	libcnb.BuildPlan{Provides: []libcnb.BuildPlanProvide{{Name: "jvm-application"}}},
+	libcnb.BuildPlan{},
 )
 
 // Map with key as stackId and value as the default feature version for that stack.
@@ -46,7 +52,7 @@ var defaultFeatureVersion = map[string]string{
 
 // DetectFn is the exported detect function.
 func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
-	if result := runtime.CheckOverride("java"); result != nil {
+	if result := runtime.CheckOverride("java", provideJVMApplication); result != nil {
 		return result, nil
 	}
 
@@ -66,7 +72,7 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 			return nil, err
 		}
 		if exists {
-			return gcp.OptInFileFound(f), nil
+			return gcp.OptInFileFound(f, provideJVMApplication), nil
 		}
 	}
 
@@ -75,14 +81,14 @@ func DetectFn(ctx *gcp.Context) (gcp.DetectResult, error) {
 		return nil, fmt.Errorf("finding .java files: %w", err)
 	}
 	if len(javaFiles) > 0 {
-		return gcp.OptIn("found .java files"), nil
+		return gcp.OptIn("found .java files", provideJVMApplication), nil
 	}
 	jarFiles, err := ctx.Glob("*.jar")
 	if err != nil {
 		return nil, fmt.Errorf("finding .jar files: %w", err)
 	}
 	if len(jarFiles) > 0 {
-		return gcp.OptIn("found .jar files"), nil
+		return gcp.OptIn("found .jar files", provideJVMApplication), nil
 	}
 	return gcp.OptOut(fmt.Sprintf("none of the following found: %s, *.java, *.jar", strings.Join(files, ", "))), nil
 }

@@ -19,29 +19,37 @@ import (
 	"testing"
 
 	buildpacktest "github.com/GoogleCloudPlatform/buildpacks/internal/buildpacktest"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 func TestDetect(t *testing.T) {
+	wantPlans := []libcnb.BuildPlan{
+		{Provides: []libcnb.BuildPlanProvide{{Name: "jvm-application"}}},
+		{},
+	}
 	testCases := []struct {
-		name  string
-		files map[string]string
-		env   []string
-		want  int
+		name      string
+		files     map[string]string
+		env       []string
+		want      int
+		wantPlans []libcnb.BuildPlan
 	}{
 		{
 			name: "pom.xml",
 			files: map[string]string{
 				"pom.xml": "",
 			},
-			want: 0,
+			want:      0,
+			wantPlans: wantPlans,
 		},
 		{
 			name: "pom.xml with runtime set to java",
 			files: map[string]string{
 				"pom.xml": "",
 			},
-			env:  []string{"GOOGLE_RUNTIME=java"},
-			want: 0,
+			env:       []string{"GOOGLE_RUNTIME=java"},
+			want:      0,
+			wantPlans: wantPlans,
 		},
 		{
 			name: "pom.xml with runtime set to python",
@@ -56,35 +64,40 @@ func TestDetect(t *testing.T) {
 			files: map[string]string{
 				".mvn/extensions.xml": "",
 			},
-			want: 0,
+			want:      0,
+			wantPlans: wantPlans,
 		},
 		{
 			name: "build.gradle",
 			files: map[string]string{
 				"build.gradle": "",
 			},
-			want: 0,
+			want:      0,
+			wantPlans: wantPlans,
 		},
 		{
 			name: "build.gradle.kts",
 			files: map[string]string{
 				"build.gradle.kts": "",
 			},
-			want: 0,
+			want:      0,
+			wantPlans: wantPlans,
 		},
 		{
 			name: "java files",
 			files: map[string]string{
 				"main.java": "",
 			},
-			want: 0,
+			want:      0,
+			wantPlans: wantPlans,
 		},
 		{
 			name: "jar files",
 			files: map[string]string{
 				"myjar.jar": "",
 			},
-			want: 0,
+			want:      0,
+			wantPlans: wantPlans,
 		},
 		{
 			name:  "no java files",
@@ -94,7 +107,7 @@ func TestDetect(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buildpacktest.TestDetect(t, DetectFn, tc.name, tc.files, tc.env, tc.want)
+			buildpacktest.TestDetectWithPlans(t, DetectFn, tc.name, tc.files, tc.env, tc.want, tc.wantPlans)
 		})
 	}
 }
