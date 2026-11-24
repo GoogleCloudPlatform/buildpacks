@@ -160,6 +160,10 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		return err
 	}
 
+	if nodejs.WebAdapterActive() {
+		return yarn1InstallModulesWebAdapter(ctx, yarnLockExists, freezeLockfile)
+	}
+
 	ml, err := ctx.Layer("yarn_modules", gcp.BuildLayer, gcp.CacheLayer, gcp.LaunchLayer)
 	if err != nil {
 		return fmt.Errorf("creating layer: %w", err)
@@ -266,6 +270,76 @@ func yarn1InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 	return nil
 }
 
+func yarn1InstallModulesWebAdapter(ctx *gcp.Context, yarnLockExists, freezeLockfile bool) error {
+	if err := ar.GenerateNPMConfig(ctx); err != nil {
+		return fmt.Errorf("generating Artifact Registry credentials: %w", err)
+	}
+
+	// Install directly into /workspace/node_modules instead of a yarn_modules
+	// launch layer so webbundle can prune /workspace cleanly without leaving a
+	// duplicate launch layer.
+	appModules := filepath.Join(ctx.ApplicationRoot(), "node_modules")
+	if err := ctx.RemoveAll(appModules); err != nil {
+		return err
+	}
+	if err := ctx.MkdirAll(appModules, 0755); err != nil {
+		return err
+	}
+	locationFlag := fmt.Sprintf("--modules-folder=%s", appModules)
+
+	pkgJSON, err := nodejs.OverrideAppHostingBuildScript(ctx, nodejs.ApphostingPreprocessedPathForPack)
+	if err != nil {
+		return err
+	}
+	buildCmds, isCustomBuild := nodejs.DetermineBuildCommands(pkgJSON, "yarn")
+
+	cmd := []string{"yarn", "install", "--non-interactive", "--prefer-offline", locationFlag}
+	if freezeLockfile && yarnLockExists {
+		cmd = append(cmd, "--frozen-lockfile")
+	}
+	if len(buildCmds) > 0 {
+		cmd = append(cmd, "--production=false")
+	}
+
+	nodeBin := filepath.Join(appModules, ".bin")
+	pathEnv := gcp.WithEnv(fmt.Sprintf("PATH=%s:%s", os.Getenv("PATH"), nodeBin))
+	if _, err := ctx.Exec(cmd, gcp.WithUserAttribution, pathEnv); err != nil {
+		return err
+	}
+	if len(buildCmds) == 0 {
+		return nil
+	}
+	if err := runBuildCommands(ctx, buildCmds, isCustomBuild, pathEnv); err != nil {
+		return err
+	}
+
+	if shouldPruneYarn1(ctx) {
+		ctx.Logf("Pruning devDependencies")
+		pruneCmd := []string{"yarn", "install", "--ignore-scripts", "--prefer-offline", "--production=true", locationFlag}
+		if freezeLockfile && yarnLockExists {
+			pruneCmd = append(pruneCmd, "--frozen-lockfile")
+		}
+		if _, err := ctx.Exec(pruneCmd, gcp.WithUserAttribution); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func runBuildCommands(ctx *gcp.Context, buildCmds []string, isCustomBuild bool, pathEnv gcp.ExecOption) error {
+	for _, buildCmd := range buildCmds {
+		if _, err := ctx.Exec(strings.Split(buildCmd, " "), gcp.WithUserAttribution, pathEnv); err != nil {
+			if !isCustomBuild {
+				return fmt.Errorf(`%w
+NOTE: Running the default build script can be skipped by passing the empty environment variable "%s=" to the build`, err, nodejs.GoogleNodeRunScriptsEnv)
+			}
+			return err
+		}
+	}
+	return nil
+}
+
 func shouldPruneYarn1(ctx *gcp.Context) bool {
 	nodeEnv := nodejs.NodeEnv()
 	if nodeEnv != nodejs.EnvProduction {
@@ -307,14 +381,27 @@ func yarn2InstallModules(ctx *gcp.Context, pjs *nodejs.PackageJSON) error {
 		return err
 	}
 
-	if gcpBuild := nodejs.HasGCPBuild(pjs); gcpBuild {
-		if _, err := ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution); err != nil {
+	if nodejs.WebAdapterActive() {
+		pjs, err = nodejs.OverrideAppHostingBuildScript(ctx, nodejs.ApphostingPreprocessedPathForPack)
+		if err != nil {
 			return err
 		}
-	}
-	if appHostingBuildScript, ok := os.LookupEnv(nodejs.AppHostingBuildEnv); ok {
-		if _, err := ctx.Exec(strings.Split(appHostingBuildScript, " "), gcp.WithUserAttribution); err != nil {
+		buildCmds, isCustomBuild := nodejs.DetermineBuildCommands(pjs, "yarn")
+		nodeBin := filepath.Join(ctx.ApplicationRoot(), "node_modules", ".bin")
+		pathEnv := gcp.WithEnv(fmt.Sprintf("PATH=%s:%s", os.Getenv("PATH"), nodeBin))
+		if err := runBuildCommands(ctx, buildCmds, isCustomBuild, pathEnv); err != nil {
 			return err
+		}
+	} else {
+		if gcpBuild := nodejs.HasGCPBuild(pjs); gcpBuild {
+			if _, err := ctx.Exec([]string{"yarn", "run", "gcp-build"}, gcp.WithUserAttribution); err != nil {
+				return err
+			}
+		}
+		if appHostingBuildScript, ok := os.LookupEnv(nodejs.AppHostingBuildEnv); ok {
+			if _, err := ctx.Exec(strings.Split(appHostingBuildScript, " "), gcp.WithUserAttribution); err != nil {
+				return err
+			}
 		}
 	}
 

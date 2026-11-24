@@ -27,5 +27,10 @@ go_test(
     srcs = ["lib_test.go"],
     embed = [":lib"],
     rundir = ".",
-    deps = ["//internal/buildpacktest"],
+    deps = [
+        "//internal/buildpacktest",
+        "//internal/mockprocess",
+        "//pkg/gcpbuildpack",
+        "//pkg/nodejs",
+    ],
 )
