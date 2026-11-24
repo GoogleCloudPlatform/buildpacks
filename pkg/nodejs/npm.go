@@ -17,6 +17,7 @@ package nodejs
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
@@ -221,6 +222,12 @@ func DetermineBuildCommands(pjs *PackageJSON, pkgTool string) (cmds []string, is
 		return []string{runCommand(pkgTool, "gcp-build")}, true
 	}
 
+	if WebAdapterActive() {
+		if cmds, ok := determineWebFrameworkBuildCommands(pkgTool); ok {
+			return cmds, false
+		}
+	}
+
 	if HasScript(pjs, ScriptBuild) {
 		buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.NpmBuildUsageCounterID).Increment(1)
 		if build := pjs.Scripts[ScriptBuild]; strings.TrimSpace(build) == "" {
@@ -230,6 +237,118 @@ func DetermineBuildCommands(pjs *PackageJSON, pkgTool string) (cmds []string, is
 	}
 
 	return []string{}, false
+}
+
+func determineWebFrameworkBuildCommands(pkgTool string) ([]string, bool) {
+	if monorepoCmd := strings.TrimSpace(os.Getenv(EnvMonorepoCommand)); monorepoCmd != "" {
+		return monorepoCommandBuild(monorepoCmd, pkgTool), true
+	}
+
+	buildable := strings.TrimSpace(os.Getenv(env.Buildable))
+	if buildable == "" {
+		return nil, false
+	}
+	cleanDir := filepath.ToSlash(filepath.Clean(buildable))
+	cleanDir = strings.TrimPrefix(cleanDir, "./")
+	if cleanDir == "" || cleanDir == "." {
+		return nil, false
+	}
+
+	// If a monorepo orchestrator config exists at the root but MONOREPO_COMMAND
+	// was not set (e.g. webturborepo/webnx stood down due to a missing project
+	// name), fall back to root build.
+	if fileExistsOnDisk("turbo.json") || fileExistsOnDisk("turbo.jsonc") || fileExistsOnDisk("nx.json") {
+		return nil, false
+	}
+
+	appPkgJSON, err := ReadPackageJSONIfExists(cleanDir)
+	if err != nil {
+		// Ignoring the error is safe: this code only runs when WebAdapterActive()
+		// is true, and webnextjs sets GOOGLE_WEB_ADAPTER_ACTIVE only after it has
+		// parsed this same package.json and failed the build on any error. If the
+		// file cannot be read here anyway, keep the root build that runs without
+		// the adapter.
+		return nil, false
+	}
+	if !HasScript(appPkgJSON, ScriptBuild) {
+		return nil, false
+	}
+
+	switch pkgTool {
+	case "npm":
+		return []string{fmt.Sprintf("npm run build -w %s", cleanDir)}, true
+	case "pnpm":
+		return []string{fmt.Sprintf("pnpm --filter ./%s run build", cleanDir)}, true
+	case "yarn":
+		if appName := strings.TrimSpace(appPkgJSON.Name); appName != "" {
+			return []string{fmt.Sprintf("yarn workspace %s run build", appName)}, true
+		}
+		return []string{fmt.Sprintf("yarn --cwd %s run build", cleanDir)}, true
+	case "bun":
+		return []string{fmt.Sprintf("bun run --filter ./%s build", cleanDir)}, true
+	default:
+		return nil, false
+	}
+}
+
+func monorepoCommandBuild(monorepoCmd, pkgTool string) []string {
+	var args []string
+	if rawArgs := strings.TrimSpace(os.Getenv(EnvMonorepoBuildArgs)); rawArgs != "" {
+		for _, arg := range strings.Split(rawArgs, ",") {
+			if trimmed := strings.TrimSpace(arg); trimmed != "" {
+				args = append(args, trimmed)
+			}
+		}
+	}
+	project := strings.TrimSpace(os.Getenv(EnvMonorepoProject))
+
+	binPrefix := "node_modules/.bin/"
+	if pkgTool == "yarn" && (fileExistsOnDisk(".pnp.cjs") || fileExistsOnDisk(".pnp.js")) {
+		binPrefix = "yarn "
+	}
+
+	switch monorepoCmd {
+	case "turbo":
+		if len(args) == 0 && project != "" {
+			args = []string{"--filter=" + project, "--env-mode=loose"}
+		}
+		cmd := binPrefix + "turbo run build"
+		if len(args) > 0 {
+			cmd += " " + strings.Join(args, " ")
+		}
+		return []string{cmd}
+	case "nx":
+		if project == "" {
+			for _, arg := range args {
+				if proj, ok := strings.CutPrefix(arg, "--project="); ok {
+					project = proj
+					break
+				}
+			}
+		}
+		if project != "" {
+			return []string{fmt.Sprintf("%snx run %s:build", binPrefix, project)}
+		}
+		cmd := binPrefix + "nx run build"
+		if len(args) > 0 {
+			cmd += " " + strings.Join(args, " ")
+		}
+		return []string{cmd}
+	default:
+		cmd := binPrefix + monorepoCmd + " run build"
+		if len(args) > 0 {
+			cmd += " " + strings.Join(args, " ")
+		}
+		return []string{cmd}
+	}
+}
+
+// fileExistsOnDisk reports whether path is an existing regular file.
+// DetermineBuildCommands has no gcp.Context, so its helpers can't use
+// ctx.FileExists.
+func fileExistsOnDisk(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }
 
 // IsUsingVendoredDependencies returns true if the builder should be using the vendored dependencies.

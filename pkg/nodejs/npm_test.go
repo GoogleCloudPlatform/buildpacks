@@ -634,3 +634,294 @@ func TestDevSyncEntrypoint(t *testing.T) {
 		})
 	}
 }
+
+func TestDetermineBuildCommandsWebFrameworks(t *testing.T) {
+	testCases := []struct {
+		name        string
+		pkgTool     string
+		rootPkgJSON string
+		files       map[string]string
+		envs        map[string]string
+		wantCmds    []string
+		wantCustom  bool
+	}{
+		{
+			name:        "gate_off_is_strict_noop_even_with_monorepo_env",
+			pkgTool:     "npm",
+			rootPkgJSON: `{"scripts":{"build":"next build"}}`,
+			envs: map[string]string{
+				EnvWebFrameworks:     "false",
+				EnvWebAdapterActive:  "true",
+				EnvMonorepoCommand:   "turbo",
+				EnvMonorepoProject:   "web",
+				EnvMonorepoBuildArgs: "--filter=web,--env-mode=loose",
+				env.Buildable:        "apps/web",
+			},
+			wantCmds: []string{"npm run build"},
+		},
+		{
+			name:        "fah_is_strict_noop_even_with_gate_on_and_monorepo_env",
+			pkgTool:     "npm",
+			rootPkgJSON: `{"scripts":{"build":"next build"}}`,
+			envs: map[string]string{
+				EnvWebFrameworks:          "true",
+				env.ReleaseTrack:          "ALPHA",
+				env.XGoogleTargetPlatform: "fah",
+				EnvWebAdapterActive:       "true",
+				EnvMonorepoCommand:        "turbo",
+				EnvMonorepoProject:        "web",
+				EnvMonorepoBuildArgs:      "--filter=web,--env-mode=loose",
+				env.Buildable:             "apps/web",
+			},
+			wantCmds: []string{"npm run build"},
+		},
+		{
+			name:        "flag_on_but_adapter_inactive_keeps_root_build_with_monorepo_env",
+			pkgTool:     "npm",
+			rootPkgJSON: `{"scripts":{"build":"turbo run build"}}`,
+			envs: map[string]string{
+				EnvWebFrameworks:     "true",
+				env.ReleaseTrack:     "ALPHA",
+				EnvWebAdapterActive:  "",
+				EnvMonorepoCommand:   "turbo",
+				EnvMonorepoProject:   "web",
+				EnvMonorepoBuildArgs: "--filter=web,--env-mode=loose",
+				env.Buildable:        "apps/web",
+			},
+			wantCmds: []string{"npm run build"},
+		},
+		{
+			name:        "flag_on_but_adapter_inactive_keeps_root_build_for_plain_workspace",
+			pkgTool:     "npm",
+			rootPkgJSON: `{"private":true,"workspaces":["apps/*"],"scripts":{"build":"npm run build --workspaces"}}`,
+			files: map[string]string{
+				"apps/web/package.json": `{"name":"@repo/web","scripts":{"build":"next build"}}`,
+			},
+			envs: map[string]string{
+				EnvWebFrameworks:    "true",
+				env.ReleaseTrack:    "ALPHA",
+				EnvWebAdapterActive: "false",
+				env.Buildable:       "apps/web",
+			},
+			wantCmds: []string{"npm run build"},
+		},
+		{
+			name:        "turbo_monorepo_with_gate_on_and_adapter_active",
+			pkgTool:     "pnpm",
+			rootPkgJSON: `{"private":true}`,
+			envs: map[string]string{
+				EnvWebFrameworks:     "true",
+				env.ReleaseTrack:     "ALPHA",
+				EnvWebAdapterActive:  "true",
+				EnvMonorepoCommand:   "turbo",
+				EnvMonorepoProject:   "web",
+				EnvMonorepoBuildArgs: "--filter=web,--env-mode=loose",
+				env.Buildable:        "apps/web",
+			},
+			wantCmds: []string{"node_modules/.bin/turbo run build --filter=web --env-mode=loose"},
+		},
+		{
+			name:        "nx_monorepo_with_gate_on_and_adapter_active",
+			pkgTool:     "npm",
+			rootPkgJSON: `{"private":true}`,
+			envs: map[string]string{
+				EnvWebFrameworks:     "true",
+				env.ReleaseTrack:     "ALPHA",
+				EnvWebAdapterActive:  "true",
+				EnvMonorepoCommand:   "nx",
+				EnvMonorepoProject:   "web",
+				EnvMonorepoBuildArgs: "--project=web",
+				env.Buildable:        "apps/web",
+			},
+			wantCmds: []string{"node_modules/.bin/nx run web:build"},
+		},
+		{
+			name:        "root_gcp_build_takes_precedence_over_monorepo",
+			pkgTool:     "npm",
+			rootPkgJSON: `{"scripts":{"gcp-build":"custom-build"}}`,
+			envs: map[string]string{
+				EnvWebFrameworks:     "true",
+				env.ReleaseTrack:     "ALPHA",
+				EnvWebAdapterActive:  "true",
+				EnvMonorepoCommand:   "turbo",
+				EnvMonorepoProject:   "web",
+				EnvMonorepoBuildArgs: "--filter=web,--env-mode=loose",
+			},
+			wantCmds:   []string{"npm run gcp-build"},
+			wantCustom: true,
+		},
+		{
+			name:        "plain_npm_workspace_targeting",
+			pkgTool:     "npm",
+			rootPkgJSON: `{"private":true,"workspaces":["apps/*"]}`,
+			files: map[string]string{
+				"apps/web/package.json": `{"name":"@repo/web","scripts":{"build":"next build"}}`,
+			},
+			envs: map[string]string{
+				EnvWebFrameworks:    "true",
+				env.ReleaseTrack:    "ALPHA",
+				EnvWebAdapterActive: "true",
+				env.Buildable:       "apps/web",
+			},
+			wantCmds: []string{"npm run build -w apps/web"},
+		},
+		{
+			name:        "plain_pnpm_workspace_targeting",
+			pkgTool:     "pnpm",
+			rootPkgJSON: `{"private":true}`,
+			files: map[string]string{
+				"apps/web/package.json": `{"name":"@repo/web","scripts":{"build":"next build"}}`,
+			},
+			envs: map[string]string{
+				EnvWebFrameworks:    "true",
+				env.ReleaseTrack:    "ALPHA",
+				EnvWebAdapterActive: "true",
+				env.Buildable:       "apps/web",
+			},
+			wantCmds: []string{"pnpm --filter ./apps/web run build"},
+		},
+		{
+			name:        "plain_yarn_workspace_targeting",
+			pkgTool:     "yarn",
+			rootPkgJSON: `{"private":true,"workspaces":["apps/*"]}`,
+			files: map[string]string{
+				"apps/web/package.json": `{"name":"@repo/web","scripts":{"build":"next build"}}`,
+			},
+			envs: map[string]string{
+				EnvWebFrameworks:    "true",
+				env.ReleaseTrack:    "ALPHA",
+				EnvWebAdapterActive: "true",
+				env.Buildable:       "apps/web",
+			},
+			wantCmds: []string{"yarn workspace @repo/web run build"},
+		},
+		{
+			name:        "plain_bun_workspace_targeting",
+			pkgTool:     "bun",
+			rootPkgJSON: `{"private":true,"workspaces":["apps/*"]}`,
+			files: map[string]string{
+				"apps/web/package.json": `{"name":"@repo/web","scripts":{"build":"next build"}}`,
+			},
+			envs: map[string]string{
+				EnvWebFrameworks:    "true",
+				env.ReleaseTrack:    "ALPHA",
+				EnvWebAdapterActive: "true",
+				env.Buildable:       "apps/web",
+			},
+			wantCmds: []string{"bun run --filter ./apps/web build"},
+		},
+		{
+			name:        "plain_bun_workspace_targeting_without_name",
+			pkgTool:     "bun",
+			rootPkgJSON: `{"private":true,"workspaces":["apps/*"]}`,
+			files: map[string]string{
+				"apps/web/package.json": `{"scripts":{"build":"next build"}}`,
+			},
+			envs: map[string]string{
+				EnvWebFrameworks:    "true",
+				env.ReleaseTrack:    "ALPHA",
+				EnvWebAdapterActive: "true",
+				env.Buildable:       "apps/web",
+			},
+			wantCmds: []string{"bun run --filter ./apps/web build"},
+		},
+		{
+			name:        "plain_workspace_malformed_app_package_json_falls_back_to_root_build",
+			pkgTool:     "npm",
+			rootPkgJSON: `{"private":true,"workspaces":["apps/*"],"scripts":{"build":"npm run build:all"}}`,
+			files: map[string]string{
+				"apps/web/package.json": `{"name":"@repo/web",`,
+			},
+			envs: map[string]string{
+				EnvWebFrameworks:    "true",
+				env.ReleaseTrack:    "ALPHA",
+				EnvWebAdapterActive: "true",
+				env.Buildable:       "apps/web",
+			},
+			wantCmds: []string{"npm run build"},
+		},
+		{
+			name:        "plain_workspace_root_only_build_script_falls_back_to_root_build",
+			pkgTool:     "npm",
+			rootPkgJSON: `{"private":true,"workspaces":["apps/*"],"scripts":{"build":"npm run build:all"}}`,
+			files: map[string]string{
+				"apps/web/package.json": `{"name":"@repo/web"}`,
+			},
+			envs: map[string]string{
+				EnvWebFrameworks:    "true",
+				env.ReleaseTrack:    "ALPHA",
+				EnvWebAdapterActive: "true",
+				env.Buildable:       "apps/web",
+			},
+			wantCmds: []string{"npm run build"},
+		},
+		{
+			name:        "turbo_stood_down_missing_name_falls_back_to_root_build",
+			pkgTool:     "npm",
+			rootPkgJSON: `{"private":true,"scripts":{"build":"turbo run build"}}`,
+			files: map[string]string{
+				"turbo.json":            `{}`,
+				"apps/web/package.json": `{"scripts":{"build":"next build"}}`,
+			},
+			envs: map[string]string{
+				EnvWebFrameworks:    "true",
+				env.ReleaseTrack:    "ALPHA",
+				EnvWebAdapterActive: "true",
+				env.Buildable:       "apps/web",
+			},
+			wantCmds: []string{"npm run build"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rootDir := t.TempDir()
+			origWorkDir, err := os.Getwd()
+			if err != nil {
+				t.Fatalf("os.Getwd() failed: %v", err)
+			}
+			if err := os.Chdir(rootDir); err != nil {
+				t.Fatalf("os.Chdir(%q) failed: %v", rootDir, err)
+			}
+			t.Cleanup(func() {
+				_ = os.Chdir(origWorkDir)
+			})
+
+			for rel, content := range tc.files {
+				full := filepath.Join(rootDir, rel)
+				if err := os.MkdirAll(filepath.Dir(full), 0755); err != nil {
+					t.Fatalf("os.MkdirAll(%q) failed: %v", filepath.Dir(full), err)
+				}
+				if err := os.WriteFile(full, []byte(content), 0644); err != nil {
+					t.Fatalf("os.WriteFile(%q) failed: %v", full, err)
+				}
+			}
+
+			t.Setenv(EnvWebFrameworks, "")
+			t.Setenv(EnvWebAdapterActive, "")
+			t.Setenv(env.XGoogleTargetPlatform, "")
+			t.Setenv(EnvMonorepoCommand, "")
+			t.Setenv(EnvMonorepoProject, "")
+			t.Setenv(EnvMonorepoBuildArgs, "")
+			t.Setenv(env.Buildable, "")
+			for k, v := range tc.envs {
+				t.Setenv(k, v)
+			}
+
+			var pkgJSON *PackageJSON
+			if tc.rootPkgJSON != "" {
+				if err := json.Unmarshal([]byte(tc.rootPkgJSON), &pkgJSON); err != nil {
+					t.Fatalf("json.Unmarshal(%q) failed: %v", tc.rootPkgJSON, err)
+				}
+			}
+
+			gotCmds, gotCustom := DetermineBuildCommands(pkgJSON, tc.pkgTool)
+			if diff := cmp.Diff(tc.wantCmds, gotCmds); diff != "" {
+				t.Errorf("DetermineBuildCommands(%v, %q) cmds diff (-want +got):\n%s", pkgJSON, tc.pkgTool, diff)
+			}
+			if gotCustom != tc.wantCustom {
+				t.Errorf("DetermineBuildCommands(%v, %q) isCustomBuild = %v, want %v", pkgJSON, tc.pkgTool, gotCustom, tc.wantCustom)
+			}
+		})
+	}
+}

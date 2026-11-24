@@ -40,6 +40,13 @@ const (
 	// EnvNextJSAdapterVersion overrides the @google-cloud/adapter-nextjs
 	// version or tarball path.
 	EnvNextJSAdapterVersion = "GOOGLE_NEXTJS_ADAPTER_VERSION"
+	// EnvMonorepoCommand is the monorepo build CLI ("turbo" or "nx").
+	EnvMonorepoCommand = "MONOREPO_COMMAND"
+	// EnvMonorepoProject is the target project/app name in a monorepo.
+	EnvMonorepoProject = "MONOREPO_PROJECT"
+	// EnvMonorepoBuildArgs is the comma-separated build arguments for the
+	// monorepo command.
+	EnvMonorepoBuildArgs = "MONOREPO_BUILD_ARGS"
 
 	// WebFrameworksDisabledReason is the detect opt-out reason that the web*
 	// buildpacks report when WebFrameworksEnabled returns false.
