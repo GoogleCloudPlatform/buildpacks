@@ -133,6 +133,10 @@ const (
 	// lowercased, underscores changed to dashes, and is prefixed with "google.".
 	LabelPrefix = "GOOGLE_LABEL_"
 
+	// LabelRuntime becomes the google.runtime label of the final container: the runtime that
+	// automatic runtime detection selected, e.g. "google-24/nodejs24". Only the platform sets it.
+	LabelRuntime = LabelPrefix + "RUNTIME"
+
 	// ContainerMemoryHintMB is used to specify the amount of memory that will be allocated when running the container.
 	ContainerMemoryHintMB = "GOOGLE_CONTAINER_MEMORY_HINT_MB"
 
