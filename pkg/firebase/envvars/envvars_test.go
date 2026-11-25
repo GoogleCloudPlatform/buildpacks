@@ -3,6 +3,7 @@ package envvars
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
@@ -99,6 +100,19 @@ func TestWriteLifecycle(t *testing.T) {
 			},
 		},
 		{
+			desc: "Allows hyphens, dots, and leading digits in variable names",
+			inputEnvMap: map[string]string{
+				"MY-HYPHEN-VAR": "val1",
+				"my.dotted.var": "val2",
+				"123_DIGIT_VAR": "val3",
+			},
+			wantEnvMap: map[string]string{
+				"MY-HYPHEN-VAR": "val1",
+				"my.dotted.var": "val2",
+				"123_DIGIT_VAR": "val3",
+			},
+		},
+		{
 			desc:        "No error when writing empty map",
 			wantEnvMap:  map[string]string{},
 			inputEnvMap: map[string]string{},
@@ -122,6 +136,70 @@ func TestWriteLifecycle(t *testing.T) {
 			t.Errorf("unexpected map for test %q, (+got, -want):\n%v", test.desc, diff)
 		}
 
+	}
+}
+
+func TestWriteLifecycle_InvalidKeys(t *testing.T) {
+	testCases := []struct {
+		desc        string
+		inputEnvMap map[string]string
+	}{
+		{
+			desc:        "Path traversal key",
+			inputEnvMap: map[string]string{"../../slip.txt": "pwned"},
+		},
+		{
+			desc:        "Parent directory key",
+			inputEnvMap: map[string]string{"..": "pwned"},
+		},
+		{
+			desc:        "Current directory key",
+			inputEnvMap: map[string]string{".": "pwned"},
+		},
+		{
+			desc:        "Absolute path key",
+			inputEnvMap: map[string]string{"/tmp/evil": "pwned"},
+		},
+		{
+			desc:        "Nested path key",
+			inputEnvMap: map[string]string{"sub/var": "pwned"},
+		},
+		{
+			desc:        "Empty key",
+			inputEnvMap: map[string]string{"": "pwned"},
+		},
+		{
+			desc: "Valid key mixed with path traversal key",
+			inputEnvMap: map[string]string{
+				"VALID_KEY":      "ok",
+				"../../slip.txt": "pwned",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			rootDir := t.TempDir()
+			outputFileDir := filepath.Join(rootDir, "platform", "env")
+
+			if err := WriteLifecycle(tc.inputEnvMap, outputFileDir); err == nil {
+				t.Errorf("WriteLifecycle(%v) succeeded, want error", tc.inputEnvMap)
+			}
+
+			if _, err := os.Stat(filepath.Join(rootDir, "slip.txt")); !os.IsNotExist(err) {
+				t.Errorf("path traversal wrote file outside target directory")
+			}
+
+			if _, err := os.Stat(outputFileDir); !os.IsNotExist(err) {
+				t.Errorf("WriteLifecycle(%v, %q) created target directory despite invalid key", tc.inputEnvMap, outputFileDir)
+			}
+		})
+	}
+}
+
+func TestWriteLifecycle_EmptyDir(t *testing.T) {
+	if err := WriteLifecycle(map[string]string{"VALID_KEY": "val"}, ""); err == nil {
+		t.Errorf("WriteLifecycle with empty target directory succeeded, want error")
 	}
 }
 
@@ -273,6 +351,20 @@ func TestParseEnvVarsFromString(t *testing.T) {
 			serverSideEnvVars: "a malformed string",
 			wantEnvVars:       nil,
 			wantErr:           true,
+		},
+		{
+			desc: "Path traversal in server side env var name",
+			serverSideEnvVars: `
+			[
+				{
+					"Variable": "../../slip.txt",
+					"Value": "pwned",
+					"Availability": ["BUILD"]
+				}
+			]
+		`,
+			wantEnvVars: nil,
+			wantErr:     true,
 		},
 	}
 

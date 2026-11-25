@@ -20,7 +20,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -38,7 +37,7 @@ func Write(env map[string]string, fileName string) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(fileName, []byte(content+"\n"), 0644)
+	err = os.WriteFile(fileName, []byte(content+"\n"), 0644)
 	if err != nil {
 		return err
 	}
@@ -48,11 +47,24 @@ func Write(env map[string]string, fileName string) error {
 // WriteLifecycle writes the env vars to the given directory in a way that is compatible
 // with the lifecycle build process.
 func WriteLifecycle(env map[string]string, dir string) error {
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if dir == "" {
+		return fmt.Errorf("target directory cannot be empty")
+	}
+	cleanDir := filepath.Clean(dir)
+	for k := range env {
+		if err := apphostingschema.ValidateEnvVarName(k); err != nil {
+			return faherror.UserErrorf("writing lifecycle env vars: %v", err)
+		}
+		targetPath := filepath.Join(cleanDir, k)
+		if filepath.Dir(targetPath) != cleanDir {
+			return faherror.UserErrorf("invalid environment variable name %q: resolved path escapes target directory", k)
+		}
+	}
+	if err := os.MkdirAll(cleanDir, 0755); err != nil {
 		return err
 	}
 	for k, v := range env {
-		if err := ioutil.WriteFile(filepath.Join(dir, k), []byte(v), 0644); err != nil {
+		if err := os.WriteFile(filepath.Join(cleanDir, k), []byte(v), 0644); err != nil {
 			return fmt.Errorf("failed to write env var %s: %w", k, err)
 		}
 	}
@@ -63,7 +75,7 @@ func WriteLifecycle(env map[string]string, dir string) error {
 // with the lifecycle build process.
 func ReadLifecycle(dir string) (map[string]string, error) {
 	envMap := make(map[string]string)
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -135,6 +147,9 @@ func ParseEnvVarsFromString(serverSideEnvVars string) ([]apphostingschema.Enviro
 	}
 
 	for i := range parsedServerSideEnvVars {
+		if err := apphostingschema.ValidateEnvVarName(parsedServerSideEnvVars[i].Variable); err != nil {
+			return nil, faherror.UserErrorf("invalid server side env var: %v", err)
+		}
 		parsedServerSideEnvVars[i].Source = apphostingschema.SourceFirebaseConsole
 	}
 

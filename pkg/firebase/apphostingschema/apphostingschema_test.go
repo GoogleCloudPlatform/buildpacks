@@ -2,6 +2,8 @@ package apphostingschema
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
@@ -578,5 +580,84 @@ func TestMergeEnvVars(t *testing.T) {
 		if diff := cmp.Diff(test.wantMerged, gotMerged, cmpopts.SortSlices(func(a, b EnvironmentVariable) bool { return a.Variable < b.Variable })); diff != "" {
 			t.Errorf("unexpected merged environment variables for test %q (-want, +got):\n%v", test.desc, diff)
 		}
+	}
+}
+
+func TestValidateEnvVarName(t *testing.T) {
+	testCases := []struct {
+		desc    string
+		name    string
+		wantErr bool
+	}{
+		{desc: "valid uppercase with underscore", name: "API_URL", wantErr: false},
+		{desc: "valid leading underscore", name: "_PRIVATE_VAR", wantErr: false},
+		{desc: "valid mixed case with digits", name: "myVar_123", wantErr: false},
+		{desc: "valid starts with digit", name: "1VAR", wantErr: false},
+		{desc: "valid contains dot", name: "FOO.BAR", wantErr: false},
+		{desc: "valid contains hyphen", name: "FOO-BAR", wantErr: false},
+		{desc: "empty string", name: "", wantErr: true},
+		{desc: "whitespace only", name: "   ", wantErr: true},
+		{desc: "path traversal", name: "../../slip.txt", wantErr: true},
+		{desc: "absolute path", name: "/etc/passwd", wantErr: true},
+		{desc: "forward slash", name: "foo/bar", wantErr: true},
+		{desc: "backslash", name: `foo\bar`, wantErr: true},
+		{desc: "dot", name: ".", wantErr: true},
+		{desc: "double dot", name: "..", wantErr: true},
+		{desc: "contains equals", name: "FOO=BAR", wantErr: true},
+		{desc: "contains null byte", name: "FOO\x00BAR", wantErr: true},
+		{desc: "contains newline", name: "FOO\nBAR", wantErr: true},
+		{desc: "contains carriage return", name: "FOO\rBAR", wantErr: true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			err := ValidateEnvVarName(tc.name)
+			if gotErr := err != nil; gotErr != tc.wantErr {
+				t.Errorf("ValidateEnvVarName(%q) error = %v, wantErr = %v", tc.name, err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestReadAndValidateFromFile_InvalidEnvVarName(t *testing.T) {
+	testCases := []struct {
+		desc    string
+		content string
+	}{
+		{
+			desc: "path traversal in variable name",
+			content: `env:
+  - variable: "../../slip.txt"
+    value: "malicious"
+    availability:
+      - BUILD
+`,
+		},
+		{
+			desc: "empty variable name",
+			content: `env:
+  - variable: ""
+    value: "val"
+`,
+		},
+		{
+			desc: "slash in variable name",
+			content: `env:
+  - variable: "nested/var"
+    value: "val"
+`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			yamlPath := filepath.Join(t.TempDir(), "apphosting.yaml")
+			if err := os.WriteFile(yamlPath, []byte(tc.content), 0644); err != nil {
+				t.Fatalf("failed to write test yaml: %v", err)
+			}
+			if s, err := ReadAndValidateFromFile(yamlPath); err == nil {
+				t.Errorf("ReadAndValidateFromFile() succeeded with %+v, want error", s)
+			}
+		})
 	}
 }

@@ -110,10 +110,27 @@ type serverApp struct {
 	Include []string `yaml:"include"`
 }
 
+// ValidateEnvVarName checks that an environment variable name is non-empty,
+// is not "." or "..", and does not contain directory path separators, line
+// breaks, null bytes, or "=".
+func ValidateEnvVarName(name string) error {
+	if strings.TrimSpace(name) == "" {
+		return fmt.Errorf("environment variable name cannot be empty")
+	}
+	if name == "." || name == ".." || strings.ContainsAny(name, "/\\\x00=\r\n") {
+		return fmt.Errorf("invalid environment variable name %q: directory path separators and invalid characters are not allowed", name)
+	}
+	return nil
+}
+
 // UnmarshalYAML provides custom validation logic to validate EnvironmentVariable
 func (ev *EnvironmentVariable) UnmarshalYAML(unmarshal func(any) error) error {
 	type plain EnvironmentVariable // Define an alias
 	if err := unmarshal((*plain)(ev)); err != nil {
+		return err
+	}
+
+	if err := ValidateEnvVarName(ev.Variable); err != nil {
 		return err
 	}
 
