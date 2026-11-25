@@ -34,7 +34,7 @@ var (
 // the application root by default.
 func ApplicationDirectory(ctx *gcp.Context) string {
 	appDir := ctx.ApplicationRoot()
-	if appDirEnv, exists := os.LookupEnv(env.Buildable); exists {
+	if appDirEnv := ctx.Env(env.Buildable); appDirEnv != "" {
 		appDir = filepath.Join(ctx.ApplicationRoot(), appDirEnv)
 	}
 	return appDir
