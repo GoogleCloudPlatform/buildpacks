@@ -47,12 +47,11 @@ type Runtime struct {
 
 // ParseRuntimeVersions parses the value of X_GOOGLE_RUNTIME_VERSIONS, a JSON object that maps the
 // runtimes that may be detected to their versions, e.g. {"nodejs24":"24.22.1"}. It returns nil if
-// raw is empty.
+// raw is empty, and an error if raw isn't such a JSON object.
 //
-// The platform generates the value, so an invalid entry is a platform bug. Rather than letting it
-// look like an app whose version matches no runtime, the whole value is rejected with an error
-// that names the entry. A version must be a semantic version that version.ResolveVersion does not
-// skip, i.e. not a release candidate.
+// Invalid entries are left out, so that one bad entry doesn't turn automatic runtime detection off
+// for every runtime. A name must not be empty, and a version must be a semantic version that
+// version.ResolveVersion does not skip, i.e. not a release candidate.
 func ParseRuntimeVersions(raw string) (map[string]string, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -63,14 +62,8 @@ func ParseRuntimeVersions(raw string) (map[string]string, error) {
 		return nil, fmt.Errorf("parsing %q as a JSON object of runtime versions: %w", raw, err)
 	}
 	for name, v := range runtimes {
-		if name == "" || v == "" {
-			return nil, fmt.Errorf("invalid runtime %q with version %q", name, v)
-		}
-		if _, err := semver.NewVersion(v); err != nil {
-			return nil, fmt.Errorf("invalid version %q of runtime %q: %w", v, name, err)
-		}
-		if version.IsReleaseCandidate(v) {
-			return nil, fmt.Errorf("invalid version %q of runtime %q: release candidates are not eligible", v, name)
+		if _, err := semver.NewVersion(v); name == "" || err != nil || version.IsReleaseCandidate(v) {
+			delete(runtimes, name)
 		}
 	}
 	return runtimes, nil

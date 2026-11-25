@@ -192,6 +192,27 @@ func TestSelectAutodetectRuntime(t *testing.T) {
 			constraint: "*",
 		},
 		{
+			name:       "invalid entries are skipped",
+			versions:   `{"":"24.22.1","nodejs23":"latest","nodejs24":"24.22.1","python315":"3.15.0rc3"}`,
+			language:   "nodejs",
+			constraint: "*",
+			want:       &AutodetectedRuntime{Name: "nodejs24", Version: "24.22.1"},
+		},
+		{
+			// A placeholder, e.g. a runtime in development with its predecessor's version.
+			name:       "versions of another release line are skipped",
+			versions:   `{"nodejs24":"24.22.1","nodejs26":"24.22.1"}`,
+			language:   "nodejs",
+			constraint: "*",
+			want:       &AutodetectedRuntime{Name: "nodejs24", Version: "24.22.1"},
+		},
+		{
+			name:       "placeholder is not selected for its release line",
+			versions:   `{"nodejs24":"24.22.1","nodejs26":"24.22.1"}`,
+			language:   "nodejs",
+			constraint: "26.1.0",
+		},
+		{
 			name:       "surrounding whitespace is ignored",
 			versions:   ` {"nodejs24": "24.22.1"} `,
 			language:   "nodejs",
@@ -230,31 +251,6 @@ func TestSelectAutodetectRuntimeErrors(t *testing.T) {
 		{
 			name:     "non-string version",
 			versions: `{"nodejs24":24}`,
-		},
-		{
-			name:     "empty version",
-			versions: `{"nodejs24":""}`,
-		},
-		{
-			name:     "empty runtime",
-			versions: `{"":"24.22.1"}`,
-		},
-		{
-			name:     "duplicate version",
-			versions: `{"nodejs24":"24.22.1","nodejs25":"24.22.1"}`,
-		},
-		{
-			name:     "version not semver",
-			versions: `{"nodejs24":"latest"}`,
-		},
-		{
-			name: "invalid version of another language rejects all",
-			// One bad entry is a platform bug, so no runtime is selected for any language.
-			versions: `{"nodejs24":"24.22.1","python314":"3.14.x.1"}`,
-		},
-		{
-			name:     "release candidate version",
-			versions: `{"nodejs24":"24.22.1","python315":"3.15.0rc3"}`,
 		},
 	}
 	for _, tc := range testCases {

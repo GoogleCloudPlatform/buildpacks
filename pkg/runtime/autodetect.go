@@ -45,8 +45,8 @@ type AutodetectedRuntime = autodetect.Runtime
 //     "3.14.9". The app then builds and runs on that runtime's version instead of the pinned one.
 //
 // It returns nil, nil if X_GOOGLE_RUNTIME_VERSIONS is not set or no eligible runtime matches. It
-// returns an error if X_GOOGLE_RUNTIME_VERSIONS is invalid or the constraint can't be parsed, so
-// that neither looks like an app whose version matches no eligible runtime.
+// returns an error if X_GOOGLE_RUNTIME_VERSIONS isn't a JSON object of versions or the constraint
+// can't be parsed, so that neither looks like an app whose version matches no eligible runtime.
 func SelectAutodetectRuntime(language, constraint string) (*AutodetectedRuntime, error) {
 	eligible, err := autodetectRuntimes()
 	if err != nil || len(eligible) == 0 {
@@ -56,7 +56,12 @@ func SelectAutodetectRuntime(language, constraint string) (*AutodetectedRuntime,
 	byVersion := map[string]string{}
 	var versions []string
 	for name, v := range eligible {
-		if !nameRegexp.MatchString(name) {
+		m := nameRegexp.FindStringSubmatch(name)
+		if m == nil {
+			continue
+		}
+		// Skip placeholders, whose version is of another release line, e.g. php86 at 8.5.12.
+		if _, ok := releaseLine(v, m[1]); !ok {
 			continue
 		}
 		if other, ok := byVersion[v]; ok {

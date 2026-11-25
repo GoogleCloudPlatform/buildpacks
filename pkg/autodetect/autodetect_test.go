@@ -42,24 +42,19 @@ func TestParseRuntimeVersions(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "empty name",
-			raw:     `{"":"24.22.1"}`,
+			name:    "not an object of strings",
+			raw:     `{"nodejs24":24}`,
 			wantErr: true,
 		},
 		{
-			name:    "empty version",
-			raw:     `{"nodejs24":""}`,
-			wantErr: true,
+			name: "invalid entries are skipped",
+			raw:  `{"":"24.22.1","nodejs22":"","nodejs23":"latest","python315":"3.15.0rc3","nodejs24":"24.22.1"}`,
+			want: map[string]string{"nodejs24": "24.22.1"},
 		},
 		{
-			name:    "not semver",
-			raw:     `{"nodejs24":"latest"}`,
-			wantErr: true,
-		},
-		{
-			name:    "release candidate",
-			raw:     `{"python315":"3.15.0rc3"}`,
-			wantErr: true,
+			name: "only invalid entries",
+			raw:  `{"nodejs24":"latest"}`,
+			want: map[string]string{},
 		},
 	}
 	for _, tc := range testCases {
