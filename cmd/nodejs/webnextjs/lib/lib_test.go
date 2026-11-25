@@ -221,7 +221,7 @@ func TestBuild(t *testing.T) {
 				"bun.lock": `{
 					"lockfileVersion": 1,
 					"packages": {
-						"next": ["next@16.3.5", "", {}, "sha512-xyz"],
+						"next": ["next@16.4.3", "", {}, "sha512-xyz"],
 					},
 				}`,
 			},
@@ -232,7 +232,7 @@ func TestBuild(t *testing.T) {
 			wantInstallCmd: "npm install --prefix web_nextjs_adapter /tmp/google-cloud-adapter-nextjs-0.1.0.tgz",
 			wantMetadata: map[bmd.MetadataID]bmd.MetadataValue{
 				bmd.FrameworkName:    "nextjs",
-				bmd.FrameworkVersion: "16.3.5",
+				bmd.FrameworkVersion: "16.4.3",
 				bmd.AdapterName:      "@google-cloud/adapter-nextjs",
 				bmd.AdapterVersion:   "/tmp/google-cloud-adapter-nextjs-0.1.0.tgz",
 			},

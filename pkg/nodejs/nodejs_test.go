@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"testing/quick"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/firebase/apphostingschema"
 	"github.com/google/go-cmp/cmp"
@@ -527,6 +528,62 @@ func TestReadNodeDependencies(t *testing.T) {
 		PackageJSON: pjs,
 	}
 
+	minimalPJS := `{"name": "test-app"}`
+	wantMinimalPJS := &PackageJSON{Name: "test-app"}
+
+	bunLockDir := writeTempAppFiles(t, map[string]string{
+		"package.json": minimalPJS,
+		"bun.lock":     `{"lockfileVersion": 1}`,
+	})
+	bunLockbDir := writeTempAppFiles(t, map[string]string{
+		"package.json": minimalPJS,
+		"bun.lockb":    "binary-lockfile",
+	})
+	bunMonorepoDir := writeTempAppFiles(t, map[string]string{
+		"bun.lock":              `{"lockfileVersion": 1}`,
+		"apps/web/package.json": minimalPJS,
+	})
+	bunAppOverRootDir := writeTempAppFiles(t, map[string]string{
+		"package-lock.json":     `{"lockfileVersion": 3}`,
+		"apps/web/package.json": minimalPJS,
+		"apps/web/bun.lock":     `{"lockfileVersion": 1}`,
+	})
+	pnpmPrecedenceDir := writeTempAppFiles(t, map[string]string{
+		"package.json":        minimalPJS,
+		"pnpm-lock.yaml":      "lockfileVersion: '6.0'",
+		"yarn.lock":           "# yarn lockfile v1",
+		"npm-shrinkwrap.json": `{"lockfileVersion": 3}`,
+		"package-lock.json":   `{"lockfileVersion": 3}`,
+		"bun.lock":            `{"lockfileVersion": 1}`,
+		"bun.lockb":           "binary-lockfile",
+	})
+	yarnPrecedenceDir := writeTempAppFiles(t, map[string]string{
+		"package.json":        minimalPJS,
+		"yarn.lock":           "# yarn lockfile v1",
+		"npm-shrinkwrap.json": `{"lockfileVersion": 3}`,
+		"package-lock.json":   `{"lockfileVersion": 3}`,
+		"bun.lock":            `{"lockfileVersion": 1}`,
+		"bun.lockb":           "binary-lockfile",
+	})
+	shrinkwrapPrecedenceDir := writeTempAppFiles(t, map[string]string{
+		"package.json":        minimalPJS,
+		"npm-shrinkwrap.json": `{"lockfileVersion": 3}`,
+		"package-lock.json":   `{"lockfileVersion": 3}`,
+		"bun.lock":            `{"lockfileVersion": 1}`,
+		"bun.lockb":           "binary-lockfile",
+	})
+	npmPrecedenceDir := writeTempAppFiles(t, map[string]string{
+		"package.json":      minimalPJS,
+		"package-lock.json": `{"lockfileVersion": 3}`,
+		"bun.lock":          `{"lockfileVersion": 1}`,
+		"bun.lockb":         "binary-lockfile",
+	})
+	bunPrecedenceDir := writeTempAppFiles(t, map[string]string{
+		"package.json": minimalPJS,
+		"bun.lock":     `{"lockfileVersion": 1}`,
+		"bun.lockb":    "binary-lockfile",
+	})
+
 	testCases := []struct {
 		name          string
 		rootDir       string
@@ -556,16 +613,100 @@ func TestReadNodeDependencies(t *testing.T) {
 				LockfilePath: testdata.MustGetPath("testdata/test-read-node-deps-nested/package-lock.json"),
 			},
 		},
+		{
+			name:    "bun_lock_in_app_dir",
+			rootDir: bunLockDir,
+			appDir:  bunLockDir,
+			want: &NodeDependencies{
+				PackageJSON:  wantMinimalPJS,
+				LockfilePath: filepath.Join(bunLockDir, "bun.lock"),
+			},
+		},
+		{
+			name:    "bun_lockb_in_app_dir",
+			rootDir: bunLockbDir,
+			appDir:  bunLockbDir,
+			want: &NodeDependencies{
+				PackageJSON:  wantMinimalPJS,
+				LockfilePath: filepath.Join(bunLockbDir, "bun.lockb"),
+			},
+		},
+		{
+			name:    "bun_lock_in_root_dir_when_app_dir_is_subdir",
+			rootDir: bunMonorepoDir,
+			appDir:  filepath.Join(bunMonorepoDir, "apps/web"),
+			want: &NodeDependencies{
+				PackageJSON:  wantMinimalPJS,
+				LockfilePath: filepath.Join(bunMonorepoDir, "bun.lock"),
+			},
+		},
+		{
+			name:    "bun_lock_in_app_dir_preferred_over_root_lockfile",
+			rootDir: bunAppOverRootDir,
+			appDir:  filepath.Join(bunAppOverRootDir, "apps/web"),
+			want: &NodeDependencies{
+				PackageJSON:  wantMinimalPJS,
+				LockfilePath: filepath.Join(bunAppOverRootDir, "apps/web/bun.lock"),
+			},
+		},
+		{
+			name:    "lockfile_precedence_pnpm_over_all",
+			rootDir: pnpmPrecedenceDir,
+			appDir:  pnpmPrecedenceDir,
+			want: &NodeDependencies{
+				PackageJSON:  wantMinimalPJS,
+				LockfilePath: filepath.Join(pnpmPrecedenceDir, "pnpm-lock.yaml"),
+			},
+		},
+		{
+			name:    "lockfile_precedence_yarn_over_npm_and_bun",
+			rootDir: yarnPrecedenceDir,
+			appDir:  yarnPrecedenceDir,
+			want: &NodeDependencies{
+				PackageJSON:  wantMinimalPJS,
+				LockfilePath: filepath.Join(yarnPrecedenceDir, "yarn.lock"),
+			},
+		},
+		{
+			name:    "lockfile_precedence_shrinkwrap_over_package_lock_and_bun",
+			rootDir: shrinkwrapPrecedenceDir,
+			appDir:  shrinkwrapPrecedenceDir,
+			want: &NodeDependencies{
+				PackageJSON:  wantMinimalPJS,
+				LockfilePath: filepath.Join(shrinkwrapPrecedenceDir, "npm-shrinkwrap.json"),
+			},
+		},
+		{
+			name:    "lockfile_precedence_package_lock_over_bun",
+			rootDir: npmPrecedenceDir,
+			appDir:  npmPrecedenceDir,
+			want: &NodeDependencies{
+				PackageJSON:  wantMinimalPJS,
+				LockfilePath: filepath.Join(npmPrecedenceDir, "package-lock.json"),
+			},
+		},
+		{
+			name:    "lockfile_precedence_bun_lock_over_bun_lockb",
+			rootDir: bunPrecedenceDir,
+			appDir:  bunPrecedenceDir,
+			want: &NodeDependencies{
+				PackageJSON:  wantMinimalPJS,
+				LockfilePath: filepath.Join(bunPrecedenceDir, "bun.lock"),
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := gcp.NewContext(gcp.WithApplicationRoot(tc.rootDir))
 			got, err := ReadNodeDependencies(ctx, tc.appDir)
-			if err != nil && !tc.expectedError {
-				t.Fatalf("ReadNodeDependencies returned an unexpected error: %v", err)
+			if gotErr := err != nil; gotErr != tc.expectedError {
+				t.Fatalf("ReadNodeDependencies(%q) error = %v, wantErr %t", tc.appDir, err, tc.expectedError)
 			}
-			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("ReadNodeDependencies package.json\ngot %#v\nwant %#v", got, want)
+			if err != nil {
+				return
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("ReadNodeDependencies(%q) mismatch (-want +got):\n%s", tc.appDir, diff)
 			}
 		})
 	}
@@ -681,6 +822,55 @@ func TestVersion(t *testing.T) {
 			},
 			wantVersion: "17.3.6",
 		},
+		{
+			name: "bun_lock_nextjs",
+			pkg:  "next",
+			nodeDeps: &NodeDependencies{
+				LockfilePath: writeTempLockfile(t, "bun.lock", `{
+  // Bun text lockfile with comments and trailing commas
+  "lockfileVersion": 1,
+  "packages": {
+    "next": ["next@16.4.3", "", {}, "sha512-abc",],
+    "@next/routing": ["@next/routing@16.4.3", "", {}, "sha512-def",],
+  },
+}`),
+			},
+			wantVersion: "16.4.3",
+		},
+		{
+			name: "bun_lock_scoped_package",
+			pkg:  "@next/routing",
+			nodeDeps: &NodeDependencies{
+				LockfilePath: writeTempLockfile(t, "bun.lock", `{
+  "lockfileVersion": 1,
+  "packages": {
+    "@next/routing": ["@next/routing@16.4.3", "", {}, "sha512-def"],
+  },
+}`),
+			},
+			wantVersion: "16.4.3",
+		},
+		{
+			name: "bun_lock_missing_package",
+			pkg:  "nonexistent",
+			nodeDeps: &NodeDependencies{
+				LockfilePath: writeTempLockfile(t, "bun.lock", `{
+  "lockfileVersion": 1,
+  "packages": {
+    "next": ["next@16.4.3", "", {}, "sha512-abc"],
+  },
+}`),
+			},
+			wantVersion: "",
+		},
+		{
+			name: "bun_lockb_unsupported",
+			pkg:  "next",
+			nodeDeps: &NodeDependencies{
+				LockfilePath: writeTempLockfile(t, "bun.lockb", "binary-lockfile"),
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -717,13 +907,13 @@ func TestVersionFromBunLock(t *testing.T) {
 			want: "16.4.3",
 		},
 		{
-			name: "hoisted_package_under_parent",
+			name: "nested_package_under_parent_is_ignored",
 			lock: `{"packages": {"send/ms": ["ms@2.1.3", "", {}, "sha512-abc"]}}`,
 			pkg:  "ms",
-			want: "2.1.3",
+			want: "",
 		},
 		{
-			name: "top_level_entry_preferred_over_hoisted_entry",
+			name: "top_level_entry_ignores_nested_entry",
 			lock: `{"packages": {
 				"ms": ["ms@2.0.0", "", {}, "sha512-abc"],
 				"send/ms": ["ms@2.1.3", "", {}, "sha512-def"]
@@ -816,6 +1006,66 @@ func TestVersionFromBunLock(t *testing.T) {
 			want: "",
 		},
 		{
+			name: "empty_tuple",
+			lock: `{"packages": {"next": []}}`,
+			pkg:  "next",
+			want: "",
+		},
+		{
+			name: "tuple_with_non_string_first_element",
+			lock: `{"packages": {"next": [123, "", {}, "sha512-abc"]}}`,
+			pkg:  "next",
+			want: "",
+		},
+		{
+			name: "tuple_with_empty_first_element",
+			lock: `{"packages": {"next": ["", "", {}, "sha512-abc"]}}`,
+			pkg:  "next",
+			want: "",
+		},
+		{
+			name: "trailing_comma_before_closing_bracket",
+			lock: `{"packages": {"next": ["next@16.4.3", "", {}, "sha512-abc", ]}}`,
+			pkg:  "next",
+			want: "16.4.3",
+		},
+		{
+			name: "line_comment_at_eof_without_newline",
+			lock: `{"packages": {"next": ["next@16.4.3", "", {}, "sha512-abc"]}} // comment at eof`,
+			pkg:  "next",
+			want: "16.4.3",
+		},
+		{
+			name: "unclosed_block_comment_after_json",
+			lock: `{"packages": {"next": ["next@16.4.3", "", {}, "sha512-abc"]}} /* unclosed`,
+			pkg:  "next",
+			want: "16.4.3",
+		},
+		{
+			name:    "unclosed_block_comment_mid_object",
+			lock:    `{"packages": /* unclosed`,
+			pkg:     "next",
+			wantErr: true,
+		},
+		{
+			name: "non_semver_workspace_spec_returned_verbatim",
+			lock: `{"packages": {"next": ["next@workspace:apps/web"]}}`,
+			pkg:  "next",
+			want: "workspace:apps/web",
+		},
+		{
+			name: "non_semver_file_spec_returned_verbatim",
+			lock: `{"packages": {"next": ["next@file:./local", "", {}, "sha512-abc"]}}`,
+			pkg:  "next",
+			want: "file:./local",
+		},
+		{
+			name: "non_semver_tarball_url_without_at_returned_verbatim",
+			lock: `{"packages": {"next": ["https://example.com/next.tgz", "", {}, "sha512-abc"]}}`,
+			pkg:  "next",
+			want: "https://example.com/next.tgz",
+		},
+		{
 			name:    "malformed_json",
 			lock:    `{"packages": {"next": ["next@16.4.3"`,
 			pkg:     "next",
@@ -842,6 +1092,17 @@ func TestVersionFromBunLock(t *testing.T) {
 				t.Errorf("versionFromBunLock(_, %q) = %q, want %q", tc.pkg, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestVersionFromBunLockNoPanic(t *testing.T) {
+	f := func(raw []byte, pkg string) bool {
+		_ = stripJSONC(raw)
+		_, _ = versionFromBunLock(raw, pkg)
+		return true
+	}
+	if err := quick.Check(f, nil); err != nil {
+		t.Errorf("versionFromBunLock/stripJSONC failed quick.Check: %v", err)
 	}
 }
 
@@ -999,4 +1260,28 @@ func TestEntrypoint(t *testing.T) {
 			}
 		})
 	}
+}
+
+func writeTempLockfile(t *testing.T, name, content string) string {
+	t.Helper()
+	p := filepath.Join(t.TempDir(), name)
+	if err := os.WriteFile(p, []byte(content), 0644); err != nil {
+		t.Fatalf("os.WriteFile(%q) failed: %v", p, err)
+	}
+	return p
+}
+
+func writeTempAppFiles(t *testing.T, files map[string]string) string {
+	t.Helper()
+	dir := t.TempDir()
+	for rel, content := range files {
+		p := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+			t.Fatalf("os.MkdirAll(%q) failed: %v", filepath.Dir(p), err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0644); err != nil {
+			t.Fatalf("os.WriteFile(%q) failed: %v", p, err)
+		}
+	}
+	return dir
 }

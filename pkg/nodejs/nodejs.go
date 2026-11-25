@@ -498,8 +498,11 @@ func versionFromNpmLock(rawPackageLock []byte, pkg string) (string, error) {
 // versionFromBunLock returns the resolved version of pkg from the contents of a
 // text bun.lock file. bun.lock is JSONC (JSON with comments and trailing
 // commas); each entry in its "packages" map is a tuple whose first element is
-// "<name>@<version>". Entries hoisted under a parent (e.g. "parent/pkg") are
-// also matched. It returns ("", nil) when pkg is not in the lockfile.
+// "<name>@<version>". Only the top-level entry keyed by pkg is read, matching
+// versionFromNpmLock: alias-keyed entries (e.g. "my-pkg": ["other@1.0.0", ...])
+// return "", while non-semver specs (e.g. "workspace:...", "file:...", or
+// tarball URLs without "@") are returned verbatim. It returns ("", nil) when
+// pkg is not in the lockfile.
 func versionFromBunLock(rawPackageLock []byte, pkg string) (string, error) {
 	var parsed struct {
 		Packages map[string]json.RawMessage `json:"packages"`
@@ -507,23 +510,7 @@ func versionFromBunLock(rawPackageLock []byte, pkg string) (string, error) {
 	if err := json.Unmarshal(stripJSONC(rawPackageLock), &parsed); err != nil {
 		return "", gcp.UserErrorf("parsing %s: %w", BunLock, err)
 	}
-	// Look up the top-level entry first. Indexing and ranging over a nil map
-	// are no-ops, so a lockfile without "packages" falls through to ("", nil).
-	if ver := extractBunPackageEntryVersion(parsed.Packages[pkg], pkg); ver != "" {
-		return ver, nil
-	}
-	// Fall back to a copy nested under a parent package, keyed "<parent>/<pkg>".
-	// TODO: b/582363483 - Read only the top-level entry (like versionFromNpmLock),
-	// or sort the keys so nested matches are deterministic across runs.
-	suffix := "/" + pkg
-	for k, entry := range parsed.Packages {
-		if strings.HasSuffix(k, suffix) {
-			if ver := extractBunPackageEntryVersion(entry, pkg); ver != "" {
-				return ver, nil
-			}
-		}
-	}
-	return "", nil
+	return extractBunPackageEntryVersion(parsed.Packages[pkg], pkg), nil
 }
 
 // extractBunPackageEntryVersion returns the version of pkg from a single
@@ -550,7 +537,10 @@ func extractBunPackageEntryVersion(raw json.RawMessage, pkg string) string {
 // bunTupleEntryVersion returns the version of pkg from a tuple entry
 // (["<name>@<version>", ...]) and whether one was found. It reports false when
 // raw is not a non-empty array whose first element is a string, or when that
-// string names a different package, so the caller can try the object form.
+// string names a different package (such as an alias entry like
+// "my-next": ["next@15.0.0", ...]), so the caller can try the object form.
+// Non-semver specs (e.g. "workspace:apps/web", "file:./local", or tarball URLs
+// without "@") are returned verbatim.
 func bunTupleEntryVersion(raw json.RawMessage, pkg string) (string, bool) {
 	var tuple []json.RawMessage
 	if err := json.Unmarshal(raw, &tuple); err != nil || len(tuple) == 0 {
@@ -560,6 +550,8 @@ func bunTupleEntryVersion(raw json.RawMessage, pkg string) (string, bool) {
 	if err := json.Unmarshal(tuple[0], &ident); err != nil || ident == "" {
 		return "", false
 	}
+	// TODO(b/589923913): Filter non-semver specs (such as workspace:, file:, and
+	// tarball URLs) instead of returning them verbatim.
 	// Scoped names work too: "@scope/pkg@1.2.3" minus "@scope/pkg@" is "1.2.3".
 	if ver, ok := strings.CutPrefix(ident, pkg+"@"); ok {
 		// Aliased dependencies are recorded as "<name>@npm:<version>".
@@ -635,6 +627,8 @@ func Version(deps *NodeDependencies, pkg string) (string, error) {
 		return versionFromYarnLock(raw, deps.PackageJSON, pkg)
 	case strings.HasSuffix(deps.LockfilePath, "npm-shrinkwrap.json") || strings.HasSuffix(deps.LockfilePath, "package-lock.json"):
 		return versionFromNpmLock(raw, pkg)
+	case strings.HasSuffix(deps.LockfilePath, BunLock):
+		return versionFromBunLock(raw, pkg)
 	}
 
 	return "", gcp.UserErrorf("Failed to find version for package %s", pkg)

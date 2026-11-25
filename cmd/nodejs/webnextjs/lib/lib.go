@@ -251,7 +251,7 @@ func resolveNextVersion(ctx *gcp.Context, appDir, rootDir string, appPJS, rootPJ
 		}
 	}
 
-	// 1. Check npm/pnpm/yarn lockfile via ReadNodeDependencies + nodejs.Version.
+	// 1. Check npm/pnpm/yarn/bun lockfile via ReadNodeDependencies + nodejs.Version.
 	for _, dir := range dirs {
 		nodeDeps, err := nodejs.ReadNodeDependencies(ctx, dir)
 		if err != nil || nodeDeps == nil || nodeDeps.LockfilePath == "" {
@@ -266,22 +266,7 @@ func resolveNextVersion(ctx *gcp.Context, appDir, rootDir string, appPJS, rootPJ
 		}
 	}
 
-	// 2. Check bun.lock via nodejs.BunLockVersion in appDir or rootDir.
-	for _, dir := range dirs {
-		exists, err := ctx.FileExists(dir, "bun.lock")
-		if err != nil || !exists {
-			continue
-		}
-		ver, err := nodejs.BunLockVersion(dir, "next")
-		if err != nil || ver == "" {
-			continue
-		}
-		if _, err := semver.NewVersion(ver); err == nil { // if NO error
-			return ver
-		}
-	}
-
-	// 3. Fall back to the lowest version allowed by the package.json range.
+	// 2. Fall back to the lowest version allowed by the package.json range.
 	rawSpec := packageDependencySpec(appPJS, "next")
 	if rawSpec == "" {
 		rawSpec = packageDependencySpec(rootPJS, "next")

@@ -218,30 +218,6 @@ func workspaceNPMLockVersion(lockPath, relSlash, pkg string) (string, error) {
 	return "", nil
 }
 
-// BunLockVersion returns the resolved version of pkg from a text bun.lock in
-// dir ("" if absent). nodejs.Version remains unchanged so CheckVulnerabilities
-// behavior for Bun is unaffected.
-// TODO: b/582363483 - Add bun.lock support to nodejs.Version() and remove this helper.
-func BunLockVersion(dir, pkg string) (string, error) {
-	if dir == "" || pkg == "" {
-		return "", nil
-	}
-	lockPath := dir
-	if info, err := os.Stat(dir); err == nil && info.IsDir() { // if NO error
-		lockPath = filepath.Join(dir, BunLock)
-	} else if !strings.HasSuffix(dir, BunLock) {
-		lockPath = filepath.Join(dir, BunLock)
-	}
-	raw, err := os.ReadFile(lockPath)
-	if os.IsNotExist(err) {
-		return "", nil
-	}
-	if err != nil {
-		return "", gcp.UserErrorf("reading %s: %w", lockPath, err)
-	}
-	return versionFromBunLock(raw, pkg)
-}
-
 // WebStandDownReason returns "" when the Next.js app in appDir can be served by
 // .cloudrun/serve.js, or a short human-readable reason (used verbatim in a
 // build warning) when the web path must stand down: custom server / explicit
