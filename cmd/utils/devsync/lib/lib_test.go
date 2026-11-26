@@ -19,8 +19,10 @@ import (
 	"testing"
 
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/buildermetrics"
+	"github.com/GoogleCloudPlatform/buildpacks/pkg/env"
 	gcp "github.com/GoogleCloudPlatform/buildpacks/pkg/gcpbuildpack"
 	"github.com/GoogleCloudPlatform/buildpacks/pkg/testdata"
+	"github.com/buildpacks/libcnb/v2"
 )
 
 func TestDetect(t *testing.T) {
@@ -94,5 +96,19 @@ func TestBuildFnMetric(t *testing.T) {
 	_ = BuildFn(ctx)
 	if got := buildermetrics.GlobalBuilderMetrics().GetCounter(buildermetrics.DevSyncBuildpackUsageCounterID).Value(); got != 1 {
 		t.Errorf("DevSyncBuildpackUsageCounterID after BuildFn = %v, want 1", got)
+	}
+}
+
+func TestConfigureDevSyncLaunchEnv(t *testing.T) {
+	layer := &libcnb.Layer{
+		LaunchEnvironment: make(libcnb.Environment),
+	}
+	configureDevSyncLaunchEnv(layer)
+
+	for _, key := range []string{env.DevSync, env.XGoogleDevSyncActivated} {
+		wantKey := key + ".default"
+		if got := layer.LaunchEnvironment[wantKey]; got != "1" {
+			t.Errorf("configureDevSyncLaunchEnv(layer) LaunchEnvironment[%q] = %q, want %q", wantKey, got, "1")
+		}
 	}
 }

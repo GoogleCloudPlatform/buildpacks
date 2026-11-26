@@ -59,9 +59,7 @@ func BuildFn(ctx *gcp.Context) error {
 		return fmt.Errorf("creating devsync layer: %w", err)
 	}
 
-	// Guarantee GOOGLE_DEVSYNC=1 is preserved in the container's runtime environment
-	// so that universal_maker inherits it during live incremental rebuilds.
-	layer.LaunchEnvironment.Default(env.DevSync, "1")
+	configureDevSyncLaunchEnv(layer)
 
 	if err := installMaker(ctx, layer); err != nil {
 		return fmt.Errorf("installing universal_maker: %w", err)
@@ -72,6 +70,13 @@ func BuildFn(ctx *gcp.Context) error {
 	}
 
 	return nil
+}
+
+// configureDevSyncLaunchEnv preserves DevSync activation env vars in the container's runtime
+// environment so universal_maker inherits them during live incremental rebuilds.
+func configureDevSyncLaunchEnv(layer *libcnb.Layer) {
+	layer.LaunchEnvironment.Default(env.DevSync, "1")
+	layer.LaunchEnvironment.Default(env.XGoogleDevSyncActivated, "1")
 }
 
 func installMaker(ctx *gcp.Context, layer *libcnb.Layer) error {
