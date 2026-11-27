@@ -108,6 +108,9 @@ func TestSetRuntimeEnvVars(t *testing.T) {
 	if got := layer.LaunchEnvironment["DOTNET_RUNNING_IN_CONTAINER.default"]; got != "true" {
 		t.Errorf("DOTNET_RUNNING_IN_CONTAINER.default = %q, want %q", got, "true")
 	}
+	if got := layer.LaunchEnvironment["ASPNETCORE_URLS.default"]; got != "http://0.0.0.0:8080" {
+		t.Errorf("ASPNETCORE_URLS.default = %q, want %q", got, "http://0.0.0.0:8080")
+	}
 	if got := layer.LaunchEnvironment["PATH.prepend"]; got != "mock-path" {
 		t.Errorf("PATH.prepend = %q, want %q", got, "mock-path")
 	}
