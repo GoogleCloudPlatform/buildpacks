@@ -251,8 +251,34 @@ func TestEnsureUnixLineEndings(t *testing.T) {
 			if string(got) != tc.want {
 				t.Errorf("EnsureUnixLineEndings(%q) got %q, want %q", fp, got, tc.want)
 			}
-
+			info, err := os.Stat(fp)
+			if err != nil {
+				t.Fatalf("error stating file %q: %v", fp, err)
+			}
+			if info.Mode().Perm()&0111 == 0 {
+				t.Errorf("EnsureUnixLineEndings(%q) expected executable permissions, got %v", fp, info.Mode().Perm())
+			}
 		})
+	}
+}
+
+func TestEnsureExecutable(t *testing.T) {
+	dir := t.TempDir()
+	fp := filepath.Join(dir, "script.sh")
+	if err := os.WriteFile(fp, []byte("#!/bin/sh\necho hi\n"), 0644); err != nil {
+		t.Fatalf("error writing file %q: %v", fp, err)
+	}
+
+	if err := EnsureExecutable(fp); err != nil {
+		t.Fatalf("EnsureExecutable(%q) failed: %v", fp, err)
+	}
+
+	info, err := os.Stat(fp)
+	if err != nil {
+		t.Fatalf("error stating file %q: %v", fp, err)
+	}
+	if info.Mode().Perm()&0111 == 0 {
+		t.Errorf("EnsureExecutable(%q) expected executable permissions, got %v", fp, info.Mode().Perm())
 	}
 }
 
