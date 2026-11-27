@@ -31,6 +31,12 @@ import (
 const (
 	runtimeLayerName = "runtime"
 	versionKey       = "version"
+
+	// urlsEnvar is the name of the dotnet-specific envar to set application URL(s), including port.
+	urlsEnvar = "ASPNETCORE_URLS"
+	// defaultURLs is the default listening address of the application. It is a default, so a value
+	// set by the user takes precedence.
+	defaultURLs = "http://0.0.0.0:8080"
 )
 
 // DetectFn is the exported detect function.
@@ -106,6 +112,7 @@ func setRuntimeEnvVars(ctx *gcp.Context, rtl *libcnb.Layer) {
 	rtl.LaunchEnvironment.Default("DOTNET_ROOT", rtl.Path)
 	rtl.LaunchEnvironment.Prepend("PATH", string(os.PathListSeparator), rtl.Path)
 	rtl.LaunchEnvironment.Default("DOTNET_RUNNING_IN_CONTAINER", "true")
+	rtl.LaunchEnvironment.Default(urlsEnvar, defaultURLs)
 	if dotnet.RequiresGlobalizationInvariant(ctx) {
 		rtl.LaunchEnvironment.Default("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "1")
 	}
